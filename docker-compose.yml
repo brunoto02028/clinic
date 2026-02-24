@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  clinic:
+    image: clinic-app:latest
+    container_name: clinic-app
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    environment:
+      - NODE_ENV=production
+      - PORT=4002
+      - HOSTNAME=0.0.0.0
+    env_file:
+      - .env
+    volumes:
+      - /root/clinic-uploads:/app/public/uploads
+    network_mode: bridge

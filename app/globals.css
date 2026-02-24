@@ -1,0 +1,285 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 96%;
+  --foreground: 0 0% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  --primary: 180 13% 43%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 173 52% 58%;
+  --secondary-foreground: 0 0% 10%;
+  --muted: 0 0% 94%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 173 52% 58%;
+  --accent-foreground: 0 0% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 88%;
+  --input: 0 0% 88%;
+  --ring: 173 52% 58%;
+  --radius: 0.75rem;
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 10%;
+}
+
+.dark {
+  --background: 180 10% 10%;
+  --foreground: 0 0% 95%;
+  --card: 180 10% 12%;
+  --card-foreground: 0 0% 95%;
+  --popover: 180 10% 12%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 180 13% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 173 52% 50%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 180 10% 18%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 173 52% 50%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 180 10% 20%;
+  --input: 180 10% 20%;
+  --ring: 173 52% 50%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Hide hydration errors */
+[data-hydration-error] {
+  display: none !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5);
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out forwards;
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.15);
+}
+
+/* Button transitions */
+.btn-transition {
+  transition: all 0.2s ease;
+}
+
+.btn-transition:hover {
+  transform: translateY(-2px);
+}
+
+.btn-transition:active {
+  transform: translateY(0);
+}
+
+/* Focus styles for accessibility */
+.focus-ring:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ===== Article Content — Responsive & Overflow Protection ===== */
+.article-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  max-width: 100%;
+}
+
+/* All direct children must respect the container */
+.article-content > * {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* Images inside articles */
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Tables — make scrollable when too wide */
+.article-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+}
+
+.article-content table th,
+.article-content table td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid hsl(var(--border));
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Pre / Code blocks — scrollable */
+.article-content pre {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.article-content code {
+  word-break: break-all;
+}
+
+/* Iframes / Embeds */
+.article-content iframe,
+.article-content video,
+.article-content embed,
+.article-content object {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Links — break long URLs */
+.article-content a {
+  word-break: break-all;
+}
+
+/* Lists */
+.article-content ul,
+.article-content ol {
+  padding-left: 1.5rem;
+  max-width: 100%;
+}
+
+.article-content li {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Headings inside article content */
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Blockquotes */
+.article-content blockquote {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Paragraphs - ensure wrapping */
+.article-content p {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Horizontal rules */
+.article-content hr {
+  max-width: 100%;
+}
+
+/* Figures */
+.article-content figure {
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.article-content figcaption {
+  overflow-wrap: break-word;
+}
+
+/* divs / sections inside content */
+.article-content div,
+.article-content section {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}

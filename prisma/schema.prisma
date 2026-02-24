@@ -1,0 +1,3224 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  SUPERADMIN  // SaaS platform owner
+  ADMIN       // Clinic admin
+  THERAPIST
+  PATIENT
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionPlan {
+  STARTER     // 1 therapist, 50 patients
+  GROWTH      // 5 therapists, 250 patients
+  ENTERPRISE  // Unlimited
+}
+
+enum FootScanStatus {
+  PENDING_UPLOAD
+  SCANNING        // Camera capture in progress
+  PROCESSING      // AI processing
+  PENDING_REVIEW
+  APPROVED
+  IN_PRODUCTION
+  SHIPPED
+  DELIVERED
+}
+
+enum BodyAssessmentStatus {
+  PENDING_CAPTURE   // Waiting for patient to capture
+  CAPTURING         // Capture in progress
+  PENDING_ANALYSIS  // Captured, waiting for AI analysis
+  ANALYZING         // AI processing
+  PENDING_REVIEW    // AI done, waiting for therapist review
+  REVIEWED          // Therapist reviewed
+  COMPLETED         // Final
+}
+
+enum OrderType {
+  SERVICE       // Appointment/consultation
+  PHYSICAL      // Insoles, products
+  SUBSCRIPTION  // SaaS plan
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum AppointmentMode {
+  IN_PERSON
+  VIDEO
+}
+
+enum TreatmentPlanStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  PAUSED
+}
+
+enum CancellationStatus {
+  PENDING    // Patient requested, awaiting admin review
+  APPROVED   // Admin approved refund
+  REJECTED   // Admin rejected (e.g. < 48h)
+  REFUNDED   // Stripe refund processed
+}
+
+enum PlanItemType {
+  SINGLE    // Individual treatment
+  COMBO     // Part of a combo/package
+}
+
+enum ClinicModule {
+  APPOINTMENTS
+  CLINICAL_NOTES
+  FOOT_SCANS
+  VIDEO_CONSULTATIONS
+  ARTICLES
+  ORDERS
+  DIAGNOSTICS
+  SOCIAL_MEDIA
+  EDUCATION
+  BIOMECHANICAL_ASSESSMENT
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  LINKEDIN
+}
+
+enum SocialPostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+enum SocialPostType {
+  IMAGE
+  CAROUSEL
+  REEL
+  STORY
+}
+
+// ============================================
+// CLINIC (TENANT) - Core Multi-Tenancy Model
+// ============================================
+
+model Clinic {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique  // For URLs: /clinics/bruno-physical-rehab
+  
+  // Branding
+  logoUrl         String?
+  logoPath        String?  // cloud_storage_path
+  primaryColor    String?  @default("#607d7d")
+  secondaryColor  String?  @default("#5dc9c0")
+  
+  // Contact
+  email           String?
+  phone           String?
+  address         String?
+  city            String?
+  postcode        String?
+  country         String   @default("GB")
+  
+  // Stripe Connect (for receiving payments)
+  stripeAccountId String?  @unique
+  stripeOnboarded Boolean  @default(false)
+  
+  // Settings
+  timezone        String   @default("Europe/London")
+  currency        String   @default("GBP")
+  isActive        Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  users             User[]
+  appointments      Appointment[]
+  soapNotes         SOAPNote[]
+  medicalScreenings MedicalScreening[]
+  articles          Article[]
+  footScans         FootScan[]
+  orders            Order[]
+  diagnosticFiles   DiagnosticFile[]
+  siteSettings      SiteSettings?
+  subscription      Subscription?
+  imageLibrary      ImageLibrary[]
+  therapistAvailabilities TherapistAvailability[]
+  payments          Payment[]
+  treatmentTypes    TreatmentType[]
+  treatmentPlans    TreatmentPlan[]
+  membershipPlans   MembershipPlan[]
+  moduleAccess      ClinicModuleAccess[]
+  socialAccounts    SocialAccount[]
+  socialPosts       SocialPost[]
+  socialCampaigns   SocialCampaign[]
+  socialTemplates   SocialTemplate[]
+  eduCategories     EducationCategory[]
+  eduContent        EducationContent[]
+  eduAssignments    EducationAssignment[]
+  bodyAssessments   BodyAssessment[]
+  exercises         Exercise[]
+  exercisePrescriptions ExercisePrescription[]
+  aiDiagnoses       AIDiagnosis[]
+  treatmentProtocols TreatmentProtocol[]
+  treatmentPackages TreatmentPackage[]
+  patientDocuments  PatientDocument[]
+  voiceTranscriptions VoiceTranscription[]
+  servicePrices     ServicePrice[]
+  serviceAccess     ServiceAccess[]
+  servicePackages   ServicePackage[]
+  patientPackages   PatientPackage[]
+
+  // BPR Journey
+  patientProgress       PatientProgress[]
+  dailyMissions         DailyMission[]
+  patientBadges         PatientBadge[]
+  patientQuizResults    PatientQuizResult[]
+  communityPosts        CommunityPost[]
+  weeklyChallenges      WeeklyChallenge[]
+  marketplaceProducts   MarketplaceProduct[]
+  journeyNotifications  JourneyNotification[]
+  marketplaceOrders     MarketplaceOrder[]
+
+  // Conditions, Quizzes & Achievements
+  conditions            Condition[]
+  quizzes               Quiz[]
+  achievements          Achievement[]
+  patientAchievements   PatientAchievement[]
+  patientQuizAttempts   PatientQuizAttempt[]
+  servicePages          ServicePage[]
+  commandMemories       CommandMemory[]
+  
+  @@index([slug])
+  @@index([isActive])
+}
+
+// ============================================
+// SUBSCRIPTION (SaaS Billing)
+// ============================================
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  clinicId             String             @unique
+  clinic               Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  
+  plan                 SubscriptionPlan   @default(STARTER)
+  status               SubscriptionStatus @default(TRIAL)
+  
+  // Stripe Subscription
+  stripeSubscriptionId String?            @unique
+  stripeCustomerId     String?
+  stripePriceId        String?
+  
+  // Limits based on plan
+  maxTherapists        Int                @default(1)
+  maxPatients          Int                @default(50)
+  
+  // Trial
+  trialEndsAt          DateTime?
+  
+  // Billing
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  
+  @@index([status])
+  @@index([stripeSubscriptionId])
+}
+
+// ============================================
+// USER (Updated with clinicId)
+// ============================================
+
+model User {
+  id              String    @id @default(cuid())
+  clinicId        String?   // Nullable for SUPERADMIN (platform owner)
+  clinic          Clinic?   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  
+  email           String    @unique
+  password        String
+  firstName       String
+  lastName        String
+  phone           String?
+  dateOfBirth             DateTime?
+  address                 String?
+  emergencyContactName    String?
+  emergencyContactPhone   String?
+  emergencyContactRelation String?
+  role            UserRole  @default(PATIENT)
+  isActive        Boolean   @default(true)
+  emailVerified   DateTime?
+  
+  // Profile Image
+  profileImageUrl  String?
+  profileImagePath String?  // cloud_storage_path for profile image
+  
+  // Staff Permissions (only relevant for THERAPIST/ADMIN)
+  canManageUsers        Boolean @default(false)
+  canManageAppointments Boolean @default(true)
+  canManageArticles     Boolean @default(false)
+  canManageSettings     Boolean @default(false)
+  canViewAllPatients    Boolean @default(true)
+  canCreateClinicalNotes Boolean @default(true)
+  canManageFootScans    Boolean @default(false)
+  canManageOrders       Boolean @default(false)
+  
+  // Patient Module Overrides (admin-controlled per-patient access)
+  moduleOverrides  Json?    // { "mod_appointments": true, "mod_treatment": false, ... } — admin grants/revokes individual modules
+  fullAccessOverride Boolean @default(false) // Admin master toggle: bypasses all module/membership checks
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  patientAppointments   Appointment[]     @relation("PatientAppointments")
+  therapistAppointments Appointment[]     @relation("TherapistAppointments")
+  medicalScreening      MedicalScreening?
+  soapNotesCreated      SOAPNote[]        @relation("TherapistNotes")
+  soapNotesFor          SOAPNote[]        @relation("PatientNotes")
+  payments              Payment[]
+  therapistAvailability TherapistAvailability[]
+  articles              Article[]
+  uploadedImages        ImageLibrary[]
+  
+  // New relations for SaaS features
+  footScans             FootScan[]
+  ordersAsCustomer      Order[]           @relation("CustomerOrders")
+  ordersAsProcessor     Order[]           @relation("ProcessorOrders")
+  diagnosticFiles       DiagnosticFile[]
+  diagnosticFilesReviewed DiagnosticFile[] @relation("ReviewedFiles")
+  treatmentPlansAsPatient TreatmentPlan[]  @relation("PatientPlans")
+  treatmentPlansAsTherapist TreatmentPlan[] @relation("TherapistPlans")
+  membershipsAsPatient    MembershipPlan[] @relation("PatientMemberships")
+  socialPostsCreated    SocialPost[]      @relation("SocialPostCreator")
+  eduContentCreated     EducationContent[] @relation("EduContentCreator")
+  eduAssignmentsGiven   EducationAssignment[] @relation("EduAssigner")
+  eduAssignmentsReceived EducationAssignment[] @relation("EduPatient")
+  eduProgress           EducationProgress[]
+  bodyAssessmentsAsPatient  BodyAssessment[] @relation("PatientBodyAssessments")
+  bodyAssessmentsAsTherapist BodyAssessment[] @relation("TherapistBodyAssessments")
+  exercisesCreated          Exercise[]       @relation("ExercisesCreated")
+  prescribedExercises       ExercisePrescription[] @relation("PrescribedExercises")
+  receivedExercises         ExercisePrescription[] @relation("ReceivedExercises")
+  diagnosesAsPatient        AIDiagnosis[]    @relation("PatientDiagnoses")
+  diagnosesAsTherapist      AIDiagnosis[]    @relation("TherapistDiagnoses")
+  protocolsAsPatient        TreatmentProtocol[] @relation("PatientProtocols")
+  protocolsAsTherapist      TreatmentProtocol[] @relation("TherapistProtocols")
+  documentsAsPatient        PatientDocument[]   @relation("PatientDocuments")
+  documentsUploaded         PatientDocument[]   @relation("DocumentUploader")
+  packagesAsPatient         TreatmentPackage[]  @relation("PatientPackages")
+  voiceTranscriptions       VoiceTranscription[] @relation("PatientTranscriptions")
+  emailMessages             EmailMessage[]       @relation("PatientEmails")
+  bloodPressureReadings     BloodPressureReading[] @relation("PatientBPReadings")
+  bpReminderEnabled         Boolean              @default(false)
+  serviceAccessRecords      ServiceAccess[]        @relation("PatientServiceAccess")
+  serviceAccessGranted      ServiceAccess[]        @relation("ServiceAccessGranter")
+  patientPackages           PatientPackage[]        @relation("PatientPackageRecipient")
+  grantedPackages           PatientPackage[]        @relation("PatientPackageGranter")
+  consentAcceptedAt         DateTime?
+  preferredLocale           String                  @default("en-GB") // en-GB or pt-BR
+  communicationPreference   String                  @default("EMAIL") // EMAIL, SMS, WHATSAPP
+  consentLogs               ConsentLog[]            @relation("PatientConsentLogs")
+  screeningEditApprovals    MedicalScreening[]      @relation("ScreeningEditApprover")
+  cancellationRequests      CancellationRequest[]   @relation("PatientCancellations")
+  processedCancellations    CancellationRequest[]   @relation("AdminCancellations")
+  patientSubscriptions      PatientSubscription[]   @relation("PatientSubscriptions")
+  whatsappMessages          WhatsAppMessage[]       @relation("PatientWhatsApp")
+  
+  // BPR Journey
+  patientProgress           PatientProgress?         @relation("PatientProgress")
+  dailyMissions             DailyMission[]           @relation("PatientMissions")
+  patientBadges             PatientBadge[]           @relation("PatientBadges")
+  quizResults               PatientQuizResult[]      @relation("PatientQuizResults")
+  communityPosts            CommunityPost[]          @relation("PatientCommunityPosts")
+  journeyNotifications      JourneyNotification[]    @relation("PatientJourneyNotifications")
+  marketplaceOrders         MarketplaceOrder[]       @relation("PatientMarketplaceOrders")
+
+  // Conditions, Quizzes & Achievements
+  patientAchievements       PatientAchievement[]     @relation("PatientAchievements")
+  patientQuizAttempts       PatientQuizAttempt[]     @relation("PatientQuizAttempts")
+  quizzesCreated            Quiz[]                   @relation("QuizCreator")
+  achievementsCreated       Achievement[]            @relation("AchievementCreator")
+  conditionsCreated         Condition[]              @relation("ConditionCreator")
+  verificationCodes         VerificationCode[]
+  commandMemories           CommandMemory[]               @relation("UserCommandMemories")
+
+  // Patient Intake
+  intakeToken               String?                       @unique
+  intakeTokenExpiry          DateTime?
+  profileCompleted           Boolean                       @default(false)
+
+  @@index([clinicId])
+  @@index([email])
+  @@index([role])
+}
+
+// ============================================
+// MEDICAL SCREENING (Updated with clinicId)
+// ============================================
+
+model MedicalScreening {
+  id                      String   @id @default(cuid())
+  clinicId                String?
+  clinic                  Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Red Flag Questions
+  unexplainedWeightLoss   Boolean  @default(false)
+  nightPain               Boolean  @default(false)
+  traumaHistory           Boolean  @default(false)
+  neurologicalSymptoms    Boolean  @default(false)
+  bladderBowelDysfunction Boolean  @default(false)
+  recentInfection         Boolean  @default(false)
+  cancerHistory           Boolean  @default(false)
+  steroidUse              Boolean  @default(false)
+  osteoporosisRisk        Boolean  @default(false)
+  cardiovascularSymptoms  Boolean  @default(false)
+  severeHeadache          Boolean  @default(false)
+  dizzinessBalanceIssues  Boolean  @default(false)
+
+  // Additional Information
+  currentMedications      String?
+  allergies               String?
+  surgicalHistory         String?
+  otherConditions         String?
+  gpDetails               String?
+  emergencyContact        String?
+  emergencyContactPhone   String?
+  consentGiven            Boolean  @default(false)
+
+  // Lock after submission
+  isSubmitted             Boolean  @default(false)
+  isLocked                Boolean  @default(false)
+  editRequestedAt         DateTime?
+  editApprovedAt          DateTime?
+  editApprovedById        String?
+  editApprovedBy          User?    @relation("ScreeningEditApprover", fields: [editApprovedById], references: [id])
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([userId])
+}
+
+// ============================================
+// THERAPIST AVAILABILITY (Updated with clinicId)
+// ============================================
+
+model TherapistAvailability {
+  id          String   @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  therapistId String
+  therapist   User     @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int      // 0 = Sunday, 1 = Monday, etc.
+  startTime   String   // Format: "09:00"
+  endTime     String   // Format: "17:00"
+  isAvailable Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([therapistId, dayOfWeek])
+  @@index([clinicId])
+  @@index([therapistId])
+}
+
+// ============================================
+// APPOINTMENT (Updated with clinicId)
+// ============================================
+
+model Appointment {
+  id              String            @id @default(cuid())
+  clinicId        String?
+  clinic          Clinic?           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         User              @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId     String
+  therapist       User              @relation("TherapistAppointments", fields: [therapistId], references: [id], onDelete: Cascade)
+
+  dateTime        DateTime
+  duration        Int               @default(60) // Duration in minutes
+  treatmentType   String
+  status          AppointmentStatus @default(PENDING)
+  mode            AppointmentMode   @default(IN_PERSON)
+  videoRoomId     String?           // For video consultations
+  videoRoomUrl    String?           // Join URL for video call
+  notes           String?
+  price           Float             @default(60.00)
+  treatmentPlanId String?
+  treatmentPlan   TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
+
+  // Cancellation policy
+  cancellationPolicyAcceptedAt DateTime?  // When patient accepted the policy
+  stripePaymentIntentId        String?    // For refund processing
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  payment              Payment?
+  soapNote             SOAPNote?
+  order                Order?
+  cancellationRequest  CancellationRequest?
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([dateTime])
+  @@index([status])
+}
+
+// ============================================
+// SOAP NOTE (Updated with clinicId)
+// ============================================
+
+model SOAPNote {
+  id              String   @id @default(cuid())
+  clinicId        String?
+  clinic          Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointmentId   String?  @unique
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         User     @relation("PatientNotes", fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId     String
+  therapist       User     @relation("TherapistNotes", fields: [therapistId], references: [id], onDelete: Cascade)
+
+  // SOAP Format
+  subjective      String   @db.Text // Patient's description
+  objective       String   @db.Text // Clinical findings
+  assessment      String   @db.Text // Clinical reasoning
+  plan            String   @db.Text // Treatment plan
+
+  // Additional clinical data
+  painLevel       Int?     // 0-10 scale
+  rangeOfMotion   String?
+  functionalTests String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([appointmentId])
+}
+
+// ============================================
+// PAYMENT (Updated with clinicId)
+// ============================================
+
+model Payment {
+  id                String        @id @default(cuid())
+  clinicId          String?
+  clinic            Clinic?       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointmentId     String        @unique
+  appointment       Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount            Float
+  currency          String        @default("GBP")
+  status            PaymentStatus @default(PENDING)
+  stripePaymentId   String?       @unique
+  stripeSessionId   String?       @unique
+  receiptUrl        String?
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([clinicId])
+  @@index([userId])
+  @@index([appointmentId])
+  @@index([stripePaymentId])
+}
+
+// ============================================
+// ARTICLE (Updated with clinicId)
+// ============================================
+
+model Article {
+  id          String   @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String   @unique
+  excerpt     String
+  content     String   @db.Text
+  imageUrl    String?
+  published   Boolean  @default(false)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorName  String?  // Optional override for displayed author name
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([slug])
+  @@index([published])
+  @@index([authorId])
+}
+
+// ============================================
+// SITE SETTINGS (Updated with clinicId - 1:1)
+// ============================================
+
+model SiteSettings {
+  id          String   @id @default(cuid())
+  clinicId    String?  @unique
+  clinic      Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  
+  // Branding
+  logoUrl     String?
+  logoPath    String?  // cloud_storage_path for logo
+  darkLogoUrl  String?  // Logo for dark backgrounds (white version)
+  darkLogoPath String?  // cloud_storage_path for dark logo
+  screenLogos  Json?    // Per-screen logo overrides: { login: {logoUrl,darkLogoUrl}, adminLogin: {...}, signup: {...}, dashboard: {...}, landingHeader: {...}, landingFooter: {...}, forgotPassword: {...} }
+  faviconUrl   String?  // Custom favicon URL
+  siteName    String   @default("Bruno Physical Rehabilitation")
+  tagline     String?
+  
+  // Menu/Navigation (JSON)
+  navigationJson String? @db.Text
+  
+  // Hero Section (Block 2)
+  heroTitle       String?
+  heroSubtitle    String?
+  heroImageUrl    String?
+  heroImagePath   String?  // cloud_storage_path for hero image
+  heroCTA         String?  // Call to action button text
+  heroCTALink     String?  // CTA button link
+  
+  // Portal Section (Block 3)
+  portalTitle        String?
+  portalSubtitle     String?
+  portalText         String?  @db.Text
+  portalFeaturesJson String?  @db.Text  // JSON array of {icon, title, desc} for portal features
+  
+  // Services Section (Block 4)
+  servicesTitle    String?
+  servicesSubtitle String?
+  servicesJson     String? @db.Text  // JSON array of services
+  
+  // About Section (Block 5)
+  aboutTitle     String?
+  aboutText      String?  @db.Text
+  aboutImageUrl  String?
+  aboutImagePath String?  // cloud_storage_path for about image
+  
+  // Articles Section (Block 6)
+  articlesTitle      String?
+  articlesSubtitle   String?
+  
+  // Articles Placeholder (Block 7)
+  articlesPlaceholderTitle String?
+  articlesPlaceholderText  String?  @db.Text
+  
+  // Contact Section (Block 8)
+  contactTitle    String?
+  contactSubtitle String?
+  contactText     String?  @db.Text
+  contactCardsJson String? @db.Text  // JSON array of dynamic contact cards
+  phone           String?
+  email           String?
+  address         String?
+  
+  // WhatsApp floating button
+  whatsappNumber  String?  // e.g. "447123456789" — shown as floating button on public pages
+  whatsappEnabled Boolean  @default(false)  // Show WhatsApp button in header/site
+  whatsappMessage String?  // Pre-filled message e.g. "Hello, I'd like to book an appointment"
+  
+  // Footer (Block 9)
+  footerText      String?  @db.Text
+  footerLinksJson String?  @db.Text  // JSON array of footer links
+  socialLinksJson String?  @db.Text  // JSON array of social media links
+  footerModulesJson String? @db.Text // JSON: which footer modules are enabled {logo,links,social,contact,copyright,newsletter}
+  
+  // Custom Insoles / Foot Scan Block (Block 10)
+  insolesTitle       String?
+  insolesSubtitle    String?
+  insolesDesc        String?  @db.Text
+  insolesImageUrl    String?
+  insolesImagePath   String?
+  insolesStepsJson   String?  @db.Text  // JSON array of process steps
+  insolesBenefitsJson String? @db.Text  // JSON array of benefits
+  
+  // Biomechanical Assessment Block (Block 11)
+  bioTitle           String?
+  bioSubtitle        String?
+  bioDesc            String?  @db.Text
+  bioImageUrl        String?
+  bioImagePath       String?
+  bioStepsJson       String?  @db.Text  // JSON array of process steps
+  bioBenefitsJson    String?  @db.Text  // JSON array of benefits
+  
+  // Landing Pages Content (JSON blobs for full page content)
+  lpTherapiesJson    String?  @db.Text  // Full therapies landing page content
+  lpInsolesJson      String?  @db.Text  // Full insoles landing page content
+  lpBiomechanicsJson String?  @db.Text  // Full biomechanics landing page content
+  
+  // Patient Portal Configuration
+  patientPortalJson String?  @db.Text  // JSON config for patient portal modules
+  
+  // Consent / Legal Texts
+  consentTextsJson  String?  @db.Text  // JSON config for terms, privacy, liability texts
+  termsContentHtml  String?  @db.Text  // Full HTML content for /terms page (editable from admin)
+  
+  // SEO - Basic
+  metaTitle         String?
+  metaDescription   String?  @db.Text
+  metaKeywords      String?  @db.Text
+  ogImageUrl        String?
+  ogImagePath       String?  // cloud_storage_path for OG image
+  
+  // SEO - Open Graph
+  ogType            String?  // e.g. "website"
+  ogLocale          String?  // e.g. "en_GB"
+  ogSiteName        String?  // e.g. "BPR - Bruno Physical Rehabilitation"
+  
+  // SEO - Twitter/X Card
+  twitterCard       String?  // e.g. "summary_large_image"
+  twitterSite       String?  // e.g. "@BrunoPhysical"
+  twitterCreator    String?  // e.g. "@BrunoPhysical"
+  
+  // SEO - Advanced / Technical
+  canonicalUrl      String?
+  robotsMeta        String?  // e.g. "index, follow"
+  googleVerification String? // Google Search Console verification
+  bingVerification  String?  // Bing Webmaster Tools verification
+  
+  // SEO - Local Business / Google Business Profile
+  businessName      String?  // Official business name for schema
+  businessType      String?  // e.g. "PhysicalTherapist", "MedicalBusiness"
+  businessStreet    String?  // Street address
+  businessCity      String?  // e.g. "Ipswich"
+  businessRegion    String?  // e.g. "Suffolk"
+  businessPostcode  String?  // e.g. "IP1 1AA"
+  businessCountry   String?  // e.g. "GB"
+  businessPhone     String?  // e.g. "+44 1473 000000"
+  businessEmail     String?  // e.g. "admin@bpr.rehab"
+  businessHoursJson String?  @db.Text // JSON: opening hours per day
+  businessPriceRange String? // e.g. "££"
+  businessCurrency  String?  // e.g. "GBP"
+  
+  // SEO - Geo / Local
+  geoRegion         String?  // e.g. "GB-SFK" (Suffolk)
+  geoPlacename      String?  // e.g. "Ipswich, Suffolk"
+  geoPosition       String?  // e.g. "52.0567,-1.1482"
+  
+  // SEO - Schema.org
+  schemaOrgJson     String?  @db.Text  // Full JSON-LD structured data (auto-generated or custom)
+  
+  // SEO - Sitemap & Robots
+  sitemapEnabled    Boolean  @default(true)
+  robotsTxtCustom   String?  @db.Text  // Custom robots.txt content
+  
+  // SEO - Social Profiles (for schema.org sameAs)
+  socialProfilesJson String? @db.Text // JSON array of social profile URLs
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
+// IMAGE LIBRARY (Updated with clinicId)
+// ============================================
+
+model ImageLibrary {
+  id                String   @id @default(cuid())
+  clinicId          String?
+  clinic            Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  fileName          String
+  originalName      String
+  fileSize          Int
+  mimeType          String
+  imageUrl          String   // Public URL of the image
+  cloud_storage_path String  // S3 path
+  width             Int?
+  height            Int?
+  altText           String?
+  category          String?  // e.g., "hero", "services", "about", "general"
+  uploadedById      String
+  uploadedBy        User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([clinicId])
+  @@index([uploadedById])
+  @@index([category])
+}
+
+// ============================================
+// FOOT SCAN (NEW - 3D Scan Module)
+// ============================================
+
+model FootScan {
+  id              String          @id @default(cuid())
+  scanNumber      String          @unique  // FS-2026-00001
+  clinicId        String
+  clinic          Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         User            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Scan Files (3D)
+  scanUrl         String?         // URL of 3D file (.obj/.stl/.glb) in S3
+  scanPath        String?         // cloud_storage_path for 3D file
+  previewUrl      String?         // Preview image URL
+  previewPath     String?         // cloud_storage_path for preview
+  
+  // Camera Capture Data
+  leftFootImages  Json?           // Array of captured image URLs (top, side, sole, rear, elevated)
+  rightFootImages Json?           // Array of captured image URLs (top, side, sole, rear, elevated)
+  captureMetadata Json?           // Device info, timestamps, angles, isSimulation flag
+  
+  // AI & Clinical Analysis Results
+  biomechanicData Json?           // Detailed breakdown: { archIndex, valgusAngle, etc }
+  pressureMapUrl  String?         // Generated pressure map image
+  pressureMapPath String?
+  
+  // Professional Biomechanical Variables (Primary Indicators)
+  archType        String?         // "Normal", "Flat", "High"
+  archIndex       Float?          // Ratio: Midfoot area / Total area
+  pronation       String?         // "Neutral", "Overpronation", "Supination"
+  calcanealAlignment Float?       // Angle: Valgus (+) or Varus (-)
+  halluxValgusAngle Float?        // Degree of hallux deviation
+  metatarsalSpread Float?         // mm: Width between 1st and 5th metatarsal heads
+  navicularHeight Float?          // mm: Vertical height of navicular bone
+  
+  // Standard Measurements
+  leftFootLength  Float?          // mm
+  rightFootLength Float?          // mm
+  leftFootWidth   Float?          // mm
+  rightFootWidth  Float?          // mm
+  leftArchHeight  Float?          // mm
+  rightArchHeight Float?          // mm
+  
+  // Gait & Dynamic Analysis
+  gaitAnalysis    Json?           // Gait pattern data (pattern, symmetry, concerns)
+  strideLength    Float?          // mm
+  cadence         Int?            // steps per minute
+  
+  // Scan Session Token (for QR-based mobile capture)
+  scanToken       String?         @unique
+  scanTokenExpiry DateTime?
+  
+  // Status & Workflow
+  status          FootScanStatus  @default(PENDING_UPLOAD)
+  clinicianNotes  String?         @db.Text
+  aiRecommendation String?        @db.Text
+  
+  // Insole Production (Technical Specifications)
+  insoleType      String?         // "Sport", "Comfort", "Medical"
+  insoleSize      String?         // "EU42", "UK8", etc.
+  productionNotes String?         @db.Text
+  manufacturingReport String?     @db.Text // JSON with all finalized manufacturing variables
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  order           Order?
+  
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([status])
+  @@index([scanNumber])
+  @@index([createdAt])
+}
+
+// ============================================
+// ORDER (NEW - Unified Orders)
+// ============================================
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique  // BPR-2026-00001
+  clinicId        String
+  clinic          Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  customerId      String
+  customer        User          @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Cascade)
+  processedById   String?
+  processedBy     User?         @relation("ProcessorOrders", fields: [processedById], references: [id])
+  
+  // Order Type
+  type            OrderType
+  status          OrderStatus   @default(DRAFT)
+  
+  // Items (JSON for flexibility)
+  items           Json          // [{name, quantity, unitPrice, type, sku}]
+  
+  // Pricing
+  subtotal        Float
+  taxAmount       Float         @default(0)
+  taxRate         Float         @default(0.20)  // 20% VAT UK
+  discountAmount  Float         @default(0)
+  discountCode    String?
+  shippingAmount  Float         @default(0)
+  totalAmount     Float
+  currency        String        @default("GBP")
+  
+  // Shipping (for physical products)
+  shippingAddress Json?         // {line1, line2, city, postcode, country}
+  shippingMethod  String?       // "standard", "express"
+  trackingNumber  String?
+  trackingUrl     String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  
+  // Stripe
+  stripePaymentIntentId String? @unique
+  stripeInvoiceId       String?
+  stripeReceiptUrl      String?
+  
+  // Relations
+  footScanId      String?       @unique
+  footScan        FootScan?     @relation(fields: [footScanId], references: [id])
+  appointmentId   String?       @unique
+  appointment     Appointment?  @relation(fields: [appointmentId], references: [id])
+  
+  // Notes
+  customerNotes   String?       @db.Text
+  internalNotes   String?       @db.Text
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  paidAt          DateTime?
+  
+  @@index([clinicId])
+  @@index([customerId])
+  @@index([status])
+  @@index([type])
+  @@index([orderNumber])
+}
+
+// ============================================
+// DIAGNOSTIC FILE (NEW - PDF Analysis)
+// ============================================
+
+model DiagnosticFile {
+  id                String   @id @default(cuid())
+  clinicId          String
+  clinic            Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId         String
+  patient           User     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // File Info
+  fileName          String
+  originalName      String
+  fileUrl           String
+  filePath          String   // cloud_storage_path
+  fileSize          Int
+  mimeType          String   @default("application/pdf")
+  
+  // AI Extraction
+  extractedText     String?  @db.Text  // Raw text from PDF
+  extractedAnalysis Json?    // Structured analysis from AI
+  aiSummary         String?  @db.Text  // Human-readable summary
+  aiProcessedAt     DateTime?
+  
+  // Categorization
+  fileType          String?  // "MRI", "X-Ray", "Blood Test", "Ultrasound", "Other"
+  bodyRegion        String?  // "Spine", "Knee", "Shoulder", "Foot", "Hip", etc.
+  examDate          DateTime? // Date of the actual exam
+  
+  // Review
+  reviewedById      String?
+  reviewedBy        User?    @relation("ReviewedFiles", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  clinicianNotes    String?  @db.Text
+  
+  // Flags
+  isUrgent          Boolean  @default(false)
+  requiresFollowUp  Boolean  @default(false)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([fileType])
+  @@index([bodyRegion])
+}
+
+// ============================================
+// TREATMENT PLAN (Patient Treatment Packages)
+// ============================================
+
+model TreatmentPlan {
+  id          String               @id @default(cuid())
+  clinicId    String
+  clinic      Clinic               @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId   String?
+  patient     User?                @relation("PatientPlans", fields: [patientId], references: [id], onDelete: SetNull)
+  therapistId String?
+  therapist   User?                @relation("TherapistPlans", fields: [therapistId], references: [id])
+  
+  name        String               // "Rehabilitation Package", "Post-Surgery Plan"
+  status      TreatmentPlanStatus  @default(ACTIVE)
+  
+  // Pricing
+  totalPrice  Float                @default(0)   // 0 = free
+  isFree      Boolean              @default(false)
+  isCombo     Boolean              @default(false) // true if it's a combo/package deal
+  
+  // Sessions tracking
+  totalSessions     Int            @default(1)
+  completedSessions Int            @default(0)
+  
+  startDate   DateTime             @default(now())
+  endDate     DateTime?
+  notes       String?              @db.Text
+
+  // Stripe
+  stripeProductId              String?
+  stripePriceId                String?
+  stripePaymentIntentId        String?   // For refund processing
+  cancellationPolicyAcceptedAt DateTime? // When patient accepted the policy
+  
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  
+  // Relations
+  items                TreatmentPlanItem[]
+  appointments         Appointment[]
+  cancellationRequest  CancellationRequest?
+  
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([status])
+}
+
+// ============================================
+// MEMBERSHIP PLAN
+// ============================================
+
+enum MembershipStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  DRAFT
+}
+
+enum PatientSubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+  TRIALING
+}
+
+enum MembershipInterval {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model MembershipPlan {
+  id          String             @id @default(cuid())
+  clinicId    String
+  clinic      Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId   String?
+  patient     User?              @relation("PatientMemberships", fields: [patientId], references: [id], onDelete: SetNull)
+
+  name        String
+  description String?            @db.Text
+  status      MembershipStatus   @default(DRAFT)
+  patientScope String            @default("none") // "specific" | "all" | "none"
+
+  price       Float              @default(0)
+  interval    MembershipInterval @default(MONTHLY)
+  isFree      Boolean            @default(false)
+
+  features    String[]           // list of module + permission keys included
+  modulePermissions Json?         // Granular per-module permissions {"appointments": {"canBookOnline": true, "canBookInPerson": false}}
+
+  stripeProductId  String?
+  stripePriceId    String?
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relations
+  subscriptions PatientSubscription[]
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([status])
+}
+
+// ============================================
+// PATIENT SUBSCRIPTION (Patient <-> MembershipPlan binding)
+// ============================================
+
+model PatientSubscription {
+  id                    String                    @id @default(cuid())
+  clinicId              String
+  patientId             String
+  patient               User                      @relation("PatientSubscriptions", fields: [patientId], references: [id], onDelete: Cascade)
+  planId                String
+  plan                  MembershipPlan            @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  status                PatientSubscriptionStatus @default(ACTIVE)
+
+  // Stripe
+  stripeSubscriptionId  String?                   @unique
+  stripeCustomerId      String?
+
+  // Billing period
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean                   @default(false)
+
+  // Dates
+  startDate             DateTime                  @default(now())
+  endDate               DateTime?
+  cancelledAt           DateTime?
+
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  @@unique([patientId, planId])
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([planId])
+  @@index([status])
+}
+
+model TreatmentPlanItem {
+  id              String        @id @default(cuid())
+  treatmentPlanId String
+  treatmentPlan   TreatmentPlan @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
+  
+  treatmentName   String        // Name of the treatment
+  type            PlanItemType  @default(SINGLE)
+  sessions        Int           @default(1)  // How many sessions of this treatment
+  completedSessions Int         @default(0)
+  unitPrice       Float         @default(0)
+  duration        Int           @default(60) // minutes per session
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([treatmentPlanId])
+}
+
+// ============================================
+// CANCELLATION REQUEST
+// ============================================
+
+model CancellationRequest {
+  id                String             @id @default(cuid())
+  
+  // One of these must be set
+  appointmentId     String?            @unique
+  appointment       Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  treatmentPlanId   String?            @unique
+  treatmentPlan     TreatmentPlan?     @relation(fields: [treatmentPlanId], references: [id], onDelete: Cascade)
+  
+  patientId         String
+  patient           User               @relation("PatientCancellations", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  status            CancellationStatus @default(PENDING)
+  reason            String             @db.Text
+  
+  // Refund details
+  refundAmount      Float?             // Amount to refund in GBP
+  stripeRefundId    String?            // Stripe refund ID
+  
+  // Admin action
+  adminNote         String?            @db.Text
+  processedById     String?
+  processedBy       User?              @relation("AdminCancellations", fields: [processedById], references: [id])
+  processedAt       DateTime?
+  
+  // Policy enforcement
+  hoursBeforeAppt   Float?             // Hours before appointment at time of request
+  isWithin48h       Boolean            @default(false) // true = within 48h window
+  
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  @@index([patientId])
+  @@index([status])
+}
+
+// ============================================
+// CLINIC MODULE ACCESS (Modular Feature Control)
+// ============================================
+
+model ClinicModuleAccess {
+  id          String       @id @default(cuid())
+  clinicId    String
+  clinic      Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  module      ClinicModule
+  isEnabled   Boolean      @default(true)
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  @@unique([clinicId, module])
+  @@index([clinicId])
+}
+
+// ============================================
+// TREATMENT TYPE (Per-Clinic Service Catalog)
+// ============================================
+
+model TreatmentType {
+  id               String            @id @default(cuid())
+  clinicId         String
+  clinic           Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  
+  name             String            // "TENS Therapy", "Shockwave", "Initial Assessment"
+  description      String?           @db.Text
+  category         TreatmentCategory @default(OTHER)
+  requiresInPerson Boolean           @default(true)  // true for electrotherapy, can be false for consultations
+  duration         Int               @default(60)     // Minutes
+  price            Float             @default(60.00)
+  currency         String            @default("GBP")
+  isActive         Boolean           @default(true)
+  sortOrder        Int               @default(0)
+  
+  // Electrotherapy-specific
+  equipmentNeeded  String?           // e.g. "TENS unit", "Ultrasound machine"
+  contraindications String?          @db.Text  // When NOT to use this treatment
+  indications      String?           @db.Text  // When to use this treatment
+  parameters       Json?             // {frequency, intensity, waveform, duration} for electrotherapy
+  
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  
+  @@unique([clinicId, name])
+  @@index([clinicId])
+  @@index([isActive])
+  @@index([category])
+}
+
+// ============================================
+// AUTH TOKENS
+// ============================================
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@index([email])
+}
+
+enum VerificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+model VerificationCode {
+  id        String              @id @default(cuid())
+  userId    String
+  code      String              // 6-digit code
+  channel   VerificationChannel
+  phone     String?             // Phone number used for SMS/WhatsApp
+  email     String?             // Email used for email channel
+  expiresAt DateTime            // 10 minutes from creation
+  attempts  Int                 @default(0) // Max 5 attempts
+  verified  Boolean             @default(false)
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([code, userId])
+}
+
+// ============================================
+// SOCIAL MEDIA
+// ============================================
+
+model SocialAccount {
+  id              String         @id @default(cuid())
+  clinicId        String
+  clinic          Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  platform        SocialPlatform
+  accountName     String         // @brunophysicalrehab
+  accountId       String         // Platform-specific account ID
+  accessToken     String         @db.Text
+  refreshToken    String?        @db.Text
+  tokenExpiresAt  DateTime?
+  pageId          String?        // Facebook Page ID (needed for Instagram)
+  profilePicUrl   String?
+  isActive        Boolean        @default(true)
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  posts           SocialPost[]
+
+  @@unique([clinicId, platform, accountId])
+  @@index([clinicId])
+}
+
+model SocialPost {
+  id              String           @id @default(cuid())
+  clinicId        String
+  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  accountId       String?
+  account         SocialAccount?   @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  campaignId      String?
+  campaign        SocialCampaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdById     String?
+  createdBy       User?            @relation("SocialPostCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Content
+  caption         String           @db.Text
+  hashtags        String?          @db.Text   // Stored as comma-separated
+  postType        SocialPostType   @default(IMAGE)
+  mediaUrls       String[]         // Array of image/video URLs
+  mediaPaths      String[]         // S3 paths
+
+  // Publishing
+  status          SocialPostStatus @default(DRAFT)
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  platformPostId  String?          // ID returned by Instagram after publishing
+  publishError    String?          @db.Text
+
+  // AI generation metadata
+  aiGenerated     Boolean          @default(false)
+  aiPrompt        String?          @db.Text
+
+  // Engagement (pulled from API)
+  likes           Int              @default(0)
+  comments        Int              @default(0)
+  shares          Int              @default(0)
+  reach           Int              @default(0)
+  impressions     Int              @default(0)
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([clinicId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([campaignId])
+}
+
+model SocialCampaign {
+  id              String           @id @default(cuid())
+  clinicId        String
+  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name            String
+  description     String?          @db.Text
+  goal            String?          // e.g. "Promote foot scan services"
+  startDate       DateTime?
+  endDate         DateTime?
+  isActive        Boolean          @default(true)
+
+  posts           SocialPost[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([clinicId])
+}
+
+model SocialTemplate {
+  id              String           @id @default(cuid())
+  clinicId        String
+  clinic          Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name            String
+  description     String?
+  category        String?          // "promotion", "tip", "testimonial", "announcement"
+  captionTemplate String           @db.Text  // Template with {{placeholders}}
+  hashtagSets     String?          @db.Text  // Default hashtags
+  imageUrl        String?          // Template preview image
+  imagePath       String?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([clinicId])
+}
+
+// ============================================
+// BODY ASSESSMENT (Biomechanical - Motor Points)
+// ============================================
+
+model BodyAssessment {
+  id                String                @id @default(cuid())
+  assessmentNumber  String                @unique  // BA-2026-00001
+  clinicId          String
+  clinic            Clinic                @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId         String
+  patient           User                  @relation("PatientBodyAssessments", fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId       String?
+  therapist         User?                 @relation("TherapistBodyAssessments", fields: [therapistId], references: [id])
+  
+  // Capture Session Token (for QR/link-based capture)
+  captureToken       String?              @unique
+  captureTokenExpiry DateTime?
+  
+  // Captured Images (multi-angle)
+  frontImageUrl     String?
+  frontImagePath    String?
+  backImageUrl      String?
+  backImagePath     String?
+  leftImageUrl      String?
+  leftImagePath     String?
+  rightImageUrl     String?
+  rightImagePath    String?
+  
+  // Annotated images (with pose overlay drawn)
+  frontAnnotatedUrl String?
+  backAnnotatedUrl  String?
+  leftAnnotatedUrl  String?
+  rightAnnotatedUrl String?
+  
+  // Movement Test Videos (functional assessment)
+  // Each entry: {id, testType, label, videoUrl, videoPath, duration, landmarks, notes}
+  movementVideos    Json?                 // [{testType: "squat"|"gait"|"lunge"|"single_leg_l"|"single_leg_r"|"overhead_squat"|"hip_hinge"|"lateral_walk", ...}]
+  
+  // Pose Detection Data (MediaPipe BlazePose 33 landmarks per view)
+  frontLandmarks    Json?                 // [{x, y, z, visibility, name}]
+  backLandmarks     Json?
+  leftLandmarks     Json?
+  rightLandmarks    Json?
+  
+  // Capture metadata
+  captureMetadata   Json?                 // Device info, timestamps, quality scores
+  
+  // Motor Points Mapping
+  motorPoints       Json?                 // [{id, name, bodyRegion, x, y, status, severity, notes}]
+  
+  // AI Analysis Results
+  postureAnalysis   Json?                 // {frontalDeviation, sagittalDeviation, headForward, shoulderRound, pelvicTilt, kyphosis, lordosis}
+  symmetryAnalysis  Json?                 // {leftVsRight per region, asymmetryScore}
+  jointAngles       Json?                 // {shoulder, hip, knee, ankle angles per side}
+  alignmentData     Json?                 // {plumbLine deviations, shoulderLevel, hipLevel, kneeLevel}
+  movementPatterns  Json?                 // {squat, lunge, singleLeg patterns and compensations}
+  kineticChain      Json?                 // {compensations, causeEffect relationships}
+  
+  // Scores (0-100)
+  postureScore      Float?
+  symmetryScore     Float?
+  mobilityScore     Float?
+  overallScore      Float?
+  
+  // AI Summary
+  aiSummary         String?               @db.Text
+  aiRecommendations String?               @db.Text
+  aiFindings        Json?                 // [{area, finding, severity, recommendation}]
+  aiProcessedAt     DateTime?
+  
+  // Therapist Review
+  therapistNotes    String?               @db.Text
+  therapistFindings Json?                 // Manual annotations/corrections by therapist
+  reviewedAt        DateTime?
+  
+  // Status & Workflow
+  status            BodyAssessmentStatus  @default(PENDING_CAPTURE)
+  
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([status])
+  @@index([assessmentNumber])
+  @@index([createdAt])
+}
+
+// ============================================
+// EDUCATION MODULE
+// ============================================
+
+model EducationCategory {
+  id            String              @id @default(cuid())
+  clinicId      String
+  clinic        Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name          String
+  description   String?             @db.Text
+  icon          String?
+  color         String?
+  sortOrder     Int                 @default(0)
+  isActive      Boolean             @default(true)
+
+  content       EducationContent[]
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([clinicId])
+}
+
+model EducationContent {
+  id            String              @id @default(cuid())
+  clinicId      String
+  clinic        Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  categoryId    String?
+  category      EducationCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  createdById   String?
+  createdBy     User?               @relation("EduContentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  title         String
+  slug          String?
+  description   String?             @db.Text
+  contentType   String              @default("article") // "article", "video", "exercise", "infographic"
+  body          String?             @db.Text
+  videoUrl      String?
+  videoProvider String?
+  thumbnailUrl  String?
+  thumbnailPath String?
+  imageUrls     String[]
+  imagePaths    String[]
+
+  duration      Int?
+  difficulty    String?
+  equipment     String?
+  bodyParts     String[]
+  instructions  String?             @db.Text
+  repetitions   String?
+  precautions   String?             @db.Text
+
+  tags          String[]
+  isPublished   Boolean             @default(false)
+  isFeatured    Boolean             @default(false)
+  sortOrder     Int                 @default(0)
+  viewCount     Int                 @default(0)
+
+  assignments   EducationAssignment[]
+  progress      EducationProgress[]
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([clinicId])
+  @@index([categoryId])
+  @@index([contentType])
+  @@index([isPublished])
+}
+
+model EducationAssignment {
+  id            String              @id @default(cuid())
+  clinicId      String
+  clinic        Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  contentId     String
+  content       EducationContent    @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  patientId     String
+  patient       User                @relation("EduPatient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  assignedById  String?
+  assignedBy    User?               @relation("EduAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  note          String?             @db.Text
+  dueDate       DateTime?
+  frequency     String?
+  isRequired    Boolean             @default(false)
+  isCompleted   Boolean             @default(false)
+  completedAt   DateTime?
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([contentId])
+}
+
+model EducationProgress {
+  id            String              @id @default(cuid())
+
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contentId     String
+  content       EducationContent    @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  status        String              @default("not_started")
+  completedAt   DateTime?
+  timeSpent     Int?
+  rating        Int?
+  feedback      String?             @db.Text
+  difficulty    String?
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([userId, contentId])
+  @@index([userId])
+  @@index([contentId])
+}
+
+// ============================================
+// SYSTEM MONITORING & AUDIT LOGS
+// ============================================
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+enum LogCategory {
+  AUTH          // Login, logout, password changes
+  SYSTEM        // Server health, startup, shutdown
+  API           // API errors, slow requests
+  DATABASE      // DB connection issues
+  SECURITY      // Suspicious activity, brute force
+  USER_ACTION   // Admin actions (create, update, delete)
+  PERFORMANCE   // Slow queries, memory warnings
+  SCHEDULED     // Cron jobs, health checks
+}
+
+model SystemLog {
+  id          String      @id @default(cuid())
+  level       LogLevel    @default(INFO)
+  category    LogCategory @default(SYSTEM)
+  
+  message     String      @db.Text
+  details     Json?       // Stack trace, request body, extra context
+  
+  // Source
+  source      String?     // e.g. "auth", "api/admin/users", "health-check"
+  method      String?     // GET, POST, etc.
+  path        String?     // /api/admin/users
+  statusCode  Int?        // HTTP status code
+  duration    Int?        // Request duration in ms
+  
+  // User context (nullable for system events)
+  userId      String?
+  userEmail   String?
+  userRole    String?
+  
+  // Client info
+  ip          String?
+  userAgent   String?     @db.Text
+  
+  // Resolution
+  resolved    Boolean     @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  
+  createdAt   DateTime    @default(now())
+  
+  @@index([level])
+  @@index([category])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([source])
+  @@index([resolved])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  
+  // Who
+  userId      String
+  userEmail   String
+  userRole    String
+  userName    String?
+  
+  // What
+  action      String   // LOGIN_SUCCESS, LOGIN_FAILED, CREATE_PATIENT, UPDATE_APPOINTMENT, etc.
+  entity      String?  // "User", "Appointment", "Patient", etc.
+  entityId    String?  // ID of the affected record
+  
+  // Details
+  description String   @db.Text
+  metadata    Json?    // Before/after values, extra context
+  
+  // Where
+  ip          String?
+  userAgent   String?  @db.Text
+  path        String?  // URL path where action occurred
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+  @@index([userEmail])
+}
+
+// ============================================
+// EXERCISE PRESCRIPTION SYSTEM
+// ============================================
+
+enum ExerciseBodyRegion {
+  SHOULDER
+  ELBOW
+  WRIST_HAND
+  HIP
+  KNEE
+  ANKLE_FOOT
+  SPINE_BACK
+  NECK_CERVICAL
+  CORE_ABDOMEN
+  STRETCHING
+  MUSCLE_INJURY
+  FULL_BODY
+  OTHER
+}
+
+enum ExerciseDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Exercise {
+  id              String              @id @default(cuid())
+
+  clinicId        String
+  clinic          Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Info
+  name            String
+  description     String?             @db.Text
+  instructions    String?             @db.Text
+  bodyRegion      ExerciseBodyRegion
+  difficulty      ExerciseDifficulty  @default(BEGINNER)
+  tags            String[]            // e.g. ["post-surgery", "strengthening", "mobility"]
+
+  // Media
+  videoUrl        String?             @db.Text   // URL or local path to video
+  videoFileName   String?
+  thumbnailUrl    String?
+  duration        Int?                // Video duration in seconds
+
+  // Defaults (can be overridden per prescription)
+  defaultSets     Int?
+  defaultReps     Int?
+  defaultHoldSec  Int?                // For isometric / stretch holds
+  defaultRestSec  Int?                // Rest between sets
+
+  // Metadata
+  isActive        Boolean             @default(true)
+  createdById     String
+  createdBy       User                @relation("ExercisesCreated", fields: [createdById], references: [id])
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  prescriptions   ExercisePrescription[]
+  protocolItems   ProtocolItem[]
+
+  @@index([clinicId])
+  @@index([bodyRegion])
+  @@index([isActive])
+  @@index([createdById])
+}
+
+model ExercisePrescription {
+  id              String              @id @default(cuid())
+
+  clinicId        String
+  clinic          Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Who prescribed and to whom
+  therapistId     String
+  therapist       User                @relation("PrescribedExercises", fields: [therapistId], references: [id])
+  patientId       String
+  patient         User                @relation("ReceivedExercises", fields: [patientId], references: [id])
+
+  // Which exercise
+  exerciseId      String
+  exercise        Exercise            @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  // Prescription details (override exercise defaults)
+  sets            Int?
+  reps            Int?
+  holdSeconds     Int?
+  restSeconds     Int?
+  frequency       String?             // e.g. "3x per week", "Daily", "Every other day"
+  notes           String?             @db.Text  // Therapist notes for the patient
+
+  // Status
+  isActive        Boolean             @default(true)
+  startDate       DateTime            @default(now())
+  endDate         DateTime?
+
+  // Patient progress
+  completedCount  Int                 @default(0)
+  lastCompletedAt DateTime?
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([exerciseId])
+  @@index([isActive])
+}
+
+// ============================================
+// AI DIAGNOSIS & TREATMENT PROTOCOL
+// ============================================
+
+enum DiagnosisStatus {
+  GENERATING
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  SENT_TO_PATIENT
+  ARCHIVED
+}
+
+enum ProtocolPhase {
+  SHORT_TERM    // Acute phase (1-4 weeks)
+  MEDIUM_TERM   // Rehabilitation (4-12 weeks)
+  LONG_TERM     // Maintenance / Prevention (12+ weeks)
+}
+
+enum ProtocolItemType {
+  IN_CLINIC       // Must be done presencially (electrotherapy, manual therapy)
+  HOME_EXERCISE   // Patient does at home (exercises, stretching)
+  HOME_CARE       // Self-care instructions (ice, rest, ergonomics)
+  ASSESSMENT      // Additional assessment needed (foot scan, body assessment)
+}
+
+enum TreatmentCategory {
+  ELECTROTHERAPY      // TENS, ultrasound, shockwave, laser, etc.
+  MANUAL_THERAPY      // Massage, mobilisation, manipulation
+  EXERCISE_THERAPY    // Guided exercise, stretching
+  ASSESSMENT_SERVICE  // Initial/follow-up assessments
+  CONSULTATION        // Online/in-person consultation
+  OTHER
+}
+
+enum SessionDeliveryMode {
+  IN_CLINIC       // Patient visits the clinic
+  HOME_VISIT      // Therapist goes to patient's home
+  REMOTE          // Online video session
+}
+
+enum PackagePaymentType {
+  PER_SESSION     // Pay per individual session
+  WEEKLY          // Pay per week
+  FULL_PACKAGE    // Pay complete package upfront
+}
+
+model AIDiagnosis {
+  id                String          @id @default(cuid())
+  clinicId          String
+  clinic            Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId         String
+  patient           User            @relation("PatientDiagnoses", fields: [patientId], references: [id])
+  therapistId       String
+  therapist         User            @relation("TherapistDiagnoses", fields: [therapistId], references: [id])
+
+  // Data sources used for this diagnosis
+  hasScreening      Boolean         @default(false)
+  hasFootScan       Boolean         @default(false)
+  hasBodyAssessment Boolean         @default(false)
+  hasTherapistNotes Boolean         @default(false)
+  screeningId       String?
+  footScanId        String?
+  bodyAssessmentId  String?
+
+  // AI-generated diagnosis
+  summary           String          @db.Text    // Overall clinical summary
+  conditions        Json            // [{name, description, severity, bodyRegion, confidence, references}]
+  findings          Json            // [{area, finding, severity, source, details}]
+  riskFactors       Json?           // [{factor, level, description, references}]
+  recommendations   Json            // [{type, description, priority, references}]
+  additionalAssessments Json?       // [{assessmentType, reason, priority}] — e.g. "Foot Scan recommended"
+  references        Json            // [{citation, authors, year, journal, doi, relevantTo}]
+
+  // Therapist review
+  therapistComments String?         @db.Text
+  therapistEdits    Json?           // Manual edits/overrides by therapist
+  status            DiagnosisStatus @default(GENERATING)
+  approvedAt        DateTime?
+  sentToPatientAt   DateTime?
+
+  // AI metadata
+  aiModel           String?         // e.g. "gemini-1.5-flash"
+  aiPromptTokens    Int?
+  aiResponseTokens  Int?
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  protocols         TreatmentProtocol[]
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TreatmentProtocol {
+  id                String          @id @default(cuid())
+  clinicId          String
+  clinic            Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId         String
+  patient           User            @relation("PatientProtocols", fields: [patientId], references: [id])
+  therapistId       String
+  therapist         User            @relation("TherapistProtocols", fields: [therapistId], references: [id])
+
+  // Link to diagnosis
+  diagnosisId       String
+  diagnosis         AIDiagnosis     @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+
+  // Protocol overview
+  title             String          // e.g. "Shoulder Rehabilitation Protocol"
+  summary           String          @db.Text
+  goals             Json            // [{phase, goal, timeline, metrics}]
+  precautions       Json?           // [{precaution, severity, references}]
+  references        Json            // [{citation, authors, year, journal, doi, relevantTo}]
+
+  // Status
+  status            DiagnosisStatus @default(DRAFT)
+  approvedAt        DateTime?
+  sentToPatientAt   DateTime?
+  therapistComments String?         @db.Text
+
+  // Duration
+  estimatedWeeks    Int?            // Total estimated duration
+  startDate         DateTime?
+  endDate           DateTime?
+
+  // Session delivery configuration
+  deliveryMode      SessionDeliveryMode @default(IN_CLINIC)
+  totalSessions     Int?                // Total number of sessions recommended
+  sessionsPerWeek   Int?                // Sessions per week
+  sessionDuration   Int?                // Default session duration in minutes
+  includesElectrotherapy Boolean @default(false) // If true, cannot be fully remote
+  remoteSessionCount Int?               // Number of sessions that can be remote
+  inClinicSessionCount Int?             // Number that must be in-clinic
+
+  // Language
+  language          String              @default("en-GB") // Protocol language: en-GB, pt-BR
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  items             ProtocolItem[]
+  packages          TreatmentPackage[]
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([diagnosisId])
+  @@index([status])
+}
+
+model ProtocolItem {
+  id                String            @id @default(cuid())
+  protocolId        String
+  protocol          TreatmentProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+
+  // Classification
+  phase             ProtocolPhase     @default(SHORT_TERM)
+  itemType          ProtocolItemType  @default(HOME_EXERCISE)
+  sortOrder         Int               @default(0)
+
+  // Content
+  title             String            // e.g. "Shoulder External Rotation with Band"
+  description       String            @db.Text
+  instructions      String?           @db.Text
+  bodyRegion        String?           // e.g. "SHOULDER"
+  references        Json?             // [{citation, authors, year, journal}]
+
+  // For IN_CLINIC items
+  treatmentTypeName String?           // Links to clinic's TreatmentType by name
+  sessionDuration   Int?              // Minutes
+  sessionsPerWeek   Int?
+
+  // For HOME_EXERCISE items
+  exerciseId        String?           // Links to Exercise library
+  exercise          Exercise?         @relation(fields: [exerciseId], references: [id])
+  sets              Int?
+  reps              Int?
+  holdSeconds       Int?
+  restSeconds       Int?
+  frequency         String?           // "3x per week", "Daily"
+
+  // Schedule
+  startWeek         Int               @default(1)   // Week number to start
+  endWeek           Int?              // Week number to end (null = ongoing)
+  daysPerWeek       Int?
+
+  // Patient progress
+  isCompleted       Boolean           @default(false)
+  completedCount    Int               @default(0)
+  lastCompletedAt   DateTime?
+  patientNotes      String?           @db.Text
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([protocolId])
+  @@index([phase])
+  @@index([itemType])
+}
+
+// ============================================
+// TREATMENT PACKAGE (Financial — session pricing & Stripe)
+// ============================================
+
+model TreatmentPackage {
+  id                String             @id @default(cuid())
+  clinicId          String
+  clinic            Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  protocolId        String
+  protocol          TreatmentProtocol  @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+
+  patientId         String
+  patient           User               @relation("PatientPackages", fields: [patientId], references: [id])
+
+  // Package details
+  name              String             // e.g. "Shoulder Rehab — 12 Sessions"
+  description       String?            @db.Text
+  totalSessions     Int                // Total sessions in package
+  sessionDuration   Int                @default(60) // Minutes per session
+  currency          String             @default("GBP")
+
+  // Pricing tiers
+  pricePerSession   Float              // Individual session price
+  pricePerWeek      Float?             // Weekly price (discounted)
+  priceFullPackage  Float?             // Full package price (best discount)
+  selectedPaymentType PackagePaymentType @default(FULL_PACKAGE)
+
+  // Breakdown
+  consultationFee   Float              @default(0)  // Initial consultation charge
+  inClinicSessions  Int                @default(0)
+  remoteSessions    Int                @default(0)
+  homeVisitSessions Int                @default(0)
+
+  // Stripe
+  stripePaymentIntentId String?        // Stripe PaymentIntent ID
+  stripeInvoiceId       String?        // Stripe Invoice ID
+  stripeSubscriptionId  String?        // For recurring weekly payments
+  isPaid            Boolean            @default(false)
+  paidAt            DateTime?
+  paidAmount        Float?             // Actual amount paid
+  paymentMethod     String?            // card, bank_transfer, etc.
+
+  // Status
+  status            String             @default("DRAFT") // DRAFT, SENT, PAID, ACTIVE, COMPLETED, CANCELLED
+  sentToPatientAt   DateTime?
+  activatedAt       DateTime?
+  completedAt       DateTime?
+
+  // Sessions tracking
+  sessionsCompleted Int                @default(0)
+  nextSessionDate   DateTime?
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([clinicId])
+  @@index([protocolId])
+  @@index([patientId])
+  @@index([status])
+  @@index([isPaid])
+}
+
+// ============================================
+// PATIENT DOCUMENTS (uploads, photos, referrals)
+// ============================================
+
+enum DocumentType {
+  MEDICAL_REFERRAL    // Referral letter from a doctor
+  MEDICAL_REPORT      // Lab results, imaging reports, etc.
+  PRESCRIPTION        // Medication prescription
+  IMAGING             // X-ray, MRI, CT scan images
+  INSURANCE           // Insurance documents
+  CONSENT_FORM        // Signed consent forms
+  PREVIOUS_TREATMENT  // Previous treatment records
+  OTHER               // Any other document
+}
+
+enum DocumentSource {
+  PATIENT_UPLOAD      // Patient uploaded via portal
+  PATIENT_CAMERA      // Patient took photo via portal
+  ADMIN_UPLOAD        // Admin/therapist uploaded
+  ADMIN_CAMERA        // Admin/therapist took photo in clinic
+}
+
+model PatientDocument {
+  id              String          @id @default(cuid())
+  clinicId        String
+  clinic          Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId       String
+  patient         User            @relation("PatientDocuments", fields: [patientId], references: [id])
+  uploadedById    String
+  uploadedBy      User            @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  // File info
+  fileName        String          // Original file name
+  fileUrl         String          @db.Text  // Stored file URL / path
+  fileType        String          // MIME type: application/pdf, image/jpeg, image/png
+  fileSize        Int?            // Size in bytes
+  thumbnailUrl    String?         @db.Text  // Preview thumbnail for images
+
+  // Classification
+  documentType    DocumentType    @default(OTHER)
+  source          DocumentSource  @default(PATIENT_UPLOAD)
+  title           String?         // User-given title e.g. "Dr. Smith Referral Letter"
+  description     String?         @db.Text  // Notes about the document
+  doctorName      String?         // Referring doctor name
+  documentDate    DateTime?       // Date on the document (not upload date)
+
+  // AI extraction (optional — extracted text/summary from the document)
+  extractedText   String?         @db.Text  // OCR or text extraction
+  aiSummary       String?         @db.Text  // AI-generated summary of the document
+
+  // Status
+  isVerified      Boolean         @default(false)  // Verified by therapist
+  verifiedById    String?
+  verifiedAt      DateTime?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([documentType])
+  @@index([createdAt])
+}
+
+// ============================================
+// ============================================
+// COMMAND CENTER AI MEMORY
+// ============================================
+
+model CommandMemory {
+  id          String   @id @default(cuid())
+
+  clinicId    String?
+  clinic      Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  userId      String
+  user        User     @relation("UserCommandMemories", fields: [userId], references: [id], onDelete: Cascade)
+
+  category    String   @default("general")  // "preference", "decision", "context", "instruction", "general"
+  content     String   @db.Text             // The actual memory/learning
+  source      String?  @db.Text             // Original message that triggered this memory
+  importance  Int      @default(5)          // 1-10, higher = more important
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([clinicId])
+  @@index([category])
+  @@index([importance])
+}
+
+// ============================================
+// SYSTEM CONFIGURATION (API Keys, AI Settings)
+// ============================================
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique   // e.g. "GEMINI_API_KEY", "OPENAI_API_KEY"
+  value       String   @db.Text  // Encrypted or plain value
+  label       String              // Human-readable label
+  description String?  @db.Text  // Help text
+  category    String   @default("ai")  // "ai", "integration", "email", "other"
+  isSecret    Boolean  @default(true)  // Mask value in UI
+  isActive    Boolean  @default(true)
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([key])
+}
+
+// ─── Voice Transcription Cost Tracking ───
+model VoiceTranscription {
+  id              String   @id @default(cuid())
+
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId       String
+  patient         User     @relation("PatientTranscriptions", fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Audio details
+  audioDurationSec Int            // Duration in seconds
+  audioSizeBytes   Int?           // File size
+  language         String         @default("pt-BR")
+
+  // Transcription result
+  transcript       String?        @db.Text
+  fieldsFilled     String[]       // Which form fields were filled
+  context          String?        // e.g. "medical_screening", "soap_note", "exercise"
+
+  // Cost tracking
+  apiCostUsd       Float          // Raw API cost in USD
+  marginPercent    Float          @default(20) // Margin percentage
+  totalCostUsd     Float          // apiCostUsd * (1 + marginPercent/100)
+
+  createdAt        DateTime       @default(now())
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([createdAt])
+}
+
+// ============================================
+// EMAIL SYSTEM
+// ============================================
+
+enum EmailTemplateSlug {
+  WELCOME
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_REMINDER
+  PAYMENT_CONFIRMATION
+  TREATMENT_PROTOCOL
+  ASSESSMENT_COMPLETED
+  PASSWORD_RESET
+  SCREENING_RECEIVED
+  APPOINTMENT_CANCELLED
+  DOCUMENT_RECEIVED
+  BODY_ASSESSMENT_SUBMITTED
+  FOOT_SCAN_SUBMITTED
+  CONSENT_CONFIRMED
+  BP_HIGH_ALERT
+  CUSTOM
+  ARTICLE_NEWSLETTER
+  MEMBERSHIP_CREATED
+  TREATMENT_PLAN_READY
+  PACKAGE_READY_TO_PAY
+  PACKAGE_PAYMENT_CONFIRMED
+  TREATMENT_COMPLETED
+  MEMBERSHIP_OFFER
+  MEMBERSHIP_ACTIVATED
+  MEMBERSHIP_RENEWAL
+  APPOINTMENT_FOLLOW_UP
+  EXERCISE_REMINDER
+  WHATSAPP_WELCOME
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum EmailFolder {
+  INBOX
+  SENT
+  DRAFT
+  SPAM
+  TRASH
+}
+
+model EmailTemplate {
+  id          String            @id @default(cuid())
+  slug        EmailTemplateSlug @unique
+  name        String
+  subject     String
+  htmlBody    String            @db.Text
+  variables   String[]          // e.g. ["patientName", "appointmentDate"]
+  description String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model EmailMessage {
+  id            String         @id @default(cuid())
+  messageId     String?        @unique // SMTP/IMAP message ID
+  direction     EmailDirection
+  folder        EmailFolder    @default(INBOX)
+  fromAddress   String
+  fromName      String?
+  toAddress     String
+  toName        String?
+  ccAddress     String?
+  subject       String
+  textBody      String?        @db.Text
+  htmlBody      String?        @db.Text
+  isRead        Boolean        @default(false)
+  isStarred     Boolean        @default(false)
+  isSpam        Boolean        @default(false)
+  spamScore     Float?
+  templateSlug  String?        // Which template was used (for outbound)
+  patientId     String?
+  patient       User?          @relation("PatientEmails", fields: [patientId], references: [id])
+  clinicId      String?
+  sentAt        DateTime?
+  receivedAt    DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([folder])
+  @@index([direction])
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([isRead])
+  @@index([isSpam])
+  @@index([createdAt])
+}
+
+// ============================================
+// BLOOD PRESSURE
+// ============================================
+
+enum BloodPressureMethod {
+  MANUAL
+  CAMERA_PPG
+}
+
+model BloodPressureReading {
+  id          String               @id @default(cuid())
+  patientId   String
+  patient     User                 @relation("PatientBPReadings", fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId    String?
+  
+  systolic    Int                  // mmHg
+  diastolic   Int                  // mmHg
+  heartRate   Int?                 // bpm
+  method      BloodPressureMethod  @default(MANUAL)
+  notes       String?              @db.Text
+  measuredAt  DateTime             @default(now())
+  
+  // PPG-specific data
+  confidence  Float?               // 0-1 confidence score for camera readings
+  ppgSignal   Json?                // Raw PPG signal data for analysis
+  
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([measuredAt])
+}
+
+// ============================================
+// SERVICE PRICING & ACCESS (Paywall)
+// ============================================
+
+enum ServiceType {
+  CONSULTATION
+  FOOT_SCAN
+  BODY_ASSESSMENT
+}
+
+model ServicePrice {
+  id          String      @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  serviceType ServiceType
+  name        String      // Display name, e.g. "Initial Consultation"
+  description String?
+  price       Float       // Price in clinic currency
+  currency    String      @default("GBP")
+  isActive    Boolean     @default(true)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([clinicId, serviceType])
+  @@index([clinicId])
+  @@index([serviceType])
+}
+
+model ServiceAccess {
+  id          String      @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     User        @relation("PatientServiceAccess", fields: [patientId], references: [id], onDelete: Cascade)
+  serviceType ServiceType
+  granted     Boolean     @default(false) // true = free access granted by admin
+  grantedById String?
+  grantedBy   User?       @relation("ServiceAccessGranter", fields: [grantedById], references: [id])
+  paid        Boolean     @default(false)
+  stripePaymentId String?
+  amountPaid  Float?
+  currency    String      @default("GBP")
+  expiresAt   DateTime?   // null = never expires
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([serviceType])
+  @@index([patientId, serviceType])
+}
+
+// ============================================
+// CONSENT & GDPR AUDIT LOG
+// ============================================
+
+enum ConsentAction {
+  TERMS_ACCEPTED
+  TERMS_VIEWED
+  CONSENT_WITHDRAWN
+  DATA_ACCESS_REQUEST
+  DATA_DELETION_REQUEST
+  MARKETING_OPT_IN
+  MARKETING_OPT_OUT
+}
+
+model ConsentLog {
+  id            String        @id @default(cuid())
+  patientId     String
+  patient       User          @relation("PatientConsentLogs", fields: [patientId], references: [id], onDelete: Cascade)
+  action        ConsentAction
+  termsVersion  String        @default("1.0")  // version of terms accepted
+  ipAddress     String?       // IP at time of consent
+  userAgent     String?       // browser/device info
+  metadata      Json?         // any extra context (e.g. which page, form)
+  createdAt     DateTime      @default(now())
+
+  @@index([patientId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============================================
+// SERVICE PACKAGES (Admin-configurable plans)
+// ============================================
+
+model ServicePackage {
+  id                String        @id @default(cuid())
+  clinicId          String?
+  clinic            Clinic?       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  name              String        // e.g. "Complete Package", "Premium Plan"
+  description       String?
+  price             Float
+  currency          String        @default("GBP")
+  includedServices  ServiceType[] // Which services are included
+  durationDays      Int?          // Package validity in days (null = unlimited)
+  sessionsIncluded  Int?          // Number of sessions included (null = unlimited)
+  isActive          Boolean       @default(true)
+  sortOrder         Int           @default(0)
+  stripeProductId   String?       // Stripe product ID
+  stripePriceId     String?       // Stripe price ID
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  patientPackages   PatientPackage[]
+  
+  @@index([clinicId])
+  @@index([isActive])
+}
+
+enum PatientPackageStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING_PAYMENT
+}
+
+// ============================================
+// EMAIL MARKETING
+// ============================================
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignJobStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model EmailContact {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  firstName     String?
+  lastName      String?
+  phone         String?
+  tags          String[] @default([])
+  subscribed    Boolean  @default(true)
+  unsubscribedAt DateTime?
+  source        String?  // "manual", "csv", "patient", "signup"
+  patientId     String?  // link to User if they are a patient
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  groupMembers  EmailGroupMember[]
+  campaignJobs  EmailCampaignJob[]
+
+  @@index([email])
+  @@index([subscribed])
+}
+
+model EmailGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     EmailGroupMember[]
+  campaigns   EmailCampaign[]
+}
+
+model EmailGroupMember {
+  id        String       @id @default(cuid())
+  groupId   String
+  group     EmailGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   EmailContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  addedAt   DateTime     @default(now())
+
+  @@unique([groupId, contactId])
+  @@index([groupId])
+  @@index([contactId])
+}
+
+model EmailCampaign {
+  id              String         @id @default(cuid())
+  name            String
+  subject         String
+  templateSlug    String?        // link to EmailTemplate slug
+  htmlBody        String?        @db.Text
+  preheader       String?
+  fromName        String         @default("Bruno Physical Rehabilitation")
+  fromEmail       String         @default("support@bpr.rehab")
+  replyTo         String?
+  status          CampaignStatus @default(DRAFT)
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  // Throttle settings
+  batchSize       Int            @default(10)   // emails per batch
+  batchIntervalMs Int            @default(300000) // 5 min in ms
+  // Targeting
+  groupId         String?
+  group           EmailGroup?    @relation(fields: [groupId], references: [id])
+  sendToAll       Boolean        @default(false)
+  // Stats
+  totalRecipients Int            @default(0)
+  sentCount       Int            @default(0)
+  failedCount     Int            @default(0)
+  // Article link (for newsletter campaigns)
+  articleId       String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  jobs            EmailCampaignJob[]
+
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model EmailCampaignJob {
+  id          String            @id @default(cuid())
+  campaignId  String
+  campaign    EmailCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     EmailContact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status      CampaignJobStatus @default(PENDING)
+  sentAt      DateTime?
+  error       String?
+  batchNumber Int               @default(0)
+  createdAt   DateTime          @default(now())
+
+  @@index([campaignId])
+  @@index([status])
+  @@index([batchNumber])
+}
+
+model PatientPackage {
+  id                String               @id @default(cuid())
+  clinicId          String?
+  clinic            Clinic?              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId         String
+  patient           User                 @relation("PatientPackageRecipient", fields: [patientId], references: [id], onDelete: Cascade)
+  packageId         String
+  package           ServicePackage       @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  status            PatientPackageStatus @default(PENDING_PAYMENT)
+  grantedById       String?
+  grantedBy         User?                @relation("PatientPackageGranter", fields: [grantedById], references: [id])
+  paid              Boolean              @default(false)
+  stripePaymentId   String?
+  amountPaid        Float?
+  currency          String               @default("GBP")
+  startDate         DateTime?
+  endDate           DateTime?
+  sessionsUsed      Int                  @default(0)
+  
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([packageId])
+  @@index([status])
+}
+
+// ============================================
+// WHATSAPP MESSAGE TRACKING
+// ============================================
+
+enum WhatsAppMessageDirection {
+  OUTBOUND  // Clinic -> Patient
+  INBOUND   // Patient -> Clinic
+}
+
+enum WhatsAppMessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model WhatsAppMessage {
+  id              String                    @id @default(cuid())
+  clinicId        String?
+  patientId       String?
+  patient         User?                     @relation("PatientWhatsApp", fields: [patientId], references: [id], onDelete: SetNull)
+  
+  direction       WhatsAppMessageDirection  @default(OUTBOUND)
+  status          WhatsAppMessageStatus     @default(QUEUED)
+  
+  toPhone         String                    // E.164 format
+  fromPhone       String?                   // Clinic WhatsApp number
+  
+  // Content
+  templateName    String?                   // WhatsApp template name (for outbound)
+  templateParams  Json?                     // Template parameters
+  messageBody     String?                   @db.Text  // Actual message text
+  mediaUrl        String?                   // Attached media URL
+  
+  // AI generation
+  aiGenerated     Boolean                   @default(false)
+  aiPrompt        String?                   @db.Text
+  
+  // Delivery tracking
+  providerMessageId String?                 // Twilio/Meta message ID
+  errorMessage      String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  
+  // Context
+  triggerEvent      String?                 // e.g. "appointment_reminder", "treatment_ready"
+  relatedEntityId   String?                 // appointment ID, package ID, etc.
+  
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([status])
+  @@index([triggerEvent])
+  @@index([createdAt])
+}
+
+// ============================================
+// BPR JOURNEY — GAMIFICATION & ENGAGEMENT
+// ============================================
+
+model PatientProgress {
+  id             String    @id @default(cuid())
+  clinicId       String?
+  clinic         Clinic?   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId      String    @unique
+  patient        User      @relation("PatientProgress", fields: [patientId], references: [id], onDelete: Cascade)
+
+  level          Int       @default(1)
+  levelTitle     String    @default("Recovery Starter")
+  xp             Int       @default(0)
+  xpToNextLevel  Int       @default(100)
+  streakDays     Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActiveDate DateTime?
+  bprCredits     Int       @default(0)
+  totalXpEarned  Int       @default(0)
+  archetypeKey   String?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([clinicId])
+  @@index([level])
+  @@index([streakDays])
+}
+
+model DailyMission {
+  id          String    @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     User      @relation("PatientMissions", fields: [patientId], references: [id], onDelete: Cascade)
+
+  tasks       Json      // Array of { key, label, completed, xp }
+  weekStart   DateTime
+  completedAt DateTime?
+  xpReward    Int       @default(50)
+  isBonusMission Boolean @default(false)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([patientId])
+  @@index([weekStart])
+  @@index([clinicId])
+}
+
+model PatientBadge {
+  id          String   @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     User     @relation("PatientBadges", fields: [patientId], references: [id], onDelete: Cascade)
+
+  badgeKey    String
+  unlockedAt  DateTime @default(now())
+
+  @@unique([patientId, badgeKey])
+  @@index([clinicId])
+}
+
+model PatientQuizResult {
+  id           String   @id @default(cuid())
+  clinicId     String?
+  clinic       Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId    String
+  patient      User     @relation("PatientQuizResults", fields: [patientId], references: [id], onDelete: Cascade)
+
+  archetypeKey String
+  answers      Json     // Array of { questionId, answer, score }
+  completedAt  DateTime @default(now())
+
+  @@index([patientId])
+  @@index([clinicId])
+}
+
+model CommunityPost {
+  id         String   @id @default(cuid())
+  clinicId   String?
+  clinic     Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId  String
+  patient    User     @relation("PatientCommunityPosts", fields: [patientId], references: [id], onDelete: Cascade)
+
+  type       String   // "badge_unlock", "streak", "level_up", "challenge_contribution", "milestone"
+  content    String
+  highFives  Int      @default(0)
+  isAnon     Boolean  @default(true)
+  anonName   String?  // e.g. "RecoveryWarrior_42"
+  isVisible  Boolean  @default(true)
+
+  createdAt  DateTime @default(now())
+
+  @@index([clinicId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model WeeklyChallenge {
+  id          String    @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  target      Int
+  current     Int       @default(0)
+  reward      String    // e.g. "10% OFF for all + exclusive video"
+  rewardCredits Int     @default(0)
+  startsAt    DateTime
+  endsAt      DateTime
+  completedAt DateTime?
+  isActive    Boolean   @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([clinicId])
+  @@index([isActive])
+}
+
+model MarketplaceProduct {
+  id             String   @id @default(cuid())
+  clinicId       String?
+  clinic         Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name           String
+  description    String?  @db.Text
+  shortDescription String? // For card previews
+  category       String   // "digital_program", "physical_product", "special_session", "subscription", "equipment", "supplement"
+  price          Float    // Selling price (GBP)
+  currency       String   @default("GBP")
+  imageUrl       String?
+  images         Json?    // Array of additional image URLs
+  stripePriceId  String?
+  stripeProductId String?
+
+  // E-commerce: Pricing & Margins
+  costPrice      Float?   // Cost/wholesale price
+  marginPercent  Float?   // Auto-calculated margin %
+  compareAtPrice Float?   // Original/RRP for showing "was £X"
+  vatRate        Float    @default(20) // VAT % (UK default 20%)
+  vatIncluded    Boolean  @default(true) // Price includes VAT?
+
+  // E-commerce: Shipping & Stock
+  sku            String?  // Stock Keeping Unit
+  barcode        String?
+  weight         Float?   // Weight in kg (for shipping calc)
+  stockQuantity  Int?     // null = unlimited/digital
+  lowStockAlert  Int      @default(5)
+  trackStock     Boolean  @default(false)
+  shippingCost   Float    @default(0) // Fixed shipping cost
+  freeShippingOver Float? // Free shipping above this order value
+  isDigital      Boolean  @default(false) // Digital product (no shipping)
+  digitalFileUrl String?  // Download URL for digital products
+
+  // Amazon Affiliate
+  isAffiliate     Boolean  @default(false) // Is this an Amazon affiliate product?
+  affiliateUrl    String?  @db.Text // Amazon affiliate link
+  affiliateTag    String?  // Amazon associate tag
+  affiliateCommission Float? // Expected commission %
+  amazonAsin      String?  // Amazon ASIN for tracking
+
+  // Targeting
+  targetArchetypes Json?  // Array of archetype keys this product is recommended for
+  targetMinLevel   Int?
+  targetConditions Json?  // e.g. { "painScore": ">6", "streakDays": ">7" }
+
+  // Credits
+  creditsCost     Int     @default(0)  // Can be bought with BPR Credits
+  creditsDiscount Int     @default(0)  // Discount in credits
+
+  // SEO & Display
+  slug           String?  @unique
+  tags           Json?    // Array of tags for filtering
+  featured       Boolean  @default(false)
+
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  orderItems     MarketplaceOrderItem[]
+
+  @@index([clinicId])
+  @@index([category])
+  @@index([isActive])
+  @@index([isAffiliate])
+  @@index([featured])
+}
+
+model MarketplaceOrder {
+  id             String   @id @default(cuid())
+  clinicId       String?
+  clinic         Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        User     @relation("PatientMarketplaceOrders", fields: [patientId], references: [id], onDelete: Cascade)
+
+  orderNumber    String   @unique // e.g. "BPR-20260220-001"
+  status         String   @default("pending") // pending, paid, processing, shipped, delivered, cancelled, refunded
+  paymentMethod  String?  // "stripe", "credits", "mixed"
+
+  // Pricing breakdown
+  subtotal       Float    @default(0)
+  shippingTotal  Float    @default(0)
+  vatTotal       Float    @default(0)
+  creditsUsed    Int      @default(0)
+  creditsValue   Float    @default(0)  // Monetary value of credits used
+  discountTotal  Float    @default(0)
+  total          Float    @default(0)  // Final amount charged
+
+  // Stripe
+  stripePaymentIntentId String?
+  stripeSessionId       String?
+
+  // Shipping info
+  shippingName     String?
+  shippingAddress  String? @db.Text
+  shippingCity     String?
+  shippingPostcode String?
+  shippingCountry  String?
+  shippingPhone    String?
+  trackingNumber   String?
+  trackingUrl      String?
+
+  // Notes
+  customerNotes  String?  @db.Text
+  adminNotes     String?  @db.Text
+
+  paidAt         DateTime?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  cancelledAt    DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  items          MarketplaceOrderItem[]
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+model MarketplaceOrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          MarketplaceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        MarketplaceProduct @relation(fields: [productId], references: [id])
+
+  productName    String   // Snapshot at time of order
+  quantity       Int      @default(1)
+  unitPrice      Float    // Price at time of order
+  totalPrice     Float
+  vatAmount      Float    @default(0)
+
+  // Affiliate tracking
+  isAffiliate    Boolean  @default(false)
+  affiliateUrl   String?
+  affiliateCommission Float?
+  affiliateClickedAt  DateTime?
+
+  createdAt      DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model JourneyNotification {
+  id          String   @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     User     @relation("PatientJourneyNotifications", fields: [patientId], references: [id], onDelete: Cascade)
+
+  type        String   // "streak", "badge", "level_up", "challenge", "stagnation", "reminder"
+  title       String
+  message     String
+  isRead      Boolean  @default(false)
+  actionUrl   String?
+  metadata    Json?
+
+  createdAt   DateTime @default(now())
+
+  @@index([patientId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ============================================
+// CONDITIONS (Injury/Condition Library)
+// ============================================
+
+model Condition {
+  id           String   @id @default(cuid())
+  clinicId     String?
+  clinic       Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?    @relation("ConditionCreator", fields: [createdById], references: [id])
+
+  nameEn       String   // English name
+  namePt       String   // Portuguese name
+  slug         String   @unique
+  descriptionEn String? @db.Text
+  descriptionPt String? @db.Text
+  bodyRegion   String?  // e.g. "knee", "shoulder", "lower_back", "ankle", "hip", "neck", "wrist", "elbow", "foot"
+  category     String?  // e.g. "musculoskeletal", "neurological", "post_surgical", "sports_injury", "chronic_pain"
+  icdCode      String?  // ICD-10 code
+  iconEmoji    String?  // e.g. "🦵", "💪"
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  quizzes      Quiz[]
+  achievements Achievement[]
+
+  @@index([clinicId])
+  @@index([bodyRegion])
+  @@index([category])
+  @@index([isActive])
+}
+
+// ============================================
+// QUIZZES (Admin-created educational quizzes)
+// ============================================
+
+model Quiz {
+  id           String   @id @default(cuid())
+  clinicId     String?
+  clinic       Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?    @relation("QuizCreator", fields: [createdById], references: [id])
+  conditionId  String?
+  condition    Condition? @relation(fields: [conditionId], references: [id])
+
+  titleEn      String
+  titlePt      String
+  descriptionEn String? @db.Text
+  descriptionPt String? @db.Text
+  category     String   @default("general") // "general", "condition_specific", "treatment", "prevention", "lifestyle"
+  difficulty   String   @default("beginner") // "beginner", "intermediate", "advanced"
+  xpReward     Int      @default(25)
+  iconEmoji    String?
+  isActive     Boolean  @default(true)
+  isPublished  Boolean  @default(false)
+  sortOrder    Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  questions    QuizQuestion[]
+  attempts     PatientQuizAttempt[]
+
+  @@index([clinicId])
+  @@index([conditionId])
+  @@index([category])
+  @@index([isActive])
+  @@index([isPublished])
+}
+
+model QuizQuestion {
+  id           String   @id @default(cuid())
+  quizId       String
+  quiz         Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  questionEn   String   @db.Text
+  questionPt   String   @db.Text
+  options      Json     // [{ "en": "...", "pt": "...", "isCorrect": bool }]
+  explanationEn String? @db.Text // Explanation shown after answering
+  explanationPt String? @db.Text
+  sortOrder    Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([quizId])
+}
+
+model PatientQuizAttempt {
+  id           String   @id @default(cuid())
+  clinicId     String?
+  clinic       Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId    String
+  patient      User     @relation("PatientQuizAttempts", fields: [patientId], references: [id], onDelete: Cascade)
+  quizId       String
+  quiz         Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  answers      Json     // [{ questionId, selectedIndex, isCorrect }]
+  score        Int      // Number of correct answers
+  totalQuestions Int
+  xpEarned     Int      @default(0)
+  completedAt  DateTime @default(now())
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([quizId])
+}
+
+// ============================================
+// ACHIEVEMENTS (Admin-created gamification)
+// ============================================
+
+model Achievement {
+  id           String   @id @default(cuid())
+  clinicId     String?
+  clinic       Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?    @relation("AchievementCreator", fields: [createdById], references: [id])
+  conditionId  String?
+  condition    Condition? @relation(fields: [conditionId], references: [id])
+
+  titleEn      String
+  titlePt      String
+  descriptionEn String? @db.Text
+  descriptionPt String? @db.Text
+  category     String   @default("general") // "general", "treatment", "exercise", "education", "engagement", "milestone"
+  triggerType  String   @default("manual") // "manual", "quiz_complete", "exercise_count", "login_streak", "screening_complete", "bp_reading", "session_count"
+  triggerValue Int?     // e.g. 5 for "complete 5 quizzes"
+  xpReward     Int      @default(50)
+  iconEmoji    String   @default("🏆")
+  badgeColor   String   @default("#8B5CF6") // Hex color for badge
+  isActive     Boolean  @default(true)
+  isPublished  Boolean  @default(false)
+  sortOrder    Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  patientAchievements PatientAchievement[]
+
+  @@index([clinicId])
+  @@index([conditionId])
+  @@index([category])
+  @@index([triggerType])
+  @@index([isActive])
+  @@index([isPublished])
+}
+
+model PatientAchievement {
+  id             String   @id @default(cuid())
+  clinicId       String?
+  clinic         Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        User     @relation("PatientAchievements", fields: [patientId], references: [id], onDelete: Cascade)
+  achievementId  String
+  achievement    Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  unlockedAt     DateTime @default(now())
+  xpEarned       Int      @default(0)
+
+  @@unique([patientId, achievementId])
+  @@index([clinicId])
+  @@index([patientId])
+}
+
+// ============================================
+// SERVICE PAGES (Dynamic Service Detail Pages)
+// ============================================
+
+model ServicePage {
+  id            String   @id @default(cuid())
+  clinicId      String?
+  clinic        Clinic?  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  slug          String   @unique
+  icon          String?  // Lucide icon name (e.g. "Zap", "Dumbbell", "Footprints")
+  color         String?  // Tailwind color class (e.g. "bg-amber-100 text-amber-700")
+
+  // Bilingual titles & descriptions
+  titleEn       String
+  titlePt       String
+  descriptionEn String?  @db.Text
+  descriptionPt String?  @db.Text
+
+  // Hero section
+  heroImageUrl  String?
+  heroImagePath String?
+
+  // Content sections (bilingual)
+  benefitsEn    String?  @db.Text  // JSON array of benefit strings
+  benefitsPt    String?  @db.Text  // JSON array of benefit strings
+  whoIsItForEn  String?  @db.Text
+  whoIsItForPt  String?  @db.Text
+  howItWorksEn  String?  @db.Text
+  howItWorksPt  String?  @db.Text
+  sessionInfoEn String?
+  sessionInfoPt String?
+
+  // Extra content (optional rich HTML for extended pages)
+  extraContentEn String? @db.Text
+  extraContentPt String? @db.Text
+
+  // Gallery images (JSON array of {url, path, alt})
+  galleryJson   String?  @db.Text
+
+  // FAQ (JSON array of {questionEn, questionPt, answerEn, answerPt})
+  faqJson       String?  @db.Text
+
+  // Display options
+  published     Boolean  @default(true)
+  showInMenu    Boolean  @default(true)
+  sortOrder     Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([slug])
+  @@index([published, sortOrder])
+}
