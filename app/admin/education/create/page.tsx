@@ -156,6 +156,8 @@ function CreateContentForm() {
         console.error("[speech] Error:", event.error);
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
           setError("Microphone access denied. Please allow microphone permissions in your browser settings.");
+        } else if (event.error === "network") {
+          setError("Speech recognition requires internet connection. Please check your connection or type your request instead.");
         } else if (event.error === "no-speech") {
           // Ignore no-speech, just stop
         } else {
@@ -388,7 +390,7 @@ function CreateContentForm() {
                       : "bg-muted hover:bg-muted/80 text-muted-foreground"
                   }`}
                 >
-                  PT Portugu\u00eas
+                  PT Português
                 </button>
               </div>
               <span className="text-xs text-muted-foreground ml-2">Content will be generated in English</span>
