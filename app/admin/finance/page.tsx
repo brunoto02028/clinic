@@ -163,7 +163,7 @@ export default function FinancePage() {
   const [chSearchQuery, setChSearchQuery] = useState("");
   const [chSearchResults, setChSearchResults] = useState<any[]>([]);
   const [chSearching, setChSearching] = useState(false);
-  const [chFetching, setChFetching] = useState(false);
+  const [chFetchingNumber, setChFetchingNumber] = useState<string | null>(null);
   const [showChSearch, setShowChSearch] = useState(false);
 
   // IAPA auto-fill state
@@ -246,14 +246,19 @@ export default function FinancePage() {
   };
 
   const fetchFromCompaniesHouse = async (companyNumber: string) => {
-    setChFetching(true);
+    setChFetchingNumber(companyNumber);
     try {
       const res = await fetch(`/api/admin/finance/company/search?number=${encodeURIComponent(companyNumber)}`);
       const data = await res.json();
       if (data.error) {
         toast({ title: "Companies House", description: data.error, variant: "destructive" });
       } else if (data.profile) {
-        setCompanyProfile((prev: any) => ({ ...prev, ...data.profile }));
+        // Only merge non-empty values to avoid overwriting existing data
+        const filtered: Record<string, any> = {};
+        for (const [k, v] of Object.entries(data.profile)) {
+          if (v !== null && v !== undefined && v !== "") filtered[k] = v;
+        }
+        setCompanyProfile((prev: any) => ({ ...prev, ...filtered }));
         setShowChSearch(false);
         setChSearchResults([]);
         setChSearchQuery("");
@@ -262,7 +267,7 @@ export default function FinancePage() {
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-    setChFetching(false);
+    setChFetchingNumber(null);
   };
 
   // ─── IAPA Auto-fill ───
@@ -842,8 +847,8 @@ export default function FinancePage() {
                   <p className="text-xs text-muted-foreground">Companies House registration, HMRC details, and fiscal year information for accounting exports.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Button variant="outline" onClick={() => setShowChSearch(!showChSearch)} className="gap-1.5 text-xs" disabled={chFetching}>
-                    {chFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
+                  <Button variant="outline" onClick={() => setShowChSearch(!showChSearch)} className="gap-1.5 text-xs" disabled={!!chFetchingNumber}>
+                    {chFetchingNumber ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
                     Search Companies House
                   </Button>
                   <Button variant="outline" onClick={iapaAutofill} disabled={iapaLoading} className="gap-1.5 text-xs">
@@ -901,7 +906,7 @@ export default function FinancePage() {
                               {r.address && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{r.address}</p>}
                             </div>
                             <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
-                              {chFetching ? (
+                              {chFetchingNumber === r.companyNumber ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
                               ) : (
                                 <Badge variant="outline" className="text-[10px] gap-1 cursor-pointer hover:bg-emerald-50">
@@ -918,7 +923,7 @@ export default function FinancePage() {
                     {companyProfile.companyNumber && !chSearchResults.length && (
                       <div className="flex items-center gap-2 pt-1">
                         <p className="text-xs text-muted-foreground">Current CRN: <strong>{companyProfile.companyNumber}</strong></p>
-                        <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => fetchFromCompaniesHouse(companyProfile.companyNumber)}>
+                        <Button variant="link" size="sm" className="text-xs h-auto p-0" disabled={!!chFetchingNumber} onClick={() => fetchFromCompaniesHouse(companyProfile.companyNumber)}>
                           Refresh from Companies House
                         </Button>
                       </div>

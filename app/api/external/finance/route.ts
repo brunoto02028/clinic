@@ -164,7 +164,8 @@ export async function GET(req: NextRequest) {
   const period = url.searchParams.get("period") || "thisMonth";
   const type = url.searchParams.get("type"); // INCOME | EXPENSE
   const status = url.searchParams.get("status");
-  const dateBy = url.searchParams.get("dateBy") || "paidDate"; // paidDate | dueDate | createdAt
+  const rawDateBy = url.searchParams.get("dateBy") || "paidDate";
+  const dateBy = ["paidDate", "dueDate", "createdAt"].includes(rawDateBy) ? rawDateBy : "paidDate";
   const page = parseInt(url.searchParams.get("page") || "1");
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "100"), 500);
 
@@ -197,7 +198,7 @@ export async function GET(req: NextRequest) {
     const [rawEntries, total] = await Promise.all([
       prisma.financialEntry.findMany({
         where,
-        orderBy: { [dateBy]: "desc" },
+        orderBy: [{ [dateBy]: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
         skip: (page - 1) * limit,
         take: limit,
       }),
