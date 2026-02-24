@@ -272,13 +272,21 @@ async function generateImageAbacus(
 
   // Extract image URLs from the response
   for (const choice of data.choices || []) {
+    // Abacus FLUX/image models return images in message.images[] array
+    const images = choice.message?.images;
+    if (Array.isArray(images)) {
+      for (const img of images) {
+        const imgUrl = img?.image_url?.url || img?.url;
+        if (imgUrl) urls.push(imgUrl);
+      }
+    }
+
+    // Also check message.content for URLs or data URIs (some models)
     const content = choice.message?.content;
-    if (content) {
-      // Abacus returns base64 data URIs or URLs depending on the model
+    if (content && typeof content === "string" && content.length > 0) {
       if (content.startsWith("http") || content.startsWith("data:image")) {
         urls.push(content);
       } else {
-        // Try to extract URL from markdown image syntax ![](url) or plain URL
         const urlMatch = content.match(/https?:\/\/[^\s)]+/);
         if (urlMatch) urls.push(urlMatch[0]);
       }
@@ -458,22 +466,19 @@ export async function generateImage(prompt: string, opts?: AIImageOptions): Prom
     }
   }
 
-  // Gemini image generation (using existing Gemini Imagen endpoint)
+  // Gemini image generation via generateContent with IMAGE modality
   const apiKey = await getGeminiKey();
   if (!apiKey) throw new Error("No AI API key configured for image generation.");
 
-  const model = "imagen-3.0-generate-002";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
+  const model = "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      instances: [{ prompt }],
-      parameters: {
-        sampleCount: opts?.numImages || 1,
-        aspectRatio: opts?.aspectRatio || "16:9",
-      },
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
     }),
   });
 
@@ -484,9 +489,10 @@ export async function generateImage(prompt: string, opts?: AIImageOptions): Prom
 
   const data = await res.json();
   const urls: string[] = [];
-  for (const pred of data.predictions || []) {
-    if (pred.bytesBase64Encoded) {
-      urls.push(`data:image/png;base64,${pred.bytesBase64Encoded}`);
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  for (const part of parts) {
+    if (part.inlineData?.mimeType?.startsWith("image/")) {
+      urls.push(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
     }
   }
   return urls;

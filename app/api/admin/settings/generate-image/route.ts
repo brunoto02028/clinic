@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     if (!imageBase64) {
       const apiKey = await getConfigValue('GEMINI_API_KEY');
       if (apiKey) {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
         const geminiRes = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
