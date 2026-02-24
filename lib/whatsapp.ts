@@ -10,8 +10,24 @@
  */
 
 import { prisma } from "@/lib/db";
+import { getConfigValue } from "@/lib/system-config";
 
 const GRAPH_API = "https://graph.facebook.com/v19.0";
+
+let _cachedConfig: { phoneNumberId: string; accessToken: string; businessAccountId: string; verifyToken: string } | null = null;
+let _cachedAt = 0;
+
+async function getConfigAsync() {
+  if (_cachedConfig && Date.now() - _cachedAt < 60_000) return _cachedConfig;
+  _cachedConfig = {
+    phoneNumberId: (await getConfigValue("WHATSAPP_PHONE_NUMBER_ID")) || process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+    accessToken: (await getConfigValue("WHATSAPP_ACCESS_TOKEN")) || process.env.WHATSAPP_ACCESS_TOKEN || "",
+    businessAccountId: (await getConfigValue("WHATSAPP_BUSINESS_ACCOUNT_ID")) || process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || "",
+    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "bpr-whatsapp-verify",
+  };
+  _cachedAt = Date.now();
+  return _cachedConfig;
+}
 
 function getConfig() {
   return {
@@ -23,7 +39,13 @@ function getConfig() {
 }
 
 export function isWhatsAppConfigured(): boolean {
+  // Sync check for env vars — async check happens at send time
   const cfg = getConfig();
+  return !!(cfg.phoneNumberId && cfg.accessToken);
+}
+
+export async function isWhatsAppConfiguredAsync(): Promise<boolean> {
+  const cfg = await getConfigAsync();
   return !!(cfg.phoneNumberId && cfg.accessToken);
 }
 
@@ -36,7 +58,8 @@ export async function sendWhatsAppMessage(params: {
   triggerEvent?: string;
   relatedEntityId?: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const cfg = getConfig();
+  // Try async config first (reads from DB), fallback to env vars
+  const cfg = await getConfigAsync();
   if (!cfg.phoneNumberId || !cfg.accessToken) {
     console.warn("[whatsapp] Not configured, skipping message");
     return { success: false, error: "WhatsApp not configured" };

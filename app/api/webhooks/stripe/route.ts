@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import Stripe from "stripe";
+import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
@@ -64,9 +65,24 @@ export async function POST(req: NextRequest) {
               },
             });
             console.log(`[stripe-webhook] Membership subscription created for patient ${patientId}, plan ${planId}`);
+
+            // Notify patient: membership activated
+            const plan = await (prisma as any).membershipPlan.findUnique({ where: { id: planId } });
+            if (plan) {
+              const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+              notifyPatient({
+                patientId,
+                emailTemplateSlug: 'MEMBERSHIP_ACTIVATED',
+                emailVars: {
+                  planName: plan.name || 'Membership',
+                  portalUrl: `${BASE}/dashboard/membership`,
+                },
+                plainMessage: `Your ${plan.name} membership is now active! Log in to your portal to explore all features.`,
+              }).catch(err => console.error('[stripe-webhook] membership notify error:', err));
+            }
           }
         } else if (packageId) {
-          await (prisma as any).treatmentPackage.update({
+          const pkg = await (prisma as any).treatmentPackage.update({
             where: { id: packageId },
             data: {
               isPaid: true,
@@ -76,8 +92,25 @@ export async function POST(req: NextRequest) {
               stripePaymentIntentId: session.payment_intent as string || session.id,
               status: "PAID",
             },
+            include: { patient: { select: { id: true, firstName: true } } },
           });
           console.log(`[stripe-webhook] Package ${packageId} marked as PAID`);
+
+          // Notify patient: package payment confirmed
+          if (pkg?.patient?.id) {
+            const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+            const amount = ((session.amount_total || 0) / 100).toFixed(2);
+            notifyPatient({
+              patientId: pkg.patient.id,
+              emailTemplateSlug: 'PACKAGE_PAYMENT_CONFIRMED',
+              emailVars: {
+                packageName: pkg.name || 'Treatment Package',
+                amount: `£${amount}`,
+                portalUrl: `${BASE}/dashboard/treatment`,
+              },
+              plainMessage: `Payment of £${amount} confirmed for ${pkg.name || 'your treatment package'}. You can now access your treatment plan.`,
+            }).catch(err => console.error('[stripe-webhook] package notify error:', err));
+          }
         }
         break;
       }

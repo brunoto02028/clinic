@@ -206,4 +206,48 @@ export const DEFAULT_CONFIGS = [
     category: "integration",
     isSecret: false,
   },
+  // ─── WhatsApp (Meta Cloud API) ───
+  {
+    key: "WHATSAPP_PHONE_NUMBER_ID",
+    label: "WhatsApp Phone Number ID",
+    description: "Meta Business phone number ID. Found in Meta Business Suite → WhatsApp → Phone Numbers → API Setup.",
+    category: "messaging",
+    isSecret: false,
+  },
+  {
+    key: "WHATSAPP_ACCESS_TOKEN",
+    label: "WhatsApp Access Token",
+    description: "Permanent access token for WhatsApp Cloud API. Generate in Meta Business Suite → System Users → Generate Token.",
+    category: "messaging",
+    isSecret: true,
+  },
+  {
+    key: "WHATSAPP_BUSINESS_ACCOUNT_ID",
+    label: "WhatsApp Business Account ID",
+    description: "Your WhatsApp Business Account ID. Found in Meta Business Settings → Business Info.",
+    category: "messaging",
+    isSecret: false,
+  },
+  // ─── Twilio SMS ───
+  {
+    key: "TWILIO_ACCOUNT_SID",
+    label: "Twilio Account SID",
+    description: "Twilio account SID for SMS. Found at twilio.com/console.",
+    category: "messaging",
+    isSecret: false,
+  },
+  {
+    key: "TWILIO_AUTH_TOKEN",
+    label: "Twilio Auth Token",
+    description: "Twilio auth token for SMS. Found at twilio.com/console.",
+    category: "messaging",
+    isSecret: true,
+  },
+  {
+    key: "TWILIO_PHONE_NUMBER",
+    label: "Twilio Phone Number",
+    description: "Twilio phone number for sending SMS (E.164 format, e.g. +447123456789).",
+    category: "messaging",
+    isSecret: false,
+  },
 ];

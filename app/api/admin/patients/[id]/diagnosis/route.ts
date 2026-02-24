@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAI } from "@/lib/ai-provider";
+import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
@@ -375,6 +376,20 @@ Respond in this exact JSON format (no markdown, no code blocks):
         therapist: { select: { firstName: true, lastName: true } },
       },
     });
+
+    // Notify patient: assessment completed
+    try {
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      notifyPatient({
+        patientId: params.id,
+        emailTemplateSlug: 'ASSESSMENT_COMPLETED',
+        emailVars: {
+          assessmentType: 'AI Clinical',
+          portalUrl: `${BASE}/dashboard/treatment`,
+        },
+        plainMessage: 'Your clinical assessment has been completed. Your therapist will review it and prepare your treatment plan.',
+      }).catch(err => console.error('[diagnosis] notify error:', err));
+    } catch {}
 
     return NextResponse.json({ success: true, diagnosis }, { status: 201 });
   } catch (err: any) {

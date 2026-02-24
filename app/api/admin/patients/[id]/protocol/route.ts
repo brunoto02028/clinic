@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAI } from "@/lib/ai-provider";
+import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
@@ -247,6 +248,21 @@ Respond in this exact JSON format (no markdown, no code blocks):
         },
       },
     });
+
+    // Notify patient: treatment plan ready
+    try {
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      notifyPatient({
+        patientId,
+        emailTemplateSlug: 'TREATMENT_PLAN_READY',
+        emailVars: {
+          protocolTitle: fullProtocol?.title || 'Treatment Plan',
+          therapistName: fullProtocol?.therapist ? `${fullProtocol.therapist.firstName} ${fullProtocol.therapist.lastName}` : 'Your therapist',
+          portalUrl: `${BASE}/dashboard/treatment`,
+        },
+        plainMessage: `Your treatment plan "${fullProtocol?.title || 'Treatment Plan'}" is ready! Log in to your portal to review it.`,
+      }).catch(err => console.error('[protocol] notify error:', err));
+    } catch {}
 
     return NextResponse.json({ success: true, protocol: fullProtocol }, { status: 201 });
   } catch (err: any) {

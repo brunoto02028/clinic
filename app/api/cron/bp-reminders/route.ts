@@ -53,12 +53,11 @@ export async function POST(request: NextRequest) {
         const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
         await notifyPatient({
           patientId: patient.id,
-          emailTemplateSlug: 'APPOINTMENT_REMINDER',
+          emailTemplateSlug: 'EXERCISE_REMINDER',
           emailVars: {
-            appointmentDate: 'Weekly BP Check',
-            appointmentTime: '',
-            therapistName: 'Bruno Physical Rehabilitation',
-            location: `${BASE}/dashboard/blood-pressure`,
+            protocolTitle: 'Blood Pressure Monitoring',
+            exerciseCount: '1',
+            exerciseList: 'Weekly BP reading',
             portalUrl: `${BASE}/dashboard/blood-pressure`,
           },
           plainMessage: 'Time to check your blood pressure! Log your reading in your patient portal.',

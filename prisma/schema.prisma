@@ -506,6 +506,9 @@ model Appointment {
   treatmentPlanId String?
   treatmentPlan   TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
 
+  // Reminders
+  reminderSent                 Boolean    @default(false)
+
   // Cancellation policy
   cancellationPolicyAcceptedAt DateTime?  // When patient accepted the policy
   stripePaymentIntentId        String?    // For refund processing

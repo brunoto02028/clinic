@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,23 @@ export async function POST(
         patient: { select: { firstName: true, lastName: true, email: true } },
       },
     });
+
+    // Notify patient: package ready to pay
+    try {
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      const patientId = params.id;
+      const totalPrice = pkg.priceFullPackage || pkg.pricePerSession || 0;
+      notifyPatient({
+        patientId,
+        emailTemplateSlug: 'PACKAGE_READY_TO_PAY',
+        emailVars: {
+          packageName: pkg.name || 'Treatment Package',
+          amount: `\u00a3${Number(totalPrice).toFixed(2)}`,
+          portalUrl: `${BASE}/dashboard/treatment`,
+        },
+        plainMessage: `Your treatment package "${pkg.name}" is ready. Please log in to review and complete payment.`,
+      }).catch(err => console.error('[packages] notify error:', err));
+    } catch {}
 
     return NextResponse.json({ success: true, package: pkg }, { status: 201 });
   } catch (err: any) {
