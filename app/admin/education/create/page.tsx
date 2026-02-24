@@ -62,9 +62,10 @@ function CreateContentForm() {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiPreview, setAiPreview] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [transcript, setTranscript] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [speechLang, setSpeechLang] = useState<"en" | "pt">("en");
-  const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Send to patients
   const [showSendDialog, setShowSendDialog] = useState(false);
@@ -116,74 +117,88 @@ function CreateContentForm() {
     } catch {} finally { setLoading(false); }
   };
 
-  // ─── Voice Recording (Web Speech API) ───
-  const startRecording = useCallback(() => {
-    // Stop any previous instance first
-    if (recognitionRef.current) {
-      try { recognitionRef.current.abort(); } catch {}
-      recognitionRef.current = null;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setError("Speech recognition not supported in this browser. Use Chrome or Edge.");
-      return;
+  // ─── Voice Recording (MediaRecorder + paid API transcription) ───
+  const startRecording = useCallback(async () => {
+    // Stop any previous instance
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
     }
 
     try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = speechLang === "pt" ? "pt-BR" : "en-US";
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      audioChunksRef.current = [];
 
-      let finalTranscript = "";
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
 
-      recognition.onresult = (event: any) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += t + " ";
+      mediaRecorder.onstop = async () => {
+        // Stop all tracks
+        stream.getTracks().forEach(t => t.stop());
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (audioBlob.size < 1000) {
+          setError("Recording too short. Please speak for at least 1-2 seconds.");
+          return;
+        }
+
+        // Convert to base64 and send to transcription API
+        setIsTranscribing(true);
+        try {
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => {
+              const dataUrl = reader.result as string;
+              const base64Data = dataUrl.split(",")[1];
+              resolve(base64Data);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(audioBlob);
+          });
+
+          const res = await fetch("/api/admin/education/transcribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              audio: base64,
+              mimeType: "audio/webm",
+              language: speechLang,
+            }),
+          });
+          const data = await res.json();
+
+          if (!res.ok) throw new Error(data.error);
+
+          if (data.transcript) {
+            setAiInput(prev => prev ? prev + " " + data.transcript : data.transcript);
           } else {
-            interim = t;
+            setError("Could not transcribe audio. Please try again or type your request.");
           }
+        } catch (err: any) {
+          setError(`Transcription failed: ${err.message}`);
+        } finally {
+          setIsTranscribing(false);
         }
-        setTranscript(finalTranscript + interim);
-        setAiInput(finalTranscript + interim);
       };
 
-      recognition.onerror = (event: any) => {
-        console.error("[speech] Error:", event.error);
-        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-          setError("Microphone access denied. Please allow microphone permissions in your browser settings.");
-        } else if (event.error === "network") {
-          setError("Speech recognition requires internet connection. Please check your connection or type your request instead.");
-        } else if (event.error === "no-speech") {
-          // Ignore no-speech, just stop
-        } else {
-          setError(`Speech error: ${event.error}`);
-        }
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start(1000); // Collect in 1-second chunks
       setIsRecording(true);
-      setTranscript("");
     } catch (err: any) {
-      setError(`Could not start speech recognition: ${err.message}`);
-      setIsRecording(false);
+      if (err.name === "NotAllowedError") {
+        setError("Microphone access denied. Please allow microphone permissions in your browser settings.");
+      } else {
+        setError(`Could not access microphone: ${err.message}`);
+      }
     }
   }, [speechLang]);
 
   const stopRecording = useCallback(() => {
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
-      recognitionRef.current = null;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
   }, []);
@@ -237,7 +252,6 @@ function CreateContentForm() {
     setAiPreview(null);
     setShowAI(false);
     setAiInput("");
-    setTranscript("");
   };
 
   // ─── Save ───
@@ -400,16 +414,23 @@ function CreateContentForm() {
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Textarea
-                  placeholder={isRecording ? "Listening..." : "Describe the content you want to create... Or click the microphone to speak."}
+                  placeholder={isRecording ? "Recording... Click stop when done." : isTranscribing ? "Transcribing audio..." : "Describe the content you want to create... Or click the microphone to speak."}
                   value={aiInput}
                   onChange={e => setAiInput(e.target.value)}
                   rows={3}
-                  className={`pr-12 text-sm ${isRecording ? "border-red-400 bg-red-50/50" : ""}`}
+                  disabled={isTranscribing}
+                  className={`pr-12 text-sm ${isRecording ? "border-red-400 bg-red-50/50" : isTranscribing ? "border-amber-400 bg-amber-50/50" : ""}`}
                 />
                 {isRecording && (
                   <div className="absolute top-2 right-2 flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                     <span className="text-[10px] text-red-600 font-medium">REC</span>
+                  </div>
+                )}
+                {isTranscribing && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin text-amber-600" />
+                    <span className="text-[10px] text-amber-600 font-medium">Transcribing...</span>
                   </div>
                 )}
               </div>
