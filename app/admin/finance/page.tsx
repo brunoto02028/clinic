@@ -6,7 +6,7 @@ import {
   RefreshCw, ArrowUpRight, ArrowDownRight, Clock, AlertTriangle,
   CheckCircle, XCircle, Search, FileText, Download, Edit, MoreVertical,
   Wallet, Receipt, PiggyBank, BarChart3, Calendar, Upload, Key, Tag,
-  Copy, Shield, ShieldCheck, Eye, EyeOff, Sparkles,
+  Copy, Shield, ShieldCheck, Eye, EyeOff, Sparkles, Building2, Save,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,7 @@ interface CategoryBreakdown {
   amount: number;
 }
 
-type Tab = "dashboard" | "stripe" | "income" | "expenses" | "categories" | "apikeys";
+type Tab = "dashboard" | "stripe" | "income" | "expenses" | "categories" | "apikeys" | "company";
 
 interface FinancialCategory {
   id: string;
@@ -153,6 +153,11 @@ export default function FinancePage() {
   const [ocrProcessing, setOcrProcessing] = useState(false);
   const [ocrResult, setOcrResult] = useState<any>(null);
 
+  // Company Profile state
+  const [companyProfile, setCompanyProfile] = useState<any>({});
+  const [companyLoading, setCompanyLoading] = useState(false);
+  const [companySaving, setCompanySaving] = useState(false);
+
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<"INCOME" | "EXPENSE">("INCOME");
@@ -196,10 +201,43 @@ export default function FinancePage() {
     setStripeLoading(false);
   };
 
+  // ─── Company Profile ───
+  const fetchCompanyProfile = async () => {
+    setCompanyLoading(true);
+    try {
+      const res = await fetch("/api/admin/finance/company");
+      const data = await res.json();
+      setCompanyProfile(data || {});
+    } catch {}
+    setCompanyLoading(false);
+  };
+
+  const saveCompanyProfile = async () => {
+    setCompanySaving(true);
+    try {
+      const res = await fetch("/api/admin/finance/company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(companyProfile),
+      });
+      const data = await res.json();
+      if (data.error) {
+        toast({ title: "Error", description: data.error, variant: "destructive" });
+      } else {
+        setCompanyProfile(data);
+        toast({ title: T("common.success"), description: "Company profile saved" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setCompanySaving(false);
+  };
+
   useEffect(() => {
     if (tab === "stripe") fetchStripeData();
     if (tab === "categories") fetchCategories();
     if (tab === "apikeys") fetchApiKeys();
+    if (tab === "company") fetchCompanyProfile();
   }, [tab]);
 
   // ─── Categories ───
@@ -432,6 +470,7 @@ export default function FinancePage() {
     { key: "expenses", label: T("finance.expenses"), icon: ArrowDownRight },
     { key: "categories", label: T("finance.categories"), icon: Tag },
     { key: "apikeys", label: T("finance.apiKeys"), icon: Key },
+    { key: "company", label: "Company", icon: Building2 },
   ];
 
   const periodOptions = [
@@ -708,6 +747,250 @@ export default function FinancePage() {
                 </div>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Company Profile Tab */}
+      {tab === "company" && (
+        <div className="space-y-6">
+          {companyLoading ? <LoadingState /> : (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold flex items-center gap-2"><Building2 className="h-4 w-4" /> Company Profile</h2>
+                  <p className="text-xs text-muted-foreground">Companies House registration, HMRC details, and fiscal year information for accounting exports.</p>
+                </div>
+                <Button onClick={saveCompanyProfile} disabled={companySaving} className="gap-1.5">
+                  {companySaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  {companySaving ? "Saving..." : "Save Profile"}
+                </Button>
+              </div>
+
+              {/* Companies House Registration */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Companies House Registration</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Registered Company Name *</label><Input value={companyProfile.companyName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyName: e.target.value })} placeholder="BPR Clinic Ltd" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Trading Name</label><Input value={companyProfile.tradingName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradingName: e.target.value })} placeholder="Bruno Physical Rehabilitation" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Company Number (CRN)</label><Input value={companyProfile.companyNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyNumber: e.target.value })} placeholder="12345678" /></div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Company Type</label>
+                      <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={companyProfile.companyType || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyType: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Private Limited Company">Private Limited Company (Ltd)</option>
+                        <option value="Public Limited Company">Public Limited Company (PLC)</option>
+                        <option value="Limited Liability Partnership">Limited Liability Partnership (LLP)</option>
+                        <option value="Sole Trader">Sole Trader</option>
+                        <option value="Partnership">Partnership</option>
+                        <option value="Community Interest Company">Community Interest Company (CIC)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Company Status</label>
+                      <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={companyProfile.companyStatus || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyStatus: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Active">Active</option>
+                        <option value="Dormant">Dormant</option>
+                        <option value="Dissolved">Dissolved</option>
+                        <option value="Liquidation">In Liquidation</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Date of Incorporation</label><Input type="date" value={companyProfile.dateOfIncorporation?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, dateOfIncorporation: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Country of Origin</label><Input value={companyProfile.countryOfOrigin || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, countryOfOrigin: e.target.value })} placeholder="United Kingdom" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">SIC Codes (comma separated)</label><Input value={companyProfile.sicCodes || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, sicCodes: e.target.value })} placeholder='86900, 96040' /><p className="text-[10px] text-muted-foreground mt-0.5">86900 = Other human health activities, 96040 = Physical well-being activities</p></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">SIC Descriptions</label><Input value={companyProfile.sicDescriptions || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, sicDescriptions: e.target.value })} placeholder="Other human health activities" /></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Registered Office Address */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Registered Office Address</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Address Line 1</label><Input value={companyProfile.regAddressLine1 || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressLine1: e.target.value })} placeholder="123 High Street" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Address Line 2</label><Input value={companyProfile.regAddressLine2 || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressLine2: e.target.value })} placeholder="Suite 4" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">City</label><Input value={companyProfile.regAddressCity || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressCity: e.target.value })} placeholder="Ipswich" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">County</label><Input value={companyProfile.regAddressCounty || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressCounty: e.target.value })} placeholder="Suffolk" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Postcode</label><Input value={companyProfile.regAddressPostcode || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressPostcode: e.target.value })} placeholder="IP1 3AA" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Country</label><Input value={companyProfile.regAddressCountry || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressCountry: e.target.value })} placeholder="England and Wales" /></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Trading Address */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Trading / Correspondence Address</CardTitle>
+                  <p className="text-xs text-muted-foreground">Leave blank if same as registered address</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Address Line 1</label><Input value={companyProfile.tradAddressLine1 || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradAddressLine1: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Address Line 2</label><Input value={companyProfile.tradAddressLine2 || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradAddressLine2: e.target.value })} /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">City</label><Input value={companyProfile.tradAddressCity || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradAddressCity: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">County</label><Input value={companyProfile.tradAddressCounty || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradAddressCounty: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Postcode</label><Input value={companyProfile.tradAddressPostcode || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradAddressPostcode: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Country</label><Input value={companyProfile.tradAddressCountry || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradAddressCountry: e.target.value })} /></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tax & HMRC */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Tax & HMRC</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">VAT Number</label><Input value={companyProfile.vatNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, vatNumber: e.target.value })} placeholder="GB 123 4567 89" /></div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">VAT Scheme</label>
+                      <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={companyProfile.vatScheme || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, vatScheme: e.target.value })}>
+                        <option value="">Not VAT Registered</option>
+                        <option value="Standard">Standard (20%)</option>
+                        <option value="Flat Rate">Flat Rate</option>
+                        <option value="Cash Accounting">Cash Accounting</option>
+                        <option value="Annual Accounting">Annual Accounting</option>
+                      </select>
+                    </div>
+                    <div><label className="text-xs font-medium text-muted-foreground">VAT Registration Date</label><Input type="date" value={companyProfile.vatRegisteredDate?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, vatRegisteredDate: e.target.value })} /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">UTR (Unique Taxpayer Ref)</label><Input value={companyProfile.utr || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, utr: e.target.value })} placeholder="1234567890" /><p className="text-[10px] text-muted-foreground mt-0.5">10-digit HMRC reference for Corporation Tax</p></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Corporation Tax Reference</label><Input value={companyProfile.corporationTaxRef || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, corporationTaxRef: e.target.value })} placeholder="" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">PAYE Employer Reference</label><Input value={companyProfile.payeReference || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, payeReference: e.target.value })} placeholder="123/AB45678" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">National Insurance Number</label><Input value={companyProfile.niNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, niNumber: e.target.value })} placeholder="QQ 12 34 56 C" /><p className="text-[10px] text-muted-foreground mt-0.5">For sole traders only</p></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Tax Year End (ARD)</label><Input value={companyProfile.taxYearEnd || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, taxYearEnd: e.target.value })} placeholder="31 March" /><p className="text-[10px] text-muted-foreground mt-0.5">Accounting Reference Date</p></div>
+                    <div />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Accounting Period Start</label><Input type="date" value={companyProfile.accountingPeriodStart?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, accountingPeriodStart: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Accounting Period End</label><Input type="date" value={companyProfile.accountingPeriodEnd?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, accountingPeriodEnd: e.target.value })} /></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Filing Dates */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Filing Dates</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Next Accounts Due</label><Input type="date" value={companyProfile.nextAccountsDue?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, nextAccountsDue: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Next Confirmation Statement Due</label><Input type="date" value={companyProfile.nextConfirmationDue?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, nextConfirmationDue: e.target.value })} /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Last Accounts Filed</label><Input type="date" value={companyProfile.lastAccountsFiled?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, lastAccountsFiled: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Last Confirmation Statement Filed</label><Input type="date" value={companyProfile.lastConfirmationFiled?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, lastConfirmationFiled: e.target.value })} /></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Directors */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Directors & Officers</CardTitle>
+                  <p className="text-xs text-muted-foreground">JSON format: [&#123;"name":"John Smith","role":"Director","appointedDate":"2024-01-01","nationality":"British"&#125;]</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div><label className="text-xs font-medium text-muted-foreground">Directors (JSON)</label><textarea className="w-full min-h-[80px] rounded-md border bg-background px-3 py-2 text-xs font-mono" value={companyProfile.directorsJson || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, directorsJson: e.target.value })} placeholder='[{"name":"Bruno Toaz","role":"Director","appointedDate":"2024-01-01","nationality":"Brazilian/British"}]' /></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Company Secretary Name</label><Input value={companyProfile.secretaryName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, secretaryName: e.target.value })} placeholder="Optional" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Secretary Address</label><Input value={companyProfile.secretaryAddress || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, secretaryAddress: e.target.value })} /></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Banking */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Banking Details</CardTitle>
+                  <p className="text-xs text-muted-foreground">Used for accounting exports and BACS payments. Data is stored securely.</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Bank Name</label><Input value={companyProfile.bankName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankName: e.target.value })} placeholder="Barclays, HSBC, Starling..." /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Account Holder Name</label><Input value={companyProfile.bankAccountName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankAccountName: e.target.value })} placeholder="BPR Clinic Ltd" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Sort Code</label><Input value={companyProfile.bankSortCode || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankSortCode: e.target.value })} placeholder="12-34-56" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Account Number</label><Input value={companyProfile.bankAccountNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankAccountNumber: e.target.value })} placeholder="12345678" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">IBAN (optional)</label><Input value={companyProfile.bankIban || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankIban: e.target.value })} placeholder="GB29 NWBK 6016 1331 9268 19" /></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Insurance & Compliance */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Insurance & Regulatory Compliance</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Insurance Provider</label><Input value={companyProfile.insuranceProvider || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, insuranceProvider: e.target.value })} placeholder="Hiscox, AXA..." /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Policy Number</label><Input value={companyProfile.insurancePolicyNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, insurancePolicyNumber: e.target.value })} /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Expiry Date</label><Input type="date" value={companyProfile.insuranceExpiryDate?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, insuranceExpiryDate: e.target.value })} /></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">ICO Registration Number</label><Input value={companyProfile.icoRegistrationNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, icoRegistrationNumber: e.target.value })} placeholder="Data Protection Registration" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">HCPC Registration Number</label><Input value={companyProfile.hcpcRegistrationNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, hcpcRegistrationNumber: e.target.value })} placeholder="Health & Care Professions Council" /></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact & Notes */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Company Contact</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label className="text-xs font-medium text-muted-foreground">Company Email</label><Input value={companyProfile.companyEmail || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyEmail: e.target.value })} placeholder="admin@bpr.rehab" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Company Phone</label><Input value={companyProfile.companyPhone || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyPhone: e.target.value })} placeholder="+44 1473 000000" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Website</label><Input value={companyProfile.companyWebsite || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyWebsite: e.target.value })} placeholder="https://bpr.rehab" /></div>
+                  </div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Notes</label><textarea className="w-full min-h-[60px] rounded-md border bg-background px-3 py-2 text-sm" value={companyProfile.notes || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, notes: e.target.value })} placeholder="Any additional notes about the company..." /></div>
+                </CardContent>
+              </Card>
+
+              {/* API Documentation for company data */}
+              <Card className="border-dashed">
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> External API Access</CardTitle></CardHeader>
+                <CardContent className="text-xs space-y-1">
+                  <p className="text-muted-foreground">Your accounting software can pull this company data via the Finance API:</p>
+                  <p className="text-muted-foreground"><code className="bg-muted px-1.5 py-0.5 rounded">GET /api/external/finance?action=company</code> — Returns full company profile</p>
+                  <p className="text-muted-foreground">Auth: <code className="bg-muted px-1.5 py-0.5 rounded">X-API-Key: bpr_k_your_key</code></p>
+                </CardContent>
+              </Card>
+
+              {/* Bottom Save */}
+              <div className="flex justify-end pb-6">
+                <Button onClick={saveCompanyProfile} disabled={companySaving} className="gap-1.5">
+                  {companySaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  {companySaving ? "Saving..." : "Save Company Profile"}
+                </Button>
+              </div>
+            </>
           )}
         </div>
       )}

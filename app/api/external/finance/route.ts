@@ -134,13 +134,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ categories, generatedAt: new Date().toISOString() });
   }
 
+  if (action === "company") {
+    const profile = await (prisma as any).companyProfile.findUnique({
+      where: { clinicId: auth.clinicId },
+    });
+    return NextResponse.json({ company: profile || null, generatedAt: new Date().toISOString() });
+  }
+
   return NextResponse.json({
     error: "Unknown action",
-    availableActions: ["summary", "entries", "categories"],
+    availableActions: ["summary", "entries", "categories", "company"],
     usage: {
       summary: "GET /api/external/finance?action=summary&period=thisMonth",
       entries: "GET /api/external/finance?action=entries&type=INCOME&status=PAID&page=1&limit=50",
       categories: "GET /api/external/finance?action=categories",
+      company: "GET /api/external/finance?action=company",
     },
   }, { status: 400 });
 }

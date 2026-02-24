@@ -240,9 +240,97 @@ model Clinic {
   financialEntries      FinancialEntry[]
   financialCategories   FinancialCategory[]
   apiKeys               ApiKey[]
+  companyProfile        CompanyProfile?
   
   @@index([slug])
   @@index([isActive])
+}
+
+// ============================================
+// COMPANY PROFILE (Companies House / HMRC)
+// ============================================
+
+model CompanyProfile {
+  id                    String   @id @default(cuid())
+  clinicId              String   @unique
+  clinic                Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // ─── Companies House Registration ───
+  companyName           String?            // Registered company name
+  tradingName           String?            // Trading name (if different)
+  companyNumber         String?            // CRN — Companies Registration Number (e.g. 12345678)
+  companyType           String?            // Ltd, LLP, PLC, Sole Trader, Partnership
+  companyStatus         String?            // Active, Dormant, Dissolved
+  dateOfIncorporation   DateTime?          // Date company was incorporated
+  countryOfOrigin       String?  @default("United Kingdom")
+
+  // ─── SIC Codes ───
+  sicCodes              String?            // JSON array: ["86900","96040"] — Nature of Business
+  sicDescriptions       String?  @db.Text  // Human-readable descriptions
+
+  // ─── Registered Office Address ───
+  regAddressLine1       String?
+  regAddressLine2       String?
+  regAddressCity        String?
+  regAddressCounty      String?
+  regAddressPostcode    String?
+  regAddressCountry     String?  @default("England and Wales")
+
+  // ─── Trading / Correspondence Address ───
+  tradAddressLine1      String?
+  tradAddressLine2      String?
+  tradAddressCity       String?
+  tradAddressCounty     String?
+  tradAddressPostcode   String?
+  tradAddressCountry    String?
+
+  // ─── Tax & HMRC ───
+  vatNumber             String?            // GB 123 4567 89
+  vatScheme             String?            // Standard, Flat Rate, Cash Accounting
+  vatRegisteredDate     DateTime?
+  utr                   String?            // Unique Taxpayer Reference (10 digits)
+  corporationTaxRef     String?            // Corporation Tax Reference
+  payeReference         String?            // PAYE Employer Reference (e.g. 123/AB45678)
+  niNumber              String?            // National Insurance (sole trader)
+  taxYearEnd            String?            // Accounting Reference Date (e.g. "31 March")
+  accountingPeriodStart DateTime?
+  accountingPeriodEnd   DateTime?
+
+  // ─── Filing Dates ───
+  nextAccountsDue       DateTime?
+  nextConfirmationDue   DateTime?
+  lastAccountsFiled     DateTime?
+  lastConfirmationFiled DateTime?
+
+  // ─── Directors / Officers ───
+  directorsJson         String?  @db.Text  // JSON: [{name, role, appointedDate, nationality, address}]
+  secretaryName         String?
+  secretaryAddress      String?
+
+  // ─── Banking ───
+  bankName              String?
+  bankSortCode          String?            // e.g. 12-34-56
+  bankAccountNumber     String?            // e.g. 12345678
+  bankAccountName       String?            // Account holder name
+  bankIban              String?
+
+  // ─── Insurance & Compliance ───
+  insuranceProvider     String?
+  insurancePolicyNumber String?
+  insuranceExpiryDate   DateTime?
+  icoRegistrationNumber String?            // ICO Data Protection Registration
+  hcpcRegistrationNumber String?           // Health & Care Professions Council
+
+  // ─── Contact ───
+  companyEmail          String?
+  companyPhone          String?
+  companyWebsite        String?
+
+  // ─── Notes ───
+  notes                 String?  @db.Text
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 // ============================================
