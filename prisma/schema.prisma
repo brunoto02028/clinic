@@ -238,6 +238,8 @@ model Clinic {
   servicePages          ServicePage[]
   commandMemories       CommandMemory[]
   financialEntries      FinancialEntry[]
+  financialCategories   FinancialCategory[]
+  apiKeys               ApiKey[]
   
   @@index([slug])
   @@index([isActive])
@@ -3322,10 +3324,75 @@ model FinancialEntry {
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 
+  // Link to dynamic category
+  categoryId      String?
+
   @@index([clinicId])
   @@index([type])
   @@index([status])
   @@index([dueDate])
   @@index([paidDate])
   @@index([clinicId, type, paidDate])
+  @@index([categoryId])
+}
+
+// ============================================
+// FINANCIAL CATEGORY (HMRC / Companies House aligned)
+// ============================================
+
+model FinancialCategory {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  type            FinancialEntryType   // INCOME or EXPENSE
+  name            String               // Display name (user's language)
+  nameEn          String               // English name
+  namePt          String               // Portuguese name
+
+  // HMRC / Companies House alignment
+  hmrcCode        String?              // e.g. "CT600/Box63" for staff costs
+  hmrcLabel       String?              // HMRC official label
+  companiesHouseSection String?        // e.g. "PL/AdminExpenses"
+  ct600Box        String?              // CT600 box reference
+
+  // Properties
+  isTaxDeductible Boolean   @default(true)
+  isDefault       Boolean   @default(false) // System-created default
+  isActive        Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  description     String?              // Help text about what goes in this category
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([clinicId, name])
+  @@index([clinicId, type])
+  @@index([isActive])
+}
+
+// ============================================
+// API KEY (External integration)
+// ============================================
+
+model ApiKey {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name            String               // e.g. "Xero Integration", "QuickBooks Sync"
+  keyHash         String   @unique     // SHA-256 hash of the API key
+  keyPrefix       String               // First 8 chars for display (e.g. "bpr_k_a1b2...")
+  permissions     String   @default("finance:read") // Comma-separated: finance:read,finance:write
+
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([keyHash])
+  @@index([isActive])
 }

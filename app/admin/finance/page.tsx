@@ -5,7 +5,8 @@ import {
   DollarSign, TrendingUp, TrendingDown, CreditCard, Plus, Trash2,
   RefreshCw, ArrowUpRight, ArrowDownRight, Clock, AlertTriangle,
   CheckCircle, XCircle, Search, FileText, Download, Edit, MoreVertical,
-  Wallet, Receipt, PiggyBank, BarChart3, Calendar,
+  Wallet, Receipt, PiggyBank, BarChart3, Calendar, Upload, Key, Tag,
+  Copy, Shield, ShieldCheck, Eye, EyeOff, Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,36 @@ interface CategoryBreakdown {
   amount: number;
 }
 
-type Tab = "dashboard" | "stripe" | "income" | "expenses";
+type Tab = "dashboard" | "stripe" | "income" | "expenses" | "categories" | "apikeys";
+
+interface FinancialCategory {
+  id: string;
+  type: "INCOME" | "EXPENSE";
+  name: string;
+  nameEn: string;
+  namePt: string;
+  hmrcCode: string | null;
+  hmrcLabel: string | null;
+  companiesHouseSection: string | null;
+  ct600Box: string | null;
+  isTaxDeductible: boolean;
+  isDefault: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  description: string | null;
+}
+
+interface ApiKeyItem {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  permissions: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+  key?: string; // Only on creation
+}
 
 const INCOME_CATEGORIES = [
   "CONSULTATION", "TREATMENT_PACKAGE", "MEMBERSHIP", "FOOT_SCAN",
@@ -105,6 +135,24 @@ export default function FinancePage() {
   const [stripeSyncing, setStripeSyncing] = useState(false);
   const [stripeLoading, setStripeLoading] = useState(false);
 
+  // Categories state
+  const [categories, setCategories] = useState<FinancialCategory[]>([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const [showCatForm, setShowCatForm] = useState(false);
+  const [editingCat, setEditingCat] = useState<FinancialCategory | null>(null);
+  const [catForm, setCatForm] = useState({ type: "EXPENSE" as string, name: "", nameEn: "", namePt: "", hmrcCode: "", hmrcLabel: "", companiesHouseSection: "", ct600Box: "", isTaxDeductible: true, description: "", sortOrder: "50" });
+
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
+  const [apiKeysLoading, setApiKeysLoading] = useState(false);
+  const [showKeyForm, setShowKeyForm] = useState(false);
+  const [newKeyData, setNewKeyData] = useState<ApiKeyItem | null>(null);
+  const [keyForm, setKeyForm] = useState({ name: "", permissions: "finance:read", expiresAt: "" });
+
+  // OCR state
+  const [ocrProcessing, setOcrProcessing] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any>(null);
+
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<"INCOME" | "EXPENSE">("INCOME");
@@ -150,7 +198,113 @@ export default function FinancePage() {
 
   useEffect(() => {
     if (tab === "stripe") fetchStripeData();
+    if (tab === "categories") fetchCategories();
+    if (tab === "apikeys") fetchApiKeys();
   }, [tab]);
+
+  // ─── Categories ───
+  const fetchCategories = async () => {
+    setCatLoading(true);
+    try {
+      const res = await fetch("/api/admin/finance/categories?activeOnly=false");
+      setCategories(await res.json());
+    } catch {}
+    setCatLoading(false);
+  };
+
+  const saveCategory = async () => {
+    const payload: any = { ...catForm, sortOrder: parseInt(catForm.sortOrder) || 50 };
+    if (editingCat) payload.id = editingCat.id;
+    const method = editingCat ? "PATCH" : "POST";
+    await fetch("/api/admin/finance/categories", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    setShowCatForm(false);
+    setEditingCat(null);
+    setCatForm({ type: "EXPENSE", name: "", nameEn: "", namePt: "", hmrcCode: "", hmrcLabel: "", companiesHouseSection: "", ct600Box: "", isTaxDeductible: true, description: "", sortOrder: "50" });
+    fetchCategories();
+    toast({ title: T("common.success") });
+  };
+
+  const toggleCategory = async (cat: FinancialCategory) => {
+    await fetch("/api/admin/finance/categories", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cat.id, isActive: !cat.isActive }) });
+    fetchCategories();
+  };
+
+  const openEditCat = (cat: FinancialCategory) => {
+    setEditingCat(cat);
+    setCatForm({ type: cat.type, name: cat.name, nameEn: cat.nameEn, namePt: cat.namePt, hmrcCode: cat.hmrcCode || "", hmrcLabel: cat.hmrcLabel || "", companiesHouseSection: cat.companiesHouseSection || "", ct600Box: cat.ct600Box || "", isTaxDeductible: cat.isTaxDeductible, description: cat.description || "", sortOrder: String(cat.sortOrder) });
+    setShowCatForm(true);
+  };
+
+  // ─── API Keys ───
+  const fetchApiKeys = async () => {
+    setApiKeysLoading(true);
+    try {
+      const res = await fetch("/api/admin/finance/api-keys");
+      setApiKeys(await res.json());
+    } catch {}
+    setApiKeysLoading(false);
+  };
+
+  const createApiKey = async () => {
+    const res = await fetch("/api/admin/finance/api-keys", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(keyForm) });
+    const data = await res.json();
+    setNewKeyData(data);
+    setShowKeyForm(false);
+    setKeyForm({ name: "", permissions: "finance:read", expiresAt: "" });
+    fetchApiKeys();
+  };
+
+  const revokeApiKey = async (id: string) => {
+    if (!confirm(T("finance.revokeKey") + "?")) return;
+    await fetch(`/api/admin/finance/api-keys?id=${id}`, { method: "DELETE" });
+    fetchApiKeys();
+    toast({ title: T("common.success") });
+  };
+
+  // ─── OCR Upload ───
+  const handleOcrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setOcrProcessing(true);
+    setOcrResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/finance/ocr", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.error) {
+        toast({ title: "Error", description: data.error, variant: "destructive" });
+      } else {
+        setOcrResult(data);
+        // Pre-fill the form
+        const ext = data.extracted;
+        setFormType(ext.type || "EXPENSE");
+        setFormData({
+          ...formData,
+          description: ext.description || "",
+          amount: String(ext.amount || ""),
+          currency: ext.currency || "GBP",
+          supplierName: ext.supplierName || "",
+          dueDate: ext.dueDate || "",
+          paidDate: ext.invoiceDate || "",
+          status: "PENDING",
+          notes: ext.rawText ? `Invoice #${ext.invoiceNumber || "N/A"}\n${ext.categoryReason || ""}` : "",
+          expenseCategory: "OTHER_EXPENSE",
+          incomeCategory: "OTHER_INCOME",
+          paymentMethod: "",
+          patientName: "",
+          isRecurring: false,
+          recurringDay: "",
+        });
+        setShowForm(true);
+        toast({ title: T("finance.aiExtracted"), description: `${T("finance.confidence")}: ${Math.round((ext.confidence || 0) * 100)}%` });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setOcrProcessing(false);
+    e.target.value = "";
+  };
 
   const syncStripe = async () => {
     setStripeSyncing(true);
@@ -276,6 +430,8 @@ export default function FinancePage() {
     { key: "stripe", label: T("finance.stripe"), icon: CreditCard },
     { key: "income", label: T("finance.income"), icon: ArrowUpRight },
     { key: "expenses", label: T("finance.expenses"), icon: ArrowDownRight },
+    { key: "categories", label: T("finance.categories"), icon: Tag },
+    { key: "apikeys", label: T("finance.apiKeys"), icon: Key },
   ];
 
   const periodOptions = [
@@ -297,6 +453,12 @@ export default function FinancePage() {
           <p className="text-sm text-muted-foreground mt-1">{T("finance.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <label className="cursor-pointer">
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleOcrUpload} disabled={ocrProcessing} />
+            <Button variant="outline" size="sm" className="gap-1.5" asChild disabled={ocrProcessing}>
+              <span>{ocrProcessing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}{ocrProcessing ? T("finance.processing") : T("finance.uploadInvoice")}</span>
+            </Button>
+          </label>
           {periodOptions.map((p) => (
             <Button key={p.key} variant={period === p.key ? "default" : "outline"} size="sm" onClick={() => setPeriod(p.key)} className="text-xs">
               {p.label}
@@ -336,6 +498,218 @@ export default function FinancePage() {
           openAddForm={openAddForm} openEditForm={openEditForm}
           deleteEntry={deleteEntry} markPaid={markPaid} T={T}
         />
+      )}
+
+      {/* Categories Tab */}
+      {tab === "categories" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">{T("finance.manageCategories")}</h2>
+            <Button size="sm" className="gap-1.5" onClick={() => { setEditingCat(null); setCatForm({ type: "EXPENSE", name: "", nameEn: "", namePt: "", hmrcCode: "", hmrcLabel: "", companiesHouseSection: "", ct600Box: "", isTaxDeductible: true, description: "", sortOrder: "50" }); setShowCatForm(true); }}>
+              <Plus className="h-4 w-4" />{T("finance.addCategory")}
+            </Button>
+          </div>
+          {catLoading ? <LoadingState /> : (
+            <>
+              {["INCOME", "EXPENSE"].map((catType) => {
+                const filtered = categories.filter((c) => c.type === catType);
+                if (!filtered.length) return null;
+                return (
+                  <div key={catType}>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                      {catType === "INCOME" ? <ArrowUpRight className="h-4 w-4 text-emerald-600" /> : <ArrowDownRight className="h-4 w-4 text-red-600" />}
+                      {catType === "INCOME" ? T("finance.income") : T("finance.expenses")} ({filtered.length})
+                    </h3>
+                    <Card><CardContent className="p-0"><div className="divide-y">
+                      {filtered.map((cat) => (
+                        <div key={cat.id} className={`flex items-center justify-between p-3 hover:bg-muted/30 transition-colors ${!cat.isActive ? "opacity-50" : ""}`}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium">{locale === "pt-BR" ? cat.namePt : cat.nameEn}</p>
+                              {cat.isDefault && <Badge variant="outline" className="text-[9px] h-4">{T("finance.defaultCategory")}</Badge>}
+                              {cat.isTaxDeductible && <Badge variant="outline" className="text-[9px] h-4 text-emerald-600">{T("finance.taxDeductible")}</Badge>}
+                              {!cat.isActive && <Badge variant="outline" className="text-[9px] h-4 text-red-500">Inactive</Badge>}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                              {cat.hmrcCode && <span>HMRC: {cat.hmrcCode}</span>}
+                              {cat.ct600Box && <span>CT600: {cat.ct600Box}</span>}
+                              {cat.companiesHouseSection && <span>CH: {cat.companiesHouseSection}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditCat(cat)}><Edit className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="sm" className={`h-7 w-7 p-0 ${cat.isActive ? "text-amber-500" : "text-emerald-500"}`} onClick={() => toggleCategory(cat)}>
+                              {cat.isActive ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div></CardContent></Card>
+                  </div>
+                );
+              })}
+            </>
+          )}
+          {/* Category Form Modal */}
+          {showCatForm && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowCatForm(false)}>
+              <div className="bg-background rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="p-6 space-y-4">
+                  <h2 className="text-lg font-bold">{editingCat ? T("finance.editCategory") : T("finance.addCategory")}</h2>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Type</label>
+                        <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={catForm.type} onChange={(e) => setCatForm({ ...catForm, type: e.target.value })}>
+                          <option value="INCOME">{T("finance.income")}</option>
+                          <option value="EXPENSE">{T("finance.expenses")}</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Sort Order</label>
+                        <Input type="number" value={catForm.sortOrder} onChange={(e) => setCatForm({ ...catForm, sortOrder: e.target.value })} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Name (Display)</label>
+                      <Input value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-sm font-medium text-muted-foreground">English Name</label><Input value={catForm.nameEn} onChange={(e) => setCatForm({ ...catForm, nameEn: e.target.value })} /></div>
+                      <div><label className="text-sm font-medium text-muted-foreground">Portuguese Name</label><Input value={catForm.namePt} onChange={(e) => setCatForm({ ...catForm, namePt: e.target.value })} /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-sm font-medium text-muted-foreground">{T("finance.hmrcCode")}</label><Input value={catForm.hmrcCode} onChange={(e) => setCatForm({ ...catForm, hmrcCode: e.target.value })} placeholder="e.g. STAFF" /></div>
+                      <div><label className="text-sm font-medium text-muted-foreground">{T("finance.ct600Box")}</label><Input value={catForm.ct600Box} onChange={(e) => setCatForm({ ...catForm, ct600Box: e.target.value })} placeholder="e.g. Box 63" /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-sm font-medium text-muted-foreground">HMRC Label</label><Input value={catForm.hmrcLabel} onChange={(e) => setCatForm({ ...catForm, hmrcLabel: e.target.value })} /></div>
+                      <div><label className="text-sm font-medium text-muted-foreground">{T("finance.companiesHouse")}</label><Input value={catForm.companiesHouseSection} onChange={(e) => setCatForm({ ...catForm, companiesHouseSection: e.target.value })} placeholder="e.g. PL/AdminExpenses" /></div>
+                    </div>
+                    <div><label className="text-sm font-medium text-muted-foreground">{T("finance.description")}</label><textarea className="w-full min-h-[50px] rounded-md border bg-background px-3 py-2 text-sm" value={catForm.description} onChange={(e) => setCatForm({ ...catForm, description: e.target.value })} /></div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id="taxDeductible" checked={catForm.isTaxDeductible} onChange={(e) => setCatForm({ ...catForm, isTaxDeductible: e.target.checked })} />
+                      <label htmlFor="taxDeductible" className="text-sm">{T("finance.taxDeductible")}</label>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setShowCatForm(false)} className="flex-1">{T("common.cancel")}</Button>
+                    <Button onClick={saveCategory} disabled={!catForm.name || !catForm.nameEn || !catForm.namePt} className="flex-1">{T("common.save")}</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* API Keys Tab */}
+      {tab === "apikeys" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold">{T("finance.apiKeys")}</h2>
+              <p className="text-xs text-muted-foreground">{T("finance.apiKeysDesc")}</p>
+            </div>
+            <Button size="sm" className="gap-1.5" onClick={() => setShowKeyForm(true)}>
+              <Plus className="h-4 w-4" />{T("finance.createKey")}
+            </Button>
+          </div>
+
+          {/* New Key Display (shown once after creation) */}
+          {newKeyData?.key && (
+            <Card className="border-amber-300 bg-amber-50/50">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-amber-800">{T("finance.keyWarning")}</p>
+                    <div className="mt-2 flex items-center gap-2 bg-white rounded-md border p-2">
+                      <code className="text-xs flex-1 break-all font-mono">{newKeyData.key}</code>
+                      <Button variant="ghost" size="sm" className="h-7 shrink-0" onClick={() => { navigator.clipboard.writeText(newKeyData.key!); toast({ title: T("finance.copyKey") }); }}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <Button variant="ghost" size="sm" className="mt-2 text-xs" onClick={() => setNewKeyData(null)}>Dismiss</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* API Documentation */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" />{T("finance.apiDocs")}</CardTitle></CardHeader>
+            <CardContent className="text-xs space-y-2">
+              <p className="text-muted-foreground">Base URL: <code className="bg-muted px-1.5 py-0.5 rounded">https://bpr.rehab/api/external/finance</code></p>
+              <p className="text-muted-foreground">Auth Header: <code className="bg-muted px-1.5 py-0.5 rounded">X-API-Key: bpr_k_your_key_here</code></p>
+              <div className="space-y-1 mt-2">
+                <p className="font-medium">Endpoints:</p>
+                <p className="text-muted-foreground">• <code className="bg-muted px-1 py-0.5 rounded">GET ?action=summary&period=thisMonth</code> — Financial summary</p>
+                <p className="text-muted-foreground">• <code className="bg-muted px-1 py-0.5 rounded">GET ?action=entries&type=INCOME&page=1</code> — List entries</p>
+                <p className="text-muted-foreground">• <code className="bg-muted px-1 py-0.5 rounded">GET ?action=categories</code> — List categories</p>
+                <p className="text-muted-foreground">• <code className="bg-muted px-1 py-0.5 rounded">POST</code> — Create entry (requires finance:write)</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Keys List */}
+          {apiKeysLoading ? <LoadingState /> : apiKeys.length === 0 ? (
+            <Card className="border-dashed"><CardContent className="py-8 text-center">
+              <Key className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No API keys yet</p>
+            </CardContent></Card>
+          ) : (
+            <Card><CardContent className="p-0"><div className="divide-y">
+              {apiKeys.map((k) => (
+                <div key={k.id} className="flex items-center justify-between p-3 hover:bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${k.isActive ? "bg-emerald-100" : "bg-red-100"}`}>
+                      {k.isActive ? <ShieldCheck className="h-4 w-4 text-emerald-600" /> : <Shield className="h-4 w-4 text-red-500" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{k.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <code className="bg-muted px-1 rounded">{k.keyPrefix}</code>
+                        <Badge variant="outline" className="text-[9px] h-4">{k.permissions.includes("write") ? T("finance.readWrite") : T("finance.readOnly")}</Badge>
+                        {k.lastUsedAt && <span>{T("finance.lastUsed")}: {formatDate(k.lastUsedAt)}</span>}
+                        {k.expiresAt && <span>{T("finance.expires")}: {formatDate(k.expiresAt)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" className="text-red-500 text-xs" onClick={() => revokeApiKey(k.id)}>
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />{T("finance.revokeKey")}
+                  </Button>
+                </div>
+              ))}
+            </div></CardContent></Card>
+          )}
+
+          {/* Create Key Modal */}
+          {showKeyForm && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowKeyForm(false)}>
+              <div className="bg-background rounded-xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+                <div className="p-6 space-y-4">
+                  <h2 className="text-lg font-bold">{T("finance.createKey")}</h2>
+                  <div className="space-y-3">
+                    <div><label className="text-sm font-medium text-muted-foreground">{T("finance.keyName")}</label><Input value={keyForm.name} onChange={(e) => setKeyForm({ ...keyForm, name: e.target.value })} placeholder="e.g. Xero Integration" /></div>
+                    <div><label className="text-sm font-medium text-muted-foreground">{T("finance.permissions")}</label>
+                      <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={keyForm.permissions} onChange={(e) => setKeyForm({ ...keyForm, permissions: e.target.value })}>
+                        <option value="finance:read">{T("finance.readOnly")}</option>
+                        <option value="finance:read,finance:write">{T("finance.readWrite")}</option>
+                      </select>
+                    </div>
+                    <div><label className="text-sm font-medium text-muted-foreground">{T("finance.expires")} (optional)</label><Input type="date" value={keyForm.expiresAt} onChange={(e) => setKeyForm({ ...keyForm, expiresAt: e.target.value })} /></div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setShowKeyForm(false)} className="flex-1">{T("common.cancel")}</Button>
+                    <Button onClick={createApiKey} disabled={!keyForm.name} className="flex-1">{T("finance.createKey")}</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Add/Edit Form Modal */}

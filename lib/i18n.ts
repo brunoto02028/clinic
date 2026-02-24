@@ -1042,6 +1042,42 @@ const translations: Record<string, Record<Locale, string>> = {
   "finance.method.OTHER": { "en-GB": "Other", "pt-BR": "Outro" },
   "finance.exportPdf": { "en-GB": "Export PDF", "pt-BR": "Exportar PDF" },
   "finance.exportCsv": { "en-GB": "Export CSV", "pt-BR": "Exportar CSV" },
+
+  // ─── Finance: OCR & AI ───
+  "finance.uploadInvoice": { "en-GB": "Upload Invoice", "pt-BR": "Enviar Nota Fiscal" },
+  "finance.uploadDesc": { "en-GB": "Upload a PDF or image of an invoice/receipt for automatic extraction", "pt-BR": "Envie um PDF ou imagem de uma nota fiscal/recibo para extração automática" },
+  "finance.processing": { "en-GB": "Processing document...", "pt-BR": "Processando documento..." },
+  "finance.aiExtracted": { "en-GB": "AI Extracted Data", "pt-BR": "Dados Extraídos pela IA" },
+  "finance.confidence": { "en-GB": "Confidence", "pt-BR": "Confiança" },
+  "finance.categoryReason": { "en-GB": "Category Reason", "pt-BR": "Motivo da Categoria" },
+  "finance.acceptAndSave": { "en-GB": "Accept & Save", "pt-BR": "Aceitar e Salvar" },
+
+  // ─── Finance: Categories ───
+  "finance.categories": { "en-GB": "Categories", "pt-BR": "Categorias" },
+  "finance.manageCategories": { "en-GB": "Manage Categories", "pt-BR": "Gerenciar Categorias" },
+  "finance.addCategory": { "en-GB": "Add Category", "pt-BR": "Adicionar Categoria" },
+  "finance.editCategory": { "en-GB": "Edit Category", "pt-BR": "Editar Categoria" },
+  "finance.hmrcCode": { "en-GB": "HMRC Code", "pt-BR": "Código HMRC" },
+  "finance.ct600Box": { "en-GB": "CT600 Box", "pt-BR": "Box CT600" },
+  "finance.companiesHouse": { "en-GB": "Companies House Section", "pt-BR": "Seção Companies House" },
+  "finance.taxDeductible": { "en-GB": "Tax Deductible", "pt-BR": "Dedutível de Impostos" },
+  "finance.defaultCategory": { "en-GB": "Default", "pt-BR": "Padrão" },
+
+  // ─── Finance: API Keys ───
+  "finance.apiKeys": { "en-GB": "API Keys", "pt-BR": "Chaves de API" },
+  "finance.apiKeysDesc": { "en-GB": "Generate API keys to integrate with external financial systems", "pt-BR": "Gere chaves de API para integrar com sistemas financeiros externos" },
+  "finance.createKey": { "en-GB": "Create API Key", "pt-BR": "Criar Chave de API" },
+  "finance.keyName": { "en-GB": "Key Name", "pt-BR": "Nome da Chave" },
+  "finance.permissions": { "en-GB": "Permissions", "pt-BR": "Permissões" },
+  "finance.lastUsed": { "en-GB": "Last Used", "pt-BR": "Último Uso" },
+  "finance.expires": { "en-GB": "Expires", "pt-BR": "Expira" },
+  "finance.never": { "en-GB": "Never", "pt-BR": "Nunca" },
+  "finance.copyKey": { "en-GB": "Copy Key", "pt-BR": "Copiar Chave" },
+  "finance.keyWarning": { "en-GB": "Copy this key now. It won't be shown again!", "pt-BR": "Copie esta chave agora. Ela não será exibida novamente!" },
+  "finance.revokeKey": { "en-GB": "Revoke Key", "pt-BR": "Revogar Chave" },
+  "finance.apiDocs": { "en-GB": "API Documentation", "pt-BR": "Documentação da API" },
+  "finance.readOnly": { "en-GB": "Read Only", "pt-BR": "Somente Leitura" },
+  "finance.readWrite": { "en-GB": "Read & Write", "pt-BR": "Leitura e Escrita" },
 };
 
 // Default locale
