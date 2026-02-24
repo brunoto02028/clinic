@@ -7,7 +7,7 @@ import {
   CheckCircle, XCircle, Search, FileText, Download, Edit, MoreVertical,
   Wallet, Receipt, PiggyBank, BarChart3, Calendar, Upload, Key, Tag,
   Copy, Shield, ShieldCheck, Eye, EyeOff, Sparkles, Building2, Save,
-  Wand2, Loader2, ExternalLink, SearchCheck, MessageCircle, Send, Bot,
+  Wand2, Loader2, ExternalLink, SearchCheck, MessageCircle, Send, Bot, Link2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -880,6 +880,17 @@ export default function FinancePage() {
                   <Button variant="outline" onClick={() => setShowChSearch(!showChSearch)} className="gap-1.5 text-xs" disabled={!!chFetchingNumber}>
                     {chFetchingNumber ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
                     Search Companies House
+                  </Button>
+                  <Button variant="outline" onClick={async () => {
+                    try {
+                      const res = await fetch("/api/government/companies-house/oauth");
+                      const data = await res.json();
+                      if (data.error) { toast({ title: "OAuth", description: data.error, variant: "destructive" }); return; }
+                      window.open(data.authUrl, "_blank");
+                    } catch (err: any) { toast({ title: "Error", description: err.message, variant: "destructive" }); }
+                  }} className="gap-1.5 text-xs">
+                    <Link2 className="h-3.5 w-3.5" />
+                    Connect CH OAuth
                   </Button>
                   <Button variant="outline" onClick={() => setShowAiChat(!showAiChat)} className="gap-1.5 text-xs">
                     <MessageCircle className="h-3.5 w-3.5" />

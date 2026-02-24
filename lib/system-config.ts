@@ -254,8 +254,29 @@ export const DEFAULT_CONFIGS = [
   {
     key: "COMPANIES_HOUSE_API_KEY",
     label: "Companies House API Key",
-    description: "Free API key from developer.company-information.service.gov.uk. Used to search and fetch company data.",
+    description: "REST API key from developer.company-information.service.gov.uk. Used to search and fetch company data.",
     category: "integration",
     isSecret: true,
+  },
+  {
+    key: "COMPANIES_HOUSE_OAUTH_CLIENT_ID",
+    label: "Companies House OAuth Client ID",
+    description: "OAuth 2.0 Client ID for Companies House filing and identity APIs.",
+    category: "integration",
+    isSecret: false,
+  },
+  {
+    key: "COMPANIES_HOUSE_OAUTH_CLIENT_SECRET",
+    label: "Companies House OAuth Client Secret",
+    description: "OAuth 2.0 Client Secret for Companies House.",
+    category: "integration",
+    isSecret: true,
+  },
+  {
+    key: "COMPANIES_HOUSE_OAUTH_REDIRECT_URI",
+    label: "Companies House OAuth Redirect URI",
+    description: "Callback URL for Companies House OAuth flow (e.g. https://bpr.rehab/api/government/callback/companies-house).",
+    category: "integration",
+    isSecret: false,
   },
 ];
