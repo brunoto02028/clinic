@@ -237,6 +237,7 @@ model Clinic {
   patientQuizAttempts   PatientQuizAttempt[]
   servicePages          ServicePage[]
   commandMemories       CommandMemory[]
+  financialEntries      FinancialEntry[]
   
   @@index([slug])
   @@index([isActive])
@@ -3221,4 +3222,110 @@ model ServicePage {
   @@index([clinicId])
   @@index([slug])
   @@index([published, sortOrder])
+}
+
+// ============================================
+// FINANCIAL ENTRY (Income & Expenses)
+// ============================================
+
+enum FinancialEntryType {
+  INCOME
+  EXPENSE
+}
+
+enum FinancialEntryStatus {
+  PAID
+  PENDING
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethodType {
+  STRIPE
+  CASH
+  PIX
+  BANK_TRANSFER
+  CARD
+  CHEQUE
+  OTHER
+}
+
+enum IncomeCategory {
+  CONSULTATION
+  TREATMENT_PACKAGE
+  MEMBERSHIP
+  FOOT_SCAN
+  BODY_ASSESSMENT
+  PRODUCT_SALE
+  OTHER_INCOME
+}
+
+enum ExpenseCategory {
+  RENT
+  EQUIPMENT
+  SALARIES
+  MATERIALS
+  SOFTWARE
+  MARKETING
+  INSURANCE
+  UTILITIES
+  TAXES
+  PROFESSIONAL_FEES
+  MAINTENANCE
+  OTHER_EXPENSE
+}
+
+model FinancialEntry {
+  id              String               @id @default(cuid())
+  clinicId        String
+  clinic          Clinic               @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  type            FinancialEntryType   // INCOME or EXPENSE
+  status          FinancialEntryStatus @default(PENDING)
+
+  // Details
+  description     String
+  notes           String?              @db.Text
+  amount          Float                // Always positive; type determines income/expense
+  currency        String               @default("GBP")
+
+  // Categorisation
+  incomeCategory  IncomeCategory?      // Only for INCOME
+  expenseCategory ExpenseCategory?     // Only for EXPENSE
+
+  // Dates
+  dueDate         DateTime?            // When payment is due
+  paidDate        DateTime?            // When actually paid
+
+  // Payment
+  paymentMethod   PaymentMethodType?
+
+  // Stripe link (auto-imported from Stripe)
+  stripePaymentIntentId String?        @unique
+  stripeInvoiceId       String?
+  stripeChargeId        String?
+
+  // Patient link (for income entries)
+  patientId       String?
+  patientName     String?              // Denormalized for display
+
+  // Supplier (for expense entries)
+  supplierName    String?
+
+  // Recurring
+  isRecurring     Boolean              @default(false)
+  recurringDay    Int?                 // Day of month (1-31) for recurring entries
+
+  // Attachments (receipt/invoice PDF URL)
+  attachmentUrl   String?
+
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([clinicId])
+  @@index([type])
+  @@index([status])
+  @@index([dueDate])
+  @@index([paidDate])
+  @@index([clinicId, type, paidDate])
 }

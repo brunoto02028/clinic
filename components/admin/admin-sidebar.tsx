@@ -54,6 +54,7 @@ import {
   Target,
   Award,
   Globe,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Email Templates", i18nKey: "nav.emailTemplates", href: "/admin/email-templates", icon: MailOpen },
       { name: "Email Marketing", href: "/admin/email-marketing", icon: Send },
       { name: "Media Library", i18nKey: "nav.mediaLibrary", href: "/admin/media", icon: ImageIcon },
+      { name: "Finance", i18nKey: "nav.finance", href: "/admin/finance", icon: DollarSign },
       { name: "Service Pricing", href: "/admin/service-pricing", icon: CreditCard, requiredPermission: "canManageOrders" },
       { name: "Stripe Branding", href: "/admin/stripe-branding", icon: Palette, requiredPermission: "canManageSettings" },
       { name: "Cancellations", href: "/admin/cancellations", icon: XCircle, requiredPermission: "canManageAppointments" },
