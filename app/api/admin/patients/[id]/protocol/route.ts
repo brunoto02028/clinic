@@ -331,6 +331,54 @@ export async function PATCH(
       },
     });
 
+    // Notify patient when treatment is completed
+    if (status === "COMPLETED") {
+      try {
+        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+        const patientId = params.id;
+
+        // Send treatment completed notification
+        notifyPatient({
+          patientId,
+          emailTemplateSlug: 'TREATMENT_COMPLETED',
+          emailVars: {
+            protocolTitle: updated.title || 'Treatment Plan',
+            portalUrl: `${BASE}/dashboard/treatment`,
+          },
+          plainMessage: `Congratulations! Your treatment plan "${updated.title || 'Treatment Plan'}" is now complete. Log in to see your results.`,
+        }).catch(err => console.error('[protocol] TREATMENT_COMPLETED notify error:', err));
+
+        // Send membership offer (post-treatment upsell) after a small delay
+        setTimeout(() => {
+          notifyPatient({
+            patientId,
+            emailTemplateSlug: 'MEMBERSHIP_OFFER',
+            emailVars: {
+              portalUrl: `${BASE}/dashboard/membership`,
+            },
+            plainMessage: 'Now that your treatment is complete, stay connected with a membership plan for ongoing support and exclusive benefits!',
+          }).catch(err => console.error('[protocol] MEMBERSHIP_OFFER notify error:', err));
+        }, 5000);
+      } catch {}
+    }
+
+    // Notify patient when protocol is sent to them
+    if (status === "SENT_TO_PATIENT") {
+      try {
+        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+        notifyPatient({
+          patientId: params.id,
+          emailTemplateSlug: 'TREATMENT_PROTOCOL',
+          emailVars: {
+            protocolTitle: updated.title || 'Treatment Protocol',
+            therapistName: updated.therapist ? `${updated.therapist.firstName} ${updated.therapist.lastName}` : 'Your therapist',
+            portalUrl: `${BASE}/dashboard/treatment`,
+          },
+          plainMessage: `Your treatment protocol "${updated.title}" has been shared with you. Log in to your portal to review it.`,
+        }).catch(err => console.error('[protocol] TREATMENT_PROTOCOL notify error:', err));
+      } catch {}
+    }
+
     return NextResponse.json({ success: true, protocol: updated });
   } catch (err: any) {
     console.error("[protocol] PATCH error:", err);
