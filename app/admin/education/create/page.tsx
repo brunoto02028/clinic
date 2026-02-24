@@ -63,6 +63,7 @@ function CreateContentForm() {
   const [aiPreview, setAiPreview] = useState<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [speechLang, setSpeechLang] = useState<"en" | "pt">("en");
   const recognitionRef = useRef<any>(null);
 
   // Send to patients
@@ -117,51 +118,70 @@ function CreateContentForm() {
 
   // ─── Voice Recording (Web Speech API) ───
   const startRecording = useCallback(() => {
+    // Stop any previous instance first
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch {}
+      recognitionRef.current = null;
+    }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setError("Speech recognition not supported in this browser. Use Chrome or Edge.");
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "pt-BR";
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = speechLang === "pt" ? "pt-BR" : "en-US";
 
-    let finalTranscript = "";
+      let finalTranscript = "";
 
-    recognition.onresult = (event: any) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += t + " ";
-        } else {
-          interim = t;
+      recognition.onresult = (event: any) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += t + " ";
+          } else {
+            interim = t;
+          }
         }
-      }
-      setTranscript(finalTranscript + interim);
-      setAiInput(finalTranscript + interim);
-    };
+        setTranscript(finalTranscript + interim);
+        setAiInput(finalTranscript + interim);
+      };
 
-    recognition.onerror = (event: any) => {
-      console.error("[speech] Error:", event.error);
+      recognition.onerror = (event: any) => {
+        console.error("[speech] Error:", event.error);
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          setError("Microphone access denied. Please allow microphone permissions in your browser settings.");
+        } else if (event.error === "no-speech") {
+          // Ignore no-speech, just stop
+        } else {
+          setError(`Speech error: ${event.error}`);
+        }
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      setIsRecording(true);
+      setTranscript("");
+    } catch (err: any) {
+      setError(`Could not start speech recognition: ${err.message}`);
       setIsRecording(false);
-    };
-
-    recognition.onend = () => {
-      setIsRecording(false);
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsRecording(true);
-    setTranscript("");
-  }, []);
+    }
+  }, [speechLang]);
 
   const stopRecording = useCallback(() => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
       setIsRecording(false);
     }
   }, []);
@@ -180,7 +200,7 @@ function CreateContentForm() {
         body: JSON.stringify({
           transcript: input,
           contentType,
-          language: "pt",
+          language: "en",
         }),
       });
       const data = await res.json();
@@ -346,6 +366,34 @@ function CreateContentForm() {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Language Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Speak in:</span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setSpeechLang("en")}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    speechLang === "en"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  EN English
+                </button>
+                <button
+                  onClick={() => setSpeechLang("pt")}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    speechLang === "pt"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  PT Portugu\u00eas
+                </button>
+              </div>
+              <span className="text-xs text-muted-foreground ml-2">Content will be generated in English</span>
+            </div>
+
             {/* Voice + Text Input */}
             <div className="flex gap-2">
               <div className="flex-1 relative">

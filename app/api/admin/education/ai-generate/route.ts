@@ -34,13 +34,13 @@ export async function POST(req: NextRequest) {
       ? categories.map(c => `- "${c.name}" (id: ${c.id})${c.description ? ` — ${c.description}` : ""}`).join("\n")
       : "No categories exist yet.";
 
-    const lang = language === "pt" ? "Portuguese (Brazil)" : "English";
-
+    // Always generate in English — site i18n handles translations
     const systemPrompt = `You are an AI assistant for a physiotherapy clinic called Bruno Physical Rehabilitation (BPR).
 Your job is to generate educational content for patients based on the therapist's spoken or typed instructions.
+The therapist may speak in English or Portuguese — understand both, but ALWAYS write the output content in English.
 
 IMPORTANT RULES:
-- Write in ${lang}
+- ALWAYS write in English regardless of the input language
 - Content must be professional, evidence-based, and patient-friendly
 - Use clear, simple language patients can understand
 - Include practical advice and actionable steps
