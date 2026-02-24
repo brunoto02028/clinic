@@ -1147,13 +1147,23 @@ export default function FinancePage() {
                 </CardContent>
               </Card>
 
-              {/* API Documentation for company data */}
+              {/* API Documentation for external system */}
               <Card className="border-dashed">
-                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> External API Access</CardTitle></CardHeader>
-                <CardContent className="text-xs space-y-1">
-                  <p className="text-muted-foreground">Your accounting software can pull this company data via the Finance API:</p>
-                  <p className="text-muted-foreground"><code className="bg-muted px-1.5 py-0.5 rounded">GET /api/external/finance?action=company</code> — Returns full company profile</p>
-                  <p className="text-muted-foreground">Auth: <code className="bg-muted px-1.5 py-0.5 rounded">X-API-Key: bpr_k_your_key</code></p>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><Key className="h-4 w-4" /> External Finance API</CardTitle></CardHeader>
+                <CardContent className="text-xs space-y-2">
+                  <p className="text-muted-foreground font-medium">Your external financial system can pull ALL data via these endpoints:</p>
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 font-mono">
+                    <p className="text-muted-foreground"><span className="text-emerald-600 font-semibold">GET</span> ?action=<strong>all</strong> — Complete sync (clinic + company + summary + breakdown + categories + entries)</p>
+                    <p className="text-muted-foreground"><span className="text-emerald-600 font-semibold">GET</span> ?action=<strong>clinic</strong> — Clinic info (name, address, contact, currency)</p>
+                    <p className="text-muted-foreground"><span className="text-emerald-600 font-semibold">GET</span> ?action=<strong>company</strong> — Full company profile (CH, HMRC, banking, insurance)</p>
+                    <p className="text-muted-foreground"><span className="text-emerald-600 font-semibold">GET</span> ?action=<strong>summary</strong>&period=thisYear — Financial totals</p>
+                    <p className="text-muted-foreground"><span className="text-emerald-600 font-semibold">GET</span> ?action=<strong>breakdown</strong>&period=thisYear — Income/expense by category + HMRC codes</p>
+                    <p className="text-muted-foreground"><span className="text-emerald-600 font-semibold">GET</span> ?action=<strong>entries</strong>&dateBy=paidDate&type=INCOME — Paginated entries with category details</p>
+                    <p className="text-muted-foreground"><span className="text-emerald-600 font-semibold">GET</span> ?action=<strong>categories</strong> — Categories with HMRC/CT600 mapping</p>
+                    <p className="text-muted-foreground"><span className="text-blue-600 font-semibold">POST</span> — Create entries (requires finance:write permission)</p>
+                  </div>
+                  <p className="text-muted-foreground">Base: <code className="bg-muted px-1.5 py-0.5 rounded">/api/external/finance</code> &bull; Auth: <code className="bg-muted px-1.5 py-0.5 rounded">X-API-Key: bpr_k_your_key</code></p>
+                  <p className="text-muted-foreground">Periods: <code className="bg-muted px-1 py-0.5 rounded">thisMonth</code> <code className="bg-muted px-1 py-0.5 rounded">lastMonth</code> <code className="bg-muted px-1 py-0.5 rounded">thisYear</code> <code className="bg-muted px-1 py-0.5 rounded">lastYear</code> <code className="bg-muted px-1 py-0.5 rounded">all</code> or custom: <code className="bg-muted px-1 py-0.5 rounded">from=2025-01-01&to=2025-12-31</code></p>
                 </CardContent>
               </Card>
 

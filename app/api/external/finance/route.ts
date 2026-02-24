@@ -33,6 +33,118 @@ async function authenticateApiKey(req: NextRequest): Promise<{ clinicId: string;
   };
 }
 
+// ─── Date range builder ───
+function buildDateRange(period: string) {
+  const now = new Date();
+  let dateFrom: Date | undefined;
+  let dateTo: Date | undefined;
+
+  if (period === "thisMonth") {
+    dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+    dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  } else if (period === "lastMonth") {
+    dateFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    dateTo = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+  } else if (period === "thisYear") {
+    dateFrom = new Date(now.getFullYear(), 0, 1);
+    dateTo = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+  } else if (period === "lastYear") {
+    dateFrom = new Date(now.getFullYear() - 1, 0, 1);
+    dateTo = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
+  } else if (period === "all") {
+    // No date filter
+  }
+  // Custom: from=YYYY-MM-DD&to=YYYY-MM-DD handled separately
+  return { dateFrom, dateTo };
+}
+
+// ─── Reusable: fetch summary ───
+async function fetchSummary(clinicId: string, dateFrom?: Date, dateTo?: Date) {
+  const w: any = { clinicId };
+  if (dateFrom && dateTo) w.paidDate = { gte: dateFrom, lte: dateTo };
+
+  const [incomeAgg, expenseAgg, pendingIncome, pendingExpense, overdueExpense, totalEntries] = await Promise.all([
+    prisma.financialEntry.aggregate({ where: { ...w, type: "INCOME", status: "PAID" }, _sum: { amount: true }, _count: true }),
+    prisma.financialEntry.aggregate({ where: { ...w, type: "EXPENSE", status: "PAID" }, _sum: { amount: true }, _count: true }),
+    prisma.financialEntry.aggregate({ where: { clinicId, type: "INCOME", status: "PENDING" }, _sum: { amount: true }, _count: true }),
+    prisma.financialEntry.aggregate({ where: { clinicId, type: "EXPENSE", status: "PENDING" }, _sum: { amount: true }, _count: true }),
+    prisma.financialEntry.aggregate({ where: { clinicId, type: "EXPENSE", status: "OVERDUE" }, _sum: { amount: true }, _count: true }),
+    prisma.financialEntry.count({ where: { clinicId } }),
+  ]);
+
+  const totalIncome = incomeAgg._sum.amount || 0;
+  const totalExpenses = expenseAgg._sum.amount || 0;
+
+  return {
+    totalIncome,
+    totalExpenses,
+    netProfit: totalIncome - totalExpenses,
+    paidIncomeCount: incomeAgg._count || 0,
+    paidExpenseCount: expenseAgg._count || 0,
+    pendingIncome: pendingIncome._sum.amount || 0,
+    pendingIncomeCount: pendingIncome._count || 0,
+    pendingExpenses: pendingExpense._sum.amount || 0,
+    pendingExpenseCount: pendingExpense._count || 0,
+    overdueExpenses: overdueExpense._sum.amount || 0,
+    overdueExpenseCount: overdueExpense._count || 0,
+    totalEntries,
+  };
+}
+
+// ─── Reusable: fetch breakdown by category ───
+async function fetchBreakdown(clinicId: string, dateFrom?: Date, dateTo?: Date) {
+  const w: any = { clinicId, status: "PAID" };
+  if (dateFrom && dateTo) w.paidDate = { gte: dateFrom, lte: dateTo };
+
+  // Income breakdown by incomeCategory
+  const incomeEntries = await prisma.financialEntry.findMany({
+    where: { ...w, type: "INCOME" },
+    select: { amount: true, incomeCategory: true, categoryId: true },
+  });
+
+  const expenseEntries = await prisma.financialEntry.findMany({
+    where: { ...w, type: "EXPENSE" },
+    select: { amount: true, expenseCategory: true, categoryId: true },
+  });
+
+  // Load custom categories for HMRC mapping
+  const customCats = await prisma.financialCategory.findMany({
+    where: { clinicId, isActive: true },
+  });
+  const catMap = new Map(customCats.map((c) => [c.id, c]));
+
+  // Group income by category
+  const incomeByCategory: Record<string, { total: number; count: number; hmrcCode?: string; ct600Box?: string }> = {};
+  for (const e of incomeEntries) {
+    const cat = e.incomeCategory || "OTHER_INCOME";
+    if (!incomeByCategory[cat]) incomeByCategory[cat] = { total: 0, count: 0 };
+    incomeByCategory[cat].total += e.amount;
+    incomeByCategory[cat].count++;
+    // Add HMRC mapping from custom category if available
+    if (e.categoryId && catMap.has(e.categoryId)) {
+      const cc = catMap.get(e.categoryId)!;
+      incomeByCategory[cat].hmrcCode = cc.hmrcCode || undefined;
+      incomeByCategory[cat].ct600Box = cc.ct600Box || undefined;
+    }
+  }
+
+  // Group expenses by category
+  const expenseByCategory: Record<string, { total: number; count: number; hmrcCode?: string; ct600Box?: string }> = {};
+  for (const e of expenseEntries) {
+    const cat = e.expenseCategory || "OTHER_EXPENSE";
+    if (!expenseByCategory[cat]) expenseByCategory[cat] = { total: 0, count: 0 };
+    expenseByCategory[cat].total += e.amount;
+    expenseByCategory[cat].count++;
+    if (e.categoryId && catMap.has(e.categoryId)) {
+      const cc = catMap.get(e.categoryId)!;
+      expenseByCategory[cat].hmrcCode = cc.hmrcCode || undefined;
+      expenseByCategory[cat].ct600Box = cc.ct600Box || undefined;
+    }
+  }
+
+  return { incomeByCategory, expenseByCategory };
+}
+
 // GET — external read of financial data
 export async function GET(req: NextRequest) {
   const auth = await authenticateApiKey(req);
@@ -52,69 +164,68 @@ export async function GET(req: NextRequest) {
   const period = url.searchParams.get("period") || "thisMonth";
   const type = url.searchParams.get("type"); // INCOME | EXPENSE
   const status = url.searchParams.get("status");
+  const dateBy = url.searchParams.get("dateBy") || "paidDate"; // paidDate | dueDate | createdAt
   const page = parseInt(url.searchParams.get("page") || "1");
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "100"), 500);
 
   // Build date range
-  const now = new Date();
-  let dateFrom: Date | undefined;
-  let dateTo: Date | undefined;
+  let { dateFrom, dateTo } = buildDateRange(period);
 
-  if (period === "thisMonth") {
-    dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-    dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-  } else if (period === "lastMonth") {
-    dateFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    dateTo = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-  } else if (period === "thisYear") {
-    dateFrom = new Date(now.getFullYear(), 0, 1);
-    dateTo = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
-  }
+  // Custom date range override
+  const customFrom = url.searchParams.get("from");
+  const customTo = url.searchParams.get("to");
+  if (customFrom) dateFrom = new Date(customFrom + "T00:00:00Z");
+  if (customTo) dateTo = new Date(customTo + "T23:59:59Z");
 
+  // ═══════════════════════════════════════════
+  // ACTION: summary — financial totals
+  // ═══════════════════════════════════════════
   if (action === "summary") {
-    const summaryWhere: any = { clinicId: auth.clinicId };
-    if (dateFrom && dateTo) summaryWhere.createdAt = { gte: dateFrom, lte: dateTo };
-
-    const [incomeAgg, expenseAgg, pendingIncome, pendingExpense, overdueExpense] = await Promise.all([
-      prisma.financialEntry.aggregate({ where: { ...summaryWhere, type: "INCOME", status: "PAID" }, _sum: { amount: true } }),
-      prisma.financialEntry.aggregate({ where: { ...summaryWhere, type: "EXPENSE", status: "PAID" }, _sum: { amount: true } }),
-      prisma.financialEntry.aggregate({ where: { ...summaryWhere, type: "INCOME", status: "PENDING" }, _sum: { amount: true } }),
-      prisma.financialEntry.aggregate({ where: { ...summaryWhere, type: "EXPENSE", status: "PENDING" }, _sum: { amount: true } }),
-      prisma.financialEntry.aggregate({ where: { ...summaryWhere, type: "EXPENSE", status: "OVERDUE" }, _sum: { amount: true } }),
-    ]);
-
-    const totalIncome = incomeAgg._sum.amount || 0;
-    const totalExpenses = expenseAgg._sum.amount || 0;
-
-    return NextResponse.json({
-      period,
-      summary: {
-        totalIncome,
-        totalExpenses,
-        netProfit: totalIncome - totalExpenses,
-        pendingIncome: pendingIncome._sum.amount || 0,
-        pendingExpenses: pendingExpense._sum.amount || 0,
-        overdueExpenses: overdueExpense._sum.amount || 0,
-      },
-      generatedAt: new Date().toISOString(),
-    });
+    const summary = await fetchSummary(auth.clinicId, dateFrom, dateTo);
+    return NextResponse.json({ period, summary, generatedAt: new Date().toISOString() });
   }
 
+  // ═══════════════════════════════════════════
+  // ACTION: entries — paginated financial entries with category details
+  // ═══════════════════════════════════════════
   if (action === "entries") {
     const where: any = { clinicId: auth.clinicId };
     if (type) where.type = type;
     if (status) where.status = status;
-    if (dateFrom && dateTo) where.createdAt = { gte: dateFrom, lte: dateTo };
+    if (dateFrom && dateTo) where[dateBy] = { gte: dateFrom, lte: dateTo };
 
-    const [entries, total] = await Promise.all([
+    const [rawEntries, total] = await Promise.all([
       prisma.financialEntry.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: { [dateBy]: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
       prisma.financialEntry.count({ where }),
     ]);
+
+    // Enrich entries with custom category HMRC details
+    const categoryIds = rawEntries.map((e) => e.categoryId).filter(Boolean) as string[];
+    const categories = categoryIds.length > 0
+      ? await prisma.financialCategory.findMany({ where: { id: { in: categoryIds } } })
+      : [];
+    const catMap = new Map(categories.map((c) => [c.id, c]));
+
+    const entries = rawEntries.map((e) => {
+      const cat = e.categoryId ? catMap.get(e.categoryId) : null;
+      return {
+        ...e,
+        categoryDetails: cat ? {
+          name: cat.name,
+          nameEn: cat.nameEn,
+          hmrcCode: cat.hmrcCode,
+          hmrcLabel: cat.hmrcLabel,
+          ct600Box: cat.ct600Box,
+          companiesHouseSection: (cat as any).companiesHouseSection,
+          isTaxDeductible: cat.isTaxDeductible,
+        } : null,
+      };
+    });
 
     return NextResponse.json({
       entries,
@@ -126,6 +237,17 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // ═══════════════════════════════════════════
+  // ACTION: breakdown — income/expense grouped by category with HMRC codes
+  // ═══════════════════════════════════════════
+  if (action === "breakdown") {
+    const breakdown = await fetchBreakdown(auth.clinicId, dateFrom, dateTo);
+    return NextResponse.json({ period, breakdown, generatedAt: new Date().toISOString() });
+  }
+
+  // ═══════════════════════════════════════════
+  // ACTION: categories — all financial categories with HMRC mapping
+  // ═══════════════════════════════════════════
   if (action === "categories") {
     const categories = await prisma.financialCategory.findMany({
       where: { clinicId: auth.clinicId, isActive: true },
@@ -134,6 +256,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ categories, generatedAt: new Date().toISOString() });
   }
 
+  // ═══════════════════════════════════════════
+  // ACTION: company — full company profile (Companies House, HMRC, banking, etc.)
+  // ═══════════════════════════════════════════
   if (action === "company") {
     const profile = await (prisma as any).companyProfile.findUnique({
       where: { clinicId: auth.clinicId },
@@ -141,15 +266,95 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ company: profile || null, generatedAt: new Date().toISOString() });
   }
 
+  // ═══════════════════════════════════════════
+  // ACTION: clinic — basic clinic information
+  // ═══════════════════════════════════════════
+  if (action === "clinic") {
+    const clinic = await prisma.clinic.findUnique({
+      where: { id: auth.clinicId },
+      select: {
+        id: true, name: true, slug: true,
+        email: true, phone: true,
+        address: true, city: true, postcode: true, country: true,
+        currency: true, timezone: true,
+        logoUrl: true, primaryColor: true, secondaryColor: true,
+        stripeAccountId: true, stripeOnboarded: true,
+        isActive: true, createdAt: true,
+      },
+    });
+    return NextResponse.json({ clinic: clinic || null, generatedAt: new Date().toISOString() });
+  }
+
+  // ═══════════════════════════════════════════
+  // ACTION: all — complete data package for full sync
+  // Combines: clinic + company + summary + breakdown + categories + recent entries
+  // ═══════════════════════════════════════════
+  if (action === "all") {
+    const [clinic, company, summary, breakdown, categories, recentEntries, totalEntries] = await Promise.all([
+      prisma.clinic.findUnique({
+        where: { id: auth.clinicId },
+        select: {
+          id: true, name: true, slug: true,
+          email: true, phone: true,
+          address: true, city: true, postcode: true, country: true,
+          currency: true, timezone: true,
+          logoUrl: true, primaryColor: true, secondaryColor: true,
+          stripeAccountId: true, stripeOnboarded: true,
+          isActive: true, createdAt: true,
+        },
+      }),
+      (prisma as any).companyProfile.findUnique({ where: { clinicId: auth.clinicId } }),
+      fetchSummary(auth.clinicId, dateFrom, dateTo),
+      fetchBreakdown(auth.clinicId, dateFrom, dateTo),
+      prisma.financialCategory.findMany({
+        where: { clinicId: auth.clinicId, isActive: true },
+        orderBy: [{ type: "asc" }, { sortOrder: "asc" }],
+      }),
+      prisma.financialEntry.findMany({
+        where: { clinicId: auth.clinicId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      }),
+      prisma.financialEntry.count({ where: { clinicId: auth.clinicId } }),
+    ]);
+
+    return NextResponse.json({
+      period,
+      clinic: clinic || null,
+      company: company || null,
+      summary,
+      breakdown,
+      categories,
+      recentEntries,
+      totalEntries,
+      generatedAt: new Date().toISOString(),
+    });
+  }
+
   return NextResponse.json({
-    error: "Unknown action",
-    availableActions: ["summary", "entries", "categories", "company"],
+    error: "Unknown action. See 'availableActions' below.",
+    availableActions: ["summary", "entries", "breakdown", "categories", "company", "clinic", "all"],
     usage: {
-      summary: "GET /api/external/finance?action=summary&period=thisMonth",
-      entries: "GET /api/external/finance?action=entries&type=INCOME&status=PAID&page=1&limit=50",
-      categories: "GET /api/external/finance?action=categories",
-      company: "GET /api/external/finance?action=company",
+      summary: "GET ?action=summary&period=thisMonth",
+      entries: "GET ?action=entries&type=INCOME&status=PAID&dateBy=paidDate&page=1&limit=50",
+      breakdown: "GET ?action=breakdown&period=thisYear",
+      categories: "GET ?action=categories",
+      company: "GET ?action=company",
+      clinic: "GET ?action=clinic",
+      all: "GET ?action=all&period=thisYear",
     },
+    parameters: {
+      period: "thisMonth | lastMonth | thisYear | lastYear | all (or use from/to for custom)",
+      from: "Custom start date: YYYY-MM-DD",
+      to: "Custom end date: YYYY-MM-DD",
+      type: "INCOME | EXPENSE (entries only)",
+      status: "PAID | PENDING | OVERDUE | CANCELLED (entries only)",
+      dateBy: "paidDate | dueDate | createdAt (entries only, default: paidDate)",
+      page: "Page number (entries only, default: 1)",
+      limit: "Items per page (entries only, max: 500, default: 100)",
+    },
+    auth: "Header: X-API-Key: bpr_k_your_key",
+    baseUrl: "/api/external/finance",
   }, { status: 400 });
 }
 
