@@ -871,6 +871,97 @@ const translations: Record<string, Record<Locale, string>> = {
   "common.close": { "en-GB": "Close", "pt-BR": "Fechar" },
   "common.confirm": { "en-GB": "Confirm", "pt-BR": "Confirmar" },
   "common.done": { "en-GB": "Done", "pt-BR": "Concluído" },
+  "common.next": { "en-GB": "Next", "pt-BR": "Próximo" },
+  "common.startQuiz": { "en-GB": "Start Quiz", "pt-BR": "Iniciar Quiz" },
+  "common.getStarted": { "en-GB": "Get Started", "pt-BR": "Começar" },
+  "common.howItWorks": { "en-GB": "How it works", "pt-BR": "Como funciona" },
+  "common.contactClinic": { "en-GB": "Contact Clinic", "pt-BR": "Contatar Clínica" },
+
+  // ─── Plans & Services Page ───
+  "plans.title": { "en-GB": "Plans & Services", "pt-BR": "Planos e Serviços" },
+  "plans.subtitle": { "en-GB": "Choose a service to get started with your personalised care", "pt-BR": "Escolha um serviço para iniciar seu cuidado personalizado" },
+  "plans.noPlans": { "en-GB": "No Plans Available", "pt-BR": "Nenhum Plano Disponível" },
+  "plans.noPlansDesc": { "en-GB": "Service plans have not been configured yet. Please contact the clinic for more information.", "pt-BR": "Os planos de serviço ainda não foram configurados. Entre em contato com a clínica para mais informações." },
+  "plans.active": { "en-GB": "Active", "pt-BR": "Ativo" },
+  "plans.accessGranted": { "en-GB": "Access Granted", "pt-BR": "Acesso Concedido" },
+  "plans.contactDesc": { "en-GB": "Please contact the clinic to purchase this service or request access.", "pt-BR": "Entre em contato com a clínica para adquirir este serviço ou solicitar acesso." },
+  "plans.completeFirst": { "en-GB": "Complete Your Assessment First", "pt-BR": "Complete Sua Avaliação Primeiro" },
+  "plans.completeFirstDesc": { "en-GB": "Please complete your medical screening before viewing available plans.", "pt-BR": "Por favor, complete sua triagem médica antes de ver os planos disponíveis." },
+  "plans.completeAssessment": { "en-GB": "Complete Assessment", "pt-BR": "Completar Avaliação" },
+  "plans.step1": { "en-GB": "Complete your medical screening assessment", "pt-BR": "Complete sua avaliação de triagem médica" },
+  "plans.step2": { "en-GB": "Choose a service plan that fits your needs", "pt-BR": "Escolha um plano de serviço que atenda às suas necessidades" },
+  "plans.step3": { "en-GB": "Access your services and start your recovery journey", "pt-BR": "Acesse seus serviços e inicie sua jornada de recuperação" },
+
+  // ─── Quiz Page ───
+  "quiz.title": { "en-GB": "BPR Bio-Check", "pt-BR": "BPR Bio-Check" },
+  "quiz.subtitle": { "en-GB": "Discover Your Recovery Profile", "pt-BR": "Descubra Seu Perfil de Recuperação" },
+  "quiz.meta": { "en-GB": "10 questions • ~3 minutes • +50 XP", "pt-BR": "10 perguntas • ~3 minutos • +50 XP" },
+  "quiz.benefit1": { "en-GB": "Personalised recovery recommendations", "pt-BR": "Recomendações de recuperação personalizadas" },
+  "quiz.benefit2": { "en-GB": "Tailored marketplace suggestions", "pt-BR": "Sugestões de produtos personalizadas" },
+  "quiz.benefit3": { "en-GB": "Unlock the Self-Aware badge", "pt-BR": "Desbloqueie a conquista Autoconhecimento" },
+  "quiz.analyzing": { "en-GB": "Analyzing your profile...", "pt-BR": "Analisando seu perfil..." },
+  "quiz.errorLoading": { "en-GB": "Error loading result", "pt-BR": "Erro ao carregar resultado" },
+  "quiz.yourArchetype": { "en-GB": "Your Recovery Archetype", "pt-BR": "Seu Arquétipo de Recuperação" },
+  "quiz.recommendations": { "en-GB": "Personalised Recommendations", "pt-BR": "Recomendações Personalizadas" },
+  "quiz.xpEarned": { "en-GB": "XP earned!", "pt-BR": "XP conquistados!" },
+  "quiz.viewProducts": { "en-GB": "View Recommended Products", "pt-BR": "Ver Produtos Recomendados" },
+  "quiz.backToJourney": { "en-GB": "Back to Journey", "pt-BR": "Voltar à Jornada" },
+  "quiz.retake": { "en-GB": "Retake Quiz", "pt-BR": "Refazer Quiz" },
+  "quiz.seeProfile": { "en-GB": "See My Profile", "pt-BR": "Ver Meu Perfil" },
+
+  // ─── Journey Page ───
+  "journey.title": { "en-GB": "Your Recovery Journey", "pt-BR": "Sua Jornada de Recuperação" },
+  "journey.subtitle": { "en-GB": "Track your progress, complete missions, and earn rewards", "pt-BR": "Acompanhe seu progresso, complete missões e ganhe recompensas" },
+
+  // ─── Marketplace Page ───
+  "marketplace.title": { "en-GB": "Health Marketplace", "pt-BR": "Loja de Saúde" },
+  "marketplace.subtitle": { "en-GB": "Products recommended for your recovery", "pt-BR": "Produtos recomendados para sua recuperação" },
+
+  // ─── Community Page ───
+  "community.title": { "en-GB": "Community", "pt-BR": "Comunidade" },
+  "community.subtitle": { "en-GB": "Connect with others on their recovery journey", "pt-BR": "Conecte-se com outras pessoas em sua jornada de recuperação" },
+
+  // ─── Education Page ───
+  "education.title": { "en-GB": "Education", "pt-BR": "Educação" },
+  "education.subtitle": { "en-GB": "Learn about your condition and recovery", "pt-BR": "Aprenda sobre sua condição e recuperação" },
+  "education.noContent": { "en-GB": "No educational content yet", "pt-BR": "Nenhum conteúdo educacional ainda" },
+  "education.noContentDesc": { "en-GB": "Educational materials will appear here as your therapist assigns them.", "pt-BR": "Materiais educacionais aparecerão aqui conforme seu terapeuta os atribuir." },
+
+  // ─── Records Page ───
+  "records.title": { "en-GB": "My Records", "pt-BR": "Meus Registros" },
+  "records.subtitle": { "en-GB": "Your clinical history and treatment records", "pt-BR": "Seu histórico clínico e registros de tratamento" },
+
+  // ─── Cancellation Policy Page ───
+  "cancellation.title": { "en-GB": "Cancellation Policy", "pt-BR": "Política de Cancelamento" },
+
+  // ─── Recovery Ring ───
+  "ring.title": { "en-GB": "Recovery Ring", "pt-BR": "Anel de Recuperação" },
+
+  // ─── Daily Mission ───
+  "mission.todaysMission": { "en-GB": "TODAY'S MISSION", "pt-BR": "MISSÃO DO DIA" },
+  "mission.completed": { "en-GB": "completed", "pt-BR": "concluídas" },
+  "mission.viewAll": { "en-GB": "View All", "pt-BR": "Ver Todas" },
+
+  // ─── Onboarding Wizard ───
+  "onboarding.title": { "en-GB": "Getting Started", "pt-BR": "Primeiros Passos" },
+  "onboarding.subtitle": { "en-GB": "Complete these steps to get the most from your portal", "pt-BR": "Complete estas etapas para aproveitar ao máximo seu portal" },
+  "onboarding.step.consent": { "en-GB": "Accept Terms & Consent", "pt-BR": "Aceitar Termos e Consentimento" },
+  "onboarding.step.profile": { "en-GB": "Complete Your Profile", "pt-BR": "Complete Seu Perfil" },
+  "onboarding.step.screening": { "en-GB": "Medical Screening", "pt-BR": "Triagem Médica" },
+  "onboarding.step.appointment": { "en-GB": "Book First Appointment", "pt-BR": "Agendar Primeira Consulta" },
+  "onboarding.allDone": { "en-GB": "All done! You're all set.", "pt-BR": "Tudo pronto! Você está preparado." },
+
+  // ─── BPR Journey Bar ───
+  "journeyBar.title": { "en-GB": "Your Recovery Journey", "pt-BR": "Sua Jornada de Recuperação" },
+  "journeyBar.level": { "en-GB": "Level", "pt-BR": "Nível" },
+  "journeyBar.xp": { "en-GB": "XP", "pt-BR": "XP" },
+  "journeyBar.streak": { "en-GB": "day streak", "pt-BR": "dias seguidos" },
+  "journeyBar.viewJourney": { "en-GB": "View Journey", "pt-BR": "Ver Jornada" },
+
+  // ─── Membership Offer Banner ───
+  "membershipOffer.title": { "en-GB": "Unlock Full Access", "pt-BR": "Desbloqueie Acesso Completo" },
+  "membershipOffer.subtitle": { "en-GB": "Get unlimited access to all health tools and resources", "pt-BR": "Tenha acesso ilimitado a todas as ferramentas e recursos de saúde" },
+  "membershipOffer.viewPlans": { "en-GB": "View Plans", "pt-BR": "Ver Planos" },
 };
 
 // Default locale

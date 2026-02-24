@@ -17,6 +17,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "@/hooks/use-locale";
+import { t as i18nT } from "@/lib/i18n";
 
 interface ServicePrice {
   id: string;
@@ -50,6 +52,8 @@ export default function PatientPlansPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  const { locale } = useLocale();
+  const T = (key: string) => i18nT(key, locale);
 
   useEffect(() => {
     Promise.all([
@@ -83,12 +87,12 @@ export default function PatientPlansPage() {
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
               <Shield className="h-7 w-7 sm:h-8 sm:w-8 text-amber-600" />
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-foreground">Complete Your Assessment First</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-foreground">{T("plans.completeFirst")}</h2>
             <p className="text-muted-foreground">
-              Please complete your medical screening before viewing available plans.
+              {T("plans.completeFirstDesc")}
             </p>
             <Button onClick={() => router.push("/dashboard/screening")} className="gap-2">
-              <Shield className="h-4 w-4" /> Complete Assessment <ArrowRight className="h-4 w-4" />
+              <Shield className="h-4 w-4" /> {T("plans.completeAssessment")} <ArrowRight className="h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
@@ -99,9 +103,9 @@ export default function PatientPlansPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Plans & Services</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{T("plans.title")}</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Choose a service to get started with your personalised care
+          {T("plans.subtitle")}
         </p>
       </div>
 
@@ -109,9 +113,9 @@ export default function PatientPlansPage() {
         <Card className="border-dashed">
           <CardContent className="p-6 sm:p-8 text-center">
             <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-base sm:text-lg font-semibold mb-2">No Plans Available</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-2">{T("plans.noPlans")}</h3>
             <p className="text-muted-foreground">
-              Service plans have not been configured yet. Please contact the clinic for more information.
+              {T("plans.noPlansDesc")}
             </p>
           </CardContent>
         </Card>
@@ -127,7 +131,7 @@ export default function PatientPlansPage() {
                 {hasAccess && (
                   <div className="absolute top-3 right-3">
                     <Badge className="bg-green-100 text-green-800 gap-1">
-                      <CheckCircle className="h-3 w-3" /> Active
+                      <CheckCircle className="h-3 w-3" /> {T("plans.active")}
                     </Badge>
                   </div>
                 )}
@@ -153,19 +157,19 @@ export default function PatientPlansPage() {
 
                   {hasAccess ? (
                     <Button className="w-full gap-2 bg-green-600 hover:bg-green-700" disabled>
-                      <CheckCircle className="h-4 w-4" /> Access Granted
+                      <CheckCircle className="h-4 w-4" /> {T("plans.accessGranted")}
                     </Button>
                   ) : (
                     <Button
                       className="w-full gap-2"
                       onClick={() => {
                         toast({
-                          title: "Contact Clinic",
-                          description: "Please contact the clinic to purchase this service or request access.",
+                          title: T("common.contactClinic"),
+                          description: T("plans.contactDesc"),
                         });
                       }}
                     >
-                      <CreditCard className="h-4 w-4" /> Get Started
+                      <CreditCard className="h-4 w-4" /> {T("common.getStarted")}
                     </Button>
                   )}
                 </CardContent>
@@ -178,25 +182,25 @@ export default function PatientPlansPage() {
       {/* Info section */}
       <Card className="bg-muted/30">
         <CardContent className="p-4 sm:p-6">
-          <h3 className="font-semibold text-foreground mb-2">How it works</h3>
+          <h3 className="font-semibold text-foreground mb-2">{T("common.howItWorks")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-muted-foreground">
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-bold text-xs">1</span>
               </div>
-              <p>Complete your medical screening assessment</p>
+              <p>{T("plans.step1")}</p>
             </div>
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-bold text-xs">2</span>
               </div>
-              <p>Choose a service plan that fits your needs</p>
+              <p>{T("plans.step2")}</p>
             </div>
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-bold text-xs">3</span>
               </div>
-              <p>Access your services and start your recovery journey</p>
+              <p>{T("plans.step3")}</p>
             </div>
           </div>
         </CardContent>

@@ -225,7 +225,7 @@ export default function PatientDashboard() {
       {!isPreview && (
         <div className="hidden lg:flex">
           <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col items-center justify-center">
-            <p className="text-xs font-semibold text-slate-500 mb-2">{locale === "pt-BR" ? "Anel de Recuperação" : "Recovery Ring"}</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2">{T("ring.title")}</p>
             <RecoveryRing exercise={ring.exercise} consistency={ring.consistency} wellbeing={ring.wellbeing} />
           </div>
         </div>

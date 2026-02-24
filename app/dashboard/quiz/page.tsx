@@ -8,11 +8,15 @@ import { ArrowLeft, ArrowRight, Sparkles, CheckCircle, Loader2 } from "lucide-re
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QUIZ_QUESTIONS, getArchetype } from "@/lib/journey";
+import { useLocale } from "@/hooks/use-locale";
+import { t as i18nT } from "@/lib/i18n";
 
 type Stage = "welcome" | "quiz" | "result";
 
 export default function QuizPage() {
   const router = useRouter();
+  const { locale } = useLocale();
+  const T = (key: string) => i18nT(key, locale);
   const [stage, setStage] = useState<Stage>("welcome");
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: string; answer: string }[]>([]);
@@ -98,12 +102,12 @@ export default function QuizPage() {
               <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring" }} className="text-6xl mb-4">
                 🧬
               </motion.div>
-              <h1 className="text-2xl font-bold text-slate-800 mb-2">BPR Bio-Check</h1>
-              <p className="text-slate-500 mb-1">Discover Your Recovery Profile</p>
-              <p className="text-sm text-slate-400 mb-6">10 questions • ~3 minutes • +50 XP</p>
+              <h1 className="text-2xl font-bold text-slate-800 mb-2">{T("quiz.title")}</h1>
+              <p className="text-slate-500 mb-1">{T("quiz.subtitle")}</p>
+              <p className="text-sm text-slate-400 mb-6">{T("quiz.meta")}</p>
 
               <div className="space-y-3 text-left mb-6">
-                {["Personalised recovery recommendations", "Tailored marketplace suggestions", "Unlock the Self-Aware badge"].map((item, i) => (
+                {[T("quiz.benefit1"), T("quiz.benefit2"), T("quiz.benefit3")].map((item, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-primary shrink-0" />
                     <span className="text-sm text-slate-600">{item}</span>
@@ -112,7 +116,7 @@ export default function QuizPage() {
               </div>
 
               <Button onClick={() => setStage("quiz")} size="lg" className="w-full gap-2">
-                <Sparkles className="h-4 w-4" /> Start Quiz
+                <Sparkles className="h-4 w-4" /> {T("common.startQuiz")}
               </Button>
             </CardContent>
           </Card>
@@ -189,9 +193,9 @@ export default function QuizPage() {
                 size="lg"
               >
                 {currentQ < QUIZ_QUESTIONS.length - 1 ? (
-                  <>Next <ArrowRight className="h-4 w-4" /></>
+                  <>{T("common.next")} <ArrowRight className="h-4 w-4" /></>
                 ) : (
-                  <>See My Profile <Sparkles className="h-4 w-4" /></>
+                  <>{T("quiz.seeProfile")} <Sparkles className="h-4 w-4" /></>
                 )}
               </Button>
             </div>
@@ -206,7 +210,7 @@ export default function QuizPage() {
     return (
       <div className="max-w-lg mx-auto text-center py-16">
         <Loader2 className="h-10 w-10 animate-spin text-violet-500 mx-auto mb-4" />
-        <p className="text-slate-500">Analyzing your profile...</p>
+        <p className="text-slate-500">{T("quiz.analyzing")}</p>
       </div>
     );
   }
@@ -217,7 +221,7 @@ export default function QuizPage() {
     if (!archetype) {
       return (
         <div className="text-center py-16">
-          <p className="text-slate-500">Error loading result</p>
+          <p className="text-slate-500">{T("quiz.errorLoading")}</p>
         </div>
       );
     }
@@ -237,13 +241,13 @@ export default function QuizPage() {
                 {archetype.emoji}
               </motion.div>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Your Recovery Archetype</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">{T("quiz.yourArchetype")}</p>
                 <h1 className="text-2xl font-bold text-slate-800 mb-2">{archetype.name}</h1>
                 <p className="text-sm text-slate-600 mb-6">{archetype.description}</p>
               </motion.div>
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-left space-y-4">
-                <h3 className="text-sm font-bold text-slate-700">Personalised Recommendations</h3>
+                <h3 className="text-sm font-bold text-slate-700">{T("quiz.recommendations")}</h3>
                 {archetype.recommendations.map((rec: string, i: number) => (
                   <div key={i} className="flex items-start gap-3 bg-slate-50 rounded-lg p-3">
                     <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -257,22 +261,22 @@ export default function QuizPage() {
                   className="mt-4 bg-amber-50 rounded-lg p-3 flex items-center justify-center gap-2"
                 >
                   <Sparkles className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm font-bold text-amber-700">+{result.xpEarned} XP earned!</span>
+                  <span className="text-sm font-bold text-amber-700">+{result.xpEarned} {T("quiz.xpEarned")}</span>
                 </motion.div>
               )}
 
               <div className="mt-6 space-y-3">
                 <Link href="/dashboard/marketplace">
                   <Button className="w-full gap-2">
-                    View Recommended Products <ArrowRight className="h-4 w-4" />
+                    {T("quiz.viewProducts")} <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href="/dashboard/journey">
-                  <Button variant="outline" className="w-full">Back to Journey</Button>
+                  <Button variant="outline" className="w-full">{T("quiz.backToJourney")}</Button>
                 </Link>
                 {existingResult && (
                   <Button variant="ghost" onClick={handleRetake} className="w-full text-xs text-slate-400">
-                    Retake Quiz
+                    {T("quiz.retake")}
                   </Button>
                 )}
               </div>

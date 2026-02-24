@@ -6,6 +6,8 @@ import { Target, CheckCircle, Circle, ArrowRight, Sparkles } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useLocale } from "@/hooks/use-locale";
+import { t as i18nT } from "@/lib/i18n";
 
 interface Task {
   key: string;
@@ -23,6 +25,8 @@ interface Mission {
 }
 
 export default function DailyMission() {
+  const { locale } = useLocale();
+  const T = (key: string) => i18nT(key, locale);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [completing, setCompleting] = useState<string | null>(null);
 
@@ -80,7 +84,7 @@ export default function DailyMission() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
-            <h3 className="font-bold text-slate-800 text-sm">TODAY&apos;S MISSION</h3>
+            <h3 className="font-bold text-slate-800 text-sm">{T("mission.todaysMission")}</h3>
           </div>
           <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
             <Sparkles className="h-3 w-3" />
@@ -124,11 +128,11 @@ export default function DailyMission() {
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
           <span className="text-[11px] text-slate-400">
-            {completedCount}/{tasks.length} completed
+            {completedCount}/{tasks.length} {T("mission.completed")}
           </span>
           <Link href="/dashboard/journey">
             <Button variant="ghost" size="sm" className="text-xs text-primary hover:text-primary/80 gap-1 h-7 px-2">
-              View All <ArrowRight className="h-3 w-3" />
+              {T("mission.viewAll")} <ArrowRight className="h-3 w-3" />
             </Button>
           </Link>
         </div>
