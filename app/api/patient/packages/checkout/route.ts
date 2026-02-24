@@ -79,6 +79,11 @@ export async function POST(req: NextRequest) {
         patientId: userId,
         paymentType: type,
       },
+      ...(type === "WEEKLY" ? {
+        subscription_data: {
+          metadata: { packageId: pkg.id, patientId: userId, paymentType: type },
+        },
+      } : {}),
       line_items: [
         {
           price_data: {

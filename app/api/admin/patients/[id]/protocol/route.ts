@@ -30,6 +30,10 @@ export async function GET(
             exercise: { select: { id: true, name: true, videoUrl: true, thumbnailUrl: true } },
           },
         },
+        packages: {
+          select: { id: true, name: true, status: true, isPaid: true, totalSessions: true, pricePerSession: true, priceFullPackage: true, selectedPaymentType: true, currency: true, createdAt: true },
+          orderBy: { createdAt: "desc" as const },
+        },
       },
     });
 

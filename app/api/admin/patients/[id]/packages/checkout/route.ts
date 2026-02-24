@@ -78,6 +78,11 @@ export async function POST(
         patientId: params.id,
         paymentType: type,
       },
+      ...(type === "WEEKLY" ? {
+        subscription_data: {
+          metadata: { packageId: pkg.id, patientId: params.id, paymentType: type },
+        },
+      } : {}),
       line_items: [
         {
           price_data: {

@@ -166,7 +166,15 @@ export async function POST(req: NextRequest) {
       case "invoice.paid": {
         // For weekly subscription payments
         const invoice = event.data.object as Stripe.Invoice;
-        const packageId = (invoice as any).subscription_details?.metadata?.packageId;
+        // Try subscription_details.metadata first, then fall back to subscription metadata
+        let packageId = (invoice as any).subscription_details?.metadata?.packageId;
+        if (!packageId && (invoice as any).subscription) {
+          try {
+            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
+            const sub = await stripe.subscriptions.retrieve((invoice as any).subscription as string);
+            packageId = sub.metadata?.packageId;
+          } catch (e) { console.error("[stripe-webhook] Failed to fetch subscription metadata:", e); }
+        }
 
         if (packageId) {
           await (prisma as any).treatmentPackage.update({

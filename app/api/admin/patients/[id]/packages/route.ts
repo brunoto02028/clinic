@@ -203,3 +203,45 @@ export async function PATCH(
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
+// ─── DELETE — Delete/cancel a package ───
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const packageId = searchParams.get("packageId");
+
+    if (!packageId) {
+      return NextResponse.json({ error: "packageId is required" }, { status: 400 });
+    }
+
+    const pkg = await (prisma as any).treatmentPackage.findUnique({
+      where: { id: packageId },
+    });
+
+    if (!pkg) {
+      return NextResponse.json({ error: "Package not found" }, { status: 404 });
+    }
+
+    // Prevent deleting packages that are already paid or have active Stripe subscriptions
+    if (pkg.isPaid) {
+      return NextResponse.json({ error: "Cannot delete a paid package. Mark as CANCELLED instead." }, { status: 400 });
+    }
+
+    await (prisma as any).treatmentPackage.delete({
+      where: { id: packageId },
+    });
+
+    return NextResponse.json({ success: true, deleted: packageId });
+  } catch (err: any) {
+    console.error("[packages] DELETE error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}

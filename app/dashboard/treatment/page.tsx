@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
@@ -68,6 +69,24 @@ export default function PatientTreatmentPage() {
   const [error, setError] = useState("");
   const [videoModal, setVideoModal] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null); // packageId being paid
+  const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
+  const searchParams = useSearchParams();
+
+  // Handle Stripe redirect query params
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    if (payment === "success") {
+      setPaymentBanner("success");
+      // Poll for webhook to process (Stripe webhook may be slightly delayed)
+      const interval = setInterval(() => { fetchProtocols(); }, 3000);
+      setTimeout(() => clearInterval(interval), 15000);
+      // Clean URL
+      window.history.replaceState({}, "", "/dashboard/treatment");
+    } else if (payment === "cancelled") {
+      setPaymentBanner("cancelled");
+      window.history.replaceState({}, "", "/dashboard/treatment");
+    }
+  }, [searchParams]);
 
   const fetchProtocols = useCallback(async () => {
     setLoading(true);
@@ -140,6 +159,28 @@ export default function PatientTreatmentPage() {
       </div>
 
       <ProfessionalReviewBanner />
+
+      {/* Payment result banners */}
+      {paymentBanner === "success" && (
+        <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 text-green-800 dark:text-green-200 text-sm p-4 rounded-lg flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold">{isPt ? "Pagamento Confirmado!" : "Payment Confirmed!"}</p>
+            <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">{isPt ? "Seu plano de tratamento será desbloqueado em instantes. Aguarde..." : "Your treatment plan will be unlocked momentarily. Please wait..."}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setPaymentBanner(null)}><X className="h-3 w-3" /></Button>
+        </div>
+      )}
+      {paymentBanner === "cancelled" && (
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 text-amber-800 dark:text-amber-200 text-sm p-4 rounded-lg flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold">{isPt ? "Pagamento Cancelado" : "Payment Cancelled"}</p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{isPt ? "Você pode tentar novamente a qualquer momento." : "You can try again at any time."}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setPaymentBanner(null)}><X className="h-3 w-3" /></Button>
+        </div>
+      )}
 
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg flex items-center gap-2">

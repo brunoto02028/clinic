@@ -698,6 +698,10 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
   });
   const [pkgSaving, setPkgSaving] = useState(false);
   const [pkgMsg, setPkgMsg] = useState("");
+  const [pkgDeleting, setPkgDeleting] = useState<string | null>(null);
+
+  const existingPackages = (p as any).packages || [];
+  const hasUnpaidPackage = existingPackages.some((pk: any) => !pk.isPaid);
 
   const hasElectro = (p as any).includesElectrotherapy || p.items?.some((it: any) => it.treatmentTypeName?.toLowerCase().includes("electro") || it.treatmentTypeName?.toLowerCase().includes("tens") || it.treatmentTypeName?.toLowerCase().includes("ultrasound"));
 
@@ -1045,6 +1049,46 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
             </div>
           )}
 
+          {/* Existing Packages */}
+          {existingPackages.length > 0 && (
+            <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
+              <h4 className="text-xs font-semibold flex items-center gap-1.5"><Package className="h-3.5 w-3.5" /> Financial Packages ({existingPackages.length})</h4>
+              {existingPackages.map((pk: any) => (
+                <div key={pk.id} className="flex items-center justify-between text-xs bg-background rounded p-2 border">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-block w-2 h-2 rounded-full ${pk.isPaid ? "bg-green-500" : pk.status === "SENT" ? "bg-blue-500" : pk.status === "CANCELLED" ? "bg-red-500" : "bg-yellow-500"}`} />
+                    <span className="font-medium">{pk.name}</span>
+                    <Badge variant="outline" className="text-[9px]">{pk.status}</Badge>
+                    <span className="text-muted-foreground">£{(pk.priceFullPackage || pk.pricePerSession * pk.totalSessions).toFixed(2)}</span>
+                  </div>
+                  {!pk.isPaid && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                      disabled={pkgDeleting === pk.id}
+                      onClick={async () => {
+                        if (!confirm("Delete this package?")) return;
+                        setPkgDeleting(pk.id);
+                        try {
+                          const res = await fetch(`/api/admin/patients/${patientId}/packages?packageId=${pk.id}`, { method: "DELETE" });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error);
+                          setPkgMsg("Package deleted.");
+                          // Trigger parent refresh
+                          onUpdate({});
+                        } catch (err: any) { setPkgMsg(`Error: ${err.message}`); }
+                        finally { setPkgDeleting(null); }
+                      }}
+                    >
+                      {pkgDeleting === pk.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex items-center gap-2 flex-wrap border-t pt-3">
             {p.status === "DRAFT" && (
@@ -1052,7 +1096,7 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve Protocol
               </Button>
             )}
-            {(p.status === "DRAFT" || p.status === "APPROVED") && !showPackageForm && (
+            {p.status === "APPROVED" && !hasUnpaidPackage && !showPackageForm && (
               <Button size="sm" variant="outline" onClick={() => setShowPackageForm(true)}>
                 <Package className="h-3.5 w-3.5 mr-1" /> Create Financial Package
               </Button>
