@@ -279,4 +279,12 @@ export const DEFAULT_CONFIGS = [
     category: "integration",
     isSecret: false,
   },
+  // ─── Meshy AI (3D Model Generation) ───
+  {
+    key: "MESHY_API_KEY",
+    label: "Meshy AI API Key",
+    description: "API key from meshy.ai for AI-powered 3D model generation (avatars, body models). Free tier: 200 credits/month.",
+    category: "integration",
+    isSecret: true,
+  },
 ];

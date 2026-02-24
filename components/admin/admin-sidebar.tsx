@@ -55,6 +55,7 @@ import {
   Award,
   Globe,
   DollarSign,
+  Box,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -125,6 +126,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Clinical Notes", i18nKey: "nav.clinicalNotes", href: "/admin/clinical-notes", icon: ClipboardList, requiredPermission: "canCreateClinicalNotes" },
       { name: "Foot Scans", i18nKey: "nav.footScans", href: "/admin/scans", icon: Footprints, requiredPermission: "canManageFootScans" },
       { name: "Body Assessment", i18nKey: "nav.bodyAssessment", href: "/admin/body-assessments", icon: Activity },
+      { name: "3D Body Models", href: "/admin/body-models", icon: Box },
       { name: "Blood Pressure", href: "/admin/blood-pressure", icon: HeartPulse },
       { name: "Email", i18nKey: "nav.email", href: "/admin/email", icon: Mail },
       { name: "Email Templates", i18nKey: "nav.emailTemplates", href: "/admin/email-templates", icon: MailOpen },

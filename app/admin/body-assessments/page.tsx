@@ -145,6 +145,7 @@ export default function AdminBodyAssessmentsPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [therapistNotes, setTherapistNotes] = useState("");
   const [bodyMapView, setBodyMapView] = useState<"front" | "back">("front");
+  const [bodyGender, setBodyGender] = useState<"male" | "female">("male");
   const [detailTab, setDetailTab] = useState<"overview" | "images" | "videos" | "annotate" | "analysis" | "notes">("overview");
   const [annotateView, setAnnotateView] = useState<"front" | "back" | "left" | "right">("front");
   const [annotateMode, setAnnotateMode] = useState<"draw" | "plumb" | "compare">("draw");
@@ -601,6 +602,10 @@ export default function AdminBodyAssessmentsPage() {
                     <div className="flex gap-1">
                       <Button variant={bodyMapView === "front" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setBodyMapView("front")}>Frontal</Button>
                       <Button variant={bodyMapView === "back" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setBodyMapView("back")}>Posterior</Button>
+                      <div className="border-l ml-1 pl-1 flex gap-1">
+                        <Button variant={bodyGender === "male" ? "default" : "outline"} size="sm" className="h-7 text-xs px-2" onClick={() => setBodyGender("male")} title="Male">♂</Button>
+                        <Button variant={bodyGender === "female" ? "default" : "outline"} size="sm" className="h-7 text-xs px-2" onClick={() => setBodyGender("female")} title="Female">♀</Button>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
@@ -611,6 +616,7 @@ export default function AdminBodyAssessmentsPage() {
                     alignmentData={a.alignmentData}
                     width={280}
                     height={450}
+                    gender={bodyGender}
                   />
                 </CardContent>
               </Card>

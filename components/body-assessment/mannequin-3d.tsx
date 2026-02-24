@@ -23,6 +23,7 @@ interface Mannequin3DProps {
   interactive?: boolean;
   width?: number;
   height?: number;
+  gender?: "male" | "female";
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -58,8 +59,15 @@ const SKIN_MATERIAL = new THREE.MeshStandardMaterial({
 });
 
 // ─── GLB Human Model ────────────────────────────────────
-function HumanModel() {
-  const { scene } = useGLTF("/models/human.glb");
+function HumanModel({ gender = "male" }: { gender?: "male" | "female" }) {
+  // Try gender-specific model first, fall back to default
+  const modelPath = gender === "female" ? "/models/human-female.glb" : "/models/human-male.glb";
+  const fallbackPath = "/models/human.glb";
+
+  // Try loading the gender-specific model; if it fails, useGLTF will throw and ErrorBoundary catches it
+  const { scene } = useGLTF(modelPath, undefined, undefined, (loader: any) => {
+    loader.manager.onError = () => {};
+  });
   const clonedScene = useMemo(() => {
     const clone = scene.clone(true);
     clone.traverse((child: any) => {
@@ -72,9 +80,39 @@ function HumanModel() {
     return clone;
   }, [scene]);
 
-  // RPM models: ~1.65 units tall, feet at y=0
-  // No scaling needed — just position at origin and frame with camera
   return <primitive object={clonedScene} />;
+}
+
+// Fallback model if gender-specific not available
+function FallbackHumanModel() {
+  const { scene } = useGLTF("/models/human.glb");
+  const clonedScene = useMemo(() => {
+    const clone = scene.clone(true);
+    clone.traverse((child: any) => {
+      if (child.isMesh) {
+        child.material = SKIN_MATERIAL;
+        child.castShadow = false;
+        child.receiveShadow = false;
+      }
+    });
+    return clone;
+  }, [scene]);
+  return <primitive object={clonedScene} />;
+}
+
+// Model wrapper with fallback
+function HumanModelWithFallback({ gender = "male" }: { gender?: "male" | "female" }) {
+  const [useFallback, setUseFallback] = useState(false);
+
+  if (useFallback) {
+    return <FallbackHumanModel />;
+  }
+
+  return (
+    <Canvas3DErrorBoundary fallback={<FallbackHumanModel />}>
+      <HumanModel gender={gender} />
+    </Canvas3DErrorBoundary>
+  );
 }
 
 // ─── Motor Point Marker ──────────────────────────────────
@@ -165,10 +203,12 @@ function Scene({
   motorPoints = [],
   onPointClick,
   interactive = true,
+  gender = "male",
 }: {
   motorPoints: MotorPoint3D[];
   onPointClick?: (point: MotorPoint3D) => void;
   interactive?: boolean;
+  gender?: "male" | "female";
 }) {
   return (
     <>
@@ -182,7 +222,7 @@ function Scene({
 
       <Suspense fallback={<Loader />}>
         <group>
-          <HumanModel />
+          <HumanModelWithFallback gender={gender} />
           {motorPoints.map((point) => (
             <MotorPointMarker
               key={point.id}
@@ -248,6 +288,7 @@ export default function Mannequin3D({
   interactive = true,
   width = 400,
   height = 550,
+  gender = "male",
 }: Mannequin3DProps) {
   const [webglOk] = useState(() => isWebGLAvailable());
 
@@ -283,6 +324,7 @@ export default function Mannequin3D({
             motorPoints={motorPoints}
             onPointClick={onPointClick}
             interactive={interactive}
+            gender={gender}
           />
         </Canvas>
 
@@ -298,5 +340,7 @@ export default function Mannequin3D({
   );
 }
 
-// Preload the model
+// Preload models
 useGLTF.preload("/models/human.glb");
+try { useGLTF.preload("/models/human-male.glb"); } catch {}
+try { useGLTF.preload("/models/human-female.glb"); } catch {}

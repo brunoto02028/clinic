@@ -4,3 +4,4 @@ node_modules
 .env.*
 deploy/.env*
 clinic-deploy.tar
+CREDENTIALS.md

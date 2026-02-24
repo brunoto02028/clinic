@@ -39,6 +39,7 @@ interface BodyMapProps {
   onPointClick?: (point: MotorPoint) => void;
   alignmentData?: any;
   showLabels?: boolean;
+  gender?: "male" | "female";
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -64,6 +65,7 @@ export function BodyMap({
   onPointClick,
   alignmentData,
   showLabels = false,
+  gender = "male",
 }: BodyMapProps) {
   const [selectedPoint, setSelectedPoint] = useState<string | null>(null);
 
@@ -80,6 +82,7 @@ export function BodyMap({
         interactive={interactive}
         width={width}
         height={height}
+        gender={gender}
       />
 
       {/* Selected point info panel */}
