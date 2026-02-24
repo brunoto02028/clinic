@@ -7,7 +7,7 @@ import {
   CheckCircle, XCircle, Search, FileText, Download, Edit, MoreVertical,
   Wallet, Receipt, PiggyBank, BarChart3, Calendar, Upload, Key, Tag,
   Copy, Shield, ShieldCheck, Eye, EyeOff, Sparkles, Building2, Save,
-  Wand2, Loader2, ExternalLink, SearchCheck,
+  Wand2, Loader2, ExternalLink, SearchCheck, MessageCircle, Send, Bot,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -166,8 +166,12 @@ export default function FinancePage() {
   const [chFetchingNumber, setChFetchingNumber] = useState<string | null>(null);
   const [showChSearch, setShowChSearch] = useState(false);
 
-  // IAPA auto-fill state
-  const [iapaLoading, setIapaLoading] = useState(false);
+  // AI auto-fill & chat state
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiChat, setShowAiChat] = useState(false);
+  const [aiChatMessages, setAiChatMessages] = useState<{role: string; content: string}[]>([]);
+  const [aiChatInput, setAiChatInput] = useState("");
+  const [aiChatSending, setAiChatSending] = useState(false);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -270,9 +274,35 @@ export default function FinancePage() {
     setChFetchingNumber(null);
   };
 
-  // ─── IAPA Auto-fill ───
-  const iapaAutofill = async () => {
-    setIapaLoading(true);
+  // ─── AI Chat ───
+  const sendAiChatMessage = async (userMessage?: string) => {
+    const msg = userMessage || aiChatInput.trim();
+    if (!msg) return;
+    const newMessages = [...aiChatMessages, { role: "user", content: msg }];
+    setAiChatMessages(newMessages);
+    setAiChatInput("");
+    setAiChatSending(true);
+    try {
+      const res = await fetch("/api/admin/finance/company/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages, currentProfile: companyProfile }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setAiChatMessages([...newMessages, { role: "assistant", content: `Error: ${data.error}` }]);
+      } else {
+        setAiChatMessages([...newMessages, { role: "assistant", content: data.reply }]);
+      }
+    } catch (err: any) {
+      setAiChatMessages([...newMessages, { role: "assistant", content: `Error: ${err.message}` }]);
+    }
+    setAiChatSending(false);
+  };
+
+  // ─── AI Auto-fill ───
+  const aiAutofill = async () => {
+    setAiLoading(true);
     try {
       const res = await fetch("/api/admin/finance/company/autofill", {
         method: "POST",
@@ -281,20 +311,20 @@ export default function FinancePage() {
       });
       const data = await res.json();
       if (data.error) {
-        toast({ title: "IAPA", description: data.error, variant: "destructive" });
+        toast({ title: "AI Auto-fill", description: data.error, variant: "destructive" });
       } else if (data.suggestions) {
         const count = Object.keys(data.suggestions).length;
         if (count > 0) {
           setCompanyProfile((prev: any) => ({ ...prev, ...data.suggestions }));
-          toast({ title: "IAPA Auto-fill", description: `${count} fields suggested. Review and Save.` });
+          toast({ title: "AI Auto-fill", description: `${count} fields suggested. Review and Save.` });
         } else {
-          toast({ title: "IAPA", description: "All fields seem to be filled already." });
+          toast({ title: "AI Auto-fill", description: "All fields seem to be filled already." });
         }
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
-    setIapaLoading(false);
+    setAiLoading(false);
   };
 
   const saveCompanyProfile = async () => {
@@ -851,9 +881,13 @@ export default function FinancePage() {
                     {chFetchingNumber ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
                     Search Companies House
                   </Button>
-                  <Button variant="outline" onClick={iapaAutofill} disabled={iapaLoading} className="gap-1.5 text-xs">
-                    {iapaLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-                    {iapaLoading ? "IAPA thinking..." : "IAPA Auto-fill"}
+                  <Button variant="outline" onClick={() => setShowAiChat(!showAiChat)} className="gap-1.5 text-xs">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    AI Chat
+                  </Button>
+                  <Button variant="outline" onClick={aiAutofill} disabled={aiLoading} className="gap-1.5 text-xs">
+                    {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    {aiLoading ? "AI thinking..." : "AI Auto-fill"}
                   </Button>
                   <Button onClick={saveCompanyProfile} disabled={companySaving} className="gap-1.5">
                     {companySaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
@@ -928,6 +962,82 @@ export default function FinancePage() {
                         </Button>
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* AI Chat Panel */}
+              {showAiChat && (
+                <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <Bot className="h-4 w-4 text-blue-600" /> AI Company Profile Assistant
+                      </CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={aiAutofill} disabled={aiLoading}>
+                          {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                          Auto-fill Empty Fields
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setShowAiChat(false); }}>
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Ask about UK company registration, Companies House, HMRC, VAT, SIC codes, or get help filling fields.</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Chat Messages */}
+                    <div className="max-h-[300px] overflow-y-auto space-y-2 rounded-lg bg-background/80 p-3 border">
+                      {aiChatMessages.length === 0 && (
+                        <div className="text-center py-6 space-y-2">
+                          <Bot className="h-8 w-8 mx-auto text-blue-400 opacity-60" />
+                          <p className="text-xs text-muted-foreground">Ask me anything about company registration, e.g.:</p>
+                          <div className="flex flex-wrap justify-center gap-1.5">
+                            {["What SIC codes should I use for a physio clinic?", "How do I register for VAT?", "What is a Confirmation Statement?"].map((q) => (
+                              <button key={q} className="text-[10px] px-2 py-1 rounded-full border bg-muted/50 hover:bg-blue-100 transition text-muted-foreground" onClick={() => sendAiChatMessage(q)}>
+                                {q}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {aiChatMessages.map((m, i) => (
+                        <div key={i} className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                          {m.role === "assistant" && <Bot className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />}
+                          <div className={`max-w-[85%] rounded-lg px-3 py-2 text-xs whitespace-pre-wrap ${
+                            m.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          }`}>
+                            {m.content}
+                          </div>
+                        </div>
+                      ))}
+                      {aiChatSending && (
+                        <div className="flex gap-2 justify-start">
+                          <Bot className="h-5 w-5 text-blue-500 flex-shrink-0 mt-1" />
+                          <div className="bg-muted rounded-lg px-3 py-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Chat Input */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={aiChatInput}
+                        onChange={(e) => setAiChatInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendAiChatMessage()}
+                        placeholder="Ask about company registration, VAT, SIC codes..."
+                        className="flex-1 text-xs"
+                        disabled={aiChatSending}
+                      />
+                      <Button onClick={() => sendAiChatMessage()} disabled={aiChatSending || !aiChatInput.trim()} size="sm" className="gap-1">
+                        <Send className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}
