@@ -939,11 +939,11 @@ export default function FinancePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">Registered Company Name *</label><Input value={companyProfile.companyName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyName: e.target.value })} placeholder="BPR Clinic Ltd" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">Trading Name</label><Input value={companyProfile.tradingName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradingName: e.target.value })} placeholder="Bruno Physical Rehabilitation" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Registered Company Name *</label><Input value={companyProfile.companyName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyName: e.target.value })} placeholder="e.g. Acme Healthcare Ltd" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Trading Name</label><Input value={companyProfile.tradingName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, tradingName: e.target.value })} placeholder="e.g. Your Trading Name" /></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">Company Number (CRN)</label><Input value={companyProfile.companyNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyNumber: e.target.value })} placeholder="12345678" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Company Number (CRN)</label><Input value={companyProfile.companyNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyNumber: e.target.value })} placeholder="e.g. 00000000" /></div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Company Type</label>
                       <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={companyProfile.companyType || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyType: e.target.value })}>
@@ -985,13 +985,13 @@ export default function FinancePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">Address Line 1</label><Input value={companyProfile.regAddressLine1 || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressLine1: e.target.value })} placeholder="123 High Street" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">Address Line 2</label><Input value={companyProfile.regAddressLine2 || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressLine2: e.target.value })} placeholder="Suite 4" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Address Line 1</label><Input value={companyProfile.regAddressLine1 || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressLine1: e.target.value })} placeholder="e.g. 10 Downing Street" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Address Line 2</label><Input value={companyProfile.regAddressLine2 || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressLine2: e.target.value })} placeholder="e.g. Unit 2" /></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">City</label><Input value={companyProfile.regAddressCity || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressCity: e.target.value })} placeholder="Ipswich" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">County</label><Input value={companyProfile.regAddressCounty || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressCounty: e.target.value })} placeholder="Suffolk" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">Postcode</label><Input value={companyProfile.regAddressPostcode || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressPostcode: e.target.value })} placeholder="IP1 3AA" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">City</label><Input value={companyProfile.regAddressCity || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressCity: e.target.value })} placeholder="e.g. London" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">County</label><Input value={companyProfile.regAddressCounty || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressCounty: e.target.value })} placeholder="e.g. Greater London" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Postcode</label><Input value={companyProfile.regAddressPostcode || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressPostcode: e.target.value })} placeholder="e.g. SW1A 1AA" /></div>
                     <div><label className="text-xs font-medium text-muted-foreground">Country</label><Input value={companyProfile.regAddressCountry || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, regAddressCountry: e.target.value })} placeholder="England and Wales" /></div>
                   </div>
                 </CardContent>
@@ -1024,7 +1024,7 @@ export default function FinancePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">VAT Number</label><Input value={companyProfile.vatNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, vatNumber: e.target.value })} placeholder="GB 123 4567 89" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">VAT Number</label><Input value={companyProfile.vatNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, vatNumber: e.target.value })} placeholder="e.g. GB 000 0000 00" /></div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">VAT Scheme</label>
                       <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={companyProfile.vatScheme || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, vatScheme: e.target.value })}>
@@ -1038,12 +1038,12 @@ export default function FinancePage() {
                     <div><label className="text-xs font-medium text-muted-foreground">VAT Registration Date</label><Input type="date" value={companyProfile.vatRegisteredDate?.slice(0, 10) || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, vatRegisteredDate: e.target.value })} /></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">UTR (Unique Taxpayer Ref)</label><Input value={companyProfile.utr || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, utr: e.target.value })} placeholder="1234567890" /><p className="text-[10px] text-muted-foreground mt-0.5">10-digit HMRC reference for Corporation Tax</p></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">UTR (Unique Taxpayer Ref)</label><Input value={companyProfile.utr || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, utr: e.target.value })} placeholder="e.g. 0000000000" /><p className="text-[10px] text-muted-foreground mt-0.5">10-digit HMRC reference for Corporation Tax</p></div>
                     <div><label className="text-xs font-medium text-muted-foreground">Corporation Tax Reference</label><Input value={companyProfile.corporationTaxRef || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, corporationTaxRef: e.target.value })} placeholder="" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">PAYE Employer Reference</label><Input value={companyProfile.payeReference || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, payeReference: e.target.value })} placeholder="123/AB45678" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">PAYE Employer Reference</label><Input value={companyProfile.payeReference || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, payeReference: e.target.value })} placeholder="e.g. 000/AA00000" /></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">National Insurance Number</label><Input value={companyProfile.niNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, niNumber: e.target.value })} placeholder="QQ 12 34 56 C" /><p className="text-[10px] text-muted-foreground mt-0.5">For sole traders only</p></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">National Insurance Number</label><Input value={companyProfile.niNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, niNumber: e.target.value })} placeholder="e.g. AA 00 00 00 A" /><p className="text-[10px] text-muted-foreground mt-0.5">For sole traders only</p></div>
                     <div><label className="text-xs font-medium text-muted-foreground">Tax Year End (ARD)</label><Input value={companyProfile.taxYearEnd || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, taxYearEnd: e.target.value })} placeholder="31 March" /><p className="text-[10px] text-muted-foreground mt-0.5">Accounting Reference Date</p></div>
                     <div />
                   </div>
@@ -1078,7 +1078,7 @@ export default function FinancePage() {
                   <p className="text-xs text-muted-foreground">JSON format: [&#123;"name":"John Smith","role":"Director","appointedDate":"2024-01-01","nationality":"British"&#125;]</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div><label className="text-xs font-medium text-muted-foreground">Directors (JSON)</label><textarea className="w-full min-h-[80px] rounded-md border bg-background px-3 py-2 text-xs font-mono" value={companyProfile.directorsJson || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, directorsJson: e.target.value })} placeholder='[{"name":"Bruno Toaz","role":"Director","appointedDate":"2024-01-01","nationality":"Brazilian/British"}]' /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Directors (JSON)</label><textarea className="w-full min-h-[80px] rounded-md border bg-background px-3 py-2 text-xs font-mono" value={companyProfile.directorsJson || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, directorsJson: e.target.value })} placeholder='[{"name":"Jane Smith","role":"Director","appointedDate":"2024-01-01","nationality":"British"}]' /></div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div><label className="text-xs font-medium text-muted-foreground">Company Secretary Name</label><Input value={companyProfile.secretaryName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, secretaryName: e.target.value })} placeholder="Optional" /></div>
                     <div><label className="text-xs font-medium text-muted-foreground">Secretary Address</label><Input value={companyProfile.secretaryAddress || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, secretaryAddress: e.target.value })} /></div>
@@ -1095,12 +1095,12 @@ export default function FinancePage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div><label className="text-xs font-medium text-muted-foreground">Bank Name</label><Input value={companyProfile.bankName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankName: e.target.value })} placeholder="Barclays, HSBC, Starling..." /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">Account Holder Name</label><Input value={companyProfile.bankAccountName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankAccountName: e.target.value })} placeholder="BPR Clinic Ltd" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Account Holder Name</label><Input value={companyProfile.bankAccountName || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankAccountName: e.target.value })} placeholder="e.g. Company Name Ltd" /></div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">Sort Code</label><Input value={companyProfile.bankSortCode || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankSortCode: e.target.value })} placeholder="12-34-56" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">Account Number</label><Input value={companyProfile.bankAccountNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankAccountNumber: e.target.value })} placeholder="12345678" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">IBAN (optional)</label><Input value={companyProfile.bankIban || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankIban: e.target.value })} placeholder="GB29 NWBK 6016 1331 9268 19" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Sort Code</label><Input value={companyProfile.bankSortCode || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankSortCode: e.target.value })} placeholder="e.g. 00-00-00" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Account Number</label><Input value={companyProfile.bankAccountNumber || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankAccountNumber: e.target.value })} placeholder="e.g. 00000000" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">IBAN (optional)</label><Input value={companyProfile.bankIban || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, bankIban: e.target.value })} placeholder="e.g. GB00 XXXX 0000 0000 0000 00" /></div>
                   </div>
                 </CardContent>
               </Card>
@@ -1130,9 +1130,9 @@ export default function FinancePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div><label className="text-xs font-medium text-muted-foreground">Company Email</label><Input value={companyProfile.companyEmail || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyEmail: e.target.value })} placeholder="admin@bpr.rehab" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">Company Phone</label><Input value={companyProfile.companyPhone || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyPhone: e.target.value })} placeholder="+44 1473 000000" /></div>
-                    <div><label className="text-xs font-medium text-muted-foreground">Website</label><Input value={companyProfile.companyWebsite || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyWebsite: e.target.value })} placeholder="https://bpr.rehab" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Company Email</label><Input value={companyProfile.companyEmail || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyEmail: e.target.value })} placeholder="e.g. info@yourcompany.co.uk" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Company Phone</label><Input value={companyProfile.companyPhone || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyPhone: e.target.value })} placeholder="e.g. +44 20 0000 0000" /></div>
+                    <div><label className="text-xs font-medium text-muted-foreground">Website</label><Input value={companyProfile.companyWebsite || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyWebsite: e.target.value })} placeholder="e.g. https://yourcompany.co.uk" /></div>
                   </div>
                   <div><label className="text-xs font-medium text-muted-foreground">Notes</label><textarea className="w-full min-h-[60px] rounded-md border bg-background px-3 py-2 text-sm" value={companyProfile.notes || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, notes: e.target.value })} placeholder="Any additional notes about the company..." /></div>
                 </CardContent>
