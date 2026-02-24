@@ -7,6 +7,7 @@ import {
   CheckCircle, XCircle, Search, FileText, Download, Edit, MoreVertical,
   Wallet, Receipt, PiggyBank, BarChart3, Calendar, Upload, Key, Tag,
   Copy, Shield, ShieldCheck, Eye, EyeOff, Sparkles, Building2, Save,
+  Wand2, Loader2, ExternalLink, SearchCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -158,6 +159,16 @@ export default function FinancePage() {
   const [companyLoading, setCompanyLoading] = useState(false);
   const [companySaving, setCompanySaving] = useState(false);
 
+  // Companies House search state
+  const [chSearchQuery, setChSearchQuery] = useState("");
+  const [chSearchResults, setChSearchResults] = useState<any[]>([]);
+  const [chSearching, setChSearching] = useState(false);
+  const [chFetching, setChFetching] = useState(false);
+  const [showChSearch, setShowChSearch] = useState(false);
+
+  // IAPA auto-fill state
+  const [iapaLoading, setIapaLoading] = useState(false);
+
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<"INCOME" | "EXPENSE">("INCOME");
@@ -210,6 +221,75 @@ export default function FinancePage() {
       setCompanyProfile(data || {});
     } catch {}
     setCompanyLoading(false);
+  };
+
+  // ─── Companies House Search ───
+  const searchCompaniesHouse = async () => {
+    if (!chSearchQuery.trim()) return;
+    setChSearching(true);
+    setChSearchResults([]);
+    try {
+      const res = await fetch(`/api/admin/finance/company/search?q=${encodeURIComponent(chSearchQuery)}`);
+      const data = await res.json();
+      if (data.error) {
+        toast({ title: "Companies House", description: data.error, variant: "destructive" });
+      } else {
+        setChSearchResults(data.results || []);
+        if ((data.results || []).length === 0) {
+          toast({ title: "Companies House", description: "No companies found." });
+        }
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setChSearching(false);
+  };
+
+  const fetchFromCompaniesHouse = async (companyNumber: string) => {
+    setChFetching(true);
+    try {
+      const res = await fetch(`/api/admin/finance/company/search?number=${encodeURIComponent(companyNumber)}`);
+      const data = await res.json();
+      if (data.error) {
+        toast({ title: "Companies House", description: data.error, variant: "destructive" });
+      } else if (data.profile) {
+        setCompanyProfile((prev: any) => ({ ...prev, ...data.profile }));
+        setShowChSearch(false);
+        setChSearchResults([]);
+        setChSearchQuery("");
+        toast({ title: "Companies House", description: "Company data imported successfully! Review and Save." });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setChFetching(false);
+  };
+
+  // ─── IAPA Auto-fill ───
+  const iapaAutofill = async () => {
+    setIapaLoading(true);
+    try {
+      const res = await fetch("/api/admin/finance/company/autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentProfile: companyProfile }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        toast({ title: "IAPA", description: data.error, variant: "destructive" });
+      } else if (data.suggestions) {
+        const count = Object.keys(data.suggestions).length;
+        if (count > 0) {
+          setCompanyProfile((prev: any) => ({ ...prev, ...data.suggestions }));
+          toast({ title: "IAPA Auto-fill", description: `${count} fields suggested. Review and Save.` });
+        } else {
+          toast({ title: "IAPA", description: "All fields seem to be filled already." });
+        }
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+    setIapaLoading(false);
   };
 
   const saveCompanyProfile = async () => {
@@ -756,16 +836,96 @@ export default function FinancePage() {
         <div className="space-y-6">
           {companyLoading ? <LoadingState /> : (
             <>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <h2 className="text-base font-semibold flex items-center gap-2"><Building2 className="h-4 w-4" /> Company Profile</h2>
                   <p className="text-xs text-muted-foreground">Companies House registration, HMRC details, and fiscal year information for accounting exports.</p>
                 </div>
-                <Button onClick={saveCompanyProfile} disabled={companySaving} className="gap-1.5">
-                  {companySaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  {companySaving ? "Saving..." : "Save Profile"}
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button variant="outline" onClick={() => setShowChSearch(!showChSearch)} className="gap-1.5 text-xs" disabled={chFetching}>
+                    {chFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchCheck className="h-3.5 w-3.5" />}
+                    Search Companies House
+                  </Button>
+                  <Button variant="outline" onClick={iapaAutofill} disabled={iapaLoading} className="gap-1.5 text-xs">
+                    {iapaLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    {iapaLoading ? "IAPA thinking..." : "IAPA Auto-fill"}
+                  </Button>
+                  <Button onClick={saveCompanyProfile} disabled={companySaving} className="gap-1.5">
+                    {companySaving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    {companySaving ? "Saving..." : "Save Profile"}
+                  </Button>
+                </div>
               </div>
+
+              {/* Companies House Search Panel */}
+              {showChSearch && (
+                <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <SearchCheck className="h-4 w-4 text-emerald-600" /> Search Companies House
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">Search by company name or number. Data will be imported automatically.</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        value={chSearchQuery}
+                        onChange={(e) => setChSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && searchCompaniesHouse()}
+                        placeholder="Company name or number..."
+                        className="flex-1"
+                      />
+                      <Button onClick={searchCompaniesHouse} disabled={chSearching || !chSearchQuery.trim()} className="gap-1.5">
+                        {chSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                        Search
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => { setShowChSearch(false); setChSearchResults([]); setChSearchQuery(""); }}>
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Search Results */}
+                    {chSearchResults.length > 0 && (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {chSearchResults.map((r: any, i: number) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-between p-3 rounded-lg border bg-background hover:border-emerald-300 transition cursor-pointer"
+                            onClick={() => fetchFromCompaniesHouse(r.companyNumber)}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{r.companyName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {r.companyNumber} &bull; {r.companyStatus} &bull; {r.companyType}
+                              </p>
+                              {r.address && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{r.address}</p>}
+                            </div>
+                            <div className="flex items-center gap-1.5 ml-3 flex-shrink-0">
+                              {chFetching ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] gap-1 cursor-pointer hover:bg-emerald-50">
+                                  <ExternalLink className="h-3 w-3" /> Import
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Quick fetch by number */}
+                    {companyProfile.companyNumber && !chSearchResults.length && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <p className="text-xs text-muted-foreground">Current CRN: <strong>{companyProfile.companyNumber}</strong></p>
+                        <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => fetchFromCompaniesHouse(companyProfile.companyNumber)}>
+                          Refresh from Companies House
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Companies House Registration */}
               <Card>
@@ -970,6 +1130,20 @@ export default function FinancePage() {
                     <div><label className="text-xs font-medium text-muted-foreground">Website</label><Input value={companyProfile.companyWebsite || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, companyWebsite: e.target.value })} placeholder="https://bpr.rehab" /></div>
                   </div>
                   <div><label className="text-xs font-medium text-muted-foreground">Notes</label><textarea className="w-full min-h-[60px] rounded-md border bg-background px-3 py-2 text-sm" value={companyProfile.notes || ""} onChange={(e) => setCompanyProfile({ ...companyProfile, notes: e.target.value })} placeholder="Any additional notes about the company..." /></div>
+                </CardContent>
+              </Card>
+
+              {/* Companies House Filing Info */}
+              <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" /> Companies House Direct Filing</CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs space-y-1.5">
+                  <p className="text-muted-foreground">The Companies House <strong>Filing API</strong> allows software to submit changes (address, confirmation statements, accounts) directly. To enable this:</p>
+                  <p className="text-muted-foreground">1. Register as a <strong>Software Filing Provider</strong> at <a href="https://developer.company-information.service.gov.uk/" target="_blank" rel="noopener" className="text-emerald-600 underline">developer.company-information.service.gov.uk</a></p>
+                  <p className="text-muted-foreground">2. Implement <strong>OAuth2 authentication</strong> for company authorization</p>
+                  <p className="text-muted-foreground">3. Use the Filing API endpoints for: Change of Registered Office, Annual Confirmation Statement, Annual Accounts filing</p>
+                  <p className="text-muted-foreground italic">This feature can be added to BPR in a future update once the software provider registration is approved.</p>
                 </CardContent>
               </Card>
 

@@ -250,4 +250,12 @@ export const DEFAULT_CONFIGS = [
     category: "messaging",
     isSecret: false,
   },
+  // ─── Companies House API ───
+  {
+    key: "COMPANIES_HOUSE_API_KEY",
+    label: "Companies House API Key",
+    description: "Free API key from developer.company-information.service.gov.uk. Used to search and fetch company data.",
+    category: "integration",
+    isSecret: true,
+  },
 ];
