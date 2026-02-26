@@ -515,7 +515,7 @@ export default function LandingPage() {
                 <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-white flex items-center justify-center p-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/uploads/mls-laser-device.png"
+                    src="/uploads/mls-laser-device.jpg"
                     alt="MLS Mphi 75 Multiwave Locked System laser device"
                     className="w-full h-full object-contain"
                   />
