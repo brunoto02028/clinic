@@ -29,6 +29,7 @@ import BPRJourneyBar from "@/components/dashboard/bpr-journey-bar";
 import DailyMission from "@/components/dashboard/daily-mission";
 import RecoveryRing from "@/components/dashboard/recovery-ring";
 import OnboardingWizard from "@/components/dashboard/onboarding-wizard";
+import AICoachCard from "@/components/dashboard/ai-coach-card";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
@@ -200,6 +201,9 @@ export default function PatientDashboard() {
 
       {/* Membership Offer */}
       {!isPreview && <MembershipOfferBanner />}
+
+      {/* AI Coach */}
+      {!isPreview && <AICoachCard />}
 
       {/* Stats Grid + Recovery Ring */}
       <div className="grid gap-6 lg:grid-cols-[1fr_auto]">
