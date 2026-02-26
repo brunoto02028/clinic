@@ -30,7 +30,24 @@ import {
   X,
   Sparkles,
   Send,
+  Crown,
+  Repeat,
+  Globe,
+  Eye,
+  ClipboardList,
+  Edit,
+  RefreshCw,
+  Stethoscope,
 } from "lucide-react";
+import MembershipPreviewModal, { INTERVAL_LABELS, FEATURES } from "@/components/memberships/MembershipPreviewModal";
+import {
+  MODULE_REGISTRY, PERMISSION_REGISTRY, MODULE_CATEGORIES, PERMISSION_CATEGORIES,
+  ALL_FEATURE_KEYS, DEFAULT_FREE_FEATURES,
+  type ModuleDefinition, type PermissionDefinition,
+} from "@/lib/module-registry";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface ServicePrice {
   id?: string;
@@ -66,11 +83,23 @@ interface ServicePkg {
 
 const SERVICE_TYPES = [
   { type: "CONSULTATION", label: "Consultation Booking", icon: Calendar, defaultName: "Initial Consultation", defaultDesc: "First consultation with the physiotherapist including assessment and treatment plan." },
+  { type: "TREATMENT_SESSION", label: "Treatment Session", icon: Stethoscope, defaultName: "Treatment Session", defaultDesc: "In-person treatment session combining multiple modalities (laser, ultrasound, TENS, manual therapy, etc.)." },
   { type: "FOOT_SCAN", label: "Foot Scan", icon: Footprints, defaultName: "Foot Scan Analysis", defaultDesc: "Biomechanical foot analysis with custom insole recommendation." },
   { type: "BODY_ASSESSMENT", label: "Body Assessment", icon: Activity, defaultName: "Body Assessment", defaultDesc: "Full body posture and movement assessment with AI analysis." },
 ];
 
+// ── Membership types ──
+interface MembershipPlan {
+  id: string; name: string; description: string | null; status: string;
+  price: number; interval: string; isFree: boolean; features: string[];
+  patientScope: string; patient: { id: string; firstName: string; lastName: string; email: string } | null;
+  stripeProductId?: string | null; stripePriceId?: string | null;
+}
+type PatientScope = "specific" | "all" | "none";
+const statusColors: Record<string, string> = { ACTIVE: "bg-green-100 text-green-800", PAUSED: "bg-yellow-100 text-yellow-800", CANCELLED: "bg-red-100 text-red-800", DRAFT: "bg-gray-100 text-gray-600" };
+
 export default function ServicePricingPage() {
+  const [activeTab, setActiveTab] = useState<"services" | "memberships">("services");
   const [prices, setPrices] = useState<ServicePrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -93,11 +122,22 @@ export default function ServicePricingPage() {
   const [aiInput, setAiInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  // Membership Plans
+  const [mPlans, setMPlans] = useState<MembershipPlan[]>([]);
+  const [mAllPatients, setMAllPatients] = useState<{ id: string; firstName: string; lastName: string; email: string }[]>([]);
+  const [mShowDialog, setMShowDialog] = useState(false);
+  const [mEditing, setMEditing] = useState<MembershipPlan | null>(null);
+  const [mSubmitting, setMSubmitting] = useState(false);
+  const [mShowDelete, setMShowDelete] = useState(false);
+  const [mDeleting, setMDeleting] = useState<MembershipPlan | null>(null);
+  const [mForm, setMForm] = useState({ name: "", description: "", price: 9.90, interval: "MONTHLY", isFree: false, features: [] as string[], patientId: "", patientScope: "all" as PatientScope });
   const { toast } = useToast();
 
   useEffect(() => {
     fetchPrices();
     fetchPackages();
+    fetchMemberships();
+    fetchAllPatients();
   }, []);
 
   const fetchPrices = async () => {
@@ -121,6 +161,50 @@ export default function ServicePricingPage() {
       }
     } catch { /* ignore */ }
     setLoading(false);
+  };
+
+  const fetchMemberships = async () => {
+    try { const r = await fetch("/api/admin/memberships"); if (r.ok) setMPlans(await r.json()); } catch {}
+  };
+  const fetchAllPatients = async () => {
+    try {
+      const r = await fetch("/api/admin/patients");
+      if (r.ok) { const d = await r.json(); setMAllPatients(Array.isArray(d) ? d : d.patients || []); }
+    } catch {}
+  };
+  const mResetForm = () => setMForm({ name: "", description: "", price: 9.90, interval: "MONTHLY", isFree: false, features: [], patientId: "", patientScope: "all" });
+  const mOpenCreate = () => { setMEditing(null); mResetForm(); setMShowDialog(true); };
+  const mOpenEdit = (p: MembershipPlan) => {
+    setMEditing(p);
+    setMForm({ name: p.name, description: p.description || "", price: p.price, interval: p.interval, isFree: p.isFree, features: p.features || [], patientId: p.patient?.id || "", patientScope: (p.patientScope as PatientScope) || (p.patient ? "specific" : "all") });
+    setMShowDialog(true);
+  };
+  const mToggleFeature = (key: string) => setMForm(f => ({ ...f, features: f.features.includes(key) ? f.features.filter(k => k !== key) : [...f.features, key] }));
+  const mHandleSubmit = async () => {
+    if (!mForm.name) { toast({ title: "Error", description: "Plan name is required", variant: "destructive" }); return; }
+    if (mForm.features.length === 0) { toast({ title: "Error", description: "Select at least one feature", variant: "destructive" }); return; }
+    setMSubmitting(true);
+    try {
+      const url = mEditing ? `/api/admin/memberships/${mEditing.id}` : "/api/admin/memberships";
+      const res = await fetch(url, { method: mEditing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(mForm) });
+      if (res.ok) { toast({ title: mEditing ? "Updated" : "Created", description: `"${mForm.name}" saved` }); setMShowDialog(false); fetchMemberships(); }
+      else toast({ title: "Error", description: (await res.json()).error || "Failed", variant: "destructive" });
+    } catch { toast({ title: "Error", description: "Failed to save", variant: "destructive" }); }
+    finally { setMSubmitting(false); }
+  };
+  const mHandleStatus = async (planId: string, status: string) => {
+    try {
+      const res = await fetch(`/api/admin/memberships/${planId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+      if (res.ok) { toast({ title: "Updated", description: `Status → ${status}` }); fetchMemberships(); }
+    } catch {}
+  };
+  const mHandleDelete = async () => {
+    if (!mDeleting) return;
+    try {
+      const res = await fetch(`/api/admin/memberships/${mDeleting.id}`, { method: "DELETE" });
+      if (res.ok) { toast({ title: "Deleted", description: `"${mDeleting.name}" deleted` }); setMShowDelete(false); setMDeleting(null); fetchMemberships(); }
+      else toast({ title: "Error", description: (await res.json()).error || "Failed", variant: "destructive" });
+    } catch {}
   };
 
   const savePrice = async (sp: ServicePrice) => {
@@ -379,13 +463,32 @@ export default function ServicePricingPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Service Pricing & Access</h1>
-        <p className="text-muted-foreground mt-1">Configure service prices and manage patient access</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Pricing & Plans Hub</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Manage all pricing, packages, and membership plans in one place</p>
+        </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-white/10 pb-0">
+        {([
+          { key: "services" as const, label: "Services & Packages", icon: Package },
+          { key: "memberships" as const, label: "Membership Plans", icon: Crown },
+        ]).map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}>
+            <tab.icon className="h-4 w-4" /> {tab.label}
+            {tab.key === "memberships" && mPlans.length > 0 && <Badge variant="outline" className="text-[10px] ml-1">{mPlans.length}</Badge>}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "services" && <>
       {/* Pricing Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {prices.map((sp) => {
           const stConfig = SERVICE_TYPES.find((s) => s.type === sp.serviceType)!;
           const Icon = stConfig.icon;
@@ -773,6 +876,215 @@ export default function ServicePricingPage() {
           </CardContent>
         </Card>
       )}
+      </>}
+
+      {/* ══════ MEMBERSHIPS TAB ══════ */}
+      {activeTab === "memberships" && <>
+        <div className="flex justify-end">
+          <Button onClick={mOpenCreate} className="gap-2 bg-violet-600 hover:bg-violet-700"><Plus className="h-4 w-4" /> New Membership</Button>
+        </div>
+
+        {mPlans.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Crown className="h-14 w-14 text-violet-300 mb-4" />
+              <h3 className="text-lg font-semibold mb-1">No membership plans yet</h3>
+              <p className="text-sm text-muted-foreground mb-4 text-center max-w-xs">Create a membership plan to offer patients recurring access to your digital health tools.</p>
+              <Button onClick={mOpenCreate} className="gap-2 bg-violet-600 hover:bg-violet-700"><Plus className="h-4 w-4" /> Create First Plan</Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {mPlans.map(p => (
+              <Card key={p.id} className="group border-violet-100 hover:border-violet-300 transition-colors">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-violet-600 shrink-0" />
+                        <span className="truncate">{p.name}</span>
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {p.patient ? <><Users className="h-3 w-3 inline mr-1" />{p.patient.firstName} {p.patient.lastName}</> : p.patientScope === "all" ? <><Globe className="h-3 w-3 inline mr-1" /><span className="text-violet-600 font-medium">All Patients</span></> : <><ClipboardList className="h-3 w-3 inline mr-1" /><span className="text-amber-600 font-medium">Draft</span></>}
+                      </p>
+                    </div>
+                    <Badge className={statusColors[p.status] || ""}>{p.status}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-baseline gap-1">
+                    {p.isFree ? <span className="text-2xl font-bold text-green-600">Free</span> : <><span className="text-2xl font-bold">£{p.price.toFixed(2)}</span><span className="text-sm text-muted-foreground">/{INTERVAL_LABELS[p.interval] || "month"}</span></>}
+                    {p.stripeProductId && <span className="ml-auto flex items-center gap-1 text-xs text-violet-600 font-medium"><CreditCard className="h-3 w-3" /> Stripe</span>}
+                  </div>
+                  {p.description && <p className="text-xs text-muted-foreground line-clamp-2">{p.description}</p>}
+                  {p.features.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {p.features.slice(0, 4).map(key => {
+                        const mod = MODULE_REGISTRY.find(m => m.key === key);
+                        const perm = !mod ? PERMISSION_REGISTRY.find(pr => pr.key === key) : undefined;
+                        const feat = mod || perm;
+                        return feat ? <span key={key} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100"><feat.icon className="h-2.5 w-2.5" />{feat.label}</span> : null;
+                      })}
+                      {p.features.length > 4 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">+{p.features.length - 4} more</span>}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-1 border-t">
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => mOpenEdit(p)}><Edit className="h-3 w-3" /> Edit</Button>
+                    {p.status === "ACTIVE" && <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => mHandleStatus(p.id, "PAUSED")}>Pause</Button>}
+                    {p.status === "PAUSED" && <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => mHandleStatus(p.id, "ACTIVE")}>Resume</Button>}
+                    {(p.status === "CANCELLED" || p.status === "DRAFT") && <Button size="sm" variant="outline" className="text-xs h-7 gap-1 border-green-300 text-green-700 hover:bg-green-50" onClick={() => mHandleStatus(p.id, "ACTIVE")}><RefreshCw className="h-3 w-3" /> Activate</Button>}
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1 text-destructive border-red-200 hover:bg-red-50 ml-auto" onClick={() => { setMDeleting(p); setMShowDelete(true); }}><Trash2 className="h-3 w-3" /></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Membership Create/Edit Dialog */}
+        <Dialog open={mShowDialog} onOpenChange={setMShowDialog}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Crown className="h-5 w-5 text-violet-600" /> {mEditing ? "Edit Membership Plan" : "New Membership Plan"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-5 py-2">
+              <div className="space-y-2">
+                <Label>Plan Name *</Label>
+                <Input value={mForm.name} onChange={e => setMForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Basic Access, Premium Health" />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea value={mForm.description} onChange={e => setMForm(f => ({ ...f, description: e.target.value }))} rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Pricing</Label>
+                <div className="flex items-center gap-3 p-3 border rounded-xl bg-muted/20 flex-wrap">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={mForm.isFree} onChange={e => setMForm(f => ({ ...f, isFree: e.target.checked, price: e.target.checked ? 0 : f.price }))} className="rounded" />
+                    Free Plan
+                  </label>
+                  {!mForm.isFree && <>
+                    <div className="flex-1 min-w-[110px]">
+                      <Label className="text-xs">Price (£)</Label>
+                      <Input type="number" step="0.01" min="0" value={mForm.price} onChange={e => setMForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} className="mt-1 h-8" />
+                    </div>
+                    <div className="flex-1 min-w-[110px]">
+                      <Label className="text-xs">Billing Interval</Label>
+                      <Select value={mForm.interval} onValueChange={v => setMForm(f => ({ ...f, interval: v }))}>
+                        <SelectTrigger className="mt-1 h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="WEEKLY">Weekly</SelectItem>
+                          <SelectItem value="MONTHLY">Monthly</SelectItem>
+                          <SelectItem value="YEARLY">Yearly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Assign To</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: "all" as const, label: "All Patients", icon: Globe, active: "border-violet-400 bg-violet-50 text-violet-700" },
+                    { value: "specific" as const, label: "Specific Patient", icon: UserCheck, active: "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" },
+                    { value: "none" as const, label: "Draft", icon: ClipboardList, active: "border-amber-400 bg-amber-50 text-amber-700" },
+                  ]).map(opt => (
+                    <button key={opt.value} type="button" onClick={() => setMForm(f => ({ ...f, patientScope: opt.value, patientId: opt.value !== "specific" ? "" : f.patientId }))}
+                      className={`flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border-2 text-xs font-medium transition-all ${mForm.patientScope === opt.value ? opt.active : "border-gray-200 text-muted-foreground hover:border-gray-300"}`}>
+                      <opt.icon className="h-4 w-4" /><span>{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {mForm.patientScope === "specific" && (
+                  <Select value={mForm.patientId} onValueChange={v => setMForm(f => ({ ...f, patientId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select patient..." /></SelectTrigger>
+                    <SelectContent>{mAllPatients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName} — {p.email}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Modules & Permissions *</Label>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setMForm(f => ({ ...f, features: ALL_FEATURE_KEYS }))} className="text-[10px] text-violet-600 underline hover:no-underline">Select All</button>
+                    <button type="button" onClick={() => setMForm(f => ({ ...f, features: DEFAULT_FREE_FEATURES }))} className="text-[10px] text-emerald-600 underline hover:no-underline">Free Defaults</button>
+                    <button type="button" onClick={() => setMForm(f => ({ ...f, features: [] }))} className="text-[10px] text-muted-foreground underline hover:no-underline">Clear</button>
+                  </div>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto pr-1 space-y-3">
+                  {MODULE_CATEGORIES.map(cat => {
+                    const mods = MODULE_REGISTRY.filter(m => m.category === cat.key);
+                    if (mods.length === 0) return null;
+                    return (
+                      <div key={cat.key}>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{cat.label}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {mods.map((mod: ModuleDefinition) => {
+                            const checked = mForm.features.includes(mod.key);
+                            const isCore = mod.alwaysVisible;
+                            return (
+                              <button key={mod.key} type="button" onClick={() => !isCore && mToggleFeature(mod.key)} disabled={isCore}
+                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-left transition-all ${isCore ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed" : checked ? "border-violet-400 bg-violet-50" : "border-gray-200 hover:border-gray-300 bg-white"}`}>
+                                <div className={`p-1 rounded-md shrink-0 ${checked || isCore ? "bg-violet-600 text-white" : "bg-muted text-muted-foreground"}`}><mod.icon className="h-3 w-3" /></div>
+                                <p className={`text-xs font-semibold ${checked || isCore ? "text-violet-800" : "text-foreground"}`}>{mod.label}</p>
+                                {(checked || isCore) && <CheckCircle className="h-3 w-3 text-violet-600 shrink-0 ml-auto" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {PERMISSION_CATEGORIES.map(cat => {
+                    const perms = PERMISSION_REGISTRY.filter(p => p.category === cat.key);
+                    if (perms.length === 0) return null;
+                    return (
+                      <div key={cat.key}>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{cat.label}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {perms.map((perm: PermissionDefinition) => {
+                            const checked = mForm.features.includes(perm.key);
+                            return (
+                              <button key={perm.key} type="button" onClick={() => mToggleFeature(perm.key)}
+                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-left transition-all ${checked ? "border-emerald-400 bg-emerald-50" : "border-gray-200 hover:border-gray-300 bg-white"}`}>
+                                <div className={`p-1 rounded-md shrink-0 ${checked ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"}`}><perm.icon className="h-3 w-3" /></div>
+                                <p className={`text-xs font-semibold ${checked ? "text-emerald-800" : "text-foreground"}`}>{perm.label}</p>
+                                {checked && <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0 ml-auto" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">{mForm.features.filter(f => f.startsWith("mod_")).length} modules, {mForm.features.filter(f => f.startsWith("perm_")).length} permissions</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMShowDialog(false)}>Cancel</Button>
+              <Button onClick={mHandleSubmit} disabled={mSubmitting} className="bg-violet-600 hover:bg-violet-700 gap-2">
+                {mSubmitting && <Loader2 className="h-4 w-4 animate-spin" />} {mEditing ? "Update" : "Create Membership"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={mShowDelete} onOpenChange={setMShowDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Membership Plan?</AlertDialogTitle>
+              <AlertDialogDescription><strong>&quot;{mDeleting?.name}&quot;</strong> will be permanently deleted.{mDeleting?.stripeProductId && " The Stripe product will be archived."}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setMDeleting(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={mHandleDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>}
     </div>
   );
 }
