@@ -176,8 +176,8 @@ export default function PatientDashboard() {
                   <p className={`text-sm mt-1 ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-400/80" : "text-amber-400/80"}`}>
                     {(stats?.upcomingAppointments ?? 0) > 0
                       ? (locale === "pt-BR"
-                        ? "Você tem uma consulta agendada. O screening médico deve ser completado pelo menos 24 horas antes da consulta. Complete agora para evitar reagendamento."
-                        : "You have an upcoming appointment. Your medical screening must be completed at least 24 hours before your appointment. Complete it now to avoid rescheduling.")
+                        ? "Você tem uma consulta agendada. A triagem de avaliação deve ser completada pelo menos 24 horas antes da consulta. Complete agora para evitar reagendamento."
+                        : "You have an upcoming appointment. Your assessment screening must be completed at least 24 hours before your appointment. Complete it now to avoid rescheduling.")
                       : screeningText}
                   </p>
                   <Button asChild size="sm" className="mt-3">

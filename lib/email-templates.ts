@@ -91,7 +91,7 @@ export const DEFAULT_TEMPLATES = [
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Your patient portal is now ready. From there you can:</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
       <tr><td style="padding:6px 0;color:#374151;font-size:14px;">✅ Book and manage appointments</td></tr>
-      <tr><td style="padding:6px 0;color:#374151;font-size:14px;">✅ Complete your medical screening</td></tr>
+      <tr><td style="padding:6px 0;color:#374151;font-size:14px;">✅ Complete your assessment screening</td></tr>
       <tr><td style="padding:6px 0;color:#374151;font-size:14px;">✅ Access your treatment plan and exercises</td></tr>
       <tr><td style="padding:6px 0;color:#374151;font-size:14px;">✅ View clinical notes and assessments</td></tr>
     </table>
@@ -238,13 +238,13 @@ export const DEFAULT_TEMPLATES = [
   },
   {
     slug: 'SCREENING_RECEIVED' as const,
-    name: 'Medical Screening Received',
-    subject: "Medical screening received — we'll review it shortly, {{patientName}}",
-    description: 'Sent when a patient submits their medical screening form',
+    name: 'Assessment Screening Received',
+    subject: "Assessment screening received — we'll review it shortly, {{patientName}}",
+    description: 'Sent when a patient submits their assessment screening form',
     variables: ['patientName', 'portalUrl'],
     htmlBody: `
-    <h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">Medical Screening Received 📋</h2>
-    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Hi {{patientName}}, thank you for completing your medical screening form. We have received it and your therapist will review it before your appointment.</p>
+    <h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">Assessment Screening Received 📋</h2>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Hi {{patientName}}, thank you for completing your assessment screening form. We have received it and your therapist will review it before your appointment.</p>
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:18px 24px;margin:0 0 24px;">
       <p style="margin:0;font-size:14px;color:#374151;">✅ Your screening has been securely saved<br>📋 Your therapist will review it prior to your session<br>📞 We may contact you if we need any clarification</p>
     </div>

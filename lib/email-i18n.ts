@@ -28,14 +28,14 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           P('Estamos muito felizes em tê-lo(a) connosco. Obrigado(a) por se juntar à <strong>Bruno Physical Rehabilitation</strong>.') +
           C('#f0fdf9','#d1fae5',
             '<p style="color:#065f46;font-size:14px;font-weight:600;margin:0 0 10px;">No seu portal pode:</p>' +
-            '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">✅ Marcar e gerir consultas<br>✅ Preencher a triagem médica<br>✅ Aceder ao plano de tratamento<br>✅ Ver exercícios e acompanhar progresso<br>✅ Carregar documentos médicos</p>') +
+            '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">✅ Marcar e gerir consultas<br>✅ Preencher a triagem de avaliação<br>✅ Aceder ao plano de tratamento<br>✅ Ver exercícios e acompanhar progresso<br>✅ Carregar documentos médicos</p>') +
           B('{{portalUrl}}','Aceder ao Portal →') +
           P('Se tiver alguma dúvida, não hesite em contactar-nos. Estamos aqui para apoiar a sua recuperação.','13px','#6b7280')
         : H('Welcome, {{patientName}}! 👋') +
           P('We\'re so glad you\'re here. Thank you for joining <strong>Bruno Physical Rehabilitation</strong>.') +
           C('#f0fdf9','#d1fae5',
             '<p style="color:#065f46;font-size:14px;font-weight:600;margin:0 0 10px;">From your portal you can:</p>' +
-            '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">✅ Book and manage appointments<br>✅ Complete your medical screening<br>✅ Access your treatment plan<br>✅ View exercises and track progress<br>✅ Upload medical documents</p>') +
+            '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">✅ Book and manage appointments<br>✅ Complete your assessment screening<br>✅ Access your treatment plan<br>✅ View exercises and track progress<br>✅ Upload medical documents</p>') +
           B('{{portalUrl}}','Access Your Portal →') +
           P('If you have any questions, please don\'t hesitate to get in touch. We look forward to supporting your recovery.','13px','#6b7280'),
     },
@@ -152,17 +152,17 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
     },
 
     SCREENING_RECEIVED: {
-      subject: pt ? 'Triagem médica recebida — analisaremos em breve, {{patientName}}' : "Medical screening received — we'll review it shortly, {{patientName}}",
+      subject: pt ? 'Triagem de avaliação recebida — analisaremos em breve, {{patientName}}' : "Assessment screening received — we'll review it shortly, {{patientName}}",
       body: pt
-        ? H('Triagem Médica Recebida 📋') +
-          P(`${hi} {{patientName}}, obrigado(a) por preencher o questionário de triagem médica. Recebemo-lo com sucesso.`) +
+        ? H('Triagem de Avaliação Recebida 📋') +
+          P(`${hi} {{patientName}}, obrigado(a) por preencher o questionário de triagem de avaliação. Recebemo-lo com sucesso.`) +
           C('#f0fdf9','#d1fae5',
             '<p style="color:#065f46;font-size:14px;font-weight:600;margin:0 0 10px;">O que acontece a seguir?</p>' +
             '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">1️⃣ O seu terapeuta irá analisar pessoalmente a triagem<br>2️⃣ Alertas de saúde serão avaliados cuidadosamente<br>3️⃣ A informação será usada para personalizar o tratamento<br>4️⃣ O terapeuta discutirá os resultados na primeira consulta</p>') +
           P('Se precisar de atualizar informação ou tiver dúvidas, não hesite em contactar-nos.') +
           B('{{portalUrl}}','Ver o Meu Portal →')
-        : H('Medical Screening Received 📋') +
-          P(`${hi} {{patientName}}, thank you for completing your medical screening form. We've received it successfully.`) +
+        : H('Assessment Screening Received 📋') +
+          P(`${hi} {{patientName}}, thank you for completing your assessment screening form. We've received it successfully.`) +
           C('#f0fdf9','#d1fae5',
             '<p style="color:#065f46;font-size:14px;font-weight:600;margin:0 0 10px;">What happens next?</p>' +
             '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">1️⃣ Your therapist will personally review your screening<br>2️⃣ Any health flags will be assessed carefully<br>3️⃣ Your information will be used to tailor your treatment<br>4️⃣ Your therapist will discuss findings at your first appointment</p>') +

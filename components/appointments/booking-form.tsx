@@ -211,9 +211,9 @@ export default function BookingForm() {
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-semibold text-foreground">{t.name}</h3>
+                      <h3 className="font-semibold text-foreground">{isPt && t.namePt ? t.namePt : t.name}</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {t.description}
+                        {isPt && t.descriptionPt ? t.descriptionPt : t.description}
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
                         {isPt ? "Duração" : "Duration"}: {t.duration} {isPt ? "minutos" : "minutes"}
@@ -226,79 +226,22 @@ export default function BookingForm() {
                 </div>
               ))}
 
-              {/* Custom Treatment Option */}
-              <div
-                onClick={() => {
-                  setIsCustomTreatment(true);
-                  setSelectedTreatment("");
-                }}
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  isCustomTreatment
-                    ? "border-primary bg-primary/5"
-                    : "border-white/10 hover:border-primary/50"
-                }`}
-              >
-                <h3 className="font-semibold text-foreground mb-3">{isPt ? "Tratamento Personalizado" : "Custom Treatment"}</h3>
+              {/* Personalised Treatment CTA */}
+              <div className="p-4 rounded-lg border-2 border-dashed border-white/10 bg-muted/20">
+                <h3 className="font-semibold text-foreground mb-2">
+                  {isPt ? "Tratamento Personalizado" : "Personalised Treatment"}
+                </h3>
                 <p className="text-sm text-muted-foreground mb-3">
-                  {isPt ? "Crie uma consulta personalizada com opções flexíveis" : "Create a custom appointment with flexible options"}
+                  {isPt
+                    ? "Precisa de um tratamento diferente? O seu terapeuta pode criar um plano personalizado para si."
+                    : "Need a different treatment? Your therapist can create a personalised plan for you."}
                 </p>
-                
-                {isCustomTreatment && (
-                  <div className="space-y-3 mt-4" onClick={(e) => e.stopPropagation()}>
-                    <div>
-                      <Label htmlFor="customName" className="text-xs">{isPt ? "Nome do Tratamento" : "Treatment Name"} *</Label>
-                      <Input
-                        id="customName"
-                        value={customTreatment.name}
-                        onChange={(e) =>
-                          setCustomTreatment({ ...customTreatment, name: e.target.value })
-                        }
-                        placeholder={isPt ? "Ex: Sessão de Retorno, Consulta" : "e.g., Follow-up Session, Consultation"}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="customDuration" className="text-xs">{isPt ? "Duração (min)" : "Duration (min)"}</Label>
-                        <Input
-                          id="customDuration"
-                          type="number"
-                          min="15"
-                          step="15"
-                          value={customTreatment.duration}
-                          onChange={(e) =>
-                            setCustomTreatment({
-                              ...customTreatment,
-                              duration: parseInt(e.target.value) || 60,
-                            })
-                          }
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="customPrice" className="text-xs">{isPt ? "Preço (£)" : "Price (£)"}</Label>
-                        <Input
-                          id="customPrice"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={customTreatment.price}
-                          onChange={(e) =>
-                            setCustomTreatment({
-                              ...customTreatment,
-                              price: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          placeholder="0.00"
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground italic">
-                      {isPt ? "Defina o preço como £0 para uma consulta gratuita" : "Set price to £0 for a free appointment"}
-                    </p>
-                  </div>
-                )}
+                <a
+                  href={isPt ? "mailto:support@bpr.rehab?subject=Solicita%C3%A7%C3%A3o%20de%20Tratamento%20Personalizado" : "mailto:support@bpr.rehab?subject=Personalised%20Treatment%20Request"}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                >
+                  {isPt ? "Contactar o Terapeuta →" : "Contact Your Therapist →"}
+                </a>
               </div>
 
               <Button

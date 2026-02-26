@@ -101,7 +101,9 @@ export interface MedicalScreeningForm {
 export interface TreatmentOption {
   id: string;
   name: string;
+  namePt?: string;
   description: string;
+  descriptionPt?: string;
   duration: number;
   price: number;
 }
@@ -110,42 +112,54 @@ export const TREATMENT_OPTIONS: TreatmentOption[] = [
   {
     id: "initial-assessment",
     name: "Initial Assessment",
-    description: "Comprehensive first consultation including full medical history, physical examination, and treatment plan development.",
+    namePt: "Avaliação Inicial",
+    description: "Comprehensive first consultation including full health history, physical examination, and treatment plan development.",
+    descriptionPt: "Primeira consulta completa incluindo histórico de saúde, exame físico e elaboração do plano de tratamento.",
     duration: 60,
     price: 75,
   },
   {
     id: "follow-up",
     name: "Follow-up Treatment",
+    namePt: "Sessão de Retorno",
     description: "Standard follow-up session for ongoing rehabilitation and treatment progression.",
+    descriptionPt: "Sessão de acompanhamento para reabilitação contínua e progressão do tratamento.",
     duration: 45,
     price: 60,
   },
   {
     id: "sports-massage",
     name: "Sports Massage Therapy",
+    namePt: "Massagem Desportiva",
     description: "Deep tissue massage targeting specific muscle groups for injury prevention and recovery.",
+    descriptionPt: "Massagem profunda focada em grupos musculares específicos para prevenção de lesões e recuperação.",
     duration: 45,
     price: 55,
   },
   {
     id: "electrotherapy",
     name: "Electrotherapy Session",
+    namePt: "Sessão de Eletroterapia",
     description: "Advanced electrotherapy treatment including TENS, EMS, or ultrasound therapy.",
+    descriptionPt: "Tratamento avançado de eletroterapia incluindo TENS, EMS ou terapia por ultrassom.",
     duration: 30,
     price: 50,
   },
   {
     id: "shockwave",
     name: "Shockwave Therapy",
+    namePt: "Terapia por Ondas de Choque",
     description: "High-energy acoustic wave treatment for chronic conditions and accelerated healing.",
+    descriptionPt: "Tratamento com ondas acústicas de alta energia para condições crônicas e aceleração da recuperação.",
     duration: 30,
     price: 70,
   },
   {
     id: "rehabilitation",
     name: "Rehabilitation Programme",
+    namePt: "Programa de Reabilitação",
     description: "Structured exercise-based rehabilitation session with personalised programme development.",
+    descriptionPt: "Sessão de reabilitação baseada em exercícios com desenvolvimento de programa personalizado.",
     duration: 60,
     price: 65,
   },
