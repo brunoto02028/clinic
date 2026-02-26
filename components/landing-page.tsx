@@ -780,26 +780,60 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer — Minimal */}
-      <footer className="border-t border-white/5 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            {settings && <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" />}
-            <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} BPR. {T("home.allRightsReserved")}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {settings?.email && (
-              <a href={`mailto:${settings.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Mail className="h-3 w-3" />{settings.email}</a>
-            )}
-            {settings?.phone && (
-              <a href={`tel:${settings.phone}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Phone className="h-3 w-3" />{settings.phone}</a>
-            )}
-            <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{T("home.staffPortal")}</Link>
-          </div>
-        </div>
-      </footer>
+      {/* Footer — respects footerModulesJson toggles */}
+      {(() => {
+        const fMods: FooterModules = (() => { try { return settings?.footerModulesJson ? JSON.parse(settings.footerModulesJson) : {}; } catch { return {}; } })();
+        const fShow = (k: keyof FooterModules) => fMods[k] === true;
+        const fLinks: { id: string; title: string; url: string }[] = (() => { try { return settings?.footerLinksJson ? JSON.parse(settings.footerLinksJson) : []; } catch { return []; } })();
+        const fSocial: { id: string; platform: string; url: string }[] = (() => { try { return settings?.socialLinksJson ? JSON.parse(settings.socialLinksJson) : []; } catch { return []; } })();
+        const fHasLogo = fShow("logo");
+        const fHasLinks = fShow("links") && fLinks.length > 0;
+        const fHasContact = fShow("contact") && (settings?.email || settings?.phone);
+        const fHasSocial = fShow("social") && fSocial.length > 0;
+        const fHasCopyright = fShow("copyright");
+        const fHasTopRow = fHasLogo || fHasLinks || fHasContact || fHasSocial;
+        const fHasAny = fHasTopRow || fHasCopyright;
+        return (
+          <footer className="border-t border-white/5 py-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              {fHasTopRow && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-3">
+                  {fHasLogo && settings && (
+                    <div className="flex items-center gap-3">
+                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" />
+                      {settings.tagline && <p className="text-xs text-muted-foreground">{settings.tagline}</p>}
+                    </div>
+                  )}
+                  {fHasLinks && (
+                    <div className="flex items-center gap-3 flex-wrap justify-center">
+                      {fLinks.map(l => <a key={l.id} href={l.url} target={l.url.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{l.title}</a>)}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
+                    {fHasContact && settings?.email && <a href={`mailto:${settings.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Mail className="h-3 w-3" />{settings.email}</a>}
+                    {fHasContact && settings?.phone && <a href={`tel:${settings.phone}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Phone className="h-3 w-3" />{settings.phone}</a>}
+                    {fHasSocial && fSocial.map(s => <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" title={s.platform}><Globe className="h-4 w-4" /></a>)}
+                  </div>
+                </div>
+              )}
+              {fHasCopyright && (
+                <div className={`flex flex-col sm:flex-row items-center justify-between gap-2 ${fHasTopRow ? "border-t border-white/5 pt-3" : ""}`}>
+                  <p className="text-xs text-muted-foreground">{settings?.footerText || `© ${new Date().getFullYear()} BPR. ${T("home.allRightsReserved")}`}</p>
+                  <div className="flex items-center gap-4">
+                    <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{T("home.staffPortal")}</Link>
+                  </div>
+                </div>
+              )}
+              {!fHasAny && (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} BPR.</p>
+                  <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{T("home.staffPortal")}</Link>
+                </div>
+              )}
+            </div>
+          </footer>
+        );
+      })()}
     </div>
   );
 }

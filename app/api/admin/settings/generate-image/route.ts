@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { prompt, aspectRatio = '16:9', section } = body;
+  const { prompt, aspectRatio = '16:9', section, referenceImageBase64, referenceImageMime } = body;
 
   if (!prompt) {
     return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
@@ -22,40 +22,23 @@ export async function POST(req: NextRequest) {
 
   try {
     let imageBase64: string | null = null;
-    const fullPrompt = `Professional photograph for a physiotherapy clinic website: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
 
-    // Method 1: Try unified AI provider (Abacus FLUX-2 PRO or Gemini)
-    try {
-      const urls = await generateImage(fullPrompt, { aspectRatio, numImages: 1 });
-      if (urls.length > 0) {
-        const url = urls[0];
-        if (url.startsWith('data:image')) {
-          // Extract base64 from data URI
-          const match = url.match(/^data:image\/\w+;base64,(.+)$/);
-          if (match) imageBase64 = match[1];
-        } else if (url.startsWith('http')) {
-          // Download the image from URL
-          const imgRes = await fetch(url);
-          if (imgRes.ok) {
-            const buf = await imgRes.arrayBuffer();
-            imageBase64 = Buffer.from(buf).toString('base64');
-          }
-        }
-      }
-    } catch (providerErr: any) {
-      console.error('AI provider image gen error:', providerErr.message);
-    }
-
-    // Method 2: Fallback to Gemini direct if provider failed
-    if (!imageBase64) {
+    // ─── If reference image provided, use Gemini multimodal to incorporate it ───
+    if (referenceImageBase64) {
       const apiKey = await getConfigValue('GEMINI_API_KEY');
       if (apiKey) {
+        const refMime = referenceImageMime || 'image/jpeg';
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
         const geminiRes = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `Generate a professional, high-quality photograph for a physiotherapy clinic website. The image should be: ${prompt}. Make it look realistic, professional, and suitable for a medical/healthcare website. No text in the image.` }] }],
+            contents: [{
+              parts: [
+                { inlineData: { mimeType: refMime, data: referenceImageBase64 } },
+                { text: `I'm providing you a reference photo. Use this reference photo as inspiration to create a NEW professional image for a physiotherapy clinic website. Instructions: ${prompt}. The generated image should incorporate elements from the reference photo (equipment, person, setting) into a polished, professional healthcare context. Make it realistic, high-quality, suitable for a medical website. No text overlay in the image.` },
+              ],
+            }],
             generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
           }),
         });
@@ -67,6 +50,71 @@ export async function POST(req: NextRequest) {
             if (part.inlineData?.mimeType?.startsWith('image/')) {
               imageBase64 = part.inlineData.data;
               break;
+            }
+          }
+        }
+      }
+
+      // Fallback: try Abacus with reference image description in prompt
+      if (!imageBase64) {
+        const refPrompt = `Professional photograph for a physiotherapy clinic website, incorporating elements from a provided reference photo: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
+        try {
+          const urls = await generateImage(refPrompt, { aspectRatio, numImages: 1 });
+          if (urls.length > 0) {
+            const url = urls[0];
+            if (url.startsWith('data:image')) {
+              const match = url.match(/^data:image\/\w+;base64,(.+)$/);
+              if (match) imageBase64 = match[1];
+            } else if (url.startsWith('http')) {
+              const imgRes = await fetch(url);
+              if (imgRes.ok) { imageBase64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64'); }
+            }
+          }
+        } catch {}
+      }
+    } else {
+      // ─── Standard generation (no reference image) ───
+      const fullPrompt = `Professional photograph for a physiotherapy clinic website: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
+
+      // Method 1: Try unified AI provider (Abacus FLUX-2 PRO or Gemini)
+      try {
+        const urls = await generateImage(fullPrompt, { aspectRatio, numImages: 1 });
+        if (urls.length > 0) {
+          const url = urls[0];
+          if (url.startsWith('data:image')) {
+            const match = url.match(/^data:image\/\w+;base64,(.+)$/);
+            if (match) imageBase64 = match[1];
+          } else if (url.startsWith('http')) {
+            const imgRes = await fetch(url);
+            if (imgRes.ok) { imageBase64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64'); }
+          }
+        }
+      } catch (providerErr: any) {
+        console.error('AI provider image gen error:', providerErr.message);
+      }
+
+      // Method 2: Fallback to Gemini direct if provider failed
+      if (!imageBase64) {
+        const apiKey = await getConfigValue('GEMINI_API_KEY');
+        if (apiKey) {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+          const geminiRes = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `Generate a professional, high-quality photograph for a physiotherapy clinic website. The image should be: ${prompt}. Make it look realistic, professional, and suitable for a medical/healthcare website. No text in the image.` }] }],
+              generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+            }),
+          });
+
+          if (geminiRes.ok) {
+            const data = await geminiRes.json();
+            const parts = data.candidates?.[0]?.content?.parts || [];
+            for (const part of parts) {
+              if (part.inlineData?.mimeType?.startsWith('image/')) {
+                imageBase64 = part.inlineData.data;
+                break;
+              }
             }
           }
         }

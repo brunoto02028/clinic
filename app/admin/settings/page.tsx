@@ -1744,7 +1744,7 @@ export default function AdminSettingsPage() {
             <CardContent className="p-0">
               {(() => {
                 const mods: Record<string,boolean> = settings.footerModulesJson ? (() => { try { return JSON.parse(settings.footerModulesJson); } catch { return {}; }})() : {};
-                const show = (k: string) => mods[k] !== false;
+                const show = (k: string) => mods[k] === true;
                 const sl: {id:string;platform:string;url:string}[] = (() => { try { return JSON.parse(settings.socialLinksJson || "[]"); } catch { return []; }})();
                 return (
                   <div className="bg-primary text-primary-foreground py-5 px-6">
@@ -1788,10 +1788,10 @@ export default function AdminSettingsPage() {
               {(() => {
                 const mods: Record<string,boolean> = settings.footerModulesJson ? (() => { try { return JSON.parse(settings.footerModulesJson); } catch { return {}; }})() : {};
                 const toggle = (k: string) => {
-                  const updated = { ...mods, [k]: mods[k] === false ? true : false };
+                  const updated = { ...mods, [k]: !mods[k] };
                   setSettings({ ...settings, footerModulesJson: JSON.stringify(updated) });
                 };
-                const show = (k: string) => mods[k] !== false;
+                const show = (k: string) => mods[k] === true;
                 const modules = [
                   { key: 'logo', label: 'Logo & Tagline', desc: 'Show logo and tagline in footer' },
                   { key: 'links', label: 'Navigation Links', desc: 'Show footer navigation links' },
