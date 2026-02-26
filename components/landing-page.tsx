@@ -31,6 +31,9 @@ import {
   Syringe,
   CircleDot,
   MessageCircle,
+  Target,
+  Timer,
+  Sparkles,
   Instagram,
   Facebook,
   Twitter,
@@ -461,6 +464,143 @@ export default function LandingPage() {
                     </CardContent>
                   </Card>
                 </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ MLS® LASER THERAPY FEATURED BLOCK ═══ */}
+      <section id="mls-laser" className="relative py-16 sm:py-20 lg:py-28 bg-background overflow-hidden">
+        {/* Subtle gradient accent */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-orange-500/[0.03] to-transparent" />
+          <div className="absolute bottom-0 left-0 w-1/3 h-1/2 bg-gradient-to-tr from-blue-600/[0.04] to-transparent" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="mb-10 sm:mb-14">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-orange-500/15 text-orange-400 text-xs font-semibold uppercase tracking-wider mb-4">
+              {T("home.mlsLabel")}
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight max-w-3xl">
+              {T("home.mlsTitle")} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-blue-500">{T("home.mlsTitle2")}</span>
+            </h2>
+            <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
+              {T("home.mlsDesc")}
+            </p>
+          </div>
+
+          {/* Main content grid */}
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
+            {/* Left: Images */}
+            <div className="space-y-4">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-slate-900 to-slate-800">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/uploads/mls-laser-treatment.jpg"
+                  alt="MLS Laser Therapy treatment in action"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
+                    <Zap className="h-5 w-5 text-orange-400" />
+                    <span className="text-sm font-medium text-foreground">{T("home.mlsBadge")}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-white flex items-center justify-center p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/uploads/mls-laser-device.png"
+                    alt="MLS Mphi 75 Multiwave Locked System laser device"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-blue-600/10 border border-orange-500/20 p-5 flex flex-col justify-center">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-orange-400 animate-pulse" />
+                      <span className="text-xs font-semibold text-orange-400 uppercase tracking-wider">808 nm</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{T("home.mls808")}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse" />
+                      <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">905 nm</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{T("home.mls905")}</p>
+                    <p className="text-[10px] text-muted-foreground/70 pt-1 border-t border-border/50">{T("home.mlsDual")}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Content */}
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-6">{T("home.mlsBenefitsTitle")}</h3>
+
+              {/* Benefits */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                {[
+                  { icon: Zap, color: "text-orange-400 bg-orange-500/15", key: "home.mlsBenefit1" },
+                  { icon: Shield, color: "text-blue-400 bg-blue-500/15", key: "home.mlsBenefit2" },
+                  { icon: Timer, color: "text-emerald-400 bg-emerald-500/15", key: "home.mlsBenefit3" },
+                  { icon: Target, color: "text-violet-400 bg-violet-500/15", key: "home.mlsBenefit4" },
+                  { icon: Activity, color: "text-cyan-400 bg-cyan-500/15", key: "home.mlsBenefit5" },
+                  { icon: Heart, color: "text-rose-400 bg-rose-500/15", key: "home.mlsBenefit6" },
+                ].map((b) => (
+                  <div key={b.key} className="flex items-start gap-3">
+                    <div className={`w-9 h-9 rounded-lg ${b.color} flex items-center justify-center shrink-0`}>
+                      <b.icon className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm text-foreground leading-relaxed pt-1.5">{T(b.key)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Conditions */}
+              <div className="rounded-xl bg-card border border-border p-5 mb-8">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-orange-400" />
+                  {T("home.mlsConditionsTitle")}
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {["home.mlsCond1", "home.mlsCond2", "home.mlsCond3", "home.mlsCond4", "home.mlsCond5", "home.mlsCond6", "home.mlsCond7", "home.mlsCond8"].map((k) => (
+                    <span key={k} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/60 text-xs font-medium text-foreground">
+                      <CheckCircle2 className="h-3 w-3 text-orange-400" />
+                      {T(k)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/signup">
+                  <Button size="lg" className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
+                    {T("home.mlsCta")} <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/services/laser-shockwave">
+                  <Button size="lg" variant="outline">{T("home.mlsLearnMore")}</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+            {[
+              { value: "75W", labelKey: "home.mlsStat1" },
+              { value: "3 kg", labelKey: "home.mlsStat2" },
+              { value: "EU MDR", labelKey: "home.mlsStat3" },
+              { value: "2000 Hz", labelKey: "home.mlsStat4" },
+            ].map((stat) => (
+              <div key={stat.labelKey} className="text-center rounded-xl bg-card border border-border p-4 sm:p-5">
+                <p className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-blue-500">{stat.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{T(stat.labelKey)}</p>
               </div>
             ))}
           </div>

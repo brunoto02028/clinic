@@ -1,0 +1,609 @@
+<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" lang="it" dir="ltr" 
+  xmlns:og="http://ogp.me/ns#"
+  xmlns:article="http://ogp.me/ns/article#"
+  xmlns:book="http://ogp.me/ns/book#"
+  xmlns:profile="http://ogp.me/ns/profile#"
+  xmlns:video="http://ogp.me/ns/video#"
+  xmlns:product="http://ogp.me/ns/product#">
+<head profile="http://www.w3.org/1999/xhtml/vocab">
+<script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-culture="it" data-cbid="8f27919a-8b57-4be0-8b97-856e6abe6f2a" data-blockingmode="auto" type="text/javascript"></script>
+<link rel="apple-touch-icon" sizes="57x57" href="/favicon/apple-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/favicon/apple-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/favicon/apple-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/favicon/apple-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/favicon/apple-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/favicon/apple-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/favicon/apple-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/favicon/apple-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-icon-180x180.png">
+<link rel="icon" type="image/png" sizes="192x192"  href="/favicon/android-icon-192x192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="/favicon/favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
+<meta name="msapplication-TileImage" content="/favicon/ms-icon-144x144.png">
+<link rel="manifest" href="/favicon/manifest.json">
+
+<meta name="msapplication-TileColor" content="#1a1a1a">
+<meta name="theme-color" content="#1a1a1a">
+<meta name="msapplication-navbutton-color" content="#1a1a1a">
+<meta name="apple-mobile-web-app-status-bar-style" content="#1a1a1a">
+
+<!-- Dati aziendali -->
+	<script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "image": "https://www.asalaser.com/sites/default/files/styles/copertina_1920x1080/public/slider/copertina/visual_hp_asa_corporate.jpg",
+      "url": "https://www.asalaser.com/",
+      "sameAs": ["https://www.asalaser.com/it/azienda", "https://www.asalaser.com/it/ricerca-formazione"],
+      "logo": "https://www.asalaser.com/sites/all/themes/asalaser/images/logo_asa.svg",
+      "name": "ASAlaser",
+      "description": "ASA è punto di riferimento internazionale nella produzione di dispositivi medicali per laserterapia e magnetoterapia",
+      "email": "asalaser@asalaser.com",
+      "telephone": "+390444289200",
+      "vatID": "00860620244",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Via Galileo Galilei 23",
+        "addressLocality": "Arcugnano",
+        "addressCountry": "IT",
+        "addressRegion": "Vicenza",
+        "postalCode": "36057"
+      }
+    }
+    </script>
+<link rel="alternate" hreflang="en" href="https://www.asalaser.com/en/404-page-not-found">
+<link rel="alternate" hreflang="de" href="https://www.asalaser.com/de/404-seite-nicht-gefunden">
+<link rel="alternate" hreflang="fr" href="https://www.asalaser.com/fr/404-page-introuvable">
+<link rel="alternate" hreflang="es" href="https://www.asalaser.com/es/404-pagina-no-encontrada">
+<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
+<link rel='preload' as='style' href='https://fonts.googleapis.com/css?family=Open+Sans:400,400i,600,600i,700,700i&subset=latin-ext&display=swap'>
+<link rel='stylesheet' href='https://fonts.googleapis.com/css?family=Open+Sans:400,400i,600,600i,700,700i&subset=latin-ext&display=swap'>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="shortcut icon" href="https://www.asalaser.com/sites/all/themes/asalaser/favicon.ico" type="image/vnd.microsoft.icon" />
+<link href="/sites/all/themes/asalaser/apple-touch-icon.png" rel="apple-touch-icon-precomposed" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="follow, index" />
+<meta name="generator" content="Drupal 7 (https://www.drupal.org)" />
+<link rel="canonical" href="https://www.asalaser.com/it/sites/default/files/styles/large/public/2023-06/mphi75_prodotto_asa.png" />
+<link rel="shortlink" href="https://www.asalaser.com/it/node/2" />
+<meta property="og:site_name" content="Asalaser" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://www.asalaser.com/it/sites/default/files/styles/large/public/2023-06/mphi75_prodotto_asa.png" />
+<meta property="og:title" content="Asalaser" />
+	<title>404 - Pagina non trovata | Asalaser</title>
+	<style type="text/css" media="all">
+@import url("https://www.asalaser.com/sites/all/themes/clean/styles/clean.reset-browser.css?tayzaz");
+@import url("https://www.asalaser.com/modules/system/system.base.css?tayzaz");
+@import url("https://www.asalaser.com/modules/system/system.messages.css?tayzaz");
+@import url("https://www.asalaser.com/modules/system/system.theme.css?tayzaz");
+</style>
+<style type="text/css" media="all">
+@import url("https://www.asalaser.com/sites/all/modules/custom/asalaser_backend/backend.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/modules/contrib/date/date_api/date.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/modules/contrib/date/date_repeat_field/date_repeat_field.css?tayzaz");
+@import url("https://www.asalaser.com/modules/field/theme/field.css?tayzaz");
+@import url("https://www.asalaser.com/modules/node/node.css?tayzaz");
+@import url("https://www.asalaser.com/modules/user/user.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/modules/contrib/youtube/css/youtube.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/modules/contrib/views/css/views.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/modules/contrib/ckeditor/css/ckeditor.css?tayzaz");
+</style>
+<style type="text/css" media="all">
+@import url("https://www.asalaser.com/sites/all/modules/contrib/ctools/css/ctools.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/modules/contrib/panels/css/panels.css?tayzaz");
+</style>
+<style type="text/css" media="all">
+@import url("https://www.asalaser.com/sites/all/themes/clean/styles/clean.reset-drupal.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/clean/styles/system.menus.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/clean/styles/clean.forms.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/clean/styles/clean.layout.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/clean/styles/clean.content.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/asalaser/css/clean.typography.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/asalaser/js/slick/slick.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/asalaser/js/ytplayer/css/jquery.mb.YTPlayer.min.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/asalaser/css/style.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/asalaser/js/fancybox/jquery.fancybox.css?tayzaz");
+@import url("https://www.asalaser.com/sites/all/themes/asalaser/js/scrollbar/jquery.custom-scrollbar.css?tayzaz");
+</style>
+	<script type="text/javascript" src="//code.jquery.com/jquery-1.10.2.min.js"></script>
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+window.jQuery || document.write("<script src='/sites/all/modules/contrib/jquery_update/replace/jquery/1.10/jquery.min.js'>\x3C/script>")
+//--><!]]>
+</script>
+<script type="text/javascript" src="https://www.asalaser.com/misc/jquery-extend-3.4.0.js?v=1.10.2"></script>
+<script type="text/javascript" src="https://www.asalaser.com/misc/jquery.once.js?v=1.2"></script>
+<script type="text/javascript" src="https://www.asalaser.com/misc/drupal.js?tayzaz"></script>
+<script type="text/javascript" src="https://www.asalaser.com/sites/all/modules/custom/asalaser_backend/backend.js?tayzaz"></script>
+<script type="text/javascript" src="https://www.asalaser.com/sites/default/files/languages/it_2YQroDV3-Dpzy3Elesb90med3YHMw9WtdeFGkTiISpA.js?tayzaz"></script>
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+(function($){
+$(document).ready(function(){
+Drupal.behaviors.close_messages_btn = {
+attach: function(){
+$('.messages-container .closebottone').not('.closebottone-processed').each(function(index,elem){
+var $container = $(elem).closest('.messages-container');
+$container.not('.closebottone-processed').click(function(evt){
+evt.preventDefault();
+$(this).fadeOut();
+}).addClass('closebottone-processed');
+
+$(elem).find('a').not('.closebottone-processed').click(function(evt){
+evt.preventDefault();
+$(this).closest('.messages-container').trigger('click');
+}).addClass('closebottone-processed');
+}).addClass('closebottone-processed');
+}
+}
+Drupal.behaviors.close_messages_btn.attach();
+})
+})(jQuery)
+//--><!]]>
+</script>
+<script type="text/javascript" src="https://www.asalaser.com/sites/all/themes/asalaser/js/jquery.easing.min.js?tayzaz"></script>
+<script type="text/javascript" src="https://www.asalaser.com/sites/all/themes/asalaser/js/slick/slick.js?tayzaz"></script>
+<script type="text/javascript" src="https://www.asalaser.com/sites/all/themes/asalaser/js/ytplayer/jquery.mb.YTPlayer.js?tayzaz"></script>
+<script type="text/javascript" src="https://www.asalaser.com/sites/all/themes/asalaser/js/fancybox/jquery.fancybox.js?tayzaz"></script>
+<script type="text/javascript" src="https://www.asalaser.com/sites/all/themes/asalaser/js/scrollbar/jquery.custom-scrollbar.min.js?tayzaz"></script>
+<script type="text/javascript" src="https://www.asalaser.com/sites/all/themes/asalaser/js/asalaser_theme.js?tayzaz"></script>
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+jQuery.extend(Drupal.settings, {"basePath":"\/","pathPrefix":"it\/","ajaxPageState":{"theme":"asalaser","theme_token":"6ROVPtczDFeJ9Q0HaY7MadxaBhgXvGVDYaWZ2i6fSdQ","js":{"\/sites\/all\/modules\/custom\/webpdrupal7\/core_scripts\/staff\/js\/webp-on-off-class.min.js":1,"sites\/all\/modules\/custom\/webpdrupal7\/core_scripts\/staff\/js\/helper-cookie.min.js":1,"\/\/code.jquery.com\/jquery-1.10.2.min.js":1,"0":1,"misc\/jquery-extend-3.4.0.js":1,"misc\/jquery.once.js":1,"misc\/drupal.js":1,"sites\/all\/modules\/custom\/asalaser_backend\/backend.js":1,"public:\/\/languages\/it_2YQroDV3-Dpzy3Elesb90med3YHMw9WtdeFGkTiISpA.js":1,"1":1,"sites\/all\/themes\/asalaser\/js\/jquery.easing.min.js":1,"sites\/all\/themes\/asalaser\/js\/slick\/slick.js":1,"sites\/all\/themes\/asalaser\/js\/ytplayer\/jquery.mb.YTPlayer.js":1,"sites\/all\/themes\/asalaser\/js\/fancybox\/jquery.fancybox.js":1,"sites\/all\/themes\/asalaser\/js\/scrollbar\/jquery.custom-scrollbar.min.js":1,"sites\/all\/themes\/asalaser\/js\/asalaser_theme.js":1},"css":{"sites\/all\/themes\/clean\/styles\/clean.reset-browser.css":1,"modules\/system\/system.base.css":1,"modules\/system\/system.menus.css":1,"modules\/system\/system.messages.css":1,"modules\/system\/system.theme.css":1,"sites\/all\/modules\/custom\/asalaser_backend\/backend.css":1,"sites\/all\/modules\/contrib\/date\/date_api\/date.css":1,"sites\/all\/modules\/contrib\/date\/date_repeat_field\/date_repeat_field.css":1,"modules\/field\/theme\/field.css":1,"modules\/node\/node.css":1,"modules\/user\/user.css":1,"sites\/all\/modules\/contrib\/youtube\/css\/youtube.css":1,"sites\/all\/modules\/contrib\/views\/css\/views.css":1,"sites\/all\/modules\/contrib\/ckeditor\/css\/ckeditor.css":1,"sites\/all\/modules\/contrib\/ctools\/css\/ctools.css":1,"sites\/all\/modules\/contrib\/panels\/css\/panels.css":1,"sites\/all\/themes\/clean\/styles\/clean.reset-drupal.css":1,"sites\/all\/themes\/clean\/styles\/system.menus.css":1,"sites\/all\/themes\/clean\/styles\/clean.forms.css":1,"sites\/all\/themes\/clean\/styles\/clean.layout.css":1,"sites\/all\/themes\/clean\/styles\/clean.typography.css":1,"sites\/all\/themes\/clean\/styles\/clean.content.css":1,"sites\/all\/themes\/asalaser\/css\/clean.typography.css":1,"sites\/all\/themes\/asalaser\/js\/slick\/slick.css":1,"sites\/all\/themes\/asalaser\/js\/ytplayer\/css\/jquery.mb.YTPlayer.min.css":1,"sites\/all\/themes\/asalaser\/css\/style.css":1,"sites\/all\/themes\/asalaser\/js\/fancybox\/jquery.fancybox.css":1,"sites\/all\/themes\/asalaser\/js\/scrollbar\/jquery.custom-scrollbar.css":1}}});
+//--><!]]>
+</script>
+	<style type="text/css">
+		#mainmenu .region-pop-navigation ul.menu li.terapia-prodotto > a:after {content: "Prodotti";}
+		#footer   .sitemap 				 ul.menu li.terapia-prodotto > a:after {content: "Prodotti";}
+	</style>
+	<!-- Google Tag Manager -->
+	<script async data-cookieconsent="ignore">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+		new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+		j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+		'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+		})(window,document,'script','dataLayer','GTM-52Q9XMN');
+
+        
+        var visitorCountry = '';
+        if (document.cookie.indexOf('country-select=ita') > 1) {
+            visitorCountry = 'italia';
+        }else if (document.cookie.indexOf('country-select=usa') > 1) {
+            visitorCountry = 'usa';
+        }else if (document.cookie.indexOf('country-select=world') > 1) {
+            visitorCountry = 'estero';
+        }
+
+        var visitorType = '';
+        if (document.cookie.indexOf('professionista=true') > 1) {
+            visitorType = 'professionista';
+        }else if (document.cookie.indexOf('professionista=false') > 1) {
+            visitorType = 'non professionista';
+        }
+
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            'event': 'wdata_loaded',
+            'pageLang': 'it',
+            'pageType': 'other',
+            'visitorCountry': visitorCountry,
+            'visitorType': visitorType
+        });
+    </script>
+	<!-- End Google Tag Manager -->
+	<script>
+	window.addEventListener("CookiebotOnDialogDisplay", e => {
+		const detailCategories = ["Preference", "Statistics", "Advertising", "Unclassified"],
+		toggleCategories = ["Preferences", "Statistics", "Marketing"];
+		detailCategories.forEach(e => {
+		if (CookieConsentDialog[`cookieTable${e}Count`] === 0)
+		document.getElementById(
+		`CybotCookiebotDialogDetailBodyContentCookieContainer${e}Card`
+		).parentNode.style.display = "none";
+		});
+		for (let i = 0; i < 3; i++)
+		if (CookieConsentDialog[`cookieTable${detailCategories[i]}Count`] === 0)
+		document.querySelector(
+		`label[for=CybotCookiebotDialogBodyLevelButton${toggleCategories[i]}]`
+		).parentNode.style.display = "none";
+		}, !1)
+
+
+		window.addEventListener('CookiebotOnDialogDisplay', function() {
+		const categories = ['Preference','Statistics','Advertising','Unclassified'],
+		categoryMap = new Map([['Preference','Preferences'],['Advertising','Marketing']]);
+
+		for (const category of categories) {
+		if (CookieConsentDialog[`cookieTable${category}Count`] == 0) {
+		document.getElementById(
+		`CybotCookiebotDialogDetailBodyContentCookieContainer${category}`
+		).style.display ='none';
+		if (category != 'Unclassified') {
+		document.getElementById(
+		`CybotCookiebotDialogBodyLevelButton${categoryMap.get(category) || category}`
+		).parentNode.style.display = 'none';
+		document.getElementById(
+		`CybotCookiebotDialogBodyLevelButton${categoryMap.get(category) || category}`
+		).checked = '';
+		}
+		}
+		}
+		});
+	</script>
+</head>
+
+<body class="html not-front not-logged-in no-sidebars page-node page-node- page-node-2 node-type-page i18n-it role-anonymous-user">
+<!-- Google Tag Manager (noscript) -->
+<noscript data-cookieconsent="ignore"><iframe src=https://www.googletagmanager.com/ns.html?id=GTM-52Q9XMN" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+	<div id="skip-link"><a href="/it#main-content" class="element-invisible element-focusable">Salta al contenuto principale</a></div>		<nav id="navbar" role="navigation">
+	<div class="top-menu">
+		<div class="clearfix" style="height:100%;">
+			 <div class="menu-list-sx">
+         <button class="button_ico menu_icon" id="menubuttonmobile" aria-label="Apri il menu di navigazione" aria-haspopup="true" aria-expanded="false" role="button">
+           <span class="top"></span>
+           <span class="middle"></span>
+           <span class="bottom"></span>
+         </button>
+			</div>
+
+			<a id="logo" href="/it"><img src="/sites/all/themes/asalaser/images/logo_asa.svg" style="width:auto; height:100%" alt="ASAlaser" title="ASAlaser" loading="lazy" decoding="async"></a>
+
+	        <div class="menu-list-dx">
+
+              <div class="region region-top-navigation">
+    <div class="block block-menu-block" id="block-menu-block-3">
+      
+  <div class="block-content">
+    <div class="menu-block-wrapper menu-block-3 menu-name-main-menu parent-mlid-0 menu-level-1">
+  <ul class="menu">
+<li class="first leaf has-children menu-mlid-2730 terapia-prodotto top-menu"><a href="/it/laserterapia-mlsr">Laserterapia MLS®</a></li>
+<li class="leaf has-children menu-mlid-612 terapia-prodotto top-menu"><a href="/it/hilterapiar">Hilterapia®</a></li>
+<li class="leaf has-children menu-mlid-613 terapia-prodotto top-menu"><a href="/it/magnetoterapia">Magnetoterapia</a></li>
+<li class="leaf has-children menu-mlid-614 top-menu"><a href="/it/ricerca-formazione">Ricerca e Formazione</a></li>
+<li class="leaf has-children menu-mlid-633"><a href="/it/azienda">Azienda</a></li>
+<li class="leaf menu-mlid-686 no-child" id="why-asa-menu"><a href="/it/perche-asa">Perché ASA</a></li>
+<li class="leaf menu-mlid-687 no-child" id="news-eventi-menu"><a href="/it/news-eventi">News &amp; Eventi</a></li>
+<li class="leaf menu-mlid-688 no-child" id="press-menu"><a href="/it/press">Press</a></li>
+<li class="leaf menu-mlid-689 no-child" id="risorse-menu"><a href="/it/risorse">Risorse</a></li>
+<li class="last leaf menu-mlid-2275"><a href="/it/contatti">Contatti</a></li>
+</ul>
+</div>
+  </div>
+</div>
+<div class="block block-block search-block" id="block-block-3">
+      
+  <div class="block-content">
+    <form class="search-form" autocomplete="off" role="search" action="/it/ricerca" method="get" accept-charset="UTF-8" target="_self">
+<fieldset class="search-fieldset">
+	<label for="edit-s">Cerca</label>
+	<div class="form-item form-type-textfield form-item-search-block-form"><input title="Add the terms to be searched." class="custom-search-box form-text forms-placeholder-processed" placeholder="Cerca nel sito" id="edit-s" name="s" value="" size="15" maxlength="128" type="text"></div>
+	<div class="form-actions form-wrapper" id="edit-actions"><input id="edit-submit-search" name="op" value="Cerca" class="form-submit" type="submit"></div>
+</fieldset>
+</form>
+<div class="clear"></div>
+  </div>
+</div>
+  </div>
+
+	        	<div class="list-button-menu">
+              <button class="button_ico" id="searchbutton" aria-label="Cerca">
+                <svg width="21px" height="22px" viewbox="0 0 21 22" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="presentation">
+                    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                        <g id="ASA-HP-4" transform="translate(-1283.000000, -29.000000)" fill-rule="nonzero" stroke="#757575" stroke-width="3">
+                            <g id="MENU">
+                                <g id="search" transform="translate(1285.000000, 31.000000)">
+                                    <circle id="Oval" cx="7.71428571" cy="7.71428571" r="7.71428571"></circle>
+                                    <path d="M13.2857143,14.1428571 L17.1665936,18.0237365" id="Line" stroke-linecap="round"></path>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </svg>
+              </button>
+
+
+                <button class="button_ico" id="langbutton" aria-haspopup="true" aria-expanded="false" aria-controls="langlist" aria-label="Cambia lingua">
+                  <span>it</span>
+                </button>
+
+                <div class="list-language" id="langlist" role="menu" aria-hidden="true" hidden>
+                  <a href="/en/404-page-not-found" class="w-dropdown-link dropdownlist-link en">English</a><a href="/de/404-seite-nicht-gefunden" class="w-dropdown-link dropdownlist-link de">Deutsch</a><a href="/fr/404-page-introuvable" class="w-dropdown-link dropdownlist-link fr">Français</a><a href="/es/404-pagina-no-encontrada" class="w-dropdown-link dropdownlist-link es">Español</a>                </div>
+
+          <button class="button_ico menu_icon" id="menubutton" aria-label="Apri il menu di navigazione">
+            <span class="top"></span>
+            <span class="middle"></span>
+            <span class="bottom"></span>
+          </button>
+				</div>
+
+			</div>
+			<div class="clear"></div>
+	  	</div>
+  	</div>
+
+</nav>
+<div id="mainmenu" aria-hidden="true">
+	<div class="container">
+		  <div class="region region-pop-navigation">
+    <div class="block block-block mobile search-block" id="block-block-5">
+      
+  <div class="block-content">
+    <form class="search-form" autocomplete="off" role="search" action="/it/ricerca" method="get" accept-charset="UTF-8" target="_self">
+			<div class="form-item form-type-textfield form-item-search-block-form"><input title="Inserisci i termini da cercare." class="custom-search-box form-text forms-placeholder-processed" placeholder="Cerca nel sito " id="edit-s" name="s" value="" size="15" maxlength="128" type="text"></div>
+			<div class="form-actions form-wrapper" id="edit-actions"><input id="edit-submit-search" name="op" value="Cerca" class="form-submit" type="submit"></div>
+			<div class="clear"></div>
+</form>
+<div class="clear"></div>  </div>
+</div>
+<div class="block block-menu-block menu-esploso" id="block-menu-block-1">
+      
+  <div class="block-content">
+    <div class="menu-block-wrapper menu-block-1 menu-name-main-menu parent-mlid-0 menu-level-1">
+  <ul class="menu">
+<li class="first expanded menu-mlid-2730 terapia-prodotto top-menu">
+<a href="/it/laserterapia-mlsr">Laserterapia MLS®</a><ul class="menu">
+<li class="first leaf menu-mlid-2729"><a href="/it/laserterapia-mlsr/mis">MiS</a></li>
+<li class="leaf menu-mlid-4646"><a href="/it/laserterapia-mlsr/m-hi">M-Hi</a></li>
+<li class="leaf menu-mlid-4604"><a href="/it/laserterapia-mlsr/m8">M8 | M6</a></li>
+<li class="leaf menu-mlid-4605"><a href="/it/laserterapia-mlsr/mphi-755">Mphi 75.5 | Mphi 5</a></li>
+<li class="leaf menu-mlid-672"><a href="/it/laserterapia-mlsr/mphi-75">Mphi 75 | Mphi</a></li>
+<li class="last leaf menu-mlid-3178 w-hidden-main"><a href="/it/laserterapia-mlsr/faq-laserterapia-mlsr">FAQ</a></li>
+</ul>
+</li>
+<li class="expanded menu-mlid-612 terapia-prodotto top-menu">
+<a href="/it/hilterapiar">Hilterapia®</a><ul class="menu">
+<li class="first leaf menu-mlid-678"><a href="/it/hilterapiar/hiro-tt">HIRO TT</a></li>
+<li class="leaf menu-mlid-3189 w-hidden-main"><a href="/it/hilterapiar/faq-hilterapia">FAQ</a></li>
+<li class="last leaf menu-mlid-4659"><a href="/it/hilterapiar/hiro">HIRO</a></li>
+</ul>
+</li>
+<li class="expanded menu-mlid-613 terapia-prodotto top-menu">
+<a href="/it/magnetoterapia">Magnetoterapia</a><ul class="menu">
+<li class="first leaf menu-mlid-680"><a href="/it/magnetoterapia/pmt-qs">PMT Qs</a></li>
+<li class="leaf menu-mlid-679"><a href="/it/magnetoterapia/easy-qs">Easy Qs</a></li>
+<li class="last leaf menu-mlid-3190 w-hidden-main"><a href="/it/magnetoterapia/faq-magnetoterapia">FAQ</a></li>
+</ul>
+</li>
+<li class="expanded menu-mlid-614 top-menu">
+<a href="/it/ricerca-formazione">Ricerca e Formazione</a><ul class="menu">
+<li class="first leaf menu-mlid-682"><a href="/it/ricerca-formazione/rivista-scientifica">Rivista Scientifica</a></li>
+<li class="last leaf menu-mlid-681"><a href="/it/ricerca-formazione/asa-research-library">ASA Research Library</a></li>
+</ul>
+</li>
+<li class="expanded menu-mlid-633">
+<a href="/it/azienda">Azienda</a><ul class="menu">
+<li class="first leaf menu-mlid-685"><a href="/it/azienda/blog">Blog</a></li>
+<li class="leaf menu-mlid-4599"><a href="/it/azienda/sostenibilita">Sostenibilità</a></li>
+<li class="leaf menu-mlid-683"><a href="/it/azienda/worldwide">Worldwide</a></li>
+<li class="last leaf menu-mlid-4366"><a href="/it/azienda/lavora-con-noi">Lavora con noi</a></li>
+</ul>
+</li>
+<li class="leaf menu-mlid-686 no-child" id="why-asa-menu"><a href="/it/perche-asa">Perché ASA</a></li>
+<li class="leaf menu-mlid-687 no-child" id="news-eventi-menu"><a href="/it/news-eventi">News &amp; Eventi</a></li>
+<li class="leaf menu-mlid-688 no-child" id="press-menu"><a href="/it/press">Press</a></li>
+<li class="leaf menu-mlid-689 no-child" id="risorse-menu"><a href="/it/risorse">Risorse</a></li>
+<li class="last leaf menu-mlid-2275"><a href="/it/contatti">Contatti</a></li>
+</ul>
+</div>
+  </div>
+</div>
+<div class="block block-block block-social-menu" id="block-block-1">
+      
+  <div class="block-content">
+    <span>Seguici su:</span>
+<a href="https://www.facebook.com/Asalaser" class="social facebook" target="_blank" title="Facebook"><img src="/sites/all/themes/asalaser/images/facebook.png" title="Facebook" loading="lazy" decoding="async" alt=""></a>
+<a href="http://www.linkedin.com/company/2773839?trk=tyah" class="social linkedin" target="_blank" title="LinkedIn"><img src="/sites/all/themes/asalaser/images/linkedin.png" title="LinkedIn" loading="lazy" decoding="async" alt=""></a>
+<a href="https://www.instagram.com/asalaser/" class="social instagram" target="_blank" title="Instagram"><img src="/sites/all/themes/asalaser/images/instagram.png" title="Instagram" loading="lazy" decoding="async" alt=""></a>
+<a href="https://twitter.com/ASAlaser" class="social twitter" target="_blank" title="Twitter"><img src="/sites/all/themes/asalaser/images/twitter.png" title="Twitter" loading="lazy" decoding="async" alt=""></a>
+<a href="https://www.youtube.com/user/asalaser" class="social youtube" target="_blank" title="YouTube"><img src="/sites/all/themes/asalaser/images/youtube.png" title="YouTube" loading="lazy" decoding="async" alt=""></a>	
+  </div>
+</div>
+  </div>
+	</div>
+</div>
+
+
+	<div id="banner" class="noimage">
+		<div class="container">
+			      	<div id="breadcrumb">
+	        	<div class="breadcrumb">
+<h6 class="breadcrumb-0 first"><a href="/it">Home</a></h6>
+<h6 class="breadcrumb-1"><a href="/it/sites/default/files/styles/large">Genera lo stile per le immagini</a></h6>
+<h6 class="breadcrumb-2"><a href="/it/sites/default/files/styles/large/public">Genera lo stile per le immagini</a></h6>
+<h6 class="breadcrumb-3"><a href="/it/sites/default/files/styles/large/public/2023-06">Genera lo stile per le immagini</a></h6>
+<h6 class="breadcrumb-4 active last"><span class="breadcrumb__item--current-page">Genera lo stile per le immagini</span></h6>
+</div>	        		      	</div>
+				</div>
+	</div>
+<div id="page-wrapper">
+	<a id="main-content"></a>
+				<div class="tabs grid_12">
+					</div>
+		<h1>404 - Pagina non trovata</h1>	  <div class="region region-content">
+    <div class="block block-system" id="block-system-main">
+      
+  <div class="block-content">
+    <div class="node node-page node-type-page node-pagepage" id="node-2">
+  <div class="node-content clearfix">
+    <div class="field field-name-body field-type-text-with-summary field-label-hidden"><div class="field-items"><div class="field-item even">
+<h5 class="rtecenter" style="font-size:18px; font-weight: normal">Siamo spiacenti, ma la pagina che stai cercando non esiste più o non è mai esistita.<br>
+Puoi tornare alla <a href="/it/homepage">Homepage</a> oppure cercare i contenuti con il campo di ricerca qui sotto.<br> </h5>
+<form class="search-form" role="search" action="/it/ricerca" method="get" id="search-block-form" accept-charset="UTF-8" target="_self">
+<div class="form-item form-type-textfield form-item-search-block-form"><input title="Inserisci i termini da cercare." class="custom-search-box form-text forms-placeholder-processed" placeholder="Cerca nel sito" id="edit-s" name="s" value="" size="15" maxlength="128" type="text"></div>
+<div class="form-actions form-wrapper" id="edit-actions"><input id="edit-submit-search" name="op" value="Cerca" class="form-submit" type="submit"></div>
+<div class="clear"></div>
+</form>
+</div></div></div>  </div>
+</div>  </div>
+</div>
+  </div>
+	<div class="clear"></div>
+</div>
+  <button class="turnup" aria-label="Torna in cima alla pagina"><i class="fa fa-angle-up" aria-hidden="true"></i></button>
+<footer id="footer">
+	<div class="container">
+		  <div class="region region-footer">
+    <div class="block block-menu-block sitemap" id="block-menu-block-2">
+        <h2 class="block-title">Sitemap</h2>
+    
+  <div class="block-content">
+    <div class="menu-block-wrapper menu-block-2 menu-name-main-menu parent-mlid-0 menu-level-1">
+  <ul class="menu">
+<li class="first expanded menu-mlid-2730 terapia-prodotto top-menu">
+<a href="/it/laserterapia-mlsr">Laserterapia MLS®</a><ul class="menu">
+<li class="first leaf menu-mlid-2729"><a href="/it/laserterapia-mlsr/mis">MiS</a></li>
+<li class="leaf menu-mlid-4646"><a href="/it/laserterapia-mlsr/m-hi">M-Hi</a></li>
+<li class="leaf menu-mlid-4604"><a href="/it/laserterapia-mlsr/m8">M8 | M6</a></li>
+<li class="leaf menu-mlid-4605"><a href="/it/laserterapia-mlsr/mphi-755">Mphi 75.5 | Mphi 5</a></li>
+<li class="leaf menu-mlid-672"><a href="/it/laserterapia-mlsr/mphi-75">Mphi 75 | Mphi</a></li>
+<li class="last leaf menu-mlid-3178 w-hidden-main"><a href="/it/laserterapia-mlsr/faq-laserterapia-mlsr">FAQ</a></li>
+</ul>
+</li>
+<li class="expanded menu-mlid-612 terapia-prodotto top-menu">
+<a href="/it/hilterapiar">Hilterapia®</a><ul class="menu">
+<li class="first leaf menu-mlid-678"><a href="/it/hilterapiar/hiro-tt">HIRO TT</a></li>
+<li class="leaf menu-mlid-3189 w-hidden-main"><a href="/it/hilterapiar/faq-hilterapia">FAQ</a></li>
+<li class="last leaf menu-mlid-4659"><a href="/it/hilterapiar/hiro">HIRO</a></li>
+</ul>
+</li>
+<li class="expanded menu-mlid-613 terapia-prodotto top-menu">
+<a href="/it/magnetoterapia">Magnetoterapia</a><ul class="menu">
+<li class="first leaf menu-mlid-680"><a href="/it/magnetoterapia/pmt-qs">PMT Qs</a></li>
+<li class="leaf menu-mlid-679"><a href="/it/magnetoterapia/easy-qs">Easy Qs</a></li>
+<li class="last leaf menu-mlid-3190 w-hidden-main"><a href="/it/magnetoterapia/faq-magnetoterapia">FAQ</a></li>
+</ul>
+</li>
+<li class="expanded menu-mlid-614 top-menu">
+<a href="/it/ricerca-formazione">Ricerca e Formazione</a><ul class="menu">
+<li class="first leaf menu-mlid-682"><a href="/it/ricerca-formazione/rivista-scientifica">Rivista Scientifica</a></li>
+<li class="last leaf menu-mlid-681"><a href="/it/ricerca-formazione/asa-research-library">ASA Research Library</a></li>
+</ul>
+</li>
+<li class="expanded menu-mlid-633">
+<a href="/it/azienda">Azienda</a><ul class="menu">
+<li class="first leaf menu-mlid-685"><a href="/it/azienda/blog">Blog</a></li>
+<li class="leaf menu-mlid-4599"><a href="/it/azienda/sostenibilita">Sostenibilità</a></li>
+<li class="leaf menu-mlid-683"><a href="/it/azienda/worldwide">Worldwide</a></li>
+<li class="last leaf menu-mlid-4366"><a href="/it/azienda/lavora-con-noi">Lavora con noi</a></li>
+</ul>
+</li>
+<li class="leaf menu-mlid-686 no-child" id="why-asa-menu"><a href="/it/perche-asa">Perché ASA</a></li>
+<li class="leaf menu-mlid-687 no-child" id="news-eventi-menu"><a href="/it/news-eventi">News &amp; Eventi</a></li>
+<li class="leaf menu-mlid-688 no-child" id="press-menu"><a href="/it/press">Press</a></li>
+<li class="leaf menu-mlid-689 no-child" id="risorse-menu"><a href="/it/risorse">Risorse</a></li>
+<li class="last leaf menu-mlid-2275"><a href="/it/contatti">Contatti</a></li>
+</ul>
+</div>
+  </div>
+</div>
+<div class="block block-menu" id="block-menu-menu-footer-menu">
+      
+  <div class="block-content">
+    <ul class="menu">
+<li class="first leaf"><a href="/it/copyright">Copyright</a></li>
+<li class="leaf"><a href="/it/note-redazionali">Note Redazionali</a></li>
+<li class="leaf"><a href="/it/privacy">Privacy</a></li>
+<li class="leaf"><a href="/it/azienda/lavora-con-noi">Lavora con noi</a></li>
+<li class="leaf"><a href="https://asalaser.whistlelink.com/">Whistleblowing</a></li>
+<li class="leaf"><a href="/it/cookie-policy">Cookie Policy</a></li>
+<li class="last leaf"><a href="/it" class="cookiebotrenew">Gestione preferenze cookie</a></li>
+</ul>  </div>
+</div>
+<div class="block block-block dati-aggiuntivi" id="block-block-4">
+      
+  <div class="block-content">
+    <div class="col-sx">
+  <a href="/it/azienda/worldwide" title="World Wide">
+    <img src="/sites/all/themes/asalaser/images/worldwide.png" alt="" aria-hidden="true" width="84" height="46" loading="lazy" decoding="async">
+  </a>
+
+  <a class="bigger" href="/it/contatti" title="Contatti">
+    <img src="/sites/all/themes/asalaser/images/contatti.png" alt="" aria-hidden="true" width="42" height="46" loading="lazy" decoding="async">
+  </a>
+
+  <a class="bigger" href="/it/risorse" title="Risorse">
+    <img src="/sites/all/themes/asalaser/images/risorse.png" alt="" aria-hidden="true" width="34" height="46" loading="lazy" decoding="async">
+  </a>
+
+  <div class="line-break"></div>
+  <a href="/it/diventa-partner" class="button">Diventa Partner</a>
+  <a href="/it/newsletter" class="button">Iscriviti alla newsletter</a>
+</div>
+
+<div class="col-dx w-col-3">
+  <span style="width: 125px;">ASA è anche</span>
+  <a href="https://www.asaveterinary.com/" class="asaveterinary" target="_blank" title="ASA per la veterinaria">
+    <img src="/sites/all/themes/asalaser/images/asaveterinary.png" alt="Asalaser Veterinary" width="104" height="46" loading="lazy" decoding="async">
+  </a>
+</div>  </div>
+</div>
+<div class="block block-block dati-aziendali dati-app" id="block-block-2">
+      
+  <div class="block-content">
+    <div class="w-col w-col-4 col-sx">
+<h6>Corporate Headquarters / Registered Office</h6>
+<span>Via Galileo Galilei, 23 -</span> <span>36057 Arcugnano (VI) - Italy</span><br>
+<span>t. <a href="tel:+390444289200">+39 0444 28 92 00</a> -</span> <span>f. +39 0444 28 90 80</span><br>
+ASA S.r.l. | C.F./P.IVA00860620244<br>
+Cap. Soc.€ 46.800,00 i.v. - <a href="mailto:asalaser@asalaser.com">asalaser@asalaser.com</a><br><br>
+</div>
+<div class="w-col w-col-4 col-cx">
+<h6>Research Division / Branch</h6>
+<span>Viale G. Pieraccini, 6 -</span> <span>50139 Firenze - Italy </span><br>
+<span><a href="mailto:asacampus@asalaser.com">asacampus@asalaser.com</a></span><br>
+<span>Joint Laboratory -</span> <span>Dipartimento di Scienze Biomediche </span><span>Sperimentali e Cliniche -</span>
+<span>Università di Firenze</span>
+</div>
+<div class="w-col w-col-4 col-dx">
+<div class="social-block">
+<span>Seguici su</span> <a class="social facebook" href="https://www.facebook.com/Asalaser" target="_blank" title="Facebook"><img src="/sites/all/themes/asalaser/images/facebook.png" title="Facebook" alt="Facebook" width="26" height="26" loading="lazy" decoding="async"></a> <a class="social linkedin" href="http://www.linkedin.com/company/2773839?trk=tyah" target="_blank" title="LinkedIn"><img src="/sites/all/themes/asalaser/images/linkedin.png" title="LinkedIn" alt="LinkedIn" width="26" height="26" loading="lazy" decoding="async"></a> <a class="social instagram" href="https://www.instagram.com/asalaser/" target="_blank" title="Instagram"><img src="/sites/all/themes/asalaser/images/instagram.png" title="Instagram" alt="Instagram" width="26" height="26" loading="lazy" decoding="async"></a> <a class="social youtube" href="https://www.youtube.com/user/asalaser" target="_blank" title="YouTube"><img src="/sites/all/themes/asalaser/images/youtube.png" title="YouTube" alt="YouTube" width="26" height="26" loading="lazy" decoding="async"></a>
+</div>
+<div class="loghi-block">
+<span style="width: 125px;">ASA is part of</span>
+<span style="margin-right: 10px;"><img src="/sites/all/themes/asalaser/images/elen.png" width="70" height="30" alt="Elen Group" loading="lazy" decoding="async"></span>
+<img src="/sites/all/themes/asalaser/images/confindustria-dispositivi-medici.png" width="150" height="41" alt="Confindustria DM" loading="lazy" decoding="async">
+</div>
+</div>  </div>
+</div>
+  </div>
+		<div class="clear"></div>
+	</div>
+</footer>	<script type="text/javascript" defer="defer" src="/sites/all/modules/custom/webpdrupal7/core_scripts/staff/js/webp-on-off-class.min.js"></script>
+<script type="text/javascript" defer="defer" src="https://www.asalaser.com/sites/all/modules/custom/webpdrupal7/core_scripts/staff/js/helper-cookie.min.js?tayzaz"></script>
+
+<div id="popupbackground" class="hover-video"></div>
+<div id="country-select" class="popup-cookies" style="max-width:550px; padding:20px">
+<div class="titolo">In which country do you reside?<br><span style="font-size:24px">(In quale paese risiedi?)</span></div>
+<div class="pulsanti">
+<a href="#country-italy" id="popup-cookies-ita" class="button cookies-set">Italia</a>
+<a href="#country-usa" id="popup-cookies-usa" class="button cookies-set">USA</a>
+<a href="/en" id="popup-cookies-world" class="button cookies-set">Rest of world</a>
+</div>
+</div>
+
+<div id="country-italy" class="popup-cookies">
+<div class="titolo">Sei un professionista del settore?</div>
+<div class="testo"><p>L'accesso alla visualizzazione dei prodotti e al materiale informativo è riservato agli operatori del settore in ottemperanza alla legislazione vigente. ASA richiede di qualificarsi come operatore del settore per procedere con la navigazione.</p>
+<p><strong>Decreto Legislativo 24 febbraio 1997, n°46 Articolo 21</strong></p>
+<p>1. E' vietata la pubblicità verso il pubblico dei dispositivi che, secondo disposizioni adottate con decreto del Ministro della Sanità, possono essere venduti soltanto su prescrizione medica o essere impiegati eventualmente con l'assistenza di un medico o di altro professionista sanitario.</p>
+<p>2. La pubblicità presso il pubblico dei dispositivi diversi da quelli di cui al comma 1 è soggetta ad autorizzazione del Ministero della Sanità. Sulle domande di autorizzazione esprime parere la Commissione di esperti prevista dall'articolo 6, comma 3, del decreto legislativo<br>30 dicembre 1992, n. 541, che a tal fine è integrata da un rappresentante del Dipartimento del Ministero della Sanità competente in materia di dispositivi medici e da uno del Ministero dell'Industria, del commercio e dell'artigianato.</p>
+</div>
+<div class="pulsanti">
+<a href="" id="popup-cookies-prof" data-url="" class="button cookies-set">Sono<br>un professionista</a>
+<a href="/it/privati" id="popup-cookies-noprof" data-url="" class="button cookies-set">Non sono<br>un professionista</a>
+</div>
+</div>
+
+<div id="country-usa" class="popup-cookies">
+<div class="titolo">Information for US residents.</div>
+<div class="testo"><p>Some of the contents of this website cannot be disclosed in the USA and its territories and possesions, for regulatory reasons.
+If you are a US resident, please click on the button here below and access ASA's distributor website for North America.</p>
+</div>
+<div class="pulsanti">
+<a href="https://celasers.com/medical/company/our-mission/" id="popup-cookies-gousa" class="button cookies-set">I have read</a>
+</div>
+</div>
+</body>
+</html>
