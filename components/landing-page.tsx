@@ -337,7 +337,12 @@ export default function LandingPage() {
                   <Button size="lg" variant="outline" className="w-full sm:w-auto">{T("home.clientPortal")}</Button>
                 </Link>
               </div>
-              <div className="mt-8 sm:mt-10 grid grid-cols-2 gap-4 sm:flex sm:items-center sm:gap-8 text-sm text-muted-foreground">
+              <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary flex-shrink-0" />
+                  <span className="font-semibold text-foreground">15+</span>
+                  <span>{T("home.yearsExperience")}</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <Shield className="h-5 w-5 text-secondary flex-shrink-0" />
                   <span>{T("home.fullyInsured")}</span>
@@ -346,7 +351,7 @@ export default function LandingPage() {
                   <Clock className="h-5 w-5 text-secondary flex-shrink-0" />
                   <span>{T("home.openEveryDay")}</span>
                 </div>
-                <div className="flex items-center gap-2 col-span-2 sm:col-span-1">
+                <div className="flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-secondary flex-shrink-0" />
                   <span>Richmond TW10 6AQ</span>
                 </div>
@@ -363,36 +368,24 @@ export default function LandingPage() {
                   />
                 )}
               </div>
-              <div className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary/20 flex items-center justify-center">
-                    <Users className="h-5 w-5 sm:h-6 sm:w-6 text-secondary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">15+</p>
-                    <p className="text-sm text-muted-foreground">{T("home.experience")}</p>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Accreditation / Trust Bar */}
-      <section className="py-6 sm:py-8 border-y border-border/40 bg-muted/30">
+      <section className="py-5 sm:py-6 border-y border-border/40 bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
-            <div className="flex items-center gap-6">
-              <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 px-4 py-2 rounded-xl bg-background/80 border border-border/50 hover:border-primary/30 hover:shadow-md transition-all duration-300">
-                <img src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Sports Therapy Organisation</p>
-                  <p className="text-xs text-muted-foreground">{T("home.stoTagline")}</p>
-                </div>
-              </a>
-            </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
+            <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <div className="relative h-10 w-10 sm:h-11 sm:w-11 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0">
+                <img src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" className="h-full w-full object-cover scale-[1.15]" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
+                <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Sports Therapy Organisation</p>
+              </div>
+            </a>
           </div>
         </div>
       </section>
