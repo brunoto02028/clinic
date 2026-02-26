@@ -397,6 +397,10 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.yearsExperience": { "en-GB": "15+ Years Experience", "pt-BR": "15+ Anos de Experiência" },
   "home.experience": { "en-GB": "Experience", "pt-BR": "Experiência" },
 
+  // Homepage — Accreditation / Trust Bar
+  "home.accreditedMember": { "en-GB": "Accredited Member", "pt-BR": "Membro Credenciado" },
+  "home.stoTagline": { "en-GB": "Leading the way in Sports Therapy since 1999", "pt-BR": "Liderando a Terapia Esportiva desde 1999" },
+
   // Homepage — Services overview
   "home.servicesTitle": { "en-GB": "Our Services", "pt-BR": "Nossos Serviços" },
   "home.servicesSubtitle": { "en-GB": "Comprehensive rehabilitation services tailored to your individual needs. Click on any service to learn more.", "pt-BR": "Serviços de reabilitação completos e personalizados para suas necessidades. Clique em qualquer serviço para saber mais." },
