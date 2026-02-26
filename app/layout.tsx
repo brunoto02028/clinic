@@ -8,6 +8,8 @@ import { WhatsAppFloatingButton } from "@/components/whatsapp-button";
 import { Suspense } from "react";
 import { SiteTracker } from "@/components/analytics/site-tracker";
 import { CookieConsentBanner } from "@/components/cookie-consent";
+import { prisma } from "@/lib/db";
+import { SchemaOrgScript } from "@/components/schema-org-script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,54 +21,73 @@ export const viewport: Viewport = {
   themeColor: "#0a0f1e",
 };
 
-// Static metadata to avoid SSR loops and database connection issues
-export const metadata: Metadata = {
-  title: "Bruno Physical Rehabilitation - Professional Physiotherapy in Richmond",
-  description: "Professional physiotherapy and sports rehabilitation services in Richmond, London. Expert treatment for injuries, chronic pain, and optimal physical performance.",
-  keywords: "physiotherapy, sports rehabilitation, Richmond, London, physical therapy, injury treatment, pain management",
-  authors: [{ name: "Bruno Physical Rehabilitation" }],
-  creator: "Bruno Physical Rehabilitation",
-  publisher: "Bruno Physical Rehabilitation",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+// Dynamic metadata — reads SEO fields from Site Settings in DB
+export async function generateMetadata(): Promise<Metadata> {
+  const FALLBACK_TITLE = "BPR";
+  const FALLBACK_DESC = "Professional physiotherapy and rehabilitation services.";
+  const BASE_URL = "https://bpr.rehab";
+
+  let s: any = null;
+  try {
+    s = await prisma.siteSettings.findFirst();
+  } catch {
+    // DB unavailable — use fallbacks
+  }
+
+  const title = s?.metaTitle || FALLBACK_TITLE;
+  const description = s?.metaDescription || FALLBACK_DESC;
+  const keywords = s?.metaKeywords || undefined;
+  const siteName = s?.ogSiteName || s?.siteName || "BPR";
+  const ogImage = s?.ogImageUrl
+    ? (s.ogImageUrl.startsWith("http") ? s.ogImageUrl : `${BASE_URL}${s.ogImageUrl}`)
+    : `${BASE_URL}/og-image.png`;
+  const canonical = s?.canonicalUrl || BASE_URL;
+  const ogType = (s?.ogType as any) || "website";
+  const ogLocale = s?.ogLocale || "en_GB";
+  const twitterCard = (s?.twitterCard as any) || "summary_large_image";
+
+  return {
+    title,
+    description,
+    keywords: keywords || undefined,
+    authors: [{ name: siteName }],
+    creator: siteName,
+    publisher: siteName,
+    robots: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_GB",
-    url: "https://bpr.rehab",
-    title: "Bruno Physical Rehabilitation - Professional Physiotherapy in Richmond",
-    description: "Professional physiotherapy and sports rehabilitation services in Richmond, London. Expert treatment for injuries, chronic pain, and optimal physical performance.",
-    siteName: "Bruno Physical Rehabilitation",
-    images: [
-      {
-        url: "https://bpr.rehab/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Bruno Physical Rehabilitation",
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
       },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Bruno Physical Rehabilitation - Professional Physiotherapy in Richmond",
-    description: "Professional physiotherapy and sports rehabilitation services in Richmond, London. Expert treatment for injuries, chronic pain, and optimal physical performance.",
-    images: ["https://bpr.rehab/og-image.png"],
-  },
-  alternates: {
-    canonical: "https://bpr.rehab",
-  },
-  metadataBase: new URL("https://bpr.rehab"),
-};
+    },
+    openGraph: {
+      type: ogType,
+      locale: ogLocale,
+      url: canonical,
+      title,
+      description,
+      siteName,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: siteName }],
+    },
+    twitter: {
+      card: twitterCard,
+      title,
+      description,
+      images: [ogImage],
+      ...(s?.twitterSite ? { site: s.twitterSite } : {}),
+      ...(s?.twitterCreator ? { creator: s.twitterCreator } : {}),
+    },
+    alternates: { canonical },
+    metadataBase: new URL(BASE_URL),
+    ...(s?.googleVerification ? { verification: { google: s.googleVerification } } : {}),
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -74,43 +95,9 @@ export default function RootLayout({
   return (
     <html lang="en-GB">
       <body className={inter.className}>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "MedicalBusiness",
-              "name": "Bruno Physical Rehabilitation",
-              "image": "https://bpr.rehab/og-image.png",
-              "@id": "https://bpr.rehab",
-              "url": "https://bpr.rehab",
-              "telephone": "+44 7XXX XXXXXX",
-              "address": {
-                "@type": "PostalAddress",
-                "streetAddress": "Richmond",
-                "addressLocality": "London",
-                "postalCode": "TW10",
-                "addressCountry": "GB"
-              },
-              "geo": {
-                "@type": "GeoCoordinates",
-                "latitude": 51.4613,
-                "longitude": -0.3037
-              },
-              "openingHoursSpecification": [
-                {
-                  "@type": "OpeningHoursSpecification",
-                  "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-                  "opens": "09:00",
-                  "closes": "18:00"
-                }
-              ],
-              "sameAs": [],
-              "medicalSpecialty": "Physiotherapy",
-              "priceRange": "££"
-            }),
-          }}
-        />
+        <Suspense fallback={null}>
+          <SchemaOrgScript />
+        </Suspense>
         <Providers>
           <DynamicFavicon />
           {children}
