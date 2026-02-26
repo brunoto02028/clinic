@@ -34,20 +34,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Content not found" }, { status: 404 });
     }
 
-    let targetPatients: { id: string; firstName: string; lastName: string; email: string }[] = [];
+    let targetPatients: { id: string; firstName: string; lastName: string; email: string; preferredLocale?: string }[] = [];
 
     if (sendTo === "all") {
       // Send to all patients in the clinic
       targetPatients = await prisma.user.findMany({
         where: { clinicId, role: "PATIENT", isActive: true },
-        select: { id: true, firstName: true, lastName: true, email: true },
-      });
+        select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } as any,
+      }) as any;
     } else if (sendTo === "specific" && Array.isArray(patientIds) && patientIds.length > 0) {
       // Send to specific patients
       targetPatients = await prisma.user.findMany({
         where: { id: { in: patientIds }, role: "PATIENT", isActive: true },
-        select: { id: true, firstName: true, lastName: true, email: true },
-      });
+        select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true } as any,
+      }) as any;
     } else if (sendTo === "condition" && Array.isArray(conditionTags) && conditionTags.length > 0) {
       // Find patients with matching diagnoses/protocols
       const lowerTags = conditionTags.map((t: string) => t.toLowerCase());
@@ -124,16 +124,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Send notifications to patients
+    // Send notifications to patients (bilingual based on patient's preferredLocale)
     try {
       for (const patient of targetPatients) {
+        const isPt = ((patient as any).preferredLocale || 'en-GB').startsWith('pt');
         await (prisma as any).notification.create({
           data: {
             userId: patient.id,
             clinicId,
             type: "EDUCATION_ASSIGNED",
-            title: "New Educational Content",
-            message: `New content assigned to you: "${content.title}"`,
+            title: isPt ? "Novo Conteúdo Educativo" : "New Educational Content",
+            message: isPt
+              ? `Novo conteúdo atribuído a você: "${content.title}"`
+              : `New content assigned to you: "${content.title}"`,
             data: { contentId: content.id },
           },
         });

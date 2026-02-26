@@ -71,8 +71,8 @@ export default function TherapistDashboard() {
     <div className="space-y-8">
       {/* Welcome Section */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Therapist Dashboard</h1>
-        <p className="text-slate-600 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">Therapist Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
           Manage appointments, patients, and clinical documentation.
         </p>
       </div>
@@ -84,11 +84,11 @@ export default function TherapistDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500 font-medium">Today</p>
-                  <p className="text-3xl font-bold text-slate-800 mt-1">
+                  <p className="text-sm text-muted-foreground font-medium">Today</p>
+                  <p className="text-3xl font-bold text-foreground mt-1">
                     {stats?.todayAppointments ?? 0}
                   </p>
-                  <p className="text-sm text-slate-500 mt-1">Appointments</p>
+                  <p className="text-sm text-muted-foreground mt-1">Appointments</p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Calendar className="h-6 w-6 text-primary" />
@@ -103,14 +103,14 @@ export default function TherapistDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500 font-medium">This Week</p>
-                  <p className="text-3xl font-bold text-slate-800 mt-1">
+                  <p className="text-sm text-muted-foreground font-medium">This Week</p>
+                  <p className="text-3xl font-bold text-foreground mt-1">
                     {stats?.weekAppointments ?? 0}
                   </p>
-                  <p className="text-sm text-slate-500 mt-1">Scheduled</p>
+                  <p className="text-sm text-muted-foreground mt-1">Scheduled</p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-emerald-600" />
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-emerald-400" />
                 </div>
               </div>
             </CardContent>
@@ -122,14 +122,14 @@ export default function TherapistDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500 font-medium">Total</p>
-                  <p className="text-3xl font-bold text-slate-800 mt-1">
+                  <p className="text-sm text-muted-foreground font-medium">Total</p>
+                  <p className="text-3xl font-bold text-foreground mt-1">
                     {stats?.totalPatients ?? 0}
                   </p>
-                  <p className="text-sm text-slate-500 mt-1">Patients</p>
+                  <p className="text-sm text-muted-foreground mt-1">Patients</p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-violet-600" />
+                <div className="w-12 h-12 rounded-xl bg-violet-500/15 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-violet-400" />
                 </div>
               </div>
             </CardContent>
@@ -141,14 +141,14 @@ export default function TherapistDashboard() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500 font-medium">Pending</p>
-                  <p className="text-3xl font-bold text-slate-800 mt-1">
+                  <p className="text-sm text-muted-foreground font-medium">Pending</p>
+                  <p className="text-3xl font-bold text-foreground mt-1">
                     {stats?.pendingAppointments ?? 0}
                   </p>
-                  <p className="text-sm text-slate-500 mt-1">To Confirm</p>
+                  <p className="text-sm text-muted-foreground mt-1">To Confirm</p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <ClipboardList className="h-6 w-6 text-amber-600" />
+                <div className="w-12 h-12 rounded-xl bg-amber-500/15 flex items-center justify-center">
+                  <ClipboardList className="h-6 w-6 text-amber-400" />
                 </div>
               </div>
             </CardContent>
@@ -174,7 +174,7 @@ export default function TherapistDashboard() {
             </CardHeader>
             <CardContent>
               {(stats?.upcomingAppointments?.length ?? 0) === 0 ? (
-                <p className="text-slate-500 text-sm text-center py-8">
+                <p className="text-muted-foreground text-sm text-center py-8">
                   No upcoming appointments
                 </p>
               ) : (
@@ -184,28 +184,28 @@ export default function TherapistDashboard() {
                       key={appointment.id}
                       href={`/dashboard/appointments/${appointment.id}`}
                     >
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                             <User className="h-5 w-5 text-primary" />
                           </div>
                           <div>
-                            <p className="font-medium text-slate-800">
+                            <p className="font-medium text-foreground">
                               {appointment?.patient?.firstName ?? ""} {appointment?.patient?.lastName ?? ""}
                             </p>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-muted-foreground">
                               {appointment?.treatmentType ?? ""}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium text-slate-700">
+                          <p className="text-sm font-medium text-foreground">
                             {new Date(appointment?.dateTime ?? "").toLocaleDateString("en-GB", {
                               day: "numeric",
                               month: "short",
                             })}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             {new Date(appointment?.dateTime ?? "").toLocaleTimeString("en-GB", {
                               hour: "2-digit",
                               minute: "2-digit",
@@ -237,7 +237,7 @@ export default function TherapistDashboard() {
             </CardHeader>
             <CardContent>
               {(stats?.recentPatients?.length ?? 0) === 0 ? (
-                <p className="text-slate-500 text-sm text-center py-8">
+                <p className="text-muted-foreground text-sm text-center py-8">
                   No patients registered yet
                 </p>
               ) : (
@@ -247,16 +247,16 @@ export default function TherapistDashboard() {
                       key={patient.id}
                       href={`/dashboard/patients/${patient.id}`}
                     >
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                            <User className="h-5 w-5 text-emerald-600" />
+                          <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center">
+                            <User className="h-5 w-5 text-emerald-400" />
                           </div>
                           <div>
-                            <p className="font-medium text-slate-800">
+                            <p className="font-medium text-foreground">
                               {patient?.firstName ?? ""} {patient?.lastName ?? ""}
                             </p>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-muted-foreground">
                               Registered{" "}
                               {new Date(patient?.createdAt ?? "").toLocaleDateString("en-GB", {
                                 day: "numeric",
@@ -266,7 +266,7 @@ export default function TherapistDashboard() {
                             </p>
                           </div>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-slate-400" />
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </Link>
                   ))}

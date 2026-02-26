@@ -73,7 +73,7 @@ export default function RecoveryRing({ exercise, consistency, wellbeing }: Recov
         {/* Center text */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-lg font-bold text-slate-800">{avg}%</p>
+            <p className="text-lg font-bold text-foreground">{avg}%</p>
           </div>
         </div>
 
@@ -88,14 +88,14 @@ export default function RecoveryRing({ exercise, consistency, wellbeing }: Recov
 
         {/* Ring detail tooltip */}
         {hovered && (
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-10">
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-card text-foreground text-[10px] px-2 py-1 rounded border border-white/10 whitespace-nowrap z-10">
             {isPt ? RINGS.find((r) => r.key === hovered)?.labelPt : RINGS.find((r) => r.key === hovered)?.label}: {values[hovered as keyof typeof values]}%
           </div>
         )}
 
         {/* Explainer tooltip */}
         {showTip && !hovered && (
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2.5 py-1.5 rounded whitespace-nowrap z-10 max-w-[200px] text-center leading-relaxed">
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-card text-foreground text-[10px] px-2.5 py-1.5 rounded border border-white/10 whitespace-nowrap z-10 max-w-[200px] text-center leading-relaxed">
             {isPt ? "Complete exercícios, mantenha consistência e registre bem-estar para aumentar" : "Complete exercises, stay consistent & log well-being to increase"}
           </div>
         )}
@@ -106,7 +106,7 @@ export default function RecoveryRing({ exercise, consistency, wellbeing }: Recov
         {RINGS.map((ring) => (
           <div key={ring.key} className="flex items-center gap-1">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: ring.color }} />
-            <span className="text-[10px] text-slate-500">{isPt ? ring.labelPt : ring.label}</span>
+            <span className="text-[10px] text-muted-foreground">{isPt ? ring.labelPt : ring.label}</span>
           </div>
         ))}
       </div>

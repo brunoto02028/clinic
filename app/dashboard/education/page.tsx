@@ -137,9 +137,9 @@ export default function PatientEducationPage() {
           <h1 className="text-xl sm:text-2xl font-bold">{selectedContent.title}</h1>
           {selectedContent.description && <p className="text-muted-foreground mt-1">{selectedContent.description}</p>}
           {viewingAssignment?.note && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-              <p className="font-medium text-blue-800 flex items-center gap-1"><User className="h-3.5 w-3.5" /> {isPt ? `Nota de ${viewingAssignment.assignedBy?.firstName}:` : `Note from ${viewingAssignment.assignedBy?.firstName}:`}</p>
-              <p className="text-blue-700 mt-1">{viewingAssignment.note}</p>
+            <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm">
+              <p className="font-medium text-blue-400 flex items-center gap-1"><User className="h-3.5 w-3.5" /> {isPt ? `Nota de ${viewingAssignment.assignedBy?.firstName}:` : `Note from ${viewingAssignment.assignedBy?.firstName}:`}</p>
+              <p className="text-blue-400/80 mt-1">{viewingAssignment.note}</p>
             </div>
           )}
         </div>
@@ -177,7 +177,7 @@ export default function PatientEducationPage() {
                       key={n}
                       onClick={() => setRating(n)}
                       className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm transition-colors ${
-                        rating >= n ? "bg-amber-400 text-white border-amber-400" : "border-slate-200 text-slate-400"
+                        rating >= n ? "bg-amber-400 text-white border-amber-400" : "border-white/10 text-muted-foreground"
                       }`}
                     >
                       {n}
@@ -204,10 +204,10 @@ export default function PatientEducationPage() {
         )}
 
         {prog?.status === "completed" && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-xl text-center">
-            <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
-            <p className="font-semibold text-green-800 mt-2">{isPt ? "Concluído!" : "Completed!"}</p>
-            <p className="text-sm text-green-700">{isPt ? "Ótimo trabalho acompanhando seu plano de tratamento." : "Great job keeping up with your treatment plan."}</p>
+          <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+            <CheckCircle className="h-8 w-8 text-green-400 mx-auto" />
+            <p className="font-semibold text-green-400 mt-2">{isPt ? "Concluído!" : "Completed!"}</p>
+            <p className="text-sm text-green-400/80">{isPt ? "Ótimo trabalho acompanhando seu plano de tratamento." : "Great job keeping up with your treatment plan."}</p>
           </div>
         )}
       </div>
@@ -234,13 +234,13 @@ export default function PatientEducationPage() {
         </Card>
         <Card>
           <CardContent className="pt-3 pb-2 text-center">
-            <p className="text-2xl font-bold text-green-600">{completedAssignments.length}</p>
+            <p className="text-2xl font-bold text-green-400">{completedAssignments.length}</p>
             <p className="text-[10px] text-muted-foreground">{isPt ? "Concluídos" : "Completed"}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-3 pb-2 text-center">
-            <p className="text-2xl font-bold text-blue-600">{published.length}</p>
+            <p className="text-2xl font-bold text-blue-400">{published.length}</p>
             <p className="text-[10px] text-muted-foreground">{isPt ? "Disponíveis" : "Available"}</p>
           </CardContent>
         </Card>
@@ -276,17 +276,17 @@ export default function PatientEducationPage() {
                     <Card className="hover:border-primary/30 transition-colors">
                       <CardContent className="pt-4 pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-14 h-14 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          <div className="w-14 h-14 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0 overflow-hidden">
                             {a.content.thumbnailUrl ? (
                               <img src={a.content.thumbnailUrl} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <Icon className="h-6 w-6 text-slate-400" />
+                              <Icon className="h-6 w-6 text-muted-foreground" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-sm truncate">{a.content.title}</p>
-                              {a.isRequired && <Badge className="text-[10px] bg-red-100 text-red-700">{isPt ? "Obrigatório" : "Required"}</Badge>}
+                              {a.isRequired && <Badge className="text-[10px] bg-red-500/15 text-red-400">{isPt ? "Obrigatório" : "Required"}</Badge>}
                             </div>
                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                               <Badge variant="outline" className="text-[10px] capitalize">{a.content.contentType}</Badge>
@@ -324,12 +324,12 @@ export default function PatientEducationPage() {
                   <button key={item.id} onClick={() => openContent(item)} className="text-left">
                     <Card className="hover:border-primary/30 transition-colors h-full">
                       <CardContent className="pt-0 pb-3">
-                        <div className="aspect-video bg-slate-100 rounded-t-lg -mx-6 -mt-0 mb-3 overflow-hidden relative">
+                        <div className="aspect-video bg-muted/50 rounded-t-lg -mx-6 -mt-0 mb-3 overflow-hidden relative">
                           {item.thumbnailUrl ? (
                             <img src={item.thumbnailUrl} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Icon className="h-10 w-10 text-slate-300" />
+                              <Icon className="h-10 w-10 text-muted-foreground" />
                             </div>
                           )}
                           {item.contentType === "video" && (
@@ -346,7 +346,7 @@ export default function PatientEducationPage() {
                           )}
                           {item.isFeatured && (
                             <div className="absolute top-2 left-2">
-                              <Badge className="text-[10px] bg-amber-100 text-amber-700"><Star className="h-2.5 w-2.5 mr-0.5" />{isPt ? "Destaque" : "Featured"}</Badge>
+                              <Badge className="text-[10px] bg-amber-500/15 text-amber-400"><Star className="h-2.5 w-2.5 mr-0.5" />{isPt ? "Destaque" : "Featured"}</Badge>
                             </div>
                           )}
                         </div>
@@ -381,8 +381,8 @@ export default function PatientEducationPage() {
                   <Card key={a.id} className="opacity-80">
                     <CardContent className="pt-4 pb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        <div className="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center">
+                          <CheckCircle className="h-5 w-5 text-green-400" />
                         </div>
                         <div>
                           <p className="font-medium text-sm">{a.content.title}</p>

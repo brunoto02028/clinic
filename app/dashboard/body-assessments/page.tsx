@@ -13,6 +13,15 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { BodyMap, AssessmentScores } from "@/components/body-assessment/body-map";
 import { BodyCapture, BodyCaptureResult } from "@/components/body-assessment/body-capture";
+import { SegmentScores } from "@/components/body-assessment/segment-scores";
+import { FindingCards } from "@/components/body-assessment/finding-cards";
+import { CorrectiveExercises } from "@/components/body-assessment/corrective-exercises";
+import { ProgressTracker } from "@/components/body-assessment/progress-tracker";
+import { CrossSessionComparison } from "@/components/body-assessment/cross-session-comparison";
+import { SkeletonAnalysisOverlay } from "@/components/body-assessment/skeleton-analysis-overlay";
+import { GaitMetrics } from "@/components/body-assessment/gait-metrics";
+import { ScoliosisPanel } from "@/components/body-assessment/scoliosis-panel";
+import { VideoSkeletonPlayer } from "@/components/body-assessment/video-skeleton-player";
 import {
   Loader2,
   Activity,
@@ -26,6 +35,12 @@ import {
   Plus,
   Shield,
   Info,
+  TrendingUp,
+  Dumbbell,
+  Crosshair,
+  Video,
+  FileText,
+  Stethoscope,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
@@ -41,11 +56,21 @@ interface Assessment {
   backImageUrl: string | null;
   leftImageUrl: string | null;
   rightImageUrl: string | null;
+  frontLandmarks: any[] | null;
+  backLandmarks: any[] | null;
+  leftLandmarks: any[] | null;
+  rightLandmarks: any[] | null;
   motorPoints: any[] | null;
   postureScore: number | null;
   symmetryScore: number | null;
   mobilityScore: number | null;
   overallScore: number | null;
+  segmentScores: any | null;
+  gaitMetrics: any | null;
+  correctiveExercises: any[] | null;
+  deviationLabels: any[] | null;
+  idealComparison: any[] | null;
+  postureAnalysis: any | null;
   aiSummary: string | null;
   aiRecommendations: string | null;
   aiFindings: any[] | null;
@@ -59,13 +84,13 @@ interface Assessment {
 }
 
 const STATUS_CONFIG: Record<string, { labelEn: string; labelPt: string; color: string; icon: any }> = {
-  PENDING_CAPTURE: { labelEn: "Pending Capture", labelPt: "Aguardando Captura", color: "bg-orange-100 text-orange-700", icon: Camera },
-  CAPTURING: { labelEn: "Capturing", labelPt: "Capturando", color: "bg-blue-100 text-blue-700", icon: Camera },
-  PENDING_ANALYSIS: { labelEn: "Processing", labelPt: "Processando", color: "bg-yellow-100 text-yellow-700", icon: Clock },
-  ANALYZING: { labelEn: "Analyzing...", labelPt: "Analisando...", color: "bg-purple-100 text-purple-700", icon: Brain },
-  PENDING_REVIEW: { labelEn: "Under Review", labelPt: "Em Revisão", color: "bg-indigo-100 text-indigo-700", icon: ClipboardList },
-  REVIEWED: { labelEn: "Reviewed", labelPt: "Revisado", color: "bg-teal-100 text-teal-700", icon: CheckCircle2 },
-  COMPLETED: { labelEn: "Completed", labelPt: "Concluído", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
+  PENDING_CAPTURE: { labelEn: "Pending Capture", labelPt: "Aguardando Captura", color: "bg-orange-500/15 text-orange-400", icon: Camera },
+  CAPTURING: { labelEn: "Capturing", labelPt: "Capturando", color: "bg-blue-500/15 text-blue-400", icon: Camera },
+  PENDING_ANALYSIS: { labelEn: "Processing", labelPt: "Processando", color: "bg-yellow-500/15 text-yellow-400", icon: Clock },
+  ANALYZING: { labelEn: "Analyzing...", labelPt: "Analisando...", color: "bg-purple-500/15 text-purple-400", icon: Brain },
+  PENDING_REVIEW: { labelEn: "Under Review", labelPt: "Em Revisão", color: "bg-indigo-500/15 text-indigo-400", icon: ClipboardList },
+  REVIEWED: { labelEn: "Reviewed", labelPt: "Revisado", color: "bg-teal-500/15 text-teal-400", icon: CheckCircle2 },
+  COMPLETED: { labelEn: "Completed", labelPt: "Concluído", color: "bg-green-500/15 text-green-400", icon: CheckCircle2 },
 };
 
 export default function PatientBodyAssessmentsPage() {
@@ -88,6 +113,8 @@ function PatientBodyAssessmentsContent() {
   const [captureAssessment, setCaptureAssessment] = useState<Assessment | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [bodyMapView, setBodyMapView] = useState<"front" | "back">("front");
+  const [detailTab, setDetailTab] = useState<"overview" | "analysis" | "exercises" | "progress" | "videos">("overview");
+  const [skeletonView, setSkeletonView] = useState<"front" | "back" | "left" | "right">("front");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -248,20 +275,83 @@ function PatientBodyAssessmentsContent() {
   if (showDetail && selectedAssessment) {
     const a = selectedAssessment;
     const sc = STATUS_CONFIG[a.status] || STATUS_CONFIG.PENDING_CAPTURE;
+    const hasAnalysis = a.overallScore != null || a.aiSummary;
+    const hasExercises = a.correctiveExercises && a.correctiveExercises.length > 0;
+    const hasVideos = a.movementVideos && Array.isArray(a.movementVideos) && a.movementVideos.length > 0;
+    const hasScoliosis = a.postureAnalysis?.scoliosisScreening && a.postureAnalysis.scoliosisScreening.severity !== "none";
+    const hasGaitMetrics = a.gaitMetrics && Object.values(a.gaitMetrics).some((v: any) => typeof v === "number" && v > 0);
+
+    // Get skeleton image/landmarks for selected view
+    const skeletonImages: Record<string, { url: string | null; landmarks: any[] | null }> = {
+      front: { url: a.frontImageUrl, landmarks: a.frontLandmarks },
+      back: { url: a.backImageUrl, landmarks: a.backLandmarks },
+      left: { url: a.leftImageUrl, landmarks: a.leftLandmarks },
+      right: { url: a.rightImageUrl, landmarks: a.rightLandmarks },
+    };
+    const currentSkelImg = skeletonImages[skeletonView];
+
+    // Build assessment history for progress tracker
+    const progressData = assessments
+      .filter((x) => x.overallScore != null)
+      .map((x) => ({
+        id: x.id,
+        date: x.createdAt,
+        overallScore: x.overallScore || 0,
+        postureScore: x.postureScore || 0,
+        symmetryScore: x.symmetryScore || 0,
+        mobilityScore: x.mobilityScore || 0,
+        segmentScores: x.segmentScores,
+      }));
+
+    // Build comparison data
+    const comparisonData = assessments.map((x) => ({
+      id: x.id,
+      date: x.createdAt,
+      assessmentNumber: x.assessmentNumber,
+      overallScore: x.overallScore,
+      postureScore: x.postureScore,
+      symmetryScore: x.symmetryScore,
+      mobilityScore: x.mobilityScore,
+      segmentScores: x.segmentScores,
+      frontImageUrl: x.frontImageUrl,
+      backImageUrl: x.backImageUrl,
+      leftImageUrl: x.leftImageUrl,
+      rightImageUrl: x.rightImageUrl,
+      aiFindings: x.aiFindings || undefined,
+    }));
+
+    // Detail tab items
+    const tabs = [
+      { id: "overview" as const, label: isPt ? "Resumo" : "Overview", icon: Activity },
+      ...(hasAnalysis ? [{ id: "analysis" as const, label: isPt ? "Análise" : "Analysis", icon: Crosshair }] : []),
+      ...(hasExercises ? [{ id: "exercises" as const, label: isPt ? "Exercícios" : "Exercises", icon: Dumbbell }] : []),
+      ...(hasVideos ? [{ id: "videos" as const, label: isPt ? "Vídeos" : "Videos", icon: Video }] : []),
+      ...(progressData.length > 1 ? [{ id: "progress" as const, label: isPt ? "Progresso" : "Progress", icon: TrendingUp }] : []),
+    ];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
+        {/* Header */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setShowDetail(false)} className="h-8 w-8 sm:h-9 sm:w-9">
+          <Button variant="ghost" size="icon" onClick={() => { setShowDetail(false); setDetailTab("overview"); }} className="h-8 w-8 sm:h-9 sm:w-9">
             <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold">{a.assessmentNumber}</h1>
-            <Badge className={sc.color + " text-[10px]"}>{isPt ? sc.labelPt : sc.labelEn}</Badge>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg sm:text-xl font-bold">{a.assessmentNumber}</h1>
+              <Badge className={sc.color + " text-[10px]"}>{isPt ? sc.labelPt : sc.labelEn}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{new Date(a.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</p>
           </div>
+          {a.therapist && (
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Stethoscope className="h-3.5 w-3.5" />
+              {a.therapist.firstName} {a.therapist.lastName}
+            </div>
+          )}
         </div>
 
-        {/* Scores */}
+        {/* Overall Scores Bar */}
         {a.overallScore != null && (
           <AssessmentScores
             postureScore={a.postureScore}
@@ -271,72 +361,135 @@ function PatientBodyAssessmentsContent() {
           />
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Body Map */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{T("bodyAssessment.bodyMap")}</CardTitle>
-                <div className="flex gap-1">
-                  <Button variant={bodyMapView === "front" ? "default" : "outline"} size="sm" onClick={() => setBodyMapView("front")}>{T("bodyAssessment.front")}</Button>
-                  <Button variant={bodyMapView === "back" ? "default" : "outline"} size="sm" onClick={() => setBodyMapView("back")}>{T("bodyAssessment.back")}</Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="flex justify-center">
-              <BodyMap
-                view={bodyMapView}
-                motorPoints={a.motorPoints || []}
-                alignmentData={a.alignmentData}
-                width={260}
-                height={420}
-                interactive={false}
-              />
-            </CardContent>
-          </Card>
+        {/* Tab Navigation */}
+        <div className="flex gap-1 overflow-x-auto pb-1 border-b">
+          {tabs.map((tab) => {
+            const TabIcon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setDetailTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                  detailTab === tab.id
+                    ? "border-primary text-primary bg-primary/5"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                <TabIcon className="h-3.5 w-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
-          {/* Results */}
-          <div className="space-y-4">
-            {a.aiSummary && (
-              <Card>
-                <CardHeader><CardTitle className="text-base">{T("bodyAssessment.summary")}</CardTitle></CardHeader>
-                <CardContent><p className="text-sm whitespace-pre-wrap">{a.aiSummary}</p></CardContent>
-              </Card>
-            )}
+        {/* ===== OVERVIEW TAB ===== */}
+        {detailTab === "overview" && (
+          <div className="space-y-6">
+            {/* Segment Scores + Body Map Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Segment Scores */}
+              {a.segmentScores && (
+                <SegmentScores
+                  segmentScores={a.segmentScores}
+                  overallScore={a.overallScore || undefined}
+                />
+              )}
 
-            {a.aiFindings && a.aiFindings.length > 0 && (
+              {/* Body Map */}
               <Card>
-                <CardHeader><CardTitle className="text-base">{T("bodyAssessment.findings")}</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                  {a.aiFindings.map((f: any, i: number) => (
-                    <div key={i} className="flex gap-3 p-2 rounded-lg bg-muted/50">
-                      <Badge variant={f.severity === "severe" ? "destructive" : f.severity === "moderate" ? "default" : "secondary"} className="text-xs h-fit">
-                        {f.severity}
-                      </Badge>
-                      <div>
-                        <p className="text-sm font-medium">{f.area}</p>
-                        <p className="text-xs text-muted-foreground">{f.finding}</p>
-                        {f.recommendation && <p className="text-xs text-primary mt-1">→ {f.recommendation}</p>}
-                      </div>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{T("bodyAssessment.bodyMap")}</CardTitle>
+                    <div className="flex gap-1">
+                      <Button variant={bodyMapView === "front" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setBodyMapView("front")}>{T("bodyAssessment.front")}</Button>
+                      <Button variant={bodyMapView === "back" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setBodyMapView("back")}>{T("bodyAssessment.back")}</Button>
                     </div>
-                  ))}
+                  </div>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <BodyMap
+                    view={bodyMapView}
+                    motorPoints={a.motorPoints || []}
+                    alignmentData={a.alignmentData}
+                    width={260}
+                    height={380}
+                    interactive={false}
+                  />
                 </CardContent>
               </Card>
-            )}
+            </div>
 
-            {a.aiRecommendations && (
+            {/* AI Summary */}
+            {a.aiSummary && (
               <Card>
-                <CardHeader><CardTitle className="text-base">{T("bodyAssessment.recommendations")}</CardTitle></CardHeader>
-                <CardContent><p className="text-sm whitespace-pre-wrap">{a.aiRecommendations}</p></CardContent>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-purple-500" />
+                    {T("bodyAssessment.summary")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{a.aiSummary}</p></CardContent>
               </Card>
             )}
 
+            {/* Findings */}
+            {a.aiFindings && a.aiFindings.length > 0 && (
+              <FindingCards findings={a.aiFindings} compact />
+            )}
+
+            {/* Scoliosis Screening */}
+            {hasScoliosis && (
+              <ScoliosisPanel screening={a.postureAnalysis.scoliosisScreening} />
+            )}
+
+            {/* Therapist Notes */}
             {a.therapistNotes && (
               <Card>
-                <CardHeader><CardTitle className="text-base">{T("bodyAssessment.therapistNotes")}</CardTitle></CardHeader>
-                <CardContent><p className="text-sm whitespace-pre-wrap">{a.therapistNotes}</p></CardContent>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Stethoscope className="h-4 w-4 text-teal-500" />
+                    {T("bodyAssessment.therapistNotes")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{a.therapistNotes}</p></CardContent>
               </Card>
             )}
+
+            {/* Captured Images */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-base">{T("bodyAssessment.capturedImages")}</CardTitle>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 border border-white/10 rounded-full px-2.5 py-1">
+                    <Shield className="h-3 w-3" />
+                    {T("bodyAssessment.faceBlurNotice")}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: T("bodyAssessment.front"), url: a.frontImageUrl },
+                    { label: T("bodyAssessment.back"), url: a.backImageUrl },
+                    { label: T("bodyAssessment.left"), url: a.leftImageUrl },
+                    { label: T("bodyAssessment.right"), url: a.rightImageUrl },
+                  ].map((img) => (
+                    <div key={img.label} className="text-center">
+                      <p className="text-xs font-medium mb-1">{img.label}</p>
+                      {img.url ? (
+                        <div className="aspect-[3/4] bg-muted rounded-lg overflow-hidden">
+                          <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
+                          <Camera className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
             {!a.aiSummary && !a.therapistNotes && (
               <Card>
@@ -347,68 +500,131 @@ function PatientBodyAssessmentsContent() {
               </Card>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Images */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-base">{T("bodyAssessment.capturedImages")}</CardTitle>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1">
-                <Shield className="h-3 w-3" />
-                {T("bodyAssessment.faceBlurNotice")}
-              </div>
+        {/* ===== ANALYSIS TAB ===== */}
+        {detailTab === "analysis" && hasAnalysis && (
+          <div className="space-y-6">
+            {/* Skeleton View Selector */}
+            <div className="flex gap-1.5">
+              {(["front", "back", "left", "right"] as const).map((v) => {
+                const hasImg = skeletonImages[v]?.url;
+                return (
+                  <Button
+                    key={v}
+                    variant={skeletonView === v ? "default" : "outline"}
+                    size="sm"
+                    className="h-8 text-xs capitalize"
+                    onClick={() => setSkeletonView(v)}
+                    disabled={!hasImg}
+                  >
+                    {v === "front" ? (isPt ? "Frontal" : "Front") :
+                     v === "back" ? (isPt ? "Posterior" : "Back") :
+                     v === "left" ? (isPt ? "Esquerdo" : "Left") :
+                     (isPt ? "Direito" : "Right")}
+                  </Button>
+                );
+              })}
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { label: T("bodyAssessment.front"), url: a.frontImageUrl },
-                { label: T("bodyAssessment.back"), url: a.backImageUrl },
-                { label: T("bodyAssessment.left"), url: a.leftImageUrl },
-                { label: T("bodyAssessment.right"), url: a.rightImageUrl },
-              ].map((img) => (
-                <div key={img.label} className="text-center">
-                  <p className="text-xs font-medium mb-1">{img.label}</p>
-                  {img.url ? (
-                    <div className="aspect-[3/4] bg-muted rounded-lg overflow-hidden">
-                      <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
-                      <Camera className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Movement Videos */}
-        {a.movementVideos && Array.isArray(a.movementVideos) && a.movementVideos.length > 0 && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">{T("bodyAssessment.movementVideos")}</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {a.movementVideos.map((vid: any, i: number) => (
-                  <div key={vid.id || i} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium">{vid.label || vid.testType}</p>
-                      <span className="text-xs text-muted-foreground">{vid.duration}s</span>
-                    </div>
-                    {vid.videoUrl ? (
-                      <video src={vid.videoUrl} controls playsInline className="w-full rounded-lg bg-black aspect-video" />
-                    ) : (
-                      <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                        <Camera className="h-6 w-6 text-muted-foreground" />
+            {/* Skeleton Analysis Overlay */}
+            {currentSkelImg?.url && (
+              <SkeletonAnalysisOverlay
+                imageUrl={currentSkelImg.url}
+                landmarks={currentSkelImg.landmarks || undefined}
+                deviationLabels={a.deviationLabels || []}
+                idealComparison={a.idealComparison || []}
+                view={skeletonView}
+                width={500}
+              />
+            )}
+
+            {/* Gait Metrics */}
+            {hasGaitMetrics && (
+              <GaitMetrics metrics={a.gaitMetrics} />
+            )}
+
+            {/* Scoliosis Screening (also shown here if present) */}
+            {hasScoliosis && (
+              <ScoliosisPanel screening={a.postureAnalysis.scoliosisScreening} />
+            )}
+
+            {/* Detailed Findings */}
+            {a.aiFindings && a.aiFindings.length > 0 && (
+              <FindingCards findings={a.aiFindings} />
+            )}
+
+            {/* AI Recommendations */}
+            {a.aiRecommendations && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-cyan-500" />
+                    {T("bodyAssessment.recommendations")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{a.aiRecommendations}</p></CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ===== EXERCISES TAB ===== */}
+        {detailTab === "exercises" && hasExercises && (
+          <div className="space-y-6">
+            <CorrectiveExercises exercises={a.correctiveExercises!} />
+
+            {/* Show which findings each exercise addresses */}
+            {a.aiFindings && a.aiFindings.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    {isPt ? "Esses exercícios foram selecionados com base nos seus achados clínicos" : "These exercises were selected based on your clinical findings"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {a.aiFindings.slice(0, 6).map((f: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-muted/50">
+                        <Badge variant={f.severity === "severe" ? "destructive" : f.severity === "moderate" ? "default" : "secondary"} className="text-[10px] h-fit mt-0.5">
+                          {f.severity}
+                        </Badge>
+                        <div>
+                          <p className="text-xs font-medium">{f.area}</p>
+                          <p className="text-[10px] text-muted-foreground">{f.finding}</p>
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ===== VIDEOS TAB ===== */}
+        {detailTab === "videos" && hasVideos && (
+          <div className="space-y-6">
+            <VideoSkeletonPlayer
+              videos={a.movementVideos!.filter((v: any) => v.videoUrl).map((v: any) => ({
+                videoUrl: v.videoUrl,
+                testType: v.testType,
+                label: v.label || v.testType,
+                duration: v.duration,
+              }))}
+            />
+          </div>
+        )}
+
+        {/* ===== PROGRESS TAB ===== */}
+        {detailTab === "progress" && progressData.length > 1 && (
+          <div className="space-y-6">
+            <ProgressTracker assessments={progressData} />
+            {comparisonData.length >= 2 && (
+              <CrossSessionComparison assessments={comparisonData} currentId={a.id} />
+            )}
+          </div>
         )}
       </div>
     );
@@ -449,8 +665,8 @@ function PatientBodyAssessmentsContent() {
             </div>
           </div>
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Brain className="h-4 w-4 text-purple-600" />
+            <div className="w-8 h-8 rounded-full bg-purple-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Brain className="h-4 w-4 text-purple-400" />
             </div>
             <div>
               <p className="text-sm font-semibold">{T("bodyAssessment.infoStep2Title")}</p>
@@ -458,8 +674,8 @@ function PatientBodyAssessmentsContent() {
             </div>
           </div>
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <div className="w-8 h-8 rounded-full bg-green-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <CheckCircle2 className="h-4 w-4 text-green-400" />
             </div>
             <div>
               <p className="text-sm font-semibold">{T("bodyAssessment.infoStep3Title")}</p>
@@ -470,8 +686,8 @@ function PatientBodyAssessmentsContent() {
       </Card>
 
       {/* Privacy Notice */}
-      <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
-        <Shield className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2.5 p-3 rounded-lg bg-muted/20 border border-white/10 text-xs text-muted-foreground">
+        <Shield className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
         <p>{T("bodyAssessment.privacyNotice")}</p>
       </div>
 

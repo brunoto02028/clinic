@@ -76,38 +76,10 @@ export default function AssessmentGate({
     );
   }
 
-  // Gate 1: Medical screening must be complete
-  if (status && !status.screeningComplete) {
-    return (
-      <div className="max-w-lg mx-auto mt-8 sm:mt-12 px-1">
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardContent className="p-6 sm:p-8 text-center space-y-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
-              <Shield className="h-7 w-7 sm:h-8 sm:w-8 text-amber-600" />
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold text-foreground">
-              {isPt ? "Avaliação Médica Necessária" : "Medical Assessment Required"}
-            </h2>
-            <p className="text-muted-foreground">
-              {screeningMessage ||
-                (isPt
-                  ? "Antes de acessar esta funcionalidade, você precisa completar sua triagem médica. Isso nos ajuda a oferecer um cuidado seguro e personalizado."
-                  : "Before accessing this feature, you need to complete your medical screening assessment. This helps us provide safe and personalised care.")}
-            </p>
-            <Button asChild className="gap-2 mt-2">
-              <Link href="/dashboard/screening">
-                <Shield className="h-4 w-4" />
-                {isPt ? "Completar Avaliação" : "Complete Assessment"}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // NOTE: Screening gate removed — screening is now required only 24h before an appointment,
+  // not as a page-level blocker. Contextual alerts are shown on dashboard and appointment pages.
 
-  // Gate 2: Service access check (if required)
+  // Gate: Service access check (if required)
   if (requiredService && status && !status.serviceAccess[requiredService]) {
     const serviceNames: Record<string, { en: string; pt: string }> = {
       CONSULTATION: { en: "Consultation Booking", pt: "Agendamento de Consulta" },
@@ -135,10 +107,10 @@ export default function AssessmentGate({
         {showcaseKey && <ServiceShowcase service={showcaseKey} />}
 
         {/* Access required card */}
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-blue-500/20 bg-blue-500/10">
           <CardContent className="p-6 sm:p-8 text-center space-y-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto">
-              <Lock className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600" />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-500/15 flex items-center justify-center mx-auto">
+              <Lock className="h-7 w-7 sm:h-8 sm:w-8 text-blue-400" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-foreground">
               {isPt ? `Acesse ${displayName}` : `Get Access to ${displayName}`}
@@ -150,7 +122,7 @@ export default function AssessmentGate({
                   : "To use this service, you need an active plan or package. View our available plans to get started.")}
             </p>
             {priceText && (
-              <p className="text-sm font-semibold text-blue-700">
+              <p className="text-sm font-semibold text-blue-400">
                 {isPt ? `A partir de ${priceText}` : `Starting from ${priceText}`}
               </p>
             )}

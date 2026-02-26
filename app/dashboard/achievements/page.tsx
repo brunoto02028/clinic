@@ -68,8 +68,8 @@ export default function PatientAchievementsPage() {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
-                <Trophy className="h-6 w-6 text-amber-600" />
+              <div className="w-12 h-12 rounded-full bg-amber-500/15 flex items-center justify-center">
+                <Trophy className="h-6 w-6 text-amber-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{totalUnlocked}/{totalAchievements}</p>
@@ -77,7 +77,7 @@ export default function PatientAchievementsPage() {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-lg font-bold text-amber-600">{totalXp} XP</p>
+              <p className="text-lg font-bold text-amber-400">{totalXp} XP</p>
               <p className="text-xs text-muted-foreground">{isPt ? "total ganho" : "total earned"}</p>
             </div>
           </div>
@@ -97,12 +97,12 @@ export default function PatientAchievementsPage() {
           {/* Unlocked */}
           {unlocked.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-green-700 mb-3 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-green-400 mb-3 flex items-center gap-2">
                 <Trophy className="h-4 w-4" /> {isPt ? `Desbloqueadas (${unlocked.length})` : `Unlocked (${unlocked.length})`}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {unlocked.map((a) => (
-                  <Card key={a.id} className="border-green-200 bg-green-50/30 overflow-hidden">
+                  <Card key={a.id} className="border-green-500/20 bg-green-500/10 overflow-hidden">
                     <div className="h-1" style={{ backgroundColor: a.badgeColor }} />
                     <CardContent className="pt-4">
                       <div className="flex items-center gap-3">
@@ -115,8 +115,8 @@ export default function PatientAchievementsPage() {
                             {isPt ? (a.descriptionPt || a.descriptionEn) : (a.descriptionEn || a.descriptionPt)}
                           </p>
                           <div className="flex gap-1.5 mt-1.5">
-                            <Badge className="text-[10px] bg-amber-100 text-amber-700">{a.xpReward} XP</Badge>
-                            {a.condition && <Badge className="text-[10px] bg-blue-100 text-blue-700">{a.condition.iconEmoji} {isPt ? a.condition.namePt : a.condition.nameEn}</Badge>}
+                            <Badge className="text-[10px] bg-amber-500/15 text-amber-400">{a.xpReward} XP</Badge>
+                            {a.condition && <Badge className="text-[10px] bg-blue-500/15 text-blue-400">{a.condition.iconEmoji} {isPt ? a.condition.namePt : a.condition.nameEn}</Badge>}
                           </div>
                         </div>
                       </div>
@@ -130,16 +130,16 @@ export default function PatientAchievementsPage() {
           {/* Locked */}
           {locked.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold text-slate-500 mb-3 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                 <Lock className="h-4 w-4" /> {isPt ? `Bloqueadas (${locked.length})` : `Locked (${locked.length})`}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {locked.map((a) => (
                   <Card key={a.id} className="opacity-60 overflow-hidden">
-                    <div className="h-1 bg-slate-200" />
+                    <div className="h-1 bg-muted" />
                     <CardContent className="pt-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-slate-100 grayscale">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl bg-muted/50 grayscale">
                           {a.iconEmoji}
                         </div>
                         <div className="flex-1 min-w-0">

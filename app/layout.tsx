@@ -1,12 +1,23 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import { DynamicFavicon } from "@/components/dynamic-favicon";
 import { WhatsAppFloatingButton } from "@/components/whatsapp-button";
+import { Suspense } from "react";
+import { SiteTracker } from "@/components/analytics/site-tracker";
+import { CookieConsentBanner } from "@/components/cookie-consent";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0a0f1e",
+};
 
 // Static metadata to avoid SSR loops and database connection issues
 export const metadata: Metadata = {
@@ -105,6 +116,10 @@ export default function RootLayout({
           {children}
           <WhatsAppFloatingButton />
           <Toaster />
+          <Suspense fallback={null}>
+            <SiteTracker />
+          </Suspense>
+          <CookieConsentBanner />
         </Providers>
       </body>
     </html>

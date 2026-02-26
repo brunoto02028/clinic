@@ -41,9 +41,9 @@ const SERVICE_ICONS: Record<string, any> = {
 };
 
 const SERVICE_COLORS: Record<string, { bg: string; border: string; text: string; badge: string }> = {
-  CONSULTATION: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", badge: "bg-blue-100 text-blue-800" },
-  FOOT_SCAN: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", badge: "bg-emerald-100 text-emerald-800" },
-  BODY_ASSESSMENT: { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", badge: "bg-violet-100 text-violet-800" },
+  CONSULTATION: { bg: "bg-blue-500/5", border: "border-blue-500/20", text: "text-blue-400", badge: "bg-blue-500/15 text-blue-400" },
+  FOOT_SCAN: { bg: "bg-emerald-500/5", border: "border-emerald-500/20", text: "text-emerald-400", badge: "bg-emerald-500/15 text-emerald-400" },
+  BODY_ASSESSMENT: { bg: "bg-violet-500/5", border: "border-violet-500/20", text: "text-violet-400", badge: "bg-violet-500/15 text-violet-400" },
 };
 
 export default function PatientPlansPage() {
@@ -82,10 +82,10 @@ export default function PatientPlansPage() {
   if (status && !status.screeningComplete) {
     return (
       <div className="max-w-lg mx-auto mt-12">
-        <Card className="border-amber-200 bg-amber-50/50">
+        <Card className="border-amber-500/20 bg-amber-500/5">
           <CardContent className="p-6 sm:p-8 text-center space-y-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
-              <Shield className="h-7 w-7 sm:h-8 sm:w-8 text-amber-600" />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto">
+              <Shield className="h-7 w-7 sm:h-8 sm:w-8 text-amber-400" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-foreground">{T("plans.completeFirst")}</h2>
             <p className="text-muted-foreground">
@@ -130,7 +130,7 @@ export default function PatientPlansPage() {
               <Card key={sp.id} className={`relative overflow-hidden transition-shadow hover:shadow-lg ${colors.border}`}>
                 {hasAccess && (
                   <div className="absolute top-3 right-3">
-                    <Badge className="bg-green-100 text-green-800 gap-1">
+                    <Badge className="bg-green-500/15 text-green-400 gap-1">
                       <CheckCircle className="h-3 w-3" /> {T("plans.active")}
                     </Badge>
                   </div>

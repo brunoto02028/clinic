@@ -112,6 +112,7 @@ export async function POST(request: NextRequest) {
           portalUrl: `${BASE}/dashboard`,
         },
         plainMessage: `You have been assigned the ${plan.name} membership plan${plan.isFree ? ' (Free)' : ` at £${plan.price.toFixed(2)}/${plan.interval.toLowerCase()}`}. Log in to your portal to get started!`,
+        plainMessagePt: `Você foi adicionado ao plano ${plan.name}${plan.isFree ? ' (Gratuito)' : ` por £${plan.price.toFixed(2)}/${plan.interval.toLowerCase()}`}. Acesse seu portal para começar!`,
       }).catch(err => console.error('[memberships] notification error:', err));
     }
 

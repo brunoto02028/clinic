@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
           portalUrl: `${process.env.NEXTAUTH_URL || ''}/dashboard/documents`,
         },
         plainMessage: `Your document "${title || file.name}" has been uploaded successfully and is being reviewed.`,
+        plainMessagePt: `Seu documento "${title || file.name}" foi enviado com sucesso e está sendo revisado.`,
       });
     } catch (emailErr) {
       console.error('[patient-documents] Failed to send notification:', emailErr);

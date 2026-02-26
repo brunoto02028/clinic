@@ -39,14 +39,14 @@ interface FootScan {
 }
 
 const STATUS_CONFIG: Record<string, { labelEn: string; labelPt: string; color: string; icon: any }> = {
-  PENDING_UPLOAD: { labelEn: 'Pending Upload', labelPt: 'Aguardando Envio', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  SCANNING: { labelEn: 'Scanning', labelPt: 'Escaneando', color: 'bg-blue-100 text-blue-800', icon: Camera },
-  PROCESSING: { labelEn: 'Processing', labelPt: 'Processando', color: 'bg-purple-100 text-purple-800', icon: Clock },
-  PENDING_REVIEW: { labelEn: 'Pending Review', labelPt: 'Aguardando Revisão', color: 'bg-orange-100 text-orange-800', icon: AlertCircle },
-  APPROVED: { labelEn: 'Approved', labelPt: 'Aprovado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  IN_PRODUCTION: { labelEn: 'In Production', labelPt: 'Em Produção', color: 'bg-cyan-100 text-cyan-800', icon: FileText },
-  SHIPPED: { labelEn: 'Shipped', labelPt: 'Enviado', color: 'bg-indigo-100 text-indigo-800', icon: FileText },
-  DELIVERED: { labelEn: 'Delivered', labelPt: 'Entregue', color: 'bg-green-100 text-green-800', icon: CheckCircle },
+  PENDING_UPLOAD: { labelEn: 'Pending Upload', labelPt: 'Aguardando Envio', color: 'bg-yellow-500/15 text-yellow-400', icon: Clock },
+  SCANNING: { labelEn: 'Scanning', labelPt: 'Escaneando', color: 'bg-blue-500/15 text-blue-400', icon: Camera },
+  PROCESSING: { labelEn: 'Processing', labelPt: 'Processando', color: 'bg-purple-500/15 text-purple-400', icon: Clock },
+  PENDING_REVIEW: { labelEn: 'Pending Review', labelPt: 'Aguardando Revisão', color: 'bg-orange-500/15 text-orange-400', icon: AlertCircle },
+  APPROVED: { labelEn: 'Approved', labelPt: 'Aprovado', color: 'bg-green-500/15 text-green-400', icon: CheckCircle },
+  IN_PRODUCTION: { labelEn: 'In Production', labelPt: 'Em Produção', color: 'bg-cyan-500/15 text-cyan-400', icon: FileText },
+  SHIPPED: { labelEn: 'Shipped', labelPt: 'Enviado', color: 'bg-indigo-500/15 text-indigo-400', icon: FileText },
+  DELIVERED: { labelEn: 'Delivered', labelPt: 'Entregue', color: 'bg-green-500/15 text-green-400', icon: CheckCircle },
 };
 
 export default function PatientScansPage() {
@@ -253,7 +253,7 @@ function PatientScansContent() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{isPt ? 'Meus Escaneamentos' : 'My Foot Scans'}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{isPt ? 'Meus Escaneamentos' : 'My Foot Scans'}</h1>
           <p className="text-muted-foreground text-sm mt-1">
             {isPt ? 'Capture e acompanhe a análise dos seus pés' : 'Capture and track the analysis of your feet'}
           </p>
@@ -316,7 +316,7 @@ function PatientScansContent() {
                           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                             {new Date(scan.createdAt).toLocaleDateString('pt-BR')}
                           </p>
-                          <div className="bg-blue-50 text-blue-800 text-[10px] sm:text-xs px-2 py-0.5 rounded-full inline-block mt-2 font-medium">
+                          <div className="bg-blue-500/10 text-blue-400 text-[10px] sm:text-xs px-2 py-0.5 rounded-full inline-block mt-2 font-medium">
                             {scan.status === 'PENDING_REVIEW' || scan.status === 'PROCESSING'
                               ? (isPt ? 'Imagens sendo analisadas pelo especialista' : 'Images being analysed by the specialist')
                               : (isPt ? statusConfig.labelPt : statusConfig.labelEn)}

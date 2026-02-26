@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       portalUrl: `${process.env.NEXTAUTH_URL || 'https://bpr.rehab'}/dashboard`,
     },
     plainMessage: 'Your consent has been recorded. You can now access all features of your patient portal.',
+    plainMessagePt: 'Seu consentimento foi registrado. Agora você pode acessar todos os recursos do seu portal do paciente.',
   }).catch(err => console.error('[consent] notification error:', err));
 
   return NextResponse.json({ success: true, consentAcceptedAt: new Date().toISOString() });

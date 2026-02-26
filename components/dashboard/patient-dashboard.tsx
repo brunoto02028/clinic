@@ -48,11 +48,11 @@ const ICON_MAP: Record<string, any> = {
 
 const COLOR_MAP: Record<string, { bg: string; text: string }> = {
   primary: { bg: "bg-primary/10", text: "text-primary" },
-  emerald: { bg: "bg-emerald-100", text: "text-emerald-600" },
-  violet: { bg: "bg-violet-100", text: "text-violet-600" },
-  blue: { bg: "bg-blue-100", text: "text-blue-600" },
-  amber: { bg: "bg-amber-100", text: "text-amber-600" },
-  rose: { bg: "bg-rose-100", text: "text-rose-600" },
+  emerald: { bg: "bg-emerald-500/15", text: "text-emerald-400" },
+  violet: { bg: "bg-violet-500/15", text: "text-violet-400" },
+  blue: { bg: "bg-blue-500/15", text: "text-blue-400" },
+  amber: { bg: "bg-amber-500/15", text: "text-amber-400" },
+  rose: { bg: "bg-rose-500/15", text: "text-rose-400" },
 };
 
 interface DashboardStats {
@@ -153,22 +153,32 @@ export default function PatientDashboard() {
     <div className="space-y-8">
       {/* Welcome Section */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">{welcomeTitle}</h1>
-        <p className="text-slate-600 mt-1">{welcomeSubtitle}</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{welcomeTitle}</h1>
+        <p className="text-muted-foreground mt-1">{welcomeSubtitle}</p>
       </div>
 
-      {/* Screening Alert */}
+      {/* Screening Alert — shown when screening not yet completed and patient has upcoming appointments */}
       {showScreening && !stats?.screeningComplete && (
         <div>
-          <Card className="border-amber-200 bg-amber-50">
+          <Card className={`${(stats?.upcomingAppointments ?? 0) > 0 ? "border-red-500/30 bg-red-500/10" : "border-amber-500/20 bg-amber-500/10"}`}>
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${(stats?.upcomingAppointments ?? 0) > 0 ? "bg-red-500/15" : "bg-amber-500/15"}`}>
+                  <AlertCircle className={`h-5 w-5 ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-500" : "text-amber-500"}`} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-amber-800">{screeningTitle}</h3>
-                  <p className="text-sm text-amber-700 mt-1">{screeningText}</p>
+                  <h3 className={`font-semibold ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-300" : "text-amber-300"}`}>
+                    {(stats?.upcomingAppointments ?? 0) > 0
+                      ? (locale === "pt-BR" ? "Screening Obrigatório — Consulta Agendada" : "Screening Required — Appointment Booked")
+                      : screeningTitle}
+                  </h3>
+                  <p className={`text-sm mt-1 ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-400/80" : "text-amber-400/80"}`}>
+                    {(stats?.upcomingAppointments ?? 0) > 0
+                      ? (locale === "pt-BR"
+                        ? "Você tem uma consulta agendada. O screening médico deve ser completado pelo menos 24 horas antes da consulta. Complete agora para evitar reagendamento."
+                        : "You have an upcoming appointment. Your medical screening must be completed at least 24 hours before your appointment. Complete it now to avoid rescheduling.")
+                      : screeningText}
+                  </p>
                   <Button asChild size="sm" className="mt-3">
                     <Link href={isPreview ? `/patient-preview/screening${previewQuery}` : "/dashboard/screening"}>
                       {T("screening.submit")}
@@ -205,9 +215,9 @@ export default function PatientDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-500 font-medium">{STAT_I18N[stat.id]?.label || stat.label}</p>
-                      <p className="text-3xl font-bold text-slate-800 mt-1">{value}</p>
-                      <p className="text-sm text-slate-500 mt-1">{STAT_I18N[stat.id]?.sublabel || stat.sublabel}</p>
+                      <p className="text-sm text-muted-foreground font-medium">{STAT_I18N[stat.id]?.label || stat.label}</p>
+                      <p className="text-3xl font-bold text-foreground mt-1">{value}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{STAT_I18N[stat.id]?.sublabel || stat.sublabel}</p>
                     </div>
                     <div className={`w-12 h-12 rounded-xl ${colors.bg} flex items-center justify-center`}>
                       <Icon className={`h-6 w-6 ${colors.text}`} />
@@ -223,9 +233,9 @@ export default function PatientDashboard() {
       </div>
       {/* Recovery Ring */}
       {!isPreview && (
-        <div className="hidden lg:flex">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col items-center justify-center">
-            <p className="text-xs font-semibold text-slate-500 mb-2">{T("ring.title")}</p>
+        <div className="flex justify-center lg:justify-start">
+          <div className="bg-card rounded-xl border border-white/10 p-4 flex flex-col items-center justify-center">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">{T("ring.title")}</p>
             <RecoveryRing exercise={ring.exercise} consistency={ring.consistency} wellbeing={ring.wellbeing} />
           </div>
         </div>
@@ -249,7 +259,7 @@ export default function PatientDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-600 text-sm mb-4">{ACTION_I18N[action.id]?.description || action.description}</p>
+                  <p className="text-muted-foreground text-sm mb-4">{ACTION_I18N[action.id]?.description || action.description}</p>
                   <Button asChild className="w-full gap-2" variant="default">
                     <Link href={isPreview ? `/patient-preview${action.buttonLink.replace("/dashboard", "")}${previewQuery}` : action.buttonLink}>
                       {ACTION_I18N[action.id]?.buttonText || action.buttonText}

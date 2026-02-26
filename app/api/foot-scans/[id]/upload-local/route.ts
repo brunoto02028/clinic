@@ -105,6 +105,7 @@ export async function POST(
               portalUrl: `${process.env.NEXTAUTH_URL || ''}/dashboard`,
             },
             plainMessage: 'Your foot scan images have been uploaded successfully. Our team will analyse them shortly.',
+            plainMessagePt: 'Suas imagens de escaneamento do pé foram enviadas com sucesso. Nossa equipe irá analisá-las em breve.',
           });
         }
       } catch (emailErr) {

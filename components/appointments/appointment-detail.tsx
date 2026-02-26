@@ -41,6 +41,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/use-locale";
 
 interface AppointmentDetailProps {
   appointmentId: string;
@@ -83,6 +84,8 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +96,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
   const [cancelReason, setCancelReason] = useState("");
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
   const [cancelResult, setCancelResult] = useState<{ success?: boolean; refundEligible?: boolean; refundAmount?: number; isWithin48h?: boolean; policyMessage?: string; error?: string } | null>(null);
+  const [screeningComplete, setScreeningComplete] = useState(true);
   const [editForm, setEditForm] = useState({
     dateTime: "",
     duration: 60,
@@ -108,6 +112,12 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
   useEffect(() => {
     setMounted(true);
     fetchAppointment();
+    // Fetch screening status for patients
+    if (!isTherapist) {
+      fetch("/api/patient/status").then(r => r.json()).then(d => {
+        if (d.screeningComplete !== undefined) setScreeningComplete(d.screeningComplete);
+      }).catch(() => {});
+    }
   }, [appointmentId]);
 
   useEffect(() => {
@@ -142,8 +152,8 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
 
       if (data?.success) {
         toast({
-          title: "Payment Successful",
-          description: "Your appointment has been confirmed.",
+          title: isPt ? "Pagamento Confirmado" : "Payment Successful",
+          description: isPt ? "Sua consulta foi confirmada." : "Your appointment has been confirmed.",
           variant: "success" as any,
         });
         fetchAppointment();
@@ -164,8 +174,8 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
 
       if (response.ok) {
         toast({
-          title: "Status Updated",
-          description: `Appointment status changed to ${newStatus.toLowerCase()}.`,
+          title: isPt ? "Status Atualizado" : "Status Updated",
+          description: isPt ? `Status alterado para ${newStatus.toLowerCase()}.` : `Appointment status changed to ${newStatus.toLowerCase()}.`,
         });
         fetchAppointment();
       }
@@ -228,24 +238,24 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
 
       if (response.ok) {
         toast({
-          title: "Appointment Updated",
-          description: "The appointment has been updated successfully.",
+          title: isPt ? "Consulta Atualizada" : "Appointment Updated",
+          description: isPt ? "A consulta foi atualizada com sucesso." : "The appointment has been updated successfully.",
         });
         setEditDialogOpen(false);
         fetchAppointment();
       } else {
         const data = await response.json();
         toast({
-          title: "Error",
-          description: data.error || "Failed to update appointment",
+          title: isPt ? "Erro" : "Error",
+          description: data.error || (isPt ? "Falha ao atualizar consulta" : "Failed to update appointment"),
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error updating appointment:", error);
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
+        title: isPt ? "Erro" : "Error",
+        description: isPt ? "Ocorreu um erro inesperado" : "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -256,13 +266,13 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "CONFIRMED":
-        return <Badge variant="success">Confirmed</Badge>;
+        return <Badge variant="success">{isPt ? "Confirmado" : "Confirmed"}</Badge>;
       case "PENDING":
-        return <Badge variant="warning">Pending</Badge>;
+        return <Badge variant="warning">{isPt ? "Pendente" : "Pending"}</Badge>;
       case "COMPLETED":
-        return <Badge variant="info">Completed</Badge>;
+        return <Badge variant="info">{isPt ? "Concluído" : "Completed"}</Badge>;
       case "CANCELLED":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{isPt ? "Cancelado" : "Cancelled"}</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -280,10 +290,10 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <AlertCircle className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-700">Appointment not found</h3>
+          <AlertCircle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-foreground">{isPt ? "Consulta não encontrada" : "Appointment not found"}</h3>
           <Link href="/dashboard/appointments">
-            <Button className="mt-4">Back to Appointments</Button>
+            <Button className="mt-4">{isPt ? "Voltar aos Agendamentos" : "Back to Appointments"}</Button>
           </Link>
         </CardContent>
       </Card>
@@ -301,20 +311,20 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
         </Link>
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-slate-800">
-              {appointment?.treatmentType ?? "Appointment"}
+            <h1 className="text-2xl font-bold text-foreground">
+              {appointment?.treatmentType ?? (isPt ? "Consulta" : "Appointment")}
             </h1>
             {getStatusBadge(appointment?.status ?? "")}
           </div>
-          <p className="text-slate-600 mt-1">
-            {new Date(appointment?.dateTime ?? "").toLocaleDateString("en-GB", {
+          <p className="text-muted-foreground mt-1">
+            {new Date(appointment?.dateTime ?? "").toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
               weekday: "long",
               day: "numeric",
               month: "long",
               year: "numeric",
             })}{" "}
-            at{" "}
-            {new Date(appointment?.dateTime ?? "").toLocaleTimeString("en-GB", {
+            {isPt ? "às" : "at"}{" "}
+            {new Date(appointment?.dateTime ?? "").toLocaleTimeString(isPt ? "pt-BR" : "en-GB", {
               hour: "2-digit",
               minute: "2-digit",
             })}
@@ -324,10 +334,35 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
         {isTherapist && appointment?.status !== "CANCELLED" && appointment?.status !== "COMPLETED" && (
           <Button variant="outline" onClick={openEditDialog} className="gap-2">
             <Edit className="h-4 w-4" />
-            Edit
+            {isPt ? "Editar" : "Edit"}
           </Button>
         )}
       </div>
+
+      {/* Screening Reminder — for patients with upcoming appointments who haven't completed screening */}
+      {!isTherapist && !screeningComplete && appointment?.status !== "CANCELLED" && appointment?.status !== "COMPLETED" && (
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center flex-shrink-0">
+                <Shield className="h-5 w-5 text-red-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-300">{isPt ? "Triagem Médica Necessária" : "Medical Screening Required"}</h3>
+                <p className="text-sm text-red-400/80 mt-1">
+                  {isPt ? "Sua triagem médica deve ser concluída pelo menos 24 horas antes da consulta. Sem ela, sua consulta pode precisar ser reagendada." : "Your medical screening must be completed at least 24 hours before your appointment. Without it, your appointment may need to be rescheduled."}
+                </p>
+                <Link href="/dashboard/screening">
+                  <Button size="sm" className="mt-3 gap-2">
+                    <Shield className="h-4 w-4" />
+                    {isPt ? "Completar Triagem Agora" : "Complete Screening Now"}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Details */}
@@ -338,7 +373,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-primary" />
-                  Appointment Details
+                  {isPt ? "Detalhes da Consulta" : "Appointment Details"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -348,19 +383,19 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                       <Clock className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">Duration</p>
-                      <p className="font-medium text-slate-800">
-                        {appointment?.duration ?? 60} minutes
+                      <p className="text-sm text-muted-foreground">{isPt ? "Duração" : "Duration"}</p>
+                      <p className="font-medium text-foreground">
+                        {appointment?.duration ?? 60} {isPt ? "minutos" : "minutes"}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-500/15 flex items-center justify-center">
                       <CreditCard className="h-5 w-5 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">Price</p>
-                      <p className="font-medium text-slate-800">
+                      <p className="text-sm text-muted-foreground">{isPt ? "Preço" : "Price"}</p>
+                      <p className="font-medium text-foreground">
                         £{(appointment?.price ?? 0).toFixed(2)}
                       </p>
                     </div>
@@ -370,20 +405,20 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                 {/* Patient Info (for therapists) */}
                 {isTherapist && (
                   <div className="border-t pt-4 mt-4">
-                    <h4 className="font-medium text-slate-800 mb-3">Patient Information</h4>
+                    <h4 className="font-medium text-foreground mb-3">{isPt ? "Informações do Paciente" : "Patient Information"}</h4>
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                         <User className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <p className="font-medium text-slate-800">
+                        <p className="font-medium text-foreground">
                           {appointment?.patient?.firstName ?? ""} {appointment?.patient?.lastName ?? ""}
                         </p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-muted-foreground">
                           {appointment?.patient?.email ?? ""}
                         </p>
                         {appointment?.patient?.phone && (
-                          <p className="text-sm text-slate-500">
+                          <p className="text-sm text-muted-foreground">
                             {appointment.patient.phone}
                           </p>
                         )}
@@ -392,7 +427,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                     <div className="mt-4">
                       <Link href={`/dashboard/patients/${appointment?.patient?.id}`}>
                         <Button variant="outline" size="sm">
-                          View Patient Profile
+                          {isPt ? "Ver Perfil do Paciente" : "View Patient Profile"}
                         </Button>
                       </Link>
                     </div>
@@ -402,17 +437,17 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                 {/* Therapist Info (for patients) */}
                 {!isTherapist && (
                   <div className="border-t pt-4 mt-4">
-                    <h4 className="font-medium text-slate-800 mb-3">Your Therapist</h4>
+                    <h4 className="font-medium text-foreground mb-3">{isPt ? "Seu Terapeuta" : "Your Therapist"}</h4>
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center">
                         <User className="h-6 w-6 text-emerald-600" />
                       </div>
                       <div>
-                        <p className="font-medium text-slate-800">
+                        <p className="font-medium text-foreground">
                           {appointment?.therapist?.firstName ?? ""} {appointment?.therapist?.lastName ?? ""}
                         </p>
-                        <p className="text-sm text-slate-500">
-                          Physiotherapist
+                        <p className="text-sm text-muted-foreground">
+                          {isPt ? "Fisioterapeuta" : "Physiotherapist"}
                         </p>
                       </div>
                     </div>
@@ -429,17 +464,17 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-primary" />
-                    Clinical Notes
+                    {isPt ? "Notas Clínicas" : "Clinical Notes"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-600 mb-4">
-                    Clinical notes have been recorded for this appointment.
+                  <p className="text-muted-foreground mb-4">
+                    {isPt ? "Notas clínicas foram registradas para esta consulta." : "Clinical notes have been recorded for this appointment."}
                   </p>
                   <Link href={`/dashboard/clinical-notes/${appointment.soapNote.id}`}>
                     <Button variant="outline" className="gap-2">
                       <FileText className="h-4 w-4" />
-                      View Clinical Notes
+                      {isPt ? "Ver Notas Clínicas" : "View Clinical Notes"}
                     </Button>
                   </Link>
                 </CardContent>
@@ -454,18 +489,18 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                 <CardContent className="py-6">
                   <div className="text-center">
                     <FileText className="h-10 w-10 text-primary mx-auto mb-3" />
-                    <h3 className="font-semibold text-slate-800 mb-2">
-                      Create Clinical Notes
+                    <h3 className="font-semibold text-foreground mb-2">
+                      {isPt ? "Criar Notas Clínicas" : "Create Clinical Notes"}
                     </h3>
-                    <p className="text-slate-600 text-sm mb-4">
-                      Document the treatment session with SOAP notes.
+                    <p className="text-muted-foreground text-sm mb-4">
+                      {isPt ? "Documente a sessão de tratamento com notas SOAP." : "Document the treatment session with SOAP notes."}
                     </p>
                     <Link
                       href={`/dashboard/clinical-notes/create?appointmentId=${appointment.id}&patientId=${appointment?.patient?.id}`}
                     >
                       <Button className="gap-2">
                         <Edit className="h-4 w-4" />
-                        Create SOAP Note
+                        {isPt ? "Criar Nota SOAP" : "Create SOAP Note"}
                       </Button>
                     </Link>
                   </div>
@@ -483,27 +518,27 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <CreditCard className="h-5 w-5 text-primary" />
-                  Payment
+                  {isPt ? "Pagamento" : "Payment"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {appointment?.payment?.status === "SUCCEEDED" ? (
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
                       <CheckCircle className="h-6 w-6 text-emerald-600" />
                     </div>
-                    <p className="font-medium text-emerald-600">Payment Complete</p>
-                    <p className="text-2xl font-bold text-slate-800 mt-2">
+                    <p className="font-medium text-emerald-600">{isPt ? "Pagamento Completo" : "Payment Complete"}</p>
+                    <p className="text-2xl font-bold text-foreground mt-2">
                       £{(appointment?.payment?.amount ?? 0).toFixed(2)}
                     </p>
                   </div>
                 ) : (
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto mb-3">
                       <AlertCircle className="h-6 w-6 text-amber-600" />
                     </div>
-                    <p className="font-medium text-amber-600">Payment Pending</p>
-                    <p className="text-2xl font-bold text-slate-800 mt-2">
+                    <p className="font-medium text-amber-600">{isPt ? "Pagamento Pendente" : "Payment Pending"}</p>
+                    <p className="text-2xl font-bold text-foreground mt-2">
                       £{(appointment?.price ?? 0).toFixed(2)}
                     </p>
                     {!isTherapist && appointment?.status !== "CANCELLED" && (
@@ -517,7 +552,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                         ) : (
                           <CreditCard className="h-4 w-4" />
                         )}
-                        Pay Now
+                        {isPt ? "Pagar Agora" : "Pay Now"}
                       </Button>
                     )}
                   </div>
@@ -531,7 +566,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
             <div>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Update Status</CardTitle>
+                  <CardTitle className="text-base">{isPt ? "Atualizar Status" : "Update Status"}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Select
@@ -543,11 +578,11 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="PENDING">Pending</SelectItem>
-                      <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                      <SelectItem value="COMPLETED">Completed</SelectItem>
-                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                      <SelectItem value="NO_SHOW">No Show</SelectItem>
+                      <SelectItem value="PENDING">{isPt ? "Pendente" : "Pending"}</SelectItem>
+                      <SelectItem value="CONFIRMED">{isPt ? "Confirmado" : "Confirmed"}</SelectItem>
+                      <SelectItem value="COMPLETED">{isPt ? "Concluído" : "Completed"}</SelectItem>
+                      <SelectItem value="CANCELLED">{isPt ? "Cancelado" : "Cancelled"}</SelectItem>
+                      <SelectItem value="NO_SHOW">{isPt ? "Não Compareceu" : "No Show"}</SelectItem>
                     </SelectContent>
                   </Select>
                 </CardContent>
@@ -555,34 +590,34 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
             </div>
           )}
 
-          {/* Cancel Button (for patients) — with 48h policy */}
+          {/* Cancel Button (for patients) — with 24h policy */}
           {!isTherapist &&
             (appointment?.status === "PENDING" || appointment?.status === "CONFIRMED") && (
               <div>
-                <Card className="border-red-200">
+                <Card className="border-red-500/20">
                   <CardContent className="py-4 space-y-3">
                     {(() => {
                       const hoursUntil = (new Date(appointment.dateTime).getTime() - Date.now()) / (1000 * 60 * 60);
-                      const within48h = hoursUntil < 48;
+                      const within24h = hoursUntil < 24;
                       return (
                         <>
-                          <div className={`rounded-lg p-3 text-xs flex items-start gap-2 ${within48h ? "bg-red-50 border border-red-200 text-red-700" : "bg-green-50 border border-green-200 text-green-700"}`}>
+                          <div className={`rounded-lg p-3 text-xs flex items-start gap-2 ${within24h ? "bg-red-500/10 border border-red-500/20 text-red-400" : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"}`}>
                             <Shield className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                             <div>
-                              <p className="font-semibold">{within48h ? "No refund available" : "Full refund eligible"}</p>
-                              <p>{within48h ? `Appointment is in ${Math.round(hoursUntil)}h — within 48h window.` : `Appointment is in ${Math.round(hoursUntil)}h — eligible for full refund.`}</p>
+                              <p className="font-semibold">{within24h ? (isPt ? "Taxa de cancelamento de 50%" : "50% cancellation fee applies") : (isPt ? "Reembolso total elegível" : "Full refund eligible")}</p>
+                              <p>{within24h ? (isPt ? `Consulta em ${Math.round(hoursUntil)}h — dentro da janela de 24h. Cobrança de 50%.` : `Appointment is in ${Math.round(hoursUntil)}h — within 24h window. 50% charge applies.`) : (isPt ? `Consulta em ${Math.round(hoursUntil)}h — elegível para reembolso total.` : `Appointment is in ${Math.round(hoursUntil)}h — eligible for full refund.`)}</p>
                             </div>
                           </div>
                           <Button
                             variant="outline"
-                            className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                            className="w-full border-red-500/20 text-red-400 hover:bg-red-500/10"
                             onClick={() => { setCancelDialogOpen(true); setCancelResult(null); setCancelReason(""); }}
                           >
                             <XCircle className="h-4 w-4 mr-2" />
-                            Request Cancellation
+                            {isPt ? "Solicitar Cancelamento" : "Request Cancellation"}
                           </Button>
                           <a href="/cancellation-policy" target="_blank" className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                            <ExternalLink className="h-3 w-3" /> View cancellation policy
+                            <ExternalLink className="h-3 w-3" /> {isPt ? "Ver política de cancelamento" : "View cancellation policy"}
                           </a>
                         </>
                       );
@@ -600,10 +635,10 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-500" />
-              Request Cancellation
+              {isPt ? "Solicitar Cancelamento" : "Request Cancellation"}
             </DialogTitle>
             <DialogDescription>
-              Submit a cancellation request. Our team will review it according to our cancellation policy.
+              {isPt ? "Envie uma solicitação de cancelamento. Nossa equipe analisará de acordo com nossa política de cancelamento." : "Submit a cancellation request. Our team will review it according to our cancellation policy."}
             </DialogDescription>
           </DialogHeader>
 
@@ -617,40 +652,40 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                 }`}>
                   <p className="font-semibold flex items-center gap-2">
                     <CheckCircle className="h-4 w-4" />
-                    Request Submitted
+                    {isPt ? "Solicitação Enviada" : "Request Submitted"}
                   </p>
                   <p>{cancelResult.policyMessage}</p>
                   {cancelResult.refundEligible && cancelResult.refundAmount && (
-                    <p className="font-bold">Eligible refund: £{cancelResult.refundAmount.toFixed(2)}</p>
+                    <p className="font-bold">{isPt ? "Reembolso elegível" : "Eligible refund"}: £{cancelResult.refundAmount.toFixed(2)}</p>
                   )}
                 </div>
               ) : (
                 <div className="rounded-xl p-4 border bg-red-50 border-red-200 text-red-800 text-sm">
-                  <p className="font-semibold">Error</p>
+                  <p className="font-semibold">{isPt ? "Erro" : "Error"}</p>
                   <p>{cancelResult.error}</p>
                 </div>
               )}
-              <Button className="w-full" onClick={() => setCancelDialogOpen(false)}>Close</Button>
+              <Button className="w-full" onClick={() => setCancelDialogOpen(false)}>{isPt ? "Fechar" : "Close"}</Button>
             </div>
           ) : (
             <div className="space-y-4 py-2">
-              {/* 48h policy indicator */}
+              {/* 24h policy indicator */}
               {appointment && (() => {
                 const hoursUntil = (new Date(appointment.dateTime).getTime() - Date.now()) / (1000 * 60 * 60);
-                const within48h = hoursUntil < 48;
+                const within24h = hoursUntil < 24;
                 return (
                   <div className={`rounded-xl p-3 border text-xs flex items-start gap-2 ${
-                    within48h ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"
+                    within24h ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
                   }`}>
                     <Shield className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold">
-                        {within48h ? "⚠ Within 48-hour window — no refund" : "✓ More than 48 hours — full refund eligible"}
+                        {within24h ? (isPt ? "⚠ Dentro da janela de 24 horas — taxa de cancelamento de 50%" : "⚠ Within 24-hour window — 50% cancellation fee") : (isPt ? "✓ Mais de 24 horas — reembolso total elegível" : "✓ More than 24 hours — full refund eligible")}
                       </p>
                       <p className="mt-0.5">
-                        {within48h
-                          ? `Your appointment is in ${Math.round(hoursUntil)} hours. Under our policy, cancellations within 48 hours are non-refundable.`
-                          : `Your appointment is in ${Math.round(hoursUntil)} hours. You are eligible for a full refund of £${appointment.price.toFixed(2)}.`
+                        {within24h
+                          ? (isPt ? `Sua consulta é em ${Math.round(hoursUntil)} horas. Conforme nossa política, cancelamentos dentro de 24 horas estão sujeitos a cobrança de 50%. Reembolso: £${(appointment.price * 0.5).toFixed(2)}.` : `Your appointment is in ${Math.round(hoursUntil)} hours. Under our policy, cancellations within 24 hours are subject to a 50% charge. Refund: £${(appointment.price * 0.5).toFixed(2)}.`)
+                          : (isPt ? `Sua consulta é em ${Math.round(hoursUntil)} horas. Você é elegível para reembolso total de £${appointment.price.toFixed(2)}.` : `Your appointment is in ${Math.round(hoursUntil)} hours. You are eligible for a full refund of £${appointment.price.toFixed(2)}.`)
                         }
                       </p>
                     </div>
@@ -659,27 +694,25 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
               })()}
 
               <div className="space-y-2">
-                <Label htmlFor="cancelReason">Reason for cancellation <span className="text-red-500">*</span></Label>
+                <Label htmlFor="cancelReason">{isPt ? "Motivo do cancelamento" : "Reason for cancellation"} <span className="text-red-500">*</span></Label>
                 <Textarea
                   id="cancelReason"
                   value={cancelReason}
                   onChange={e => setCancelReason(e.target.value)}
                   rows={3}
-                  placeholder="Please explain why you need to cancel this appointment..."
+                  placeholder={isPt ? "Por favor, explique por que precisa cancelar esta consulta..." : "Please explain why you need to cancel this appointment..."}
                 />
               </div>
 
               <p className="text-[11px] text-muted-foreground">
-                By submitting this request you confirm you have read our{" "}
-                <a href="/cancellation-policy" target="_blank" className="underline text-[#5dc9c0]">Cancellation Policy</a>.
-                Our team will review your request and contact you within 1 business day.
+                {isPt ? (<>Ao enviar esta solicitação, você confirma que leu nossa{" "}<a href="/cancellation-policy" target="_blank" className="underline text-[#5dc9c0]">Política de Cancelamento</a>. Nossa equipe analisará sua solicitação e entrará em contato em até 1 dia útil.</>) : (<>By submitting this request you confirm you have read our{" "}<a href="/cancellation-policy" target="_blank" className="underline text-[#5dc9c0]">Cancellation Policy</a>. Our team will review your request and contact you within 1 business day.</>)}
               </p>
             </div>
           )}
 
           {!cancelResult && (
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCancelDialogOpen(false)} disabled={cancelSubmitting}>Back</Button>
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)} disabled={cancelSubmitting}>{isPt ? "Voltar" : "Back"}</Button>
               <Button
                 variant="destructive"
                 disabled={cancelSubmitting || !cancelReason.trim()}
@@ -694,14 +727,14 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                     const data = await res.json();
                     setCancelResult(data);
                   } catch {
-                    setCancelResult({ error: "Failed to submit request. Please try again." });
+                    setCancelResult({ error: isPt ? "Falha ao enviar solicitação. Tente novamente." : "Failed to submit request. Please try again." });
                   } finally {
                     setCancelSubmitting(false);
                   }
                 }}
               >
                 {cancelSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                Submit Cancellation Request
+                {isPt ? "Enviar Solicitação de Cancelamento" : "Submit Cancellation Request"}
               </Button>
             </DialogFooter>
           )}
@@ -712,14 +745,14 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Appointment</DialogTitle>
+            <DialogTitle>{isPt ? "Editar Consulta" : "Edit Appointment"}</DialogTitle>
             <DialogDescription>
-              Update the appointment details below. The patient will be notified of any changes.
+              {isPt ? "Atualize os detalhes da consulta abaixo. O paciente será notificado sobre quaisquer alterações." : "Update the appointment details below. The patient will be notified of any changes."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="dateTime">Date & Time</Label>
+              <Label htmlFor="dateTime">{isPt ? "Data e Horário" : "Date & Time"}</Label>
               <Input
                 id="dateTime"
                 type="datetime-local"
@@ -731,7 +764,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Label htmlFor="duration">{isPt ? "Duração (minutos)" : "Duration (minutes)"}</Label>
                 <Input
                   id="duration"
                   type="number"
@@ -744,7 +777,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Price (£)</Label>
+                <Label htmlFor="price">{isPt ? "Preço (£)" : "Price (£)"}</Label>
                 <Input
                   id="price"
                   type="number"
@@ -758,25 +791,25 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="treatmentType">Treatment Type</Label>
+              <Label htmlFor="treatmentType">{isPt ? "Tipo de Tratamento" : "Treatment Type"}</Label>
               <Input
                 id="treatmentType"
                 value={editForm.treatmentType}
                 onChange={(e) =>
                   setEditForm({ ...editForm, treatmentType: e.target.value })
                 }
-                placeholder="e.g., Physiotherapy Session, Sports Massage"
+                placeholder={isPt ? "Ex: Sessão de Fisioterapia, Massagem Esportiva" : "e.g., Physiotherapy Session, Sports Massage"}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Label htmlFor="notes">{isPt ? "Observações (Opcional)" : "Notes (Optional)"}</Label>
               <Textarea
                 id="notes"
                 value={editForm.notes}
                 onChange={(e) =>
                   setEditForm({ ...editForm, notes: e.target.value })
                 }
-                placeholder="Add any notes or special instructions..."
+                placeholder={isPt ? "Adicione observações ou instruções especiais..." : "Add any notes or special instructions..."}
                 rows={4}
               />
             </div>
@@ -787,16 +820,16 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
               onClick={() => setEditDialogOpen(false)}
               disabled={updating}
             >
-              Cancel
+              {isPt ? "Cancelar" : "Cancel"}
             </Button>
             <Button onClick={handleEditAppointment} disabled={updating}>
               {updating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Saving...
+                  {isPt ? "Salvando..." : "Saving..."}
                 </>
               ) : (
-                "Save Changes"
+                isPt ? "Salvar Alterações" : "Save Changes"
               )}
             </Button>
           </DialogFooter>

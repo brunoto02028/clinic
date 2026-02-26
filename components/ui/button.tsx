@@ -9,19 +9,19 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-gradient-to-r from-[#5dc9c0] to-[#1a6b6b] text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 hover:opacity-90",
+          "bg-gradient-to-r from-[#4a7c8a] to-[#2c4f58] text-white shadow-md shadow-[#4a7c8a]/20 hover:shadow-lg hover:shadow-[#4a7c8a]/25 hover:-translate-y-0.5",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md hover:shadow-lg",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md shadow-red-500/20 hover:shadow-lg",
         outline:
-          "border-2 border-[#5dc9c0] bg-background text-[#1a6b6b] hover:bg-gradient-to-r hover:from-[#5dc9c0] hover:to-[#1a6b6b] hover:text-white transition-all",
+          "border border-[#6ba3b0]/30 bg-transparent text-[#6ba3b0] hover:bg-[#6ba3b0]/10 hover:border-[#6ba3b0]/50 hover:shadow-[0_0_15px_rgba(107,163,176,0.08)] transition-all",
         secondary:
-          "bg-gradient-to-r from-[#5dc9c0]/20 to-[#1a6b6b]/20 text-[#1a6b6b] border border-[#5dc9c0]/40 hover:from-[#5dc9c0] hover:to-[#1a6b6b] hover:text-white shadow-sm hover:shadow-md transition-all",
-        ghost: "hover:bg-muted hover:text-foreground",
-        link: "text-[#1a6b6b] underline-offset-4 hover:underline",
+          "bg-[#4a7c8a]/10 text-[#6ba3b0] border border-[#4a7c8a]/20 hover:bg-[#4a7c8a]/20 hover:border-[#6ba3b0]/40 shadow-sm hover:shadow-md transition-all",
+        ghost: "hover:bg-white/5 hover:text-foreground",
+        link: "text-[#6ba3b0] underline-offset-4 hover:underline hover:text-[#8aaab5]",
         success:
-          "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md hover:shadow-lg",
+          "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-500/20 hover:shadow-lg",
         warning:
-          "bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg",
+          "bg-amber-500 text-white hover:bg-amber-400 shadow-md shadow-amber-500/20 hover:shadow-lg",
       },
       size: {
         default: "h-10 px-4 py-2",

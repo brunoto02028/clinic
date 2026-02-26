@@ -20,7 +20,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background bg-grid-pattern">
       <AdminSidebar user={session.user as { firstName?: string; lastName?: string; email?: string; role?: string; permissions?: Record<string, boolean> }} />
       <div className="lg:pl-72">
         <main className="py-6 px-4 sm:px-6 lg:px-8 pb-8">

@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
           portalUrl: `${process.env.NEXTAUTH_URL || ''}/dashboard/screening`,
         },
         plainMessage: 'Your medical screening has been received and is being reviewed by our team. Thank you!',
+        plainMessagePt: 'Sua triagem médica foi recebida e está sendo revisada pela nossa equipe. Obrigado!',
       });
     } catch (emailErr) {
       console.error('[screening] Failed to send confirmation:', emailErr);

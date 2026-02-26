@@ -146,6 +146,9 @@ async function handleUpdate(
       const plainMsg = isCancellation
         ? `Your appointment on ${dateStr} at ${timeStr} has been cancelled.`
         : `Your appointment has been updated: ${appointment.treatmentType} on ${dateStr} at ${timeStr}.`;
+      const plainMsgPt = isCancellation
+        ? `Sua consulta em ${dateStr} às ${timeStr} foi cancelada.`
+        : `Sua consulta foi atualizada: ${appointment.treatmentType} em ${dateStr} às ${timeStr}.`;
       await notifyPatient({
         patientId: appointment.patient.id,
         emailTemplateSlug: slug,
@@ -159,6 +162,7 @@ async function handleUpdate(
           portalUrl: `${appUrl}/dashboard/appointments`,
         },
         plainMessage: plainMsg,
+        plainMessagePt: plainMsgPt,
       });
     } catch (emailError) {
       console.error('Failed to send appointment update notification:', emailError);

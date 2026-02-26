@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Instagram, Facebook, Linkedin, Twitter, Youtube, Globe } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { useLocale } from "@/hooks/use-locale";
+import { CookiePreferencesButton } from "@/components/cookie-consent";
 
 const SOCIAL_ICONS: Record<string, any> = {
   instagram: Instagram,
@@ -54,102 +55,39 @@ export function SiteFooter() {
   const colCount = [hasLogo, hasLinks, hasContact || hasSocial].filter(Boolean).length || 1;
 
   return (
-    <footer className="bg-primary text-primary-foreground py-8 sm:py-12 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className={`grid gap-8 mb-8 ${colCount === 3 ? "md:grid-cols-3" : colCount === 2 ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
-          {/* Brand / Logo & Tagline */}
-          {hasLogo && (
-            <div>
-              <Logo
-                logoUrl={settings?.screenLogos?.landingFooter?.logoUrl || settings?.logoUrl}
-                darkLogoUrl={settings?.screenLogos?.landingFooter?.darkLogoUrl || settings?.darkLogoUrl}
-                size="sm"
-                linkTo="/"
-                variant="dark"
-              />
-              {settings?.tagline && (
-                <p className="mt-3 text-sm text-primary-foreground/70 max-w-xs">{settings.tagline}</p>
-              )}
-            </div>
+    <footer className="border-t border-white/5 py-4 mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          {hasLogo && settings && (
+            <Logo
+              logoUrl={settings?.screenLogos?.landingFooter?.logoUrl || settings?.logoUrl}
+              darkLogoUrl={settings?.screenLogos?.landingFooter?.darkLogoUrl || settings?.darkLogoUrl}
+              size="sm"
+              linkTo="/"
+            />
           )}
-
-          {/* Navigation Links */}
-          {hasLinks && (
-            <div>
-              <h4 className="font-semibold text-sm mb-3 text-primary-foreground/90">{isPt ? "Links" : "Links"}</h4>
-              <nav className="flex flex-col gap-2">
-                {footerLinks.map((link) => (
-                  <Link key={link.id} href={link.url || "#"} className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors">
-                    {link.title}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-          )}
-
-          {/* Contact Info + Social */}
-          {(hasContact || hasSocial) && (
-            <div>
-              {hasContact && (
-                <>
-                  <h4 className="font-semibold text-sm mb-3 text-primary-foreground/90">{T("home.contact")}</h4>
-                  <div className="flex flex-col gap-2 text-sm text-primary-foreground/70">
-                    {settings?.email && (
-                      <a href={`mailto:${settings.email}`} className="hover:text-primary-foreground transition-colors">{settings.email}</a>
-                    )}
-                    {settings?.phone && (
-                      <a href={`tel:${settings.phone.replace(/\s/g, "")}`} className="hover:text-primary-foreground transition-colors">{settings.phone}</a>
-                    )}
-                    {settings?.address && <span>{settings.address}</span>}
-                  </div>
-                </>
-              )}
-              {hasSocial && (
-                <div className={hasContact ? "mt-4" : ""}>
-                  <div className="flex items-center gap-3">
-                    {socialLinks.map((s) => {
-                      const IconComp = SOCIAL_ICONS[s.platform.toLowerCase()] || Globe;
-                      return (
-                        <a
-                          key={s.id}
-                          href={s.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-8 h-8 rounded-full bg-primary-foreground/10 hover:bg-primary-foreground/20 flex items-center justify-center transition-colors"
-                          title={s.platform}
-                        >
-                          <IconComp className="h-4 w-4 text-primary-foreground/80" />
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              <div className="mt-4">
-                <Link href="/staff-login" className="text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors">
-                  {T("home.staffPortal")}
-                </Link>
-              </div>
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} BPR. {T("home.allRightsReserved")}
+          </p>
         </div>
-
-        {/* Copyright bar */}
-        {show("copyright") && (
-          <div className="border-t border-primary-foreground/20 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-primary-foreground/60 text-center md:text-left">
-              {settings?.footerText || `© ${new Date().getFullYear()} Bruno Physical Rehabilitation. ${T("home.allRightsReserved")}`}
-            </p>
-            <div className="flex items-center gap-4">
-              <Link href="/login" className="text-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors">
-                {T("home.patientLogin")}
-              </Link>
-              <Link href="/signup" className="text-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors">
-                {T("home.getStarted")}
-              </Link>
-            </div>
-          </div>
-        )}
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
+          <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            {isPt ? "Privacidade" : "Privacy"}
+          </Link>
+          <Link href="/cookies" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            {isPt ? "Cookies" : "Cookies"}
+          </Link>
+          <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            {isPt ? "Termos" : "Terms"}
+          </Link>
+          <CookiePreferencesButton />
+          {settings?.email && (
+            <a href={`mailto:${settings.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">{settings.email}</a>
+          )}
+          <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            {T("home.staffPortal")}
+          </Link>
+        </div>
       </div>
     </footer>
   );

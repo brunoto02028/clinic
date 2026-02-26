@@ -125,30 +125,30 @@ export default function CommunityPage() {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
           <Trophy className="h-6 w-6 text-amber-500" /> BPR Arena
         </h1>
-        <p className="text-sm text-slate-500 mt-1">{isPt ? "Celebre vitórias, participe de desafios e mantenha-se motivado" : "Celebrate victories, join challenges, and stay motivated together"}</p>
+        <p className="text-sm text-muted-foreground mt-1">{isPt ? "Celebre vitórias, participe de desafios e mantenha-se motivado" : "Celebrate victories, join challenges, and stay motivated together"}</p>
       </div>
 
       {/* Weekly Challenge */}
       {challenge && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="border-amber-200 bg-gradient-to-br from-amber-50/50 to-white overflow-hidden">
+          <Card className="border-amber-500/20 bg-card/80 overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-amber-400 to-orange-500" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 mb-2">
+                  <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/20 mb-2">
                     <Trophy className="h-3 w-3 mr-1" /> {isPt ? "Desafio Semanal" : "Weekly Challenge"}
                   </Badge>
-                  <h3 className="font-bold text-slate-800">{challenge.title}</h3>
+                  <h3 className="font-bold text-foreground">{challenge.title}</h3>
                   {challenge.description && (
-                    <p className="text-xs text-slate-500 mt-1">{challenge.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{challenge.description}</p>
                   )}
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="flex items-center gap-1 text-xs text-slate-400">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" /> {challengeTimeLeft}
                   </div>
                 </div>
@@ -156,10 +156,10 @@ export default function CommunityPage() {
 
               <div className="mb-3">
                 <div className="flex justify-between mb-1">
-                  <span className="text-xs text-slate-500">{challenge.current} / {challenge.target}</span>
-                  <span className="text-xs font-bold text-amber-600">{Math.round(challengePercent)}%</span>
+                  <span className="text-xs text-muted-foreground">{challenge.current} / {challenge.target}</span>
+                  <span className="text-xs font-bold text-amber-400">{Math.round(challengePercent)}%</span>
                 </div>
-                <div className="h-3 bg-amber-100 rounded-full overflow-hidden">
+                <div className="h-3 bg-amber-500/10 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${challengePercent}%` }}
@@ -170,8 +170,8 @@ export default function CommunityPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-500">
-                  🎁 {isPt ? "Recompensa" : "Reward"}: <span className="font-medium text-slate-700">{challenge.reward}</span>
+                <p className="text-xs text-muted-foreground">
+                  🎁 {isPt ? "Recompensa" : "Reward"}: <span className="font-medium text-foreground">{challenge.reward}</span>
                 </p>
                 <Button
                   size="sm"
@@ -191,16 +191,16 @@ export default function CommunityPage() {
       {/* Ranking */}
       {rank > 0 && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card className="border-violet-200 bg-violet-50/50">
+          <Card className="border-violet-500/20 bg-violet-500/5">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center">
-                <Medal className="h-5 w-5 text-violet-600" />
+              <div className="w-10 h-10 rounded-full bg-violet-500/15 flex items-center justify-center">
+                <Medal className="h-5 w-5 text-violet-400" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-slate-700">
+                <p className="text-sm font-semibold text-foreground">
                   {isPt ? `Você é #${rank} em consistência esta semana` : `You're #${rank} in consistency this week`}
                 </p>
-                <p className="text-xs text-slate-400">{isPt ? `De ${totalParticipants} participantes` : `Out of ${totalParticipants} participants`}</p>
+                <p className="text-xs text-muted-foreground">{isPt ? `De ${totalParticipants} participantes` : `Out of ${totalParticipants} participants`}</p>
               </div>
               <TrendingUp className="h-5 w-5 text-violet-500" />
             </CardContent>
@@ -219,8 +219,8 @@ export default function CommunityPage() {
           <CardContent>
             {posts.length === 0 ? (
               <div className="text-center py-8">
-                <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">{isPt ? "Nenhuma vitória ainda. Seja o primeiro!" : "No victories yet. Be the first!"}</p>
+                <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">{isPt ? "Nenhuma vitória ainda. Seja o primeiro!" : "No victories yet. Be the first!"}</p>
                 <Link href="/dashboard/journey">
                   <Button variant="outline" size="sm" className="mt-3 gap-1 text-xs">
                     {isPt ? "Comece sua jornada" : "Start your journey"} <ArrowRight className="h-3 w-3" />
@@ -235,25 +235,25 @@ export default function CommunityPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-100/80 transition-colors"
+                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                   >
                     <div className="text-xl shrink-0">
                       {TYPE_EMOJI[post.type] || "✨"}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-700">
-                        <span className="font-semibold text-violet-600">{post.anonName || (isPt ? "Anônimo" : "Anonymous")}</span>{" "}
+                      <p className="text-sm text-foreground">
+                        <span className="font-semibold text-violet-400">{post.anonName || (isPt ? "Anônimo" : "Anonymous")}</span>{" "}
                         {post.content}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{timeAgo(post.createdAt, isPt)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(post.createdAt, isPt)}</p>
                     </div>
                     <button
                       onClick={() => handleHighFive(post.id)}
                       disabled={highFiving === post.id}
-                      className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-colors text-xs"
+                      className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-card border border-white/10 hover:border-amber-500/30 hover:bg-amber-500/10 transition-colors text-xs"
                     >
                       <Hand className="h-3.5 w-3.5 text-amber-500" />
-                      <span className="font-medium text-slate-600">{post.highFives}</span>
+                      <span className="font-medium text-foreground">{post.highFives}</span>
                     </button>
                   </motion.div>
                 ))}

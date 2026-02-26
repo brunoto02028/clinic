@@ -204,6 +204,7 @@ export async function POST(request: NextRequest) {
           portalUrl: `${appUrl}/dashboard/appointments`,
         },
         plainMessage: `Your appointment is confirmed: ${treatmentType} on ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Duration: ${duration || 60} min.`,
+        plainMessagePt: `Sua consulta está confirmada: ${treatmentType} em ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Duração: ${duration || 60} min.`,
       });
     } catch (emailError) {
       console.error('Failed to send patient notification:', emailError);

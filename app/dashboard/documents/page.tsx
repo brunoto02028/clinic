@@ -38,14 +38,14 @@ const DOC_TYPES = [
 ];
 
 const DOC_TYPE_COLORS: Record<string, string> = {
-  MEDICAL_REFERRAL: "bg-blue-100 text-blue-700",
-  MEDICAL_REPORT: "bg-purple-100 text-purple-700",
-  PRESCRIPTION: "bg-green-100 text-green-700",
-  IMAGING: "bg-amber-100 text-amber-700",
-  INSURANCE: "bg-teal-100 text-teal-700",
-  CONSENT_FORM: "bg-slate-100 text-slate-700",
-  PREVIOUS_TREATMENT: "bg-orange-100 text-orange-700",
-  OTHER: "bg-gray-100 text-gray-700",
+  MEDICAL_REFERRAL: "bg-blue-500/15 text-blue-400",
+  MEDICAL_REPORT: "bg-purple-500/15 text-purple-400",
+  PRESCRIPTION: "bg-green-500/15 text-green-400",
+  IMAGING: "bg-amber-500/15 text-amber-400",
+  INSURANCE: "bg-teal-500/15 text-teal-400",
+  CONSENT_FORM: "bg-muted text-foreground",
+  PREVIOUS_TREATMENT: "bg-orange-500/15 text-orange-400",
+  OTHER: "bg-muted text-muted-foreground",
 };
 
 export default function PatientDocumentsPage() {
@@ -326,7 +326,7 @@ export default function PatientDocumentsPage() {
                     <Badge className={`text-[9px] ${DOC_TYPE_COLORS[doc.documentType] || ""}`}>
                       {isPt ? DOC_TYPES.find(t => t.value === doc.documentType)?.labelPt : DOC_TYPES.find(t => t.value === doc.documentType)?.labelEn || doc.documentType}
                     </Badge>
-                    {doc.isVerified && <Badge className="text-[9px] bg-green-100 text-green-700"><CheckCircle2 className="h-2 w-2 mr-0.5" /> {isPt ? "Verificado" : "Verified"}</Badge>}
+                    {doc.isVerified && <Badge className="text-[9px] bg-green-500/15 text-green-400"><CheckCircle2 className="h-2 w-2 mr-0.5" /> {isPt ? "Verificado" : "Verified"}</Badge>}
                   </div>
                   <h3 className="font-medium text-sm truncate">{doc.title || doc.fileName}</h3>
                   {doc.doctorName && <p className="text-[10px] text-muted-foreground">Dr. {doc.doctorName}</p>}
@@ -356,7 +356,7 @@ export default function PatientDocumentsPage() {
             {previewDoc.fileType?.startsWith("image/") ? (
               <img src={previewDoc.fileUrl} alt={previewDoc.title} className="w-full max-h-[85vh] object-contain rounded-lg" />
             ) : (
-              <iframe src={previewDoc.fileUrl} className="w-full h-[85vh] rounded-lg bg-white" />
+              <iframe src={previewDoc.fileUrl} className="w-full h-[85vh] rounded-lg bg-card" />
             )}
           </div>
         </div>

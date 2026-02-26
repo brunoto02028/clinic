@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
             portalUrl: `${BASE}/dashboard/treatment`,
           },
           plainMessage: `Time for your exercises! You have ${count} pending exercise(s): ${exerciseNames}. Log in to your portal to track your progress.`,
+          plainMessagePt: `Hora dos exercícios! Você tem ${count} exercício(s) pendente(s): ${exerciseNames}. Acesse seu portal para acompanhar seu progresso.`,
         });
         sent++;
       } catch (err) {

@@ -47,7 +47,9 @@ export async function POST(req: NextRequest) {
             await createNotificationIfNotExists(p.patientId, p.clinicId, "streak",
               "🔥 3 days in a row!",
               `${p.patient.firstName || "You"}, you're on fire! 3 consecutive days of activity. Keep going!`,
-              "/dashboard/journey"
+              "/dashboard/journey",
+              "🔥 3 dias seguidos!",
+              `${p.patient.firstName || "Você"}, você está arrasando! 3 dias consecutivos de atividade. Continue assim!`
             );
             results.push(`Streak 3 notification for ${p.patientId}`);
           }
@@ -57,7 +59,9 @@ export async function POST(req: NextRequest) {
             await createNotificationIfNotExists(p.patientId, p.clinicId, "reminder",
               "We miss you! 😊",
               `Hey ${p.patient.firstName || "there"}, we noticed you haven't been active. Your mission for today is waiting!`,
-              "/dashboard/journey"
+              "/dashboard/journey",
+              "Sentimos sua falta! 😊",
+              `Olá ${p.patient.firstName || ""}, notamos que você não esteve ativo. Sua missão de hoje está esperando!`
             );
             results.push(`Streak broken reminder for ${p.patientId}`);
           }
@@ -89,7 +93,9 @@ export async function POST(req: NextRequest) {
               await createNotificationIfNotExists(patient.id, patient.clinicId, "stagnation",
                 "⚠️ Your progress has stalled",
                 `${patient.firstName || "Hi"}, your recovery scores have plateaued. We have a solution — book a special session with 15% OFF!`,
-                "/dashboard/plans"
+                "/dashboard/plans",
+                "⚠️ Seu progresso estagnou",
+                `${patient.firstName || "Olá"}, suas pontuações de recuperação estabilizaram. Temos uma solução — agende uma sessão especial com 15% OFF!`
               );
               results.push(`Stagnation alert for ${patient.id}`);
             }
@@ -120,7 +126,9 @@ export async function POST(req: NextRequest) {
               await createNotificationIfNotExists(patient.id, challenge.clinicId, "challenge",
                 `🏆 Almost there! ${remaining} to go!`,
                 `The weekly challenge "${challenge.title}" is ${Math.round(percentComplete)}% complete. Contribute now!`,
-                "/dashboard/community"
+                "/dashboard/community",
+                `🏆 Quase lá! Faltam ${remaining}!`,
+                `O desafio semanal "${challenge.title}" está ${Math.round(percentComplete)}% concluído. Contribua agora!`
               );
             }
             results.push(`Challenge reminder for ${challenge.id}`);
@@ -152,9 +160,9 @@ export async function POST(req: NextRequest) {
               weekStart,
               xpReward: 50,
               tasks: [
-                { key: "complete_exercises", label: "Complete 2 exercises from Treatment Plan", completed: false, xp: 20 },
-                { key: "pain_checkin", label: "Do a pain check-in", completed: false, xp: 15 },
-                { key: "read_article", label: "Read 1 educational article", completed: false, xp: 10 },
+                { key: "complete_exercises", label: "Complete 2 exercises from Treatment Plan", labelPt: "Complete 2 exercícios do Plano de Tratamento", completed: false, xp: 20 },
+                { key: "pain_checkin", label: "Do a pain check-in", labelPt: "Faça um check-in de dor", completed: false, xp: 15 },
+                { key: "read_article", label: "Read 1 educational article", labelPt: "Leia 1 artigo educativo", completed: false, xp: 10 },
               ],
             },
           });
@@ -170,9 +178,9 @@ export async function POST(req: NextRequest) {
                 xpReward: 100,
                 isBonusMission: true,
                 tasks: [
-                  { key: "body_assessment", label: "Complete a body assessment", completed: false, xp: 25 },
-                  { key: "community_high_five", label: "Give 3 high fives in the community", completed: false, xp: 10 },
-                  { key: "share_victory", label: "Share a victory in the community", completed: false, xp: 15 },
+                  { key: "body_assessment", label: "Complete a body assessment", labelPt: "Complete uma avaliação corporal", completed: false, xp: 25 },
+                  { key: "community_high_five", label: "Give 3 high fives in the community", labelPt: "Dê 3 high fives na comunidade", completed: false, xp: 10 },
+                  { key: "share_victory", label: "Share a victory in the community", labelPt: "Compartilhe uma vitória na comunidade", completed: false, xp: 15 },
                 ],
               },
             });
@@ -207,9 +215,11 @@ async function createNotificationIfNotExists(
   patientId: string,
   clinicId: string | null,
   type: string,
-  title: string,
-  message: string,
-  actionUrl: string
+  titleEn: string,
+  messageEn: string,
+  actionUrl: string,
+  titlePt?: string,
+  messagePt?: string,
 ) {
   // Check if similar notification already sent today
   const today = new Date();
@@ -222,6 +232,16 @@ async function createNotificationIfNotExists(
     },
   });
   if (existing) return;
+
+  // Resolve patient locale
+  let isPt = false;
+  try {
+    const user = await prisma.user.findUnique({ where: { id: patientId }, select: { preferredLocale: true } as any });
+    isPt = ((user as any)?.preferredLocale || 'en-GB').startsWith('pt');
+  } catch {}
+
+  const title = (isPt && titlePt) ? titlePt : titleEn;
+  const message = (isPt && messagePt) ? messagePt : messageEn;
 
   await (prisma as any).journeyNotification.create({
     data: { patientId, clinicId, type, title, message, actionUrl },

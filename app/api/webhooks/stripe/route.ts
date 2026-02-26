@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
                   portalUrl: `${BASE}/dashboard/membership`,
                 },
                 plainMessage: `Your ${plan.name} membership is now active! Log in to your portal to explore all features.`,
+                plainMessagePt: `Sua assinatura ${plan.name} está ativa! Acesse seu portal para explorar todos os recursos.`,
               }).catch(err => console.error('[stripe-webhook] membership notify error:', err));
             }
           }
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
                 portalUrl: `${BASE}/dashboard/treatment`,
               },
               plainMessage: `Payment of £${amount} confirmed for ${pkg.name || 'your treatment package'}. You can now access your treatment plan.`,
+              plainMessagePt: `Pagamento de £${amount} confirmado para ${pkg.name || 'seu pacote de tratamento'}. Agora você pode acessar seu plano de tratamento.`,
             }).catch(err => console.error('[stripe-webhook] package notify error:', err));
           }
         }

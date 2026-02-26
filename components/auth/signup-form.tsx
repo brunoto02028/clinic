@@ -14,6 +14,7 @@ import {
   CheckCircle,
   ExternalLink,
   Shield,
+  Globe,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export default function SignupForm() {
   const router = useRouter();
-  const { locale } = useLocale();
+  const { locale, setLocale } = useLocale();
   const isPt = locale === "pt-BR";
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [selectedLocale, setSelectedLocale] = useState(locale);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -76,6 +78,7 @@ export default function SignupForm() {
           phone: formData.phone,
           password: formData.password,
           role: "PATIENT",
+          preferredLocale: selectedLocale,
         }),
       });
 
@@ -110,6 +113,40 @@ export default function SignupForm() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Language Selector */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  {isPt ? "Idioma do Portal" : "Portal Language"}
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedLocale("en-GB"); setLocale("en-GB"); }}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                      selectedLocale === "en-GB"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-white/10 text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <span className="text-base">🇬🇧</span>
+                    English
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedLocale("pt-BR"); setLocale("pt-BR"); }}
+                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                      selectedLocale === "pt-BR"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-white/10 text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <span className="text-base">🇧🇷</span>
+                    Português
+                  </button>
+                </div>
+              </div>
+
               {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />

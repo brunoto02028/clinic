@@ -2,53 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 0 0% 96%;
-  --foreground: 0 0% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
-  --primary: 180 13% 43%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 173 52% 58%;
-  --secondary-foreground: 0 0% 10%;
-  --muted: 0 0% 94%;
-  --muted-foreground: 0 0% 45%;
-  --accent: 173 52% 58%;
-  --accent-foreground: 0 0% 10%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 88%;
-  --input: 0 0% 88%;
-  --ring: 173 52% 58%;
-  --radius: 0.75rem;
-  --success: 142 76% 36%;
-  --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 0 0% 10%;
-}
+/* ============================================
+   FUTURISTIC NEON DARK THEME
+   ============================================ */
 
-.dark {
-  --background: 180 10% 10%;
-  --foreground: 0 0% 95%;
-  --card: 180 10% 12%;
-  --card-foreground: 0 0% 95%;
-  --popover: 180 10% 12%;
-  --popover-foreground: 0 0% 95%;
-  --primary: 180 13% 50%;
+:root {
+  /* Dark teal-charcoal base */
+  --background: 200 35% 7%;
+  --foreground: 195 20% 90%;
+  
+  /* Glass card surfaces */
+  --card: 200 30% 11%;
+  --card-foreground: 195 20% 90%;
+  --popover: 200 30% 11%;
+  --popover-foreground: 195 20% 90%;
+
+  /* Azul-Teal Suave primary (#4a7c8a) */
+  --primary: 195 30% 42%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 173 52% 50%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 180 10% 18%;
-  --muted-foreground: 0 0% 65%;
-  --accent: 173 52% 50%;
+
+  /* Lighter teal accent (#6ba3b0) */
+  --secondary: 195 30% 55%;
+  --secondary-foreground: 200 35% 7%;
+  
+  /* Muted surfaces */
+  --muted: 200 25% 14%;
+  --muted-foreground: 195 15% 50%;
+  
+  /* Accent — deeper teal (#3a6570) */
+  --accent: 195 32% 33%;
   --accent-foreground: 0 0% 100%;
-  --destructive: 0 62.8% 30.6%;
+  
+  --destructive: 0 85% 55%;
   --destructive-foreground: 0 0% 100%;
-  --border: 180 10% 20%;
-  --input: 180 10% 20%;
-  --ring: 173 52% 50%;
+  
+  /* Borders — subtle teal tint */
+  --border: 200 20% 18%;
+  --input: 200 20% 18%;
+  --ring: 195 30% 42%;
+  
+  --radius: 0.75rem;
+  --success: 160 60% 40%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 80% 50%;
+  --warning-foreground: 200 35% 7%;
+
+  /* Glow colors (raw RGB) */
+  --neon-cyan: 74 124 138;
+  --neon-emerald: 90 180 140;
+  --neon-purple: 120 140 170;
+  --neon-pink: 180 100 130;
+  --neon-amber: 200 160 80;
 }
 
 * {
@@ -66,36 +70,173 @@ body {
   display: none !important;
 }
 
-/* Custom scrollbar */
+/* ============================================
+   FUTURISTIC SCROLLBAR
+   ============================================ */
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 4px;
+  background: hsl(var(--background));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.3);
-  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(var(--neon-cyan), 0.3), rgba(var(--neon-purple), 0.3));
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.5);
+  background: linear-gradient(180deg, rgba(var(--neon-cyan), 0.6), rgba(var(--neon-purple), 0.6));
 }
 
-/* Animation utilities */
+/* ============================================
+   GRID BACKGROUND PATTERN
+   ============================================ */
+
+.bg-grid-pattern {
+  background-image:
+    linear-gradient(rgba(var(--neon-cyan), 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--neon-cyan), 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.bg-dot-pattern {
+  background-image: radial-gradient(rgba(var(--neon-cyan), 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ============================================
+   GLASSMORPHISM UTILITIES
+   ============================================ */
+
+.glass {
+  background: hsla(220, 40%, 10%, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(var(--neon-cyan), 0.08);
+}
+
+.glass-strong {
+  background: hsla(220, 40%, 10%, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(var(--neon-cyan), 0.12);
+}
+
+.glass-card {
+  background: hsla(220, 40%, 10%, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--neon-cyan), 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(var(--neon-cyan), 0.15);
+  box-shadow: 0 0 20px -5px rgba(var(--neon-cyan), 0.1);
+}
+
+/* ============================================
+   NEON GLOW EFFECTS
+   ============================================ */
+
+.neon-glow-cyan {
+  box-shadow:
+    0 0 5px rgba(var(--neon-cyan), 0.15),
+    0 0 20px rgba(var(--neon-cyan), 0.08),
+    inset 0 0 15px rgba(var(--neon-cyan), 0.03);
+}
+
+.neon-glow-emerald {
+  box-shadow:
+    0 0 5px rgba(var(--neon-emerald), 0.15),
+    0 0 20px rgba(var(--neon-emerald), 0.08),
+    inset 0 0 15px rgba(var(--neon-emerald), 0.03);
+}
+
+.neon-glow-purple {
+  box-shadow:
+    0 0 5px rgba(var(--neon-purple), 0.15),
+    0 0 20px rgba(var(--neon-purple), 0.08),
+    inset 0 0 15px rgba(var(--neon-purple), 0.03);
+}
+
+.neon-text-cyan {
+  color: rgb(var(--neon-cyan));
+  text-shadow: 0 0 10px rgba(var(--neon-cyan), 0.5), 0 0 30px rgba(var(--neon-cyan), 0.2);
+}
+
+.neon-text-emerald {
+  color: rgb(var(--neon-emerald));
+  text-shadow: 0 0 10px rgba(var(--neon-emerald), 0.5), 0 0 30px rgba(var(--neon-emerald), 0.2);
+}
+
+.neon-text-purple {
+  color: rgb(var(--neon-purple));
+  text-shadow: 0 0 10px rgba(var(--neon-purple), 0.5), 0 0 30px rgba(var(--neon-purple), 0.2);
+}
+
+/* ============================================
+   ANIMATED NEON BORDER
+   ============================================ */
+
+.neon-border {
+  position: relative;
+  overflow: hidden;
+}
+
+.neon-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--neon-cyan), 0.3),
+    rgba(var(--neon-purple), 0.1),
+    rgba(var(--neon-emerald), 0.3),
+    rgba(var(--neon-cyan), 0.1)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.neon-border-animated::before {
+  background: linear-gradient(
+    var(--neon-angle, 135deg),
+    rgba(var(--neon-cyan), 0.4),
+    transparent,
+    rgba(var(--neon-purple), 0.4),
+    transparent,
+    rgba(var(--neon-emerald), 0.4)
+  );
+  animation: neon-rotate 6s linear infinite;
+}
+
+@keyframes neon-rotate {
+  0% { --neon-angle: 0deg; }
+  100% { --neon-angle: 360deg; }
+}
+
+@property --neon-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* ============================================
+   ANIMATION UTILITIES
+   ============================================ */
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
@@ -103,14 +244,8 @@ body {
 }
 
 @keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .animate-slide-in-right {
@@ -118,26 +253,65 @@ body {
 }
 
 @keyframes pulse-soft {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .animate-pulse-soft {
   animation: pulse-soft 2s ease-in-out infinite;
 }
 
-/* Card hover effects */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(var(--neon-cyan), 0.2), 0 0 15px rgba(var(--neon-cyan), 0.1);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(var(--neon-cyan), 0.4), 0 0 30px rgba(var(--neon-cyan), 0.15);
+  }
+}
+
+.animate-neon-pulse {
+  animation: neon-pulse 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(var(--neon-cyan), 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ============================================
+   CARD HOVER EFFECTS (FUTURISTIC)
+   ============================================ */
+
 .card-hover {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card-hover:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 12px 40px -12px rgba(var(--neon-cyan), 0.15),
+    0 0 0 1px rgba(var(--neon-cyan), 0.1);
 }
 
 /* Button transitions */
@@ -147,6 +321,7 @@ body {
 
 .btn-transition:hover {
   transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(var(--neon-cyan), 0.2);
 }
 
 .btn-transition:active {
@@ -157,6 +332,124 @@ body {
 .focus-ring:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+}
+
+/* ============================================
+   SIDEBAR FUTURISTIC STYLES
+   ============================================ */
+
+.sidebar-futuristic {
+  background: linear-gradient(
+    180deg,
+    hsla(220, 40%, 8%, 0.95) 0%,
+    hsla(225, 45%, 6%, 0.98) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(var(--neon-cyan), 0.08);
+}
+
+.sidebar-nav-item {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-nav-item:hover {
+  background: rgba(var(--neon-cyan), 0.05);
+}
+
+.sidebar-nav-item-active {
+  background: linear-gradient(90deg, rgba(var(--neon-cyan), 0.12), rgba(var(--neon-cyan), 0.03));
+  border-left: 2px solid rgb(var(--neon-cyan));
+}
+
+.sidebar-nav-item-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgb(var(--neon-cyan));
+  box-shadow: 0 0 8px rgba(var(--neon-cyan), 0.6), 0 0 20px rgba(var(--neon-cyan), 0.3);
+}
+
+/* ============================================
+   TOP HEADER BAR
+   ============================================ */
+
+.header-futuristic {
+  background: hsla(222, 47%, 6%, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(var(--neon-cyan), 0.06);
+}
+
+/* ============================================
+   MOBILE BOTTOM NAV
+   ============================================ */
+
+.mobile-nav-futuristic {
+  background: hsla(222, 47%, 6%, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(var(--neon-cyan), 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mobile-nav-item-active {
+  color: rgb(var(--neon-cyan));
+  filter: drop-shadow(0 0 6px rgba(var(--neon-cyan), 0.5));
+}
+
+/* Safe area utilities for iPhone notch / home indicator */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-bottom {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============================================
+   NEON BADGE / STATUS INDICATORS
+   ============================================ */
+
+.neon-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.neon-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  animation: shimmer 3s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+
+/* ============================================
+   NEON DIVIDER
+   ============================================ */
+
+.neon-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--neon-cyan), 0.3),
+    rgba(var(--neon-purple), 0.2),
+    transparent
+  );
+}
+
+/* ============================================
+   INPUT FUTURISTIC
+   ============================================ */
+
+input:focus, textarea:focus, select:focus, [role="combobox"]:focus {
+  box-shadow: 0 0 0 1px rgba(var(--neon-cyan), 0.2), 0 0 12px rgba(var(--neon-cyan), 0.06);
 }
 
 /* ===== Article Content — Responsive & Overflow Protection ===== */

@@ -265,6 +265,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
           portalUrl: `${BASE}/dashboard/treatment`,
         },
         plainMessage: `Your treatment plan "${fullProtocol?.title || 'Treatment Plan'}" is ready! Log in to your portal to review it.`,
+        plainMessagePt: `Seu plano de tratamento "${fullProtocol?.title || 'Plano de Tratamento'}" está pronto! Acesse seu portal para revisá-lo.`,
       }).catch(err => console.error('[protocol] notify error:', err));
     } catch {}
 
@@ -350,6 +351,7 @@ export async function PATCH(
             portalUrl: `${BASE}/dashboard/treatment`,
           },
           plainMessage: `Congratulations! Your treatment plan "${updated.title || 'Treatment Plan'}" is now complete. Log in to see your results.`,
+          plainMessagePt: `Parabéns! Seu plano de tratamento "${updated.title || 'Plano de Tratamento'}" foi concluído. Acesse o portal para ver seus resultados.`,
         }).catch(err => console.error('[protocol] TREATMENT_COMPLETED notify error:', err));
 
         // Send membership offer (post-treatment upsell) after a small delay
@@ -361,6 +363,7 @@ export async function PATCH(
               portalUrl: `${BASE}/dashboard/membership`,
             },
             plainMessage: 'Now that your treatment is complete, stay connected with a membership plan for ongoing support and exclusive benefits!',
+            plainMessagePt: 'Agora que seu tratamento foi concluído, mantenha-se conectado com um plano de assinatura para suporte contínuo e benefícios exclusivos!',
           }).catch(err => console.error('[protocol] MEMBERSHIP_OFFER notify error:', err));
         }, 5000);
       } catch {}
@@ -379,6 +382,7 @@ export async function PATCH(
             portalUrl: `${BASE}/dashboard/treatment`,
           },
           plainMessage: `Your treatment protocol "${updated.title}" has been shared with you. Log in to your portal to review it.`,
+          plainMessagePt: `Seu protocolo de tratamento "${updated.title}" foi compartilhado com você. Acesse seu portal para revisá-lo.`,
         }).catch(err => console.error('[protocol] TREATMENT_PROTOCOL notify error:', err));
       } catch {}
     }

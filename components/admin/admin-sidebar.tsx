@@ -56,6 +56,7 @@ import {
   Globe,
   DollarSign,
   Box,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -155,6 +156,7 @@ const navigationGroups: NavGroup[] = [
     i18nKey: "sidebar.marketing",
     icon: Megaphone,
     items: [
+      { name: "Site Analytics", href: "/admin/analytics", icon: BarChart3 },
       { name: "Social Media", i18nKey: "nav.socialMedia", href: "/admin/social", icon: Megaphone },
       { name: "Create Post", i18nKey: "nav.createPost", href: "/admin/social/create", icon: PenSquare },
       { name: "Campaigns", i18nKey: "nav.campaigns", href: "/admin/social/campaigns", icon: CalendarRange },
@@ -302,8 +304,8 @@ function CollapsibleGroup({
                   className={cn(
                     "group flex items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "sidebar-nav-item-active text-primary bg-primary/10"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   )}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
@@ -388,7 +390,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   return (
     <>
       {/* Mobile menu button */}
-      <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-card px-4 py-4 shadow-sm sm:px-6 lg:hidden border-b border-border">
+      <div className="sticky top-0 z-40 flex items-center gap-x-6 header-futuristic px-4 py-4 sm:px-6 lg:hidden">
         <button
           type="button"
           className="-m-2.5 p-2.5 text-muted-foreground lg:hidden"
@@ -405,11 +407,11 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       {mobileMenuOpen && (
         <div className="relative z-50 lg:hidden">
           <div
-            className="fixed inset-0 bg-black/50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 w-full max-w-xs bg-card overflow-y-auto">
-            <div className="flex h-14 items-center justify-between px-4 border-b border-border sticky top-0 bg-card z-10">
+          <div className="fixed inset-y-0 left-0 w-full max-w-xs sidebar-futuristic overflow-y-auto">
+            <div className="flex h-14 items-center justify-between px-4 border-b border-white/5 sticky top-0 z-10" style={{background: 'hsla(220, 40%, 8%, 0.95)'}}>
               <div className={`transition-opacity duration-200 ${logoReady ? 'opacity-100' : 'opacity-0'}`}>
                 <Logo logoUrl={logoUrl} darkLogoUrl={darkLogoUrl} size="sm" showText={true} linkTo="/admin" />
               </div>
@@ -424,7 +426,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <nav className="p-3">
               {renderNav(() => setMobileMenuOpen(false))}
             </nav>
-            <div className="border-t border-border p-3 mt-2">
+            <div className="border-t border-white/5 p-3 mt-2">
               <div className="flex items-center gap-3 px-2 mb-3">
                 <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
                   <span className="text-xs font-medium text-primary">
@@ -457,8 +459,8 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex grow flex-col overflow-y-auto border-r border-border bg-card">
-          <div className="flex h-16 shrink-0 items-center border-b border-border px-6">
+        <div className="flex grow flex-col overflow-y-auto sidebar-futuristic">
+          <div className="flex h-16 shrink-0 items-center border-b border-white/5 px-6">
             <div className={`transition-opacity duration-200 ${logoReady ? 'opacity-100' : 'opacity-0'}`}>
               <Logo logoUrl={logoUrl} darkLogoUrl={darkLogoUrl} size="md" showText={true} linkTo="/admin" />
             </div>
@@ -474,9 +476,9 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             {renderNav()}
           </nav>
 
-          <div className="border-t border-border p-4 shrink-0">
+          <div className="border-t border-white/5 p-4 shrink-0">
             <div className="flex items-center gap-3 px-2">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center animate-neon-pulse">
                 <span className="text-sm font-medium text-primary">
                   {user.firstName?.[0]}
                   {user.lastName?.[0]}

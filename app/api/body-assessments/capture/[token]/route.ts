@@ -194,6 +194,7 @@ export async function PUT(
               portalUrl: `${process.env.NEXTAUTH_URL || ''}/dashboard/body-assessments`,
             },
             plainMessage: 'Your body assessment photos have been submitted and are being analysed. You will be notified when results are ready.',
+            plainMessagePt: 'Suas fotos de avaliação corporal foram enviadas e estão sendo analisadas. Você será notificado quando os resultados estiverem prontos.',
           });
         }
       } catch (emailErr) {

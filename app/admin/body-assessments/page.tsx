@@ -34,6 +34,15 @@ import { BodyMap, AssessmentScores } from "@/components/body-assessment/body-map
 import { ImageAnnotator, Annotation } from "@/components/body-assessment/image-annotator";
 import { PlumbLineOverlay } from "@/components/body-assessment/plumb-line-overlay";
 import { ImageComparison } from "@/components/body-assessment/image-comparison";
+import { SegmentScores } from "@/components/body-assessment/segment-scores";
+import { FindingCards } from "@/components/body-assessment/finding-cards";
+import { CorrectiveExercises } from "@/components/body-assessment/corrective-exercises";
+import { ProgressTracker } from "@/components/body-assessment/progress-tracker";
+import { CrossSessionComparison } from "@/components/body-assessment/cross-session-comparison";
+import { SkeletonAnalysisOverlay } from "@/components/body-assessment/skeleton-analysis-overlay";
+import { GaitMetrics } from "@/components/body-assessment/gait-metrics";
+import { ScoliosisPanel } from "@/components/body-assessment/scoliosis-panel";
+import { VideoSkeletonPlayer } from "@/components/body-assessment/video-skeleton-player";
 import {
   Search,
   Plus,
@@ -111,6 +120,11 @@ interface Assessment {
   therapistFindings: any | null;
   movementVideos: any[] | null;
   movementPatterns: any | null;
+  segmentScores: any | null;
+  gaitMetrics: any | null;
+  correctiveExercises: any[] | null;
+  deviationLabels: any[] | null;
+  idealComparison: any[] | null;
   reviewedAt: string | null;
   aiProcessedAt: string | null;
   createdAt: string;
@@ -149,6 +163,7 @@ export default function AdminBodyAssessmentsPage() {
   const [detailTab, setDetailTab] = useState<"overview" | "images" | "videos" | "annotate" | "analysis" | "notes">("overview");
   const [annotateView, setAnnotateView] = useState<"front" | "back" | "left" | "right">("front");
   const [annotateMode, setAnnotateMode] = useState<"draw" | "plumb" | "compare">("draw");
+  const [skeletonView, setSkeletonView] = useState<"front" | "back" | "left" | "right">("front");
   const [showCameraCapture, setShowCameraCapture] = useState(false);
   const [isCaptureUploading, setIsCaptureUploading] = useState(false);
   const { toast } = useToast();
@@ -591,6 +606,14 @@ export default function AdminBodyAssessmentsPage() {
               />
             )}
 
+            {/* Segment Scores */}
+            {a.segmentScores && (
+              <SegmentScores
+                segmentScores={a.segmentScores}
+                overallScore={a.overallScore || undefined}
+              />
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Body Map Card */}
               <Card className="overflow-hidden">
@@ -709,35 +732,7 @@ export default function AdminBodyAssessmentsPage() {
 
                 {/* Key Findings */}
                 {a.aiFindings && a.aiFindings.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Key Findings</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {a.aiFindings.slice(0, 5).map((f: any, i: number) => (
-                        <div key={i} className="flex gap-3 p-2.5 rounded-lg bg-muted/50 hover:bg-muted/80 transition-colors">
-                          <Badge
-                            variant={f.severity === "severe" ? "destructive" : f.severity === "moderate" ? "default" : "secondary"}
-                            className="text-xs h-fit shrink-0"
-                          >
-                            {f.severity}
-                          </Badge>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{f.area}</p>
-                            <p className="text-xs text-muted-foreground truncate">{f.finding}</p>
-                            {f.recommendation && (
-                              <p className="text-xs text-primary mt-1 truncate">→ {f.recommendation}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      {a.aiFindings.length > 5 && (
-                        <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setDetailTab("analysis")}>
-                          View all ({a.aiFindings.length}) <ArrowRight className="h-3 w-3 ml-1" />
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <FindingCards findings={a.aiFindings} compact />
                 )}
 
                 {/* Recommendations */}
@@ -807,35 +802,18 @@ export default function AdminBodyAssessmentsPage() {
         {detailTab === "videos" && (
           <div className="space-y-4">
             {a.movementVideos && Array.isArray(a.movementVideos) && a.movementVideos.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {a.movementVideos.map((vid: any, i: number) => (
-                  <Card key={vid.id || i}>
-                    <CardHeader className="p-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm">{vid.label || vid.testType}</CardTitle>
-                        <Badge variant="secondary" className="text-xs">{vid.duration}s</Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                      {vid.videoUrl ? (
-                        <video
-                          src={vid.videoUrl}
-                          controls
-                          playsInline
-                          className="w-full rounded-lg bg-black aspect-video"
-                        />
-                      ) : (
-                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                          <p className="text-xs text-muted-foreground">Video unavailable</p>
-                        </div>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Recorded: {vid.createdAt ? new Date(vid.createdAt).toLocaleString() : "—"}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <>
+                {/* Enhanced Video Player with skeleton overlay */}
+                <VideoSkeletonPlayer
+                  videos={a.movementVideos.filter((v: any) => v.videoUrl).map((v: any) => ({
+                    videoUrl: v.videoUrl,
+                    testType: v.testType,
+                    label: v.label || v.testType,
+                    duration: v.duration,
+                  }))}
+                  title="Movement Analysis — Skeleton Overlay"
+                />
+              </>
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -992,43 +970,108 @@ export default function AdminBodyAssessmentsPage() {
 
         {/* ANALYSIS TAB */}
         {detailTab === "analysis" && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {a.postureAnalysis ? (
               <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Posture Analysis</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">
-                      {JSON.stringify(a.postureAnalysis, null, 2)}
-                    </pre>
-                  </CardContent>
-                </Card>
-                {a.jointAngles && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Joint Angles</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">
-                        {JSON.stringify(a.jointAngles, null, 2)}
-                      </pre>
-                    </CardContent>
-                  </Card>
+                {/* Skeleton Analysis with view selector */}
+                {(a.frontImageUrl || a.backImageUrl || a.leftImageUrl || a.rightImageUrl) && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold">Skeleton Analysis</h3>
+                      <div className="flex gap-1.5 ml-auto">
+                        {(["front", "back", "left", "right"] as const).map((v) => {
+                          const imgUrl = v === "front" ? a.frontImageUrl : v === "back" ? a.backImageUrl : v === "left" ? a.leftImageUrl : a.rightImageUrl;
+                          return (
+                            <Button key={v} variant={skeletonView === v ? "default" : "outline"} size="sm" className="h-7 text-xs capitalize" onClick={() => setSkeletonView(v)} disabled={!imgUrl}>
+                              {v}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {(() => {
+                      const imgUrl = skeletonView === "front" ? a.frontImageUrl : skeletonView === "back" ? a.backImageUrl : skeletonView === "left" ? a.leftImageUrl : a.rightImageUrl;
+                      const lm = skeletonView === "front" ? a.frontLandmarks : skeletonView === "back" ? a.backLandmarks : skeletonView === "left" ? a.leftLandmarks : a.rightLandmarks;
+                      return imgUrl ? (
+                        <SkeletonAnalysisOverlay
+                          imageUrl={imgUrl}
+                          landmarks={Array.isArray(lm) ? lm : undefined}
+                          deviationLabels={a.deviationLabels || []}
+                          idealComparison={a.idealComparison || []}
+                          view={skeletonView}
+                          width={600}
+                        />
+                      ) : null;
+                    })()}
+                  </div>
                 )}
-                {a.kineticChain && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Kinetic Chain</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">
-                        {JSON.stringify(a.kineticChain, null, 2)}
-                      </pre>
-                    </CardContent>
-                  </Card>
+
+                {/* Findings Cards */}
+                {a.aiFindings && a.aiFindings.length > 0 && (
+                  <FindingCards findings={a.aiFindings} />
                 )}
+
+                {/* Gait Metrics */}
+                {a.gaitMetrics && Object.values(a.gaitMetrics).some((v: any) => typeof v === "number" && v > 0) && (
+                  <GaitMetrics metrics={a.gaitMetrics} />
+                )}
+
+                {/* Scoliosis Panel */}
+                {a.postureAnalysis?.scoliosisScreening && a.postureAnalysis.scoliosisScreening.severity !== "none" && (
+                  <ScoliosisPanel screening={a.postureAnalysis.scoliosisScreening} />
+                )}
+
+                {/* Corrective Exercises */}
+                {a.correctiveExercises && a.correctiveExercises.length > 0 && (
+                  <CorrectiveExercises exercises={a.correctiveExercises} />
+                )}
+
+                {/* Raw Data (collapsible) */}
+                <details className="group">
+                  <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 py-2">
+                    <FileText className="h-4 w-4" /> Raw Analysis Data
+                  </summary>
+                  <div className="space-y-4 mt-3">
+                    <Card>
+                      <CardHeader className="pb-2"><CardTitle className="text-sm">Posture Analysis</CardTitle></CardHeader>
+                      <CardContent>
+                        <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.postureAnalysis, null, 2)}</pre>
+                      </CardContent>
+                    </Card>
+                    {a.jointAngles && (
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">Joint Angles</CardTitle></CardHeader>
+                        <CardContent>
+                          <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.jointAngles, null, 2)}</pre>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {a.kineticChain && (
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">Kinetic Chain</CardTitle></CardHeader>
+                        <CardContent>
+                          <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.kineticChain, null, 2)}</pre>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {a.segmentScores && (
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">Segment Scores</CardTitle></CardHeader>
+                        <CardContent>
+                          <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.segmentScores, null, 2)}</pre>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {a.gaitMetrics && (
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">Gait Metrics</CardTitle></CardHeader>
+                        <CardContent>
+                          <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.gaitMetrics, null, 2)}</pre>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </details>
               </>
             ) : (
               <Card>

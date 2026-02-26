@@ -10,7 +10,7 @@ import crypto from "crypto";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, firstName, lastName, phone, role } = body ?? {};
+    const { email, password, firstName, lastName, phone, role, preferredLocale } = body ?? {};
 
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
         lastName,
         phone: phone || null,
         role: userRole,
+        preferredLocale: preferredLocale || "en-GB",
         // Account disabled until verified
         isActive: false,
       },

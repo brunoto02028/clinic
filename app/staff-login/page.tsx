@@ -96,7 +96,7 @@ function StaffLoginPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900 flex flex-col">
+    <div className="min-h-screen bg-background bg-grid-pattern flex flex-col">
       {/* Minimal header with logo + locale toggle */}
       <header className="p-4 sm:p-6 flex items-center justify-between max-w-7xl mx-auto w-full">
         <Logo
@@ -123,27 +123,27 @@ function StaffLoginPage() {
         <div className="w-full max-w-md">
           {/* Staff badge */}
           <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
-              <Shield className="h-4 w-4 text-teal-400" />
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 backdrop-blur-sm border border-primary/20 animate-neon-pulse">
+              <Shield className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-white/90">
                 {isPt ? "Portal da Equipe" : "Staff Portal"}
               </span>
             </div>
           </div>
 
-          <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
+          <Card className="shadow-2xl neon-glow-cyan">
             <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-2xl font-bold text-slate-900">
+              <CardTitle className="text-2xl font-bold text-foreground">
                 {isPt ? "Acesso da Equipe" : "Staff Access"}
               </CardTitle>
-              <CardDescription className="text-slate-500">
+              <CardDescription className="text-muted-foreground">
                 {isPt ? "Entre com suas credenciais de funcionário" : "Sign in with your staff credentials"}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
                     <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                     <span>{error}</span>
                   </div>
@@ -152,7 +152,7 @@ function StaffLoginPage() {
                 <div className="space-y-2">
                   <Label htmlFor="email">{isPt ? "E-mail" : "Email"}</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="email"
                       type="email"
@@ -176,7 +176,7 @@ function StaffLoginPage() {
                     </Link>
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
@@ -189,7 +189,7 @@ function StaffLoginPage() {
                     <button
                       type="button"
                       tabIndex={-1}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -209,8 +209,8 @@ function StaffLoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-6 pt-4 border-t border-slate-200 text-center">
-                <p className="text-xs text-slate-400">
+              <div className="mt-6 pt-4 border-t border-white/5 text-center">
+                <p className="text-xs text-muted-foreground">
                   {isPt
                     ? "Contas de equipe são criadas pelo administrador."
                     : "Staff accounts are created by your administrator."}

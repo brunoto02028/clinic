@@ -388,6 +388,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
           portalUrl: `${BASE}/dashboard/treatment`,
         },
         plainMessage: 'Your clinical assessment has been completed. Your therapist will review it and prepare your treatment plan.',
+        plainMessagePt: 'Sua avaliação clínica foi concluída. Seu terapeuta irá revisá-la e preparar seu plano de tratamento.',
       }).catch(err => console.error('[diagnosis] notify error:', err));
     } catch {}
 

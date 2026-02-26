@@ -48,6 +48,10 @@ import {
   CreditCard,
   Scale,
   MessageSquare,
+  Map,
+  ShoppingCart,
+  Trophy,
+  BookOpen,
   Send as SendIcon,
   Plus,
   Trash2,
@@ -81,6 +85,10 @@ const ICON_MAP: Record<string, any> = {
   CreditCard,
   Scale,
   User,
+  Map,
+  ShoppingCart,
+  Trophy,
+  BookOpen,
 };
 
 interface ModuleConfig {

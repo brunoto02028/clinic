@@ -17,11 +17,15 @@ export async function GET() {
 
   const userId = effectiveUser.userId;
 
+    // Resolve clinicId
+    const _usr = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+    const clinicIdForProgress = _usr?.clinicId || null;
+
     // Ensure PatientProgress exists
     let progress = await (prisma as any).patientProgress.findUnique({ where: { patientId: userId } });
     if (!progress) {
       progress = await (prisma as any).patientProgress.create({
-        data: { patientId: userId, clinicId: effectiveUser.userId || null },
+        data: { patientId: userId, clinicId: clinicIdForProgress },
       });
     }
 
@@ -46,12 +50,53 @@ export async function GET() {
     const levelDef = getLevelForXP(progress.totalXpEarned);
     const xpInfo = getXPToNextLevel(progress.totalXpEarned);
 
-    // Current week missions
+    // Current week missions — auto-generate if none exist
     const weekStart = getWeekStart();
-    const missions = await (prisma as any).dailyMission.findMany({
+    let missions = await (prisma as any).dailyMission.findMany({
       where: { patientId: userId, weekStart },
       orderBy: { createdAt: "asc" },
     });
+
+    if (missions.length === 0) {
+      // Auto-generate standard weekly mission
+      try {
+        const stdMission = await (prisma as any).dailyMission.create({
+          data: {
+            patientId: userId,
+            clinicId: clinicIdForProgress,
+            weekStart,
+            xpReward: 50,
+            tasks: [
+              { key: "complete_exercises", label: "Complete 2 exercises from Treatment Plan", labelPt: "Complete 2 exercícios do Plano de Tratamento", completed: false, xp: 20 },
+              { key: "pain_checkin", label: "Do a pain check-in", labelPt: "Faça um check-in de dor", completed: false, xp: 15 },
+              { key: "read_article", label: "Read 1 educational article", labelPt: "Leia 1 artigo educativo", completed: false, xp: 10 },
+            ],
+          },
+        });
+        missions = [stdMission];
+
+        // Bonus mission for level 5+
+        if (progress.level >= 5) {
+          const bonusMission = await (prisma as any).dailyMission.create({
+            data: {
+              patientId: userId,
+              clinicId: clinicIdForProgress,
+              weekStart,
+              xpReward: 100,
+              isBonusMission: true,
+              tasks: [
+                { key: "body_assessment", label: "Complete a body assessment", labelPt: "Complete uma avaliação corporal", completed: false, xp: 25 },
+                { key: "community_high_five", label: "Give 3 high fives in the community", labelPt: "Dê 3 high fives na comunidade", completed: false, xp: 10 },
+                { key: "share_victory", label: "Share a victory in the community", labelPt: "Compartilhe uma vitória na comunidade", completed: false, xp: 15 },
+              ],
+            },
+          });
+          missions.push(bonusMission);
+        }
+      } catch (missionErr) {
+        console.error("[journey] Auto-generate missions error:", missionErr);
+      }
+    }
 
     // Badges
     const badges = await (prisma as any).patientBadge.findMany({
@@ -140,13 +185,19 @@ export async function POST(req: NextRequest) {
 
         // Check if leveled up
         if (leveledUp) {
+          // Resolve patient locale for bilingual notification
+          let isPtUser = false;
+          try {
+            const u = await prisma.user.findUnique({ where: { id: userId }, select: { preferredLocale: true } as any });
+            isPtUser = ((u as any)?.preferredLocale || 'en-GB').startsWith('pt');
+          } catch {}
           await (prisma as any).journeyNotification.create({
             data: {
               patientId: userId,
               clinicId,
               type: "level_up",
-              title: `🎉 Level Up! Level ${newLevel.level}`,
-              message: `Congratulations! You are now a ${newLevel.title}!`,
+              title: isPtUser ? `🎉 Subiu de Nível! Nível ${newLevel.level}` : `🎉 Level Up! Level ${newLevel.level}`,
+              message: isPtUser ? `Parabéns! Agora você é ${newLevel.title}!` : `Congratulations! You are now a ${newLevel.title}!`,
               actionUrl: "/dashboard/journey",
             },
           });
@@ -156,7 +207,7 @@ export async function POST(req: NextRequest) {
               patientId: userId,
               clinicId,
               type: "level_up",
-              content: `reached Level ${newLevel.level} — ${newLevel.title}! 🎉`,
+              content: isPtUser ? `alcançou o Nível ${newLevel.level} — ${newLevel.title}! 🎉` : `reached Level ${newLevel.level} — ${newLevel.title}! 🎉`,
               isAnon: true,
               anonName: `RecoveryHero_${userId.slice(-4)}`,
             },
@@ -278,13 +329,20 @@ async function unlockBadge(patientId: string, clinicId: string | null, badgeKey:
       data: { patientId, clinicId, badgeKey },
     });
 
+    // Resolve patient locale for bilingual notification
+    let isPtBadge = false;
+    try {
+      const u = await prisma.user.findUnique({ where: { id: patientId }, select: { preferredLocale: true } as any });
+      isPtBadge = ((u as any)?.preferredLocale || 'en-GB').startsWith('pt');
+    } catch {}
+
     await (prisma as any).journeyNotification.create({
       data: {
         patientId,
         clinicId,
         type: "badge",
-        title: `🏅 New Badge Unlocked!`,
-        message: `You unlocked the "${badgeKey}" badge!`,
+        title: isPtBadge ? `🏅 Nova Conquista Desbloqueada!` : `🏅 New Badge Unlocked!`,
+        message: isPtBadge ? `Você desbloqueou a conquista "${badgeKey}"!` : `You unlocked the "${badgeKey}" badge!`,
         actionUrl: "/dashboard/journey",
       },
     });
@@ -295,7 +353,7 @@ async function unlockBadge(patientId: string, clinicId: string | null, badgeKey:
         patientId,
         clinicId,
         type: "badge_unlock",
-        content: `unlocked the "${badgeKey}" badge! 🏅`,
+        content: isPtBadge ? `desbloqueou a conquista "${badgeKey}"! 🏅` : `unlocked the "${badgeKey}" badge! 🏅`,
         isAnon: true,
         anonName: `RecoveryHero_${patientId.slice(-4)}`,
       },

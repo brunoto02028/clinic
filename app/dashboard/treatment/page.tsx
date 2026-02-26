@@ -35,9 +35,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 
 const PHASE_META: Record<string, { labelEn: string; labelPt: string; color: string; bg: string }> = {
-  SHORT_TERM: { labelEn: "Short-Term (Acute)", labelPt: "Curto Prazo (Agudo)", color: "text-red-700", bg: "bg-red-50 border-red-200 dark:bg-red-950/20" },
-  MEDIUM_TERM: { labelEn: "Medium-Term (Rehabilitation)", labelPt: "Médio Prazo (Reabilitação)", color: "text-amber-700", bg: "bg-amber-50 border-amber-200 dark:bg-amber-950/20" },
-  LONG_TERM: { labelEn: "Long-Term (Maintenance)", labelPt: "Longo Prazo (Manutenção)", color: "text-green-700", bg: "bg-green-50 border-green-200 dark:bg-green-950/20" },
+  SHORT_TERM: { labelEn: "Short-Term (Acute)", labelPt: "Curto Prazo (Agudo)", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
+  MEDIUM_TERM: { labelEn: "Medium-Term (Rehabilitation)", labelPt: "Médio Prazo (Reabilitação)", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
+  LONG_TERM: { labelEn: "Long-Term (Maintenance)", labelPt: "Longo Prazo (Manutenção)", color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
 };
 
 const TYPE_ICONS: Record<string, any> = {
@@ -162,21 +162,21 @@ export default function PatientTreatmentPage() {
 
       {/* Payment result banners */}
       {paymentBanner === "success" && (
-        <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 text-green-800 dark:text-green-200 text-sm p-4 rounded-lg flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+        <div className="bg-green-500/10 border border-green-500/20 text-green-300 text-sm p-4 rounded-lg flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-green-400 flex-shrink-0" />
           <div className="flex-1">
             <p className="font-semibold">{isPt ? "Pagamento Confirmado!" : "Payment Confirmed!"}</p>
-            <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">{isPt ? "Seu plano de tratamento será desbloqueado em instantes. Aguarde..." : "Your treatment plan will be unlocked momentarily. Please wait..."}</p>
+            <p className="text-xs text-green-400 mt-0.5">{isPt ? "Seu plano de tratamento será desbloqueado em instantes. Aguarde..." : "Your treatment plan will be unlocked momentarily. Please wait..."}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setPaymentBanner(null)}><X className="h-3 w-3" /></Button>
         </div>
       )}
       {paymentBanner === "cancelled" && (
-        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 text-amber-800 dark:text-amber-200 text-sm p-4 rounded-lg flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm p-4 rounded-lg flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
           <div className="flex-1">
             <p className="font-semibold">{isPt ? "Pagamento Cancelado" : "Payment Cancelled"}</p>
-            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">{isPt ? "Você pode tentar novamente a qualquer momento." : "You can try again at any time."}</p>
+            <p className="text-xs text-amber-400 mt-0.5">{isPt ? "Você pode tentar novamente a qualquer momento." : "You can try again at any time."}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setPaymentBanner(null)}><X className="h-3 w-3" /></Button>
         </div>
@@ -244,13 +244,13 @@ export default function PatientTreatmentPage() {
 
               {/* ─── Payment Gate ─── */}
               {proto.paymentRequired && proto.activePackage && (
-                <div className="border-2 border-amber-300 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-4 sm:p-6 text-center space-y-3">
-                  <Lock className="h-10 w-10 mx-auto text-amber-600" />
-                  <h3 className="text-lg font-semibold text-amber-800">{T("treatment.paymentRequired")}</h3>
-                  <p className="text-sm text-amber-700 max-w-md mx-auto">
+                <div className="border-2 border-amber-500/30 bg-amber-500/10 rounded-lg p-4 sm:p-6 text-center space-y-3">
+                  <Lock className="h-10 w-10 mx-auto text-amber-400" />
+                  <h3 className="text-lg font-semibold text-amber-300">{T("treatment.paymentRequired")}</h3>
+                  <p className="text-sm text-amber-400/80 max-w-md mx-auto">
                     {isPt ? "Seu protocolo de tratamento está pronto! Conclua o pagamento para desbloquear seu plano personalizado com exercícios, cronogramas e acompanhamento." : "Your treatment protocol is ready! Complete payment to unlock your full personalised treatment plan with exercises, schedules, and progress tracking."}
                   </p>
-                  <div className="bg-white dark:bg-background rounded-lg p-3 max-w-sm mx-auto space-y-1.5 text-sm">
+                  <div className="bg-card rounded-lg p-3 max-w-sm mx-auto space-y-1.5 text-sm">
                     <div className="flex justify-between"><span className="text-muted-foreground">{isPt ? "Pacote" : "Package"}:</span><span className="font-medium">{proto.activePackage.name}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">{isPt ? "Sessões" : "Sessions"}:</span><span className="font-medium">{proto.activePackage.totalSessions}</span></div>
                     {proto.activePackage.consultationFee > 0 && (
@@ -286,20 +286,20 @@ export default function PatientTreatmentPage() {
 
               {/* Diagnosis summary */}
               {!proto.paymentRequired && proto.diagnosis?.summary && (
-                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg p-3">
-                  <h4 className="text-xs font-semibold text-blue-700 mb-1">{isPt ? "Resumo Clínico" : "Clinical Summary"}</h4>
-                  <p className="text-sm text-blue-900 dark:text-blue-200">{proto.diagnosis.summary}</p>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                  <h4 className="text-xs font-semibold text-blue-400 mb-1">{isPt ? "Resumo Clínico" : "Clinical Summary"}</h4>
+                  <p className="text-sm text-foreground">{proto.diagnosis.summary}</p>
                 </div>
               )}
 
               {/* Precautions (visible even behind gate) */}
               {!proto.paymentRequired && proto.precautions?.length > 0 && (
-                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 rounded-lg p-3">
-                  <h4 className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <h4 className="text-xs font-semibold text-red-400 flex items-center gap-1 mb-1">
                     <AlertTriangle className="h-3 w-3" /> {isPt ? "Precauções Importantes" : "Important Precautions"}
                   </h4>
                   {proto.precautions.map((pc: any, i: number) => (
-                    <p key={i} className="text-sm text-red-700">• {pc.precaution}</p>
+                    <p key={i} className="text-sm text-red-400/80">• {pc.precaution}</p>
                   ))}
                 </div>
               )}
@@ -412,14 +412,14 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
             return (
               <div
                 key={item.id}
-                className={`border rounded-lg p-3 transition-colors ${item.isCompleted ? "bg-green-50/50 dark:bg-green-950/10 border-green-200" : ""}`}
+                className={`border rounded-lg p-3 transition-colors ${item.isCompleted ? "bg-green-500/5 border-green-500/20" : ""}`}
               >
                 <div className="flex items-start gap-3">
                   {/* Checkbox */}
                   {item.itemType !== "IN_CLINIC" && item.itemType !== "ASSESSMENT" ? (
                     <button onClick={() => onToggle(item.id, !item.isCompleted)} className="mt-0.5 shrink-0">
                       {item.isCompleted ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <CheckCircle2 className="h-5 w-5 text-green-400" />
                       ) : (
                         <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />
                       )}
@@ -435,7 +435,7 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
                       </span>
                       <Badge variant="outline" className="text-[9px]">{isPt ? TYPE_LABELS_PT[item.itemType] : TYPE_LABELS_EN[item.itemType]}</Badge>
                       {item.completedCount > 0 && (
-                        <span className="text-[10px] text-green-600">{isPt ? "Feito" : "Done"} {item.completedCount}x</span>
+                        <span className="text-[10px] text-green-400">{isPt ? "Feito" : "Done"} {item.completedCount}x</span>
                       )}
                     </div>
 

@@ -70,7 +70,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const [impersonatedName, setImpersonatedName] = useState<string | null>(null);
 
   const [portalConfigLoaded, setPortalConfigLoaded] = useState(false);
-  const [portalModules, setPortalModules] = useState<{ href: string; label: string; icon: any; alwaysVisible?: boolean }[]>([]);
+  const [portalModules, setPortalModules] = useState<{ href: string; label: string; icon: any; alwaysVisible?: boolean; group?: string }[]>([]);
   const [consentRequired, setConsentRequired] = useState(false);
   const { access, loading: accessLoading, canAccessHref } = usePatientAccess();
 
@@ -98,6 +98,9 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
     "/dashboard/clinical-notes": "patient.clinicalNotes",
     "/dashboard/quizzes": "patient.quizzes",
     "/dashboard/achievements": "patient.achievements",
+    "/dashboard/journey": "patient.journey",
+    "/dashboard/community": "patient.community",
+    "/dashboard/marketplace": "patient.marketplace",
   };
 
   // Map href → MODULE_REGISTRY alwaysVisible flag
@@ -139,6 +142,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
               label: m.label,
               icon: ICON_LOOKUP[m.icon] || LayoutDashboard,
               alwaysVisible: ALWAYS_VISIBLE_HREFS.has(m.href),
+              group: m.group || undefined,
             }));
           setPortalModules(items);
         }
@@ -166,7 +170,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
     const i18nKey = HREF_I18N[m.href];
     const translated = i18nKey ? T(i18nKey) : "";
     const label = (translated && translated !== i18nKey) ? translated : m.label;
-    return { href: m.href, label, icon: m.icon, locked: false, alwaysVisible: m.alwaysVisible };
+    return { href: m.href, label, icon: m.icon, locked: false, alwaysVisible: m.alwaysVisible, group: m.group };
   });
 
   // Fallback: if portal config hasn't loaded yet, use MODULE_REGISTRY sorted alphabetically
@@ -207,15 +211,12 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
     const isLocked = isPatientRole && moduleKey && access.modules !== "all" && !((access.modules as string[]).includes(moduleKey));
     return { ...item, locked: !!isLocked };
   });
-  // BPR Journey items (patient-only, always visible)
+  // BPR Journey items — now driven by portal config (admin can toggle)
   const isPt = locale === "pt-BR";
-  const journeyNavItems = [
-    { href: "/dashboard/journey", label: isPt ? "Jornada BPR" : "BPR Journey", icon: Map, locked: false, alwaysVisible: true, isJourney: true },
-    { href: "/dashboard/community", label: isPt ? "Comunidade" : "Community", icon: Trophy, locked: false, alwaysVisible: true, isJourney: true },
-    { href: "/dashboard/marketplace", label: "Marketplace", icon: ShoppingCart, locked: false, alwaysVisible: true, isJourney: true },
-  ];
+  const journeyNavItems = resolvedPatientNav.filter((item: any) => item.group === "journey");
 
-  const navItems = isTherapist ? therapistNavItems : resolvedPatientNav;
+  const mainPatientNav = resolvedPatientNav.filter((item: any) => !item.group);
+  const navItems = isTherapist ? therapistNavItems : mainPatientNav;
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/login" });
@@ -223,8 +224,8 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
   if (!mounted || status === "loading") {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-pulse-soft">
+      <div className="min-h-screen bg-background bg-grid-pattern flex items-center justify-center">
+        <div className="animate-neon-pulse rounded-full p-4">
           <Activity className="h-12 w-12 text-primary" />
         </div>
       </div>
@@ -232,11 +233,11 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background bg-grid-pattern">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -244,13 +245,13 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 sidebar-futuristic transform transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200">
+          <div className="flex items-center justify-between h-16 px-4 border-b border-white/5">
             <div className={`transition-opacity duration-200 ${logoReady ? 'opacity-100' : 'opacity-0'}`}>
               <Logo logoUrl={logoUrl} darkLogoUrl={darkLogoUrl} size="sm" linkTo="/dashboard" />
             </div>
@@ -282,38 +283,44 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
               return (
                 <Link key={item.href} href={linkHref}>
                   <div
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg sidebar-nav-item ${
                       isActive
-                        ? "bg-primary text-white"
+                        ? "sidebar-nav-item-active text-primary"
                         : isLocked
-                          ? "text-slate-400 hover:bg-slate-50"
-                          : "text-slate-600 hover:bg-slate-100"
+                          ? "text-muted-foreground/50"
+                          : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <item.icon className={`h-5 w-5 ${isLocked ? "opacity-50" : ""}`} />
+                    <item.icon className={`h-5 w-5 ${isActive ? "neon-text-cyan" : ""} ${isLocked ? "opacity-50" : ""}`} />
                     <span className={`font-medium flex-1 ${isLocked ? "opacity-50" : ""}`}>{item.label}</span>
-                    {isLocked && <Lock className="h-3.5 w-3.5 text-slate-400" />}
+                    {isLocked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                   </div>
                 </Link>
               );
             })}
 
-            {/* BPR Journey Section (Patient only) */}
-            {!isTherapist && (
+            {/* BPR Journey Section (Patient only, driven by portal config) */}
+            {!isTherapist && journeyNavItems.length > 0 && (
               <>
                 <div className="my-2 px-3">
-                  <div className="h-px bg-slate-200" />
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-2">BPR Journey</p>
+                  <div className="neon-divider" />
+                  <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wider mt-2">BPR Journey</p>
                 </div>
-                {journeyNavItems.map((item) => {
+                {journeyNavItems.map((item: any) => {
+                  const isLocked = item.locked === true;
                   const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
                   return (
                     <Link key={item.href} href={item.href}>
-                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                        isActive ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100"
+                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg sidebar-nav-item ${
+                        isActive
+                          ? "sidebar-nav-item-active text-primary"
+                          : isLocked
+                            ? "text-muted-foreground/50"
+                            : "text-muted-foreground hover:text-foreground"
                       }`}>
-                        <item.icon className="h-5 w-5" />
-                        <span className="font-medium flex-1">{item.label}</span>
+                        <item.icon className={`h-5 w-5 ${isActive ? "neon-text-cyan" : ""} ${isLocked ? "opacity-50" : ""}`} />
+                        <span className={`font-medium flex-1 ${isLocked ? "opacity-50" : ""}`}>{item.label}</span>
+                        {isLocked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                       </div>
                     </Link>
                   );
@@ -323,13 +330,13 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
           </nav>
 
           {/* User section */}
-          <div className="p-4 border-t border-slate-200">
+          <div className="p-4 border-t border-white/5">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center animate-neon-pulse">
                 <User className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-800 truncate">
+                <p className="font-medium text-foreground truncate">
                   {isImpersonating ? impersonatedName : `${(session?.user as any)?.firstName ?? ""} ${(session?.user as any)?.lastName ?? ""}`}
                 </p>
                 <Badge
@@ -344,7 +351,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
               {isImpersonating ? (
                 <Button
                   variant="outline"
-                  className="flex-1 justify-start gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                  className="flex-1 justify-start gap-2 text-blue-400 border-blue-500/20 hover:bg-blue-500/10"
                   onClick={async () => {
                     await fetch("/api/admin/impersonate", { method: "DELETE" });
                     document.cookie = "impersonate-patient-name=; path=/; max-age=0";
@@ -359,7 +366,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
               ) : (
                 <Button
                   variant="outline"
-                  className="flex-1 justify-start gap-2 text-slate-600"
+                  className="flex-1 justify-start gap-2 text-muted-foreground"
                   onClick={isPatientPreview ? undefined : handleSignOut}
                   disabled={isPatientPreview}
                 >
@@ -376,7 +383,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <header className="sticky top-0 z-30 h-16 header-futuristic">
           <div className="flex items-center justify-between h-full px-4 lg:px-8">
             <Button
               variant="ghost"
@@ -388,14 +395,14 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
             </Button>
 
             <div className="hidden lg:block">
-              <h1 className="text-lg font-semibold text-slate-800">
+              <h1 className="text-lg font-semibold text-foreground">
                 {isTherapist ? `${T("patient.therapist")} Portal` : `${T("patient.patient")} Portal`}
               </h1>
             </div>
 
             {/* Mobile: show current page context */}
             <div className="lg:hidden flex-1 text-center">
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="text-sm font-semibold text-foreground">
                 {isTherapist ? `${T("patient.therapist")} Portal` : (isPt ? "Paciente Portal" : "Patient Portal")}
               </span>
             </div>
@@ -408,7 +415,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <User className="h-4 w-4 text-primary" />
                 </div>
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-foreground">
                   {isImpersonating ? impersonatedName : ((session?.user as any)?.firstName ?? "")}
                 </span>
               </div>
@@ -445,7 +452,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
       </div>
 
       {/* Mobile bottom navigation bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 safe-area-pb">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 mobile-nav-futuristic safe-area-pb">
         <div className="flex items-stretch h-16">
           {(() => {
             const bottomItems = isTherapist
@@ -467,12 +474,12 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
               const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
               return (
                 <Link key={item.href} href={item.href} className="flex-1">
-                  <div className={`flex flex-col items-center justify-center h-full gap-0.5 transition-colors ${
-                    isActive ? "text-primary" : "text-slate-400"
+                  <div className={`relative flex flex-col items-center justify-center h-full gap-0.5 transition-colors ${
+                    isActive ? "mobile-nav-item-active" : "text-muted-foreground"
                   }`}>
-                    <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : "text-slate-400"}`} />
-                    <span className={`text-[10px] font-medium ${isActive ? "text-primary" : "text-slate-400"}`}>{item.label}</span>
-                    {isActive && <div className="absolute bottom-0 w-8 h-0.5 bg-primary rounded-t-full" />}
+                    <item.icon className={`h-5 w-5`} />
+                    <span className="text-[10px] font-medium">{item.label}</span>
+                    {isActive && <div className="absolute bottom-0 w-8 h-0.5 bg-primary rounded-t-full shadow-[0_0_8px_rgba(74,124,138,0.5)]" />}
                   </div>
                 </Link>
               );

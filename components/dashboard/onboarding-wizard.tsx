@@ -112,11 +112,11 @@ export default function OnboardingWizard() {
   const nextStep = STEPS.find((s) => !completionMap[s.checkField]);
 
   return (
-    <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-white to-primary/5 overflow-hidden relative">
+    <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-card to-primary/5 overflow-hidden relative">
       <div className="h-1 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
       <button
         onClick={handleDismiss}
-        className="absolute top-3 right-3 p-1 rounded-full hover:bg-primary/10 text-slate-400 hover:text-slate-600 transition-colors z-10"
+        className="absolute top-3 right-3 p-1 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-foreground transition-colors z-10"
       >
         <X className="h-4 w-4" />
       </button>
@@ -127,17 +127,17 @@ export default function OnboardingWizard() {
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-800 text-base">
+            <h3 className="font-bold text-foreground text-base">
               {isPt ? "Bem-vindo ao BPR!" : "Welcome to BPR!"}
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {isPt ? `${completedCount} de ${STEPS.length} passos concluídos` : `${completedCount} of ${STEPS.length} steps completed`}
             </p>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="w-full bg-slate-100 rounded-full h-2 mb-5">
+        <div className="w-full bg-muted rounded-full h-2 mb-5">
           <div
             className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
@@ -155,10 +155,10 @@ export default function OnboardingWizard() {
                 <div
                   className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
                     done
-                      ? "bg-emerald-50 border-emerald-200"
+                      ? "bg-emerald-500/10 border-emerald-500/20"
                       : isCurrent
                       ? "bg-primary/5 border-primary/30 ring-2 ring-primary/20"
-                      : "bg-white border-slate-200 hover:border-slate-300"
+                      : "bg-muted/50 border-white/10 hover:border-white/20"
                   }`}
                 >
                   <div
@@ -167,16 +167,16 @@ export default function OnboardingWizard() {
                         ? "bg-emerald-500 text-white"
                         : isCurrent
                         ? "bg-primary text-white"
-                        : "bg-slate-100 text-slate-400"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {done ? <CheckCircle className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                   </div>
                   <div className="min-w-0">
-                    <p className={`text-sm font-semibold ${done ? "text-emerald-700 line-through" : "text-slate-700"}`}>
+                    <p className={`text-sm font-semibold ${done ? "text-emerald-400 line-through" : "text-foreground"}`}>
                       {isPt ? step.titlePt : step.titleEn}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                       {isPt ? step.descPt : step.descEn}
                     </p>
                   </div>

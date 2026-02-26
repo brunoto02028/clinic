@@ -23,56 +23,42 @@ function buildAnalysisPrompt(): string {
 
 For each image, identify and evaluate:
 
-1. **POSTURE ANALYSIS**:
-   - Head position (forward head posture, lateral tilt)
-   - Shoulder level and symmetry
-   - Thoracic spine (kyphosis assessment)
-   - Lumbar spine (lordosis assessment)
-   - Pelvic tilt (anterior/posterior/lateral)
-   - Knee alignment (valgus/varus/recurvatum)
-   - Ankle/foot alignment
+1. **POSTURE ANALYSIS**: Head position, shoulder level/symmetry, thoracic kyphosis, lumbar lordosis, pelvic tilt, knee alignment (valgus/varus/recurvatum), ankle/foot alignment.
 
-2. **MOTOR POINTS MAPPING**:
-   For each identified motor point, provide: name, body region, status (normal/hypertonic/hypotonic/trigger_point), severity (0-10), and clinical notes.
-   Key motor points to assess: upper trapezius, levator scapulae, SCM, pectorals, rhomboids, latissimus dorsi, erector spinae, quadratus lumborum, gluteus maximus/medius/minimus, piriformis, hip flexors (iliopsoas), quadriceps, hamstrings, adductors, TFL/ITB, gastrocnemius/soleus, tibialis anterior.
+2. **MOTOR POINTS MAPPING**: For each identified motor point: name, body region, status (normal/hypertonic/hypotonic/trigger_point), severity (0-10), clinical notes. Assess: upper trapezius, levator scapulae, SCM, pectorals, rhomboids, latissimus dorsi, erector spinae, quadratus lumborum, gluteals, piriformis, hip flexors, quadriceps, hamstrings, adductors, TFL/ITB, gastrocnemius/soleus, tibialis anterior.
 
-3. **SYMMETRY ANALYSIS**:
-   - Left vs right comparison for each body region
-   - Asymmetry percentage scores
+3. **SYMMETRY ANALYSIS**: Left vs right comparison per region with asymmetry percentage.
 
-4. **JOINT ANGLES** (estimated from images):
-   - Cervical angle, shoulder angles, thoracic kyphosis angle, lumbar lordosis angle, hip angles, knee angles, ankle angles
+4. **JOINT ANGLES** (estimated from images): Cervical, shoulder, thoracic kyphosis, lumbar lordosis, hip, knee, ankle angles.
 
-5. **ALIGNMENT DATA**:
-   - Plumb line deviations (frontal and sagittal)
-   - Shoulder level difference (mm estimated)
-   - Hip level difference (mm estimated)
-   - Knee alignment angles
+5. **ALIGNMENT DATA**: Plumb line deviations (frontal/sagittal), shoulder/hip/knee level differences (mm).
 
-6. **KINETIC CHAIN ANALYSIS**:
-   - Identified compensatory patterns
-   - Cause-effect relationships
-   - Primary dysfunction areas
+6. **KINETIC CHAIN**: Compensatory patterns, cause-effect relationships, primary dysfunction areas.
 
-7. **MOVEMENT PATTERN ANALYSIS** (if movement test data/videos are provided):
-   - **Squat**: depth, knee tracking (valgus/varus), trunk lean, heel rise, weight shift, overall quality (1-10)
-   - **Gait**: stride symmetry, arm swing, trunk rotation, foot strike pattern, lateral sway, cadence assessment
-   - **Overhead Squat**: arm drift, thoracic mobility, compensations
-   - **Single Leg Balance**: time held, trunk sway, hip drop (Trendelenburg), ankle strategy vs hip strategy
-   - **Lunge**: knee stability, trunk alignment, step length symmetry
-   - **Hip Hinge**: hamstring flexibility, lumbar flexion control, hip-to-spine ratio
+7. **MOVEMENT PATTERNS** (if videos provided): Squat, Gait, Overhead Squat, Single Leg Balance, Lunge, Hip Hinge.
 
-8. **SCORES** (0-100, where 100 is perfect):
-   - postureScore
-   - symmetryScore
-   - mobilityScore (based on visible restrictions and movement quality)
-   - overallScore
+8. **SEGMENT SCORES** (0-100): Score each body segment independently — head/neck, shoulders, spine/trunk, hips/pelvis, knees, ankles/feet.
 
-Return your analysis as a JSON object with this exact structure:
+9. **DEVIATION LABELS**: For every abnormal finding, provide a visual label with the affected joint/landmark name so it can be drawn on the skeleton. Include: the landmark name (from MediaPipe BlazePose), a short clinical label (e.g. "Forward Head", "Excessive Knee Valgus", "Anterior Pelvic Tilt", "Pronation", "Shoulder Elevation"), severity, and the measured/estimated angle.
+
+10. **IDEAL vs ACTUAL COMPARISON**: For each major joint, provide the current measured angle, the ideal/normal angle, and the deviation in degrees. This helps visualize "Your Position" vs "Ideal Position".
+
+11. **GAIT METRICS** (estimate from available data): ground contact time (ms), time of flight (ms), stride length (cm), cadence (steps/min), vertical oscillation (cm), foot strike angle, pronation angle.
+
+12. **CORRECTIVE EXERCISES**: Based on findings, suggest 4-8 specific corrective exercises. Each must include: exercise name, target area, which finding it addresses, difficulty (beginner/intermediate/advanced), sets, reps, hold duration, step-by-step instructions, benefits, and muscles targeted.
+
+13. **SCOLIOSIS SCREENING** (if back/posterior view available): Assess for signs of scoliosis — shoulder height difference, scapular prominence, waistline asymmetry, trunk shift, estimated Cobb angle, Adams forward bend test prediction, classification (structural vs functional).
+
+Return your analysis as a JSON object with this EXACT structure:
 {
   "postureAnalysis": {
     "frontalPlane": { "headTilt": "", "shoulderLevel": "", "hipLevel": "", "kneeAlignment": "", "overallFrontal": "" },
     "sagittalPlane": { "headForward": "", "thoracicKyphosis": "", "lumbarLordosis": "", "pelvicTilt": "", "kneePosition": "", "overallSagittal": "" },
+    "scoliosisScreening": {
+      "shoulderHeightDiff": "", "scapularProminence": "", "waistlineAsymmetry": "", "trunkShift": "",
+      "estimatedCobbAngle": 0, "classification": "none|functional|structural", "severity": "none|mild|moderate|severe",
+      "adamsTestPrediction": "", "notes": ""
+    },
     "summary": ""
   },
   "motorPoints": [
@@ -119,14 +105,60 @@ Return your analysis as a JSON object with this exact structure:
     "mobilityScore": 0,
     "overallScore": 0
   },
+  "segmentScores": {
+    "head": { "score": 0, "status": "good|fair|poor", "keyIssue": "" },
+    "shoulders": { "score": 0, "status": "good|fair|poor", "keyIssue": "" },
+    "spine": { "score": 0, "status": "good|fair|poor", "keyIssue": "" },
+    "hips": { "score": 0, "status": "good|fair|poor", "keyIssue": "" },
+    "knees": { "score": 0, "status": "good|fair|poor", "keyIssue": "" },
+    "ankles": { "score": 0, "status": "good|fair|poor", "keyIssue": "" }
+  },
+  "deviationLabels": [
+    { "joint": "nose", "label": "Forward Head Posture", "severity": "moderate", "angleDeg": 15, "direction": "anterior", "description": "Head positioned 15° anterior to plumb line" }
+  ],
+  "idealComparison": [
+    { "segment": "Cervical Spine", "landmark": "nose", "currentAngle": 15, "idealAngle": 0, "deviationDeg": 15, "status": "deviation", "plane": "sagittal" }
+  ],
+  "gaitMetrics": {
+    "groundContactTimeMs": 0,
+    "timeOfFlightMs": 0,
+    "strideLengthCm": 0,
+    "cadenceSpm": 0,
+    "verticalOscillationCm": 0,
+    "footStrikeAngle": 0,
+    "pronationAngle": 0,
+    "overstridePercent": 0,
+    "notes": ""
+  },
+  "correctiveExercises": [
+    {
+      "name": "Chin Tucks",
+      "targetArea": "cervical",
+      "finding": "Forward head posture",
+      "difficulty": "beginner",
+      "sets": 3,
+      "reps": 10,
+      "holdSeconds": 5,
+      "instructions": "Sit tall. Draw chin straight back creating a double chin. Hold 5 seconds. Release.",
+      "benefits": "Strengthens deep neck flexors, corrects forward head posture",
+      "musclesTargeted": ["deep cervical flexors", "longus colli", "longus capitis"]
+    }
+  ],
   "findings": [
-    { "area": "", "finding": "", "severity": "mild|moderate|severe", "recommendation": "" }
+    { "area": "", "finding": "", "severity": "mild|moderate|severe", "recommendation": "", "icon": "alert|warning|info|check", "category": "posture|symmetry|mobility|alignment|scoliosis" }
   ],
   "summary": "",
   "recommendations": ""
 }
 
-Be thorough and clinical. Use proper anatomical terminology. Base severity scores on visible evidence only.`;
+IMPORTANT RULES:
+- Be thorough and clinical. Use proper anatomical terminology.
+- Base severity scores on visible evidence only.
+- All angles must be numeric (degrees).
+- Segment scores must be 0-100 where 100 is perfect.
+- Deviation labels must reference valid MediaPipe BlazePose landmark names: nose, left_eye, right_eye, left_ear, right_ear, left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist, left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle, left_heel, right_heel, left_foot_index, right_foot_index.
+- Corrective exercises must be practical, evidence-based, and directly address identified findings.
+- If posterior view is available, always assess for scoliosis signs.`;
 }
 
 // POST - Run AI analysis on body assessment
@@ -269,6 +301,11 @@ export async function POST(
         symmetryScore: analysisData.scores?.symmetryScore || null,
         mobilityScore: analysisData.scores?.mobilityScore || null,
         overallScore: analysisData.scores?.overallScore || null,
+        segmentScores: analysisData.segmentScores || null,
+        gaitMetrics: analysisData.gaitMetrics || null,
+        correctiveExercises: analysisData.correctiveExercises || null,
+        deviationLabels: analysisData.deviationLabels || null,
+        idealComparison: analysisData.idealComparison || null,
         aiSummary: analysisData.summary || null,
         aiRecommendations: analysisData.recommendations || null,
         aiFindings: analysisData.findings || null,

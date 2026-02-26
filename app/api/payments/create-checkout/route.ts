@@ -74,9 +74,9 @@ export async function POST(request: NextRequest) {
     const apptDateStr = apptDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const apptTimeStr = apptDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
     const hoursUntil = (apptDate.getTime() - Date.now()) / (1000 * 60 * 60);
-    const cancellationNote = hoursUntil >= 48
-      ? "Free cancellation up to 48 hours before your appointment."
-      : "This appointment is within 48 hours — no refund if cancelled.";
+    const cancellationNote = hoursUntil >= 24
+      ? "Free cancellation up to 24 hours before your appointment."
+      : "This appointment is within 24 hours — 50% cancellation fee applies.";
 
     // Create Stripe Checkout Session
     const checkoutSession = await stripe.checkout.sessions.create({
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       },
       custom_text: {
         terms_of_service_acceptance: {
-          message: `By completing this payment you agree to our [Cancellation Policy](${origin}/cancellation-policy): appointments cancelled within 48 hours of the scheduled time are non-refundable. Treatment plans require admin review for cancellation.`,
+          message: `By completing this payment you agree to our [Cancellation Policy](${origin}/cancellation-policy): cancellations within 24 hours are subject to a 50% charge. You have 2 free reschedules per appointment. Treatment plans require admin review.`,
         },
         submit: { message: "Your payment is secured by Stripe. We'll send a confirmation email." },
       },

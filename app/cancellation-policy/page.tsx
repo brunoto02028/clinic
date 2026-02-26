@@ -44,7 +44,7 @@ export default async function CancellationPolicyPage() {
         {/* Title */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 bg-[#5dc9c0]/10 text-[#1a6b6b] px-4 py-1.5 rounded-full text-sm font-medium">
-            Last updated: January 2025
+            Last updated: February 2026
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Cancellation & Refund Policy</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -60,16 +60,16 @@ export default async function CancellationPolicyPage() {
               <h3 className="font-bold text-green-800">Full Refund Eligible</h3>
             </div>
             <p className="text-sm text-green-700">
-              Cancel your appointment <strong>more than 48 hours</strong> before the scheduled time and receive a full refund within 3–5 business days.
+              Cancel your appointment <strong>more than 24 hours</strong> before the scheduled time and receive a full refund within 3–5 business days.
             </p>
           </div>
-          <div className="border-2 border-red-200 bg-red-50 rounded-2xl p-5">
+          <div className="border-2 border-amber-200 bg-amber-50 rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">❌</span>
-              <h3 className="font-bold text-red-800">No Refund</h3>
+              <span className="text-2xl">⚠️</span>
+              <h3 className="font-bold text-amber-800">50% Cancellation Fee</h3>
             </div>
-            <p className="text-sm text-red-700">
-              Cancellations made <strong>within 48 hours</strong> of the appointment are non-refundable. The appointment slot cannot be reassigned at short notice.
+            <p className="text-sm text-amber-700">
+              Cancellations made <strong>within 24 hours</strong> of the appointment are subject to a 50% charge. You will receive a 50% refund.
             </p>
           </div>
         </div>
@@ -85,15 +85,15 @@ export default async function CancellationPolicyPage() {
               <div className="flex gap-3">
                 <span className="text-green-600 font-bold shrink-0">✓</span>
                 <div>
-                  <p className="font-semibold text-gray-900">More than 48 hours notice — Full Refund</p>
-                  <p className="text-sm mt-0.5">If you cancel your appointment more than 48 hours before the scheduled time, you will receive a full refund of the amount paid. Refunds are processed via the original payment method within 3–5 business days.</p>
+                  <p className="font-semibold text-gray-900">More than 24 hours notice — Full Refund</p>
+                  <p className="text-sm mt-0.5">If you cancel your appointment more than 24 hours before the scheduled time, you will receive a full refund of the amount paid. Refunds are processed via the original payment method within 3–5 business days.</p>
                 </div>
               </div>
               <div className="flex gap-3">
-                <span className="text-red-500 font-bold shrink-0">✗</span>
+                <span className="text-amber-500 font-bold shrink-0">⚠</span>
                 <div>
-                  <p className="font-semibold text-gray-900">Less than 48 hours notice — No Refund</p>
-                  <p className="text-sm mt-0.5">Cancellations made within 48 hours of the appointment are non-refundable. This is because we are unable to fill the appointment slot at short notice, and our therapists have reserved this time exclusively for you.</p>
+                  <p className="font-semibold text-gray-900">Less than 24 hours notice — 50% Cancellation Fee</p>
+                  <p className="text-sm mt-0.5">Cancellations made within 24 hours of the appointment are subject to a 50% charge. You will receive a refund of 50% of the appointment value. This is because we are unable to fill the appointment slot at short notice, and our therapists have reserved this time exclusively for you.</p>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -114,10 +114,37 @@ export default async function CancellationPolicyPage() {
           </div>
         </section>
 
-        {/* Section 2 */}
+        {/* Section 2 — Reschedule */}
         <section className="space-y-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-[#5dc9c0] text-white flex items-center justify-center text-sm font-bold">2</span>
+            Reschedule Policy
+          </h2>
+          <div className="bg-gray-50 rounded-2xl p-6 space-y-4 text-gray-700">
+            <p>We offer flexibility to reschedule your appointments:</p>
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <span className="text-green-600 font-bold shrink-0">✓</span>
+                <div>
+                  <p className="font-semibold text-gray-900">2 Free Reschedules per Appointment</p>
+                  <p className="text-sm mt-0.5">Each appointment can be rescheduled up to 2 times at no extra cost. Simply choose a new date and time from your patient portal.</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-amber-500 font-bold shrink-0">⚠</span>
+                <div>
+                  <p className="font-semibold text-gray-900">Additional Reschedules — 25% Fee</p>
+                  <p className="text-sm mt-0.5">From the 3rd reschedule onwards, a fee of 25% of the appointment price will be charged. This is to discourage excessive rescheduling which affects our scheduling and other patients.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3 — Treatment Plans */}
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-[#5dc9c0] text-white flex items-center justify-center text-sm font-bold">3</span>
             Treatment Plan Cancellations
           </h2>
           <div className="bg-gray-50 rounded-2xl p-6 space-y-4 text-gray-700">
@@ -158,7 +185,7 @@ export default async function CancellationPolicyPage() {
         {/* Section 3 */}
         <section className="space-y-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-[#5dc9c0] text-white flex items-center justify-center text-sm font-bold">3</span>
+            <span className="w-8 h-8 rounded-full bg-[#5dc9c0] text-white flex items-center justify-center text-sm font-bold">4</span>
             Refund Processing
           </h2>
           <div className="bg-gray-50 rounded-2xl p-6 space-y-3 text-gray-700">
@@ -174,7 +201,7 @@ export default async function CancellationPolicyPage() {
         {/* Section 4 */}
         <section className="space-y-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-[#5dc9c0] text-white flex items-center justify-center text-sm font-bold">4</span>
+            <span className="w-8 h-8 rounded-full bg-[#5dc9c0] text-white flex items-center justify-center text-sm font-bold">5</span>
             Exceptional Circumstances
           </h2>
           <div className="bg-gray-50 rounded-2xl p-6 text-gray-700 text-sm space-y-2">
@@ -193,7 +220,7 @@ export default async function CancellationPolicyPage() {
         {/* Section 5 — Clinic cancellation */}
         <section className="space-y-4">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-[#5dc9c0] text-white flex items-center justify-center text-sm font-bold">5</span>
+            <span className="w-8 h-8 rounded-full bg-[#5dc9c0] text-white flex items-center justify-center text-sm font-bold">6</span>
             Cancellation by {clinicName}
           </h2>
           <div className="bg-gray-50 rounded-2xl p-6 text-gray-700 text-sm space-y-2">

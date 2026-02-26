@@ -93,6 +93,9 @@ export async function POST(request: NextRequest) {
         plainMessage: isCrisis
           ? `🚨 HYPERTENSIVE CRISIS: Your reading of ${sys}/${dia} mmHg requires IMMEDIATE medical attention. Call 999/112 or go to A&E now.`
           : `⚠️ High BP Alert: Your reading of ${sys}/${dia} mmHg is classified as ${classification}. Please contact your healthcare provider.`,
+        plainMessagePt: isCrisis
+          ? `🚨 CRISE HIPERTENSIVA: Sua leitura de ${sys}/${dia} mmHg requer atenção médica IMEDIATA. Ligue 999/112 ou vá ao pronto-socorro agora.`
+          : `⚠️ Alerta de PA Alta: Sua leitura de ${sys}/${dia} mmHg é classificada como ${classification}. Entre em contato com seu médico.`,
       }).catch(err => console.error('[bp] alert notification error:', err));
     }
 

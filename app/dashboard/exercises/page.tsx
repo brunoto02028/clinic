@@ -28,20 +28,17 @@ import { t as i18nT } from "@/lib/i18n";
 
 // ─── Constants ─────────────────────────────────────────
 
-const BODY_REGIONS: Record<string, string> = {
-  SHOULDER: "Shoulder",
-  ELBOW: "Elbow",
-  WRIST_HAND: "Wrist / Hand",
-  HIP: "Hip",
-  KNEE: "Knee",
-  ANKLE_FOOT: "Ankle / Foot",
-  SPINE_BACK: "Spine / Back",
-  NECK_CERVICAL: "Neck / Cervical",
-  CORE_ABDOMEN: "Core / Abdomen",
-  STRETCHING: "Stretching",
-  MUSCLE_INJURY: "Muscle Injury",
-  FULL_BODY: "Full Body",
-  OTHER: "Other",
+const BODY_REGIONS_EN: Record<string, string> = {
+  SHOULDER: "Shoulder", ELBOW: "Elbow", WRIST_HAND: "Wrist / Hand",
+  HIP: "Hip", KNEE: "Knee", ANKLE_FOOT: "Ankle / Foot",
+  SPINE_BACK: "Spine / Back", NECK_CERVICAL: "Neck / Cervical", CORE_ABDOMEN: "Core / Abdomen",
+  STRETCHING: "Stretching", MUSCLE_INJURY: "Muscle Injury", FULL_BODY: "Full Body", OTHER: "Other",
+};
+const BODY_REGIONS_PT: Record<string, string> = {
+  SHOULDER: "Ombro", ELBOW: "Cotovelo", WRIST_HAND: "Punho / Mão",
+  HIP: "Quadril", KNEE: "Joelho", ANKLE_FOOT: "Tornozelo / Pé",
+  SPINE_BACK: "Coluna / Costas", NECK_CERVICAL: "Pescoço / Cervical", CORE_ABDOMEN: "Core / Abdômen",
+  STRETCHING: "Alongamento", MUSCLE_INJURY: "Lesão Muscular", FULL_BODY: "Corpo Inteiro", OTHER: "Outro",
 };
 
 const REGION_GROUPS: Record<string, string[]> = {
@@ -67,10 +64,15 @@ const REGION_EMOJIS: Record<string, string> = {
   OTHER: "📋",
 };
 
-const DIFFICULTIES: Record<string, { label: string; color: string }> = {
-  BEGINNER: { label: "Beginner", color: "bg-green-100 text-green-700" },
-  INTERMEDIATE: { label: "Intermediate", color: "bg-amber-100 text-amber-700" },
-  ADVANCED: { label: "Advanced", color: "bg-red-100 text-red-700" },
+const DIFFICULTIES_EN: Record<string, { label: string; color: string }> = {
+  BEGINNER: { label: "Beginner", color: "bg-green-500/15 text-green-400" },
+  INTERMEDIATE: { label: "Intermediate", color: "bg-amber-500/15 text-amber-400" },
+  ADVANCED: { label: "Advanced", color: "bg-red-500/15 text-red-400" },
+};
+const DIFFICULTIES_PT: Record<string, { label: string; color: string }> = {
+  BEGINNER: { label: "Iniciante", color: "bg-green-500/15 text-green-400" },
+  INTERMEDIATE: { label: "Intermediário", color: "bg-amber-500/15 text-amber-400" },
+  ADVANCED: { label: "Avançado", color: "bg-red-500/15 text-red-400" },
 };
 
 interface Prescription {
@@ -108,7 +110,10 @@ interface Prescription {
 
 export default function PatientExercisesPage() {
   const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const T = (key: string) => i18nT(key, locale);
+  const BODY_REGIONS = isPt ? BODY_REGIONS_PT : BODY_REGIONS_EN;
+  const DIFFICULTIES = isPt ? DIFFICULTIES_PT : DIFFICULTIES_EN;
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeVideo, setActiveVideo] = useState<Prescription | null>(null);
@@ -330,7 +335,9 @@ function ExerciseRow({
   completing: boolean;
 }) {
   const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const T = (key: string) => i18nT(key, locale);
+  const DIFFICULTIES = isPt ? DIFFICULTIES_PT : DIFFICULTIES_EN;
   const ex = prescription.exercise;
   const diff = DIFFICULTIES[ex.difficulty] || DIFFICULTIES.BEGINNER;
   const sets = prescription.sets || ex.defaultSets;
@@ -416,7 +423,7 @@ function ExerciseRow({
             Dr. {prescription.therapist.firstName} {prescription.therapist.lastName}
           </span>
           {prescription.completedCount > 0 && (
-            <span className="flex items-center gap-1 text-green-600">
+            <span className="flex items-center gap-1 text-green-400">
               <CheckCircle2 className="h-3 w-3" />
               {T("exercises.completedCount")} {prescription.completedCount}x
             </span>
@@ -481,7 +488,9 @@ function VideoPlayerModal({
   completing?: boolean;
 }) {
   const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const T = (key: string) => i18nT(key, locale);
+  const BODY_REGIONS = isPt ? BODY_REGIONS_PT : BODY_REGIONS_EN;
   const ex = prescription.exercise;
   const sets = prescription.sets || ex.defaultSets;
   const reps = prescription.reps || ex.defaultReps;

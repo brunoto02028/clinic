@@ -34,11 +34,11 @@ export default function MembershipOfferBanner({ treatmentCompleted }: Membership
   if (dismissed || hasSubscription === null || hasSubscription) return null;
 
   return (
-    <Card className="border-violet-200 bg-gradient-to-r from-violet-50 via-white to-violet-50 overflow-hidden relative">
+    <Card className="border-violet-500/20 bg-gradient-to-r from-violet-500/5 via-card to-violet-500/5 overflow-hidden relative">
       <div className="h-1 bg-gradient-to-r from-violet-400 via-violet-600 to-violet-400" />
       <button
         onClick={() => setDismissed(true)}
-        className="absolute top-3 right-3 p-1 rounded-full hover:bg-violet-100 text-violet-400 hover:text-violet-600 transition-colors"
+        className="absolute top-3 right-3 p-1 rounded-full hover:bg-violet-500/10 text-muted-foreground hover:text-foreground transition-colors"
       >
         <X className="h-4 w-4" />
       </button>
@@ -50,10 +50,10 @@ export default function MembershipOfferBanner({ treatmentCompleted }: Membership
           <div className="flex-1 min-w-0">
             {treatmentCompleted ? (
               <>
-                <h3 className="font-bold text-violet-900 text-base">
+                <h3 className="font-bold text-foreground text-base">
                   {isPt ? "Tratamento Concluído — Continue Conectado!" : "Treatment Complete — Stay Connected!"}
                 </h3>
-                <p className="text-sm text-violet-700 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {isPt
                     ? "Parabéns por concluir o seu tratamento! Assine um plano para manter acesso a exercícios, conteúdo educativo, monitoramento de saúde e muito mais."
                     : "Congratulations on completing your treatment! Subscribe to a plan to maintain access to exercises, educational content, health monitoring and more."}
@@ -61,17 +61,17 @@ export default function MembershipOfferBanner({ treatmentCompleted }: Membership
               </>
             ) : (
               <>
-                <h3 className="font-bold text-violet-900 text-base">
+                <h3 className="font-bold text-foreground text-base">
                   {isPt ? "Desbloqueie Seu Painel de Saúde" : "Unlock Your Health Dashboard"}
                 </h3>
-                <p className="text-sm text-violet-700 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {isPt
                     ? "Tenha acesso completo a exercícios, conteúdo educativo, monitoramento de pressão arterial e ferramentas personalizadas de saúde com um plano de membro."
                     : "Get full access to exercises, educational content, blood pressure monitoring and personalised health tools with a membership plan."}
                 </p>
               </>
             )}
-            <div className="flex items-center gap-3 mt-2 text-xs text-violet-600">
+            <div className="flex items-center gap-3 mt-2 text-xs text-violet-400">
               <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {isPt ? "Exercícios" : "Exercises"}</span>
               <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {isPt ? "Educação" : "Education"}</span>
               <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {isPt ? "Ferramentas de Saúde" : "Health Tools"}</span>

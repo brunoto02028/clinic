@@ -102,15 +102,15 @@ export default function QuizPage() {
               <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring" }} className="text-6xl mb-4">
                 🧬
               </motion.div>
-              <h1 className="text-2xl font-bold text-slate-800 mb-2">{T("quiz.title")}</h1>
-              <p className="text-slate-500 mb-1">{T("quiz.subtitle")}</p>
-              <p className="text-sm text-slate-400 mb-6">{T("quiz.meta")}</p>
+              <h1 className="text-2xl font-bold text-foreground mb-2">{T("quiz.title")}</h1>
+              <p className="text-muted-foreground mb-1">{T("quiz.subtitle")}</p>
+              <p className="text-sm text-muted-foreground mb-6">{T("quiz.meta")}</p>
 
               <div className="space-y-3 text-left mb-6">
                 {[T("quiz.benefit1"), T("quiz.benefit2"), T("quiz.benefit3")].map((item, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-primary shrink-0" />
-                    <span className="text-sm text-slate-600">{item}</span>
+                    <span className="text-sm text-muted-foreground">{item}</span>
                   </div>
                 ))}
               </div>
@@ -132,15 +132,15 @@ export default function QuizPage() {
         {/* Progress bar */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <button onClick={handleBack} disabled={currentQ === 0} className="text-slate-400 hover:text-slate-600 disabled:opacity-30">
+            <button onClick={handleBack} disabled={currentQ === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30">
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted-foreground">
               {currentQ + 1} / {QUIZ_QUESTIONS.length}
             </span>
             <div className="w-5" />
           </div>
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
               animate={{ width: `${progress}%` }}
@@ -160,7 +160,7 @@ export default function QuizPage() {
             {/* Question */}
             <div className="text-center mb-6">
               <div className="text-4xl mb-3">{question.icon}</div>
-              <h2 className="text-lg font-bold text-slate-800">{question.question}</h2>
+              <h2 className="text-lg font-bold text-foreground">{question.question}</h2>
             </div>
 
             {/* Options */}
@@ -173,11 +173,11 @@ export default function QuizPage() {
                   onClick={() => handleSelectAnswer(opt.key)}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                     selectedAnswer === opt.key
-                      ? "border-violet-500 bg-violet-50 shadow-md shadow-violet-100"
-                      : "border-slate-200 bg-white hover:border-slate-300"
+                      ? "border-violet-500 bg-violet-500/10 shadow-md shadow-violet-500/10"
+                      : "border-white/10 bg-card hover:border-white/20"
                   }`}
                 >
-                  <p className={`text-sm font-medium ${selectedAnswer === opt.key ? "text-violet-700" : "text-slate-700"}`}>
+                  <p className={`text-sm font-medium ${selectedAnswer === opt.key ? "text-violet-400" : "text-foreground"}`}>
                     {opt.label}
                   </p>
                 </motion.button>
@@ -210,7 +210,7 @@ export default function QuizPage() {
     return (
       <div className="max-w-lg mx-auto text-center py-16">
         <Loader2 className="h-10 w-10 animate-spin text-violet-500 mx-auto mb-4" />
-        <p className="text-slate-500">{T("quiz.analyzing")}</p>
+        <p className="text-muted-foreground">{T("quiz.analyzing")}</p>
       </div>
     );
   }
@@ -221,7 +221,7 @@ export default function QuizPage() {
     if (!archetype) {
       return (
         <div className="text-center py-16">
-          <p className="text-slate-500">{T("quiz.errorLoading")}</p>
+          <p className="text-muted-foreground">{T("quiz.errorLoading")}</p>
         </div>
       );
     }
@@ -241,27 +241,27 @@ export default function QuizPage() {
                 {archetype.emoji}
               </motion.div>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">{T("quiz.yourArchetype")}</p>
-                <h1 className="text-2xl font-bold text-slate-800 mb-2">{archetype.name}</h1>
-                <p className="text-sm text-slate-600 mb-6">{archetype.description}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">{T("quiz.yourArchetype")}</p>
+                <h1 className="text-2xl font-bold text-foreground mb-2">{archetype.name}</h1>
+                <p className="text-sm text-muted-foreground mb-6">{archetype.description}</p>
               </motion.div>
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="text-left space-y-4">
-                <h3 className="text-sm font-bold text-slate-700">{T("quiz.recommendations")}</h3>
+                <h3 className="text-sm font-bold text-foreground">{T("quiz.recommendations")}</h3>
                 {archetype.recommendations.map((rec: string, i: number) => (
-                  <div key={i} className="flex items-start gap-3 bg-slate-50 rounded-lg p-3">
+                  <div key={i} className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
                     <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                    <p className="text-sm text-slate-600">{rec}</p>
+                    <p className="text-sm text-muted-foreground">{rec}</p>
                   </div>
                 ))}
               </motion.div>
 
               {result.xpEarned && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-                  className="mt-4 bg-amber-50 rounded-lg p-3 flex items-center justify-center gap-2"
+                  className="mt-4 bg-amber-500/10 rounded-lg p-3 flex items-center justify-center gap-2"
                 >
                   <Sparkles className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm font-bold text-amber-700">+{result.xpEarned} {T("quiz.xpEarned")}</span>
+                  <span className="text-sm font-bold text-amber-400">+{result.xpEarned} {T("quiz.xpEarned")}</span>
                 </motion.div>
               )}
 
@@ -275,7 +275,7 @@ export default function QuizPage() {
                   <Button variant="outline" className="w-full">{T("quiz.backToJourney")}</Button>
                 </Link>
                 {existingResult && (
-                  <Button variant="ghost" onClick={handleRetake} className="w-full text-xs text-slate-400">
+                  <Button variant="ghost" onClick={handleRetake} className="w-full text-xs text-muted-foreground">
                     {T("quiz.retake")}
                   </Button>
                 )}

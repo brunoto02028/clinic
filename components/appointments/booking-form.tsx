@@ -11,6 +11,7 @@ import {
   Check,
   Loader2,
   Info,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,12 +19,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TREATMENT_OPTIONS } from "@/lib/types";
 import Link from "next/link";
+import { useLocale } from "@/hooks/use-locale";
 
 export default function BookingForm() {
   const router = useRouter();
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [screeningComplete, setScreeningComplete] = useState(true);
 
   const [selectedTreatment, setSelectedTreatment] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -38,6 +43,9 @@ export default function BookingForm() {
 
   useEffect(() => {
     setMounted(true);
+    fetch("/api/patient/status").then(r => r.json()).then(d => {
+      if (d.screeningComplete !== undefined) setScreeningComplete(d.screeningComplete);
+    }).catch(() => {});
   }, []);
 
   const treatment = isCustomTreatment
@@ -96,14 +104,14 @@ export default function BookingForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || "Failed to create appointment");
+        throw new Error(data?.error || (isPt ? "Falha ao criar consulta" : "Failed to create appointment"));
       }
 
       setCreatedAppointmentId(data?.appointment?.id ?? "");
       setStep(4);
     } catch (error) {
       console.error("Error creating appointment:", error);
-      alert("Failed to create appointment. Please try again.");
+      alert(isPt ? "Falha ao criar consulta. Tente novamente." : "Failed to create appointment. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -123,7 +131,7 @@ export default function BookingForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || "Failed to create payment session");
+        throw new Error(data?.error || (isPt ? "Falha ao criar sessão de pagamento" : "Failed to create payment session"));
       }
 
       // Redirect to Stripe checkout
@@ -132,7 +140,7 @@ export default function BookingForm() {
       }
     } catch (error) {
       console.error("Error creating payment session:", error);
-      alert("Failed to initiate payment. Please try again.");
+      alert(isPt ? "Falha ao iniciar pagamento. Tente novamente." : "Failed to initiate payment. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -148,8 +156,8 @@ export default function BookingForm() {
           </Button>
         </Link>
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Book Appointment</h1>
-          <p className="text-sm text-slate-600">Select your treatment and preferred time</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{isPt ? "Agendar Consulta" : "Book Appointment"}</h1>
+          <p className="text-sm text-muted-foreground">{isPt ? "Selecione seu tratamento e horário preferido" : "Select your treatment and preferred time"}</p>
         </div>
       </div>
 
@@ -161,7 +169,7 @@ export default function BookingForm() {
               className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium transition-colors flex-shrink-0 ${
                 step >= s
                   ? "bg-primary text-white"
-                  : "bg-slate-200 text-slate-500"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               {step > s ? <Check className="h-3 w-3 sm:h-4 sm:w-4" /> : s}
@@ -169,7 +177,7 @@ export default function BookingForm() {
             {s < 4 && (
               <div
                 className={`flex-1 h-1 mx-1 sm:mx-2 transition-colors ${
-                  step > s ? "bg-primary" : "bg-slate-200"
+                  step > s ? "bg-primary" : "bg-muted"
                 }`}
               />
             )}
@@ -184,7 +192,7 @@ export default function BookingForm() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-5 w-5 text-primary" />
-                Select Treatment
+                {isPt ? "Selecionar Tratamento" : "Select Treatment"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -198,17 +206,17 @@ export default function BookingForm() {
                   className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     selectedTreatment === t.id && !isCustomTreatment
                       ? "border-primary bg-primary/5"
-                      : "border-slate-200 hover:border-primary/50"
+                      : "border-white/10 hover:border-primary/50"
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-semibold text-slate-800">{t.name}</h3>
-                      <p className="text-sm text-slate-500 mt-1">
+                      <h3 className="font-semibold text-foreground">{t.name}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
                         {t.description}
                       </p>
-                      <p className="text-sm text-slate-500 mt-2">
-                        Duration: {t.duration} minutes
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {isPt ? "Duração" : "Duration"}: {t.duration} {isPt ? "minutos" : "minutes"}
                       </p>
                     </div>
                     <p className="font-bold text-lg text-primary">
@@ -227,31 +235,31 @@ export default function BookingForm() {
                 className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                   isCustomTreatment
                     ? "border-primary bg-primary/5"
-                    : "border-slate-200 hover:border-primary/50"
+                    : "border-white/10 hover:border-primary/50"
                 }`}
               >
-                <h3 className="font-semibold text-slate-800 mb-3">Custom Treatment</h3>
-                <p className="text-sm text-slate-500 mb-3">
-                  Create a custom appointment with flexible options
+                <h3 className="font-semibold text-foreground mb-3">{isPt ? "Tratamento Personalizado" : "Custom Treatment"}</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  {isPt ? "Crie uma consulta personalizada com opções flexíveis" : "Create a custom appointment with flexible options"}
                 </p>
                 
                 {isCustomTreatment && (
                   <div className="space-y-3 mt-4" onClick={(e) => e.stopPropagation()}>
                     <div>
-                      <Label htmlFor="customName" className="text-xs">Treatment Name *</Label>
+                      <Label htmlFor="customName" className="text-xs">{isPt ? "Nome do Tratamento" : "Treatment Name"} *</Label>
                       <Input
                         id="customName"
                         value={customTreatment.name}
                         onChange={(e) =>
                           setCustomTreatment({ ...customTreatment, name: e.target.value })
                         }
-                        placeholder="e.g., Follow-up Session, Consultation"
+                        placeholder={isPt ? "Ex: Sessão de Retorno, Consulta" : "e.g., Follow-up Session, Consultation"}
                         className="mt-1"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label htmlFor="customDuration" className="text-xs">Duration (min)</Label>
+                        <Label htmlFor="customDuration" className="text-xs">{isPt ? "Duração (min)" : "Duration (min)"}</Label>
                         <Input
                           id="customDuration"
                           type="number"
@@ -268,7 +276,7 @@ export default function BookingForm() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="customPrice" className="text-xs">Price (£)</Label>
+                        <Label htmlFor="customPrice" className="text-xs">{isPt ? "Preço (£)" : "Price (£)"}</Label>
                         <Input
                           id="customPrice"
                           type="number"
@@ -286,8 +294,8 @@ export default function BookingForm() {
                         />
                       </div>
                     </div>
-                    <p className="text-xs text-slate-500 italic">
-                      Set price to £0 for a free appointment
+                    <p className="text-xs text-muted-foreground italic">
+                      {isPt ? "Defina o preço como £0 para uma consulta gratuita" : "Set price to £0 for a free appointment"}
                     </p>
                   </div>
                 )}
@@ -302,7 +310,7 @@ export default function BookingForm() {
                 }
                 onClick={() => setStep(2)}
               >
-                Continue
+                {isPt ? "Continuar" : "Continue"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </CardContent>
@@ -317,7 +325,7 @@ export default function BookingForm() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-primary" />
-                Select Date
+                {isPt ? "Selecionar Data" : "Select Date"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -331,17 +339,17 @@ export default function BookingForm() {
                       className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all ${
                         selectedDate === date
                           ? "border-primary bg-primary/5"
-                          : "border-slate-200 hover:border-primary/50"
+                          : "border-white/10 hover:border-primary/50"
                       }`}
                     >
-                      <p className="text-sm text-slate-500">
-                        {dateObj.toLocaleDateString("en-GB", { weekday: "short" })}
+                      <p className="text-sm text-muted-foreground">
+                        {dateObj.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short" })}
                       </p>
-                      <p className="font-semibold text-lg text-slate-800">
+                      <p className="font-semibold text-lg text-foreground">
                         {dateObj.getDate()}
                       </p>
-                      <p className="text-sm text-slate-500">
-                        {dateObj.toLocaleDateString("en-GB", { month: "short" })}
+                      <p className="text-sm text-muted-foreground">
+                        {dateObj.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { month: "short" })}
                       </p>
                     </div>
                   );
@@ -350,14 +358,14 @@ export default function BookingForm() {
 
               <div className="flex gap-3 mt-6">
                 <Button variant="outline" onClick={() => setStep(1)}>
-                  Back
+                  {isPt ? "Voltar" : "Back"}
                 </Button>
                 <Button
                   className="flex-1 gap-2"
                   disabled={!selectedDate}
                   onClick={() => setStep(3)}
                 >
-                  Continue
+                  {isPt ? "Continuar" : "Continue"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -373,7 +381,7 @@ export default function BookingForm() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-primary" />
-                Select Time
+                {isPt ? "Selecionar Horário" : "Select Time"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -385,25 +393,25 @@ export default function BookingForm() {
                     className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all ${
                       selectedTime === time
                         ? "border-primary bg-primary/5"
-                        : "border-slate-200 hover:border-primary/50"
+                        : "border-white/10 hover:border-primary/50"
                     }`}
                   >
-                    <p className="font-semibold text-slate-800">{time}</p>
+                    <p className="font-semibold text-foreground">{time}</p>
                   </div>
                 ))}
               </div>
 
               {/* Summary */}
               {selectedTime && (
-                <div className="mt-6 p-4 bg-slate-50 rounded-lg">
-                  <h3 className="font-semibold text-slate-800 mb-2">Booking Summary</h3>
-                  <div className="space-y-1 text-sm text-slate-600">
+                <div className="mt-6 p-4 bg-muted/30 rounded-lg">
+                  <h3 className="font-semibold text-foreground mb-2">{isPt ? "Resumo do Agendamento" : "Booking Summary"}</h3>
+                  <div className="space-y-1 text-sm text-muted-foreground">
                     <p>
-                      <span className="font-medium">Treatment:</span> {treatment?.name ?? ""}
+                      <span className="font-medium">{isPt ? "Tratamento:" : "Treatment:"}</span> {treatment?.name ?? ""}
                     </p>
                     <p>
-                      <span className="font-medium">Date:</span>{" "}
-                      {new Date(selectedDate).toLocaleDateString("en-GB", {
+                      <span className="font-medium">{isPt ? "Data:" : "Date:"}</span>{" "}
+                      {new Date(selectedDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
                         weekday: "long",
                         day: "numeric",
                         month: "long",
@@ -411,10 +419,10 @@ export default function BookingForm() {
                       })}
                     </p>
                     <p>
-                      <span className="font-medium">Time:</span> {selectedTime}
+                      <span className="font-medium">{isPt ? "Horário:" : "Time:"}</span> {selectedTime}
                     </p>
                     <p>
-                      <span className="font-medium">Duration:</span> {treatment?.duration ?? 60} minutes
+                      <span className="font-medium">{isPt ? "Duração:" : "Duration:"}</span> {treatment?.duration ?? 60} {isPt ? "minutos" : "minutes"}
                     </p>
                     <p className="text-lg font-bold text-primary mt-2">
                       Total: £{treatment?.price ?? 60}
@@ -425,7 +433,7 @@ export default function BookingForm() {
 
               <div className="flex gap-3 mt-6">
                 <Button variant="outline" onClick={() => setStep(2)}>
-                  Back
+                  {isPt ? "Voltar" : "Back"}
                 </Button>
                 <Button
                   className="flex-1 gap-2"
@@ -435,11 +443,11 @@ export default function BookingForm() {
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Creating...
+                      {isPt ? "Criando..." : "Creating..."}
                     </>
                   ) : (
                     <>
-                      Confirm Booking
+                      {isPt ? "Confirmar Agendamento" : "Confirm Booking"}
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -461,33 +469,33 @@ export default function BookingForm() {
                 ) : (
                   <CreditCard className="h-5 w-5 text-primary" />
                 )}
-                {treatment?.price === 0 ? "Booking Confirmed" : "Complete Payment"}
+                {treatment?.price === 0 ? (isPt ? "Agendamento Confirmado" : "Booking Confirmed") : (isPt ? "Completar Pagamento" : "Complete Payment")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center py-6">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-4">
                   <Check className="h-8 w-8 text-emerald-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-800 mb-2">
-                  Appointment {treatment?.price === 0 ? "Confirmed" : "Created"}!
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  {isPt ? (treatment?.price === 0 ? "Consulta Confirmada!" : "Consulta Criada!") : `Appointment ${treatment?.price === 0 ? "Confirmed" : "Created"}!`}
                 </h3>
-                <p className="text-slate-600 mb-6">
+                <p className="text-muted-foreground mb-6">
                   {treatment?.price === 0
-                    ? "Your free appointment has been booked successfully."
-                    : "Your appointment has been reserved. Complete payment to confirm your booking."}
+                    ? (isPt ? "Sua consulta gratuita foi agendada com sucesso." : "Your free appointment has been booked successfully.")
+                    : (isPt ? "Sua consulta foi reservada. Complete o pagamento para confirmar seu agendamento." : "Your appointment has been reserved. Complete payment to confirm your booking.")}
                 </p>
 
-                <div className="bg-slate-50 rounded-lg p-4 mb-6 text-left">
+                <div className="bg-muted/30 rounded-lg p-4 mb-6 text-left">
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Treatment</span>
+                      <span className="text-muted-foreground">{isPt ? "Tratamento" : "Treatment"}</span>
                       <span className="font-medium">{treatment?.name ?? ""}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Date</span>
+                      <span className="text-muted-foreground">{isPt ? "Data" : "Date"}</span>
                       <span className="font-medium">
-                        {new Date(selectedDate).toLocaleDateString("en-GB", {
+                        {new Date(selectedDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
@@ -495,7 +503,7 @@ export default function BookingForm() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Time</span>
+                      <span className="text-muted-foreground">{isPt ? "Horário" : "Time"}</span>
                       <span className="font-medium">{selectedTime}</span>
                     </div>
                     <div className="border-t pt-2 mt-2">
@@ -507,12 +515,28 @@ export default function BookingForm() {
                   </div>
                 </div>
 
+                {/* Screening reminder */}
+                {!screeningComplete && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 flex items-start gap-3 text-left">
+                    <Shield className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-red-300 text-sm">{isPt ? "Triagem Médica Necessária" : "Medical Screening Required"}</p>
+                      <p className="text-xs text-red-400/80 mt-1">{isPt ? "Complete sua triagem médica pelo menos 24 horas antes da consulta para evitar reagendamento." : "Complete your medical screening at least 24 hours before your appointment to avoid rescheduling."}</p>
+                      <Link href="/dashboard/screening">
+                        <Button size="sm" variant="outline" className="mt-2 gap-1 border-red-500/20 text-red-400 hover:bg-red-500/10 text-xs">
+                          <Shield className="h-3 w-3" /> {isPt ? "Completar Triagem" : "Complete Screening"}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row gap-3">
                   {treatment?.price === 0 ? (
                     // Free appointment - just go to appointment details
                     <Link href={`/dashboard/appointments/${createdAppointmentId}`} className="w-full">
                       <Button className="w-full">
-                        View Appointment
+                        {isPt ? "Ver Consulta" : "View Appointment"}
                       </Button>
                     </Link>
                   ) : (
@@ -520,7 +544,7 @@ export default function BookingForm() {
                     <>
                       <Link href={`/dashboard/appointments/${createdAppointmentId}`} className="flex-1">
                         <Button variant="outline" className="w-full">
-                          Pay Later
+                          {isPt ? "Pagar Depois" : "Pay Later"}
                         </Button>
                       </Link>
                       <Button
@@ -531,12 +555,12 @@ export default function BookingForm() {
                         {loading ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Processing...
+                            {isPt ? "Processando..." : "Processing..."}
                           </>
                         ) : (
                           <>
                             <CreditCard className="h-4 w-4" />
-                            Pay Now
+                            {isPt ? "Pagar Agora" : "Pay Now"}
                           </>
                         )}
                       </Button>

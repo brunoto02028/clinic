@@ -110,8 +110,8 @@ export default function PatientRecords() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">{isPt ? "Meus Registros" : "My Records"}</h1>
-        <p className="text-slate-600 text-sm mt-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{isPt ? "Meus Registros" : "My Records"}</h1>
+        <p className="text-muted-foreground text-sm mt-1">
           {isPt ? "Visualize seu histórico de tratamento e documentação clínica." : "View your treatment history and clinical documentation."}
         </p>
       </div>
@@ -132,11 +132,11 @@ export default function PatientRecords() {
           {soapNotes.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-slate-700 mb-2">
+                <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   {isPt ? "Nenhuma nota clínica ainda" : "No clinical notes yet"}
                 </h3>
-                <p className="text-slate-500">
+                <p className="text-muted-foreground">
                   {isPt ? "As notas clínicas aparecerão aqui após suas consultas serem concluídas." : "Clinical notes will appear here after your appointments are completed."}
                 </p>
               </CardContent>
@@ -153,10 +153,10 @@ export default function PatientRecords() {
                             <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-sm sm:text-base text-slate-800">
+                            <h3 className="font-semibold text-sm sm:text-base text-foreground">
                               {note?.appointment?.treatmentType ?? "Treatment"}
                             </h3>
-                            <p className="text-sm text-slate-500 mt-1">
+                            <p className="text-sm text-muted-foreground mt-1">
                               {new Date(
                                 note?.appointment?.dateTime ?? ""
                               ).toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
@@ -166,7 +166,7 @@ export default function PatientRecords() {
                                 year: "numeric",
                               })}
                             </p>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-muted-foreground">
                               {isPt ? "Terapeuta" : "Therapist"}: {note?.therapist?.firstName ?? ""}{" "}
                               {note?.therapist?.lastName ?? ""}
                             </p>
@@ -202,11 +202,11 @@ export default function PatientRecords() {
           {appointments.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-slate-700 mb-2">
+                <Calendar className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">
                   {isPt ? "Nenhum histórico de tratamento" : "No treatment history"}
                 </h3>
-                <p className="text-slate-500">
+                <p className="text-muted-foreground">
                   {isPt ? "Suas consultas concluídas aparecerão aqui." : "Your completed appointments will appear here."}
                 </p>
               </CardContent>
@@ -220,16 +220,16 @@ export default function PatientRecords() {
                       <CardContent className="p-3 sm:p-4">
                         <div className="flex items-start sm:items-center justify-between gap-3">
                           <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+                              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-400" />
                             </div>
                             <div className="min-w-0">
-                              <h3 className="font-semibold text-sm sm:text-base text-slate-800 truncate">
+                              <h3 className="font-semibold text-sm sm:text-base text-foreground truncate">
                                 {appt?.treatmentType ?? ""}
                               </h3>
-                              <p className="text-xs sm:text-sm text-slate-500">
+                              <p className="text-xs sm:text-sm text-muted-foreground">
                                 {new Date(appt?.dateTime ?? "").toLocaleDateString(
-                                  "en-GB",
+                                  isPt ? "pt-BR" : "en-GB",
                                   {
                                     weekday: "short",
                                     day: "numeric",
@@ -238,7 +238,7 @@ export default function PatientRecords() {
                                   }
                                 )}
                               </p>
-                              <p className="text-xs sm:text-sm text-slate-500">
+                              <p className="text-xs sm:text-sm text-muted-foreground">
                                 {appt?.therapist?.firstName ?? ""} {appt?.therapist?.lastName ?? ""}
                               </p>
                             </div>

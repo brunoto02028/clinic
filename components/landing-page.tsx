@@ -185,17 +185,17 @@ export default function LandingPage() {
   ];
 
   const services = [
-    { slug: "electrotherapy", icon: Zap, titleKey: "svc.electrotherapy", descKey: "svc.electrotherapyDesc", color: "bg-amber-100 text-amber-700" },
-    { slug: "exercise-therapy", icon: Dumbbell, titleKey: "svc.exerciseTherapy", descKey: "svc.exerciseTherapyDesc", color: "bg-green-100 text-green-700" },
-    { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-100 text-blue-700" },
-    { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-100 text-purple-700" },
-    { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-100 text-cyan-700" },
-    { slug: "laser-shockwave", icon: CircleDot, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-rose-100 text-rose-700" },
-    { slug: "sports-injury", icon: Activity, titleKey: "svc.sportsInjury", descKey: "svc.sportsInjuryDesc", color: "bg-orange-100 text-orange-700" },
-    { slug: "chronic-pain", icon: Heart, titleKey: "svc.chronicPain", descKey: "svc.chronicPainDesc", color: "bg-red-100 text-red-700" },
-    { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-100 text-teal-700" },
-    { slug: "kinesiotherapy", icon: Users, titleKey: "svc.kinesiotherapy", descKey: "svc.kinesiotherapyDesc", color: "bg-indigo-100 text-indigo-700" },
-    { slug: "microcurrent", icon: Zap, titleKey: "svc.microcurrent", descKey: "svc.microcurrentDesc", color: "bg-yellow-100 text-yellow-700" },
+    { slug: "electrotherapy", icon: Zap, titleKey: "svc.electrotherapy", descKey: "svc.electrotherapyDesc", color: "bg-amber-500/15 text-amber-400" },
+    { slug: "exercise-therapy", icon: Dumbbell, titleKey: "svc.exerciseTherapy", descKey: "svc.exerciseTherapyDesc", color: "bg-emerald-500/15 text-emerald-400" },
+    { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-500/15 text-blue-400" },
+    { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-500/15 text-purple-400" },
+    { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-500/15 text-cyan-400" },
+    { slug: "laser-shockwave", icon: CircleDot, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-rose-500/15 text-rose-400" },
+    { slug: "sports-injury", icon: Activity, titleKey: "svc.sportsInjury", descKey: "svc.sportsInjuryDesc", color: "bg-orange-500/15 text-orange-400" },
+    { slug: "chronic-pain", icon: Heart, titleKey: "svc.chronicPain", descKey: "svc.chronicPainDesc", color: "bg-red-500/15 text-red-400" },
+    { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-500/15 text-teal-400" },
+    { slug: "kinesiotherapy", icon: Users, titleKey: "svc.kinesiotherapy", descKey: "svc.kinesiotherapyDesc", color: "bg-indigo-500/15 text-indigo-400" },
+    { slug: "microcurrent", icon: Zap, titleKey: "svc.microcurrent", descKey: "svc.microcurrentDesc", color: "bg-yellow-500/15 text-yellow-400" },
   ];
 
   const steps = [
@@ -206,9 +206,9 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background bg-grid-pattern">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+      <header className="sticky top-0 z-50 header-futuristic">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {settings ? (
@@ -305,7 +305,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-12 sm:py-16 lg:py-24">
+      <section className="relative overflow-hidden py-12 sm:py-16 lg:py-24 bg-dot-pattern">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div>
@@ -353,7 +353,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div>
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl bg-primary/10">
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-primary/10">
                 {settings !== null && settings?.heroImageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -380,9 +380,9 @@ export default function LandingPage() {
       </section>
 
       {/* Portal Features Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-card">
+      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div>
+          <div className="mb-8 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
               {(() => {
                 const raw = S("portalTitle", "home.portalTitle");
@@ -399,7 +399,7 @@ export default function LandingPage() {
                 return raw;
               })()}
             </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">{S("portalSubtitle", "home.portalSubtitle")}</p>
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("portalSubtitle", "home.portalSubtitle")}</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {features.map((feature, index) => (
@@ -425,9 +425,9 @@ export default function LandingPage() {
       {/* Services Section — restructured with individual service cards linking to detail pages */}
       <section id="services" className="py-12 sm:py-16 lg:py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div>
+          <div className="mb-8 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{S("servicesTitle", "home.servicesTitle")}</h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">{S("servicesSubtitle", "home.servicesSubtitle")}</p>
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("servicesSubtitle", "home.servicesSubtitle")}</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {services.map((svc, index) => (
@@ -457,11 +457,11 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ CUSTOM INSOLES / FOOT SCAN BLOCK ═══ */}
-      <section id="insoles" className="py-16 sm:py-20 lg:py-28 bg-card overflow-hidden">
+      <section id="insoles" className="py-16 sm:py-20 lg:py-28 bg-card/50 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div>
-            <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold uppercase tracking-wider mb-4">{T("home.insolesLabel")}</span>
+            <span className="inline-block px-4 py-1.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-4">{T("home.insolesLabel")}</span>
             <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight">
               {S("insolesTitle", "home.insolesTitle")} <span className="text-primary">{S("insolesSubtitle", "home.insolesTitle2")}</span>
             </h2>
@@ -477,9 +477,9 @@ export default function LandingPage() {
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
-                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2.5 shadow-lg">
-                    <Footprints className="h-5 w-5 text-blue-600" />
-                    <span className="text-sm font-medium text-slate-800">{T("home.insolesBenefit5")}</span>
+                  <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
+                    <Footprints className="h-5 w-5 text-blue-400" />
+                    <span className="text-sm font-medium text-foreground">{T("home.insolesBenefit5")}</span>
                   </div>
                 </div>
               </div>
@@ -498,7 +498,7 @@ export default function LandingPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <div key={n} className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
                     <span className="text-sm text-foreground">{T(`home.insolesBenefit${n}`)}</span>
                   </div>
                 ))}
@@ -515,10 +515,10 @@ export default function LandingPage() {
             <h3 className="text-lg sm:text-xl font-bold text-foreground text-center mb-8">{T("home.processTitle")}</h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { num: "01", titleKey: "home.insolesStep1", descKey: "home.insolesStep1Desc", icon: Footprints, color: "bg-blue-100 text-blue-700" },
-                { num: "02", titleKey: "home.insolesStep2", descKey: "home.insolesStep2Desc", icon: Activity, color: "bg-indigo-100 text-indigo-700" },
-                { num: "03", titleKey: "home.insolesStep3", descKey: "home.insolesStep3Desc", icon: Zap, color: "bg-violet-100 text-violet-700" },
-                { num: "04", titleKey: "home.insolesStep4", descKey: "home.insolesStep4Desc", icon: CheckCircle2, color: "bg-green-100 text-green-700" },
+                { num: "01", titleKey: "home.insolesStep1", descKey: "home.insolesStep1Desc", icon: Footprints, color: "bg-blue-500/15 text-blue-400" },
+                { num: "02", titleKey: "home.insolesStep2", descKey: "home.insolesStep2Desc", icon: Activity, color: "bg-indigo-500/15 text-indigo-400" },
+                { num: "03", titleKey: "home.insolesStep3", descKey: "home.insolesStep3Desc", icon: Zap, color: "bg-violet-500/15 text-violet-400" },
+                { num: "04", titleKey: "home.insolesStep4", descKey: "home.insolesStep4Desc", icon: CheckCircle2, color: "bg-emerald-500/15 text-emerald-400" },
               ].map((step, i) => (
                 <div key={step.titleKey}>
                   <span className="absolute -top-3 left-5 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">{step.num}</span>
@@ -539,7 +539,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div>
-            <span className="inline-block px-4 py-1.5 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold uppercase tracking-wider mb-4">{T("home.bioLabel")}</span>
+            <span className="inline-block px-4 py-1.5 rounded-full bg-purple-500/15 text-purple-400 text-xs font-semibold uppercase tracking-wider mb-4">{T("home.bioLabel")}</span>
             <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight">
               {S("bioTitle", "home.bioTitle")} — <span className="text-primary">{S("bioSubtitle", "home.bioTitle2")}</span>
             </h2>
@@ -553,7 +553,7 @@ export default function LandingPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <div key={n} className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
                     <span className="text-sm text-foreground">{T(`home.bioBenefit${n}`)}</span>
                   </div>
                 ))}
@@ -572,16 +572,16 @@ export default function LandingPage() {
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
-                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg px-4 py-2.5 shadow-lg">
-                    <ScanLine className="h-5 w-5 text-purple-600" />
-                    <span className="text-sm font-medium text-slate-800">{T("home.bioBenefit5")}</span>
+                  <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
+                    <ScanLine className="h-5 w-5 text-purple-400" />
+                    <span className="text-sm font-medium text-foreground">{T("home.bioBenefit5")}</span>
                   </div>
                 </div>
               </div>
               {/* floating stat */}
               <div className="absolute -top-4 -left-4 sm:-top-6 sm:-left-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-600">33</p>
+                  <p className="text-2xl font-bold text-purple-400">33</p>
                   <p className="text-xs text-muted-foreground">Landmarks</p>
                 </div>
               </div>
@@ -599,10 +599,10 @@ export default function LandingPage() {
             <h3 className="text-lg sm:text-xl font-bold text-foreground text-center mb-8">{T("home.processTitle")}</h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { num: "01", titleKey: "home.bioStep1", descKey: "home.bioStep1Desc", icon: ScanLine, color: "bg-purple-100 text-purple-700" },
-                { num: "02", titleKey: "home.bioStep2", descKey: "home.bioStep2Desc", icon: Brain, color: "bg-indigo-100 text-indigo-700" },
-                { num: "03", titleKey: "home.bioStep3", descKey: "home.bioStep3Desc", icon: Activity, color: "bg-blue-100 text-blue-700" },
-                { num: "04", titleKey: "home.bioStep4", descKey: "home.bioStep4Desc", icon: CheckCircle2, color: "bg-green-100 text-green-700" },
+                { num: "01", titleKey: "home.bioStep1", descKey: "home.bioStep1Desc", icon: ScanLine, color: "bg-purple-500/15 text-purple-400" },
+                { num: "02", titleKey: "home.bioStep2", descKey: "home.bioStep2Desc", icon: Brain, color: "bg-indigo-500/15 text-indigo-400" },
+                { num: "03", titleKey: "home.bioStep3", descKey: "home.bioStep3Desc", icon: Activity, color: "bg-blue-500/15 text-blue-400" },
+                { num: "04", titleKey: "home.bioStep4", descKey: "home.bioStep4Desc", icon: CheckCircle2, color: "bg-emerald-500/15 text-emerald-400" },
               ].map((step, i) => (
                 <div key={step.titleKey}>
                   <span className="absolute -top-3 left-5 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">{step.num}</span>
@@ -619,11 +619,11 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-card">
+      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div>
+          <div className="mb-8 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{T("home.howItWorksTitle")}</h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">{T("home.howItWorksSubtitle")}</p>
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{T("home.howItWorksSubtitle")}</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {steps.map((step, index) => (
@@ -690,14 +690,14 @@ export default function LandingPage() {
       </section>
 
       {/* Articles Section */}
-      <section id="articles" className="py-12 sm:py-16 lg:py-20 bg-card">
+      <section id="articles" className="py-12 sm:py-16 lg:py-20 bg-card/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div>
+          <div className="mb-8 sm:mb-10">
             <p className="text-secondary font-medium mb-2">{T("home.articlesLabel")}</p>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
               {S("articlesTitle", "home.articlesTitle")}
             </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">{S("articlesSubtitle", "home.articlesSubtitle")}</p>
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("articlesSubtitle", "home.articlesSubtitle")}</p>
           </div>
 
           {articles.length > 0 ? (
@@ -742,9 +742,9 @@ export default function LandingPage() {
       {/* Contact Section */}
       <section id="contact" className="py-12 sm:py-16 lg:py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div>
+          <div className="mb-8 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{S("contactTitle", "home.contactTitle")}</h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground">{S("contactSubtitle", "home.contactSubtitle")}</p>
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("contactSubtitle", "home.contactSubtitle")}</p>
           </div>
           {(() => {
             const allCards: {id:string;icon:string;title:string;content:string;enabled?:boolean;link?:string}[] = settings?.contactCardsJson ? (() => { try { return JSON.parse(settings.contactCardsJson); } catch { return []; }})() : [
@@ -780,63 +780,26 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      {(() => {
-        const mods: FooterModules = settings?.footerModulesJson ? (() => { try { return JSON.parse(settings.footerModulesJson); } catch { return {}; }})() : {};
-        const show = (k: keyof FooterModules) => mods[k] !== false; // default all enabled
-        const rawFooterLinks: any[] = settings?.footerLinksJson ? (() => { try { return JSON.parse(settings.footerLinksJson); } catch { return []; }})() : [];
-        const footerLinks = rawFooterLinks.map(l => ({ id: l.id, label: l.label || l.title || '', href: l.href || l.url || '/' })).filter(l => l.label && l.href);
-        const socialLinks: {id:string;platform:string;url:string}[] = settings?.socialLinksJson ? (() => { try { return JSON.parse(settings.socialLinksJson); } catch { return []; }})() : [];
-        const socialIconMap: Record<string,any> = { instagram: Instagram, facebook: Facebook, twitter: Twitter, x: Twitter, linkedin: Linkedin, youtube: Youtube };
-        return (
-          <footer className="bg-primary text-primary-foreground py-8 sm:py-12">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                {/* Logo + tagline */}
-                {show('logo') && (
-                  <div className="flex flex-col items-center md:items-start gap-3">
-                    {settings && <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" variant="dark" />}
-                    {settings?.tagline && <p className="text-xs text-primary-foreground/60 max-w-[200px] text-center md:text-left">{settings.tagline}</p>}
-                  </div>
-                )}
-                {/* Nav links */}
-                {show('links') && footerLinks.length > 0 && (
-                  <div className="flex flex-col items-center md:items-start gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/50 mb-1">Links</p>
-                    {footerLinks.map(l => <Link key={l.id} href={l.href || '/'} className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors">{l.label}</Link>)}
-                    <Link href="/staff-login" className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors">{T("home.staffPortal")}</Link>
-                  </div>
-                )}
-                {/* Contact + Social */}
-                <div className="flex flex-col items-center md:items-end gap-3">
-                  {show('contact') && settings?.email && (
-                    <a href={`mailto:${settings.email}`} className="text-sm text-primary-foreground/70 hover:text-primary-foreground flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{settings.email}</a>
-                  )}
-                  {show('contact') && settings?.phone && (
-                    <a href={`tel:${settings.phone}`} className="text-sm text-primary-foreground/70 hover:text-primary-foreground flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{settings.phone}</a>
-                  )}
-                  {show('social') && socialLinks.length > 0 && (
-                    <div className="flex items-center gap-3 mt-1">
-                      {socialLinks.map(s => {
-                        const SIcon = socialIconMap[s.platform?.toLowerCase()] || Globe;
-                        return <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" className="text-primary-foreground/60 hover:text-primary-foreground transition-colors"><SIcon className="h-4 w-4" /></a>;
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* Copyright */}
-              {show('copyright') && (
-                <div className="border-t border-primary-foreground/20 pt-6 text-center">
-                  <p className="text-sm text-primary-foreground/60">
-                    {locale === "en-GB" && settings?.footerText ? settings.footerText : `© ${new Date().getFullYear()} Bruno Physical Rehabilitation. ${T("home.allRightsReserved")}`}
-                  </p>
-                </div>
-              )}
-            </div>
-          </footer>
-        );
-      })()}
+      {/* Footer — Minimal */}
+      <footer className="border-t border-white/5 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            {settings && <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" />}
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} BPR. {T("home.allRightsReserved")}
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            {settings?.email && (
+              <a href={`mailto:${settings.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Mail className="h-3 w-3" />{settings.email}</a>
+            )}
+            {settings?.phone && (
+              <a href={`tel:${settings.phone}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Phone className="h-3 w-3" />{settings.phone}</a>
+            )}
+            <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{T("home.staffPortal")}</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

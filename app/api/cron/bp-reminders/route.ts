@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
             portalUrl: `${BASE}/dashboard/blood-pressure`,
           },
           plainMessage: 'Time to check your blood pressure! Log your reading in your patient portal.',
+          plainMessagePt: 'Hora de verificar sua pressão arterial! Registre sua leitura no portal do paciente.',
         });
         sent++;
       } catch (err) {

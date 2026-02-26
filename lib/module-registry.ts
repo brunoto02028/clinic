@@ -30,6 +30,8 @@ import {
   BookOpen,
   Trophy,
   Award,
+  Map,
+  ShoppingCart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -227,6 +229,38 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     href: "/dashboard/achievements",
     category: "content",
     defaultEnabled: true,
+  },
+
+  // ── JOURNEY (BPR Journey section) ──
+  {
+    key: "mod_journey",
+    label: "BPR Journey",
+    labelPt: "Jornada BPR",
+    description: "Your rehabilitation journey milestones and progress",
+    icon: Map,
+    href: "/dashboard/journey",
+    category: "content",
+    defaultEnabled: true,
+  },
+  {
+    key: "mod_community",
+    label: "Community",
+    labelPt: "Comunidade",
+    description: "Connect with other patients and share experiences",
+    icon: Trophy,
+    href: "/dashboard/community",
+    category: "content",
+    defaultEnabled: true,
+  },
+  {
+    key: "mod_marketplace",
+    label: "Marketplace",
+    labelPt: "Marketplace",
+    description: "Browse rehabilitation products, insoles and accessories",
+    icon: ShoppingCart,
+    href: "/dashboard/marketplace",
+    category: "content",
+    defaultEnabled: false,
   },
 ];
 

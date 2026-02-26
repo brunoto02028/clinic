@@ -105,13 +105,13 @@ export default function ConsentPage() {
       </div>
 
       {alreadyAccepted && (
-        <Card className="border-green-200 bg-green-50/50">
+        <Card className="border-green-500/20 bg-green-500/10">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+              <CheckCircle className="h-6 w-6 text-green-400" />
               <div>
-                <p className="font-medium text-green-800">{T("consent.accepted")}</p>
-                <p className="text-sm text-green-600">
+                <p className="font-medium text-green-300">{T("consent.accepted")}</p>
+                <p className="text-sm text-green-400">
                   {T("consent.acceptedOn")} {acceptedDate ? new Date(acceptedDate).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB") : "—"}
                 </p>
               </div>

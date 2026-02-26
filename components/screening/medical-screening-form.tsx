@@ -239,8 +239,8 @@ export default function MedicalScreeningForm() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">{T("screening.title")}</h1>
-        <p className="text-slate-600 text-sm mt-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{T("screening.title")}</h1>
+        <p className="text-muted-foreground text-sm mt-1">
           {T("screening.subtitle")}
         </p>
       </div>
@@ -269,13 +269,13 @@ export default function MedicalScreeningForm() {
 
       {hasExisting && formData.consentGiven && (
         <div>
-          <Card className="border-emerald-200 bg-emerald-50">
+          <Card className="border-emerald-500/20 bg-emerald-500/10">
             <CardContent className="py-4">
               <div className="flex items-center gap-3">
-                <CheckCircle className="h-6 w-6 text-emerald-600" />
+                <CheckCircle className="h-6 w-6 text-emerald-400" />
                 <div>
-                  <p className="font-medium text-emerald-800">{T("screening.complete")}</p>
-                  <p className="text-sm text-emerald-600">
+                  <p className="font-medium text-emerald-300">{T("screening.complete")}</p>
+                  <p className="text-sm text-emerald-400">
                     {T("screening.updateInfo")}
                   </p>
                 </div>
@@ -304,8 +304,8 @@ export default function MedicalScreeningForm() {
                   key={q.key}
                   className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
                     formData[q.key as keyof ScreeningData] === true
-                      ? "bg-amber-50 border border-amber-200"
-                      : "bg-slate-50"
+                      ? "bg-amber-500/10 border border-amber-500/20"
+                      : "bg-muted/50"
                   }`}
                 >
                   <Checkbox
@@ -325,14 +325,14 @@ export default function MedicalScreeningForm() {
               ))}
 
               {hasRedFlags && (
-                <div className="mt-4 p-4 bg-amber-100 rounded-lg border border-amber-300">
+                <div className="mt-4 p-4 bg-amber-500/15 rounded-lg border border-amber-500/30">
                   <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                    <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
                     <div>
-                      <p className="font-medium text-amber-800">
+                      <p className="font-medium text-amber-300">
                         {T("screening.redFlagsIdentified")}
                       </p>
-                      <p className="text-sm text-amber-700 mt-1">
+                      <p className="text-sm text-amber-400/80 mt-1">
                         {T("screening.redFlagsNote")}
                       </p>
                     </div>

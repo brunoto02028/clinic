@@ -15,8 +15,10 @@ interface NotifyPatientParams {
   emailTemplateSlug?: string;
   /** Template variables for email */
   emailVars?: Record<string, string>;
-  /** Plain text message for SMS/WhatsApp (short, no HTML) */
+  /** Plain text message for SMS/WhatsApp (short, no HTML) — English */
   plainMessage: string;
+  /** Portuguese version of plainMessage for pt-BR patients */
+  plainMessagePt?: string;
   /** Optional: override the channel (skip preference lookup) */
   forceChannel?: "EMAIL" | "SMS" | "WHATSAPP";
 }
@@ -26,6 +28,7 @@ export async function notifyPatient({
   emailTemplateSlug,
   emailVars = {},
   plainMessage,
+  plainMessagePt,
   forceChannel,
 }: NotifyPatientParams): Promise<{ channel: string; success: boolean; error?: string }> {
   try {
@@ -36,6 +39,7 @@ export async function notifyPatient({
         phone: true,
         firstName: true,
         communicationPreference: true,
+        preferredLocale: true,
       } as any,
     });
 
@@ -46,13 +50,16 @@ export async function notifyPatient({
     const phone: string | null = u.phone || null;
     const email: string = u.email;
     const firstName: string = u.firstName || "Patient";
+    const locale: string = u.preferredLocale || "en-GB";
+    const isPt = locale === "pt-BR" || locale.startsWith("pt");
+    const msg = (isPt && plainMessagePt) ? plainMessagePt : plainMessage;
 
     // ─── WhatsApp ───
     const waConfigured = isWhatsAppConfigured() || await isWhatsAppConfiguredAsync();
     if (pref === "WHATSAPP" && phone && waConfigured) {
       const result = await sendWhatsAppMessage({
         to: phone,
-        message: plainMessage,
+        message: msg,
         patientId,
         triggerEvent: emailTemplateSlug || "NOTIFICATION",
       });
@@ -76,7 +83,7 @@ export async function notifyPatient({
               Authorization: "Basic " + Buffer.from(`${twilioSid}:${twilioToken}`).toString("base64"),
               "Content-Type": "application/x-www-form-urlencoded",
             },
-            body: new URLSearchParams({ To: cleanPhone, From: twilioFrom, Body: plainMessage }),
+            body: new URLSearchParams({ To: cleanPhone, From: twilioFrom, Body: msg }),
           });
           if (res.ok) {
             return { channel: "SMS", success: true };
@@ -108,8 +115,8 @@ export async function notifyPatient({
       try {
         await sendEmail({
           to: email,
-          subject: "BPR Rehab — Notification",
-          html: `<p>Hi ${firstName},</p><p>${plainMessage}</p>`,
+          subject: isPt ? "BPR Rehab — Notificação" : "BPR Rehab — Notification",
+          html: `<p>${isPt ? "Olá" : "Hi"} ${firstName},</p><p>${msg}</p>`,
         });
         return { channel: "EMAIL", success: true };
       } catch (err: any) {

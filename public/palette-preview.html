@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BPR — Paleta de Cores</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#0a0e17; color:#e0e0e0; min-height:100vh; padding:30px 20px; }
+  h1 { text-align:center; font-size:28px; margin-bottom:8px; color:#fff; }
+  .subtitle { text-align:center; color:#888; margin-bottom:40px; font-size:14px; }
+  .palettes { display:flex; flex-direction:column; gap:40px; max-width:900px; margin:0 auto; }
+  .palette { border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:24px; background:rgba(255,255,255,0.03); }
+  .palette:hover { border-color:rgba(255,255,255,0.15); }
+  .palette h2 { font-size:18px; margin-bottom:4px; color:#fff; }
+  .palette .desc { font-size:13px; color:#888; margin-bottom:16px; }
+  .swatches { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .swatch { width:80px; height:60px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-bottom:4px; font-size:9px; color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.06); }
+  .swatch span { background:rgba(0,0,0,0.4); padding:1px 4px; border-radius:4px; margin-top:2px; }
+
+  /* Preview components */
+  .preview-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .preview-btn { padding:10px 24px; border-radius:8px; font-size:13px; font-weight:600; border:none; cursor:pointer; color:#fff; transition:all 0.2s; }
+  .preview-btn-outline { padding:10px 24px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; background:transparent; transition:all 0.2s; }
+  .preview-card { border-radius:12px; padding:16px 20px; border:1px solid rgba(255,255,255,0.06); backdrop-filter:blur(10px); flex:1; min-width:200px; }
+  .preview-footer { border-radius:12px; padding:20px; margin-top:12px; color:#fff; display:flex; justify-content:space-between; align-items:center; }
+  .preview-footer span { font-size:12px; opacity:0.7; }
+  .preview-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .preview-sidebar { width:200px; border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.06); }
+  .preview-nav { padding:8px 12px; border-radius:8px; font-size:12px; margin-bottom:4px; cursor:pointer; }
+
+  .label { font-size:10px; color:#666; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; font-weight:600; }
+
+  .vote-btn { display:inline-block; padding:10px 28px; border-radius:10px; background:linear-gradient(135deg, #5dc9c0, #607d7d); color:#fff; font-weight:700; font-size:14px; border:none; cursor:pointer; margin-top:12px; }
+  .vote-btn:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(93,201,192,0.3); }
+  .number { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-weight:700; font-size:14px; margin-right:8px; }
+</style>
+</head>
+<body>
+
+<h1>🎨 BPR — Opções de Paleta</h1>
+<p class="subtitle">Escolha a paleta que mais combina. Todas usam o verde da marca misturado com tons mais discretos.</p>
+
+<div class="palettes">
+
+  <!-- PALETTE 1: Teal Brand (original BPR colors, muted) -->
+  <div class="palette" id="p1">
+    <h2><span class="number" style="background:#3d8b84;color:#fff">1</span> Teal Clássico BPR</h2>
+    <p class="desc">As cores originais da marca (#5dc9c0 / #607d7d) em versão escura e elegante. Discreto e profissional.</p>
+    <div class="swatches">
+      <div class="swatch" style="background:#5dc9c0"><span>#5dc9c0</span></div>
+      <div class="swatch" style="background:#3d8b84"><span>#3d8b84</span></div>
+      <div class="swatch" style="background:#607d7d"><span>#607d7d</span></div>
+      <div class="swatch" style="background:#2a5c58"><span>#2a5c58</span></div>
+      <div class="swatch" style="background:#1a3a38"><span>#1a3a38</span></div>
+      <div class="swatch" style="background:#0d1f1e"><span>#0d1f1e</span></div>
+      <div class="swatch" style="background:#e8f5f3;color:#333"><span>#e8f5f3</span></div>
+    </div>
+    <p class="label">Botões</p>
+    <div class="preview-row" style="margin-bottom:12px">
+      <button class="preview-btn" style="background:linear-gradient(135deg,#3d8b84,#2a5c58)">Agendar Consulta</button>
+      <button class="preview-btn-outline" style="border:1px solid #5dc9c055;color:#5dc9c0">Portal do Paciente</button>
+      <span class="preview-badge" style="background:#5dc9c020;color:#5dc9c0">Ativo</span>
+      <span class="preview-badge" style="background:#607d7d20;color:#8aaba8">Pendente</span>
+    </div>
+    <p class="label">Footer</p>
+    <div class="preview-footer" style="background:linear-gradient(135deg,#1a3a38,#0d1f1e);border:1px solid #5dc9c015">
+      <div><strong style="color:#5dc9c0">BPR</strong> <span style="color:#607d7d">Physical Rehabilitation</span></div>
+      <span style="color:#607d7d">© 2026 BPR. All rights reserved.</span>
+    </div>
+  </div>
+
+  <!-- PALETTE 2: Slate Blue-Teal (muted blue-green blend) -->
+  <div class="palette" id="p2">
+    <h2><span class="number" style="background:#4a7c8a;color:#fff">2</span> Azul-Teal Suave</h2>
+    <p class="desc">Mistura do azul com o verde da marca. Tom azul-esverdeado acinzentado — moderno e sóbrio.</p>
+    <div class="swatches">
+      <div class="swatch" style="background:#6ba3b0"><span>#6ba3b0</span></div>
+      <div class="swatch" style="background:#4a7c8a"><span>#4a7c8a</span></div>
+      <div class="swatch" style="background:#3a6570"><span>#3a6570</span></div>
+      <div class="swatch" style="background:#2c4f58"><span>#2c4f58</span></div>
+      <div class="swatch" style="background:#1a333b"><span>#1a333b</span></div>
+      <div class="swatch" style="background:#0e1e24"><span>#0e1e24</span></div>
+      <div class="swatch" style="background:#e4eff2;color:#333"><span>#e4eff2</span></div>
+    </div>
+    <p class="label">Botões</p>
+    <div class="preview-row" style="margin-bottom:12px">
+      <button class="preview-btn" style="background:linear-gradient(135deg,#4a7c8a,#2c4f58)">Agendar Consulta</button>
+      <button class="preview-btn-outline" style="border:1px solid #6ba3b055;color:#6ba3b0">Portal do Paciente</button>
+      <span class="preview-badge" style="background:#6ba3b020;color:#6ba3b0">Ativo</span>
+      <span class="preview-badge" style="background:#4a7c8a20;color:#7eadb5">Pendente</span>
+    </div>
+    <p class="label">Footer</p>
+    <div class="preview-footer" style="background:linear-gradient(135deg,#1a333b,#0e1e24);border:1px solid #6ba3b015">
+      <div><strong style="color:#6ba3b0">BPR</strong> <span style="color:#4a7c8a">Physical Rehabilitation</span></div>
+      <span style="color:#4a7c8a">© 2026 BPR. All rights reserved.</span>
+    </div>
+  </div>
+
+  <!-- PALETTE 3: Warm Sage (green-grey, very muted and earthy) -->
+  <div class="palette" id="p3">
+    <h2><span class="number" style="background:#5a8a7a;color:#fff">3</span> Sage Elegante</h2>
+    <p class="desc">Verde-acinzentado suave com toque terroso. Ultra discreto, sofisticado e acolhedor.</p>
+    <div class="swatches">
+      <div class="swatch" style="background:#7ab5a0"><span>#7ab5a0</span></div>
+      <div class="swatch" style="background:#5a8a7a"><span>#5a8a7a</span></div>
+      <div class="swatch" style="background:#477062"><span>#477062</span></div>
+      <div class="swatch" style="background:#35564c"><span>#35564c</span></div>
+      <div class="swatch" style="background:#1e332d"><span>#1e332d</span></div>
+      <div class="swatch" style="background:#111f1b"><span>#111f1b</span></div>
+      <div class="swatch" style="background:#e8f0ec;color:#333"><span>#e8f0ec</span></div>
+    </div>
+    <p class="label">Botões</p>
+    <div class="preview-row" style="margin-bottom:12px">
+      <button class="preview-btn" style="background:linear-gradient(135deg,#5a8a7a,#35564c)">Agendar Consulta</button>
+      <button class="preview-btn-outline" style="border:1px solid #7ab5a055;color:#7ab5a0">Portal do Paciente</button>
+      <span class="preview-badge" style="background:#7ab5a020;color:#7ab5a0">Ativo</span>
+      <span class="preview-badge" style="background:#5a8a7a20;color:#8cbdab">Pendente</span>
+    </div>
+    <p class="label">Footer</p>
+    <div class="preview-footer" style="background:linear-gradient(135deg,#1e332d,#111f1b);border:1px solid #7ab5a015">
+      <div><strong style="color:#7ab5a0">BPR</strong> <span style="color:#5a8a7a">Physical Rehabilitation</span></div>
+      <span style="color:#5a8a7a">© 2026 BPR. All rights reserved.</span>
+    </div>
+  </div>
+
+  <!-- PALETTE 4: Steel Slate (cool grey with subtle teal accent) -->
+  <div class="palette" id="p4">
+    <h2><span class="number" style="background:#5e7a85;color:#fff">4</span> Steel Slate</h2>
+    <p class="desc">Cinza-azulado com acento teal da marca. Minimalista, corporativo e muito discreto.</p>
+    <div class="swatches">
+      <div class="swatch" style="background:#8aaab5"><span>#8aaab5</span></div>
+      <div class="swatch" style="background:#5e7a85"><span>#5e7a85</span></div>
+      <div class="swatch" style="background:#4a6670"><span>#4a6670</span></div>
+      <div class="swatch" style="background:#384f58"><span>#384f58</span></div>
+      <div class="swatch" style="background:#222f35"><span>#222f35</span></div>
+      <div class="swatch" style="background:#141c20"><span>#141c20</span></div>
+      <div class="swatch" style="background:#5dc9c0"><span>#5dc9c0</span></div>
+    </div>
+    <p class="label">Botões</p>
+    <div class="preview-row" style="margin-bottom:12px">
+      <button class="preview-btn" style="background:linear-gradient(135deg,#5e7a85,#384f58)">Agendar Consulta</button>
+      <button class="preview-btn-outline" style="border:1px solid #8aaab555;color:#8aaab5">Portal do Paciente</button>
+      <span class="preview-badge" style="background:#5dc9c020;color:#5dc9c0">Ativo</span>
+      <span class="preview-badge" style="background:#5e7a8520;color:#8aaab5">Pendente</span>
+    </div>
+    <p class="label">Footer</p>
+    <div class="preview-footer" style="background:linear-gradient(135deg,#222f35,#141c20);border:1px solid #5dc9c010">
+      <div><strong style="color:#5dc9c0">BPR</strong> <span style="color:#5e7a85">Physical Rehabilitation</span></div>
+      <span style="color:#5e7a85">© 2026 BPR. All rights reserved.</span>
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center;margin:40px 0 20px;color:#666;font-size:13px">
+  Escolha o número (1, 2, 3 ou 4) e eu implemento!
+</div>
+
+</body>
+</html>

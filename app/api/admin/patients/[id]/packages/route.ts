@@ -122,6 +122,7 @@ export async function POST(
           portalUrl: `${BASE}/dashboard/treatment`,
         },
         plainMessage: `Your treatment package "${pkg.name}" is ready. Please log in to review and complete payment.`,
+        plainMessagePt: `Seu pacote de tratamento "${pkg.name}" está pronto. Acesse seu portal para revisar e completar o pagamento.`,
       }).catch(err => console.error('[packages] notify error:', err));
     } catch {}
 

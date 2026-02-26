@@ -78,15 +78,15 @@ export default function DailyMission() {
   };
 
   return (
-    <Card className="border-primary/20 bg-gradient-to-br from-teal-50/50 to-white overflow-hidden">
+    <Card className="border-primary/20 bg-card/80 overflow-hidden">
       <div className="h-1 bg-gradient-to-r from-primary to-emerald-500" />
       <CardContent className="p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
-            <h3 className="font-bold text-slate-800 text-sm">{T("mission.todaysMission")}</h3>
+            <h3 className="font-bold text-foreground text-sm">{T("mission.todaysMission")}</h3>
           </div>
-          <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+          <div className="flex items-center gap-1 bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full">
             <Sparkles className="h-3 w-3" />
             <span className="text-[11px] font-bold">+{totalXp} XP</span>
           </div>
@@ -99,7 +99,7 @@ export default function DailyMission() {
                 key={task.key}
                 layout
                 className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
-                  task.completed ? "bg-emerald-50" : "bg-white hover:bg-slate-50"
+                  task.completed ? "bg-emerald-500/10" : "bg-card hover:bg-muted/50"
                 }`}
               >
                 <button
@@ -114,20 +114,20 @@ export default function DailyMission() {
                   ) : completing === task.key ? (
                     <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                   ) : (
-                    <Circle className="h-5 w-5 text-slate-300 hover:text-primary transition-colors" />
+                    <Circle className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
                   )}
                 </button>
-                <span className={`text-sm flex-1 ${task.completed ? "text-emerald-700 line-through" : "text-slate-700"}`}>
+                <span className={`text-sm flex-1 ${task.completed ? "text-emerald-400 line-through" : "text-foreground"}`}>
                   {task.label}
                 </span>
-                <span className="text-[10px] font-medium text-slate-400">+{task.xp} XP</span>
+                <span className="text-[10px] font-medium text-muted-foreground">+{task.xp} XP</span>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
 
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-          <span className="text-[11px] text-slate-400">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+          <span className="text-[11px] text-muted-foreground">
             {completedCount}/{tasks.length} {T("mission.completed")}
           </span>
           <Link href="/dashboard/journey">

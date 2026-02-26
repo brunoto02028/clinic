@@ -64,7 +64,7 @@ export default function MobilePageHeader() {
       >
         <ArrowLeft className="h-5 w-5" />
       </Button>
-      <h2 className="text-base font-semibold text-slate-800 truncate">
+      <h2 className="text-base font-semibold text-foreground truncate">
         {isPt ? title.pt : title.en}
       </h2>
     </div>

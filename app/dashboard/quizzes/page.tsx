@@ -145,7 +145,7 @@ export default function PatientQuizzesPage() {
               const bestAttempt = q.attempts.length > 0 ? q.attempts.reduce((best: any, a: any) => (!best || a.score > best.score) ? a : best, null) : null;
               const isPerfect = bestAttempt && bestAttempt.score === bestAttempt.totalQuestions;
               return (
-                <Card key={q.id} className={`hover:shadow-md transition-all cursor-pointer ${isPerfect ? "border-green-200 bg-green-50/30" : ""}`} onClick={() => startQuiz(q)}>
+                <Card key={q.id} className={`hover:shadow-md transition-all cursor-pointer ${isPerfect ? "border-green-500/20 bg-green-500/10" : ""}`} onClick={() => startQuiz(q)}>
                   <CardContent className="py-4">
                     <div className="flex items-center gap-4">
                       <div className="text-3xl flex-shrink-0">{q.iconEmoji || "📝"}</div>
@@ -159,10 +159,10 @@ export default function PatientQuizzesPage() {
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           <Badge variant="outline" className="text-[10px]">{q._count.questions} {isPt ? "perguntas" : "questions"}</Badge>
                           <Badge variant="secondary" className="text-[10px]">{q.difficulty}</Badge>
-                          <Badge className="text-[10px] bg-amber-100 text-amber-700">{q.xpReward} XP</Badge>
-                          {q.condition && <Badge className="text-[10px] bg-blue-100 text-blue-700">{q.condition.iconEmoji} {isPt ? q.condition.namePt : q.condition.nameEn}</Badge>}
+                          <Badge className="text-[10px] bg-amber-500/15 text-amber-400">{q.xpReward} XP</Badge>
+                          {q.condition && <Badge className="text-[10px] bg-blue-500/15 text-blue-400">{q.condition.iconEmoji} {isPt ? q.condition.namePt : q.condition.nameEn}</Badge>}
                           {bestAttempt && (
-                            <Badge className={`text-[10px] ${isPerfect ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>
+                            <Badge className={`text-[10px] ${isPerfect ? "bg-green-500/15 text-green-400" : "bg-muted text-muted-foreground"}`}>
                               {isPerfect ? "✅ " : ""}{bestAttempt.score}/{bestAttempt.totalQuestions}
                             </Badge>
                           )}
@@ -204,11 +204,11 @@ export default function PatientQuizzesPage() {
 
             <div className="space-y-2">
               {q.options.map((opt, oIdx) => {
-                let borderClass = "border-slate-200 hover:border-primary/50";
+                let borderClass = "border-white/10 hover:border-primary/50";
                 if (showExplanation) {
-                  if (opt.isCorrect) borderClass = "border-green-500 bg-green-50";
-                  else if (oIdx === selectedOption && !opt.isCorrect) borderClass = "border-red-500 bg-red-50";
-                  else borderClass = "border-slate-200 opacity-50";
+                  if (opt.isCorrect) borderClass = "border-green-500 bg-green-500/10";
+                  else if (oIdx === selectedOption && !opt.isCorrect) borderClass = "border-red-500 bg-red-500/10";
+                  else borderClass = "border-white/10 opacity-50";
                 } else if (selectedOption === oIdx) {
                   borderClass = "border-primary bg-primary/5";
                 }
@@ -221,7 +221,7 @@ export default function PatientQuizzesPage() {
                     disabled={showExplanation}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-sm font-medium flex-shrink-0">
+                      <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm font-medium flex-shrink-0">
                         {String.fromCharCode(65 + oIdx)}
                       </span>
                       <span className="text-sm">{isPt ? opt.pt : opt.en}</span>
@@ -234,8 +234,8 @@ export default function PatientQuizzesPage() {
             </div>
 
             {showExplanation && (q.explanationEn || q.explanationPt) && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className="text-sm text-blue-400">
                   <strong>{isPt ? "Explicação:" : "Explanation:"}</strong>{" "}
                   {isPt ? (q.explanationPt || q.explanationEn) : (q.explanationEn || q.explanationPt)}
                 </p>
@@ -279,7 +279,7 @@ export default function PatientQuizzesPage() {
             <div className="text-4xl font-bold text-primary">{result.score}/{result.totalQuestions}</div>
             <Progress value={percentage} className="h-3" />
             <p className="text-muted-foreground text-sm">{percentage}% {isPt ? "correto" : "correct"}</p>
-            <div className="flex items-center justify-center gap-2 text-amber-600">
+            <div className="flex items-center justify-center gap-2 text-amber-400">
               <Trophy className="h-5 w-5" />
               <span className="font-semibold">+{result.xpEarned} XP</span>
             </div>

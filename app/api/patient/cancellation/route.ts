@@ -8,7 +8,7 @@ import { getEffectiveUser } from '@/lib/get-effective-user';
 import { sendTemplatedEmail } from '@/lib/email-templates';
 import { notifyPatient } from '@/lib/notify-patient';
 
-const CANCELLATION_WINDOW_HOURS = 48;
+const CANCELLATION_WINDOW_HOURS = 24;
 
 // GET: patient's own cancellation requests
 export async function GET(req: NextRequest) {
@@ -86,16 +86,18 @@ export async function POST(req: NextRequest) {
       hoursBeforeAppt = diffMs / (1000 * 60 * 60);
       isWithin48h = hoursBeforeAppt < CANCELLATION_WINDOW_HOURS;
 
+      const totalPaid = appointment.payment?.amount || appointment.price;
+
       if (isWithin48h) {
-        // Within 48h — no refund
-        refundEligible = false;
-        refundAmount = 0;
-        policyMessage = `Your appointment is in ${Math.round(hoursBeforeAppt)} hours. Under our cancellation policy, cancellations made within 48 hours of the appointment are not eligible for a refund. Your request will be reviewed by our team.`;
-      } else {
-        // More than 48h — full refund eligible
+        // Within 24h — 50% charge (refund only 50%)
         refundEligible = true;
-        refundAmount = appointment.payment?.amount || appointment.price;
-        policyMessage = `Your cancellation request has been received. As you are cancelling more than 48 hours in advance, you are eligible for a full refund of £${refundAmount.toFixed(2)}. Our team will process this within 3–5 business days.`;
+        refundAmount = Math.round(totalPaid * 0.5 * 100) / 100; // 50% refund
+        policyMessage = `Your appointment is in ${Math.round(hoursBeforeAppt)} hours. Under our cancellation policy, cancellations made within 24 hours are subject to a 50% charge. You will receive a refund of £${refundAmount.toFixed(2)} (50% of £${totalPaid.toFixed(2)}). Your request will be reviewed by our team.`;
+      } else {
+        // More than 24h — full refund eligible
+        refundEligible = true;
+        refundAmount = totalPaid;
+        policyMessage = `Your cancellation request has been received. As you are cancelling more than 24 hours in advance, you are eligible for a full refund of £${refundAmount.toFixed(2)}. Our team will process this within 3–5 business days.`;
       }
     }
 
@@ -141,6 +143,7 @@ export async function POST(req: NextRequest) {
         portalUrl: `${BASE}/dashboard/appointments`,
       },
       plainMessage: `Your cancellation request has been submitted. ${refundEligible ? `A refund of £${refundAmount} is being processed.` : 'Please check our cancellation policy for details.'}`,
+      plainMessagePt: `Sua solicitação de cancelamento foi enviada. ${refundEligible ? `Um reembolso de £${refundAmount} está sendo processado.` : 'Consulte nossa política de cancelamento para mais detalhes.'}`,
     }).catch(err => console.error('[cancellation] notification error:', err));
 
     return NextResponse.json({

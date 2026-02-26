@@ -104,8 +104,8 @@ export default function AppointmentsList() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">{isPt ? "Agendamentos" : "Appointments"}</h1>
-          <p className="text-slate-600 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{isPt ? "Agendamentos" : "Appointments"}</h1>
+          <p className="text-muted-foreground mt-1">
             {isTherapist
               ? (isPt ? "Gerencie e visualize todos os agendamentos" : "Manage and view all scheduled appointments")
               : (isPt ? "Visualize e gerencie seus agendamentos" : "View and manage your booked appointments")}
@@ -122,7 +122,7 @@ export default function AppointmentsList() {
       {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-slate-500" />
+          <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder={isPt ? "Filtrar por status" : "Filter by status"} />
@@ -146,17 +146,17 @@ export default function AppointmentsList() {
       ) : appointments.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-700 mb-2">
+            <Calendar className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               {isPt ? "Nenhum agendamento encontrado" : "No appointments found"}
             </h3>
-            <p className="text-slate-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               {statusFilter !== "all"
                 ? (isPt ? "Tente alterar o filtro para ver mais agendamentos" : "Try changing the filter to see more appointments")
                 : (isPt ? "Agende sua primeira consulta para começar" : "Book your first appointment to get started")}
             </p>
             <Link href="/dashboard/appointments/book">
-              <Button>Book Appointment</Button>
+              <Button>{isPt ? "Agendar Consulta" : "Book Appointment"}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -174,12 +174,12 @@ export default function AppointmentsList() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-slate-800">
+                            <h3 className="font-semibold text-foreground">
                               {appointment?.treatmentType ?? "Appointment"}
                             </h3>
                             {getStatusBadge(appointment?.status ?? "")}
                           </div>
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 text-sm text-slate-500">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <Clock className="h-4 w-4" />
                               <span>
@@ -214,18 +214,18 @@ export default function AppointmentsList() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 sm:gap-4 ml-16 md:ml-0">
+                      <div className="flex items-center gap-2 sm:gap-4 mt-2 md:mt-0 ml-0">
                         <div className="text-right">
-                          <p className="font-semibold text-sm sm:text-base text-slate-800">
+                          <p className="font-semibold text-sm sm:text-base text-foreground">
                             £{(appointment?.price ?? 0).toFixed(2)}
                           </p>
-                          <p className="text-[10px] sm:text-xs text-slate-500">
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">
                             {appointment?.payment?.status === "SUCCEEDED"
                               ? (isPt ? "Pago" : "Paid")
                               : (isPt ? "Pagamento Pendente" : "Payment Pending")}
                           </p>
                         </div>
-                        <ChevronRight className="h-5 w-5 text-slate-400" />
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       </div>
                     </div>
                   </CardContent>

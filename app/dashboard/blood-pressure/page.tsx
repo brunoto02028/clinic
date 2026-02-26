@@ -65,12 +65,12 @@ interface PPGAnalysis {
 }
 
 function classifyBP(sys: number, dia: number): { labelEn: string; labelPt: string; color: string; icon: any; severity: number } {
-  if (sys >= 180 || dia >= 120) return { labelEn: "Crisis", labelPt: "Crise Hipertensiva", color: "text-red-700 bg-red-100 border-red-400", icon: AlertTriangle, severity: 5 };
-  if (sys >= 140 || dia >= 90) return { labelEn: "High (Stage 2)", labelPt: "Alta (Estágio 2)", color: "text-red-600 bg-red-50 border-red-200", icon: AlertTriangle, severity: 4 };
-  if (sys >= 130 || dia >= 80) return { labelEn: "High (Stage 1)", labelPt: "Alta (Estágio 1)", color: "text-orange-600 bg-orange-50 border-orange-200", icon: AlertTriangle, severity: 3 };
-  if (sys >= 120 && dia < 80) return { labelEn: "Elevated", labelPt: "Elevada", color: "text-amber-600 bg-amber-50 border-amber-200", icon: TrendingUp, severity: 2 };
-  if (sys < 90 || dia < 60) return { labelEn: "Low", labelPt: "Baixa", color: "text-blue-600 bg-blue-50 border-blue-200", icon: TrendingDown, severity: 1 };
-  return { labelEn: "Normal", labelPt: "Normal", color: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: CheckCircle, severity: 0 };
+  if (sys >= 180 || dia >= 120) return { labelEn: "Crisis", labelPt: "Crise Hipertensiva", color: "text-red-400 bg-red-500/15 border-red-500/30", icon: AlertTriangle, severity: 5 };
+  if (sys >= 140 || dia >= 90) return { labelEn: "High (Stage 2)", labelPt: "Alta (Estágio 2)", color: "text-red-400 bg-red-500/10 border-red-500/20", icon: AlertTriangle, severity: 4 };
+  if (sys >= 130 || dia >= 80) return { labelEn: "High (Stage 1)", labelPt: "Alta (Estágio 1)", color: "text-orange-400 bg-orange-500/10 border-orange-500/20", icon: AlertTriangle, severity: 3 };
+  if (sys >= 120 && dia < 80) return { labelEn: "Elevated", labelPt: "Elevada", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", icon: TrendingUp, severity: 2 };
+  if (sys < 90 || dia < 60) return { labelEn: "Low", labelPt: "Baixa", color: "text-blue-400 bg-blue-500/10 border-blue-500/20", icon: TrendingDown, severity: 1 };
+  return { labelEn: "Normal", labelPt: "Normal", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", icon: CheckCircle, severity: 0 };
 }
 
 interface DeviceInfo {
@@ -223,7 +223,7 @@ function analyzePPGSignal(samples: number[], fps: number): PPGAnalysis {
   if (n < 60) {
     return {
       heartRate: 0, rrIntervals: [], peaks: [], sdnn: 0, rmssd: 0, pnn50: 0,
-      rhythmClassification: "NORMAL_SINUS", rhythmLabel: "Insufficient Data", rhythmColor: "text-gray-500",
+      rhythmClassification: "NORMAL_SINUS", rhythmLabel: "Insufficient Data", rhythmColor: "text-muted-foreground",
       rhythmDescription: "Not enough data collected for analysis.", confidence: 0,
       waveform: samples, timestamps: samples.map((_, i) => i / fps * 1000),
     };
@@ -307,38 +307,38 @@ function analyzePPGSignal(samples: number[], fps: number): PPGAnalysis {
   // Rhythm Classification
   let rhythmClassification: PPGAnalysis["rhythmClassification"] = "NORMAL_SINUS";
   let rhythmLabel = "Normal Sinus Rhythm";
-  let rhythmColor = "text-emerald-600";
+  let rhythmColor = "text-emerald-400";
   let rhythmDescription = "Heart rhythm appears regular with normal intervals between beats.";
   let confidence = 0.7;
 
   if (rrIntervals.length < 5) {
     rhythmClassification = "NORMAL_SINUS";
     rhythmLabel = "Insufficient Beats";
-    rhythmColor = "text-gray-500";
+    rhythmColor = "text-muted-foreground";
     rhythmDescription = "Not enough heartbeats detected for reliable rhythm analysis.";
     confidence = 0.2;
   } else if (heartRate > 100) {
     rhythmClassification = "TACHYCARDIA";
     rhythmLabel = "Tachycardia Detected";
-    rhythmColor = "text-orange-600";
+    rhythmColor = "text-orange-400";
     rhythmDescription = `Heart rate of ${heartRate} bpm is above normal resting range (60-100 bpm). This may be due to exercise, stress, caffeine, or a medical condition.`;
     confidence = 0.75;
   } else if (heartRate < 60) {
     rhythmClassification = "BRADYCARDIA";
     rhythmLabel = "Bradycardia Detected";
-    rhythmColor = "text-blue-600";
+    rhythmColor = "text-blue-400";
     rhythmDescription = `Heart rate of ${heartRate} bpm is below normal resting range. This can be normal for athletes, or may indicate a conduction issue.`;
     confidence = 0.7;
   } else if (cvRR > 15 && pnn50 > 30 && sdnn > 80) {
     rhythmClassification = "POSSIBLE_AFIB";
     rhythmLabel = "Irregular Rhythm — Possible AFib";
-    rhythmColor = "text-red-600";
+    rhythmColor = "text-red-400";
     rhythmDescription = `High variability detected (SDNN: ${Math.round(sdnn)}ms, CV: ${cvRR.toFixed(1)}%). R-R intervals are irregularly irregular, which may indicate atrial fibrillation. Please consult a cardiologist.`;
     confidence = 0.6;
   } else if (cvRR > 10 || pnn50 > 20) {
     rhythmClassification = "IRREGULAR";
     rhythmLabel = "Mildly Irregular Rhythm";
-    rhythmColor = "text-amber-600";
+    rhythmColor = "text-amber-400";
     rhythmDescription = `Some variability detected in beat-to-beat intervals (SDNN: ${Math.round(sdnn)}ms). This may be normal respiratory sinus arrhythmia or indicate premature beats.`;
     confidence = 0.6;
   } else {
@@ -347,7 +347,7 @@ function analyzePPGSignal(samples: number[], fps: number): PPGAnalysis {
     if (shortRR.length > 1 && shortRR.length < rrIntervals.length * 0.3) {
       rhythmClassification = "PREMATURE_BEATS";
       rhythmLabel = "Possible Premature Beats";
-      rhythmColor = "text-amber-600";
+      rhythmColor = "text-amber-400";
       rhythmDescription = `Detected ${shortRR.length} beat(s) with shorter-than-normal intervals, which may indicate premature atrial or ventricular contractions (PACs/PVCs).`;
       confidence = 0.55;
     } else {
@@ -437,7 +437,7 @@ function PPGWaveformChart({ waveform, peaks, fps }: { waveform: number[]; peaks:
   const totalDur = (waveform.length / fps * Math.max(1, step));
 
   return (
-    <div className="w-full overflow-x-auto rounded-lg border bg-white p-2">
+    <div className="w-full overflow-x-auto rounded-lg border bg-card/80 p-2">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[400px]" preserveAspectRatio="none">
         <defs>
           <linearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
@@ -509,9 +509,9 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
             <span className="text-sm font-semibold">{T("bp.rhythmAnalysis")}</span>
           </div>
           <div className={`rounded-lg border p-3 ${
-            analysis.rhythmClassification === "NORMAL_SINUS" ? "bg-emerald-50 border-emerald-200" :
-            analysis.rhythmClassification === "POSSIBLE_AFIB" ? "bg-red-50 border-red-200" :
-            "bg-amber-50 border-amber-200"
+            analysis.rhythmClassification === "NORMAL_SINUS" ? "bg-emerald-500/10 border-emerald-500/20" :
+            analysis.rhythmClassification === "POSSIBLE_AFIB" ? "bg-red-500/10 border-red-500/20" :
+            "bg-amber-500/10 border-amber-500/20"
           }`}>
             <p className={`font-bold text-sm ${analysis.rhythmColor}`}>{analysis.rhythmLabel}</p>
             <p className="text-xs text-muted-foreground mt-1">{analysis.rhythmDescription}</p>
@@ -565,13 +565,13 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
       </Card>
 
       {/* NHS Recommendation */}
-      <Card className="border-blue-200 bg-blue-50">
+      <Card className="border-blue-500/20 bg-blue-500/10">
         <CardContent className="p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-semibold text-blue-800">NHS / GP</span>
+            <Shield className="h-4 w-4 text-blue-400" />
+            <span className="text-sm font-semibold text-blue-400">NHS / GP</span>
           </div>
-          <p className="text-xs text-blue-900">
+          <p className="text-xs text-blue-400/80">
             {systolic >= 180 || diastolic >= 120 ? (locale === "pt-BR" ? "🚨 CRISE HIPERTENSIVA: Ligue 192 (SAMU) ou vá ao pronto-socorro imediatamente. Não espere." : "🚨 HYPERTENSIVE CRISIS: Call 999/112 or go to A&E immediately. Do not wait.") :
              systolic >= 140 || diastolic >= 90 ? T("bp.nhsStage2") :
              systolic >= 130 || diastolic >= 80 ? T("bp.nhsStage1") :
@@ -580,7 +580,7 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
              T("bp.nhsNormal")}
           </p>
           {analysis.rhythmClassification !== "NORMAL_SINUS" && analysis.confidence > 0.3 && (
-            <p className="text-xs text-red-700 font-medium mt-1">
+            <p className="text-xs text-red-400 font-medium mt-1">
               {T("bp.nhsArrhythmia")}
             </p>
           )}
@@ -589,17 +589,17 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
 
       {/* Repeat Measurement Suggestion */}
       {needsRepeat && onRepeat && (!repeatTotal || (repeatCount || 0) < repeatTotal) && (
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-orange-500/20 bg-orange-500/10">
           <CardContent className="p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
-              <span className="text-sm font-semibold text-orange-800">{T("bp.lowConfidence")}</span>
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-semibold text-orange-400">{T("bp.lowConfidence")}</span>
             </div>
-            <p className="text-xs text-orange-700">
+            <p className="text-xs text-orange-400/80">
               {analysis.confidence < 0.5 ? T("bp.lowConfidenceDesc") : T("bp.anomalyDetected")}
             </p>
             {repeatCount != null && repeatTotal != null && (
-              <p className="text-xs font-medium text-orange-800">
+              <p className="text-xs font-medium text-orange-400">
                 {T("bp.measurementOf")} {repeatCount} {T("bp.of")} {repeatTotal}
               </p>
             )}
@@ -612,8 +612,8 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
 
       {/* Average result badge */}
       {repeatCount != null && repeatTotal != null && repeatCount >= repeatTotal && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-center">
-          <p className="text-xs font-semibold text-emerald-700">{T("bp.averageResult")}</p>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-center">
+          <p className="text-xs font-semibold text-emerald-400">{T("bp.averageResult")}</p>
         </div>
       )}
 
@@ -676,23 +676,23 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
             const clamped = Math.min(100, riskScore);
             const level = clamped >= 40 ? "high" : clamped >= 15 ? "medium" : "low";
             const levelLabel = level === "high" ? (locale === "pt-BR" ? "Alto" : "High") : level === "medium" ? (locale === "pt-BR" ? "Moderado" : "Moderate") : (locale === "pt-BR" ? "Baixo" : "Low");
-            const levelColor = level === "high" ? "bg-red-100 text-red-800 border-red-300" : level === "medium" ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-emerald-100 text-emerald-800 border-emerald-300";
+            const levelColor = level === "high" ? "bg-red-500/15 text-red-400 border-red-500/30" : level === "medium" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
 
             return (
               <>
                 <div className={`rounded-lg border-2 p-3 text-center ${levelColor}`}>
                   <p className="text-xs font-medium opacity-70">{locale === "pt-BR" ? "Nível de Risco" : "Risk Level"}</p>
                   <p className="text-lg font-bold">{levelLabel}</p>
-                  <div className="w-full bg-white/50 rounded-full h-2 mt-2">
+                  <div className="w-full bg-white/10 rounded-full h-2 mt-2">
                     <div className={`h-2 rounded-full transition-all ${level === "high" ? "bg-red-500" : level === "medium" ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.max(5, clamped)}%` }} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   {findings.map((f, i) => (
                     <div key={i} className={`flex items-start gap-2 text-xs p-2 rounded ${
-                      f.severity === "high" ? "bg-red-50 text-red-800" :
-                      f.severity === "medium" ? "bg-amber-50 text-amber-800" :
-                      "bg-emerald-50 text-emerald-800"
+                      f.severity === "high" ? "bg-red-500/10 text-red-400" :
+                      f.severity === "medium" ? "bg-amber-500/10 text-amber-400" :
+                      "bg-emerald-500/10 text-emerald-400"
                     }`}>
                       <span className="mt-0.5">{f.severity === "high" ? "🔴" : f.severity === "medium" ? "🟡" : "🟢"}</span>
                       <span>{f.text}</span>
@@ -700,9 +700,9 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
                   ))}
                 </div>
                 {level === "high" && (
-                  <div className="bg-red-50 border border-red-300 rounded-lg p-3 text-center">
-                    <p className="text-xs font-bold text-red-800">{T("bp.seekMedical")}</p>
-                    <p className="text-[10px] text-red-700 mt-1">{locale === "pt-BR" ? "Esta avaliação é apenas uma triagem. Consulte um médico para diagnóstico." : "This assessment is screening-level only. Consult a doctor for diagnosis."}</p>
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-center">
+                    <p className="text-xs font-bold text-red-400">{T("bp.seekMedical")}</p>
+                    <p className="text-[10px] text-red-400/80 mt-1">{locale === "pt-BR" ? "Esta avaliação é apenas uma triagem. Consulte um médico para diagnóstico." : "This assessment is screening-level only. Consult a doctor for diagnosis."}</p>
                   </div>
                 )}
               </>
@@ -712,9 +712,9 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
       </Card>
 
       {/* Disclaimer */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-2">
-        <Shield className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-        <p className="text-[10px] text-amber-800">
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 flex items-start gap-2">
+        <Shield className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+        <p className="text-[10px] text-amber-400/80">
           {T("bp.nhsDisclaimer")}
         </p>
       </div>
@@ -945,16 +945,16 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
   // Practice mode result screen
   if (phase === "practice-result" && practiceResult) {
     const colorMap: Record<string, { bg: string; border: string; text: string; icon: any }> = {
-      emerald: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-800", icon: CheckCircle },
-      amber: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-800", icon: AlertTriangle },
-      red: { bg: "bg-red-50", border: "border-red-200", text: "text-red-800", icon: AlertTriangle },
+      emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-400", icon: CheckCircle },
+      amber: { bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-400", icon: AlertTriangle },
+      red: { bg: "bg-red-500/10", border: "border-red-500/20", text: "text-red-400", icon: AlertTriangle },
     };
     const c = colorMap[practiceResult.color] || colorMap.amber;
     const StatusIcon = c.icon;
     return (
       <div className="space-y-4">
         <div className="text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/15 text-blue-400 text-sm font-semibold mb-3">
             <HelpCircle className="h-4 w-4" /> {T("bp.practiceModeResults") || "Practice Mode — Results"}
           </div>
         </div>
@@ -967,14 +967,14 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
           <p className={`text-sm ${c.text}`}>{practiceResult.feedback}</p>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-xs text-blue-800">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+          <p className="text-xs text-blue-400">
             <strong>{T("bp.noteLabel") || "Note"}:</strong> {T("bp.practiceNote") || "This was a practice run. No data was saved to your history. When you're ready, start a real measurement."}
           </p>
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button onClick={() => { setPracticeMode(true); setPracticeResult(null); setPhase("instructions"); }} variant="outline" size="lg" className="w-full gap-2 border-blue-200 text-blue-700">
+          <Button onClick={() => { setPracticeMode(true); setPracticeResult(null); setPhase("instructions"); }} variant="outline" size="lg" className="w-full gap-2 border-blue-500/20 text-blue-400">
             <RefreshCw className="h-4 w-4" /> {T("bp.practiceAgain") || "Practice Again"}
           </Button>
           <Button onClick={() => { setPracticeMode(false); setPracticeResult(null); setPhase("instructions"); }} size="lg" className="w-full gap-2">
@@ -1003,8 +1003,8 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
               { n: "4", title: T("bp.holdStillTitle"), desc: T("bp.holdStillDesc") },
             ].map(s => (
               <div key={s.n} className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-red-600 font-bold text-xs">{s.n}</span>
+                <div className="w-7 h-7 rounded-full bg-red-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-red-400 font-bold text-xs">{s.n}</span>
                 </div>
                 <div>
                   <p className="text-sm font-medium">{s.title}</p>
@@ -1015,7 +1015,7 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
           </div>
 
           {/* Visual Diagram: Phone camera + finger placement */}
-          <div className="bg-white border border-primary/20 rounded-lg p-4">
+          <div className="bg-card/80 border border-primary/20 rounded-lg p-4">
             <p className="text-xs font-semibold text-center text-primary mb-3">{T("bp.diagramTitle")}</p>
             <div className="flex items-center justify-center gap-6">
               {/* Phone back view */}
@@ -1059,28 +1059,28 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs text-blue-800">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+            <p className="text-xs text-blue-400">
               <strong>{T("bp.whatWeMeasure")}</strong> {T("bp.whatWeMeasureDesc")}
             </p>
           </div>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-amber-800">
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-amber-400/80">
             <strong>{T("bp.importantLabel") || "Important"}:</strong> {T("bp.importantDisclaimer")}
           </p>
         </div>
 
         {/* Old Device Warning */}
         {deviceInfo.isOldDevice && deviceInfo.oldDeviceWarning && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-red-800">{T("bp.deviceWarning") || "Device Compatibility Warning"}</p>
-              <p className="text-xs text-red-700 mt-1">{deviceInfo.oldDeviceWarning}</p>
-              <p className="text-[10px] text-red-600 mt-1">{locale === "pt-BR" ? "Mínimo recomendado" : "Minimum recommended"}: {deviceInfo.brand === "Apple" ? "iPhone 7 (2016)" : "Android 8.0+ (2018)"} {locale === "pt-BR" ? "com câmera traseira + flash LED." : "with rear camera + flash LED."}</p>
+              <p className="text-xs font-semibold text-red-400">{T("bp.deviceWarning") || "Device Compatibility Warning"}</p>
+              <p className="text-xs text-red-400/80 mt-1">{deviceInfo.oldDeviceWarning}</p>
+              <p className="text-[10px] text-red-400/60 mt-1">{locale === "pt-BR" ? "Mínimo recomendado" : "Minimum recommended"}: {deviceInfo.brand === "Apple" ? "iPhone 7 (2016)" : "Android 8.0+ (2018)"} {locale === "pt-BR" ? "com câmera traseira + flash LED." : "with rear camera + flash LED."}</p>
             </div>
           </div>
         )}
@@ -1099,7 +1099,7 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
           <Button onClick={startCamera} size="lg" className="w-full gap-2 text-base">
             <Camera className="h-5 w-5" /> {T("bp.startMeasurement")}
           </Button>
-          <Button variant="outline" onClick={() => { setPracticeMode(true); startCamera(); }} size="lg" className="w-full gap-2 text-base border-blue-200 text-blue-700 hover:bg-blue-50">
+          <Button variant="outline" onClick={() => { setPracticeMode(true); startCamera(); }} size="lg" className="w-full gap-2 text-base border-blue-500/20 text-blue-400 hover:bg-blue-500/10">
             <HelpCircle className="h-5 w-5" /> {T("bp.practiceMode") || "Practice Mode (Test Run)"}
           </Button>
           <Button variant="outline" onClick={stopAndCancel} className="w-full">{T("bp.cancel")}</Button>
@@ -1112,11 +1112,11 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
     <div className="space-y-4" ref={containerRef}>
       {/* Front camera warning */}
       {cameraUsed === "front" && (phase === "countdown" || phase === "measuring") && (
-        <div className="bg-red-50 border border-red-300 rounded-lg p-3 flex items-start gap-2 animate-in fade-in">
-          <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-start gap-2 animate-in fade-in">
+          <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-xs font-semibold text-red-800">{T("bp.wrongCamera") || "Wrong Camera Detected"}</p>
-            <p className="text-[10px] text-red-700 mt-0.5">{T("bp.wrongCameraDesc") || "You appear to be using the front camera. For accurate PPG readings, use the rear camera with the flash LED. Place your finger on the back of the phone."}</p>
+            <p className="text-xs font-semibold text-red-400">{T("bp.wrongCamera") || "Wrong Camera Detected"}</p>
+            <p className="text-[10px] text-red-400/80 mt-0.5">{T("bp.wrongCameraDesc") || "You appear to be using the front camera. For accurate PPG readings, use the rear camera with the flash LED. Place your finger on the back of the phone."}</p>
           </div>
         </div>
       )}
@@ -1124,10 +1124,10 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
       {/* Finger position quality indicator */}
       {(phase === "countdown" || phase === "measuring") && (
         <div className={`rounded-lg p-2.5 text-center text-xs font-medium border transition-all ${
-          fingerQuality === "good" ? "bg-emerald-50 border-emerald-300 text-emerald-700" :
-          fingerQuality === "fair" ? "bg-amber-50 border-amber-300 text-amber-700" :
-          fingerQuality === "poor" ? "bg-orange-50 border-orange-300 text-orange-700" :
-          "bg-red-50 border-red-300 text-red-700"
+          fingerQuality === "good" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+          fingerQuality === "fair" ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+          fingerQuality === "poor" ? "bg-orange-500/10 border-orange-500/20 text-orange-400" :
+          "bg-red-500/10 border-red-500/20 text-red-400"
         }`}>
           {fingerQuality === "good" ? (T("bp.fingerGood") || "✅ Finger position: Good — hold steady") :
            fingerQuality === "fair" ? (T("bp.fingerFair") || "⚠️ Finger position: Fair — press more firmly over camera + flash") :
@@ -1381,18 +1381,18 @@ export default function BloodPressurePage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
               <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
               {T("bp.title")}
             </h1>
-            <p className="text-slate-600 text-xs sm:text-sm mt-1">{T("bp.subtitle")}</p>
+            <p className="text-muted-foreground text-xs sm:text-sm mt-1">{T("bp.subtitle")}</p>
           </div>
           <button
             onClick={toggleReminder}
             disabled={reminderLoading}
             className={`flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1.5 rounded-full border transition-colors shrink-0 ${
               bpReminder
-                ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
                 : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
             }`}
             title={T("bp.reminderLabel")}
@@ -1427,31 +1427,31 @@ export default function BloodPressurePage() {
 
         {/* Preparation Tips */}
         {!showCamera && !showManual && !showReport && (
-          <Card className="border-teal-200 bg-teal-50/50">
+          <Card className="border-teal-500/20 bg-teal-500/10">
             <CardContent className="p-3 space-y-2">
-              <p className="text-xs font-semibold text-teal-800 flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-teal-400 flex items-center gap-1.5">
                 <CheckCircle className="h-3.5 w-3.5" />
                 {locale === "pt-BR" ? "Antes de Medir — Preparação" : "Before Measuring — Preparation"}
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-teal-900">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-teal-300">
                 <div className="flex items-start gap-1.5">
-                  <span className="font-bold text-teal-600 mt-px">1.</span>
+                  <span className="font-bold text-teal-400 mt-px">1.</span>
                   <span>{locale === "pt-BR" ? "Sente-se confortavelmente e descanse por 5 minutos antes de medir." : "Sit comfortably and rest for 5 minutes before measuring."}</span>
                 </div>
                 <div className="flex items-start gap-1.5">
-                  <span className="font-bold text-teal-600 mt-px">2.</span>
+                  <span className="font-bold text-teal-400 mt-px">2.</span>
                   <span>{locale === "pt-BR" ? "Evite cafeína, exercício e fumo 30 min antes." : "Avoid caffeine, exercise, and smoking 30 min before."}</span>
                 </div>
                 <div className="flex items-start gap-1.5">
-                  <span className="font-bold text-teal-600 mt-px">3.</span>
+                  <span className="font-bold text-teal-400 mt-px">3.</span>
                   <span>{locale === "pt-BR" ? "Esvazie a bexiga antes de medir." : "Empty your bladder before measuring."}</span>
                 </div>
                 <div className="flex items-start gap-1.5">
-                  <span className="font-bold text-teal-600 mt-px">4.</span>
+                  <span className="font-bold text-teal-400 mt-px">4.</span>
                   <span>{locale === "pt-BR" ? "Apoie o braço na mesa, com o manguito na altura do coração." : "Support your arm on a table, cuff at heart level."}</span>
                 </div>
               </div>
-              <p className="text-[10px] text-teal-700 italic">
+              <p className="text-[10px] text-teal-400/70 italic">
                 {locale === "pt-BR" ? "Para resultados precisos, meça sempre no mesmo horário (de manhã, antes de medicamentos)." : "For accurate results, measure at the same time each day (morning, before medications)."}
               </p>
             </CardContent>
@@ -1475,7 +1475,7 @@ export default function BloodPressurePage() {
             <Button
               size="lg"
               variant="outline"
-              className="gap-2 h-14 sm:h-16 text-base border-red-200 bg-red-50/50 hover:bg-red-100/50 text-red-700"
+              className="gap-2 h-14 sm:h-16 text-base border-red-500/20 bg-red-500/10 hover:bg-red-500/15 text-red-400"
               onClick={() => { setShowCamera(true); setShowManual(false); }}
             >
               <Camera className="h-5 w-5" />
@@ -1491,7 +1491,7 @@ export default function BloodPressurePage() {
         
           {showCamera && (
             <div>
-              <Card className="border-red-200 bg-red-50/30">
+              <Card className="border-red-500/20 bg-red-500/10">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Camera className="h-5 w-5 text-red-500" />
@@ -1555,32 +1555,32 @@ export default function BloodPressurePage() {
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">{locale === "pt-BR" ? "Última Leitura" : "Latest Reading"}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{locale === "pt-BR" ? "Última Leitura" : "Latest Reading"}</p>
                   <p className="text-2xl sm:text-3xl font-bold mt-1">{latest.systolic}/{latest.diastolic} <span className="text-sm font-normal opacity-60">mmHg</span></p>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline" className={`text-[10px] ${latestClass.color}`}>
                       {locale === "pt-BR" ? latestClass.labelPt : latestClass.labelEn}
                     </Badge>
-                    {latest.heartRate && <span className="text-xs text-slate-500">{latest.heartRate} bpm</span>}
+                    {latest.heartRate && <span className="text-xs text-muted-foreground">{latest.heartRate} bpm</span>}
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {new Date(latest.measuredAt).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
                 <div className="text-right space-y-1.5">
-                  <div className="bg-white/80 rounded-lg px-2.5 py-1 text-center">
-                    <p className="text-[9px] text-slate-500 font-medium">{locale === "pt-BR" ? "P. Pulso" : "Pulse P."}</p>
-                    <p className="text-sm font-bold text-slate-700">{latest.systolic - latest.diastolic}</p>
+                  <div className="bg-muted/50 rounded-lg px-2.5 py-1 text-center">
+                    <p className="text-[9px] text-muted-foreground font-medium">{locale === "pt-BR" ? "P. Pulso" : "Pulse P."}</p>
+                    <p className="text-sm font-bold text-foreground">{latest.systolic - latest.diastolic}</p>
                   </div>
-                  <div className="bg-white/80 rounded-lg px-2.5 py-1 text-center">
-                    <p className="text-[9px] text-slate-500 font-medium">MAP</p>
-                    <p className="text-sm font-bold text-slate-700">{Math.round(latest.diastolic + (latest.systolic - latest.diastolic) / 3)}</p>
+                  <div className="bg-muted/50 rounded-lg px-2.5 py-1 text-center">
+                    <p className="text-[9px] text-muted-foreground font-medium">MAP</p>
+                    <p className="text-sm font-bold text-foreground">{Math.round(latest.diastolic + (latest.systolic - latest.diastolic) / 3)}</p>
                   </div>
                 </div>
               </div>
               {latestClass.severity >= 5 && (
-                <div className="mt-2 bg-red-200 border border-red-400 rounded-lg p-2 text-center animate-pulse">
-                  <p className="text-xs font-bold text-red-900">{locale === "pt-BR" ? "⚠️ CRISE HIPERTENSIVA — Procure atendimento médico IMEDIATAMENTE" : "⚠️ HYPERTENSIVE CRISIS — Seek medical attention IMMEDIATELY"}</p>
+                <div className="mt-2 bg-red-500/20 border border-red-500/30 rounded-lg p-2 text-center animate-pulse">
+                  <p className="text-xs font-bold text-red-300">{locale === "pt-BR" ? "⚠️ CRISE HIPERTENSIVA — Procure atendimento médico IMEDIATAMENTE" : "⚠️ HYPERTENSIVE CRISIS — Seek medical attention IMMEDIATELY"}</p>
                 </div>
               )}
             </CardContent>
@@ -1592,29 +1592,29 @@ export default function BloodPressurePage() {
           <div className="grid grid-cols-3 gap-2">
             <Card>
               <CardContent className="p-2.5 sm:p-3">
-                <p className="text-[10px] text-slate-500 font-medium">{locale === "pt-BR" ? "Média" : "Average"} ({days}d)</p>
-                <p className="text-base sm:text-xl font-bold text-slate-800 mt-0.5">
+                <p className="text-[10px] text-muted-foreground font-medium">{locale === "pt-BR" ? "Média" : "Average"} ({days}d)</p>
+                <p className="text-base sm:text-xl font-bold text-foreground mt-0.5">
                   {avgSys}/{avgDia}
                 </p>
-                <p className="text-[10px] text-slate-500 mt-0.5">{readings.length} {locale === "pt-BR" ? "leituras" : "readings"}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{readings.length} {locale === "pt-BR" ? "leituras" : "readings"}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-2.5 sm:p-3">
-                <p className="text-[10px] text-slate-500 font-medium">{locale === "pt-BR" ? "P. Pulso Médio" : "Avg Pulse P."}</p>
-                <p className="text-base sm:text-xl font-bold text-slate-800 mt-0.5">
+                <p className="text-[10px] text-muted-foreground font-medium">{locale === "pt-BR" ? "P. Pulso Médio" : "Avg Pulse P."}</p>
+                <p className="text-base sm:text-xl font-bold text-foreground mt-0.5">
                   {Math.round(readings.reduce((s, r) => s + (r.systolic - r.diastolic), 0) / readings.length)}
                 </p>
-                <p className="text-[10px] text-slate-500 mt-0.5">{locale === "pt-BR" ? "Normal: 30-50" : "Normal: 30-50"}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{locale === "pt-BR" ? "Normal: 30-50" : "Normal: 30-50"}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-2.5 sm:p-3">
-                <p className="text-[10px] text-slate-500 font-medium">{locale === "pt-BR" ? "MAP Média" : "Avg MAP"}</p>
-                <p className="text-base sm:text-xl font-bold text-slate-800 mt-0.5">
+                <p className="text-[10px] text-muted-foreground font-medium">{locale === "pt-BR" ? "MAP Média" : "Avg MAP"}</p>
+                <p className="text-base sm:text-xl font-bold text-foreground mt-0.5">
                   {Math.round(readings.reduce((s, r) => s + r.diastolic + (r.systolic - r.diastolic) / 3, 0) / readings.length)}
                 </p>
-                <p className="text-[10px] text-slate-500 mt-0.5">{locale === "pt-BR" ? "Normal: 70-100" : "Normal: 70-100"}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{locale === "pt-BR" ? "Normal: 70-100" : "Normal: 70-100"}</p>
               </CardContent>
             </Card>
           </div>
@@ -1624,7 +1624,7 @@ export default function BloodPressurePage() {
         {!loading && readings.length >= 2 && (
           <Card>
             <CardContent className="p-3">
-              <p className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
                 <BarChart3 className="h-3.5 w-3.5 text-primary" />
                 {locale === "pt-BR" ? "Tendência da Pressão Arterial" : "Blood Pressure Trend"}
               </p>
@@ -1666,10 +1666,10 @@ export default function BloodPressurePage() {
                         </text>
                       ))}
                     </svg>
-                    <div className="flex items-center justify-center gap-4 text-[10px] text-slate-500 mt-1">
+                    <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground mt-1">
                       <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> {locale === "pt-BR" ? "Sistólica" : "Systolic"}</span>
                       <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> {locale === "pt-BR" ? "Diastólica" : "Diastolic"}</span>
-                      <span className="flex items-center gap-1"><span className="w-3 h-2 bg-emerald-200 rounded-sm" /> {locale === "pt-BR" ? "Faixa Normal" : "Normal Range"}</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-2 bg-emerald-500/30 rounded-sm" /> {locale === "pt-BR" ? "Faixa Normal" : "Normal Range"}</span>
                     </div>
                   </div>
                 );
@@ -1701,8 +1701,8 @@ export default function BloodPressurePage() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : readings.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
-                <Heart className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+              <div className="text-center py-8 text-muted-foreground">
+                <Heart className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="font-medium">{T("bp.noReadings")}</p>
                 <p className="text-sm mt-1">{T("bp.noReadingsDesc")}</p>
               </div>
@@ -1723,13 +1723,13 @@ export default function BloodPressurePage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                             <span className="font-bold text-sm sm:text-base">{r.systolic}/{r.diastolic}</span>
-                            <span className="text-[10px] sm:text-xs text-slate-500">mmHg</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">mmHg</span>
                             {r.heartRate && (
-                              <span className="text-[10px] sm:text-xs text-slate-500">· {r.heartRate}bpm</span>
+                              <span className="text-[10px] sm:text-xs text-muted-foreground">· {r.heartRate}bpm</span>
                             )}
                             <div className="flex items-center gap-1 ml-auto">
                               {r.ppgSignal?.rhythm && r.ppgSignal.rhythm !== "NORMAL_SINUS" && (
-                                <Badge variant="outline" className="text-[8px] bg-amber-50 text-amber-700 border-amber-200">
+                                <Badge variant="outline" className="text-[8px] bg-amber-500/10 text-amber-400 border-amber-500/20">
                                   <Zap className="h-2.5 w-2.5 mr-0.5" />
                                   {r.ppgSignal.rhythm === "POSSIBLE_AFIB" ? "AFib?" : r.ppgSignal.rhythm === "TACHYCARDIA" ? "Tachy" : r.ppgSignal.rhythm === "BRADYCARDIA" ? "Brady" : "Irreg"}
                                 </Badge>
@@ -1739,7 +1739,7 @@ export default function BloodPressurePage() {
                               </Badge>
                             </div>
                           </div>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
                             {new Date(r.measuredAt).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                             {hasSignal && <span className="ml-1 text-primary">· {T("bp.tapWaveform")}</span>}
                           </p>
@@ -1747,7 +1747,7 @@ export default function BloodPressurePage() {
                       </div>
                       {/* Expanded waveform for stored readings */}
                       {isExpanded && hasSignal && (
-                        <div className="mt-1 p-3 rounded-lg border bg-white space-y-2">
+                        <div className="mt-1 p-3 rounded-lg border bg-card space-y-2">
                           <PPGWaveformChart
                             waveform={r.ppgSignal.waveformSubsampled}
                             peaks={[]}
@@ -1831,12 +1831,12 @@ export default function BloodPressurePage() {
           <CardContent>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-[10px]">
               {[
-                { label: locale === "pt-BR" ? "Baixa" : "Low", range: "<90/60", color: "bg-blue-50 text-blue-700 border-blue-200" },
-                { label: "Normal", range: "<120/80", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-                { label: locale === "pt-BR" ? "Elevada" : "Elevated", range: "120-129/<80", color: "bg-amber-50 text-amber-700 border-amber-200" },
-                { label: locale === "pt-BR" ? "Estágio 1" : "Stage 1", range: "130-139/80-89", color: "bg-orange-50 text-orange-700 border-orange-200" },
-                { label: locale === "pt-BR" ? "Estágio 2" : "Stage 2", range: "≥140/≥90", color: "bg-red-50 text-red-700 border-red-200" },
-                { label: locale === "pt-BR" ? "Crise" : "Crisis", range: "≥180/≥120", color: "bg-red-100 text-red-800 border-red-400 font-bold" },
+                { label: locale === "pt-BR" ? "Baixa" : "Low", range: "<90/60", color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+                { label: "Normal", range: "<120/80", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+                { label: locale === "pt-BR" ? "Elevada" : "Elevated", range: "120-129/<80", color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+                { label: locale === "pt-BR" ? "Estágio 1" : "Stage 1", range: "130-139/80-89", color: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
+                { label: locale === "pt-BR" ? "Estágio 2" : "Stage 2", range: "≥140/≥90", color: "bg-red-500/10 text-red-400 border-red-500/20" },
+                { label: locale === "pt-BR" ? "Crise" : "Crisis", range: "≥180/≥120", color: "bg-red-500/15 text-red-300 border-red-500/30 font-bold" },
               ].map((cat) => (
                 <div key={cat.label} className={`p-1.5 rounded border text-center ${cat.color}`}>
                   <p className="font-semibold">{cat.label}</p>

@@ -241,6 +241,12 @@ model Clinic {
   financialCategories   FinancialCategory[]
   apiKeys               ApiKey[]
   companyProfile        CompanyProfile?
+
+  // Analytics
+  siteVisitors          SiteVisitor[]
+  analyticsPageViews    AnalyticsPageView[]
+  analyticsClicks       AnalyticsClick[]
+  analyticsConversions  AnalyticsConversion[]
   
   @@index([slug])
   @@index([isActive])
@@ -597,9 +603,11 @@ model Appointment {
   // Reminders
   reminderSent                 Boolean    @default(false)
 
-  // Cancellation policy
+  // Cancellation & reschedule policy
   cancellationPolicyAcceptedAt DateTime?  // When patient accepted the policy
   stripePaymentIntentId        String?    // For refund processing
+  rescheduleCount              Int        @default(0)  // Number of times rescheduled (2 free, then charge)
+  lastRescheduledAt            DateTime?  // When last rescheduled
 
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -1567,10 +1575,25 @@ model BodyAssessment {
   mobilityScore     Float?
   overallScore      Float?
   
+  // Per-Segment Scores (0-100 per body region with trend)
+  segmentScores     Json?                 // {head:{score,trend}, shoulders:{score,trend}, spine:{score,trend}, hips:{score,trend}, knees:{score,trend}, ankles:{score,trend}}
+  
+  // Gait / Running Quantitative Metrics
+  gaitMetrics       Json?                 // {groundContactTimeMs, timeOfFlightMs, strideLengthCm, cadenceSpm, verticalOscillationCm, footStrikeAngle, pronationAngle}
+  
+  // AI-Suggested Corrective Exercises
+  correctiveExercises Json?               // [{name, targetArea, finding, difficulty, sets, reps, duration, instructions, benefits, musclesTargeted}]
+  
+  // Deviation Labels (visual markers on skeleton)
+  deviationLabels   Json?                 // [{joint, label, severity, angle, direction, description}]
+  
+  // Ideal vs Actual Comparison Data
+  idealComparison   Json?                 // [{segment, currentAngle, idealAngle, deviationDeg, status}]
+  
   // AI Summary
   aiSummary         String?               @db.Text
   aiRecommendations String?               @db.Text
-  aiFindings        Json?                 // [{area, finding, severity, recommendation}]
+  aiFindings        Json?                 // [{area, finding, severity, recommendation, icon, category}]
   aiProcessedAt     DateTime?
   
   // Therapist Review
@@ -3486,4 +3509,166 @@ model ApiKey {
   @@index([clinicId])
   @@index([keyHash])
   @@index([isActive])
+}
+
+// ============================================
+// SITE ANALYTICS — Visitor Tracking
+// ============================================
+
+model SiteVisitor {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  // Identification
+  fingerprint     String            // Browser fingerprint hash (no cookies needed)
+  ip              String?           // IP address
+  
+  // Geolocation (from IP)
+  country         String?
+  countryCode     String?
+  region          String?
+  city            String?
+  latitude        Float?
+  longitude       Float?
+
+  // Device & Browser
+  userAgent       String?  @db.Text
+  browser         String?           // Chrome, Firefox, Safari, etc.
+  browserVersion  String?
+  os              String?           // Windows, macOS, iOS, Android
+  osVersion       String?
+  deviceType      String?           // desktop, mobile, tablet
+  screenWidth     Int?
+  screenHeight    Int?
+  language        String?           // Browser language
+
+  // Traffic Source
+  referrer        String?  @db.Text
+  referrerDomain  String?           // Extracted domain
+  utmSource       String?
+  utmMedium       String?
+  utmCampaign     String?
+  utmTerm         String?
+  utmContent      String?
+
+  // Session tracking
+  totalVisits     Int      @default(1)
+  totalPageViews  Int      @default(0)
+  totalClicks     Int      @default(0)
+  totalTimeOnSite Int      @default(0)  // seconds
+  isReturning     Boolean  @default(false)
+
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  pageViews       AnalyticsPageView[]
+  clicks          AnalyticsClick[]
+  conversions     AnalyticsConversion[]
+
+  @@unique([clinicId, fingerprint])
+  @@index([clinicId, lastSeenAt])
+  @@index([clinicId, firstSeenAt])
+  @@index([ip])
+  @@index([country])
+  @@index([deviceType])
+  @@index([referrerDomain])
+}
+
+model AnalyticsPageView {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  visitorId       String
+  visitor         SiteVisitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+
+  // Page info
+  url             String            // Full path e.g. /services/physiotherapy
+  path            String            // Clean path without query
+  title           String?           // Page title
+  queryParams     String?           // Query string
+
+  // Engagement
+  timeOnPage      Int?     @default(0)  // seconds
+  scrollDepthMax  Int?     @default(0)  // percentage 0-100
+  scrollDepthAvg  Int?     @default(0)
+
+  // Navigation
+  enteredAt       DateTime @default(now())
+  exitedAt        DateTime?
+  isEntryPage     Boolean  @default(false)  // First page of session
+  isExitPage      Boolean  @default(false)  // Last page of session
+  isBounce        Boolean  @default(false)  // Only page viewed in session
+
+  // Session
+  sessionId       String?           // Group page views into sessions
+
+  createdAt       DateTime @default(now())
+
+  // Relations
+  clicks          AnalyticsClick[]
+
+  @@index([clinicId, createdAt])
+  @@index([clinicId, path])
+  @@index([visitorId])
+  @@index([sessionId])
+}
+
+model AnalyticsClick {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  visitorId       String
+  visitor         SiteVisitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  pageViewId      String?
+  pageView        AnalyticsPageView? @relation(fields: [pageViewId], references: [id], onDelete: SetNull)
+
+  // Click position (normalized to viewport percentage for heatmap)
+  x               Float             // 0-100 percentage of page width
+  y               Float             // Absolute Y in pixels (for long pages)
+  pageWidth       Int?              // Viewport width at time of click
+  pageHeight      Int?              // Document height at time of click
+  viewportHeight  Int?              // Viewport height
+
+  // Element info
+  selector        String?  @db.Text // CSS selector of clicked element
+  elementTag      String?           // e.g. "button", "a", "div"
+  elementText     String?           // Inner text (truncated)
+  elementHref     String?  @db.Text // If link, the href
+
+  // Page context
+  pagePath        String            // Which page the click happened on
+
+  createdAt       DateTime @default(now())
+
+  @@index([clinicId, pagePath, createdAt])
+  @@index([visitorId])
+  @@index([pageViewId])
+}
+
+model AnalyticsConversion {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  visitorId       String
+  visitor         SiteVisitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+
+  // Conversion type
+  type            String            // "form_submit", "whatsapp_click", "booking_start", "booking_complete", "phone_call", "signup", "cta_click"
+  label           String?           // Human label e.g. "Contact Form", "Book Appointment"
+  
+  // Context
+  pagePath        String?           // Page where conversion happened
+  elementSelector String?
+  metadata        Json?             // Extra data (form fields submitted, etc.)
+  value           Float?            // Monetary value if applicable
+
+  createdAt       DateTime @default(now())
+
+  @@index([clinicId, type, createdAt])
+  @@index([visitorId])
+  @@index([clinicId, createdAt])
 }

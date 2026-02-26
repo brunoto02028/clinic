@@ -6,6 +6,7 @@ import type { NextRequest } from 'next/server';
 const publicRoutes = [
   '/',
   '/login',
+  '/signout',
   '/signup',
   '/admin-login',
   '/staff-login',
@@ -31,8 +32,11 @@ const publicRoutes = [
   '/services',
   '/articles',
   '/terms',
+  '/privacy',
+  '/cookies',
   '/intake',
   '/api/intake',
+  '/api/analytics/track',
 ];
 
 // Routes that require SUPERADMIN access

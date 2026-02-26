@@ -143,39 +143,39 @@ export default function PatientMembershipPage() {
     <div className="space-y-8 max-w-4xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <Crown className="h-6 w-6 text-violet-600" />
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+          <Crown className="h-6 w-6 text-violet-400" />
           {isPt ? "Planos & Assinatura" : "Membership & Plans"}
         </h1>
-        <p className="text-slate-600 mt-1 text-sm">
+        <p className="text-muted-foreground mt-1 text-sm">
           {isPt ? "Gerencie sua assinatura e acesso a ferramentas de saúde, exercícios e conteúdo educacional." : "Manage your subscription and access to health tools, exercises, and educational content."}
         </p>
       </div>
 
       {/* Active Subscription Card */}
       {activeSub && (
-        <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-white overflow-hidden">
+        <Card className="border-violet-500/20 bg-card overflow-hidden">
           <div className="h-1 bg-gradient-to-r from-violet-500 to-violet-700" />
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Crown className="h-5 w-5 text-violet-600" />
+                <Crown className="h-5 w-5 text-violet-400" />
                 {isPt ? "Seu Plano Atual" : "Your Current Plan"}
               </CardTitle>
-              <Badge className="bg-green-100 text-green-800 border-green-200">
+              <Badge className="bg-green-500/15 text-green-400 border-green-500/20">
                 <CheckCircle className="h-3 w-3 mr-1" /> {isPt ? "Ativo" : "Active"}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-2xl font-bold text-slate-800">{activeSub.plan.name}</span>
+              <span className="text-2xl font-bold text-foreground">{activeSub.plan.name}</span>
               {activeSub.plan.isFree ? (
-                <span className="text-lg font-semibold text-green-600">{isPt ? "Gratuito" : "Free"}</span>
+                <span className="text-lg font-semibold text-green-400">{isPt ? "Gratuito" : "Free"}</span>
               ) : (
-                <span className="text-lg font-semibold text-slate-600">
+                <span className="text-lg font-semibold text-foreground">
                   £{activeSub.plan.price.toFixed(2)}
-                  <span className="text-sm font-normal text-slate-400">
+                  <span className="text-sm font-normal text-muted-foreground">
                     /{INTERVAL_LABELS[activeSub.plan.interval] || "month"}
                   </span>
                 </span>
@@ -183,18 +183,18 @@ export default function PatientMembershipPage() {
             </div>
 
             {activeSub.plan.description && (
-              <p className="text-sm text-slate-600">{activeSub.plan.description}</p>
+              <p className="text-sm text-muted-foreground">{activeSub.plan.description}</p>
             )}
 
             {/* Included features */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{isPt ? "O que está incluído" : "What's included"}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{isPt ? "O que está incluído" : "What's included"}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {activeSub.plan.features.map((key) => {
                   const label = getFeatureLabel(key);
                   if (!label) return null;
                   return (
-                    <div key={key} className="flex items-center gap-2 text-sm text-slate-700">
+                    <div key={key} className="flex items-center gap-2 text-sm text-foreground">
                       <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
                       {label}
                     </div>
@@ -205,7 +205,7 @@ export default function PatientMembershipPage() {
 
             {/* Billing info */}
             <div className="flex items-center justify-between pt-3 border-t flex-wrap gap-2">
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-muted-foreground">
                 <p>{isPt ? "Membro desde" : "Member since"}: {new Date(activeSub.startDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB")}</p>
                 {activeSub.currentPeriodEnd && (
                   <p className="flex items-center gap-1 mt-0.5">
@@ -218,14 +218,14 @@ export default function PatientMembershipPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                  className="text-xs text-red-400 border-red-500/20 hover:bg-red-500/10"
                   onClick={handleCancel}
                 >
                   {isPt ? "Cancelar Assinatura" : "Cancel Subscription"}
                 </Button>
               )}
               {activeSub.cancelAtPeriodEnd && (
-                <Badge variant="outline" className="border-amber-300 text-amber-700">
+                <Badge variant="outline" className="border-amber-500/30 text-amber-400">
                   {isPt ? "Cancela no fim do período" : "Cancels at period end"}
                 </Badge>
               )}
@@ -236,11 +236,11 @@ export default function PatientMembershipPage() {
 
       {/* No subscription CTA */}
       {!activeSub && plans.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-amber-500/20 bg-amber-500/10">
           <CardContent className="p-6 text-center">
             <Crown className="h-12 w-12 text-amber-500 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-amber-800 mb-1">{isPt ? "Você não tem um plano ativo" : "You don't have an active plan"}</h3>
-            <p className="text-sm text-amber-700 max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-amber-300 mb-1">{isPt ? "Você não tem um plano ativo" : "You don't have an active plan"}</h3>
+            <p className="text-sm text-amber-400/80 max-w-md mx-auto">
               {isPt ? "Escolha um plano abaixo para desbloquear exercícios, ferramentas de saúde, conteúdo educacional e mais." : "Choose a membership plan below to unlock exercises, health tools, educational content and more."}
             </p>
           </CardContent>
@@ -250,7 +250,7 @@ export default function PatientMembershipPage() {
       {/* Available Plans */}
       {plans.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-slate-800 mb-4">
+          <h2 className="text-lg font-semibold text-foreground mb-4">
             {activeSub ? (isPt ? "Mude de Plano" : "Upgrade Your Plan") : (isPt ? "Planos Disponíveis" : "Available Plans")}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -264,8 +264,8 @@ export default function PatientMembershipPage() {
                   key={plan.id}
                   className={`relative overflow-hidden transition-all ${
                     isCurrentPlan
-                      ? "border-violet-300 bg-violet-50/50 ring-2 ring-violet-200"
-                      : "border-slate-200 hover:border-violet-200 hover:shadow-md"
+                      ? "border-violet-500/30 bg-violet-500/5 ring-2 ring-violet-500/20"
+                      : "border-white/10 hover:border-violet-500/20 hover:shadow-md"
                   }`}
                 >
                   {isCurrentPlan && (
@@ -276,24 +276,24 @@ export default function PatientMembershipPage() {
                   <div className="h-1 bg-gradient-to-r from-violet-400 to-violet-600" />
                   <CardContent className="p-5 space-y-4">
                     <div>
-                      <h3 className="font-bold text-slate-800">{plan.name}</h3>
+                      <h3 className="font-bold text-foreground">{plan.name}</h3>
                       {plan.description && (
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{plan.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{plan.description}</p>
                       )}
                     </div>
 
                     <div className="flex items-baseline gap-1">
                       {plan.isFree ? (
-                        <span className="text-2xl font-bold text-green-600">{isPt ? "Gratuito" : "Free"}</span>
+                        <span className="text-2xl font-bold text-green-400">{isPt ? "Gratuito" : "Free"}</span>
                       ) : (
                         <>
-                          <span className="text-2xl font-bold text-slate-800">£{plan.price.toFixed(2)}</span>
-                          <span className="text-sm text-slate-400">/{INTERVAL_LABELS[plan.interval] || "month"}</span>
+                          <span className="text-2xl font-bold text-foreground">£{plan.price.toFixed(2)}</span>
+                          <span className="text-sm text-muted-foreground">/{INTERVAL_LABELS[plan.interval] || "month"}</span>
                         </>
                       )}
                     </div>
 
-                    <div className="text-xs text-slate-500 space-y-0.5">
+                    <div className="text-xs text-muted-foreground space-y-0.5">
                       <p className="flex items-center gap-1"><Zap className="h-3 w-3 text-violet-500" /> {moduleCount} {isPt ? "módulos incluídos" : "modules included"}</p>
                       <p className="flex items-center gap-1"><Shield className="h-3 w-3 text-violet-500" /> {permCount} {isPt ? "permissões" : "permissions"}</p>
                     </div>
@@ -304,14 +304,14 @@ export default function PatientMembershipPage() {
                         const label = getFeatureLabel(key);
                         if (!label) return null;
                         return (
-                          <div key={key} className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <div key={key} className="flex items-center gap-1.5 text-xs text-foreground">
                             <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
                             {label}
                           </div>
                         );
                       })}
                       {plan.features.length > 5 && (
-                        <p className="text-[10px] text-slate-400 pl-4.5">+{plan.features.length - 5} {isPt ? "mais" : "more"}</p>
+                        <p className="text-[10px] text-muted-foreground pl-4.5">+{plan.features.length - 5} {isPt ? "mais" : "more"}</p>
                       )}
                     </div>
 
@@ -351,9 +351,9 @@ export default function PatientMembershipPage() {
       {plans.length === 0 && !activeSub && (
         <Card>
           <CardContent className="p-8 text-center">
-            <Crown className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-1">{isPt ? "Nenhum plano disponível ainda" : "No plans available yet"}</h3>
-            <p className="text-sm text-slate-500">
+            <Crown className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-foreground mb-1">{isPt ? "Nenhum plano disponível ainda" : "No plans available yet"}</h3>
+            <p className="text-sm text-muted-foreground">
               {isPt ? "Os planos de assinatura aparecerão aqui quando a clínica configurá-los. Volte mais tarde." : "Membership plans will appear here once your clinic sets them up. Please check back later."}
             </p>
           </CardContent>
