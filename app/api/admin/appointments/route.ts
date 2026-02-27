@@ -4,6 +4,7 @@ import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { notifyPatient } from "@/lib/notify-patient";
 import { stripe } from "@/lib/stripe";
+import { sendEmail } from "@/lib/email";
 
 export async function GET() {
   try {
@@ -179,6 +180,40 @@ export async function POST(request: NextRequest) {
       });
     } catch (emailErr) {
       console.error('Failed to send appointment confirmation email:', emailErr);
+    }
+
+    // Send admin notification copy
+    try {
+      const adminUser = await prisma.user.findFirst({
+        where: { id: userId!, role: { in: ["SUPERADMIN", "ADMIN"] as any } },
+        select: { email: true, firstName: true },
+      });
+      if (adminUser?.email) {
+        const apptDate = new Date(dateTime);
+        const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        const payInfo = paymentMode === "online" && checkoutUrl ? `Online payment link: ${checkoutUrl}` : `In-person payment: £${(price || 0).toFixed(2)}`;
+        await sendEmail({
+          to: adminUser.email,
+          subject: `📅 Appointment Created: ${appointment.patient.firstName} ${appointment.patient.lastName} — ${treatmentType || 'Consultation'}`,
+          html: `
+            <div style="font-family:sans-serif;max-width:600px;">
+              <h2 style="color:#5dc9c0;">Appointment Confirmation Sent</h2>
+              <p>A confirmation email was sent to <strong>${appointment.patient.firstName} ${appointment.patient.lastName}</strong> (${appointment.patient.email}).</p>
+              <table style="border-collapse:collapse;width:100%;margin:16px 0;">
+                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Treatment</td><td style="padding:8px;border:1px solid #333;">${treatmentType || 'General Consultation'}</td></tr>
+                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Date</td><td style="padding:8px;border:1px solid #333;">${dateStr} at ${timeStr}</td></tr>
+                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Duration</td><td style="padding:8px;border:1px solid #333;">${duration || 60} min</td></tr>
+                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Price</td><td style="padding:8px;border:1px solid #333;">£${(price || 0).toFixed(2)}</td></tr>
+                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Payment</td><td style="padding:8px;border:1px solid #333;">${payInfo}</td></tr>
+              </table>
+              <p style="color:#666;font-size:12px;">This is an automatic notification from BPR Clinic System.</p>
+            </div>
+          `,
+        });
+      }
+    } catch (adminEmailErr) {
+      console.error('Failed to send admin notification:', adminEmailErr);
     }
 
     return NextResponse.json({ ...appointment, checkoutUrl });

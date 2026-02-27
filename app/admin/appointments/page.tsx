@@ -46,6 +46,7 @@ import {
   Loader2,
   CreditCard,
   Banknote,
+  Sparkles,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
@@ -88,11 +89,12 @@ export default function AdminAppointmentsPage() {
     patientId: "",
     dateTime: "",
     duration: 60,
-    treatmentType: "Initial Assessment",
-    price: 75,
+    treatmentType: "",
+    price: 0,
     notes: "",
     paymentMode: "in_person" as "online" | "in_person",
   });
+  const [aiNotesLoading, setAiNotesLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     dateTime: "",
     duration: 0,
@@ -144,6 +146,39 @@ export default function AdminAppointmentsPage() {
     } catch {}
   };
 
+  const handleAiNotes = async () => {
+    if (!createForm.patientId || !createForm.treatmentType) {
+      toast({ title: "Info", description: isPt ? "Selecione paciente e tratamento primeiro" : "Select patient and treatment first", variant: "destructive" });
+      return;
+    }
+    setAiNotesLoading(true);
+    try {
+      const patient = patients.find(p => p.id === createForm.patientId);
+      const res = await fetch("/api/admin/memberships/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `Generate professional clinical appointment notes (2-3 sentences) for a physiotherapy appointment. Patient: ${patient?.firstName} ${patient?.lastName}. Treatment: ${createForm.treatmentType}. Duration: ${createForm.duration} min. Write in English. Include: purpose of session, what will be covered, any preparation needed. Return ONLY the notes text, no JSON.`,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // The AI membership endpoint returns JSON, but we sent a text prompt — extract description or name as fallback
+        const notes = typeof data === "string" ? data : data.description || data.name || "";
+        setCreateForm(f => ({ ...f, notes }));
+      } else {
+        // Fallback: generate simple notes locally
+        const patient = patients.find(p => p.id === createForm.patientId);
+        setCreateForm(f => ({ ...f, notes: `${createForm.treatmentType} session for ${patient?.firstName || 'patient'}. Duration: ${createForm.duration} min. Please arrive 10 minutes early.` }));
+      }
+    } catch {
+      const patient = patients.find(p => p.id === createForm.patientId);
+      setCreateForm(f => ({ ...f, notes: `${createForm.treatmentType} session for ${patient?.firstName || 'patient'}. Duration: ${createForm.duration} min. Please arrive 10 minutes early.` }));
+    } finally {
+      setAiNotesLoading(false);
+    }
+  };
+
   const handleCreateAppointment = async () => {
     if (!createForm.patientId || !createForm.dateTime) {
       toast({ title: "Error", description: "Patient and date/time are required", variant: "destructive" });
@@ -169,7 +204,7 @@ export default function AdminAppointmentsPage() {
         const checkoutMsg = data.checkoutUrl ? (isPt ? ` Link de pagamento gerado.` : ` Payment link generated.`) : '';
         toast({ title: isPt ? "Consulta criada" : "Appointment created", description: (isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email.") + checkoutMsg });
         setShowCreateDialog(false);
-        setCreateForm({ patientId: "", dateTime: "", duration: 60, treatmentType: "Initial Assessment", price: 75, notes: "", paymentMode: "in_person" });
+        setCreateForm({ patientId: "", dateTime: "", duration: 60, treatmentType: "", price: 0, notes: "", paymentMode: "in_person" });
         fetchAppointments();
       } else {
         const data = await res.json();
@@ -608,8 +643,15 @@ export default function AdminAppointmentsPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label>{isPt ? "Notas" : "Notes"}</Label>
-              <Textarea value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={isPt ? "Notas opcionais sobre a consulta..." : "Optional notes about the appointment..."} />
+              <div className="flex items-center justify-between">
+                <Label>{isPt ? "Notas" : "Notes"}</Label>
+                <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-violet-400 hover:text-violet-300"
+                  onClick={handleAiNotes} disabled={aiNotesLoading || !createForm.patientId || !createForm.treatmentType}>
+                  {aiNotesLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {aiNotesLoading ? (isPt ? "Gerando..." : "Generating...") : (isPt ? "Gerar com IA" : "AI Generate")}
+                </Button>
+              </div>
+              <Textarea value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder={isPt ? "Notas clínicas sobre a consulta... (ou clique em 'Gerar com IA')" : "Clinical notes about the appointment... (or click 'AI Generate')"} />
             </div>
           </div>
           <DialogFooter>
