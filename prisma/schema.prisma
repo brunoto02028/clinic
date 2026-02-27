@@ -809,6 +809,9 @@ model SiteSettings {
   bioStepsJson       String?  @db.Text  // JSON array of process steps
   bioBenefitsJson    String?  @db.Text  // JSON array of benefits
   
+  // MLS® Laser Therapy Featured Block (Block 12)
+  mlsLaserJson       String?  @db.Text  // JSON: {title,title2,desc,treatmentImageUrl,deviceImageUrl,badge,benefits:[],conditions:[],stats:[],ctaText,learnMoreText,wave808,wave905,dualText}
+
   // Landing Pages Content (JSON blobs for full page content)
   lpTherapiesJson    String?  @db.Text  // Full therapies landing page content
   lpInsolesJson      String?  @db.Text  // Full insoles landing page content

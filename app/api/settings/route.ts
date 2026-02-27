@@ -197,6 +197,9 @@ export async function PUT(request: NextRequest) {
       bioStepsJson: body.bioStepsJson || null,
       bioBenefitsJson: body.bioBenefitsJson || null,
       
+      // MLS® Laser Therapy Block
+      mlsLaserJson: body.mlsLaserJson !== undefined ? (body.mlsLaserJson || null) : undefined,
+
       // Terms of Use page content
       termsContentHtml: body.termsContentHtml !== undefined ? body.termsContentHtml : undefined,
       

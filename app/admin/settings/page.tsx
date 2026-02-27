@@ -299,6 +299,9 @@ export default function AdminSettingsPage() {
     // Portal Features + Contact Cards (JSON)
     portalFeaturesJson: "",
     contactCardsJson: "",
+
+    // MLS Laser
+    mlsLaserJson: "",
   });
 
   const SCREEN_KEYS = [
@@ -425,6 +428,7 @@ export default function AdminSettingsPage() {
           socialProfilesJson: data.socialProfilesJson || "",
           portalFeaturesJson: data.portalFeaturesJson || "",
           contactCardsJson: data.contactCardsJson || "",
+          mlsLaserJson: data.mlsLaserJson || "",
         });
         // Load per-screen logos
         if (data.screenLogos && typeof data.screenLogos === 'object') {
@@ -538,6 +542,15 @@ export default function AdminSettingsPage() {
   };
 
   const handleImageSelect = (imageUrl: string, cloud_storage_path: string) => {
+    // MLS Laser images are stored inside mlsLaserJson
+    if (currentImageField === "__mls_treatment" || currentImageField === "__mls_device") {
+      let mls: any = {};
+      try { mls = settings.mlsLaserJson ? JSON.parse(settings.mlsLaserJson) : {}; } catch {}
+      const key = currentImageField === "__mls_treatment" ? "treatmentImageUrl" : "deviceImageUrl";
+      mls[key] = imageUrl;
+      setSettings({ ...settings, mlsLaserJson: JSON.stringify(mls) });
+      return;
+    }
     setSettings({
       ...settings,
       [currentImageField]: imageUrl,
@@ -688,6 +701,7 @@ export default function AdminSettingsPage() {
           <TabsTrigger value="services">Services</TabsTrigger>
           <TabsTrigger value="insoles">Insoles</TabsTrigger>
           <TabsTrigger value="biomechanics">Biomechanics</TabsTrigger>
+          <TabsTrigger value="mls-laser">MLS Laser</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
           <TabsTrigger value="articles">Articles</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
@@ -1401,6 +1415,157 @@ export default function AdminSettingsPage() {
                 <Textarea id="bioStepsJson" value={settings.bioStepsJson} onChange={(e) => setSettings({ ...settings, bioStepsJson: e.target.value })} placeholder='[{"title": "Multi-Angle Capture", "desc": "..."}]' rows={6} />
                 <p className="text-xs text-muted-foreground">JSON array of objects with "title" and "desc" fields</p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* MLS® Laser Therapy Tab */}
+        <TabsContent value="mls-laser" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>MLS® Laser Therapy Section</CardTitle>
+              <CardDescription>Edit the MLS Laser Therapy featured section on the homepage. All fields are stored as a single JSON object.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(() => {
+                let mls: any = {};
+                try { mls = settings.mlsLaserJson ? JSON.parse(settings.mlsLaserJson) : {}; } catch {}
+                const setMls = (field: string, val: any) => {
+                  const updated = { ...mls, [field]: val };
+                  setSettings({ ...settings, mlsLaserJson: JSON.stringify(updated) });
+                };
+                return (
+                  <>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Section Title (line 1)</Label>
+                        <Input value={mls.title || ""} onChange={(e) => setMls("title", e.target.value)} placeholder="MLS® Laser Therapy —" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Title Highlight (gradient text)</Label>
+                        <Input value={mls.title2 || ""} onChange={(e) => setMls("title2", e.target.value)} placeholder="Accelerate Your Recovery" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Textarea value={mls.desc || ""} onChange={(e) => setMls("desc", e.target.value)} placeholder="Our Mphi 75 Multiwave Locked System delivers..." rows={4} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Badge Text (overlay on treatment image)</Label>
+                      <Input value={mls.badge || ""} onChange={(e) => setMls("badge", e.target.value)} placeholder="Pain-free · Non-invasive · Clinically proven" />
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-3">Images</p>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Treatment Image URL</Label>
+                          {mls.treatmentImageUrl ? (
+                            <div className="relative inline-block">
+                              <img src={mls.treatmentImageUrl} alt="Treatment" style={{ width: 300, height: 180 }} className="object-cover border rounded" />
+                              <Button size="sm" variant="destructive" className="absolute top-2 right-2" onClick={() => setMls("treatmentImageUrl", "")}><X className="h-4 w-4" /></Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Button variant="outline" onClick={() => { setCurrentImageField("__mls_treatment"); setShowImagePicker(true); }}><Upload className="h-4 w-4 mr-2" />Upload</Button>
+                            </div>
+                          )}
+                          <Input value={mls.treatmentImageUrl || ""} onChange={(e) => setMls("treatmentImageUrl", e.target.value)} placeholder="/uploads/mls-laser-treatment.jpg" className="text-xs" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Device Image URL</Label>
+                          {mls.deviceImageUrl ? (
+                            <div className="relative inline-block">
+                              <img src={mls.deviceImageUrl} alt="Device" style={{ width: 300, height: 180 }} className="object-cover border rounded" />
+                              <Button size="sm" variant="destructive" className="absolute top-2 right-2" onClick={() => setMls("deviceImageUrl", "")}><X className="h-4 w-4" /></Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Button variant="outline" onClick={() => { setCurrentImageField("__mls_device"); setShowImagePicker(true); }}><Upload className="h-4 w-4 mr-2" />Upload</Button>
+                            </div>
+                          )}
+                          <Input value={mls.deviceImageUrl || ""} onChange={(e) => setMls("deviceImageUrl", e.target.value)} placeholder="/uploads/mls-laser-device.jpg" className="text-xs" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-3">Dual Wavelength Technology</p>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>808nm Description</Label>
+                          <Input value={mls.wave808 || ""} onChange={(e) => setMls("wave808", e.target.value)} placeholder="Continuous emission — anti-inflammatory" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>905nm Description</Label>
+                          <Input value={mls.wave905 || ""} onChange={(e) => setMls("wave905", e.target.value)} placeholder="Pulsed emission — analgesic effects" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Dual Wavelength Note</Label>
+                          <Input value={mls.dualText || ""} onChange={(e) => setMls("dualText", e.target.value)} placeholder="Patented synchronized dual-wavelength" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-3">Benefits (6 items)</p>
+                      <Textarea value={mls.benefitsJson || ""} onChange={(e) => setMls("benefitsJson", e.target.value)} placeholder='["Rapid pain relief from the first session", "Powerful anti-inflammatory action", ...]' rows={5} />
+                      <p className="text-xs text-muted-foreground">JSON array of 6 benefit strings</p>
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-3">Conditions Treated</p>
+                      <Textarea value={mls.conditionsJson || ""} onChange={(e) => setMls("conditionsJson", e.target.value)} placeholder='["Osteoarthritis", "Rheumatoid Arthritis", "Sports Injuries", ...]' rows={4} />
+                      <p className="text-xs text-muted-foreground">JSON array of condition name strings</p>
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-3">Stats Bar (4 items)</p>
+                      <Textarea value={mls.statsJson || ""} onChange={(e) => setMls("statsJson", e.target.value)} placeholder='[{"value":"75W","label":"Peak Power"},{"value":"3 kg","label":"Portable Device"}]' rows={4} />
+                      <p className="text-xs text-muted-foreground">JSON array of objects with "value" and "label"</p>
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-3">CTA Buttons</p>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Primary CTA Text</Label>
+                          <Input value={mls.ctaText || ""} onChange={(e) => setMls("ctaText", e.target.value)} placeholder="Book MLS® Treatment" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Learn More Text</Label>
+                          <Input value={mls.learnMoreText || ""} onChange={(e) => setMls("learnMoreText", e.target.value)} placeholder="Learn More" />
+                        </div>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4 mt-3">
+                        <div className="space-y-2">
+                          <Label>Primary CTA Link</Label>
+                          <Input value={mls.ctaLink || ""} onChange={(e) => setMls("ctaLink", e.target.value)} placeholder="/signup" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Learn More Link</Label>
+                          <Input value={mls.learnMoreLink || ""} onChange={(e) => setMls("learnMoreLink", e.target.value)} placeholder="/services/laser-shockwave" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-1">Section Label (top badge)</p>
+                      <Input value={mls.label || ""} onChange={(e) => setMls("label", e.target.value)} placeholder="Advanced Laser Therapy" />
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-1">Benefits Section Title</p>
+                      <Input value={mls.benefitsTitle || ""} onChange={(e) => setMls("benefitsTitle", e.target.value)} placeholder="Why MLS® Laser Therapy?" />
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-sm font-semibold mb-1">Conditions Section Title</p>
+                      <Input value={mls.conditionsTitle || ""} onChange={(e) => setMls("conditionsTitle", e.target.value)} placeholder="Effective for these conditions" />
+                    </div>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
