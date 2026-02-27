@@ -49,6 +49,11 @@ import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import { TREATMENT_OPTIONS } from "@/lib/types";
 
+interface DbTreatmentType {
+  id: string; name: string; namePt: string | null;
+  duration: number; price: number; discountPercent: number; isActive: boolean;
+}
+
 interface Appointment {
   id: string;
   dateTime: string;
@@ -69,6 +74,7 @@ export default function AdminAppointmentsPage() {
   const isPt = locale === "pt-BR";
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [dbTreatments, setDbTreatments] = useState<DbTreatmentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -97,6 +103,7 @@ export default function AdminAppointmentsPage() {
   useEffect(() => {
     fetchAppointments();
     fetchPatients();
+    fetchTreatmentTypes();
   }, []);
 
   const fetchAppointments = async () => {
@@ -119,6 +126,17 @@ export default function AdminAppointmentsPage() {
       if (res.ok) {
         const data = await res.json();
         setPatients(Array.isArray(data) ? data : data.patients || []);
+      }
+    } catch {}
+  };
+
+  const fetchTreatmentTypes = async () => {
+    try {
+      const res = await fetch("/api/admin/treatment-types");
+      if (res.ok) {
+        const data = await res.json();
+        const active = (data as DbTreatmentType[]).filter(t => t.isActive);
+        setDbTreatments(active);
       }
     } catch {}
   };
@@ -502,14 +520,31 @@ export default function AdminAppointmentsPage() {
             <div className="space-y-2">
               <Label>{isPt ? "Tipo de Tratamento" : "Treatment Type"}</Label>
               <Select value={createForm.treatmentType} onValueChange={v => {
-                const opt = TREATMENT_OPTIONS.find(t => t.name === v);
-                setCreateForm(f => ({ ...f, treatmentType: v, duration: opt?.duration || f.duration, price: opt?.price || f.price }));
+                const dbOpt = dbTreatments.find(t => t.name === v);
+                if (dbOpt) {
+                  const finalPrice = dbOpt.discountPercent > 0 ? dbOpt.price * (1 - dbOpt.discountPercent / 100) : dbOpt.price;
+                  setCreateForm(f => ({ ...f, treatmentType: v, duration: dbOpt.duration, price: Math.round(finalPrice * 100) / 100 }));
+                } else {
+                  const opt = TREATMENT_OPTIONS.find(t => t.name === v);
+                  setCreateForm(f => ({ ...f, treatmentType: v, duration: opt?.duration || f.duration, price: opt?.price || f.price }));
+                }
               }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={isPt ? "Selecionar tratamento..." : "Select treatment..."} /></SelectTrigger>
                 <SelectContent>
-                  {TREATMENT_OPTIONS.map(t => (
-                    <SelectItem key={t.id} value={t.name}>{isPt && t.namePt ? t.namePt : t.name} — £{t.price} ({t.duration}min)</SelectItem>
-                  ))}
+                  {dbTreatments.length > 0
+                    ? dbTreatments.map(t => {
+                        const finalPrice = t.discountPercent > 0 ? t.price * (1 - t.discountPercent / 100) : t.price;
+                        return (
+                          <SelectItem key={t.id} value={t.name}>
+                            {isPt && t.namePt ? t.namePt : t.name} — £{finalPrice.toFixed(2)} ({t.duration}min)
+                            {t.discountPercent > 0 && ` (-${t.discountPercent}%)`}
+                          </SelectItem>
+                        );
+                      })
+                    : TREATMENT_OPTIONS.map(t => (
+                        <SelectItem key={t.id} value={t.name}>{isPt && t.namePt ? t.namePt : t.name} — £{t.price} ({t.duration}min)</SelectItem>
+                      ))
+                  }
                 </SelectContent>
               </Select>
             </div>

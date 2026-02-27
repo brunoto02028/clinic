@@ -10,15 +10,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json();
-    const { name, description, duration, price, isActive, sortOrder, category, requiresInPerson, equipmentNeeded, contraindications, indications, parameters } = body;
+    const { name, namePt, description, duration, price, discountPercent, isActive, sortOrder, category, requiresInPerson, equipmentNeeded, contraindications, indications, parameters } = body;
 
     const treatment = await (prisma.treatmentType as any).update({
       where: { id: params.id },
       data: {
         ...(name !== undefined && { name }),
+        ...(namePt !== undefined && { namePt }),
         ...(description !== undefined && { description }),
         ...(duration !== undefined && { duration }),
         ...(price !== undefined && { price }),
+        ...(discountPercent !== undefined && { discountPercent }),
         ...(isActive !== undefined && { isActive }),
         ...(sortOrder !== undefined && { sortOrder }),
         ...(category !== undefined && { category }),

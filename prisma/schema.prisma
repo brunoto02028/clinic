@@ -1332,11 +1332,13 @@ model TreatmentType {
   clinic           Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   
   name             String            // "TENS Therapy", "Shockwave", "Initial Assessment"
+  namePt           String?           // Portuguese name
   description      String?           @db.Text
   category         TreatmentCategory @default(OTHER)
   requiresInPerson Boolean           @default(true)  // true for electrotherapy, can be false for consultations
   duration         Int               @default(60)     // Minutes
   price            Float             @default(60.00)
+  discountPercent  Float             @default(0)      // 0-100, e.g. 10 = 10% off
   currency         String            @default("GBP")
   isActive         Boolean           @default(true)
   sortOrder        Int               @default(0)

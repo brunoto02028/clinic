@@ -120,7 +120,7 @@ const navigationGroups: NavGroup[] = [
     icon: Stethoscope,
     items: [
       { name: "Appointments", i18nKey: "nav.appointments", href: "/admin/appointments", icon: Calendar, requiredPermission: "canManageAppointments" },
-      { name: "Treatment Types", i18nKey: "nav.treatments", href: "/admin/treatments", icon: Stethoscope },
+      { name: "Treatment Types", i18nKey: "nav.treatments", href: "/admin/treatment-types", icon: Stethoscope },
       { name: "Treatment Plans", i18nKey: "nav.treatmentPlans", href: "/admin/treatment-plans", icon: Package },
       { name: "Membership Plans", href: "/admin/memberships", icon: Crown },
       { name: "Video Consultations", i18nKey: "nav.videoConsultations", href: "/admin/video-consultations", icon: Video },

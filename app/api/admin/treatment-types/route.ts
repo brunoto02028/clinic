@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, duration, price, isActive, sortOrder, category, requiresInPerson, equipmentNeeded, contraindications, indications, parameters } = body;
+    const { name, namePt, description, duration, price, discountPercent, isActive, sortOrder, category, requiresInPerson, equipmentNeeded, contraindications, indications, parameters } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -46,11 +46,13 @@ export async function POST(request: NextRequest) {
       data: {
         clinicId,
         name,
+        namePt: namePt || null,
         description: description || null,
         category: category || "OTHER",
         requiresInPerson: requiresInPerson !== undefined ? requiresInPerson : true,
         duration: duration || 60,
         price: price || 60.0,
+        discountPercent: discountPercent || 0,
         isActive: isActive !== undefined ? isActive : true,
         sortOrder: sortOrder || 0,
         equipmentNeeded: equipmentNeeded || null,
