@@ -96,7 +96,7 @@ interface MembershipPlan {
   stripeProductId?: string | null; stripePriceId?: string | null;
 }
 type PatientScope = "specific" | "all" | "none";
-const statusColors: Record<string, string> = { ACTIVE: "bg-green-100 text-green-800", PAUSED: "bg-yellow-100 text-yellow-800", CANCELLED: "bg-red-100 text-red-800", DRAFT: "bg-gray-100 text-gray-600" };
+const statusColors: Record<string, string> = { ACTIVE: "bg-green-500/20 text-green-400", PAUSED: "bg-yellow-500/20 text-yellow-400", CANCELLED: "bg-red-500/20 text-red-400", DRAFT: "bg-muted text-muted-foreground" };
 
 export default function ServicePricingPage() {
   const [activeTab, setActiveTab] = useState<"services" | "memberships">("services");
@@ -896,7 +896,7 @@ export default function ServicePricingPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {mPlans.map(p => (
-              <Card key={p.id} className="group border-violet-100 hover:border-violet-300 transition-colors">
+              <Card key={p.id} className="group border-violet-500/20 hover:border-violet-500/40 transition-colors">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
@@ -923,7 +923,7 @@ export default function ServicePricingPage() {
                         const mod = MODULE_REGISTRY.find(m => m.key === key);
                         const perm = !mod ? PERMISSION_REGISTRY.find(pr => pr.key === key) : undefined;
                         const feat = mod || perm;
-                        return feat ? <span key={key} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100"><feat.icon className="h-2.5 w-2.5" />{feat.label}</span> : null;
+                        return feat ? <span key={key} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20"><feat.icon className="h-2.5 w-2.5" />{feat.label}</span> : null;
                       })}
                       {p.features.length > 4 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">+{p.features.length - 4} more</span>}
                     </div>
@@ -932,8 +932,8 @@ export default function ServicePricingPage() {
                     <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => mOpenEdit(p)}><Edit className="h-3 w-3" /> Edit</Button>
                     {p.status === "ACTIVE" && <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => mHandleStatus(p.id, "PAUSED")}>Pause</Button>}
                     {p.status === "PAUSED" && <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => mHandleStatus(p.id, "ACTIVE")}>Resume</Button>}
-                    {(p.status === "CANCELLED" || p.status === "DRAFT") && <Button size="sm" variant="outline" className="text-xs h-7 gap-1 border-green-300 text-green-700 hover:bg-green-50" onClick={() => mHandleStatus(p.id, "ACTIVE")}><RefreshCw className="h-3 w-3" /> Activate</Button>}
-                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1 text-destructive border-red-200 hover:bg-red-50 ml-auto" onClick={() => { setMDeleting(p); setMShowDelete(true); }}><Trash2 className="h-3 w-3" /></Button>
+                    {(p.status === "CANCELLED" || p.status === "DRAFT") && <Button size="sm" variant="outline" className="text-xs h-7 gap-1 border-green-500/30 text-green-400 hover:bg-green-500/10" onClick={() => mHandleStatus(p.id, "ACTIVE")}><RefreshCw className="h-3 w-3" /> Activate</Button>}
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1 text-destructive border-red-500/20 hover:bg-red-500/10 ml-auto" onClick={() => { setMDeleting(p); setMShowDelete(true); }}><Trash2 className="h-3 w-3" /></Button>
                   </div>
                 </CardContent>
               </Card>
@@ -986,12 +986,12 @@ export default function ServicePricingPage() {
                 <Label className="text-sm font-semibold">Assign To</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {([
-                    { value: "all" as const, label: "All Patients", icon: Globe, active: "border-violet-400 bg-violet-50 text-violet-700" },
-                    { value: "specific" as const, label: "Specific Patient", icon: UserCheck, active: "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" },
-                    { value: "none" as const, label: "Draft", icon: ClipboardList, active: "border-amber-400 bg-amber-50 text-amber-700" },
+                    { value: "all" as const, label: "All Patients", icon: Globe, active: "border-violet-500/40 bg-violet-500/15 text-violet-400" },
+                    { value: "specific" as const, label: "Specific Patient", icon: UserCheck, active: "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#5dc9c0]" },
+                    { value: "none" as const, label: "Draft", icon: ClipboardList, active: "border-amber-500/40 bg-amber-500/15 text-amber-400" },
                   ]).map(opt => (
                     <button key={opt.value} type="button" onClick={() => setMForm(f => ({ ...f, patientScope: opt.value, patientId: opt.value !== "specific" ? "" : f.patientId }))}
-                      className={`flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border-2 text-xs font-medium transition-all ${mForm.patientScope === opt.value ? opt.active : "border-gray-200 text-muted-foreground hover:border-gray-300"}`}>
+                      className={`flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border-2 text-xs font-medium transition-all ${mForm.patientScope === opt.value ? opt.active : "border-border text-muted-foreground hover:border-border/80"}`}>
                       <opt.icon className="h-4 w-4" /><span>{opt.label}</span>
                     </button>
                   ))}
@@ -1018,17 +1018,17 @@ export default function ServicePricingPage() {
                     if (mods.length === 0) return null;
                     return (
                       <div key={cat.key}>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{cat.label}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">{cat.label}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {mods.map((mod: ModuleDefinition) => {
                             const checked = mForm.features.includes(mod.key);
                             const isCore = mod.alwaysVisible;
                             return (
                               <button key={mod.key} type="button" onClick={() => !isCore && mToggleFeature(mod.key)} disabled={isCore}
-                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-left transition-all ${isCore ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed" : checked ? "border-violet-400 bg-violet-50" : "border-gray-200 hover:border-gray-300 bg-white"}`}>
+                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-left transition-all ${isCore ? "border-muted bg-muted/50 opacity-60 cursor-not-allowed" : checked ? "border-violet-500/40 bg-violet-500/15" : "border-border hover:border-border/80 bg-card"}`}>
                                 <div className={`p-1 rounded-md shrink-0 ${checked || isCore ? "bg-violet-600 text-white" : "bg-muted text-muted-foreground"}`}><mod.icon className="h-3 w-3" /></div>
-                                <p className={`text-xs font-semibold ${checked || isCore ? "text-violet-800" : "text-foreground"}`}>{mod.label}</p>
-                                {(checked || isCore) && <CheckCircle className="h-3 w-3 text-violet-600 shrink-0 ml-auto" />}
+                                <p className={`text-xs font-semibold ${checked || isCore ? "text-violet-400" : "text-foreground"}`}>{mod.label}</p>
+                                {(checked || isCore) && <CheckCircle className="h-3 w-3 text-violet-500 shrink-0 ml-auto" />}
                               </button>
                             );
                           })}
@@ -1041,16 +1041,16 @@ export default function ServicePricingPage() {
                     if (perms.length === 0) return null;
                     return (
                       <div key={cat.key}>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{cat.label}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">{cat.label}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {perms.map((perm: PermissionDefinition) => {
                             const checked = mForm.features.includes(perm.key);
                             return (
                               <button key={perm.key} type="button" onClick={() => mToggleFeature(perm.key)}
-                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-left transition-all ${checked ? "border-emerald-400 bg-emerald-50" : "border-gray-200 hover:border-gray-300 bg-white"}`}>
+                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-left transition-all ${checked ? "border-emerald-500/40 bg-emerald-500/15" : "border-border hover:border-border/80 bg-card"}`}>
                                 <div className={`p-1 rounded-md shrink-0 ${checked ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"}`}><perm.icon className="h-3 w-3" /></div>
-                                <p className={`text-xs font-semibold ${checked ? "text-emerald-800" : "text-foreground"}`}>{perm.label}</p>
-                                {checked && <CheckCircle className="h-3 w-3 text-emerald-600 shrink-0 ml-auto" />}
+                                <p className={`text-xs font-semibold ${checked ? "text-emerald-400" : "text-foreground"}`}>{perm.label}</p>
+                                {checked && <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0 ml-auto" />}
                               </button>
                             );
                           })}

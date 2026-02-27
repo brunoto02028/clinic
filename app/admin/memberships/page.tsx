@@ -14,7 +14,7 @@ import {
   Plus, Edit, Trash2, Users, Loader2, CreditCard, RefreshCw, Crown, Globe,
   UserCheck, ClipboardList, Eye, CheckCircle,
   Dumbbell, BookOpen, Heart, Activity, Footprints, Zap, Stethoscope,
-  FileText, Video, MessageSquare, BarChart3, Star,
+  FileText, Video, MessageSquare, BarChart3, Star, Sparkles,
 } from "lucide-react";
 import MembershipPreviewModal, { INTERVAL_LABELS } from "@/components/memberships/MembershipPreviewModal";
 import {
@@ -32,10 +32,10 @@ interface MembershipPlan {
 }
 
 const statusColors: Record<string, string> = {
-  ACTIVE: "bg-green-100 text-green-800",
-  PAUSED: "bg-yellow-100 text-yellow-800",
-  CANCELLED: "bg-red-100 text-red-800",
-  DRAFT: "bg-gray-100 text-gray-600",
+  ACTIVE: "bg-green-500/20 text-green-400",
+  PAUSED: "bg-yellow-500/20 text-yellow-400",
+  CANCELLED: "bg-red-500/20 text-red-400",
+  DRAFT: "bg-muted text-muted-foreground",
 };
 type PatientScope = "specific" | "all" | "none";
 
@@ -58,6 +58,8 @@ export default function MembershipsPage() {
     name: "", description: "", price: 9.90, interval: "MONTHLY",
     isFree: false, features: [] as string[], patientId: "", patientScope: "all" as PatientScope,
   });
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   useEffect(() => { fetchPlans(); fetchPatients(); fetchBranding(); }, []);
 
@@ -100,6 +102,39 @@ export default function MembershipsPage() {
   };
   const toggleFeature = (key: string) =>
     setForm(f => ({ ...f, features: f.features.includes(key) ? f.features.filter(k => k !== key) : [...f.features, key] }));
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setAiGenerating(true);
+    try {
+      const res = await fetch("/api/admin/memberships/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setForm({
+          name: data.name || "",
+          description: data.description || "",
+          price: data.price ?? 9.90,
+          interval: data.interval || "MONTHLY",
+          isFree: data.isFree ?? false,
+          features: data.features || [],
+          patientId: "",
+          patientScope: (data.patientScope as PatientScope) || "all",
+        });
+        setAiPrompt("");
+        toast({ title: "AI Generated", description: `"${data.name}" — review and save.` });
+      } else {
+        toast({ title: "AI Error", description: data.error || "Generation failed", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "AI generation failed", variant: "destructive" });
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name) { toast({ title: "Error", description: "Plan name is required", variant: "destructive" }); return; }
@@ -168,7 +203,7 @@ export default function MembershipsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {plans.map(p => (
-            <Card key={p.id} className="group border-violet-100 hover:border-violet-300 transition-colors">
+            <Card key={p.id} className="group border-violet-500/20 hover:border-violet-500/40 transition-colors">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -208,7 +243,7 @@ export default function MembershipsPage() {
                       const mod = MODULE_REGISTRY.find(m => m.key === key);
                       const perm = !mod ? PERMISSION_REGISTRY.find(pr => pr.key === key) : undefined;
                       const feat = mod || perm;
-                      return feat ? <span key={key} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100"><feat.icon className="h-2.5 w-2.5" />{feat.label}</span> : null;
+                      return feat ? <span key={key} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20"><feat.icon className="h-2.5 w-2.5" />{feat.label}</span> : null;
                     })}
                     {p.features.length > 4 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">+{p.features.length - 4} more</span>}
                   </div>
@@ -220,8 +255,8 @@ export default function MembershipsPage() {
                   </>}
                   {p.status === "PAUSED" && <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleStatusChange(p.id, "ACTIVE")}>Resume</Button>}
                   {(p.status === "CANCELLED" || p.status === "DRAFT") && <>
-                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1 border-green-300 text-green-700 hover:bg-green-50" onClick={() => handleStatusChange(p.id, "ACTIVE")}><RefreshCw className="h-3 w-3" /> Activate</Button>
-                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1 text-destructive border-red-200 hover:bg-red-50" onClick={() => { setDeleting(p); setShowDeleteDialog(true); }}><Trash2 className="h-3 w-3" /> Delete</Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1 border-green-500/30 text-green-400 hover:bg-green-500/10" onClick={() => handleStatusChange(p.id, "ACTIVE")}><RefreshCw className="h-3 w-3" /> Activate</Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7 gap-1 text-destructive border-red-500/20 hover:bg-red-500/10" onClick={() => { setDeleting(p); setShowDeleteDialog(true); }}><Trash2 className="h-3 w-3" /> Delete</Button>
                   </>}
                 </div>
               </CardContent>
@@ -240,6 +275,34 @@ export default function MembershipsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-5 py-2">
+            {/* AI Generation */}
+            {!editing && (
+              <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-violet-400" />
+                  <Label className="text-sm font-semibold text-violet-400">Generate with AI</Label>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={aiPrompt}
+                    onChange={e => setAiPrompt(e.target.value)}
+                    placeholder="e.g. A premium plan with all clinical modules, £29.90/month"
+                    className="flex-1"
+                    onKeyDown={e => e.key === "Enter" && handleAiGenerate()}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAiGenerate}
+                    disabled={aiGenerating || !aiPrompt.trim()}
+                    className="gap-2 bg-violet-600 hover:bg-violet-700 shrink-0"
+                  >
+                    {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    {aiGenerating ? "Generating..." : "Generate"}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Describe what you want and AI will fill all the fields. You can edit before saving.</p>
+              </div>
+            )}
             {/* Name */}
             <div className="space-y-2">
               <Label>Plan Name *</Label>
@@ -287,13 +350,13 @@ export default function MembershipsPage() {
               <Label className="text-sm font-semibold">Assign To</Label>
               <div className="grid grid-cols-3 gap-2">
                 {([
-                  { value: "specific", label: "Specific Patient",   icon: UserCheck,     active: "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" },
-                  { value: "all",      label: "All Patients",       icon: Globe,         active: "border-violet-400 bg-violet-50 text-violet-700" },
-                  { value: "none",     label: "No Patient (Draft)", icon: ClipboardList, active: "border-amber-400 bg-amber-50 text-amber-700" },
+                  { value: "specific", label: "Specific Patient",   icon: UserCheck,     active: "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#5dc9c0]" },
+                  { value: "all",      label: "All Patients",       icon: Globe,         active: "border-violet-500/40 bg-violet-500/15 text-violet-400" },
+                  { value: "none",     label: "No Patient (Draft)", icon: ClipboardList, active: "border-amber-500/40 bg-amber-500/15 text-amber-400" },
                 ] as const).map(opt => (
                   <button key={opt.value} type="button"
                     onClick={() => setForm(f => ({ ...f, patientScope: opt.value, patientId: opt.value !== "specific" ? "" : f.patientId }))}
-                    className={`flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border-2 text-xs font-medium transition-all ${form.patientScope === opt.value ? opt.active : "border-gray-200 text-muted-foreground hover:border-gray-300"}`}>
+                    className={`flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border-2 text-xs font-medium transition-all ${form.patientScope === opt.value ? opt.active : "border-border text-muted-foreground hover:border-border/80"}`}>
                     <opt.icon className="h-4 w-4" /><span>{opt.label}</span>
                   </button>
                 ))}
@@ -304,8 +367,8 @@ export default function MembershipsPage() {
                   <SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName} — {p.email}</SelectItem>)}</SelectContent>
                 </Select>
               )}
-              {form.patientScope === "all" && <p className="text-xs text-violet-600 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">Available to all patients. Ideal for platform-wide subscriptions like £9.90/month.</p>}
-              {form.patientScope === "none" && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Saved as draft — assign later by editing.</p>}
+              {form.patientScope === "all" && <p className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">Available to all patients. Ideal for platform-wide subscriptions like £9.90/month.</p>}
+              {form.patientScope === "none" && <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">Saved as draft — assign later by editing.</p>}
             </div>
             {/* Modules & Permissions */}
             <div className="space-y-3">
@@ -325,7 +388,7 @@ export default function MembershipsPage() {
                   if (mods.length === 0) return null;
                   return (
                     <div key={cat.key}>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{cat.label}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">{cat.label}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {mods.map((mod: ModuleDefinition) => {
                           const checked = form.features.includes(mod.key);
@@ -336,19 +399,19 @@ export default function MembershipsPage() {
                               disabled={isCore}
                               className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all ${
                                 isCore
-                                  ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed"
+                                  ? "border-muted bg-muted/50 opacity-60 cursor-not-allowed"
                                   : checked
-                                    ? "border-violet-400 bg-violet-50"
-                                    : "border-gray-200 hover:border-gray-300 bg-white"
+                                    ? "border-violet-500/40 bg-violet-500/15"
+                                    : "border-border hover:border-border/80 bg-card"
                               }`}>
                               <div className={`p-1 rounded-md shrink-0 ${checked || isCore ? "bg-violet-600 text-white" : "bg-muted text-muted-foreground"}`}>
                                 <mod.icon className="h-3.5 w-3.5" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className={`text-xs font-semibold ${checked || isCore ? "text-violet-800" : "text-foreground"}`}>{mod.label}</p>
+                                <p className={`text-xs font-semibold ${checked || isCore ? "text-violet-400" : "text-foreground"}`}>{mod.label}</p>
                                 <p className="text-[10px] text-muted-foreground truncate">{mod.description}</p>
                               </div>
-                              {(checked || isCore) && <CheckCircle className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
+                              {(checked || isCore) && <CheckCircle className="h-3.5 w-3.5 text-violet-500 shrink-0" />}
                             </button>
                           );
                         })}
@@ -363,22 +426,22 @@ export default function MembershipsPage() {
                   if (perms.length === 0) return null;
                   return (
                     <div key={cat.key}>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">{cat.label}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">{cat.label}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {perms.map((perm: PermissionDefinition) => {
                           const checked = form.features.includes(perm.key);
                           return (
                             <button key={perm.key} type="button" onClick={() => toggleFeature(perm.key)}
                               className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-left transition-all ${
-                                checked ? "border-emerald-400 bg-emerald-50" : "border-gray-200 hover:border-gray-300 bg-white"
+                                checked ? "border-emerald-500/40 bg-emerald-500/15" : "border-border hover:border-border/80 bg-card"
                               }`}>
                               <div className={`p-1 rounded-md shrink-0 ${checked ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"}`}>
                                 <perm.icon className="h-3.5 w-3.5" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className={`text-xs font-semibold ${checked ? "text-emerald-800" : "text-foreground"}`}>{perm.label}</p>
+                                <p className={`text-xs font-semibold ${checked ? "text-emerald-400" : "text-foreground"}`}>{perm.label}</p>
                               </div>
-                              {checked && <CheckCircle className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
+                              {checked && <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
                             </button>
                           );
                         })}
