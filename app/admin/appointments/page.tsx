@@ -44,6 +44,8 @@ import {
   Trash2,
   Plus,
   Loader2,
+  CreditCard,
+  Banknote,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
@@ -89,6 +91,7 @@ export default function AdminAppointmentsPage() {
     treatmentType: "Initial Assessment",
     price: 75,
     notes: "",
+    paymentMode: "in_person" as "online" | "in_person",
   });
   const [editForm, setEditForm] = useState({
     dateTime: "",
@@ -158,12 +161,15 @@ export default function AdminAppointmentsPage() {
           treatmentType: createForm.treatmentType,
           price: Number(createForm.price),
           notes: createForm.notes || null,
+          paymentMode: createForm.paymentMode,
         }),
       });
       if (res.ok) {
-        toast({ title: isPt ? "Consulta criada" : "Appointment created", description: isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email." });
+        const data = await res.json();
+        const checkoutMsg = data.checkoutUrl ? (isPt ? ` Link de pagamento gerado.` : ` Payment link generated.`) : '';
+        toast({ title: isPt ? "Consulta criada" : "Appointment created", description: (isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email.") + checkoutMsg });
         setShowCreateDialog(false);
-        setCreateForm({ patientId: "", dateTime: "", duration: 60, treatmentType: "Initial Assessment", price: 75, notes: "" });
+        setCreateForm({ patientId: "", dateTime: "", duration: 60, treatmentType: "Initial Assessment", price: 75, notes: "", paymentMode: "in_person" });
         fetchAppointments();
       } else {
         const data = await res.json();
@@ -561,6 +567,45 @@ export default function AdminAppointmentsPage() {
                 <Label>{isPt ? "Preço (£)" : "Price (£)"}</Label>
                 <Input type="number" step="0.01" value={createForm.price} onChange={e => setCreateForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} />
               </div>
+            </div>
+            {/* Payment Mode */}
+            <div className="space-y-2">
+              <Label>{isPt ? "Modo de Pagamento" : "Payment Mode"}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button"
+                  onClick={() => setCreateForm(f => ({ ...f, paymentMode: "in_person" }))}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    createForm.paymentMode === "in_person"
+                      ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#5dc9c0]"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}>
+                  <Banknote className="h-4 w-4" />
+                  <div className="text-left">
+                    <p className="font-medium">{isPt ? "Na Clínica" : "In-Person"}</p>
+                    <p className="text-[10px] opacity-70">{isPt ? "Pagar presencialmente" : "Pay at the clinic"}</p>
+                  </div>
+                </button>
+                <button type="button"
+                  onClick={() => setCreateForm(f => ({ ...f, paymentMode: "online" }))}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    createForm.paymentMode === "online"
+                      ? "border-violet-500/40 bg-violet-500/15 text-violet-400"
+                      : "border-border text-muted-foreground hover:border-border/80"
+                  }`}>
+                  <CreditCard className="h-4 w-4" />
+                  <div className="text-left">
+                    <p className="font-medium">{isPt ? "Online (Stripe)" : "Online (Stripe)"}</p>
+                    <p className="text-[10px] opacity-70">{isPt ? "Link de pagamento por email" : "Payment link via email"}</p>
+                  </div>
+                </button>
+              </div>
+              {createForm.paymentMode === "online" && createForm.price > 0 && (
+                <p className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">
+                  {isPt
+                    ? `Um link de pagamento Stripe de £${createForm.price.toFixed(2)} será gerado e enviado ao paciente por email.`
+                    : `A Stripe payment link for £${createForm.price.toFixed(2)} will be generated and sent to the patient by email.`}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>{isPt ? "Notas" : "Notes"}</Label>

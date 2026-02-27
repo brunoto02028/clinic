@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { notifyPatient } from "@/lib/notify-patient";
+import { stripe } from "@/lib/stripe";
 
 export async function GET() {
   try {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       patientId, dateTime, duration, treatmentType, notes, price,
-      mode, videoRoomId, videoRoomUrl, treatmentPlanId,
+      mode, videoRoomId, videoRoomUrl, treatmentPlanId, paymentMode,
     } = body;
 
     if (!patientId || !dateTime) {
@@ -82,12 +83,83 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Create Stripe checkout if online payment requested
+    let checkoutUrl: string | null = null;
+    if (paymentMode === "online" && price > 0) {
+      try {
+        const appUrl = process.env.NEXTAUTH_URL || '';
+        const apptDate = new Date(dateTime);
+        const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+        // Create payment record
+        const payment = await prisma.payment.create({
+          data: {
+            appointmentId: appointment.id,
+            userId: patientId,
+            amount: price,
+            currency: "GBP",
+            status: "PENDING",
+          },
+        });
+
+        // Create Stripe checkout session
+        const checkoutSession = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          mode: "payment",
+          customer_email: appointment.patient.email ?? undefined,
+          line_items: [
+            {
+              price_data: {
+                currency: "gbp",
+                product_data: {
+                  name: treatmentType || "Consultation",
+                  description: `Appointment on ${dateStr} at ${timeStr}`,
+                },
+                unit_amount: Math.round(price * 100),
+              },
+              quantity: 1,
+            },
+          ],
+          metadata: {
+            appointmentId: appointment.id,
+            paymentId: payment.id,
+            userId: patientId,
+            type: "appointment",
+          },
+          success_url: `${appUrl}/dashboard/appointments?payment=success`,
+          cancel_url: `${appUrl}/dashboard/appointments?payment=cancelled`,
+        });
+
+        checkoutUrl = checkoutSession.url;
+
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { stripeSessionId: checkoutSession.id },
+        });
+      } catch (stripeErr) {
+        console.error('Failed to create Stripe checkout:', stripeErr);
+      }
+    }
+
     // Send APPOINTMENT_CONFIRMATION email to patient
     try {
       const appUrl = process.env.NEXTAUTH_URL || '';
       const apptDate = new Date(dateTime);
       const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+      const paymentNote = paymentMode === "online" && checkoutUrl
+        ? `\n\nPayment required online: ${checkoutUrl}`
+        : paymentMode === "in_person"
+          ? `\n\nPayment: £${(price || 0).toFixed(2)} — payable at the clinic.`
+          : '';
+      const paymentNotePt = paymentMode === "online" && checkoutUrl
+        ? `\n\nPagamento online obrigatório: ${checkoutUrl}`
+        : paymentMode === "in_person"
+          ? `\n\nPagamento: £${(price || 0).toFixed(2)} — pagar na clínica.`
+          : '';
+
       await notifyPatient({
         patientId: appointment.patient.id,
         emailTemplateSlug: 'APPOINTMENT_CONFIRMATION',
@@ -98,16 +170,18 @@ export async function POST(request: NextRequest) {
           therapistName: `${appointment.therapist.firstName} ${appointment.therapist.lastName}`,
           treatmentType: treatmentType || 'General Consultation',
           duration: String(duration || 60),
+          price: `£${(price || 0).toFixed(2)}`,
+          paymentLink: checkoutUrl || '',
           portalUrl: `${appUrl}/dashboard/appointments`,
         },
-        plainMessage: `Your appointment is confirmed: ${treatmentType || 'Consultation'} on ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Duration: ${duration || 60} min.`,
-        plainMessagePt: `Sua consulta está confirmada: ${treatmentType || 'Consulta'} em ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Duração: ${duration || 60} min.`,
+        plainMessage: `Your appointment is confirmed: ${treatmentType || 'Consultation'} on ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Duration: ${duration || 60} min.${paymentNote}`,
+        plainMessagePt: `Sua consulta está confirmada: ${treatmentType || 'Consulta'} em ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Duração: ${duration || 60} min.${paymentNotePt}`,
       });
     } catch (emailErr) {
       console.error('Failed to send appointment confirmation email:', emailErr);
     }
 
-    return NextResponse.json(appointment);
+    return NextResponse.json({ ...appointment, checkoutUrl });
   } catch (error: any) {
     console.error("Error creating appointment:", error);
     return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });
