@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -25,6 +26,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Calendar,
   Clock,
@@ -34,9 +42,12 @@ import {
   Filter,
   Edit,
   Trash2,
+  Plus,
+  Loader2,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
+import { TREATMENT_OPTIONS } from "@/lib/types";
 
 interface Appointment {
   id: string;
@@ -50,16 +61,29 @@ interface Appointment {
   therapist: { id: string; firstName: string; lastName: string };
 }
 
+interface Patient { id: string; firstName: string; lastName: string; email: string; }
+
 export default function AdminAppointmentsPage() {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
+  const isPt = locale === "pt-BR";
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [createForm, setCreateForm] = useState({
+    patientId: "",
+    dateTime: "",
+    duration: 60,
+    treatmentType: "Initial Assessment",
+    price: 75,
+    notes: "",
+  });
   const [editForm, setEditForm] = useState({
     dateTime: "",
     duration: 0,
@@ -72,6 +96,7 @@ export default function AdminAppointmentsPage() {
 
   useEffect(() => {
     fetchAppointments();
+    fetchPatients();
   }, []);
 
   const fetchAppointments = async () => {
@@ -85,6 +110,51 @@ export default function AdminAppointmentsPage() {
       console.error("Failed to fetch appointments:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPatients = async () => {
+    try {
+      const res = await fetch("/api/admin/patients");
+      if (res.ok) {
+        const data = await res.json();
+        setPatients(Array.isArray(data) ? data : data.patients || []);
+      }
+    } catch {}
+  };
+
+  const handleCreateAppointment = async () => {
+    if (!createForm.patientId || !createForm.dateTime) {
+      toast({ title: "Error", description: "Patient and date/time are required", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: createForm.patientId,
+          dateTime: new Date(createForm.dateTime).toISOString(),
+          duration: Number(createForm.duration),
+          treatmentType: createForm.treatmentType,
+          price: Number(createForm.price),
+          notes: createForm.notes || null,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: isPt ? "Consulta criada" : "Appointment created", description: isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email." });
+        setShowCreateDialog(false);
+        setCreateForm({ patientId: "", dateTime: "", duration: 60, treatmentType: "Initial Assessment", price: 75, notes: "" });
+        fetchAppointments();
+      } else {
+        const data = await res.json();
+        toast({ title: "Error", description: data.error || "Failed to create appointment", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to create appointment", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -221,15 +291,15 @@ export default function AdminAppointmentsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "COMPLETED":
-        return { class: "bg-green-100 text-green-700", icon: CheckCircle };
+        return { class: "bg-green-500/20 text-green-400", icon: CheckCircle };
       case "CONFIRMED":
-        return { class: "bg-blue-100 text-blue-700", icon: CheckCircle };
+        return { class: "bg-blue-500/20 text-blue-400", icon: CheckCircle };
       case "PENDING":
-        return { class: "bg-yellow-100 text-yellow-700", icon: AlertCircle };
+        return { class: "bg-yellow-500/20 text-yellow-400", icon: AlertCircle };
       case "CANCELLED":
-        return { class: "bg-red-100 text-red-700", icon: XCircle };
+        return { class: "bg-red-500/20 text-red-400", icon: XCircle };
       default:
-        return { class: "bg-gray-100 text-gray-700", icon: AlertCircle };
+        return { class: "bg-muted text-muted-foreground", icon: AlertCircle };
     }
   };
 
@@ -243,11 +313,16 @@ export default function AdminAppointmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{T("admin.appointmentsTitle")}</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {T("admin.appointmentsDesc")}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{T("admin.appointmentsTitle")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {T("admin.appointmentsDesc")}
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateDialog(true)} className="gap-2 w-full sm:w-auto">
+          <Plus className="h-4 w-4" /> {isPt ? "Nova Consulta" : "New Appointment"}
+        </Button>
       </div>
 
       {/* Filters */}
@@ -399,6 +474,73 @@ export default function AdminAppointmentsPage() {
           })}
         </div>
       )}
+
+      {/* Create Appointment Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              {isPt ? "Nova Consulta" : "New Appointment"}
+            </DialogTitle>
+            <DialogDescription>
+              {isPt ? "Agende uma consulta para um paciente. O paciente receberá um email de confirmação automaticamente." : "Schedule an appointment for a patient. The patient will receive a confirmation email automatically."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{isPt ? "Paciente *" : "Patient *"}</Label>
+              <Select value={createForm.patientId} onValueChange={v => setCreateForm(f => ({ ...f, patientId: v }))}>
+                <SelectTrigger><SelectValue placeholder={isPt ? "Selecionar paciente..." : "Select patient..."} /></SelectTrigger>
+                <SelectContent>
+                  {patients.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName} — {p.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{isPt ? "Tipo de Tratamento" : "Treatment Type"}</Label>
+              <Select value={createForm.treatmentType} onValueChange={v => {
+                const opt = TREATMENT_OPTIONS.find(t => t.name === v);
+                setCreateForm(f => ({ ...f, treatmentType: v, duration: opt?.duration || f.duration, price: opt?.price || f.price }));
+              }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TREATMENT_OPTIONS.map(t => (
+                    <SelectItem key={t.id} value={t.name}>{isPt && t.namePt ? t.namePt : t.name} — £{t.price} ({t.duration}min)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{isPt ? "Data e Hora *" : "Date & Time *"}</Label>
+              <Input type="datetime-local" value={createForm.dateTime} onChange={e => setCreateForm(f => ({ ...f, dateTime: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{isPt ? "Duração (min)" : "Duration (min)"}</Label>
+                <Input type="number" value={createForm.duration} onChange={e => setCreateForm(f => ({ ...f, duration: Number(e.target.value) }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{isPt ? "Preço (£)" : "Price (£)"}</Label>
+                <Input type="number" step="0.01" value={createForm.price} onChange={e => setCreateForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{isPt ? "Notas" : "Notes"}</Label>
+              <Textarea value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder={isPt ? "Notas opcionais sobre a consulta..." : "Optional notes about the appointment..."} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>{isPt ? "Cancelar" : "Cancel"}</Button>
+            <Button onClick={handleCreateAppointment} disabled={submitting} className="gap-2">
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isPt ? "Criar Consulta" : "Create Appointment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

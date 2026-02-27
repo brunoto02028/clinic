@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
+import { notifyPatient } from "@/lib/notify-patient";
 
 export async function GET() {
   try {
@@ -80,6 +81,31 @@ export async function POST(request: NextRequest) {
         therapist: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    // Send APPOINTMENT_CONFIRMATION email to patient
+    try {
+      const appUrl = process.env.NEXTAUTH_URL || '';
+      const apptDate = new Date(dateTime);
+      const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      await notifyPatient({
+        patientId: appointment.patient.id,
+        emailTemplateSlug: 'APPOINTMENT_CONFIRMATION',
+        emailVars: {
+          patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
+          appointmentDate: dateStr,
+          appointmentTime: timeStr,
+          therapistName: `${appointment.therapist.firstName} ${appointment.therapist.lastName}`,
+          treatmentType: treatmentType || 'General Consultation',
+          duration: String(duration || 60),
+          portalUrl: `${appUrl}/dashboard/appointments`,
+        },
+        plainMessage: `Your appointment is confirmed: ${treatmentType || 'Consultation'} on ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Duration: ${duration || 60} min.`,
+        plainMessagePt: `Sua consulta está confirmada: ${treatmentType || 'Consulta'} em ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Duração: ${duration || 60} min.`,
+      });
+    } catch (emailErr) {
+      console.error('Failed to send appointment confirmation email:', emailErr);
+    }
 
     return NextResponse.json(appointment);
   } catch (error: any) {
