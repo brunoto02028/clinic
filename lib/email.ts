@@ -34,12 +34,14 @@ export async function sendEmail({
     html,
     from,
     replyTo,
+    bcc,
 }: {
     to: string;
     subject: string;
     html: string;
     from?: string;
     replyTo?: string;
+    bcc?: string | string[];
 }) {
     const defaultFrom = (await getConfigValue('EMAIL_FROM')) || process.env.EMAIL_FROM || 'Bruno Physical Rehabilitation <support@bpr.rehab>';
     const fromAddr = from || defaultFrom;
@@ -48,7 +50,7 @@ export async function sendEmail({
     try {
         const transporter = await getSmtpTransporter();
         if (transporter) {
-            const info = await transporter.sendMail({ from: fromAddr, to, subject, html, replyTo: replyTo || undefined });
+            const info = await transporter.sendMail({ from: fromAddr, to, subject, html, replyTo: replyTo || undefined, bcc: bcc || undefined });
             console.log('[EMAIL] Sent via SMTP:', info.messageId);
             return { success: true, data: { messageId: info.messageId } };
         }
@@ -62,7 +64,7 @@ export async function sendEmail({
         if (resendKey) {
             const { Resend } = await import('resend');
             const resend = new Resend(resendKey);
-            const data = await resend.emails.send({ from: fromAddr, to, subject, html });
+            const data = await resend.emails.send({ from: fromAddr, to, subject, html, bcc: bcc || undefined });
             console.log('[EMAIL] Sent via Resend');
             return { success: true, data };
         }

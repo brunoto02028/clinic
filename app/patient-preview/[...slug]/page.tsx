@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 
 // Lazy-load each dashboard page component
 const AppointmentsList = dynamic(() => import("@/components/appointments/appointments-list"));
-const MedicalScreeningForm = dynamic(() => import("@/components/screening/medical-screening-form"));
+const AssessmentScreeningForm = dynamic(() => import("@/components/screening/medical-screening-form"));
 const PatientRecords = dynamic(() => import("@/components/records/patient-records"));
 const PatientScansPage = dynamic(() => import("@/app/dashboard/scans/page"));
 const PatientBodyAssessmentsPage = dynamic(() => import("@/app/dashboard/body-assessments/page"));
@@ -27,7 +27,7 @@ const PatientCancellationPage = dynamic(() => import("@/app/dashboard/cancellati
 
 const ROUTE_MAP: Record<string, React.ComponentType> = {
   appointments: AppointmentsList,
-  screening: MedicalScreeningForm,
+  screening: AssessmentScreeningForm,
   records: PatientRecords,
   scans: PatientScansPage,
   "body-assessments": PatientBodyAssessmentsPage,

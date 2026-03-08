@@ -264,7 +264,7 @@ export default function PatientTreatmentPage() {
                           ? (proto.activePackage.priceFullPackage || proto.activePackage.pricePerSession * proto.activePackage.totalSessions).toFixed(2)
                           : proto.activePackage.pricePerSession.toFixed(2)
                         }
-                        {proto.activePackage.selectedPaymentType === "PER_SESSION" && <span className="text-xs font-normal text-muted-foreground ml-1">/session</span>}
+                        {proto.activePackage.selectedPaymentType === "PER_SESSION" && <span className="text-xs font-normal text-muted-foreground ml-1">{isPt ? "/sessão" : "/session"}</span>}
                       </span>
                     </div>
                   </div>

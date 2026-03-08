@@ -66,6 +66,7 @@ enum BodyAssessmentStatus {
   ANALYZING         // AI processing
   PENDING_REVIEW    // AI done, waiting for therapist review
   REVIEWED          // Therapist reviewed
+  SENT_TO_PATIENT   // Report sent to patient
   COMPLETED         // Final
 }
 
@@ -385,7 +386,7 @@ model User {
   clinic          Clinic?   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   
   email           String    @unique
-  password        String
+  password        String?   // Nullable for OAuth users (Google sign-in)
   firstName       String
   lastName        String
   phone           String?
@@ -465,6 +466,7 @@ model User {
   patientPackages           PatientPackage[]        @relation("PatientPackageRecipient")
   grantedPackages           PatientPackage[]        @relation("PatientPackageGranter")
   consentAcceptedAt         DateTime?
+  socialMediaConsentAt      DateTime?
   preferredLocale           String                  @default("en-GB") // en-GB or pt-BR
   communicationPreference   String                  @default("EMAIL") // EMAIL, SMS, WHATSAPP
   consentLogs               ConsentLog[]            @relation("PatientConsentLogs")
@@ -497,9 +499,36 @@ model User {
   intakeTokenExpiry          DateTime?
   profileCompleted           Boolean                       @default(false)
 
+  // OAuth
+  accounts                  Account[]
+
   @@index([clinicId])
   @@index([email])
   @@index([role])
+}
+
+// ============================================
+// ACCOUNT (NextAuth OAuth - stores provider tokens)
+// ============================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 // ============================================
@@ -526,6 +555,48 @@ model MedicalScreening {
   cardiovascularSymptoms  Boolean  @default(false)
   severeHeadache          Boolean  @default(false)
   dizzinessBalanceIssues  Boolean  @default(false)
+  redFlagDetails          Json?
+
+  // Chief Complaint & Pain
+  chiefComplaint          String?
+  painLocation            String?
+  painDuration            String?
+  painScore               Int?
+  painType                String?   // aching, sharp, burning, stabbing, throbbing, shooting, cramping
+  painAggravating         String?
+  painRelieving           String?
+  painPattern             String?   // constant, intermittent, episodic
+
+  // Functional Impact
+  functionalLimitations   String?
+  sleepAffected           Boolean  @default(false)
+  workAffected            Boolean  @default(false)
+  mobilityAffected        Boolean  @default(false)
+
+  // Patient Background
+  occupation              String?
+  dominantSide            String?   // left, right, ambidextrous
+  activityLevel           String?   // sedentary, lightly_active, moderately_active, very_active
+  hobbiesSports           String?
+
+  // Lifestyle
+  smoker                  Boolean  @default(false)
+  alcoholUse              String?   // none, occasional, moderate, heavy
+  height                  String?
+  weight                  String?
+
+  // Previous Treatment
+  previousPhysio          Boolean  @default(false)
+  previousPhysioDetails   String?
+  previousInjections       Boolean  @default(false)
+  previousInjectionsDetails String?
+  currentlyUnderCare      Boolean  @default(false)
+  currentlyUnderCareDetails String?
+
+  // Patient Goals
+  treatmentGoals          String?
+  returnToSport           Boolean  @default(false)
+  returnToWork            Boolean  @default(false)
 
   // Additional Information
   currentMedications      String?
@@ -809,6 +880,11 @@ model SiteSettings {
   bioStepsJson       String?  @db.Text  // JSON array of process steps
   bioBenefitsJson    String?  @db.Text  // JSON array of benefits
   
+  // Infrared Thermography Block (Block 12b)
+  thermoImageUrl     String?
+  thermoImagePath    String?
+  thermoJson         String?  @db.Text  // JSON: {title,title2,desc,desc2,desc3,badge,benefits:[],conditionsTitle,conditions:[],ctaText}
+
   // MLS® Laser Therapy Featured Block (Block 12)
   mlsLaserJson       String?  @db.Text  // JSON: {title,title2,desc,treatmentImageUrl,deviceImageUrl,badge,benefits:[],conditions:[],stats:[],ctaText,learnMoreText,wave808,wave905,dualText}
 
@@ -817,8 +893,11 @@ model SiteSettings {
   lpInsolesJson      String?  @db.Text  // Full insoles landing page content
   lpBiomechanicsJson String?  @db.Text  // Full biomechanics landing page content
   
+  // Assessment Screening Form Configuration
+  screeningConfigJson String? @db.Text  // JSON: editable screening form questions, labels, sections
+  
   // Patient Portal Configuration
-  patientPortalJson String?  @db.Text  // JSON config for patient portal modules
+  patientPortalJson String? @db.Text  // JSON config for patient portal modules
   
   // Consent / Legal Texts
   consentTextsJson  String?  @db.Text  // JSON config for terms, privacy, liability texts
@@ -1589,6 +1668,9 @@ model BodyAssessment {
   // AI-Suggested Corrective Exercises
   correctiveExercises Json?               // [{name, targetArea, finding, difficulty, sets, reps, duration, instructions, benefits, musclesTargeted}]
   
+  // AI-Suggested Product Recommendations
+  recommendedProducts Json?               // [{name, category, reason, finding, priority, searchTerms}]
+  
   // Deviation Labels (visual markers on skeleton)
   deviationLabels   Json?                 // [{joint, label, severity, angle, direction, description}]
   
@@ -1605,6 +1687,47 @@ model BodyAssessment {
   therapistNotes    String?               @db.Text
   therapistFindings Json?                 // Manual annotations/corrections by therapist
   reviewedAt        DateTime?
+  
+  // ─── Anthropometric & Body Composition ───
+  heightCm          Float?                // Height in cm
+  weightKg          Float?                // Weight in kg
+  bmi               Float?                // Auto-calculated: weight/(height/100)²
+  bmiClassification String?               // underweight|normal|overweight|obese_i|obese_ii|obese_iii
+  waistCm           Float?                // Waist circumference in cm
+  hipCm             Float?                // Hip circumference in cm
+  waistHipRatio     Float?                // Auto-calculated: waist/hip
+  neckCm            Float?                // Neck circumference in cm
+  chestCm           Float?                // Chest circumference in cm
+  thighCm           Float?                // Thigh circumference in cm (dominant side)
+  calfCm            Float?                // Calf circumference in cm
+  armCm             Float?                // Upper arm circumference in cm (relaxed)
+  bodyFatPercent    Float?                // Estimated body fat %
+  bodyFatMethod     String?               // navy|jackson_pollock_3|jackson_pollock_7|bioimpedance|dexa|manual
+  leanMassKg        Float?                // Calculated lean mass
+  fatMassKg         Float?                // Calculated fat mass
+  visceralFatLevel  Int?                  // 1-59 scale (if bioimpedance available)
+  basalMetabolicRate Float?               // BMR in kcal/day (Harris-Benedict or Mifflin-St Jeor)
+  
+  // ─── Health Risk Classification ───
+  cardiovascularRisk  String?             // low|moderate|high|very_high
+  metabolicRisk       String?             // low|moderate|high
+  healthScore         Float?              // 0-100 composite health score
+  healthRiskFactors   Json?               // [{factor, severity, description}]
+  
+  // ─── Sedentary Profile ───
+  sittingHoursPerDay  Float?              // Average hours sitting per day
+  screenTimeHours     Float?              // Average screen time hours per day
+  walkingMinutesDay   Float?              // Average daily walking minutes
+  stepsPerDay         Int?                // Average daily steps (self-reported or device)
+  ergonomicScore      Float?              // 0-100 (from ergonomic assessment)
+  ergonomicAssessment Json?               // {deskHeight, monitorHeight, chairType, keyboardPosition, breakFrequency, notes}
+  sedentaryRecommendations Json?          // AI-generated recommendations for sedentary patients
+  
+  // Patient Delivery
+  sentToPatientAt   DateTime?             // When report was sent to patient
+  reportLanguage    String?               // "pt-BR" or "en"
+  activityLevel     String?               // sedentary|recreational|amateur|professional
+  sportModality     String?               // e.g. "Football", "Running"
   
   // Status & Workflow
   status            BodyAssessmentStatus  @default(PENDING_CAPTURE)
@@ -2465,6 +2588,30 @@ model EmailMessage {
 }
 
 // ============================================
+// EMAIL ACCOUNTS (Multi-account support)
+// ============================================
+
+model EmailAccount {
+  id          String   @id @default(cuid())
+  label       String              // e.g. "BPR Rehab", "Bruno Physical Rehabilitation"
+  email       String   @unique    // e.g. admin@bpr.rehab
+  smtpHost    String              // e.g. smtp.hostinger.com
+  smtpPort    String   @default("465")
+  smtpUser    String              // Usually same as email
+  smtpPass    String   @db.Text   // Encrypted
+  emailFrom   String              // e.g. "Bruno Physical Rehabilitation <admin@bpr.rehab>"
+  isPrimary   Boolean  @default(false) // Primary account for sending
+  isActive    Boolean  @default(true)  // Can be deactivated without deleting
+  lastSyncAt  DateTime?
+  clinicId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPrimary])
+  @@index([isActive])
+}
+
+// ============================================
 // BLOOD PRESSURE
 // ============================================
 
@@ -2565,6 +2712,8 @@ enum ConsentAction {
   DATA_DELETION_REQUEST
   MARKETING_OPT_IN
   MARKETING_OPT_OUT
+  SOCIAL_MEDIA_IMAGE_CONSENT
+  SOCIAL_MEDIA_IMAGE_REVOKE
 }
 
 model ConsentLog {

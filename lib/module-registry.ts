@@ -96,6 +96,30 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     alwaysVisible: true,
     defaultEnabled: true,
   },
+  {
+    key: "mod_guide",
+    label: "How It Works",
+    labelPt: "Como Funciona",
+    description: "Patient guide — what to do before your appointment",
+    icon: BookOpen,
+    href: "/dashboard/guide",
+    category: "core",
+    alwaysVisible: true,
+    defaultEnabled: true,
+  },
+
+  // ── Screening (always visible — required for onboarding) ──
+  {
+    key: "mod_screening",
+    label: "Assessment Screening",
+    labelPt: "Triagem de Avaliação",
+    description: "Complete assessment screening form",
+    icon: Shield,
+    href: "/dashboard/screening",
+    category: "core",
+    alwaysVisible: true,
+    defaultEnabled: true,
+  },
 
   // ── CLINICAL (require plan access) ──
   {
@@ -107,16 +131,6 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     href: "/dashboard/appointments",
     category: "clinical",
     defaultEnabled: false,
-  },
-  {
-    key: "mod_screening",
-    label: "Medical Screening",
-    labelPt: "Triagem Médica",
-    description: "Complete medical screening form",
-    icon: Shield,
-    href: "/dashboard/screening",
-    category: "clinical",
-    defaultEnabled: true,
   },
   {
     key: "mod_treatment",

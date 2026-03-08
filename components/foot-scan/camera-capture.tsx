@@ -9,6 +9,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Camera, RotateCcw, CheckCircle2, XCircle, Footprints, ArrowRight, AlertTriangle } from 'lucide-react';
+import { QRCameraFallback } from '@/components/ui/qr-camera-fallback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -431,11 +432,11 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
 
       <CardContent className="space-y-4 p-0">
         {error ? (
-          <div className="p-6 bg-red-50 text-center">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-700 mb-4">{error}</p>
-            <Button onClick={startCamera}>Try Again</Button>
-          </div>
+          <QRCameraFallback
+            errorMessage={error}
+            featureName={{ en: "the foot scan", pt: "o escaneamento dos pés" }}
+            onRetry={() => { setError(null); startCamera(); }}
+          />
         ) : (
           <>
             {/* Camera View */}

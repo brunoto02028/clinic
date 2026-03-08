@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generatePresignedUploadUrl } from "@/lib/s3";
+import { writeFile, mkdir, copyFile, unlink } from "fs/promises";
+import path from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { removeBackground } from "@/lib/remove-bg";
+
+const execFileAsync = promisify(execFile);
+
+async function blurFaceOnFile(filePath: string): Promise<void> {
+  try {
+    const scriptPath = path.join(process.cwd(), "scripts", "blur-faces.py");
+    const tempBlurred = filePath + ".blurred.jpg";
+    await execFileAsync("python3", [scriptPath, filePath, tempBlurred], { timeout: 30000 });
+    await copyFile(tempBlurred, filePath);
+    await unlink(tempBlurred).catch(() => {});
+    console.log(`[blur-faces] Blurred face in ${filePath}`);
+  } catch (err: any) {
+    console.warn(`[blur-faces] Face blur failed (non-fatal):`, err?.message || err);
+  }
+}
 
 // GET - Get assessment info by capture token (no auth - public link)
 export async function GET(
@@ -24,7 +44,7 @@ export async function GET(
         rightImageUrl: true,
         movementVideos: true,
         patient: {
-          select: { firstName: true, lastName: true },
+          select: { firstName: true, lastName: true, preferredLocale: true },
         },
         clinic: {
           select: { name: true, logoUrl: true },
@@ -50,6 +70,7 @@ export async function GET(
 }
 
 // PUT - Upload capture images by token (no auth - public link)
+// Supports both JSON body and FormData
 export async function PUT(
   request: NextRequest,
   { params }: { params: { token: string } }
@@ -69,42 +90,91 @@ export async function PUT(
       );
     }
 
-    const body = await request.json();
-    const {
-      view,
-      imageData,
-      landmarks,
-      captureMetadata,
-      status,
-      movementVideo,
-    } = body;
+    // Parse request — support both FormData and JSON
+    let view: string | null = null;
+    let imageData: string | null = null;
+    let imageFile: File | null = null;
+    let landmarks: any = null;
+    let captureMetadata: any = null;
+    let status: string | null = null;
+    let movementVideo: any = null;
+
+    const contentType = request.headers.get("content-type") || "";
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      view = formData.get("view") as string | null;
+      imageFile = formData.get("image") as File | null;
+      const landmarksStr = formData.get("landmarks") as string | null;
+      if (landmarksStr) {
+        try { landmarks = JSON.parse(landmarksStr); } catch {}
+      }
+      status = formData.get("status") as string | null;
+      // Handle movement video from FormData
+      const videoFile = formData.get("movementVideo") as File | null;
+      if (videoFile) {
+        const testType = formData.get("testType") as string || "unknown";
+        const label = formData.get("label") as string || testType;
+        const duration = parseFloat(formData.get("duration") as string || "0");
+        movementVideo = { testType, label, duration, videoFile };
+      }
+    } else {
+      const body = await request.json();
+      view = body.view || null;
+      imageData = body.imageData || null;
+      landmarks = body.landmarks || null;
+      captureMetadata = body.captureMetadata || null;
+      status = body.status || null;
+      movementVideo = body.movementVideo || null;
+    }
 
     const updateData: any = {};
 
     // Handle image upload per view
-    if (view && imageData) {
-      // Upload image to S3
-      const ext = "jpg";
-      const key = `body-assessments/${assessment.id}/${view}.${ext}`;
+    if (view && (imageData || imageFile)) {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads", "body-assessments", assessment.id);
+      await mkdir(uploadsDir, { recursive: true });
 
-      let imageUrl = imageData;
+      const ts = Date.now();
+      const filename = `${view}-${ts}.jpg`;
+      const localPath = path.join(uploadsDir, filename);
+      const key = `body-assessments/${assessment.id}/${filename}`;
 
-      // If it's base64, try to upload to S3
-      if (imageData.startsWith("data:")) {
-        try {
-          const { uploadUrl } = await generatePresignedUploadUrl(key, "image/jpeg");
-          const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
-          const binaryData = new Uint8Array(Buffer.from(base64Data, "base64"));
-          await fetch(uploadUrl, {
-            method: "PUT",
-            body: binaryData,
-            headers: { "Content-Type": "image/jpeg" },
-          });
-          // Use the S3 path
-          imageUrl = imageData; // Keep base64 as fallback URL
-        } catch (s3Error) {
-          console.error("S3 upload failed, using base64:", s3Error);
-        }
+      if (imageFile) {
+        // FormData file upload — save directly to disk
+        const arrayBuffer = await imageFile.arrayBuffer();
+        await writeFile(localPath, Buffer.from(arrayBuffer));
+      } else if (imageData && imageData.startsWith("data:")) {
+        // Base64 data — decode and save to disk
+        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+        await writeFile(localPath, Buffer.from(base64Data, "base64"));
+      }
+
+      // Save original backup
+      const originalPath = path.join(uploadsDir, `${view}-${ts}-original.jpg`);
+      await copyFile(localPath, originalPath);
+
+      // Apply face blur
+      await blurFaceOnFile(localPath);
+
+      // Remove background (replace with white) using rembg
+      await removeBackground(localPath);
+
+      // Use local URL
+      const imageUrl = `/uploads/body-assessments/${assessment.id}/${filename}`;
+
+      // Also try S3 upload (non-blocking, keep local as primary)
+      try {
+        const { uploadUrl } = await generatePresignedUploadUrl(key, "image/jpeg");
+        const { readFile } = await import("fs/promises");
+        const fileBuffer = await readFile(localPath);
+        await fetch(uploadUrl, {
+          method: "PUT",
+          body: fileBuffer,
+          headers: { "Content-Type": "image/jpeg" },
+        });
+      } catch (s3Error) {
+        console.warn("S3 upload failed, using local:", s3Error);
       }
 
       switch (view) {
@@ -133,23 +203,43 @@ export async function PUT(
 
     // Handle movement video upload
     if (movementVideo) {
-      const { testType, label, duration, videoDataUrl } = movementVideo;
       const existing: any[] = Array.isArray(assessment.movementVideos) ? assessment.movementVideos : [];
 
-      // Store as base64 data URL (S3 upload can be added later for larger files)
-      const videoEntry = {
-        id: `${testType}_${Date.now()}`,
-        testType,
-        label,
-        duration,
-        videoUrl: videoDataUrl || null,
-        videoPath: null,
-        createdAt: new Date().toISOString(),
-      };
+      if (movementVideo.videoFile) {
+        // FormData video — save to disk
+        const videoDir = path.join(process.cwd(), "public", "uploads", "body-assessments", assessment.id);
+        await mkdir(videoDir, { recursive: true });
+        const vidFilename = `${movementVideo.testType}-${Date.now()}.webm`;
+        const vidPath = path.join(videoDir, vidFilename);
+        const vidBuffer = await movementVideo.videoFile.arrayBuffer();
+        await writeFile(vidPath, Buffer.from(vidBuffer));
 
-      // Replace existing video for same test type, or add new
-      const filtered = existing.filter((v: any) => v.testType !== testType);
-      updateData.movementVideos = [...filtered, videoEntry];
+        const videoEntry = {
+          id: `${movementVideo.testType}_${Date.now()}`,
+          testType: movementVideo.testType,
+          label: movementVideo.label,
+          duration: movementVideo.duration,
+          videoUrl: `/uploads/body-assessments/${assessment.id}/${vidFilename}`,
+          videoPath: vidPath,
+          createdAt: new Date().toISOString(),
+        };
+        const filtered = existing.filter((v: any) => v.testType !== movementVideo.testType);
+        updateData.movementVideos = [...filtered, videoEntry];
+      } else {
+        // JSON video data
+        const { testType, label, duration, videoDataUrl } = movementVideo;
+        const videoEntry = {
+          id: `${testType}_${Date.now()}`,
+          testType,
+          label,
+          duration,
+          videoUrl: videoDataUrl || null,
+          videoPath: null,
+          createdAt: new Date().toISOString(),
+        };
+        const filtered = existing.filter((v: any) => v.testType !== testType);
+        updateData.movementVideos = [...filtered, videoEntry];
+      }
     }
 
     if (captureMetadata) {

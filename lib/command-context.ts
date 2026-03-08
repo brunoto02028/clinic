@@ -21,7 +21,7 @@ BPR operates as a **hybrid physio clinic + health-tech platform**:
 
 ## PLATFORM ARCHITECTURE (Full-Stack Next.js 14)
 - **Tech Stack**: Next.js 14, React, TypeScript, PostgreSQL, Prisma ORM, TailwindCSS, shadcn/ui
-- **AI**: Abacus AI (RouteLLM — routes to Claude 4.5/GPT-5.2/Gemini 3 Flash) + Gemini fallback
+- **AI**: Google Gemini (text generation, image generation, vision, transcription)
 - **Payments**: Stripe (live — subscriptions, one-time, treatment packages)
 - **Communication**: WhatsApp Business API (Meta), Email SMTP (Hostinger), Instagram Graph API
 - **Hosting**: VPS (Ubuntu 24.04, 8GB RAM), PM2 process manager, Nginx reverse proxy, SSL
@@ -80,8 +80,7 @@ BPR operates as a **hybrid physio clinic + health-tech platform**:
 - **WhatsApp Business API** — Patient communication, AI-generated messages, appointment reminders
 - **Instagram Graph API** — Post publishing, carousel, insights, AI captions
 - **Email SMTP** — Hostinger SMTP for transactional emails, IMAP for inbox sync
-- **Abacus AI** — Text generation, image generation (FLUX-2 PRO, DALL-E, Ideogram), vision/multimodal
-- **Google Gemini** — Fallback AI for text generation, voice transcription, vision analysis
+- **Google Gemini** — Text generation, image generation (gemini-2.5-flash-image), vision analysis, audio transcription
 - **MediaPipe** — Client-side pose detection for body assessments (33 landmarks)
 
 ## DATABASE MODELS (${new Date().toLocaleDateString("en-GB")})
@@ -335,17 +334,17 @@ async function getEducationStats(cf: any): Promise<string> {
 async function getSystemInfo(): Promise<string> {
   try {
     const configs = await prisma.systemConfig.findMany({
-      where: { key: { in: ["AI_DEFAULT_PROVIDER", "GEMINI_MODEL", "ABACUS_API_KEY", "GEMINI_API_KEY"] } },
+      where: { key: { in: ["AI_DEFAULT_PROVIDER", "GEMINI_MODEL", "AI_IMAGE_MODEL", "GEMINI_API_KEY"] } },
       select: { key: true, value: true },
     });
     const m: Record<string, string> = {};
     for (const c of configs) m[c.key] = c.key.includes("KEY") ? (c.value ? "✓ configured" : "✗ missing") : (c.value || "not set");
 
     return `### SYSTEM CONFIG
-- AI Provider: ${m["AI_DEFAULT_PROVIDER"] || "auto (Abacus RouteLLM)"}
-- Abacus API Key: ${m["ABACUS_API_KEY"] || "not set"}
+- AI Provider: Gemini
 - Gemini API Key: ${m["GEMINI_API_KEY"] || "not set"}
-- Gemini Model: ${m["GEMINI_MODEL"] || "gemini-2.0-flash"}`;
+- Gemini Model: ${m["GEMINI_MODEL"] || "gemini-2.0-flash"}
+- Image Model: ${m["AI_IMAGE_MODEL"] || "gemini-2.5-flash-image"}`;
   } catch { return "### SYSTEM CONFIG\n- Data unavailable"; }
 }
 

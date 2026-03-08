@@ -40,10 +40,14 @@ import {
   Linkedin,
   Youtube,
   Globe,
+  Thermometer,
+  Eye,
+  Flame,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Logo } from "@/components/ui/logo";
+import { ThermographyIllustration } from "@/components/thermography-illustration";
 import { t, getLocale, setLocale } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
@@ -97,6 +101,8 @@ interface SiteSettings {
   whatsappMessage?: string | null;
   footerModulesJson?: string | null;
   mlsLaserJson?: string | null;
+  thermoJson?: string | null;
+  thermoImageUrl?: string | null;
 }
 
 interface Article {
@@ -153,6 +159,7 @@ export default function LandingPage() {
     { id: "services", label: T("home.services") },
     { id: "insoles", label: T("home.navInsoles") },
     { id: "biomechanics", label: T("home.navBiomechanics") },
+    { id: "thermography", label: T("home.navThermography") },
     { id: "about", label: T("home.about") },
     { id: "contact", label: T("home.contact") },
   ];
@@ -790,6 +797,145 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ═══ INFRARED THERMOGRAPHY BLOCK ═══ */}
+      {(() => {
+        let thm: any = {};
+        try { thm = settings?.thermoJson ? JSON.parse(settings.thermoJson) : {}; } catch {}
+        const thmV = (field: string, fallbackKey: string) => thm[field] || T(fallbackKey);
+        const thmBenefits: string[] = thm.benefits ? thm.benefits.split("\n").map((s: string) => s.trim()).filter(Boolean) : [];
+        const thmConditions: string[] = thm.conditions ? thm.conditions.split("\n").map((s: string) => s.trim()).filter(Boolean) : [];
+
+        const benefitDefaults = ["home.thermoBenefit1", "home.thermoBenefit2", "home.thermoBenefit3", "home.thermoBenefit4", "home.thermoBenefit5", "home.thermoBenefit6"];
+        const condDefaults = ["home.thermoCond1", "home.thermoCond2", "home.thermoCond3", "home.thermoCond4", "home.thermoCond5", "home.thermoCond6"];
+        const ctaLink = thm.ctaLink || "/signup";
+
+        const benefitIcons = [
+          { icon: Flame, color: "text-red-400 bg-red-500/15" },
+          { icon: Thermometer, color: "text-orange-400 bg-orange-500/15" },
+          { icon: Activity, color: "text-amber-400 bg-amber-500/15" },
+          { icon: Timer, color: "text-emerald-400 bg-emerald-500/15" },
+          { icon: Eye, color: "text-cyan-400 bg-cyan-500/15" },
+          { icon: Shield, color: "text-blue-400 bg-blue-500/15" },
+        ];
+
+        return (
+      <section id="thermography" className="relative py-16 sm:py-20 lg:py-28 bg-background overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-red-500/[0.03] to-transparent" />
+          <div className="absolute bottom-0 right-0 w-1/3 h-1/2 bg-gradient-to-tl from-orange-500/[0.04] to-transparent" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-10 sm:mb-14">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-red-500/15 text-red-400 text-xs font-semibold uppercase tracking-wider mb-4">
+              {thmV("label", "home.thermoLabel")}
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight max-w-3xl">
+              {thmV("title", "home.thermoTitle")}{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500">
+                {thmV("title2", "home.thermoTitle2")}
+              </span>
+            </h2>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start">
+            {/* Left: Image + badge */}
+            <div className="space-y-4">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800 aspect-[4/3]">
+                {settings?.thermoImageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={settings.thermoImageUrl as string}
+                    alt="Infrared thermography scan showing heat patterns on body"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                )}
+                {!settings?.thermoImageUrl && (
+                  <div className="absolute inset-0">
+                    <ThermographyIllustration className="w-full h-full" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
+                    <Thermometer className="h-5 w-5 text-red-400" />
+                    <span className="text-sm font-medium text-foreground">{thmV("badge", "home.thermoBadge")}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info cards row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/20 p-4 text-center">
+                  <Flame className="h-6 w-6 text-red-400 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-foreground">{locale === "pt-BR" ? "Detecção de Calor" : "Heat Detection"}</p>
+                </div>
+                <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-500/20 p-4 text-center">
+                  <Eye className="h-6 w-6 text-orange-400 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-foreground">{locale === "pt-BR" ? "Análise Visual" : "Visual Analysis"}</p>
+                </div>
+                <div className="rounded-xl bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20 p-4 text-center">
+                  <Activity className="h-6 w-6 text-amber-400 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-foreground">{locale === "pt-BR" ? "Monitoramento" : "Monitoring"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Content */}
+            <div>
+              <div className="space-y-4 mb-8">
+                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">{thmV("desc", "home.thermoDesc")}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{thmV("desc2", "home.thermoDesc2")}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{thmV("desc3", "home.thermoDesc3")}</p>
+              </div>
+
+              {/* Benefits */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                {(thmBenefits.length > 0 ? thmBenefits : benefitDefaults.map(k => T(k))).map((text, i) => {
+                  const bi = benefitIcons[i % benefitIcons.length];
+                  const BIcon = bi.icon;
+                  return (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className={`w-9 h-9 rounded-lg ${bi.color} flex items-center justify-center shrink-0`}>
+                        <BIcon className="h-4 w-4" />
+                      </div>
+                      <span className="text-sm text-foreground leading-relaxed pt-1.5">{text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Conditions tags */}
+              <div className="rounded-xl bg-card border border-border p-5 mb-8">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-red-400" />
+                  {thmV("conditionsTitle", "home.thermoConditionsTitle")}
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {(thmConditions.length > 0 ? thmConditions : condDefaults.map(k => T(k))).map((cond, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/60 text-xs font-medium text-foreground">
+                      <CheckCircle2 className="h-3 w-3 text-red-400" />
+                      {cond}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* CTAs */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href={ctaLink}>
+                  <Button size="lg" className="gap-2 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white">
+                    {thmV("ctaText", "home.thermoCta")} <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+        );
+      })()}
 
       {/* How It Works */}
       <section className="py-12 sm:py-16 lg:py-20 bg-card/50">

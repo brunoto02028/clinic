@@ -20,7 +20,9 @@ import {
   Play,
   SkipForward,
   Shield,
+  ImagePlus,
 } from "lucide-react";
+import { QRCameraFallback } from "@/components/ui/qr-camera-fallback";
 
 export interface CapturedView {
   imageData: string;
@@ -46,28 +48,37 @@ interface BodyCaptureProps {
   onComplete: (result: BodyCaptureResult) => void;
   onCancel?: () => void;
   skipVideos?: boolean;
+  locale?: string;
 }
 
 const CAPTURE_VIEWS = [
   {
     id: "front" as const,
     label: "Frontal View",
+    labelPt: "Vista Frontal",
     instruction: "Stand facing the camera with arms at your sides",
+    instructionPt: "Fique de frente para a câmera com os braços ao lado do corpo",
   },
   {
     id: "back" as const,
     label: "Posterior View",
+    labelPt: "Vista Posterior",
     instruction: "Turn around — back facing the camera",
+    instructionPt: "Vire-se — fique de costas para a câmera",
   },
   {
     id: "left" as const,
     label: "Left Lateral",
+    labelPt: "Lateral Esquerda",
     instruction: "Turn to show your left side to the camera",
+    instructionPt: "Vire para mostrar o lado esquerdo à câmera",
   },
   {
     id: "right" as const,
     label: "Right Lateral",
+    labelPt: "Lateral Direita",
     instruction: "Turn to show your right side to the camera",
+    instructionPt: "Vire para mostrar o lado direito à câmera",
   },
 ];
 
@@ -75,49 +86,63 @@ export const MOVEMENT_TESTS = [
   {
     id: "squat",
     label: "Squat",
+    labelPt: "Agachamento",
     instruction: "Perform 3 full squats at a comfortable pace — face the camera",
+    instructionPt: "Faça 3 agachamentos completos em ritmo confortável — de frente para a câmera",
     duration: 15,
     icon: "🏋️",
   },
   {
     id: "gait",
     label: "Gait / Walking",
+    labelPt: "Marcha / Caminhada",
     instruction: "Walk naturally back and forth (2–3 steps each way) — side view to camera",
+    instructionPt: "Caminhe naturalmente ida e volta (2–3 passos) — vista lateral para a câmera",
     duration: 15,
     icon: "🚶",
   },
   {
     id: "overhead_squat",
     label: "Overhead Squat",
+    labelPt: "Agachamento com Braços Elevados",
     instruction: "Raise both arms overhead, then squat 3 times — face the camera",
+    instructionPt: "Levante os dois braços acima da cabeça e agache 3 vezes — de frente para a câmera",
     duration: 15,
     icon: "🙆",
   },
   {
     id: "single_leg_l",
     label: "Single Leg Balance (Left)",
+    labelPt: "Equilíbrio Unipodal (Esquerda)",
     instruction: "Stand on your LEFT leg for 10 seconds — face the camera",
+    instructionPt: "Fique apoiado na perna ESQUERDA por 10 segundos — de frente para a câmera",
     duration: 12,
     icon: "🦩",
   },
   {
     id: "single_leg_r",
     label: "Single Leg Balance (Right)",
+    labelPt: "Equilíbrio Unipodal (Direita)",
     instruction: "Stand on your RIGHT leg for 10 seconds — face the camera",
+    instructionPt: "Fique apoiado na perna DIREITA por 10 segundos — de frente para a câmera",
     duration: 12,
     icon: "🦩",
   },
   {
     id: "lunge",
     label: "Forward Lunge",
+    labelPt: "Avanço Frontal",
     instruction: "Perform 2 forward lunges per leg — side view to camera",
+    instructionPt: "Faça 2 avanços frontais por perna — vista lateral para a câmera",
     duration: 15,
     icon: "🦵",
   },
   {
     id: "hip_hinge",
     label: "Hip Hinge",
+    labelPt: "Flexão de Quadril",
     instruction: "Bend forward at the hips keeping back straight, return up — side view",
+    instructionPt: "Incline para frente no quadril mantendo costas retas, volte — vista lateral",
     duration: 10,
     icon: "🔄",
   },
@@ -125,7 +150,9 @@ export const MOVEMENT_TESTS = [
 
 type Phase = "photos" | "transition" | "videos" | "done";
 
-export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCaptureProps) {
+export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale = "en-GB" }: BodyCaptureProps) {
+  const pt = locale === "pt-BR";
+  const L = (en: string, ptStr: string) => (pt ? ptStr : en);
   // Phase management
   const [phase, setPhase] = useState<Phase>("photos");
 
@@ -152,6 +179,7 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const stableCountRef = useRef(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -418,6 +446,24 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
     setPoseStable(false);
   };
 
+  // ============ GALLERY UPLOAD ============
+  const handleGalleryUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageData = reader.result as string;
+      setCaptures((prev) => ({
+        ...prev,
+        [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() },
+      }));
+      setShowPreview(true);
+    };
+    reader.readAsDataURL(file);
+    // Reset input so the same file can be selected again
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
+  }, [currentView]);
+
   const handlePhotoAccept = () => {
     setShowPreview(false);
     stableCountRef.current = 0;
@@ -553,18 +599,16 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
   const photoCapturedCount = Object.keys(captures).length;
   const videoCapturedCount = Array.isArray(recordedVideos) ? recordedVideos.length : 0;
 
-  // ============ CAMERA ERROR (only real camera errors block) ============
+  // ============ CAMERA ERROR (show QR code fallback) ============
   if (cameraError) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-black text-white gap-4 p-8">
-        <AlertTriangle className="h-12 w-12 text-red-400" />
-        <p className="text-lg font-medium">Camera Error</p>
-        <p className="text-sm text-gray-400 text-center max-w-md">{cameraError}</p>
-        <div className="flex gap-3">
-          <Button onClick={() => { setCameraError(null); startCamera(); }}>Try Again</Button>
-          {onCancel && <Button variant="outline" onClick={onCancel} className="text-white border-white/30">Cancel</Button>}
-        </div>
-      </div>
+      <QRCameraFallback
+        locale={locale}
+        errorMessage={cameraError}
+        featureName={{ en: "the body assessment", pt: "a avaliação corporal" }}
+        onRetry={() => { setCameraError(null); startCamera(); }}
+        onCancel={onCancel || undefined}
+      />
     );
   }
 
@@ -573,18 +617,18 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
     return (
       <div className="flex flex-col h-full bg-black">
         <div className="flex items-center justify-between p-4 bg-black/80 text-white">
-          <h3 className="font-semibold">{currentView.label}</h3>
-          <Badge variant="secondary">{photoCapturedCount}/{totalPhotoSteps} photos</Badge>
+          <h3 className="font-semibold">{pt ? currentView.labelPt : currentView.label}</h3>
+          <Badge variant="secondary">{photoCapturedCount}/{totalPhotoSteps} {L("photos", "fotos")}</Badge>
         </div>
         <div className="flex-1 relative">
           <img src={captures[currentView.id].imageData} alt={currentView.label} className="w-full h-full object-contain" />
           <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-4 px-4">
             <Button variant="outline" size="lg" onClick={handlePhotoRetake} className="bg-white/90 text-black">
-              <RotateCcw className="h-5 w-5 mr-2" /> Retake
+              <RotateCcw className="h-5 w-5 mr-2" /> {L("Retake", "Refazer")}
             </Button>
             <Button size="lg" onClick={handlePhotoAccept} className="bg-green-600 hover:bg-green-700 text-white">
               <Check className="h-5 w-5 mr-2" />
-              {currentViewIndex < CAPTURE_VIEWS.length - 1 ? "Accept & Next" : "Accept"}
+              {currentViewIndex < CAPTURE_VIEWS.length - 1 ? L("Accept & Next", "Aceitar & Próxima") : L("Accept", "Aceitar")}
             </Button>
           </div>
         </div>
@@ -597,26 +641,26 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
     return (
       <div className="flex flex-col items-center justify-center h-full bg-black text-white gap-6 p-8">
         <CheckCircle className="h-16 w-16 text-green-500" />
-        <h2 className="text-2xl font-bold text-center">Photos Complete!</h2>
+        <h2 className="text-2xl font-bold text-center">{L("Photos Complete!", "Fotos Concluídas!")}</h2>
         <p className="text-gray-300 text-center max-w-sm">
-          Now let&apos;s record some movement tests to assess your functional biomechanics.
+          {L("Now let's record some movement tests to assess your functional biomechanics.", "Agora vamos gravar alguns testes de movimento para avaliar sua biomecânica funcional.")}
         </p>
         <div className="bg-white/10 rounded-xl p-4 w-full max-w-sm space-y-2">
-          <p className="text-sm font-semibold text-gray-200">Movement Tests:</p>
+          <p className="text-sm font-semibold text-gray-200">{L("Movement Tests:", "Testes de Movimento:")} </p>
           {MOVEMENT_TESTS.map((t) => (
             <div key={t.id} className="flex items-center gap-2 text-sm text-gray-300">
               <span>{t.icon}</span>
-              <span>{t.label}</span>
+              <span>{pt ? t.labelPt : t.label}</span>
               <span className="text-xs text-gray-500 ml-auto">~{t.duration}s</span>
             </div>
           ))}
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={handleFinishEarly} className="text-white border-white/30">
-            Skip Videos
+            {L("Skip Videos", "Pular Vídeos")}
           </Button>
           <Button size="lg" onClick={() => setPhase("videos")} className="bg-primary">
-            <Video className="h-5 w-5 mr-2" /> Start Videos
+            <Video className="h-5 w-5 mr-2" /> {L("Start Videos", "Iniciar Vídeos")}
           </Button>
         </div>
       </div>
@@ -628,19 +672,19 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
     return (
       <div className="flex flex-col h-full bg-black">
         <div className="flex items-center justify-between p-4 bg-black/80 text-white">
-          <h3 className="font-semibold">{currentTest.label}</h3>
-          <Badge variant="secondary">{videoCapturedCount + 1}/{totalVideoSteps} videos</Badge>
+          <h3 className="font-semibold">{pt ? currentTest.labelPt : currentTest.label}</h3>
+          <Badge variant="secondary">{videoCapturedCount + 1}/{totalVideoSteps} {L("videos", "vídeos")}</Badge>
         </div>
         <div className="flex-1 relative flex items-center justify-center">
           <video src={videoPreviewUrl} controls autoPlay loop className="max-h-full max-w-full rounded-lg" playsInline />
         </div>
         <div className="flex items-center justify-center gap-4 p-4 bg-black/80">
           <Button variant="outline" size="lg" onClick={handleVideoRetake} className="bg-white/90 text-black">
-            <RotateCcw className="h-5 w-5 mr-2" /> Retake
+            <RotateCcw className="h-5 w-5 mr-2" /> {L("Retake", "Refazer")}
           </Button>
           <Button size="lg" onClick={handleVideoAccept} className="bg-green-600 hover:bg-green-700 text-white">
             <Check className="h-5 w-5 mr-2" />
-            {currentTestIndex < MOVEMENT_TESTS.length - 1 ? "Accept & Next" : "Accept & Finish"}
+            {currentTestIndex < MOVEMENT_TESTS.length - 1 ? L("Accept & Next", "Aceitar & Próximo") : L("Accept & Finish", "Aceitar & Finalizar")}
           </Button>
         </div>
       </div>
@@ -649,8 +693,8 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
 
   // ============ MAIN CAMERA VIEW (photos or videos) ============
   const isVideoPhase = phase === "videos";
-  const stepLabel = isVideoPhase ? currentTest.label : currentView.label;
-  const stepInstruction = isVideoPhase ? currentTest.instruction : currentView.instruction;
+  const stepLabel = isVideoPhase ? (pt ? currentTest.labelPt : currentTest.label) : (pt ? currentView.labelPt : currentView.label);
+  const stepInstruction = isVideoPhase ? (pt ? currentTest.instructionPt : currentTest.instruction) : (pt ? currentView.instructionPt : currentView.instruction);
   const stepNum = isVideoPhase ? currentTestIndex + 1 : currentViewIndex + 1;
   const totalSteps = isVideoPhase ? totalVideoSteps : totalPhotoSteps;
   const allItems = isVideoPhase ? MOVEMENT_TESTS : CAPTURE_VIEWS;
@@ -665,13 +709,13 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
             <h3 className="font-semibold text-sm">{stepLabel}</h3>
           </div>
           <p className="text-xs text-gray-300">
-            {isVideoPhase ? "Video" : "Photo"} {stepNum} of {totalSteps}
+            {isVideoPhase ? L("Video", "Vídeo") : L("Photo", "Foto")} {stepNum} {L("of", "de")} {totalSteps}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {!isVideoPhase && (
             <Badge variant={poseStable ? "default" : poseReady ? "destructive" : "secondary"} className="text-xs">
-              {poseStable ? "Pose ✓" : poseLoading ? "AI..." : poseReady ? "Detecting..." : "Camera ✓"}
+              {poseStable ? L("Pose ✓", "Pose ✓") : poseLoading ? "AI..." : poseReady ? L("Detecting...", "Detectando...") : L("Camera ✓", "Câmera ✓")}
             </Badge>
           )}
           {isRecording && (
@@ -705,6 +749,15 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
           ))
         )}
       </div>
+
+      {/* Hidden gallery file input */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleGalleryUpload}
+      />
 
       {/* Camera view */}
       <div className="flex-1 relative overflow-hidden">
@@ -748,7 +801,7 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
           {!isVideoPhase && (
             <div className="flex items-center justify-center gap-1.5 text-[10px] text-white/60">
               <Shield className="h-3 w-3" />
-              <span>Face automatically blurred for privacy · Secure & GDPR compliant</span>
+              <span>{L("Face automatically blurred for privacy · Secure & GDPR compliant", "Rosto borrado automaticamente para privacidade · Seguro e em conformidade com GDPR")}</span>
             </div>
           )}
         </div>
@@ -758,10 +811,10 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
       <div className="flex items-center justify-between p-4 bg-black/80">
         {/* Left: Cancel / Finish */}
         {onCancel && !isRecording ? (
-          <Button variant="ghost" size="sm" onClick={onCancel} className="text-white">Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={onCancel} className="text-white">{L("Cancel", "Cancelar")}</Button>
         ) : (photoCapturedCount > 0 || videoCapturedCount > 0) && !isRecording ? (
           <Button variant="ghost" size="sm" onClick={handleFinishEarly} className="text-white">
-            Finish
+            {L("Finish", "Finalizar")}
           </Button>
         ) : (
           <div className="w-16" />
@@ -779,15 +832,25 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false }: BodyCa
             </button>
           )
         ) : (
-          <button onClick={handlePhotoCapture} disabled={countdown !== null} className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:bg-white/40 transition-all disabled:opacity-50">
-            <Camera className="h-7 w-7 text-white" />
-          </button>
+          <div className="flex items-center gap-4">
+            <button onClick={handlePhotoCapture} disabled={countdown !== null} className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:bg-white/40 transition-all disabled:opacity-50">
+              <Camera className="h-7 w-7 text-white" />
+            </button>
+            <button
+              onClick={() => galleryInputRef.current?.click()}
+              disabled={countdown !== null}
+              className="w-12 h-12 rounded-full border-2 border-white/50 flex items-center justify-center bg-white/10 hover:bg-white/30 transition-all disabled:opacity-50"
+              title={L("Upload from gallery", "Enviar da galeria")}
+            >
+              <ImagePlus className="h-5 w-5 text-white" />
+            </button>
+          </div>
         )}
 
         {/* Right: Skip */}
         {!isRecording ? (
           <Button variant="ghost" size="sm" onClick={isVideoPhase ? skipCurrentTest : () => setCurrentViewIndex((prev) => Math.min(prev + 1, CAPTURE_VIEWS.length - 1))} className="text-white">
-            Skip <SkipForward className="h-4 w-4 ml-1" />
+            {L("Skip", "Pular")} <SkipForward className="h-4 w-4 ml-1" />
           </Button>
         ) : (
           <div className="w-16" />

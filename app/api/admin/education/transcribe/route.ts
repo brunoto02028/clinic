@@ -5,7 +5,7 @@ import { getConfigValue } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
 
-// POST — Transcribe audio using Gemini or Abacus (paid APIs)
+// POST — Transcribe audio using Gemini
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,33 +20,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No audio data provided" }, { status: 400 });
     }
 
-    // Try Gemini first (multimodal — accepts audio natively)
     const geminiKey = await getConfigValue("GEMINI_API_KEY");
-    if (geminiKey) {
-      try {
-        const transcript = await transcribeWithGemini(geminiKey, audio, mimeType || "audio/webm", language || "en");
-        if (transcript) {
-          return NextResponse.json({ transcript, provider: "gemini" });
-        }
-      } catch (err: any) {
-        console.error("[transcribe] Gemini failed:", err.message);
-      }
+    if (!geminiKey) {
+      return NextResponse.json({ error: "GEMINI_API_KEY not configured. Go to Admin → API & AI Settings." }, { status: 500 });
     }
 
-    // Fallback: Abacus (OpenAI-compatible whisper endpoint)
-    const abacusKey = await getConfigValue("ABACUS_API_KEY");
-    if (abacusKey) {
-      try {
-        const transcript = await transcribeWithAbacus(abacusKey, audio, mimeType || "audio/webm", language || "en");
-        if (transcript) {
-          return NextResponse.json({ transcript, provider: "abacus" });
-        }
-      } catch (err: any) {
-        console.error("[transcribe] Abacus failed:", err.message);
-      }
+    const transcript = await transcribeWithGemini(geminiKey, audio, mimeType || "audio/webm", language || "en");
+    if (transcript) {
+      return NextResponse.json({ transcript, provider: "gemini" });
     }
 
-    return NextResponse.json({ error: "No AI transcription service available. Check your API keys in Admin → Settings." }, { status: 500 });
+    return NextResponse.json({ error: "Transcription returned empty. Please try again." }, { status: 500 });
   } catch (err: any) {
     console.error("[transcribe] Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -98,35 +82,3 @@ async function transcribeWithGemini(apiKey: string, audioBase64: string, mimeTyp
   return text?.trim() || null;
 }
 
-// ─── Abacus (OpenAI-compatible) Transcription ───
-async function transcribeWithAbacus(apiKey: string, audioBase64: string, mimeType: string, language: string): Promise<string | null> {
-  // Convert base64 to ArrayBuffer for Blob
-  const raw = atob(audioBase64);
-  const bytes = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-
-  // Determine file extension from mime type
-  const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "mp4" : mimeType.includes("wav") ? "wav" : "webm";
-
-  const formData = new FormData();
-  const audioBlob = new Blob([bytes.buffer as ArrayBuffer], { type: mimeType });
-  formData.append("file", audioBlob, `recording.${ext}`);
-  formData.append("model", "whisper-large-v3");
-  formData.append("language", language === "pt" ? "pt" : "en");
-
-  const response = await fetch("https://routellm.abacus.ai/v1/audio/transcriptions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Abacus transcription failed (${response.status}): ${errText.substring(0, 300)}`);
-  }
-
-  const data = await response.json();
-  return data?.text?.trim() || null;
-}

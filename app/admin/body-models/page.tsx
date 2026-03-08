@@ -72,7 +72,9 @@ export default function AdminBodyModelsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, gender }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(text); } catch { throw new Error(`Server error: ${text.slice(0, 120)}`); }
       if (!res.ok) throw new Error(data.error);
 
       setTask({ taskId: data.taskId, gender, status: "PENDING", progress: 0 });

@@ -37,6 +37,8 @@ const publicRoutes = [
   '/intake',
   '/api/intake',
   '/api/analytics/track',
+  '/capture',
+  '/api/body-assessments/capture',
 ];
 
 // Routes that require SUPERADMIN access
@@ -125,7 +127,33 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/dashboard')) {
     if ((userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'THERAPIST') && !isImpersonating) {
-      return NextResponse.redirect(new URL('/admin', request.url));
+      // Smart redirect: map /dashboard/X → /admin/X so email links work for staff
+      // Exact mappings for routes that differ between patient and admin
+      const EXACT_MAP: Record<string, string> = {
+        '/dashboard': '/admin',
+        '/dashboard/screening': '/admin/screening-preview',
+        '/dashboard/membership': '/admin/memberships',
+        '/dashboard/consent': '/admin',
+        '/dashboard/profile': '/admin',
+        '/dashboard/guide': '/admin',
+      };
+      if (EXACT_MAP[pathname]) {
+        return NextResponse.redirect(new URL(EXACT_MAP[pathname], request.url));
+      }
+      // Prefix mappings: /dashboard/X/anything → /admin/X (admin has no [id] sub-routes for these)
+      const PREFIX_MAP: [string, string][] = [
+        ['/dashboard/appointments/', '/admin/appointments'],
+        ['/dashboard/screening/', '/admin/screening-preview'],
+        ['/dashboard/membership/', '/admin/memberships'],
+      ];
+      for (const [prefix, target] of PREFIX_MAP) {
+        if (pathname.startsWith(prefix)) {
+          return NextResponse.redirect(new URL(target, request.url));
+        }
+      }
+      // Default: /dashboard/X → /admin/X (works for exercises, education, clinical-notes, etc.)
+      const subPath = pathname.replace('/dashboard', '');
+      return NextResponse.redirect(new URL('/admin' + subPath, request.url));
     }
   }
 

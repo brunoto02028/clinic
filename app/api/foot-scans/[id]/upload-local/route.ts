@@ -102,7 +102,7 @@ export async function POST(
             patientId: fullScan.patientId,
             emailTemplateSlug: 'FOOT_SCAN_SUBMITTED',
             emailVars: {
-              portalUrl: `${process.env.NEXTAUTH_URL || ''}/dashboard`,
+              portalUrl: `${process.env.NEXTAUTH_URL || ''}/dashboard/scans`,
             },
             plainMessage: 'Your foot scan images have been uploaded successfully. Our team will analyse them shortly.',
             plainMessagePt: 'Suas imagens de escaneamento do pé foram enviadas com sucesso. Nossa equipe irá analisá-las em breve.',

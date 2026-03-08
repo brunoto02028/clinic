@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 
 export interface PatientAccessData {
   modules: string[] | "all";
+  hiddenModules: string[];
   permissions: string[] | "all";
   role: string;
+  fullAccessOverride?: boolean;
   hasActiveSubscription: boolean;
   hasActiveTreatment: boolean;
   activePlans: { id: string; name: string; price: number; interval: string; isFree: boolean }[];
@@ -17,6 +19,7 @@ export interface PatientAccessData {
 
 const DEFAULT_ACCESS: PatientAccessData = {
   modules: [],
+  hiddenModules: [],
   permissions: [],
   role: "PATIENT",
   hasActiveSubscription: false,
@@ -35,13 +38,15 @@ export function usePatientAccess() {
 
   const fetchAccess = useCallback(async () => {
     try {
-      const res = await fetch("/api/patient/access");
+      const res = await fetch("/api/patient/access", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setAccess(data);
+      } else {
+        console.error("[usePatientAccess] API returned", res.status, await res.text().catch(() => ""));
       }
-    } catch {
-      // Silently fail — patient gets default (no access)
+    } catch (err) {
+      console.error("[usePatientAccess] fetch failed:", err);
     } finally {
       setLoading(false);
     }
@@ -54,10 +59,11 @@ export function usePatientAccess() {
   /** Check if the patient has access to a specific module key (e.g. "mod_appointments") */
   const hasModule = useCallback(
     (moduleKey: string): boolean => {
+      if (access.fullAccessOverride) return true;
       if (access.modules === "all") return true;
       return access.modules.includes(moduleKey);
     },
-    [access.modules]
+    [access.modules, access.fullAccessOverride]
   );
 
   /** Check if the patient has a specific permission key (e.g. "perm_book_online") */
@@ -69,9 +75,18 @@ export function usePatientAccess() {
     [access.permissions]
   );
 
+  /** Check if a module is hidden by admin override */
+  const isModuleHidden = useCallback(
+    (moduleKey: string): boolean => {
+      return (access.hiddenModules || []).includes(moduleKey);
+    },
+    [access.hiddenModules]
+  );
+
   /** Check if a dashboard href is accessible */
   const canAccessHref = useCallback(
     (href: string): boolean => {
+      if (access.fullAccessOverride) return true;
       if (access.modules === "all") return true;
       // Import mapping lazily to avoid SSR issues
       const { HREF_MODULE_MAP, ALWAYS_VISIBLE_MODULES } = require("@/lib/module-registry");
@@ -93,7 +108,7 @@ export function usePatientAccess() {
 
       return false;
     },
-    [access.modules]
+    [access.modules, access.fullAccessOverride]
   );
 
   return {
@@ -101,6 +116,7 @@ export function usePatientAccess() {
     loading,
     hasModule,
     hasPermission,
+    isModuleHidden,
     canAccessHref,
     refresh: fetchAccess,
   };

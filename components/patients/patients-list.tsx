@@ -193,8 +193,8 @@ export default function PatientsList() {
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">{T("admin.patientsTitle")}</h1>
-        <p className="text-slate-600 text-sm mt-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{T("admin.patientsTitle")}</h1>
+        <p className="text-muted-foreground text-sm mt-1">
           {T("admin.patientsDesc")}
         </p>
       </div>
@@ -202,7 +202,7 @@ export default function PatientsList() {
       {/* Actions */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search name, email or phone..."
             className="pl-10"
@@ -229,11 +229,11 @@ export default function PatientsList() {
       ) : filteredPatients.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Users className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-700 mb-2">
+            <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               {searchQuery ? "No patients match your search" : "No patients registered"}
             </h3>
-            <p className="text-slate-500 text-sm">
+            <p className="text-muted-foreground text-sm">
               {searchQuery ? "Try a different search term." : "Add a patient to get started."}
             </p>
           </CardContent>
@@ -254,7 +254,7 @@ export default function PatientsList() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-sm sm:text-base text-slate-800 truncate">
+                          <h3 className="font-semibold text-sm sm:text-base text-foreground truncate">
                             {patient.firstName} {patient.lastName}
                           </h3>
                           {patient.isActive === false && <Badge variant="outline" className="text-[9px]">Inactive</Badge>}
@@ -268,8 +268,8 @@ export default function PatientsList() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs sm:text-sm text-slate-500 truncate">{patient.email}</p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{patient.email}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground/70">
                           {patient.phone && <span className="hidden sm:inline"><Phone className="h-3 w-3 inline mr-0.5" /> {patient.phone}</span>}
                           <span><Calendar className="h-3 w-3 inline mr-0.5" /> {new Date(patient.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                           <span className="hidden sm:inline">{patient.patientAppointments?.length ?? 0} appts</span>
@@ -329,7 +329,7 @@ export default function PatientsList() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        <ArrowRight className="h-4 w-4 text-slate-400 hidden md:block" />
+                        <ArrowRight className="h-4 w-4 text-muted-foreground hidden md:block" />
                       </div>
                     </div>
                   </CardContent>

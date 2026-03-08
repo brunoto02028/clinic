@@ -52,7 +52,7 @@ export async function GET() {
       (prisma as any).treatmentProtocol.findFirst({
         where: { patientId: userId, status: "SENT_TO_PATIENT" },
         orderBy: { createdAt: "desc" },
-        select: { title: true, summary: true, goals: true, items: { select: { title: true, phase: true, type: true, isCompleted: true }, take: 20 } },
+        select: { title: true, summary: true, goals: true, items: { select: { title: true, phase: true, itemType: true, isCompleted: true }, take: 20 } },
       }).catch(() => null),
       (prisma as any).patientProgress.findUnique({ where: { patientId: userId } }).catch(() => null),
       (prisma as any).patientQuizResult.findFirst({

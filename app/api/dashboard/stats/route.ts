@@ -1,22 +1,19 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
+    const effectiveUser = await getEffectiveUser();
+    if (!effectiveUser) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
-    const userId = getEffectiveUserId(session, request);
-    const userRole = (session.user as any).role;
-    const isPreview = isPreviewRequest(session, request);
+    const userId = effectiveUser.userId;
+    const userRole = effectiveUser.role;
+    const isPreview = effectiveUser.isImpersonating;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -55,11 +52,17 @@ export async function GET(request: NextRequest) {
         where: { userId },
       });
 
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { consentAcceptedAt: true },
+      });
+
       return NextResponse.json({
         upcomingAppointments,
         completedAppointments,
         clinicalNotes,
         screeningComplete: !!hasScreening?.consentGiven,
+        consentAccepted: !!(user as any)?.consentAcceptedAt,
       });
     } else {
       // Therapist/Admin dashboard stats

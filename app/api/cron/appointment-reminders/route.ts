@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
             treatmentType: appt.treatmentType || "",
             duration: String(appt.duration || 60),
             portalUrl: `${BASE}/dashboard/appointments`,
+            screeningUrl: `${BASE}/dashboard/screening`,
           },
           plainMessage: `Reminder: Your appointment is tomorrow ${dateStr} at ${timeStr} with ${appt.therapist.firstName}. Duration: ${appt.duration || 60} min.`,
           plainMessagePt: `Lembrete: Sua consulta é amanhã ${dateStr} às ${timeStr} com ${appt.therapist.firstName}. Duração: ${appt.duration || 60} min.`,

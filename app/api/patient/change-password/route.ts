@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     // If currentPassword provided, verify it (optional — patient can skip)
-    if (currentPassword) {
+    if (currentPassword && user.password) {
       const isValid = await bcrypt.compare(currentPassword, user.password);
       if (!isValid) {
         return NextResponse.json({ error: "Current password is incorrect." }, { status: 400 });

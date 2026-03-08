@@ -1,23 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import dynamic from "next/dynamic";
 import { Card, CardContent } from "@/components/ui/card";
-
-const Mannequin3D = dynamic(
-  () => import("@/components/body-assessment/mannequin-3d"),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl animate-pulse"
-        style={{ width: 400, height: 550 }}
-      >
-        <div className="text-sm text-muted-foreground">Loading 3D model...</div>
-      </div>
-    ),
-  }
-);
+import Mannequin3D from "@/components/body-assessment/mannequin-3d";
 
 interface MotorPoint {
   id: string;

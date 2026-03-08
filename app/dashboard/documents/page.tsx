@@ -144,7 +144,7 @@ export default function PatientDocumentsPage() {
       try {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("title", uploadTitle || "Camera Photo");
+        formData.append("title", uploadTitle || (isPt ? "Foto da Câmera" : "Camera Photo"));
         formData.append("description", uploadDesc);
         formData.append("documentType", uploadType);
         formData.append("doctorName", uploadDoctor);

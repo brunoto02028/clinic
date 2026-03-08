@@ -88,6 +88,8 @@ export default function AdminAppointmentsPage() {
   const [createForm, setCreateForm] = useState({
     patientId: "",
     dateTime: "",
+    appointmentDate: "",
+    appointmentTime: "",
     duration: 60,
     treatmentType: "",
     price: 0,
@@ -180,18 +182,19 @@ export default function AdminAppointmentsPage() {
   };
 
   const handleCreateAppointment = async () => {
-    if (!createForm.patientId || !createForm.dateTime) {
-      toast({ title: "Error", description: "Patient and date/time are required", variant: "destructive" });
+    if (!createForm.patientId || !createForm.appointmentDate || !createForm.appointmentTime) {
+      toast({ title: "Error", description: isPt ? "Paciente, data e hora são obrigatórios" : "Patient, date and time are required", variant: "destructive" });
       return;
     }
     setSubmitting(true);
     try {
+      const combinedDateTime = `${createForm.appointmentDate}T${createForm.appointmentTime}:00`;
       const res = await fetch("/api/admin/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientId: createForm.patientId,
-          dateTime: new Date(createForm.dateTime).toISOString(),
+          dateTime: new Date(combinedDateTime).toISOString(),
           duration: Number(createForm.duration),
           treatmentType: createForm.treatmentType,
           price: Number(createForm.price),
@@ -204,7 +207,7 @@ export default function AdminAppointmentsPage() {
         const checkoutMsg = data.checkoutUrl ? (isPt ? ` Link de pagamento gerado.` : ` Payment link generated.`) : '';
         toast({ title: isPt ? "Consulta criada" : "Appointment created", description: (isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email.") + checkoutMsg });
         setShowCreateDialog(false);
-        setCreateForm({ patientId: "", dateTime: "", duration: 60, treatmentType: "", price: 0, notes: "", paymentMode: "in_person" });
+        setCreateForm({ patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "", duration: 60, treatmentType: "", price: 0, notes: "", paymentMode: "in_person" });
         fetchAppointments();
       } else {
         const data = await res.json();
@@ -589,9 +592,25 @@ export default function AdminAppointmentsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>{isPt ? "Data e Hora *" : "Date & Time *"}</Label>
-              <Input type="datetime-local" value={createForm.dateTime} onChange={e => setCreateForm(f => ({ ...f, dateTime: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{isPt ? "Data *" : "Date *"}</Label>
+                <Input type="date" value={createForm.appointmentDate} onChange={e => setCreateForm(f => ({ ...f, appointmentDate: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{isPt ? "Hora *" : "Time *"}</Label>
+                <Select value={createForm.appointmentTime} onValueChange={v => setCreateForm(f => ({ ...f, appointmentTime: v }))}>
+                  <SelectTrigger><SelectValue placeholder={isPt ? "Selecionar hora..." : "Select time..."} /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 20 }, (_, i) => {
+                      const h = Math.floor(i / 2) + 8;
+                      const m = i % 2 === 0 ? "00" : "30";
+                      const val = `${h.toString().padStart(2, "0")}:${m}`;
+                      return <SelectItem key={val} value={val}>{val}</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -629,7 +648,7 @@ export default function AdminAppointmentsPage() {
                   }`}>
                   <CreditCard className="h-4 w-4" />
                   <div className="text-left">
-                    <p className="font-medium">{isPt ? "Online (Stripe)" : "Online (Stripe)"}</p>
+                    <p className="font-medium">{isPt ? "Pagamento Online" : "Pay Online"}</p>
                     <p className="text-[10px] opacity-70">{isPt ? "Link de pagamento por email" : "Payment link via email"}</p>
                   </div>
                 </button>
@@ -637,8 +656,8 @@ export default function AdminAppointmentsPage() {
               {createForm.paymentMode === "online" && createForm.price > 0 && (
                 <p className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">
                   {isPt
-                    ? `Um link de pagamento Stripe de £${createForm.price.toFixed(2)} será gerado e enviado ao paciente por email.`
-                    : `A Stripe payment link for £${createForm.price.toFixed(2)} will be generated and sent to the patient by email.`}
+                    ? `Um link de pagamento de £${createForm.price.toFixed(2)} será gerado e enviado ao paciente por email.`
+                    : `A payment link for £${createForm.price.toFixed(2)} will be generated and sent to the patient via email.`}
                 </p>
               )}
             </div>

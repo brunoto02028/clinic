@@ -8,6 +8,7 @@ import {
   CheckCircle, AlertCircle, FileText, TrendingUp, Eye,
   Heart, MessageCircle, Share2, BarChart3, Loader2, Trash2,
   PenSquare, CalendarRange, LayoutTemplate, Sparkles, Link2,
+  Rocket, Zap, Globe,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SocialAccount {
   id: string;
@@ -63,6 +65,11 @@ function SocialMediaContent() {
   const [tab, setTab] = useState("all");
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [superAutoGenerating, setSuperAutoGenerating] = useState(false);
+  const [superAutoResult, setSuperAutoResult] = useState<any>(null);
+  const [superAutoSaving, setSuperAutoSaving] = useState(false);
+  const [superAutoLang, setSuperAutoLang] = useState("pt-BR");
+  const [superAutoWeeks, setSuperAutoWeeks] = useState(4);
 
   useEffect(() => {
     const success = searchParams.get("success");
@@ -142,6 +149,77 @@ function SocialMediaContent() {
       fetchData();
     } catch {
       setErrorMsg("Delete failed");
+    }
+  };
+
+  // ─── Superautomação ───
+  const generateSuperAuto = async () => {
+    setSuperAutoGenerating(true);
+    setSuperAutoResult(null);
+    setErrorMsg(null);
+    try {
+      const res = await fetch("/api/admin/social/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "superautomacao", language: superAutoLang, weeks: superAutoWeeks }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setErrorMsg(data.error);
+      } else {
+        setSuperAutoResult(data);
+        setSuccessMsg(`Generated ${data.posts?.length || 0} posts for "${data.calendarName}"`);
+        setTimeout(() => setSuccessMsg(null), 5000);
+      }
+    } catch {
+      setErrorMsg("Superautomação generation failed. Check your Gemini API key.");
+    } finally {
+      setSuperAutoGenerating(false);
+    }
+  };
+
+  const saveSuperAutoAsDrafts = async () => {
+    if (!superAutoResult?.posts?.length) return;
+    setSuperAutoSaving(true);
+    setErrorMsg(null);
+    let saved = 0;
+    const startDate = new Date();
+    try {
+      for (const post of superAutoResult.posts) {
+        const schedDate = new Date(startDate);
+        schedDate.setDate(schedDate.getDate() + (post.day - 1));
+        const [hours, minutes] = (post.suggestedTime || "10:00").split(":");
+        schedDate.setHours(parseInt(hours) || 10, parseInt(minutes) || 0, 0, 0);
+
+        const hashtagStr = Array.isArray(post.hashtags) ? post.hashtags.join(", ") : "";
+        const fullCaption = post.hook ? `${post.hook}\n\n${post.caption}` : post.caption;
+
+        await fetch("/api/admin/social/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            caption: fullCaption,
+            hashtags: hashtagStr,
+            postType: post.postType || "IMAGE",
+            mediaUrls: [],
+            mediaPaths: [],
+            accountId: accounts[0]?.id || null,
+            scheduledAt: schedDate.toISOString(),
+            status: "DRAFT",
+            aiGenerated: true,
+            aiPrompt: `[Superautomação] Day ${post.day} ${post.slot} — ${post.contentPillar}: ${post.topic}`,
+          }),
+        });
+        saved++;
+      }
+      setSuccessMsg(`${saved} posts saved as drafts! Add images and publish when ready.`);
+      setSuperAutoResult(null);
+      fetchData();
+      setTimeout(() => setSuccessMsg(null), 6000);
+    } catch {
+      setErrorMsg(`Saved ${saved} posts before error. Please try again.`);
+    } finally {
+      setSuperAutoSaving(false);
     }
   };
 
@@ -303,6 +381,136 @@ function SocialMediaContent() {
           </Card>
         </Link>
       </div>
+
+      {/* Superautomação */}
+      <Card className="border-2 border-dashed border-violet-300 dark:border-violet-700 bg-gradient-to-br from-violet-50 via-purple-50 to-pink-50 dark:from-violet-950/30 dark:via-purple-950/20 dark:to-pink-950/10">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Rocket className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  Superautomação Instagram
+                  <Badge className="bg-violet-100 text-violet-700 text-[10px]">AI</Badge>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Generate a complete 30-day content calendar with hooks, captions, hashtags & strategy
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={superAutoLang} onValueChange={setSuperAutoLang}>
+                <SelectTrigger className="w-[120px] h-8 text-xs bg-white dark:bg-background">
+                  <Globe className="h-3 w-3 mr-1" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pt-BR">Português</SelectItem>
+                  <SelectItem value="en-GB">English</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={String(superAutoWeeks)} onValueChange={v => setSuperAutoWeeks(parseInt(v))}>
+                <SelectTrigger className="w-[110px] h-8 text-xs bg-white dark:bg-background">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 Week</SelectItem>
+                  <SelectItem value="2">2 Weeks</SelectItem>
+                  <SelectItem value="4">4 Weeks</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={generateSuperAuto}
+                disabled={superAutoGenerating}
+                className="gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 text-white shadow-md h-8 text-xs"
+              >
+                {superAutoGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                {superAutoGenerating ? "Generating..." : "Generate Calendar"}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        {superAutoResult?.posts?.length > 0 && (
+          <CardContent className="pt-0">
+            <div className="bg-white dark:bg-zinc-900 rounded-xl border shadow-sm p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-sm">{superAutoResult.calendarName}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{superAutoResult.strategy}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">{superAutoResult.posts.length} posts</Badge>
+                  <Button
+                    onClick={saveSuperAutoAsDrafts}
+                    disabled={superAutoSaving}
+                    className="gap-1.5 h-8 text-xs"
+                  >
+                    {superAutoSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                    {superAutoSaving ? "Saving..." : "Save All as Drafts"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Calendar preview grid */}
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
+                  <div key={d} className="text-[10px] font-medium text-muted-foreground py-1">{d}</div>
+                ))}
+                {Array.from({ length: superAutoWeeks * 7 }, (_, i) => {
+                  const dayNum = i + 1;
+                  const dayPosts = superAutoResult.posts.filter((p: any) => p.day === dayNum);
+                  const hasHigh = dayPosts.some((p: any) => p.viralPotential === "high");
+                  return (
+                    <div key={i} className={`rounded-lg p-1.5 border text-[10px] min-h-[52px] ${dayPosts.length > 0 ? "bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800" : "border-dashed border-slate-200"}`}>
+                      <div className="font-semibold text-muted-foreground">D{dayNum}</div>
+                      {dayPosts.map((p: any, j: number) => (
+                        <div key={j} className={`mt-0.5 px-1 py-0.5 rounded text-[8px] truncate ${
+                          p.postType === "REEL" ? "bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300"
+                          : p.postType === "CAROUSEL" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                          : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                        }`}>
+                          {hasHigh && j === 0 ? "🔥 " : ""}{p.postType === "REEL" ? "🎬" : p.postType === "CAROUSEL" ? "📸" : "📝"} {p.slot === "morning" ? "AM" : "PM"}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Sample posts preview */}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                <p className="text-xs font-medium text-muted-foreground">Preview (first 6 posts):</p>
+                {superAutoResult.posts.slice(0, 6).map((post: any, i: number) => (
+                  <div key={i} className="flex gap-2 p-2 rounded-lg bg-slate-50 dark:bg-zinc-800 text-xs">
+                    <div className="flex-shrink-0">
+                      <Badge variant="outline" className="text-[9px]">
+                        D{post.day} {post.slot === "morning" ? "🌅" : "🌙"}
+                      </Badge>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-violet-700 dark:text-violet-300 truncate">{post.hook}</p>
+                      <p className="text-muted-foreground line-clamp-2 mt-0.5">{post.caption}</p>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        <Badge className={`text-[8px] ${
+                          post.postType === "REEL" ? "bg-pink-100 text-pink-700"
+                          : post.postType === "CAROUSEL" ? "bg-blue-100 text-blue-700"
+                          : "bg-green-100 text-green-700"
+                        }`}>{post.postType}</Badge>
+                        <Badge variant="outline" className="text-[8px]">{post.contentPillar}</Badge>
+                        {post.viralPotential === "high" && <Badge className="text-[8px] bg-orange-100 text-orange-700">🔥 Viral</Badge>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Posts List */}
       <Card>

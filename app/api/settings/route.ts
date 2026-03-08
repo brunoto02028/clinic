@@ -197,6 +197,11 @@ export async function PUT(request: NextRequest) {
       bioStepsJson: body.bioStepsJson || null,
       bioBenefitsJson: body.bioBenefitsJson || null,
       
+      // Infrared Thermography Block
+      thermoImageUrl: body.thermoImageUrl || null,
+      thermoImagePath: body.thermoImagePath || null,
+      thermoJson: body.thermoJson || null,
+      
       // MLS® Laser Therapy Block
       mlsLaserJson: body.mlsLaserJson !== undefined ? (body.mlsLaserJson || null) : undefined,
 

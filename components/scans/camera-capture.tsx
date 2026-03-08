@@ -5,6 +5,7 @@ import {
   Camera, Video, VideoOff, RotateCcw, CheckCircle, AlertCircle,
   Zap, Sun, Focus, X,
 } from "lucide-react";
+import { QRCameraFallback } from "@/components/ui/qr-camera-fallback";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -340,12 +341,12 @@ export default function CameraCapture({
         )}
 
         {cameraError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
-            <AlertCircle className="h-10 w-10 text-red-400 mb-3" />
-            <p className="text-red-300 text-sm">{cameraError}</p>
-            <Button onClick={startCamera} variant="secondary" size="sm" className="mt-3 gap-1">
-              <RotateCcw className="h-3 w-3" /> Retry
-            </Button>
+          <div className="absolute inset-0">
+            <QRCameraFallback
+              errorMessage={cameraError}
+              featureName={{ en: "the foot scan", pt: "o escaneamento dos pés" }}
+              onRetry={() => { setCameraError(null); startCamera(); }}
+            />
           </div>
         )}
 

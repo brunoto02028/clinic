@@ -7,6 +7,41 @@ import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
+// Map module feature keys to ServiceType enum values
+const MODULE_TO_SERVICE: Record<string, string> = {
+  mod_body_assessments: "BODY_ASSESSMENT",
+  mod_foot_scans: "FOOT_SCAN",
+  mod_appointments: "CONSULTATION",
+};
+
+/** Create ServiceAccess records for plan features so the AssessmentGate also grants access */
+async function syncServiceAccessForPlan(patientId: string, plan: any, adminId?: string) {
+  for (const featureKey of (plan.features || [])) {
+    const svcType = MODULE_TO_SERVICE[featureKey];
+    if (!svcType) continue;
+    const existing = await (prisma as any).serviceAccess.findFirst({
+      where: { patientId, serviceType: svcType },
+    });
+    if (existing) {
+      if (!existing.granted) {
+        await (prisma as any).serviceAccess.update({
+          where: { id: existing.id },
+          data: { granted: true, grantedById: adminId || null },
+        });
+      }
+    } else {
+      await (prisma as any).serviceAccess.create({
+        data: {
+          patientId,
+          serviceType: svcType,
+          granted: true,
+          grantedById: adminId || null,
+        },
+      });
+    }
+  }
+}
+
 /**
  * POST /api/patient/membership/subscribe
  * Subscribe the patient to a membership plan.
@@ -60,6 +95,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Sync ServiceAccess records for the plan's features
+      await syncServiceAccessForPlan(userId, plan);
+
       return NextResponse.json({
         subscription,
         planName: plan.name,
@@ -79,6 +117,9 @@ export async function POST(request: NextRequest) {
           startDate: new Date(),
         },
       });
+
+      // Sync ServiceAccess records for the plan's features
+      await syncServiceAccessForPlan(userId, plan);
 
       return NextResponse.json({
         subscription,

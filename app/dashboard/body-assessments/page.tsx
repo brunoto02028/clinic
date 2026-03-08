@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { BodyMap, AssessmentScores } from "@/components/body-assessment/body-map";
+import { AnatomicalAvatar, MuscleHighlight } from "@/components/body-assessment/anatomical-avatar";
+import { PosturalComparisonView } from "@/components/body-assessment/postural-comparison-view";
 import { BodyCapture, BodyCaptureResult } from "@/components/body-assessment/body-capture";
 import { SegmentScores } from "@/components/body-assessment/segment-scores";
 import { FindingCards } from "@/components/body-assessment/finding-cards";
@@ -41,11 +43,19 @@ import {
   Video,
   FileText,
   Stethoscope,
+  Download,
+  HelpCircle,
+  ChevronDown,
+  Search,
+  Target,
+  FileDown,
+  ShieldCheck,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import AssessmentGate from "@/components/dashboard/assessment-gate";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
+import { HealthMetricsCard } from "@/components/body-assessment/health-metrics-card";
 
 interface Assessment {
   id: string;
@@ -68,9 +78,11 @@ interface Assessment {
   segmentScores: any | null;
   gaitMetrics: any | null;
   correctiveExercises: any[] | null;
+  recommendedProducts: any[] | null;
   deviationLabels: any[] | null;
   idealComparison: any[] | null;
   postureAnalysis: any | null;
+  sentToPatientAt: string | null;
   aiSummary: string | null;
   aiRecommendations: string | null;
   aiFindings: any[] | null;
@@ -78,6 +90,33 @@ interface Assessment {
   alignmentData: any | null;
   movementVideos: any[] | null;
   movementPatterns: any | null;
+  // Anthropometric & Health
+  heightCm: number | null;
+  weightKg: number | null;
+  bmi: number | null;
+  bmiClassification: string | null;
+  waistCm: number | null;
+  hipCm: number | null;
+  waistHipRatio: number | null;
+  neckCm: number | null;
+  chestCm: number | null;
+  thighCm: number | null;
+  calfCm: number | null;
+  armCm: number | null;
+  bodyFatPercent: number | null;
+  bodyFatMethod: string | null;
+  leanMassKg: number | null;
+  fatMassKg: number | null;
+  basalMetabolicRate: number | null;
+  cardiovascularRisk: string | null;
+  metabolicRisk: string | null;
+  healthScore: number | null;
+  healthRiskFactors: any[] | null;
+  sittingHoursPerDay: number | null;
+  screenTimeHours: number | null;
+  walkingMinutesDay: number | null;
+  stepsPerDay: number | null;
+  ergonomicScore: number | null;
   createdAt: string;
   patient: { id: string; firstName: string; lastName: string; email: string };
   therapist: { id: string; firstName: string; lastName: string } | null;
@@ -92,6 +131,78 @@ const STATUS_CONFIG: Record<string, { labelEn: string; labelPt: string; color: s
   REVIEWED: { labelEn: "Reviewed", labelPt: "Revisado", color: "bg-teal-500/15 text-teal-400", icon: CheckCircle2 },
   COMPLETED: { labelEn: "Completed", labelPt: "Concluído", color: "bg-green-500/15 text-green-400", icon: CheckCircle2 },
 };
+
+function SocialMediaConsentCard({ locale }: { locale: string }) {
+  const isPt = locale === "pt-BR";
+  const [consented, setConsented] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/patient/social-media-consent")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setConsented(d.consented); })
+      .catch(() => {});
+  }, []);
+
+  const toggle = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/patient/social-media-consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: consented ? "revoke" : "grant" }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setConsented(d.consented);
+      }
+    } catch {} finally { setLoading(false); }
+  };
+
+  if (consented === null) return null;
+
+  return (
+    <Card className={`border-${consented ? "green" : "blue"}-500/20 bg-${consented ? "green" : "blue"}-500/5`}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <div className={`w-8 h-8 rounded-full ${consented ? "bg-green-500/20" : "bg-blue-500/20"} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+            <Shield className={`h-4 w-4 ${consented ? "text-green-400" : "text-blue-400"}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">
+              {isPt ? "Consentimento para Redes Sociais" : "Social Media Image Consent"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              {isPt
+                ? "Autorizo que as imagens da minha avaliação corporal possam ser utilizadas nas redes sociais da clínica para fins educativos e de divulgação, desde que meu rosto e identidade NÃO sejam identificáveis."
+                : "I authorise the clinic to use my body assessment images on their social media channels for educational and promotional purposes, provided my face and identity are NOT identifiable."}
+            </p>
+            <div className="flex items-center gap-3 mt-3">
+              <Button
+                variant={consented ? "outline" : "default"}
+                size="sm"
+                className="text-xs h-7"
+                disabled={loading}
+                onClick={toggle}
+              >
+                {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                {consented
+                  ? (isPt ? "Revogar Consentimento" : "Revoke Consent")
+                  : (isPt ? "Eu Autorizo" : "I Agree")}
+              </Button>
+              {consented && (
+                <span className="text-[10px] text-green-400 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {isPt ? "Consentimento ativo" : "Consent active"}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function PatientBodyAssessmentsPage() {
   return (
@@ -280,6 +391,7 @@ function PatientBodyAssessmentsContent() {
     const hasVideos = a.movementVideos && Array.isArray(a.movementVideos) && a.movementVideos.length > 0;
     const hasScoliosis = a.postureAnalysis?.scoliosisScreening && a.postureAnalysis.scoliosisScreening.severity !== "none";
     const hasGaitMetrics = a.gaitMetrics && Object.values(a.gaitMetrics).some((v: any) => typeof v === "number" && v > 0);
+    const reportReady = !!a.sentToPatientAt && hasAnalysis;
 
     // Get skeleton image/landmarks for selected view
     const skeletonImages: Record<string, { url: string | null; landmarks: any[] | null }> = {
@@ -331,6 +443,38 @@ function PatientBodyAssessmentsContent() {
 
     return (
       <div className="space-y-4">
+        {/* Report Ready Banner */}
+        {reportReady && (
+          <div className="bg-gradient-to-r from-green-500/15 to-emerald-500/15 border border-green-500/30 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="h-5 w-5 text-green-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-300">
+                {isPt ? "Seu relatório está pronto!" : "Your report is ready!"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isPt
+                  ? "Seu terapeuta revisou sua avaliação biomecânica. Veja os resultados abaixo e baixe o PDF."
+                  : "Your therapist has reviewed your biomechanical assessment. View the results below and download the PDF."}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white text-xs h-8 gap-1.5 flex-shrink-0"
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = `/api/body-assessments/${a.id}/report-pdf`;
+                link.download = `body-assessment-${a.assessmentNumber}.pdf`;
+                link.click();
+              }}
+            >
+              <Download className="h-3.5 w-3.5" />
+              {isPt ? "Baixar PDF" : "Download PDF"}
+            </Button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-3">
           <Button variant="ghost" size="icon" onClick={() => { setShowDetail(false); setDetailTab("overview"); }} className="h-8 w-8 sm:h-9 sm:w-9">
@@ -348,6 +492,22 @@ function PatientBodyAssessmentsContent() {
               <Stethoscope className="h-3.5 w-3.5" />
               {a.therapist.firstName} {a.therapist.lastName}
             </div>
+          )}
+          {hasAnalysis && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1.5"
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = `/api/body-assessments/${a.id}/report-pdf`;
+                link.download = `body-assessment-${a.assessmentNumber}.pdf`;
+                link.click();
+              }}
+            >
+              <Download className="h-3.5 w-3.5" />
+              {isPt ? "Baixar PDF" : "Download PDF"}
+            </Button>
           )}
         </div>
 
@@ -392,32 +552,60 @@ function PatientBodyAssessmentsContent() {
                 <SegmentScores
                   segmentScores={a.segmentScores}
                   overallScore={a.overallScore || undefined}
+                  frontImageUrl={a.frontImageUrl}
+                  backImageUrl={a.backImageUrl}
+                  frontLandmarks={a.frontLandmarks}
+                  backLandmarks={a.backLandmarks}
+                  locale={isPt ? "pt-BR" : "en"}
                 />
               )}
 
-              {/* Body Map */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{T("bodyAssessment.bodyMap")}</CardTitle>
-                    <div className="flex gap-1">
-                      <Button variant={bodyMapView === "front" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setBodyMapView("front")}>{T("bodyAssessment.front")}</Button>
-                      <Button variant={bodyMapView === "back" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setBodyMapView("back")}>{T("bodyAssessment.back")}</Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex justify-center">
-                  <BodyMap
-                    view={bodyMapView}
-                    motorPoints={a.motorPoints || []}
-                    alignmentData={a.alignmentData}
-                    width={260}
-                    height={380}
-                    interactive={false}
-                  />
-                </CardContent>
-              </Card>
+              {/* Postural Analysis — Real photos with biomechanical lines */}
+              <PosturalComparisonView
+                frontImageUrl={a.frontImageUrl}
+                backImageUrl={a.backImageUrl}
+                frontLandmarks={a.frontLandmarks}
+                backLandmarks={a.backLandmarks}
+                segmentScores={a.segmentScores}
+                postureScore={a.postureScore}
+                locale={isPt ? "pt-BR" : "en"}
+              />
             </div>
+
+            {/* Body Composition & Health Metrics */}
+            {a.bmi != null && (
+              <HealthMetricsCard
+                data={{
+                  heightCm: a.heightCm,
+                  weightKg: a.weightKg,
+                  bmi: a.bmi,
+                  bmiClassification: a.bmiClassification,
+                  waistCm: a.waistCm,
+                  hipCm: a.hipCm,
+                  waistHipRatio: a.waistHipRatio,
+                  neckCm: a.neckCm,
+                  chestCm: a.chestCm,
+                  thighCm: a.thighCm,
+                  calfCm: a.calfCm,
+                  armCm: a.armCm,
+                  bodyFatPercent: a.bodyFatPercent,
+                  bodyFatMethod: a.bodyFatMethod,
+                  leanMassKg: a.leanMassKg,
+                  fatMassKg: a.fatMassKg,
+                  basalMetabolicRate: a.basalMetabolicRate,
+                  cardiovascularRisk: a.cardiovascularRisk,
+                  metabolicRisk: a.metabolicRisk,
+                  healthScore: a.healthScore,
+                  healthRiskFactors: a.healthRiskFactors,
+                  sittingHoursPerDay: a.sittingHoursPerDay,
+                  screenTimeHours: a.screenTimeHours,
+                  walkingMinutesDay: a.walkingMinutesDay,
+                  stepsPerDay: a.stepsPerDay,
+                  ergonomicScore: a.ergonomicScore,
+                }}
+                locale={isPt ? "pt-BR" : "en"}
+              />
+            )}
 
             {/* AI Summary */}
             {a.aiSummary && (
@@ -469,16 +657,38 @@ function PatientBodyAssessmentsContent() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    { label: T("bodyAssessment.front"), url: a.frontImageUrl },
-                    { label: T("bodyAssessment.back"), url: a.backImageUrl },
-                    { label: T("bodyAssessment.left"), url: a.leftImageUrl },
-                    { label: T("bodyAssessment.right"), url: a.rightImageUrl },
+                    { label: T("bodyAssessment.front"), url: a.frontImageUrl, view: "front" },
+                    { label: T("bodyAssessment.back"), url: a.backImageUrl, view: "back" },
+                    { label: T("bodyAssessment.left"), url: a.leftImageUrl, view: "left" },
+                    { label: T("bodyAssessment.right"), url: a.rightImageUrl, view: "right" },
                   ].map((img) => (
                     <div key={img.label} className="text-center">
                       <p className="text-xs font-medium mb-1">{img.label}</p>
                       {img.url ? (
-                        <div className="aspect-[3/4] bg-muted rounded-lg overflow-hidden">
+                        <div className="aspect-[3/4] bg-muted rounded-lg overflow-hidden relative">
                           <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                          {/* AI Image Annotations */}
+                          {a.postureAnalysis?.imageAnnotations && Array.isArray(a.postureAnalysis.imageAnnotations) && (
+                            <>
+                              {a.postureAnalysis.imageAnnotations
+                                .filter((ann: any) => ann.view === img.view)
+                                .map((ann: any, idx: number) => {
+                                  const sevColor = ann.severity === "severe" ? "bg-red-500 border-red-400" : ann.severity === "moderate" ? "bg-orange-500 border-orange-400" : "bg-blue-500 border-blue-400";
+                                  const arrowChar = ann.arrowDirection === "up" ? "\u2191" : ann.arrowDirection === "down" ? "\u2193" : ann.arrowDirection === "left" ? "\u2190" : "\u2192";
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className="absolute z-10 pointer-events-none"
+                                      style={{ left: `${(ann.x || 0.5) * 100}%`, top: `${(ann.y || 0.5) * 100}%`, transform: "translate(-50%, -50%)" }}
+                                    >
+                                      <div className={`${sevColor} text-white text-[7px] leading-tight px-1 py-0.5 rounded border shadow-lg whitespace-nowrap max-w-[80px] text-center`}>
+                                        <span className="font-bold">{arrowChar}</span> {ann.label}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                            </>
+                          )}
                         </div>
                       ) : (
                         <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
@@ -490,6 +700,33 @@ function PatientBodyAssessmentsContent() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Social Media Image Consent */}
+            <SocialMediaConsentCard locale={locale} />
+
+            {/* Therapist Alert Notes */}
+            {a.therapistNotes && (() => {
+              const alertLines = (a.therapistNotes as string).split("\n").filter((l: string) => l.startsWith("[ALERT]") || l.startsWith("[AVISO]"));
+              if (alertLines.length === 0) return null;
+              return (
+                <Card className="border-amber-500/30 bg-amber-500/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2 text-amber-400">
+                      <Info className="h-4 w-4" />
+                      {isPt ? "Avisos do Terapeuta" : "Therapist Alerts"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {alertLines.map((line: string, i: number) => (
+                      <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <ShieldCheck className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-300">{line.replace(/^\[(ALERT|AVISO)\]\s*/, "")}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {!a.aiSummary && !a.therapistNotes && (
               <Card>
@@ -600,6 +837,43 @@ function PatientBodyAssessmentsContent() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Recommended Products */}
+            {a.recommendedProducts && a.recommendedProducts.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    🛒 {isPt ? "Produtos Recomendados para Sua Recuperação" : "Recommended Products for Your Recovery"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {a.recommendedProducts.map((p: any, i: number) => (
+                      <div key={i} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-lg">
+                          {p.category === "equipment" ? "🏋️" : p.category === "supplement" ? "💊" : "📦"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{p.name}</p>
+                          <p className="text-[10px] text-muted-foreground line-clamp-2">{p.reason}</p>
+                          {p.finding && (
+                            <Badge variant="outline" className="text-[9px] mt-1 h-4">{isPt ? "Para" : "For"}: {p.finding}</Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-[10px] h-7 px-2 flex-shrink-0"
+                          onClick={() => window.location.href = `/dashboard/marketplace?search=${encodeURIComponent(p.searchTerms?.[0] || p.name)}`}
+                        >
+                          {isPt ? "Ver" : "View"} →
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -646,6 +920,42 @@ function PatientBodyAssessmentsContent() {
 
       <ProfessionalReviewBanner />
 
+      {/* What Is a Biomechanical Assessment? */}
+      <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-pink-500/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-purple-400" />
+            {T("bodyAssessment.whatIsTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground leading-relaxed">{T("bodyAssessment.whatIsDesc")}</p>
+        </CardContent>
+      </Card>
+
+      {/* Benefits Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { icon: Search, title: T("bodyAssessment.benefit1Title"), desc: T("bodyAssessment.benefit1Desc"), color: "text-amber-400", bg: "bg-amber-500/10" },
+          { icon: Dumbbell, title: T("bodyAssessment.benefit2Title"), desc: T("bodyAssessment.benefit2Desc"), color: "text-green-400", bg: "bg-green-500/10" },
+          { icon: TrendingUp, title: T("bodyAssessment.benefit3Title"), desc: T("bodyAssessment.benefit3Desc"), color: "text-blue-400", bg: "bg-blue-500/10" },
+          { icon: FileDown, title: T("bodyAssessment.benefit4Title"), desc: T("bodyAssessment.benefit4Desc"), color: "text-indigo-400", bg: "bg-indigo-500/10" },
+        ].map((b, i) => {
+          const BIcon = b.icon;
+          return (
+            <Card key={i} className="border-muted/40">
+              <CardContent className="p-3 sm:p-4 text-center">
+                <div className={`w-9 h-9 rounded-lg ${b.bg} flex items-center justify-center mx-auto mb-2`}>
+                  <BIcon className={`h-4 w-4 ${b.color}`} />
+                </div>
+                <p className="text-xs sm:text-sm font-semibold">{b.title}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">{b.desc}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
       {/* How It Works Info Panel */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-3">
@@ -682,6 +992,61 @@ function PatientBodyAssessmentsContent() {
               <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{T("bodyAssessment.infoStep3Desc")}</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Score Legend */}
+      <Card className="border-muted/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary" />
+            {T("bodyAssessment.scoreExplainTitle")}
+          </CardTitle>
+          <CardDescription className="text-xs">{T("bodyAssessment.scoreExplainDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
+            <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
+            <p className="text-xs text-green-400">{T("bodyAssessment.scoreExcellent")}</p>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10">
+            <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
+            <p className="text-xs text-blue-400">{T("bodyAssessment.scoreGood")}</p>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10">
+            <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0" />
+            <p className="text-xs text-amber-400">{T("bodyAssessment.scoreFair")}</p>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10">
+            <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
+            <p className="text-xs text-red-400">{T("bodyAssessment.scoreNeedsAttention")}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* FAQ */}
+      <Card className="border-muted/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-purple-400" />
+            {T("bodyAssessment.faqTitle")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 pt-0">
+          {[
+            { q: T("bodyAssessment.faq1Q"), a: T("bodyAssessment.faq1A") },
+            { q: T("bodyAssessment.faq2Q"), a: T("bodyAssessment.faq2A") },
+            { q: T("bodyAssessment.faq3Q"), a: T("bodyAssessment.faq3A") },
+            { q: T("bodyAssessment.faq4Q"), a: T("bodyAssessment.faq4A") },
+          ].map((faq, i) => (
+            <details key={i} className="group rounded-lg border border-muted/40 overflow-hidden">
+              <summary className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors text-sm font-medium">
+                {faq.q}
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="px-3 pb-3 text-xs text-muted-foreground leading-relaxed">{faq.a}</div>
+            </details>
+          ))}
         </CardContent>
       </Card>
 

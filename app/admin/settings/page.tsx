@@ -252,6 +252,11 @@ export default function AdminSettingsPage() {
     bioStepsJson: "",
     bioBenefitsJson: "",
 
+    // Infrared Thermography Block
+    thermoImageUrl: "",
+    thermoImagePath: "",
+    thermoJson: "",
+
     // Landing Pages
     lpTherapiesJson: "",
     lpInsolesJson: "",
@@ -394,6 +399,9 @@ export default function AdminSettingsPage() {
           bioImagePath: data.bioImagePath || "",
           bioStepsJson: data.bioStepsJson || "",
           bioBenefitsJson: data.bioBenefitsJson || "",
+          thermoImageUrl: data.thermoImageUrl || "",
+          thermoImagePath: data.thermoImagePath || "",
+          thermoJson: data.thermoJson || "",
           lpTherapiesJson: data.lpTherapiesJson || "",
           lpInsolesJson: data.lpInsolesJson || "",
           lpBiomechanicsJson: data.lpBiomechanicsJson || "",
@@ -701,6 +709,7 @@ export default function AdminSettingsPage() {
           <TabsTrigger value="services">Services</TabsTrigger>
           <TabsTrigger value="insoles">Insoles</TabsTrigger>
           <TabsTrigger value="biomechanics">Biomechanics</TabsTrigger>
+          <TabsTrigger value="thermography">Thermography</TabsTrigger>
           <TabsTrigger value="mls-laser">MLS Laser</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
           <TabsTrigger value="articles">Articles</TabsTrigger>
@@ -1415,6 +1424,117 @@ export default function AdminSettingsPage() {
                 <Textarea id="bioStepsJson" value={settings.bioStepsJson} onChange={(e) => setSettings({ ...settings, bioStepsJson: e.target.value })} placeholder='[{"title": "Multi-Angle Capture", "desc": "..."}]' rows={6} />
                 <p className="text-xs text-muted-foreground">JSON array of objects with "title" and "desc" fields</p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Infrared Thermography Tab */}
+        <TabsContent value="thermography" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Infrared Thermography Section</CardTitle>
+              <CardDescription>Edit the infrared thermography section on the homepage. All text fields are stored as JSON.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(() => {
+                let thermo: any = {};
+                try { thermo = settings.thermoJson ? JSON.parse(settings.thermoJson) : {}; } catch {}
+                const updateThermo = (field: string, value: any) => {
+                  const updated = { ...thermo, [field]: value };
+                  setSettings({ ...settings, thermoJson: JSON.stringify(updated) });
+                };
+                let thermoBenefits: string[] = [];
+                try { thermoBenefits = thermo.benefitsJson ? JSON.parse(thermo.benefitsJson) : []; } catch {}
+                let thermoConditions: string[] = [];
+                try { thermoConditions = thermo.conditionsJson ? JSON.parse(thermo.conditionsJson) : []; } catch {}
+
+                return (
+                  <div className="space-y-4">
+                    {/* Image */}
+                    <div className="space-y-2">
+                      <Label>Thermography Image</Label>
+                      {settings.thermoImageUrl ? (
+                        <div className="relative inline-block">
+                          <img src={settings.thermoImageUrl} alt="Thermography" style={{ width: 400, height: 250 }} className="object-cover border rounded" />
+                          <Button size="sm" variant="destructive" className="absolute top-2 right-2" onClick={() => removeImage("thermoImageUrl")}><X className="h-4 w-4" /></Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={() => openImagePicker("thermoImageUrl")}><Upload className="h-4 w-4 mr-2" />Upload Image</Button>
+                          <AIImageGenerator section="Thermography" defaultPrompt="Infrared thermography scan of human body showing heat map patterns, red orange yellow blue thermal imaging, clinical assessment" aspectRatio="4:3" onApply={(url) => setSettings({ ...settings, thermoImageUrl: url })} />
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">Upload a real thermography image. When empty, an SVG illustration is shown.</p>
+                    </div>
+
+                    {/* Label */}
+                    <div className="space-y-2">
+                      <Label>Section Label</Label>
+                      <Input value={thermo.label || ""} onChange={(e) => updateThermo("label", e.target.value)} placeholder="Infrared Thermography" />
+                      <p className="text-xs text-muted-foreground">Small tag shown above the title</p>
+                    </div>
+
+                    {/* Title */}
+                    <div className="space-y-2">
+                      <Label>Title</Label>
+                      <Input value={thermo.title || ""} onChange={(e) => updateThermo("title", e.target.value)} placeholder="Infrared Thermography" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Title (highlighted part)</Label>
+                      <Input value={thermo.title2 || ""} onChange={(e) => updateThermo("title2", e.target.value)} placeholder="In Patient Care" />
+                    </div>
+
+                    {/* Descriptions */}
+                    <div className="space-y-2">
+                      <Label>Description — Paragraph 1</Label>
+                      <Textarea value={thermo.desc || ""} onChange={(e) => updateThermo("desc", e.target.value)} placeholder="At my clinic, I offer infrared thermography..." rows={3} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description — Paragraph 2</Label>
+                      <Textarea value={thermo.desc2 || ""} onChange={(e) => updateThermo("desc2", e.target.value)} placeholder="Although it does not provide anatomical diagnosis..." rows={3} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description — Paragraph 3</Label>
+                      <Textarea value={thermo.desc3 || ""} onChange={(e) => updateThermo("desc3", e.target.value)} placeholder="With thermal imaging, we can track how your body responds..." rows={3} />
+                    </div>
+
+                    {/* Badge */}
+                    <div className="space-y-2">
+                      <Label>Badge Text (over image)</Label>
+                      <Input value={thermo.badge || ""} onChange={(e) => updateThermo("badge", e.target.value)} placeholder="Safe · Non-invasive · Radiation-free" />
+                    </div>
+
+                    {/* Benefits */}
+                    <div className="space-y-2">
+                      <Label>Benefits (one per line)</Label>
+                      <Textarea value={thermo.benefits || ""} onChange={(e) => updateThermo("benefits", e.target.value)} placeholder={"Detects inflammation and circulation changes\nIdentifies temperature imbalances\nMaps pain patterns across body regions\nTracks treatment progress over time\nNon-contact and completely painless\nNo radiation exposure"} rows={6} />
+                      <p className="text-xs text-muted-foreground">Write one benefit per line. Leave empty for defaults.</p>
+                    </div>
+
+                    {/* Conditions */}
+                    <div className="space-y-2">
+                      <Label>Conditions Title</Label>
+                      <Input value={thermo.conditionsTitle || ""} onChange={(e) => updateThermo("conditionsTitle", e.target.value)} placeholder="Particularly helpful for" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Conditions (one per line)</Label>
+                      <Textarea value={thermo.conditions || ""} onChange={(e) => updateThermo("conditions", e.target.value)} placeholder={"Sports Injuries\nJoint Inflammation\nTendon Problems\nChronic Pain\nPost-Surgical Recovery\nCirculation Issues"} rows={4} />
+                      <p className="text-xs text-muted-foreground">Write one condition per line. Leave empty for defaults.</p>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="space-y-2">
+                      <Label>CTA Button Text</Label>
+                      <Input value={thermo.ctaText || ""} onChange={(e) => updateThermo("ctaText", e.target.value)} placeholder="Book Thermography Assessment" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>CTA Link</Label>
+                      <Input value={thermo.ctaLink || ""} onChange={(e) => updateThermo("ctaLink", e.target.value)} placeholder="/signup" />
+                      <p className="text-xs text-muted-foreground">Default: /signup</p>
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>

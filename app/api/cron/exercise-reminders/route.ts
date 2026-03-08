@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
             protocolTitle: protocol.title || "Treatment Plan",
             exerciseCount: String(count),
             exerciseList: exerciseNames,
-            portalUrl: `${BASE}/dashboard/treatment`,
+            portalUrl: `${BASE}/dashboard/exercises`,
           },
           plainMessage: `Time for your exercises! You have ${count} pending exercise(s): ${exerciseNames}. Log in to your portal to track your progress.`,
           plainMessagePt: `Hora dos exercícios! Você tem ${count} exercício(s) pendente(s): ${exerciseNames}. Acesse seu portal para acompanhar seu progresso.`,

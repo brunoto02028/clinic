@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { User, Globe, Phone, MapPin, Save, CheckCircle, Calendar, Shield, Lock, Eye, EyeOff, AlertCircle, Mail, MessageSquare, MessageCircle, Scale, ArrowRight } from 'lucide-react';
+import { User, Globe, Phone, MapPin, Save, CheckCircle, Calendar, Shield, Lock, Eye, EyeOff, AlertCircle, Mail, MessageSquare, MessageCircle, Scale, ArrowRight, Info, Clock } from 'lucide-react';
 import { useLocale } from '@/hooks/use-locale';
 import { t as i18nT } from '@/lib/i18n';
 
@@ -144,6 +144,21 @@ export default function PatientProfilePage() {
         </div>
 
         <div className="p-6 space-y-6">
+          {/* Why complete your profile */}
+          <div className="flex gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+            <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {isPt ? 'Por que preencher seus dados?' : 'Why complete your profile?'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                {isPt
+                  ? 'Precisamos das suas informações para entrar em contato sobre consultas, enviar resultados de exames e garantir que o seu terapeuta tenha todos os dados necessários para o melhor atendimento. Seus dados são protegidos e nunca serão compartilhados sem o seu consentimento.'
+                  : 'We need your information to contact you about appointments, send examination results, and ensure your therapist has all the data needed for the best care. Your data is protected and will never be shared without your consent.'}
+              </p>
+            </div>
+          </div>
+
           {/* Language preference */}
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
@@ -200,38 +215,59 @@ export default function PatientProfilePage() {
               {isPt ? 'Canal de Comunicação Preferido' : 'Preferred Communication Channel'}
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {[
-                { key: 'EMAIL', icon: Mail, label: 'Email', desc: isPt ? 'Receber por email' : 'Receive by email' },
-                { key: 'SMS', icon: MessageSquare, label: 'SMS', desc: isPt ? 'Receber por SMS' : 'Receive by SMS' },
-                { key: 'WHATSAPP', icon: MessageCircle, label: 'WhatsApp', desc: isPt ? 'Receber por WhatsApp' : 'Receive via WhatsApp' },
-              ].map((ch) => (
-                <button
-                  key={ch.key}
-                  onClick={() => setCommPref(ch.key)}
-                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
-                    commPref === ch.key
-                      ? 'border-primary bg-primary/10'
-                      : 'border-white/10 hover:border-white/20'
-                  }`}
-                >
-                  <ch.icon className={`h-5 w-5 ${commPref === ch.key ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <span className={`text-xs font-semibold ${commPref === ch.key ? 'text-primary' : 'text-muted-foreground'}`}>{ch.label}</span>
-                </button>
-              ))}
+              {/* Email — active */}
+              <button
+                onClick={() => setCommPref('EMAIL')}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                  commPref === 'EMAIL'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-white/10 hover:border-white/20'
+                }`}
+              >
+                <Mail className={`h-5 w-5 ${commPref === 'EMAIL' ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`text-xs font-semibold ${commPref === 'EMAIL' ? 'text-primary' : 'text-muted-foreground'}`}>Email</span>
+              </button>
+              {/* SMS — coming soon */}
+              <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-white/10 text-center opacity-50 cursor-not-allowed">
+                <div className="absolute -top-2 -right-1 z-10">
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold">
+                    <Clock className="h-2.5 w-2.5" />
+                    {isPt ? 'Em breve' : 'Soon'}
+                  </span>
+                </div>
+                <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground">SMS</span>
+              </div>
+              {/* WhatsApp — coming soon */}
+              <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-white/10 text-center opacity-50 cursor-not-allowed">
+                <div className="absolute -top-2 -right-1 z-10">
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold">
+                    <Clock className="h-2.5 w-2.5" />
+                    {isPt ? 'Em breve' : 'Soon'}
+                  </span>
+                </div>
+                <MessageCircle className="h-5 w-5 text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground">WhatsApp</span>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               {isPt
-                ? 'Lembretes de consulta e atualizações serão enviados por este canal.'
-                : 'Appointment reminders and updates will be sent via this channel.'}
+                ? 'Lembretes de consulta e atualizações serão enviados por este canal. SMS e WhatsApp serão disponibilizados em breve.'
+                : 'Appointment reminders and updates will be sent via this channel. SMS and WhatsApp will be available soon.'}
             </p>
           </div>
 
           {/* Date of Birth */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
               <Calendar className="h-4 w-4 text-teal-500" />
               {isPt ? 'Data de Nascimento' : 'Date of Birth'}
             </label>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              {isPt
+                ? 'Necessária para confirmar a sua identidade e adequar o tratamento à sua faixa etária.'
+                : 'Required to confirm your identity and tailor treatment to your age group.'}
+            </p>
             <input
               type="date"
               value={dateOfBirth}
@@ -242,10 +278,15 @@ export default function PatientProfilePage() {
 
           {/* Phone */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
               <Phone className="h-4 w-4 text-teal-500" />
               {T('profile.phone')}
             </label>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              {isPt
+                ? 'Para que possamos contactá-lo sobre consultas, alterações de horário ou em caso de urgência.'
+                : 'So we can contact you about appointments, schedule changes, or in case of urgency.'}
+            </p>
             <input
               type="tel"
               value={phone}
@@ -257,10 +298,15 @@ export default function PatientProfilePage() {
 
           {/* Address */}
           <div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
               <MapPin className="h-4 w-4 text-teal-500" />
               {T('profile.address')}
             </label>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              {isPt
+                ? 'Utilizado para referências médicas, correspondência e para auxiliar no planeamento do seu tratamento.'
+                : 'Used for medical referrals, correspondence, and to help plan your treatment.'}
+            </p>
             <textarea
               value={address}
               onChange={e => setAddress(e.target.value)}
@@ -272,10 +318,15 @@ export default function PatientProfilePage() {
 
           {/* Emergency Contact */}
           <div className="border-t border-white/10 pt-6">
-            <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
               <Shield className="h-4 w-4 text-red-500" />
               {isPt ? 'Contato de Emergência' : 'Emergency Contact'}
             </label>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              {isPt
+                ? 'Pessoa que devemos contactar em caso de emergência durante o seu tratamento. Esta informação é obrigatória por segurança.'
+                : 'Person we should contact in case of emergency during your treatment. This information is required for safety.'}
+            </p>
             <div className="space-y-3">
               <input
                 type="text"

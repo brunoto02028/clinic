@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { useParams } from "next/navigation";
 import { BodyCapture, BodyCaptureResult } from "@/components/body-assessment/body-capture";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ interface AssessmentInfo {
   backImageUrl: string | null;
   leftImageUrl: string | null;
   rightImageUrl: string | null;
-  patient: { firstName: string; lastName: string };
+  patient: { firstName: string; lastName: string; preferredLocale?: string };
   clinic: { name: string; logoUrl: string | null };
 }
 
@@ -34,6 +34,10 @@ export default function CapturePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [isComplete, setIsComplete] = useState(false);
+
+  const locale = assessment?.patient?.preferredLocale || "en-GB";
+  const pt = locale === "pt-BR";
+  const L = <T extends ReactNode>(en: T, ptStr: T): T => (pt ? ptStr : en);
 
   useEffect(() => {
     fetchAssessment();
@@ -80,7 +84,7 @@ export default function CapturePage() {
       for (let i = 0; i < photoEntries.length; i++) {
         const [view, data] = photoEntries[i];
         if (!data) continue;
-        setUploadProgress(`Uploading photo ${i + 1}/${photoEntries.length}...`);
+        setUploadProgress(L(`Uploading photo ${i + 1}/${photoEntries.length}...`, `Enviando foto ${i + 1}/${photoEntries.length}...`));
 
         const res = await fetch(`/api/body-assessments/capture/${token}`, {
           method: "PUT",
@@ -104,7 +108,7 @@ export default function CapturePage() {
       if (result.videos && result.videos.length > 0) {
         for (let i = 0; i < result.videos.length; i++) {
           const vid = result.videos[i];
-          setUploadProgress(`Uploading video ${i + 1}/${result.videos.length} (${vid.label})...`);
+          setUploadProgress(L(`Uploading video ${i + 1}/${result.videos.length} (${vid.label})...`, `Enviando vídeo ${i + 1}/${result.videos.length} (${vid.label})...`));
 
           // Convert blob to data URL for transfer
           const videoDataUrl = await blobToDataUrl(vid.blob);
@@ -127,7 +131,7 @@ export default function CapturePage() {
       }
 
       // Mark as pending analysis
-      setUploadProgress("Finalizing...");
+      setUploadProgress(L("Finalizing...", "Finalizando..."));
       await fetch(`/api/body-assessments/capture/${token}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -136,13 +140,13 @@ export default function CapturePage() {
 
       setIsComplete(true);
       toast({
-        title: "Capture Complete!",
-        description: "Your images and videos have been uploaded. Your therapist will review them soon.",
+        title: L("Capture Complete!", "Captura Concluída!"),
+        description: L("Your images and videos have been uploaded. Your therapist will review them soon.", "Suas imagens e vídeos foram enviados. Seu terapeuta irá revisá-los em breve."),
       });
     } catch (err: any) {
       toast({
-        title: "Upload Error",
-        description: err.message || "Failed to upload. Please try again.",
+        title: L("Upload Error", "Erro no Envio"),
+        description: err.message || L("Failed to upload. Please try again.", "Falha no envio. Tente novamente."),
         variant: "destructive",
       });
     } finally {
@@ -156,7 +160,7 @@ export default function CapturePage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Loading assessment...</p>
+          <p className="text-muted-foreground">{L("Loading assessment...", "Carregando avaliação...")}</p>
         </div>
       </div>
     );
@@ -168,7 +172,7 @@ export default function CapturePage() {
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center space-y-4">
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
-            <h2 className="text-xl font-semibold">Link Invalid</h2>
+            <h2 className="text-xl font-semibold">{L("Link Invalid", "Link Inválido")}</h2>
             <p className="text-muted-foreground">{error}</p>
           </CardContent>
         </Card>
@@ -181,8 +185,8 @@ export default function CapturePage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-lg font-medium">Uploading...</p>
-          <p className="text-sm text-muted-foreground">{uploadProgress || "Please wait while we process your captures"}</p>
+          <p className="text-lg font-medium">{L("Uploading...", "Enviando...")}</p>
+          <p className="text-sm text-muted-foreground">{uploadProgress || L("Please wait while we process your captures", "Aguarde enquanto processamos suas capturas")}</p>
         </div>
       </div>
     );
@@ -194,10 +198,9 @@ export default function CapturePage() {
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center space-y-4">
             <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
-            <h2 className="text-2xl font-semibold">Assessment Complete!</h2>
+            <h2 className="text-2xl font-semibold">{L("Assessment Complete!", "Avaliação Concluída!")}</h2>
             <p className="text-muted-foreground">
-              Your body assessment images and videos have been submitted successfully.
-              Your therapist will review them and provide your results.
+              {L("Your body assessment images and videos have been submitted successfully. Your therapist will review them and provide your results.", "Suas imagens e vídeos da avaliação corporal foram enviados com sucesso. Seu terapeuta irá revisá-los e fornecer seus resultados.")}
             </p>
             <Badge variant="outline" className="text-sm">
               {assessment?.assessmentNumber}
@@ -215,6 +218,7 @@ export default function CapturePage() {
         <BodyCapture
           onComplete={handleCaptureComplete}
           onCancel={() => setIsCapturing(false)}
+          locale={locale}
         />
       </div>
     );
@@ -238,21 +242,20 @@ export default function CapturePage() {
 
         <Card>
           <CardHeader className="text-center">
-            <CardTitle>Body Assessment</CardTitle>
+            <CardTitle>{L("Body Assessment", "Avaliação Corporal")}</CardTitle>
             <CardDescription>
-              Hi {assessment?.patient.firstName}, we need to capture photos and movement
-              videos for your biomechanical assessment.
+              {L(`Hi ${assessment?.patient.firstName}, we need to capture photos and movement videos for your biomechanical assessment.`, `Olá ${assessment?.patient.firstName}, precisamos capturar fotos e vídeos de movimento para sua avaliação biomecânica.`)}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Assessment info */}
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Assessment #</span>
+                <span className="text-muted-foreground">{L("Assessment #", "Avaliação #")}</span>
                 <span className="font-medium">{assessment?.assessmentNumber}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Patient</span>
+                <span className="text-muted-foreground">{L("Patient", "Paciente")}</span>
                 <span className="font-medium">
                   {assessment?.patient.firstName} {assessment?.patient.lastName}
                 </span>
@@ -261,23 +264,23 @@ export default function CapturePage() {
 
             {/* Instructions */}
             <div className="space-y-3">
-              <h3 className="font-semibold text-sm">How it works:</h3>
+              <h3 className="font-semibold text-sm">{L("How it works:", "Como funciona:")}</h3>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex gap-3">
                   <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">1</span>
-                  <span>Stand in a well-lit area with your <strong>full body visible</strong></span>
+                  <span>{L(<>Stand in a well-lit area with your <strong>full body visible</strong></>, <>Fique em um local bem iluminado com o <strong>corpo inteiro visível</strong></>)}</span>
                 </div>
                 <div className="flex gap-3">
                   <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">2</span>
-                  <span><strong>4 photos</strong>: front, back, left side, right side</span>
+                  <span>{L(<><strong>4 photos</strong>: front, back, left side, right side</>, <><strong>4 fotos</strong>: frente, costas, lado esquerdo, lado direito</>)}</span>
                 </div>
                 <div className="flex gap-3">
                   <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">3</span>
-                  <span><strong>Movement videos</strong>: squat, gait, lunge, balance tests</span>
+                  <span>{L(<><strong>Movement videos</strong>: squat, gait, lunge, balance tests</>, <><strong>Vídeos de movimento</strong>: agachamento, marcha, avanço, equilíbrio</>)}</span>
                 </div>
                 <div className="flex gap-3">
                   <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">4</span>
-                  <span>Review each capture and submit when done</span>
+                  <span>{L("Review each capture and submit when done", "Revise cada captura e envie ao finalizar")}</span>
                 </div>
               </div>
             </div>
@@ -285,8 +288,7 @@ export default function CapturePage() {
             {/* Tips */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-xs text-amber-700">
-                <strong>Tips:</strong> Wear tight-fitting clothes. Use a plain background.
-                Ask someone to hold the camera or prop your phone ~2m away.
+                <strong>{L("Tips:", "Dicas:")}</strong> {L("Wear tight-fitting clothes. Use a plain background. Ask someone to hold the camera or prop your phone ~2m away.", "Use roupas justas. Use um fundo liso. Peça a alguém para segurar a câmera ou apoie o telemóvel a ~2m de distância.")}
               </p>
             </div>
 
@@ -296,7 +298,7 @@ export default function CapturePage() {
               onClick={() => setIsCapturing(true)}
             >
               <Camera className="h-5 w-5 mr-2" />
-              Start Capture
+              {L("Start Capture", "Iniciar Captura")}
             </Button>
           </CardContent>
         </Card>

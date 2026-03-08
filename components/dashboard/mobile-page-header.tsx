@@ -27,7 +27,7 @@ const PAGE_TITLES: Record<string, { en: string; pt: string }> = {
   "/dashboard/quizzes": { en: "Quizzes", pt: "Quizzes" },
   "/dashboard/records": { en: "My Records", pt: "Meus Registros" },
   "/dashboard/scans": { en: "Foot Scans", pt: "Escaneamento de Pés" },
-  "/dashboard/screening": { en: "Medical Screening", pt: "Triagem Médica" },
+  "/dashboard/screening": { en: "Assessment Screening", pt: "Triagem de Avaliação" },
   "/dashboard/treatment": { en: "Treatment Plan", pt: "Plano de Tratamento" },
   "/dashboard/achievements": { en: "Achievements", pt: "Conquistas" },
 };

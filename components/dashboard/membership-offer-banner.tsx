@@ -23,12 +23,14 @@ export default function MembershipOfferBanner({ treatmentCompleted }: Membership
   const isPt = locale === "pt-BR";
 
   useEffect(() => {
-    fetch("/api/patient/membership/subscription")
-      .then((r) => r.json())
-      .then((data) => {
-        setHasSubscription(!!data.subscription);
-      })
-      .catch(() => setHasSubscription(false));
+    // Check both subscription AND fullAccessOverride (VIP)
+    Promise.all([
+      fetch("/api/patient/membership/subscription").then(r => r.json()).catch(() => ({})),
+      fetch("/api/patient/access").then(r => r.json()).catch(() => ({})),
+    ]).then(([subData, accessData]) => {
+      // VIP override or active subscription = don't show banner
+      setHasSubscription(!!subData.subscription || !!accessData.fullAccessOverride);
+    });
   }, []);
 
   if (dismissed || hasSubscription === null || hasSubscription) return null;

@@ -6,7 +6,7 @@ import { Lock, Crown, ArrowRight, Loader2, Shield, FileText } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePatientAccess } from "@/hooks/use-patient-access";
-import { GATED_MODULES, getModuleByKey, HREF_MODULE_MAP } from "@/lib/module-registry";
+import { GATED_MODULES, getModuleByKey, HREF_MODULE_MAP, ALWAYS_VISIBLE_MODULES } from "@/lib/module-registry";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 
@@ -81,8 +81,19 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
   // not as a dashboard-wide blocker. The screening alert is shown contextually on the dashboard
   // and appointment pages instead.
 
+  // ── Full access override: skip all gates ──
+  if ((access as any).fullAccessOverride) {
+    return <>{children}</>;
+  }
+
   // ── Module access check ──
   const resolvedKey = moduleKey || (pathname ? HREF_MODULE_MAP[pathname] : undefined);
+
+  // Always-visible modules bypass the gate regardless of API state
+  const alwaysVisibleKeys = new Set(ALWAYS_VISIBLE_MODULES.map(m => m.key));
+  if (resolvedKey && alwaysVisibleKeys.has(resolvedKey)) {
+    return <>{children}</>;
+  }
 
   // If we can resolve the module and it's gated
   if (resolvedKey && !hasModule(resolvedKey)) {

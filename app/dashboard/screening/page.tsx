@@ -1,5 +1,5 @@
-import MedicalScreeningForm from "@/components/screening/medical-screening-form";
+import AssessmentScreeningForm from "@/components/screening/medical-screening-form";
 
 export default function ScreeningPage() {
-  return <MedicalScreeningForm />;
+  return <AssessmentScreeningForm />;
 }

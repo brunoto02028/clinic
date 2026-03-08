@@ -91,6 +91,7 @@ export async function GET() {
     if (patient.fullAccessOverride) {
       return NextResponse.json({
         modules: MODULE_REGISTRY.map(m => m.key),
+        hiddenModules: [],
         permissions: PERMISSION_REGISTRY.map(p => p.key),
         role: userRole,
         fullAccessOverride: true,
@@ -155,18 +156,28 @@ export async function GET() {
       for (const p of treatmentPerms) grantedPermissions.add(p);
     }
 
-    // ── Apply admin per-patient overrides ──
-    const overrides = (patient.moduleOverrides || {}) as Record<string, boolean>;
+    // ── Apply admin per-patient overrides (supports true/false/"hidden") ──
+    const overrides = (patient.moduleOverrides || {}) as Record<string, boolean | string>;
+    const hiddenModules = new Set<string>();
     for (const [key, val] of Object.entries(overrides)) {
       if (key.startsWith("mod_")) {
-        if (val) grantedModules.add(key); else grantedModules.delete(key);
+        if (val === "hidden") {
+          grantedModules.delete(key);
+          hiddenModules.add(key);
+        } else if (val === true || val === "unlocked") {
+          grantedModules.add(key);
+        } else if (val === false || val === "locked") {
+          grantedModules.delete(key);
+        }
       } else if (key.startsWith("perm_")) {
-        if (val) grantedPermissions.add(key); else grantedPermissions.delete(key);
+        if (val === true) grantedPermissions.add(key);
+        else if (val === false) grantedPermissions.delete(key);
       }
     }
 
     return NextResponse.json({
       modules: Array.from(grantedModules),
+      hiddenModules: Array.from(hiddenModules),
       permissions: Array.from(grantedPermissions),
       role: userRole,
       hasActiveSubscription: activeSubscriptions.length > 0,

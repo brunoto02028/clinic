@@ -1558,7 +1558,7 @@ async function businessValuationAction(
 ### Technology Asset (Codebase)
 - Full-stack Next.js 14 + React + TypeScript + PostgreSQL + Prisma
 - 45+ database models, 80+ API routes, 30+ admin pages, 15+ patient portal pages
-- AI integrations: Abacus AI (RouteLLM), Google Gemini (text, vision, voice)
+- AI integrations: Google Gemini (text, image generation, vision, voice transcription)
 - Payment: Stripe live (subscriptions, packages, one-time)
 - Communication: WhatsApp Business API, Email SMTP/IMAP, Instagram Graph API
 - Unique features: AI diagnosis, treatment protocols, biomechanical assessment with MediaPipe pose detection, foot scanning, voice transcription, gamification system, AI Command Center with 15+ executable actions

@@ -721,8 +721,8 @@ export default function PatientProfilePage() {
       {/* ─── Sections ─── */}
       <div className="space-y-2.5">
 
-        {/* ── Medical Screening ── */}
-        <Sec title="Medical Screening" icon={FileText} badge={data.screening ? "Completed" : "Not filled"} open={!!data.screening}
+        {/* ── Assessment Screening ── */}
+        <Sec title="Assessment Screening" icon={FileText} badge={data.screening ? "Completed" : "Not filled"} open={!!data.screening}
           actions={data.screening && <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setScreeningForm({ ...data.screening }); setEditingScreening(true); }}><Pencil className="h-3 w-3" /></Button>}
         >
           {editingScreening && data.screening ? (

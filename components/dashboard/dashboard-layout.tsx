@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, useRef, ReactNode } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -62,7 +62,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
-  const { locale } = useLocale();
+  const { locale, setLocale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
 
   // Impersonation detection
@@ -72,7 +72,11 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const [portalConfigLoaded, setPortalConfigLoaded] = useState(false);
   const [portalModules, setPortalModules] = useState<{ href: string; label: string; icon: any; alwaysVisible?: boolean; group?: string }[]>([]);
   const [consentRequired, setConsentRequired] = useState(false);
-  const { access, loading: accessLoading, canAccessHref } = usePatientAccess();
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const { access, loading: accessLoading, canAccessHref, isModuleHidden } = usePatientAccess();
 
   const ICON_LOOKUP: Record<string, any> = {
     LayoutDashboard, Calendar, Footprints, FileText, Shield, Users, ClipboardList, GraduationCap, Dumbbell,
@@ -94,6 +98,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
     "/dashboard/blood-pressure": "patient.bloodPressure",
     "/dashboard/membership": "patient.plans",
     "/dashboard/consent": "patient.consent",
+    "/dashboard/guide": "patient.guide",
     "/dashboard/profile": "patient.profile",
     "/dashboard/clinical-notes": "patient.clinicalNotes",
     "/dashboard/quizzes": "patient.quizzes",
@@ -159,6 +164,37 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
         })
         .catch(() => {});
     }
+    // Sync locale from patient's DB preference on first load
+    if (role === "PATIENT" && !forcePatientMode) {
+      fetch("/api/patient/profile")
+        .then(res => res.json())
+        .then(data => {
+          const dbLocale = data?.user?.preferredLocale;
+          if (dbLocale && (dbLocale === "pt-BR" || dbLocale === "en-GB")) {
+            const current = localStorage.getItem("clinic-locale");
+            if (!current || current !== dbLocale) {
+              setLocale(dbLocale);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+    // Fetch patient notifications
+    fetch("/api/patient/notifications")
+      .then(res => res.json())
+      .then(data => {
+        if (data.notifications) setNotifications(data.notifications);
+        if (data.unreadCount !== undefined) setNotifCount(data.unreadCount);
+      })
+      .catch(() => {});
+    // Close notification dropdown on outside click
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const userRole = (session?.user as any)?.role || "PATIENT";
@@ -205,12 +241,26 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
   // Resolve nav items — mark locked modules for patients
   const isPatientRole = !isTherapist && !isPatientPreview;
-  const resolvedPatientNav = defaultPatientNavItems.map(item => {
-    if (item.alwaysVisible) return { ...item, locked: false };
-    const moduleKey = HREF_MODULE_MAP[item.href];
-    const isLocked = isPatientRole && moduleKey && access.modules !== "all" && !((access.modules as string[]).includes(moduleKey));
-    return { ...item, locked: !!isLocked };
-  });
+  const resolvedPatientNav = defaultPatientNavItems
+    .filter(item => {
+      // Hide modules that admin marked as "hidden" for this patient
+      if (isPatientRole) {
+        const moduleKey = HREF_MODULE_MAP[item.href];
+        if (moduleKey && isModuleHidden(moduleKey)) return false;
+      }
+      return true;
+    })
+    .map(item => {
+      if (item.alwaysVisible) return { ...item, locked: false };
+      // While access is loading, don't show locks (avoids flash of locked state)
+      if (accessLoading) return { ...item, locked: false };
+      // VIP full access override — never lock anything
+      if (access.fullAccessOverride) return { ...item, locked: false };
+      if (access.modules === "all") return { ...item, locked: false };
+      const moduleKey = HREF_MODULE_MAP[item.href];
+      const isLocked = isPatientRole && moduleKey && !((access.modules as string[]).includes(moduleKey));
+      return { ...item, locked: !!isLocked };
+    });
   // BPR Journey items — now driven by portal config (admin can toggle)
   const isPt = locale === "pt-BR";
   const journeyNavItems = resolvedPatientNav.filter((item: any) => item.group === "journey");
@@ -361,7 +411,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
                   }}
                 >
                   <LogOut className="h-4 w-4" />
-                  Voltar ao Admin
+                  {isPt ? "Voltar ao Admin" : "Back to Admin"}
                 </Button>
               ) : (
                 <Button
@@ -396,21 +446,78 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
             <div className="hidden lg:block">
               <h1 className="text-lg font-semibold text-foreground">
-                {isTherapist ? `${T("patient.therapist")} Portal` : `${T("patient.patient")} Portal`}
+                {isTherapist ? (isPt ? "Portal do Terapeuta" : "Therapist Portal") : (isPt ? "Portal do Paciente" : "Patient Portal")}
               </h1>
             </div>
 
             {/* Mobile: show current page context */}
             <div className="lg:hidden flex-1 text-center">
               <span className="text-sm font-semibold text-foreground">
-                {isTherapist ? `${T("patient.therapist")} Portal` : (isPt ? "Paciente Portal" : "Patient Portal")}
+                {isTherapist ? (isPt ? "Portal do Terapeuta" : "Therapist Portal") : (isPt ? "Portal do Paciente" : "Patient Portal")}
               </span>
             </div>
 
             <div className="flex items-center gap-2 lg:gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-              </Button>
+              <div className="relative" ref={notifRef}>
+                <Button variant="ghost" size="icon" className="relative" onClick={() => setNotifOpen(o => !o)}>
+                  <Bell className="h-5 w-5" />
+                  {notifCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 shadow-lg animate-pulse">
+                      {notifCount > 9 ? "9+" : notifCount}
+                    </span>
+                  )}
+                </Button>
+                {notifOpen && (
+                  <div className="absolute right-0 top-12 w-80 sm:w-96 bg-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-foreground">{isPt ? "Notificações" : "Notifications"}</h3>
+                      {notifCount > 0 && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{notifCount}</Badge>}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-muted-foreground text-sm">
+                          {isPt ? "Nenhuma notificação" : "No notifications"}
+                        </div>
+                      ) : (
+                        notifications.map(n => {
+                          const NOTIF_ICONS: Record<string, any> = { Calendar, Shield, User, CreditCard };
+                          const NIcon = NOTIF_ICONS[n.icon] || Bell;
+                          const colorMap: Record<string, string> = {
+                            red: "bg-red-500/15 text-red-400",
+                            amber: "bg-amber-500/15 text-amber-400",
+                            blue: "bg-blue-500/15 text-blue-400",
+                            green: "bg-emerald-500/15 text-emerald-400",
+                          };
+                          const dotColor: Record<string, string> = { red: "bg-red-500", amber: "bg-amber-500", blue: "bg-blue-500", green: "bg-emerald-500" };
+                          return (
+                            <Link key={n.id} href={n.link} onClick={() => setNotifOpen(false)}>
+                              <div className={`px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 flex items-start gap-3 ${n.isUrgent ? "bg-red-500/5" : ""}`}>
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${colorMap[n.color] || colorMap.blue}`}>
+                                  <NIcon className="h-4 w-4" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-semibold text-foreground truncate">{isPt ? n.titlePt : n.title}</p>
+                                    {n.isUrgent && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor[n.color] || dotColor.red} animate-pulse`} />}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{isPt ? n.messagePt : n.message}</p>
+                                </div>
+                              </div>
+                            </Link>
+                          );
+                        })
+                      )}
+                    </div>
+                    {notifications.length > 0 && (
+                      <div className="px-4 py-2.5 border-t border-white/5 text-center">
+                        <Link href="/dashboard/appointments" onClick={() => setNotifOpen(false)} className="text-xs text-primary hover:underline font-medium">
+                          {isPt ? "Ver todas as consultas →" : "View all appointments →"}
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="hidden sm:flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <User className="h-4 w-4 text-primary" />

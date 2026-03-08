@@ -113,10 +113,12 @@ export async function notifyPatient({
     } else {
       // No template — send a plain email
       try {
+        const adminBcc = process.env.ADMIN_EMAIL || "brunotoaz@gmail.com";
         await sendEmail({
           to: email,
           subject: isPt ? "BPR Rehab — Notificação" : "BPR Rehab — Notification",
           html: `<p>${isPt ? "Olá" : "Hi"} ${firstName},</p><p>${msg}</p>`,
+          bcc: email.toLowerCase() !== adminBcc.toLowerCase() ? adminBcc : undefined,
         });
         return { channel: "EMAIL", success: true };
       } catch (err: any) {

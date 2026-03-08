@@ -5,7 +5,6 @@ import { generateImage } from '@/lib/ai-provider';
 import { getConfigValue } from '@/lib/system-config';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -23,12 +22,13 @@ export async function POST(req: NextRequest) {
   try {
     let imageBase64: string | null = null;
 
-    // ─── If reference image provided, use Gemini multimodal to incorporate it ───
+    // ─── If reference image provided, use Gemini multimodal (image model) ───
     if (referenceImageBase64) {
       const apiKey = await getConfigValue('GEMINI_API_KEY');
+      const imageModel = (await getConfigValue('AI_IMAGE_MODEL')) || 'gemini-2.5-flash-image';
       if (apiKey) {
         const refMime = referenceImageMime || 'image/jpeg';
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${apiKey}`;
         const geminiRes = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -52,78 +52,53 @@ export async function POST(req: NextRequest) {
               break;
             }
           }
+          if (!imageBase64) console.warn('[generate-image] Gemini returned OK but no image data in response');
+        } else {
+          const errText = await geminiRes.text().catch(() => '');
+          console.error(`[generate-image] Gemini ref-image error (${geminiRes.status}):`, errText.slice(0, 300));
         }
       }
 
-      // Fallback: try Abacus with reference image description in prompt
+      // Fallback: generate without reference image
       if (!imageBase64) {
         const refPrompt = `Professional photograph for a physiotherapy clinic website, incorporating elements from a provided reference photo: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
         try {
-          const urls = await generateImage(refPrompt, { aspectRatio, numImages: 1 });
+          const urls = await generateImage(refPrompt, { numImages: 1 });
           if (urls.length > 0) {
             const url = urls[0];
             if (url.startsWith('data:image')) {
               const match = url.match(/^data:image\/\w+;base64,(.+)$/);
               if (match) imageBase64 = match[1];
-            } else if (url.startsWith('http')) {
-              const imgRes = await fetch(url);
-              if (imgRes.ok) { imageBase64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64'); }
             }
           }
-        } catch {}
+        } catch (refErr: any) {
+          console.error('[generate-image] Fallback generation error:', refErr.message);
+        }
       }
     } else {
       // ─── Standard generation (no reference image) ───
       const fullPrompt = `Professional photograph for a physiotherapy clinic website: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
-
-      // Method 1: Try unified AI provider (Abacus FLUX-2 PRO or Gemini)
       try {
-        const urls = await generateImage(fullPrompt, { aspectRatio, numImages: 1 });
+        const urls = await generateImage(fullPrompt, { numImages: 1 });
         if (urls.length > 0) {
           const url = urls[0];
           if (url.startsWith('data:image')) {
             const match = url.match(/^data:image\/\w+;base64,(.+)$/);
             if (match) imageBase64 = match[1];
-          } else if (url.startsWith('http')) {
-            const imgRes = await fetch(url);
-            if (imgRes.ok) { imageBase64 = Buffer.from(await imgRes.arrayBuffer()).toString('base64'); }
           }
         }
       } catch (providerErr: any) {
-        console.error('AI provider image gen error:', providerErr.message);
-      }
-
-      // Method 2: Fallback to Gemini direct if provider failed
-      if (!imageBase64) {
-        const apiKey = await getConfigValue('GEMINI_API_KEY');
-        if (apiKey) {
-          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-          const geminiRes = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `Generate a professional, high-quality photograph for a physiotherapy clinic website. The image should be: ${prompt}. Make it look realistic, professional, and suitable for a medical/healthcare website. No text in the image.` }] }],
-              generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-            }),
-          });
-
-          if (geminiRes.ok) {
-            const data = await geminiRes.json();
-            const parts = data.candidates?.[0]?.content?.parts || [];
-            for (const part of parts) {
-              if (part.inlineData?.mimeType?.startsWith('image/')) {
-                imageBase64 = part.inlineData.data;
-                break;
-              }
-            }
-          }
-        }
+        console.error('[generate-image] Generation error:', providerErr.message);
+        return NextResponse.json({ 
+          error: `Image generation failed: ${providerErr.message}. Please try a different prompt or upload an image manually.`,
+          fallback: true 
+        }, { status: 422 });
       }
     }
 
     if (!imageBase64) {
       return NextResponse.json({ 
-        error: 'Image generation not available. Please configure Abacus AI or Gemini API key with image generation enabled. You can still upload images manually.',
+        error: 'Image generation failed. Gemini was unable to generate the image. This may be due to API limits, content policy, or the model not supporting image output. Please try a different prompt or upload an image manually.',
         fallback: true 
       }, { status: 422 });
     }
@@ -147,7 +122,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ imageUrl, filename });
   } catch (error: any) {
-    console.error('Image generation error:', error);
+    console.error('[generate-image] Unexpected error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

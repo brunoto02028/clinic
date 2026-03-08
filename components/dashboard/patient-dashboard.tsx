@@ -158,34 +158,79 @@ export default function PatientDashboard() {
         <p className="text-muted-foreground mt-1">{welcomeSubtitle}</p>
       </div>
 
-      {/* Screening Alert — shown when screening not yet completed and patient has upcoming appointments */}
-      {showScreening && !stats?.screeningComplete && (
+      {/* Consent Alert — shown when consent not yet accepted (must be done before screening) */}
+      {!stats?.consentAccepted && (
         <div>
-          <Card className={`${(stats?.upcomingAppointments ?? 0) > 0 ? "border-red-500/30 bg-red-500/10" : "border-amber-500/20 bg-amber-500/10"}`}>
-            <CardContent className="p-4">
+          <Card className="border-blue-500/30 bg-blue-500/10">
+            <CardContent className="p-4 sm:p-5">
               <div className="flex items-start gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${(stats?.upcomingAppointments ?? 0) > 0 ? "bg-red-500/15" : "bg-amber-500/15"}`}>
-                  <AlertCircle className={`h-5 w-5 ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-500" : "text-amber-500"}`} />
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-500/15">
+                  <FileText className="h-5 w-5 text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className={`font-semibold ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-300" : "text-amber-300"}`}>
-                    {(stats?.upcomingAppointments ?? 0) > 0
-                      ? (locale === "pt-BR" ? "Screening Obrigatório — Consulta Agendada" : "Screening Required — Appointment Booked")
-                      : screeningTitle}
+                  <h3 className="font-bold text-blue-300">
+                    {locale === "pt-BR" ? "Aceite os Termos e Consentimento" : "Accept Terms & Consent"}
                   </h3>
-                  <p className={`text-sm mt-1 ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-400/80" : "text-amber-400/80"}`}>
+                  <p className="text-sm mt-1 text-blue-400/80">
+                    {locale === "pt-BR"
+                      ? "Antes de preencher a triagem, precisa aceitar os Termos de Uso e o consentimento para processamento de dados clínicos. Este passo é obrigatório por lei."
+                      : "Before filling in the screening, you need to accept the Terms of Use and consent for clinical data processing. This step is required by law."}
+                  </p>
+                  <div className="flex items-center gap-3 mt-3 flex-wrap">
+                    <Button asChild size="sm">
+                      <Link href={isPreview ? `/patient-preview/consent${previewQuery}` : "/dashboard/consent"}>
+                        {locale === "pt-BR" ? "Aceitar Termos" : "Accept Terms"}
+                        <ArrowRight className="h-4 w-4 ml-1" />
+                      </Link>
+                    </Button>
+                    <span className="text-xs text-blue-400/60 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {locale === "pt-BR" ? "~2 min" : "~2 min"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Screening Alert — shown when consent accepted but screening not yet completed */}
+      {stats?.consentAccepted && showScreening && !stats?.screeningComplete && (
+        <div>
+          <Card className={`${(stats?.upcomingAppointments ?? 0) > 0 ? "border-red-500/30 bg-red-500/10" : "border-primary/30 bg-primary/5"}`}>
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start gap-4">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${(stats?.upcomingAppointments ?? 0) > 0 ? "bg-red-500/15" : "bg-primary/15"}`}>
+                  <Shield className={`h-5 w-5 ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-500" : "text-primary"}`} />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-bold ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-300" : "text-foreground"}`}>
+                    {(stats?.upcomingAppointments ?? 0) > 0
+                      ? (locale === "pt-BR" ? "Triagem Obrigatória — Consulta Agendada" : "Screening Required — Appointment Booked")
+                      : (locale === "pt-BR" ? "Preencha a Triagem de Avaliação" : "Fill in Your Assessment Screening")}
+                  </h3>
+                  <p className={`text-sm mt-1 ${(stats?.upcomingAppointments ?? 0) > 0 ? "text-red-400/80" : "text-muted-foreground"}`}>
                     {(stats?.upcomingAppointments ?? 0) > 0
                       ? (locale === "pt-BR"
-                        ? "Você tem uma consulta agendada. A triagem de avaliação deve ser completada pelo menos 24 horas antes da consulta. Complete agora para evitar reagendamento."
-                        : "You have an upcoming appointment. Your assessment screening must be completed at least 24 hours before your appointment. Complete it now to avoid rescheduling.")
-                      : screeningText}
+                        ? "Você tem uma consulta agendada. A triagem deve ser preenchida pelo menos 24 horas antes. Complete agora para evitar reagendamento."
+                        : "You have an upcoming appointment. Your screening must be completed at least 24 hours before. Fill it in now to avoid rescheduling.")
+                      : (locale === "pt-BR"
+                        ? "Preencha o formulário completo com o seu histórico de saúde, queixas, dor e objetivos. O terapeuta precisa dessas informações para preparar o melhor tratamento para você. Demora apenas 5–10 minutos."
+                        : "Fill in the full form with your health history, complaints, pain and goals. Your therapist needs this information to prepare the best treatment for you. It only takes 5–10 minutes.")}
                   </p>
-                  <Button asChild size="sm" className="mt-3">
-                    <Link href={isPreview ? `/patient-preview/screening${previewQuery}` : "/dashboard/screening"}>
-                      {T("screening.submit")}
-                      <ArrowRight className="h-4 w-4 ml-1" />
-                    </Link>
-                  </Button>
+                  <div className="flex items-center gap-3 mt-3 flex-wrap">
+                    <Button asChild size="sm">
+                      <Link href={isPreview ? `/patient-preview/screening${previewQuery}` : "/dashboard/screening"}>
+                        {T("screening.fillIn")}
+                        <ArrowRight className="h-4 w-4 ml-1" />
+                      </Link>
+                    </Button>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {locale === "pt-BR" ? "~5–10 min" : "~5–10 min"}
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>

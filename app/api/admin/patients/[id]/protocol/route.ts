@@ -348,7 +348,7 @@ export async function PATCH(
           emailTemplateSlug: 'TREATMENT_COMPLETED',
           emailVars: {
             protocolTitle: updated.title || 'Treatment Plan',
-            portalUrl: `${BASE}/dashboard/treatment`,
+            portalUrl: `${BASE}/dashboard/membership`,
           },
           plainMessage: `Congratulations! Your treatment plan "${updated.title || 'Treatment Plan'}" is now complete. Log in to see your results.`,
           plainMessagePt: `Parabéns! Seu plano de tratamento "${updated.title || 'Plano de Tratamento'}" foi concluído. Acesse o portal para ver seus resultados.`,

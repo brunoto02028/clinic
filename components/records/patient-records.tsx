@@ -154,7 +154,7 @@ export default function PatientRecords() {
                           </div>
                           <div>
                             <h3 className="font-semibold text-sm sm:text-base text-foreground">
-                              {note?.appointment?.treatmentType ?? "Treatment"}
+                              {note?.appointment?.treatmentType ?? (isPt ? "Tratamento" : "Treatment")}
                             </h3>
                             <p className="text-sm text-muted-foreground mt-1">
                               {new Date(

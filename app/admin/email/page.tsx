@@ -160,6 +160,13 @@ export default function EmailPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showImagePicker, setShowImagePicker] = useState(false);
 
+  // Email Account Config (multi-account)
+  const [showAccountConfig, setShowAccountConfig] = useState(false);
+  const [acctSaving, setAcctSaving] = useState(false);
+  const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
+  const [editingAcct, setEditingAcct] = useState<any | null>(null);
+  const [acctForm, setAcctForm] = useState({ id: "", label: "", email: "", smtpHost: "smtp.hostinger.com", smtpPort: "465", smtpUser: "", smtpPass: "", emailFrom: "", isPrimary: false });
+
   // Fetch site logo for signature
   useEffect(() => {
     fetch('/api/admin/settings').then(r => r.json()).then(d => {
@@ -169,6 +176,74 @@ export default function EmailPage() {
       }
     }).catch(() => {});
   }, []);
+
+  const fetchEmailAccounts = async () => {
+    try {
+      const res = await fetch("/api/admin/email-config");
+      const data = await res.json();
+      setEmailAccounts(data.accounts || []);
+    } catch {}
+  };
+
+  const saveEmailAccount = async () => {
+    setAcctSaving(true);
+    try {
+      const res = await fetch("/api/admin/email-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(acctForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(acctForm.id ? "Account updated!" : "Account added!");
+        setTimeout(() => setSuccess(""), 3000);
+        setEditingAcct(null);
+        resetAcctForm();
+        fetchEmailAccounts();
+      } else { setError(data.error || "Save failed"); }
+    } catch { setError("Save failed"); } finally { setAcctSaving(false); }
+  };
+
+  const deleteEmailAccount = async (id: string, email: string) => {
+    if (!confirm(`Delete email account ${email}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/admin/email-config?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(data.message);
+        setTimeout(() => setSuccess(""), 3000);
+        fetchEmailAccounts();
+      } else { setError(data.error || "Delete failed"); }
+    } catch { setError("Delete failed"); }
+  };
+
+  const setPrimaryAccount = async (id: string) => {
+    try {
+      const res = await fetch("/api/admin/email-config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "setPrimary" }) });
+      const data = await res.json();
+      if (data.success) { setSuccess("Primary account updated!"); setTimeout(() => setSuccess(""), 2000); fetchEmailAccounts(); }
+      else { setError(data.error || "Failed"); }
+    } catch { setError("Failed"); }
+  };
+
+  const startEditAccount = (acct: any) => {
+    setEditingAcct(acct);
+    setAcctForm({ id: acct.id, label: acct.label, email: acct.email, smtpHost: acct.smtpHost, smtpPort: acct.smtpPort, smtpUser: acct.smtpUser, smtpPass: "", emailFrom: acct.emailFrom, isPrimary: acct.isPrimary });
+  };
+
+  const startAddAccount = () => {
+    setEditingAcct("new");
+    resetAcctForm();
+  };
+
+  const resetAcctForm = () => {
+    setAcctForm({ id: "", label: "", email: "", smtpHost: "smtp.hostinger.com", smtpPort: "465", smtpUser: "", smtpPass: "", emailFrom: "", isPrimary: false });
+  };
+
+  const openAccountConfig = () => {
+    setShowAccountConfig(!showAccountConfig);
+    if (!showAccountConfig) { fetchEmailAccounts(); setEditingAcct(null); }
+  };
 
   const persistSigs = (sigs: EmailSignature[]) => {
     localStorage.setItem('emailSignatures', JSON.stringify(sigs));
@@ -453,6 +528,9 @@ export default function EmailPage() {
           <p className="text-sm text-muted-foreground mt-1">Send, receive, and manage patient communications</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={openAccountConfig} className="gap-1.5">
+            <Settings className="h-4 w-4" /> Account
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowSignatureConfig(!showSignatureConfig)} className="gap-1.5">
             <Settings className="h-4 w-4" /> Signature
           </Button>
@@ -476,6 +554,116 @@ export default function EmailPage() {
         <div className="bg-green-50 text-green-700 text-sm p-3 rounded-lg flex items-center gap-2 border border-green-200">
           <CheckCircle className="h-4 w-4" /> {success}
         </div>
+      )}
+
+      {/* Email Accounts Configuration (Multi-account) */}
+      {showAccountConfig && (
+        <Card className="border-primary/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mail className="h-4 w-4" /> Email Accounts ({emailAccounts.length})
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-1" onClick={startAddAccount}><PenSquare className="h-3 w-3" /> Add Account</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowAccountConfig(false)}><X className="h-4 w-4" /></Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Account List */}
+            {emailAccounts.length === 0 && !editingAcct && (
+              <div className="text-center py-6 text-muted-foreground">
+                <Mail className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No email accounts configured</p>
+                <Button variant="outline" size="sm" className="mt-3 gap-1" onClick={startAddAccount}>
+                  <PenSquare className="h-3 w-3" /> Add your first account
+                </Button>
+              </div>
+            )}
+            {emailAccounts.map((acct) => (
+              <div key={acct.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${acct.isPrimary ? "border-primary bg-primary/5" : "hover:bg-muted/30"} ${!acct.isActive ? "opacity-50" : ""}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate">{acct.label}</p>
+                    {acct.isPrimary && <Badge className="text-[9px] px-1.5 py-0 bg-primary">Primary</Badge>}
+                    {acct.isActive ? (
+                      <Badge className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0">Active</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">Inactive</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{acct.email} · {acct.smtpHost}</p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  {!acct.isPrimary && acct.isActive && (
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setPrimaryAccount(acct.id)}>Set Primary</Button>
+                  )}
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => startEditAccount(acct)}>
+                    <Settings className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive" onClick={() => deleteEmailAccount(acct.id, acct.email)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {/* Add / Edit Form */}
+            {editingAcct && (
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">{acctForm.id ? "Edit Account" : "Add New Account"}</Label>
+                  <Button variant="ghost" size="sm" onClick={() => { setEditingAcct(null); resetAcctForm(); }}><X className="h-3.5 w-3.5" /></Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Account Name</Label>
+                    <Input value={acctForm.label} onChange={(e) => setAcctForm(f => ({ ...f, label: e.target.value }))} placeholder="BPR Rehab" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Email Address</Label>
+                    <Input type="email" value={acctForm.email} onChange={(e) => setAcctForm(f => ({ ...f, email: e.target.value, smtpUser: e.target.value }))} placeholder="admin@bpr.rehab" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">SMTP Host</Label>
+                    <Input value={acctForm.smtpHost} onChange={(e) => setAcctForm(f => ({ ...f, smtpHost: e.target.value }))} placeholder="smtp.hostinger.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">SMTP Port</Label>
+                    <Input value={acctForm.smtpPort} onChange={(e) => setAcctForm(f => ({ ...f, smtpPort: e.target.value }))} placeholder="465" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">SMTP User</Label>
+                    <Input value={acctForm.smtpUser} onChange={(e) => setAcctForm(f => ({ ...f, smtpUser: e.target.value }))} placeholder="admin@bpr.rehab" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Password</Label>
+                    <Input type="password" value={acctForm.smtpPass} onChange={(e) => setAcctForm(f => ({ ...f, smtpPass: e.target.value }))} placeholder={acctForm.id ? "Leave blank to keep current" : "Email password"} />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <Label className="text-xs">From Display</Label>
+                    <Input value={acctForm.emailFrom} onChange={(e) => setAcctForm(f => ({ ...f, emailFrom: e.target.value }))} placeholder="Bruno Physical Rehabilitation <admin@bpr.rehab>" />
+                    <p className="text-[10px] text-muted-foreground">Format: Display Name &lt;email@domain.com&gt;</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={acctForm.isPrimary} onChange={(e) => setAcctForm(f => ({ ...f, isPrimary: e.target.checked }))} className="rounded" />
+                    Set as primary (used for sending)
+                  </label>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveEmailAccount} disabled={acctSaving} className="gap-1.5">
+                    {acctSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                    {acctForm.id ? "Update" : "Add Account"}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setEditingAcct(null); resetAcctForm(); }}>Cancel</Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Signature Configuration — Multiple Signatures */}
@@ -733,6 +921,14 @@ export default function EmailPage() {
                           </Badge>
                         </>
                       )}
+                      {(() => {
+                        const acctAddr = selectedMsg.direction === "INBOUND" ? selectedMsg.toAddress : selectedMsg.fromAddress;
+                        if (!acctAddr) return null;
+                        const domain = acctAddr.split("@")[1] || "";
+                        const short = domain.includes("bpr.rehab") ? "bpr.rehab" : domain.length > 25 ? domain.slice(0, 20) + "…" : domain;
+                        const color = domain.includes("bpr.rehab") ? "bg-teal-100 text-teal-700" : "bg-purple-100 text-purple-700";
+                        return <><span>·</span><Badge className={`text-[10px] ${color}`}>{short}</Badge></>;
+                      })()}
                       {selectedMsg.isSpam && (
                         <Badge className="bg-red-100 text-red-700 text-[10px]">SPAM</Badge>
                       )}
@@ -866,6 +1062,14 @@ export default function EmailPage() {
                                   <User className="h-2 w-2" /> Patient
                                 </Badge>
                               )}
+                              {(() => {
+                                const acctAddr = msg.direction === "INBOUND" ? msg.toAddress : msg.fromAddress;
+                                if (!acctAddr) return null;
+                                const domain = acctAddr.split("@")[1] || "";
+                                const short = domain.includes("bpr.rehab") ? "bpr.rehab" : domain.length > 20 ? domain.slice(0, 16) + "…" : domain;
+                                const color = domain.includes("bpr.rehab") ? "bg-teal-100 text-teal-700 border-teal-200" : "bg-purple-100 text-purple-700 border-purple-200";
+                                return <Badge variant="outline" className={`text-[9px] px-1 py-0 ${color}`}>{short}</Badge>;
+                              })()}
                             </div>
                             <p className={`text-sm truncate ${!msg.isRead ? "" : "text-muted-foreground"}`}>
                               {msg.subject}

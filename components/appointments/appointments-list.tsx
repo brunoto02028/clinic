@@ -175,7 +175,7 @@ export default function AppointmentsList() {
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold text-foreground">
-                              {appointment?.treatmentType ?? "Appointment"}
+                              {appointment?.treatmentType ?? (isPt ? "Consulta" : "Appointment")}
                             </h3>
                             {getStatusBadge(appointment?.status ?? "")}
                           </div>

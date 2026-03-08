@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useLocale } from "@/hooks/use-locale";
 
 interface SOAPNoteDetailProps {
   noteId: string;
@@ -50,6 +51,8 @@ interface SOAPNote {
 
 export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
   const { data: session } = useSession() || {};
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const [note, setNote] = useState<SOAPNote | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -104,9 +107,9 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
       <Card>
         <CardContent className="py-12 text-center">
           <AlertCircle className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-700">Clinical note not found</h3>
+          <h3 className="text-lg font-medium text-slate-700">{isPt ? "Nota clínica não encontrada" : "Clinical note not found"}</h3>
           <Link href={isTherapist ? "/dashboard/clinical-notes" : "/dashboard/records"}>
-            <Button className="mt-4">Back</Button>
+            <Button className="mt-4">{isPt ? "Voltar" : "Back"}</Button>
           </Link>
         </CardContent>
       </Card>
@@ -125,11 +128,11 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-slate-800">
-              Clinical SOAP Note
+              {isPt ? "Nota Clínica SOAP" : "Clinical SOAP Note"}
             </h1>
             <p className="text-slate-600 mt-1">
               {note?.appointment?.treatmentType ?? ""} -{" "}
-              {new Date(note?.appointment?.dateTime ?? "").toLocaleDateString("en-GB", {
+              {new Date(note?.appointment?.dateTime ?? "").toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -139,7 +142,7 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
         </div>
         <Button variant="outline" className="gap-2" onClick={handleDownloadPDF}>
           <Download className="h-4 w-4" />
-          Export PDF
+          {isPt ? "Exportar PDF" : "Export PDF"}
         </Button>
       </div>
 
@@ -163,7 +166,7 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   <span>
-                    {new Date(note?.appointment?.dateTime ?? "").toLocaleDateString("en-GB", {
+                    {new Date(note?.appointment?.dateTime ?? "").toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
                       day: "numeric",
                       month: "short",
                       year: "numeric",
@@ -172,7 +175,7 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  <span>{note?.appointment?.duration ?? 60} mins</span>
+                  <span>{note?.appointment?.duration ?? 60} {isPt ? "min" : "mins"}</span>
                 </div>
               </div>
             </div>
@@ -188,16 +191,16 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
             <CardHeader className="bg-primary/5 border-b">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Badge className="bg-primary text-white">S</Badge>
-                Subjective
+                {isPt ? "Subjetivo" : "Subjective"}
               </CardTitle>
             </CardHeader>
             <CardContent className="py-4">
               <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">
-                {note?.subjective ?? "Not recorded"}
+                {note?.subjective ?? (isPt ? "Não registrado" : "Not recorded")}
               </p>
               {note?.painLevel !== null && (
                 <div className="mt-4 p-3 bg-slate-50 rounded-lg inline-block">
-                  <span className="text-sm text-slate-500">Pain Level: </span>
+                  <span className="text-sm text-slate-500">{isPt ? "Nível de Dor: " : "Pain Level: "}</span>
                   <span className="font-semibold text-slate-800">
                     {note.painLevel}/10
                   </span>
@@ -213,18 +216,18 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
             <CardHeader className="bg-emerald-50 border-b">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Badge className="bg-emerald-600 text-white">O</Badge>
-                Objective
+                {isPt ? "Objetivo" : "Objective"}
               </CardTitle>
             </CardHeader>
             <CardContent className="py-4">
               <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">
-                {note?.objective ?? "Not recorded"}
+                {note?.objective ?? (isPt ? "Não registrado" : "Not recorded")}
               </p>
               {(note?.rangeOfMotion || note?.functionalTests) && (
                 <div className="mt-4 grid sm:grid-cols-2 gap-4">
                   {note?.rangeOfMotion && (
                     <div className="p-3 bg-slate-50 rounded-lg">
-                      <p className="text-sm text-slate-500">Range of Motion</p>
+                      <p className="text-sm text-slate-500">{isPt ? "Amplitude de Movimento" : "Range of Motion"}</p>
                       <p className="font-medium text-slate-800">
                         {note.rangeOfMotion}
                       </p>
@@ -232,7 +235,7 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
                   )}
                   {note?.functionalTests && (
                     <div className="p-3 bg-slate-50 rounded-lg">
-                      <p className="text-sm text-slate-500">Functional Tests</p>
+                      <p className="text-sm text-slate-500">{isPt ? "Testes Funcionais" : "Functional Tests"}</p>
                       <p className="font-medium text-slate-800">
                         {note.functionalTests}
                       </p>
@@ -250,12 +253,12 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
             <CardHeader className="bg-violet-50 border-b">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Badge className="bg-violet-600 text-white">A</Badge>
-                Assessment
+                {isPt ? "Avaliação" : "Assessment"}
               </CardTitle>
             </CardHeader>
             <CardContent className="py-4">
               <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">
-                {note?.assessment ?? "Not recorded"}
+                {note?.assessment ?? (isPt ? "Não registrado" : "Not recorded")}
               </p>
             </CardContent>
           </Card>
@@ -267,12 +270,12 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
             <CardHeader className="bg-amber-50 border-b">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Badge className="bg-amber-600 text-white">P</Badge>
-                Plan
+                {isPt ? "Plano" : "Plan"}
               </CardTitle>
             </CardHeader>
             <CardContent className="py-4">
               <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">
-                {note?.plan ?? "Not recorded"}
+                {note?.plan ?? (isPt ? "Não registrado" : "Not recorded")}
               </p>
             </CardContent>
           </Card>
@@ -282,8 +285,8 @@ export default function SOAPNoteDetail({ noteId }: SOAPNoteDetailProps) {
       {/* Footer */}
       <div className="text-center text-sm text-slate-500 py-4">
         <p>
-          Documented by {note?.therapist?.firstName ?? ""} {note?.therapist?.lastName ?? ""} on{" "}
-          {new Date(note?.createdAt ?? "").toLocaleDateString("en-GB", {
+          {isPt ? "Documentado por" : "Documented by"} {note?.therapist?.firstName ?? ""} {note?.therapist?.lastName ?? ""} {isPt ? "em" : "on"}{" "}
+          {new Date(note?.createdAt ?? "").toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
             day: "numeric",
             month: "long",
             year: "numeric",

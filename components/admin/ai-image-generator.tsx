@@ -32,6 +32,8 @@ export function AIImageGenerator({
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState(defaultPrompt);
   const [generating, setGenerating] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [buildingPrompt, setBuildingPrompt] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +91,12 @@ export function AIImageGenerator({
     setGenerating(true);
     setError(null);
     setPreviewUrl(null);
+    setElapsed(0);
+    if (elapsedRef.current) clearInterval(elapsedRef.current);
+    elapsedRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90000);
 
     try {
       const payload: any = { prompt, aspectRatio, section };
@@ -100,10 +108,12 @@ export function AIImageGenerator({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
-        throw new Error(`Server error (${res.status}). Please try again or upload an image manually.`);
+        const text = await res.text().catch(() => "");
+        throw new Error(`Server error (${res.status}): ${text.slice(0, 200) || "No response"}. Try again or upload manually.`);
       }
       const data = await res.json();
       if (!res.ok) {
@@ -116,8 +126,14 @@ export function AIImageGenerator({
       }
       setPreviewUrl(data.imageUrl);
     } catch (err: any) {
-      setError(err.message);
+      if (err.name === "AbortError") {
+        setError("Image generation timed out after 90 seconds. The AI service may be overloaded. Please try again or upload an image manually.");
+      } else {
+        setError(err.message || "Unknown error generating image. Please try again.");
+      }
     } finally {
+      clearTimeout(timeout);
+      if (elapsedRef.current) { clearInterval(elapsedRef.current); elapsedRef.current = null; }
       setGenerating(false);
     }
   };
@@ -238,7 +254,7 @@ export function AIImageGenerator({
             ) : (
               <ImageIcon className="h-4 w-4" />
             )}
-            {generating ? "Generating image..." : refImage ? "Generate with Reference" : "Generate Image"}
+            {generating ? `Generating... ${elapsed}s` : refImage ? "Generate with Reference" : "Generate Image"}
           </Button>
 
           {error && (

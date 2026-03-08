@@ -169,15 +169,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     // ── Update module overrides ──
     if (action === "updateOverrides") {
-      const { overrides } = body; // { "mod_appointments": true, "perm_chat_therapist": false, ... }
+      const { overrides } = body; // { "mod_appointments": true, "mod_foot_scans": "hidden", ... }
       if (typeof overrides !== "object") {
         return NextResponse.json({ error: "Invalid overrides" }, { status: 400 });
       }
 
       // Clean out null values (null = remove override, use plan default)
-      const cleaned: Record<string, boolean> = {};
+      // Accept: true (unlocked), false (locked/padlock), "hidden" (not shown)
+      const cleaned: Record<string, boolean | string> = {};
       for (const [key, val] of Object.entries(overrides)) {
-        if (val === true || val === false) cleaned[key] = val as boolean;
+        if (val === true || val === false || val === "hidden") cleaned[key] = val as boolean | string;
       }
 
       await (prisma as any).user.update({
@@ -200,30 +201,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         data: { password: hashed },
       });
       return NextResponse.json({ success: true, message: "Password reset successfully" });
-    }
-
-    // ── Apply overrides to all patients ──
-    if (action === "applyToAll") {
-      const { overrides } = body;
-      if (typeof overrides !== "object") {
-        return NextResponse.json({ error: "Invalid overrides" }, { status: 400 });
-      }
-
-      const cleaned: Record<string, boolean> = {};
-      for (const [key, val] of Object.entries(overrides)) {
-        if (val === true || val === false) cleaned[key] = val as boolean;
-      }
-
-      const clinicId = (session.user as any).clinicId;
-      const result = await (prisma as any).user.updateMany({
-        where: {
-          role: "PATIENT",
-          ...(clinicId ? { clinicId } : {}),
-        },
-        data: { moduleOverrides: cleaned },
-      });
-
-      return NextResponse.json({ success: true, updated: result.count, overrides: cleaned });
     }
 
     // ── Toggle full access override ──

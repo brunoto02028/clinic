@@ -7,6 +7,7 @@ import {
   ArrowLeft, Instagram, Hash, Wand2, RefreshCw, Upload,
   CalendarDays, ChevronDown, X, AlertCircle, CheckCircle,
   Mic, MicOff, Globe, ImagePlus, BookOpen, Search,
+  Heart, MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -331,17 +332,40 @@ function CreatePostContent() {
   };
 
   // ─── Image Upload ───
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
+    // Show local previews immediately
+    const localPreviews: string[] = [];
     Array.from(files).forEach(file => {
-      const url = URL.createObjectURL(file);
-      setMediaPreviews(prev => [...prev, url]);
-      // In production, upload to S3 and get URL
-      // For now, store preview URL
-      setMediaUrls(prev => [...prev, url]);
+      localPreviews.push(URL.createObjectURL(file));
     });
+    setMediaPreviews(prev => [...prev, ...localPreviews]);
+
+    // Upload to server
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach(file => formData.append('files', file));
+      const res = await fetch('/api/admin/social/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.files) {
+        const serverUrls = data.files.map((f: any) => f.url);
+        setMediaUrls(prev => [...prev, ...serverUrls]);
+        // Replace blob previews with server URLs
+        setMediaPreviews(prev => {
+          const existing = prev.slice(0, prev.length - localPreviews.length);
+          return [...existing, ...serverUrls];
+        });
+      } else {
+        setError(data.error || 'Upload failed');
+        // Remove the local previews
+        setMediaPreviews(prev => prev.slice(0, prev.length - localPreviews.length));
+      }
+    } catch {
+      setError('Image upload failed');
+      setMediaPreviews(prev => prev.slice(0, prev.length - localPreviews.length));
+    }
     e.target.value = "";
   };
 
@@ -791,33 +815,75 @@ function CreatePostContent() {
             </CardContent>
           </Card>
 
-          {/* Preview */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium">Preview</CardTitle>
+          {/* Instagram Preview */}
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Instagram Preview</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg overflow-hidden">
+            <CardContent className="p-0">
+              <div className="bg-white dark:bg-zinc-950 border rounded-xl mx-3 mb-3 overflow-hidden shadow-sm">
                 {/* IG Header */}
-                <div className="flex items-center gap-2 p-2 border-b">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <Instagram className="h-3.5 w-3.5 text-white" />
+                <div className="flex items-center gap-2.5 px-3 py-2.5">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
+                    <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 flex items-center justify-center overflow-hidden">
+                      {accounts.find(a => a.id === accountId)?.profilePicUrl ? (
+                        <img src={accounts.find(a => a.id === accountId)!.profilePicUrl!} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Instagram className="h-3.5 w-3.5 text-zinc-800 dark:text-zinc-200" />
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs font-semibold">
-                    {accounts.find(a => a.id === accountId)?.accountName || "your_account"}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                      {accounts.find(a => a.id === accountId)?.accountName || "bruno_physical_rehabilitation"}
+                    </p>
+                  </div>
+                  <svg className="w-5 h-5 text-zinc-900 dark:text-zinc-100" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                 </div>
                 {/* Image */}
                 {mediaPreviews[0] ? (
-                  <img src={mediaPreviews[0]} alt="" className="w-full aspect-square object-cover" />
+                  <div className="relative">
+                    <img src={mediaPreviews[0]} alt="" className="w-full aspect-square object-cover" />
+                    {postType === "CAROUSEL" && mediaPreviews.length > 1 && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
+                        {mediaPreviews.map((_, i) => (
+                          <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === 0 ? "bg-blue-500" : "bg-white/60"}`} />
+                        ))}
+                      </div>
+                    )}
+                    {postType === "REEL" && (
+                      <div className="absolute top-3 right-3">
+                        <svg className="w-6 h-6 text-white drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="w-full aspect-square bg-slate-100 flex items-center justify-center">
-                    <ImageIcon className="h-12 w-12 text-slate-300" />
+                  <div className="w-full aspect-square bg-gradient-to-br from-slate-100 to-slate-200 dark:from-zinc-800 dark:to-zinc-900 flex flex-col items-center justify-center gap-2">
+                    <ImageIcon className="h-10 w-10 text-slate-300 dark:text-zinc-600" />
+                    <p className="text-[10px] text-slate-400 dark:text-zinc-500">Upload an image</p>
                   </div>
                 )}
-                {/* Caption preview */}
-                <div className="p-2">
-                  <p className="text-[11px] whitespace-pre-wrap line-clamp-4">{fullPreview || "Your caption will appear here..."}</p>
+                {/* Action icons */}
+                <div className="flex items-center justify-between px-3 py-2">
+                  <div className="flex items-center gap-4">
+                    <Heart className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
+                    <MessageCircle className="h-5 w-5 text-zinc-900 dark:text-zinc-100 scale-x-[-1]" />
+                    <Send className="h-5 w-5 text-zinc-900 dark:text-zinc-100 -rotate-[20deg]" />
+                  </div>
+                  <svg className="w-5 h-5 text-zinc-900 dark:text-zinc-100" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                {/* Caption */}
+                <div className="px-3 pb-3">
+                  <p className="text-xs text-zinc-900 dark:text-zinc-100">
+                    <span className="font-semibold mr-1">{accounts.find(a => a.id === accountId)?.accountName || "bruno_physical_rehabilitation"}</span>
+                    <span className="whitespace-pre-wrap">{caption ? (caption.length > 120 ? caption.slice(0, 120) + "... more" : caption) : "Your caption..."}</span>
+                  </p>
+                  {hashtags && (
+                    <p className="text-xs text-blue-500 mt-1">
+                      {hashtags.split(",").slice(0, 5).map(h => `#${h.trim().replace(/^#/, "")}`).join(" ")}
+                      {hashtags.split(",").length > 5 && " ..."}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>

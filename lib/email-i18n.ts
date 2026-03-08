@@ -65,14 +65,24 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
         ? H('A sua consulta é amanhã ⏰') +
           P(`${hi} {{patientName}}, um lembrete amigável sobre a sua próxima consulta!`) +
           C('#fefce8','#fde68a', R('📅 Data','{{appointmentDate}}')+R('🕐 Hora','{{appointmentTime}}')+R('👨‍⚕️ Terapeuta','{{therapistName}}')+R('💆 Tratamento','{{treatmentType}}')) +
+          '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px 24px;margin:0 0 24px;">' +
+          '<p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 8px;">⚠️ Ação Necessária: Triagem Médica</p>' +
+          '<p style="color:#7f1d1d;font-size:14px;line-height:1.6;margin:0 0 12px;">Para que o seu terapeuta possa preparar o melhor plano de tratamento, por favor <strong>complete a sua triagem médica antes da consulta</strong>. Demora apenas 5-10 minutos.</p>' +
+          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Preencher Triagem →</a></div>' +
+          '</div>' +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Lista de verificação:</p>' +
-          '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">✅ Roupa confortável<br>✅ Chegar 5 minutos mais cedo<br>✅ Documentos médicos<br>✅ Lista de medicamentos</p>' +
+          '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">✅ Triagem médica preenchida<br>✅ Perfil completo (data de nascimento, endereço)<br>✅ Roupa confortável<br>✅ Chegar 5 minutos mais cedo<br>✅ Documentos médicos<br>✅ Lista de medicamentos</p>' +
           B('{{portalUrl}}','Ver Consulta →')
         : H('Your appointment is tomorrow ⏰') +
           P(`${hi} {{patientName}}, just a friendly reminder about your upcoming appointment!`) +
           C('#fefce8','#fde68a', R('📅 Date','{{appointmentDate}}')+R('🕐 Time','{{appointmentTime}}')+R('👨‍⚕️ Therapist','{{therapistName}}')+R('💆 Treatment','{{treatmentType}}')) +
+          '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px 24px;margin:0 0 24px;">' +
+          '<p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 8px;">⚠️ Action Required: Medical Screening</p>' +
+          '<p style="color:#7f1d1d;font-size:14px;line-height:1.6;margin:0 0 12px;">To help your therapist prepare the best treatment plan, please <strong>complete your medical screening before your appointment</strong>. It only takes 5-10 minutes.</p>' +
+          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Complete Screening →</a></div>' +
+          '</div>' +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Quick checklist:</p>' +
-          '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">✅ Comfortable clothing<br>✅ Arrive 5 minutes early<br>✅ Medical documents<br>✅ List of medications</p>' +
+          '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">✅ Medical screening completed<br>✅ Profile complete (date of birth, address)<br>✅ Comfortable clothing<br>✅ Arrive 5 minutes early<br>✅ Medical documents<br>✅ List of medications</p>' +
           B('{{portalUrl}}','View Appointment →'),
     },
 
@@ -253,6 +263,157 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           P('Please contact your GP or healthcare provider if this reading persists or if you experience symptoms such as headaches, dizziness, or difficulty breathing.') +
           C('#fef2f2','#fecaca','<p style="color:#991b1b;font-size:13px;margin:0;">🚨 <strong>In case of emergency, call 999 immediately.</strong></p>') +
           B('{{portalUrl}}','View My Readings →'),
+    },
+
+    MEMBERSHIP_CREATED: {
+      subject: pt ? 'O seu plano {{planName}} está ativo — Bruno Physical Rehabilitation' : 'Your {{planName}} membership is now active — Bruno Physical Rehabilitation',
+      body: pt
+        ? H('Plano de Assinatura Ativado 🎉') +
+          P(`${hi} {{patientName}}, o seu plano <strong>{{planName}}</strong> foi ativado com sucesso. Agora tem acesso a todas as funcionalidades incluídas.`) +
+          C('#f5f3ff','#e9d5ff', R('📋 Plano','{{planName}}')+R('💷 Preço','{{planPrice}}')+R('🔄 Faturação','{{planInterval}}')) +
+          P('<strong>Funcionalidades incluídas:</strong><br>{{planFeatures}}') +
+          B('{{portalUrl}}','Aceder ao Portal →')
+        : H('Membership Activated 🎉') +
+          P(`${hi} {{patientName}}, your <strong>{{planName}}</strong> membership has been activated. You now have access to all included features.`) +
+          C('#f5f3ff','#e9d5ff', R('📋 Plan','{{planName}}')+R('💷 Price','{{planPrice}}')+R('🔄 Billing','{{planInterval}}')) +
+          P('<strong>Included features:</strong><br>{{planFeatures}}') +
+          B('{{portalUrl}}','Access Your Portal →'),
+    },
+
+    TREATMENT_PLAN_READY: {
+      subject: pt ? 'O seu plano de tratamento está pronto, {{patientName}} — Reveja e Aceite' : 'Your Treatment Plan is Ready, {{patientName}} — Review & Accept',
+      body: pt
+        ? H('O Seu Plano de Tratamento Está Pronto 📋') +
+          P(`${hi} {{patientName}}, o seu terapeuta <strong>{{therapistName}}</strong> preparou um plano de tratamento personalizado para si.`) +
+          C('#eff6ff','#bfdbfe', R('📋 Plano','{{protocolTitle}}')+R('📅 Sessões','{{totalSessions}} sessões')+R('⏱️ Duração','~{{estimatedWeeks}} semanas')) +
+          P('Por favor, aceda ao portal para rever os detalhes e confirmar a sua aceitação para prosseguir com o tratamento.') +
+          B('{{portalUrl}}','Rever Plano de Tratamento →')
+        : H('Your Treatment Plan is Ready 📋') +
+          P(`${hi} {{patientName}}, your therapist <strong>{{therapistName}}</strong> has prepared a personalised treatment plan for you.`) +
+          C('#eff6ff','#bfdbfe', R('📋 Plan','{{protocolTitle}}')+R('📅 Sessions','{{totalSessions}} sessions')+R('⏱️ Duration','~{{estimatedWeeks}} weeks')) +
+          P('Please log in to review the details and confirm your acceptance to proceed with the treatment.') +
+          B('{{portalUrl}}','Review Treatment Plan →'),
+    },
+
+    PACKAGE_READY_TO_PAY: {
+      subject: pt ? 'Pagamento Necessário: {{packageName}} — {{patientName}}' : 'Payment Required: {{packageName}} — {{patientName}}',
+      body: pt
+        ? H('Pacote de Tratamento Pronto 💳') +
+          P(`${hi} {{patientName}}, o seu pacote de tratamento está pronto. Por favor, complete o pagamento para iniciar as suas sessões.`) +
+          C('#fff7ed','#fed7aa', R('📦 Pacote','{{packageName}}')+R('💷 Total','<span style="font-size:20px;color:#ea580c;font-weight:700;">£{{totalAmount}}</span>')+R('📅 Sessões','{{sessions}}')+R('💳 Pagamento','{{paymentType}}')) +
+          B('{{portalUrl}}','Completar Pagamento →')
+        : H('Treatment Package Ready 💳') +
+          P(`${hi} {{patientName}}, your treatment package is ready. Please complete the payment to begin your sessions.`) +
+          C('#fff7ed','#fed7aa', R('📦 Package','{{packageName}}')+R('💷 Total','<span style="font-size:20px;color:#ea580c;font-weight:700;">£{{totalAmount}}</span>')+R('📅 Sessions','{{sessions}}')+R('💳 Payment','{{paymentType}}')) +
+          B('{{portalUrl}}','Complete Payment →'),
+    },
+
+    PACKAGE_PAYMENT_CONFIRMED: {
+      subject: pt ? 'Pagamento Confirmado — {{packageName}}, {{patientName}}' : 'Payment Confirmed — {{packageName}}, {{patientName}}',
+      body: pt
+        ? H('Pagamento Confirmado ✅') +
+          P(`${hi} {{patientName}}, o seu pagamento foi recebido. As suas sessões de tratamento estão agora desbloqueadas!`) +
+          C('#f0fdf9','#d1fae5', R('📦 Pacote','{{packageName}}')+R('💷 Pago','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('📅 Sessões','{{sessions}}')) +
+          P('Agora pode ver o seu plano de tratamento completo, acompanhar os seus exercícios e marcar as suas sessões.') +
+          B('{{portalUrl}}','Ver Plano de Tratamento →')
+        : H('Payment Confirmed ✅') +
+          P(`${hi} {{patientName}}, your payment has been received. Your treatment sessions are now unlocked!`) +
+          C('#f0fdf9','#d1fae5', R('📦 Package','{{packageName}}')+R('💷 Paid','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('📅 Sessions','{{sessions}}')) +
+          P('You can now view your full treatment plan, track your exercises, and book your sessions through the portal.') +
+          B('{{portalUrl}}','View Treatment Plan →'),
+    },
+
+    TREATMENT_COMPLETED: {
+      subject: pt ? 'Parabéns {{patientName}}! O seu tratamento está completo 🎉' : 'Congratulations {{patientName}}! Your Treatment is Complete 🎉',
+      body: pt
+        ? H('Tratamento Concluído! 🎉') +
+          P(`${hi} {{patientName}}, parabéns por concluir o seu plano de tratamento <strong>{{protocolTitle}}</strong>!`) +
+          C('#f0fdf9','#d1fae5',
+            '<div style="text-align:center;"><p style="font-size:48px;margin:0 0 8px;">🏆</p>' +
+            '<p style="font-size:18px;font-weight:700;color:#059669;margin:0 0 4px;">{{completedSessions}} Sessões Concluídas</p>' +
+            '<p style="font-size:14px;color:#6b7280;margin:0;">Excelente compromisso com a sua recuperação!</p></div>') +
+          P('<strong>E agora?</strong><br>Mantenha-se conectado com um plano de assinatura para continuar a aceder aos seus exercícios, conteúdo educativo, ferramentas de saúde e muito mais.') +
+          B('{{portalUrl}}','Ver Planos de Assinatura →')
+        : H('Treatment Complete! 🎉') +
+          P(`${hi} {{patientName}}, congratulations on completing your <strong>{{protocolTitle}}</strong> treatment plan!`) +
+          C('#f0fdf9','#d1fae5',
+            '<div style="text-align:center;"><p style="font-size:48px;margin:0 0 8px;">🏆</p>' +
+            '<p style="font-size:18px;font-weight:700;color:#059669;margin:0 0 4px;">{{completedSessions}} Sessions Completed</p>' +
+            '<p style="font-size:14px;color:#6b7280;margin:0;">Well done on your commitment to recovery!</p></div>') +
+          P('<strong>What\'s next?</strong><br>Stay connected with a membership plan to continue accessing your exercises, educational content, health tracking, and more.') +
+          B('{{portalUrl}}','View Membership Plans →'),
+    },
+
+    MEMBERSHIP_OFFER: {
+      subject: pt ? 'Mantenha-se Conectado, {{patientName}} — Oferta Especial de Assinatura 👑' : 'Stay Connected, {{patientName}} — Special Membership Offer 👑',
+      body: pt
+        ? H('Mantenha-se Conectado Connosco 👑') +
+          P(`${hi} {{patientName}}, agora que o seu tratamento está completo, gostaríamos de continuar a apoiar a sua jornada de saúde com um plano de assinatura.`) +
+          C('#f5f3ff','#e9d5ff', R('👑 Plano','{{planName}}')+R('💷 Preço','<span style="font-size:18px;color:#7c3aed;font-weight:700;">{{planPrice}}/{{planInterval}}</span>')) +
+          P('<strong>Como membro terá acesso a:</strong>') +
+          '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;"><tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Biblioteca de vídeos de exercícios</td></tr><tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Conteúdo educativo de saúde</td></tr><tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Ferramentas de monitorização de saúde</td></tr><tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Acompanhamento de progresso</td></tr></table>' +
+          B('{{portalUrl}}','Aderir Agora →')
+        : H('Stay Connected with Us 👑') +
+          P(`${hi} {{patientName}}, now that your treatment is complete, we'd love to keep supporting your health journey with a membership plan.`) +
+          C('#f5f3ff','#e9d5ff', R('👑 Plan','{{planName}}')+R('💷 Price','<span style="font-size:18px;color:#7c3aed;font-weight:700;">{{planPrice}}/{{planInterval}}</span>')) +
+          P('<strong>As a member you\'ll keep access to:</strong>') +
+          '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;"><tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Exercise video library & personalised routines</td></tr><tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Educational health content & articles</td></tr><tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Blood pressure & health tracking tools</td></tr><tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Progress tracking & clinical records</td></tr></table>' +
+          B('{{portalUrl}}','Join Now →'),
+    },
+
+    MEMBERSHIP_ACTIVATED: {
+      subject: pt ? 'Bem-vindo ao {{planName}}, {{patientName}}! 🎉' : 'Welcome to {{planName}}, {{patientName}}! 🎉',
+      body: pt
+        ? H('Assinatura Ativada 🎉') +
+          P(`${hi} {{patientName}}, bem-vindo(a) à assinatura <strong>{{planName}}</strong>! A sua subscrição está agora ativa.`) +
+          C('#f5f3ff','#e9d5ff',
+            '<div style="text-align:center;"><p style="font-size:48px;margin:0 0 8px;">👑</p>' +
+            '<p style="font-size:18px;font-weight:700;color:#7c3aed;margin:0 0 4px;">{{planName}}</p>' +
+            '<p style="font-size:15px;color:#6b7280;margin:0;">{{planPrice}}/{{planInterval}} — Cancele a qualquer momento</p></div>') +
+          P('Todas as funcionalidades do seu plano estão desbloqueadas. Explore o seu dashboard para começar!') +
+          B('{{portalUrl}}','Explorar o Dashboard →')
+        : H('Membership Activated 🎉') +
+          P(`${hi} {{patientName}}, welcome to the <strong>{{planName}}</strong> membership! Your subscription is now active.`) +
+          C('#f5f3ff','#e9d5ff',
+            '<div style="text-align:center;"><p style="font-size:48px;margin:0 0 8px;">👑</p>' +
+            '<p style="font-size:18px;font-weight:700;color:#7c3aed;margin:0 0 4px;">{{planName}}</p>' +
+            '<p style="font-size:15px;color:#6b7280;margin:0;">{{planPrice}}/{{planInterval}} — Cancel anytime</p></div>') +
+          P('All your plan features are now unlocked. Explore your dashboard to get started!') +
+          B('{{portalUrl}}','Explore Your Dashboard →'),
+    },
+
+    EXERCISE_REMINDER: {
+      subject: pt ? 'Hora dos exercícios, {{patientName}} 💪' : 'Time for your exercises, {{patientName}} 💪',
+      body: pt
+        ? H('Lembrete de Exercícios 💪') +
+          P(`${hi} {{patientName}}, um lembrete amigável para completar os seus exercícios prescritos hoje. A consistência é a chave para a sua recuperação!`) +
+          C('#fef3c7','#fde68a',
+            '<div style="text-align:center;"><p style="font-size:36px;margin:0 0 8px;">🏋️</p>' +
+            '<p style="font-size:18px;font-weight:700;color:#92400e;margin:0;">{{exerciseCount}} exercícios à sua espera</p></div>') +
+          B('{{portalUrl}}','Iniciar Exercícios →')
+        : H('Exercise Reminder 💪') +
+          P(`${hi} {{patientName}}, just a friendly reminder to complete your prescribed exercises today. Consistency is key to your recovery!`) +
+          C('#fef3c7','#fde68a',
+            '<div style="text-align:center;"><p style="font-size:36px;margin:0 0 8px;">🏋️</p>' +
+            '<p style="font-size:18px;font-weight:700;color:#92400e;margin:0;">{{exerciseCount}} exercises waiting for you</p></div>') +
+          B('{{portalUrl}}','Start Exercises →'),
+    },
+
+    ARTICLE_NEWSLETTER: {
+      subject: pt ? '{{articleTitle}} — BPR Notícias de Saúde' : '{{articleTitle}} — BPR Health News',
+      body: pt
+        ? '<p style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;">BPR Notícias de Saúde &nbsp;·&nbsp; Último Artigo</p>' +
+          H('{{articleTitle}}') +
+          P('{{articleExcerpt}}') +
+          B('{{articleUrl}}','Ler Artigo Completo →') +
+          '<hr style="border:none;border-top:1px solid #eef2f5;margin:24px 0;" />' +
+          '<p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;">Está a receber este email porque subscreveu as Notícias de Saúde BPR.<br><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Cancelar subscrição</a></p>'
+        : '<p style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;">BPR Health News &nbsp;·&nbsp; Latest Article</p>' +
+          H('{{articleTitle}}') +
+          P('{{articleExcerpt}}') +
+          B('{{articleUrl}}','Read Full Article →') +
+          '<hr style="border:none;border-top:1px solid #eef2f5;margin:24px 0;" />' +
+          '<p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;">You are receiving this because you subscribed to BPR Health News.<br><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Unsubscribe</a></p>',
     },
 
   };

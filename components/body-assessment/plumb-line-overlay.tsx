@@ -300,14 +300,24 @@ export function PlumbLineOverlay({
     // Auto-position plumb line if not set
     let plX = plumbLineX;
     if (plX === null && landmarks) {
-      // Position at midpoint between ankles (frontal) or at ankle (lateral)
+      // Position at body midline:
+      // Frontal: midpoint between shoulders (sternum) — more reliable than ankles
+      // Lateral: at the ankle landmark for sagittal plumb line
       const isLateral = view === "left" || view === "right";
       if (isLateral) {
         const ankle = getLandmarkPos(view === "left" ? "left_ankle" : "right_ankle", dw, dh, dx, dy);
         plX = ankle ? ankle.x : dx + dw / 2;
       } else {
-        const midAnkle = getLandmarkPos("_mid_ankle", dw, dh, dx, dy);
-        plX = midAnkle ? midAnkle.x : dx + dw / 2;
+        // Use midpoint between shoulders (sternum) as primary reference
+        const midShoulder = getLandmarkPos("_mid_shoulder", dw, dh, dx, dy);
+        if (midShoulder) {
+          // Also check mid-hip to average for true body center
+          const midHip = getLandmarkPos("_mid_hip", dw, dh, dx, dy);
+          plX = midHip ? (midShoulder.x + midHip.x) / 2 : midShoulder.x;
+        } else {
+          const midAnkle = getLandmarkPos("_mid_ankle", dw, dh, dx, dy);
+          plX = midAnkle ? midAnkle.x : dx + dw / 2;
+        }
       }
       setPlumbLineX(plX);
     }

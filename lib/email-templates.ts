@@ -599,7 +599,11 @@ export async function sendTemplatedEmail(
     return false;
   }
 
-  const result = await sendEmail({ to, subject: rendered.subject, html: rendered.html });
+  // Auto-BCC admin on all patient emails
+  const adminBcc = process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com';
+  const bccList = to.toLowerCase() !== adminBcc.toLowerCase() ? adminBcc : undefined;
+
+  const result = await sendEmail({ to, subject: rendered.subject, html: rendered.html, bcc: bccList });
 
   // Log outbound email
   try {

@@ -85,9 +85,57 @@ export async function PUT(
       rightLandmarks,
       captureMetadata,
       movementVideos,
+      aiFindings,
+      aiSummary,
+      aiRecommendations,
+      correctiveExercises,
+      postureAnalysis: postureAnalysisUpdate,
+      postureScore,
+      symmetryScore,
+      mobilityScore,
+      overallScore,
+      segmentScores,
+      deviationLabels,
+      idealComparison,
+      // Anthropometric & Body Composition
+      heightCm, weightKg, bmi, bmiClassification,
+      waistCm, hipCm, waistHipRatio, neckCm, chestCm, thighCm, calfCm, armCm,
+      bodyFatPercent, bodyFatMethod, leanMassKg, fatMassKg, visceralFatLevel, basalMetabolicRate,
+      // Health Risk
+      cardiovascularRisk, metabolicRisk, healthScore, healthRiskFactors,
+      // Sedentary Profile
+      sittingHoursPerDay, screenTimeHours, walkingMinutesDay, stepsPerDay,
+      ergonomicScore, ergonomicAssessment, sedentaryRecommendations,
+      // Activity
+      activityLevel, sportModality,
     } = body;
 
     const updateData: any = {};
+
+    // AI editable fields
+    if (aiFindings !== undefined) updateData.aiFindings = aiFindings;
+    if (aiSummary !== undefined) updateData.aiSummary = aiSummary;
+    if (aiRecommendations !== undefined) updateData.aiRecommendations = aiRecommendations;
+    if (correctiveExercises !== undefined) updateData.correctiveExercises = correctiveExercises;
+
+    // Scores
+    if (postureScore !== undefined) updateData.postureScore = postureScore;
+    if (symmetryScore !== undefined) updateData.symmetryScore = symmetryScore;
+    if (mobilityScore !== undefined) updateData.mobilityScore = mobilityScore;
+    if (overallScore !== undefined) updateData.overallScore = overallScore;
+    if (segmentScores !== undefined) updateData.segmentScores = segmentScores;
+    if (deviationLabels !== undefined) updateData.deviationLabels = deviationLabels;
+    if (idealComparison !== undefined) updateData.idealComparison = idealComparison;
+
+    // Posture Analysis — merge with existing so sub-fields can be updated individually
+    if (postureAnalysisUpdate !== undefined) {
+      const existing = await (prisma as any).bodyAssessment.findUnique({
+        where: { id: params.id },
+        select: { postureAnalysis: true },
+      });
+      const merged = { ...(existing?.postureAnalysis || {}), ...postureAnalysisUpdate };
+      updateData.postureAnalysis = merged;
+    }
 
     // Image fields
     if (frontImageUrl !== undefined) updateData.frontImageUrl = frontImageUrl;
@@ -120,6 +168,45 @@ export async function PUT(
     if (therapistNotes !== undefined) updateData.therapistNotes = therapistNotes;
     if (therapistFindings !== undefined) updateData.therapistFindings = therapistFindings;
 
+    // Anthropometric & Body Composition
+    if (heightCm !== undefined) updateData.heightCm = heightCm;
+    if (weightKg !== undefined) updateData.weightKg = weightKg;
+    if (bmi !== undefined) updateData.bmi = bmi;
+    if (bmiClassification !== undefined) updateData.bmiClassification = bmiClassification;
+    if (waistCm !== undefined) updateData.waistCm = waistCm;
+    if (hipCm !== undefined) updateData.hipCm = hipCm;
+    if (waistHipRatio !== undefined) updateData.waistHipRatio = waistHipRatio;
+    if (neckCm !== undefined) updateData.neckCm = neckCm;
+    if (chestCm !== undefined) updateData.chestCm = chestCm;
+    if (thighCm !== undefined) updateData.thighCm = thighCm;
+    if (calfCm !== undefined) updateData.calfCm = calfCm;
+    if (armCm !== undefined) updateData.armCm = armCm;
+    if (bodyFatPercent !== undefined) updateData.bodyFatPercent = bodyFatPercent;
+    if (bodyFatMethod !== undefined) updateData.bodyFatMethod = bodyFatMethod;
+    if (leanMassKg !== undefined) updateData.leanMassKg = leanMassKg;
+    if (fatMassKg !== undefined) updateData.fatMassKg = fatMassKg;
+    if (visceralFatLevel !== undefined) updateData.visceralFatLevel = visceralFatLevel;
+    if (basalMetabolicRate !== undefined) updateData.basalMetabolicRate = basalMetabolicRate;
+
+    // Health Risk
+    if (cardiovascularRisk !== undefined) updateData.cardiovascularRisk = cardiovascularRisk;
+    if (metabolicRisk !== undefined) updateData.metabolicRisk = metabolicRisk;
+    if (healthScore !== undefined) updateData.healthScore = healthScore;
+    if (healthRiskFactors !== undefined) updateData.healthRiskFactors = healthRiskFactors;
+
+    // Sedentary Profile
+    if (sittingHoursPerDay !== undefined) updateData.sittingHoursPerDay = sittingHoursPerDay;
+    if (screenTimeHours !== undefined) updateData.screenTimeHours = screenTimeHours;
+    if (walkingMinutesDay !== undefined) updateData.walkingMinutesDay = walkingMinutesDay;
+    if (stepsPerDay !== undefined) updateData.stepsPerDay = stepsPerDay;
+    if (ergonomicScore !== undefined) updateData.ergonomicScore = ergonomicScore;
+    if (ergonomicAssessment !== undefined) updateData.ergonomicAssessment = ergonomicAssessment;
+    if (sedentaryRecommendations !== undefined) updateData.sedentaryRecommendations = sedentaryRecommendations;
+
+    // Activity
+    if (activityLevel !== undefined) updateData.activityLevel = activityLevel;
+    if (sportModality !== undefined) updateData.sportModality = sportModality;
+
     // Status
     if (status) updateData.status = status;
 
@@ -140,6 +227,26 @@ export async function PUT(
         },
       },
     });
+
+    // Send notification when report is ready for the patient
+    if (status === "REVIEWED" || status === "COMPLETED") {
+      try {
+        const { notifyPatient } = await import("@/lib/notify-patient");
+        await notifyPatient({
+          patientId: assessment.patient.id,
+          emailTemplateSlug: "ASSESSMENT_COMPLETED",
+          emailVars: {
+            assessmentType: "Body Assessment",
+            completedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+            portalUrl: `${process.env.NEXTAUTH_URL || ""}/dashboard/body-assessments`,
+          },
+          plainMessage: `Your body assessment report is ready! Log in to your portal to view your results, corrective exercises, and personalised recommendations.`,
+          plainMessagePt: `Seu relatório de avaliação corporal está pronto! Acesse seu portal para ver seus resultados, exercícios corretivos e recomendações personalizadas.`,
+        });
+      } catch (notifyErr) {
+        console.error("[body-assessment] Failed to send report-ready notification:", notifyErr);
+      }
+    }
 
     return NextResponse.json(assessment);
   } catch (error) {

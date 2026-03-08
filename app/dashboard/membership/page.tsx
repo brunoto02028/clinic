@@ -43,11 +43,8 @@ interface ActiveSubscription {
   plan: MembershipPlan;
 }
 
-const INTERVAL_LABELS: Record<string, string> = {
-  MONTHLY: "month",
-  WEEKLY: "week",
-  YEARLY: "year",
-};
+const INTERVAL_LABELS_EN: Record<string, string> = { MONTHLY: "month", WEEKLY: "week", YEARLY: "year" };
+const INTERVAL_LABELS_PT: Record<string, string> = { MONTHLY: "mês", WEEKLY: "semana", YEARLY: "ano" };
 
 export default function PatientMembershipPage() {
   const router = useRouter();
@@ -176,7 +173,7 @@ export default function PatientMembershipPage() {
                 <span className="text-lg font-semibold text-foreground">
                   £{activeSub.plan.price.toFixed(2)}
                   <span className="text-sm font-normal text-muted-foreground">
-                    /{INTERVAL_LABELS[activeSub.plan.interval] || "month"}
+                    /{(isPt ? INTERVAL_LABELS_PT : INTERVAL_LABELS_EN)[activeSub.plan.interval] || (isPt ? "mês" : "month")}
                   </span>
                 </span>
               )}
@@ -288,7 +285,7 @@ export default function PatientMembershipPage() {
                       ) : (
                         <>
                           <span className="text-2xl font-bold text-foreground">£{plan.price.toFixed(2)}</span>
-                          <span className="text-sm text-muted-foreground">/{INTERVAL_LABELS[plan.interval] || "month"}</span>
+                          <span className="text-sm text-muted-foreground">/{(isPt ? INTERVAL_LABELS_PT : INTERVAL_LABELS_EN)[plan.interval] || (isPt ? "mês" : "month")}</span>
                         </>
                       )}
                     </div>
@@ -334,7 +331,7 @@ export default function PatientMembershipPage() {
                           </>
                         ) : (
                           <>
-                            <CreditCard className="h-4 w-4" /> {isPt ? "Assinar" : "Subscribe"} — £{plan.price.toFixed(2)}/{INTERVAL_LABELS[plan.interval] || "mo"}
+                            <CreditCard className="h-4 w-4" /> {isPt ? "Assinar" : "Subscribe"} — £{plan.price.toFixed(2)}/{(isPt ? INTERVAL_LABELS_PT : INTERVAL_LABELS_EN)[plan.interval] || (isPt ? "mês" : "mo")}
                           </>
                         )}
                       </Button>

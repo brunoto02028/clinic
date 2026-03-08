@@ -48,8 +48,8 @@ const DEFAULT_CONFIG = {
     },
     {
       id: "screening",
-      label: "Medical Screening",
-      description: "Complete your medical screening form for safe treatment",
+      label: "Assessment Screening",
+      description: "Complete your assessment screening form for safe treatment",
       icon: "Shield",
       href: "/dashboard/screening",
       enabled: true,

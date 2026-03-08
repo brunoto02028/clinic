@@ -340,7 +340,7 @@ export default function CommandCenterPage() {
             </div>
             <div>
               <h1 className="text-base font-bold leading-tight">Command Center</h1>
-              <p className="text-[11px] text-slate-300">BPR Intelligent HQ — Powered by Abacus AI</p>
+              <p className="text-[11px] text-slate-300">BPR Intelligent HQ — Powered by Gemini AI</p>
             </div>
           </div>
         </div>
@@ -543,7 +543,7 @@ export default function CommandCenterPage() {
           </button>
         </div>
         <p className="text-[10px] text-center text-slate-400 mt-1.5">
-          BPR Command Center — Powered by Abacus AI RouteLLM • {outputLang === "en" ? "English" : "Português"} output • Full system access
+          BPR Command Center — Powered by Google Gemini • {outputLang === "en" ? "English" : "Português"} output • Full system access
         </p>
       </div>
     </div>

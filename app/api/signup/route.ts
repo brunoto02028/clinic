@@ -48,6 +48,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check duplicate phone number
+    if (phone) {
+      const normalizedPhone = phone.replace(/\s+/g, '').replace(/^\+/, '');
+      const allWithPhone = await prisma.user.findMany({
+        where: { phone: { not: null }, role: "PATIENT" },
+        select: { id: true, phone: true },
+      });
+      const match = allWithPhone.find(p => {
+        const pNorm = (p.phone || '').replace(/\s+/g, '').replace(/^\+/, '');
+        return pNorm === normalizedPhone;
+      });
+      if (match) {
+        return NextResponse.json(
+          { error: "An account with this phone number already exists. Please use a different number or contact the clinic." },
+          { status: 409 }
+        );
+      }
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 

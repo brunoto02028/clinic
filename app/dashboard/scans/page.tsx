@@ -13,7 +13,16 @@ import {
   CheckCircle,
   AlertCircle,
   FileText,
-  ChevronRight
+  ChevronRight,
+  Info,
+  Brain,
+  HelpCircle,
+  Shield,
+  Heart,
+  Target,
+  Dumbbell,
+  TrendingUp,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,6 +33,7 @@ import { CameraCapture } from '@/components/foot-scan/camera-capture';
 import AssessmentGate from '@/components/dashboard/assessment-gate';
 import ProfessionalReviewBanner from '@/components/dashboard/professional-review-banner';
 import { FootScanViewer } from '@/components/foot-scan/foot-scan-viewer';
+import { t as i18nT } from '@/lib/i18n';
 
 interface FootScan {
   id: string;
@@ -270,6 +280,120 @@ function PatientScansContent() {
       </div>
 
       <ProfessionalReviewBanner />
+
+      {/* Calibration Phase Banner */}
+      <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+        <div className="w-9 h-9 rounded-full bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+          <AlertTriangle className="h-[18px] w-[18px] text-amber-400" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-amber-300">
+            {i18nT('footScan.calibrationTitle', locale)}
+          </p>
+          <p className="text-xs text-amber-400/80 mt-0.5 leading-relaxed">
+            {i18nT('footScan.calibrationDesc', locale)}
+          </p>
+        </div>
+      </div>
+
+      {/* What Is a Foot Scan? */}
+      <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-cyan-500/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-blue-400" />
+            {i18nT('footScan.whatIsTitle', locale)}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground leading-relaxed">{i18nT('footScan.whatIsDesc', locale)}</p>
+        </CardContent>
+      </Card>
+
+      {/* Benefits Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { icon: Heart, title: i18nT('footScan.benefit1Title', locale), desc: i18nT('footScan.benefit1Desc', locale), color: 'text-rose-400', bg: 'bg-rose-500/10' },
+          { icon: Footprints, title: i18nT('footScan.benefit2Title', locale), desc: i18nT('footScan.benefit2Desc', locale), color: 'text-blue-400', bg: 'bg-blue-500/10' },
+          { icon: Shield, title: i18nT('footScan.benefit3Title', locale), desc: i18nT('footScan.benefit3Desc', locale), color: 'text-amber-400', bg: 'bg-amber-500/10' },
+          { icon: TrendingUp, title: i18nT('footScan.benefit4Title', locale), desc: i18nT('footScan.benefit4Desc', locale), color: 'text-green-400', bg: 'bg-green-500/10' },
+        ].map((b, i) => {
+          const BIcon = b.icon;
+          return (
+            <Card key={i} className="border-muted/40">
+              <CardContent className="p-3 sm:p-4 text-center">
+                <div className={`w-9 h-9 rounded-lg ${b.bg} flex items-center justify-center mx-auto mb-2`}>
+                  <BIcon className={`h-4 w-4 ${b.color}`} />
+                </div>
+                <p className="text-xs sm:text-sm font-semibold">{b.title}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">{b.desc}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* How It Works Info Panel */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Info className="h-4 w-4 text-primary" />
+            {i18nT('footScan.infoTitle', locale)}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid sm:grid-cols-3 gap-4 pt-0">
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Camera className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{i18nT('footScan.infoStep1Title', locale)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{i18nT('footScan.infoStep1Desc', locale)}</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-purple-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Brain className="h-4 w-4 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{i18nT('footScan.infoStep2Title', locale)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{i18nT('footScan.infoStep2Desc', locale)}</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-green-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{i18nT('footScan.infoStep3Title', locale)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{i18nT('footScan.infoStep3Desc', locale)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Arch Types Explanation */}
+      <Card className="border-muted/40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Footprints className="h-4 w-4 text-blue-400" />
+            {i18nT('footScan.archExplainTitle', locale)}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 pt-0">
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
+            <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" />
+            <p className="text-xs text-green-400">{i18nT('footScan.archNormal', locale)}</p>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10">
+            <div className="w-3 h-3 rounded-full bg-amber-500 flex-shrink-0" />
+            <p className="text-xs text-amber-400">{i18nT('footScan.archHigh', locale)}</p>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10">
+            <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0" />
+            <p className="text-xs text-blue-400">{i18nT('footScan.archFlat', locale)}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       {scans.length === 0 ? (
         <Card className="border-dashed">

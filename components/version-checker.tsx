@@ -8,80 +8,82 @@ interface VersionData {
   timestamp: number;
 }
 
-// Check interval: 30 seconds
-const CHECK_INTERVAL = 30 * 1000;
+// Check every 60 seconds
+const CHECK_INTERVAL = 60 * 1000;
+const STORAGE_KEY = "bpr_app_version";
 
 export function VersionChecker() {
-  const currentVersion = useRef<VersionData | null>(null);
+  const initialVersion = useRef<string | null>(null);
   const pathname = usePathname();
   const isChecking = useRef(false);
+  const updatePending = useRef(false);
+  const hasReloaded = useRef(false);
+
+  const doReload = useCallback(() => {
+    if (hasReloaded.current) return;
+    hasReloaded.current = true;
+    window.location.reload();
+  }, []);
 
   const checkVersion = useCallback(async () => {
-    if (isChecking.current) return;
+    if (isChecking.current || hasReloaded.current) return;
     isChecking.current = true;
 
     try {
       const response = await fetch("/api/version", {
         cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-          "Pragma": "no-cache",
-        },
+        headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" },
       });
-
       if (!response.ok) return;
 
-      const newVersion: VersionData = await response.json();
+      const data: VersionData = await response.json();
+      const serverVersion = data.version;
 
-      // First load - store the version
-      if (!currentVersion.current) {
-        currentVersion.current = newVersion;
-        console.log("[Version Checker] Initial version:", newVersion.version);
+      // First load — store version
+      if (!initialVersion.current) {
+        const storedVersion = sessionStorage.getItem(STORAGE_KEY);
+        initialVersion.current = serverVersion;
+        if (storedVersion === serverVersion) return;
+        sessionStorage.setItem(STORAGE_KEY, serverVersion);
         return;
       }
 
-      // Version check disabled — auto-reload caused infinite loop in production
-      // if (currentVersion.current.version !== newVersion.version) { window.location.reload(); }
-    } catch (error) {
-      console.error("[Version Checker] Error checking version:", error);
+      // Version changed — mark update pending (don't reload yet!)
+      if (initialVersion.current !== serverVersion) {
+        sessionStorage.setItem(STORAGE_KEY, serverVersion);
+        updatePending.current = true;
+      }
+    } catch {
+      // silent
     } finally {
       isChecking.current = false;
     }
   }, []);
 
   useEffect(() => {
-    // Initial check
     checkVersion();
-
-    // Set up periodic checking
     const interval = setInterval(checkVersion, CHECK_INTERVAL);
 
-    // Also check when tab becomes visible
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        checkVersion();
+    // Only auto-reload when user RETURNS to the tab (was away, so nothing to lose)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && updatePending.current) {
+        doReload();
       }
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Also check on focus
-    const handleFocus = () => {
-      checkVersion();
-    };
-    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [checkVersion]);
+  }, [checkVersion, doReload]);
 
-  // Check on route change
+  // On route change — safe moment to reload (user already navigated away from current page)
   useEffect(() => {
-    checkVersion();
-  }, [pathname, checkVersion]);
+    if (updatePending.current) {
+      doReload();
+    }
+  }, [pathname, doReload]);
 
-  // This component doesn't render anything
   return null;
 }

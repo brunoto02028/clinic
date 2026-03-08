@@ -270,13 +270,13 @@ export default function StripeBrandingPage() {
           </div>
 
           {/* Stripe Checkout Mock */}
-          <div className="border-2 border-gray-200 rounded-2xl overflow-hidden shadow-lg bg-white">
+          <div className="border-2 border-border rounded-2xl overflow-hidden shadow-lg bg-background">
             {/* Stripe top bar */}
             <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${branding.primaryColor}, ${branding.secondaryColor})` }} />
 
             <div className="flex">
               {/* Left panel — order summary */}
-              <div className="w-2/5 bg-gray-50 p-5 border-r space-y-4">
+              <div className="w-2/5 bg-muted/40 p-5 border-r border-border space-y-4">
                 {/* Logo */}
                 <div className="flex items-center gap-2">
                   {logoToShow ? (
@@ -286,21 +286,21 @@ export default function StripeBrandingPage() {
                       {branding.businessName.charAt(0)}
                     </div>
                   )}
-                  <span className="text-xs font-semibold text-gray-700 line-clamp-1">{branding.businessName}</span>
+                  <span className="text-xs font-semibold text-foreground line-clamp-1">{branding.businessName}</span>
                 </div>
 
                 {/* Product */}
                 <div className="space-y-1">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Pay</p>
-                  <p className="text-2xl font-bold text-gray-900">£120.00</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Pay</p>
+                  <p className="text-2xl font-bold text-foreground">£120.00</p>
                 </div>
 
                 <div className="border-t pt-3 space-y-2">
-                  <div className="flex justify-between text-xs text-gray-600">
-                    <span>Physiotherapy Assessment</span>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Rehabilitation Assessment</span>
                     <span>£120.00</span>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-500 italic">
+                  <div className="flex justify-between text-xs text-muted-foreground italic">
                     <span>Monday, 24 Feb 2025 at 10:00</span>
                   </div>
                   <div className="text-[10px] text-green-600 flex items-center gap-1 mt-1">
@@ -309,67 +309,67 @@ export default function StripeBrandingPage() {
                   </div>
                 </div>
 
-                <div className="border-t pt-3 flex justify-between text-xs font-semibold text-gray-800">
+                <div className="border-t pt-3 flex justify-between text-xs font-semibold text-foreground">
                   <span>Total due</span>
                   <span>£120.00</span>
                 </div>
 
                 {/* Powered by Stripe */}
-                <div className="flex items-center gap-1 text-[9px] text-gray-400 mt-2">
+                <div className="flex items-center gap-1 text-[9px] text-muted-foreground mt-2">
                   <Lock className="h-2.5 w-2.5" />
-                  Powered by <span className="font-semibold text-gray-500">Stripe</span>
+                  Powered by <span className="font-semibold text-muted-foreground">Stripe</span>
                 </div>
               </div>
 
               {/* Right panel — payment form */}
-              <div className="flex-1 p-5 space-y-4">
-                <p className="text-xs font-semibold text-gray-700">Contact information</p>
+              <div className="flex-1 p-5 space-y-4 bg-background">
+                <p className="text-xs font-semibold text-foreground">Contact information</p>
 
                 {/* Email */}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-500">Email</label>
-                  <div className="border rounded-lg px-3 py-2 text-xs text-gray-400 bg-gray-50">patient@email.com</div>
+                  <label className="text-[10px] text-muted-foreground">Email</label>
+                  <div className="border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground bg-muted/30">patient@email.com</div>
                 </div>
 
                 {/* Full Name (custom field) */}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-500">Full Name <span className="text-red-400">*</span></label>
-                  <div className="border rounded-lg px-3 py-2 text-xs text-gray-400 bg-gray-50">John Smith</div>
+                  <label className="text-[10px] text-muted-foreground">Full Name <span className="text-red-400">*</span></label>
+                  <div className="border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground bg-muted/30">John Smith</div>
                 </div>
 
                 {/* Phone */}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-500">Phone number <span className="text-red-400">*</span></label>
-                  <div className="border rounded-lg px-3 py-2 text-xs text-gray-400 bg-gray-50">+44 7700 900000</div>
+                  <label className="text-[10px] text-muted-foreground">Phone number <span className="text-red-400">*</span></label>
+                  <div className="border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground bg-muted/30">+44 7700 900000</div>
                 </div>
 
-                <p className="text-xs font-semibold text-gray-700 pt-1">Card information</p>
+                <p className="text-xs font-semibold text-foreground pt-1">Card information</p>
 
                 {/* Card */}
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="px-3 py-2 text-xs text-gray-400 bg-gray-50 flex items-center justify-between border-b">
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 text-xs text-muted-foreground bg-muted/30 flex items-center justify-between border-b border-border">
                     <span>1234 1234 1234 1234</span>
-                    <CreditCard className="h-3.5 w-3.5 text-gray-300" />
+                    <CreditCard className="h-3.5 w-3.5 text-muted-foreground/50" />
                   </div>
                   <div className="flex">
-                    <div className="flex-1 px-3 py-2 text-xs text-gray-400 bg-gray-50 border-r">MM / YY</div>
-                    <div className="flex-1 px-3 py-2 text-xs text-gray-400 bg-gray-50">CVC</div>
+                    <div className="flex-1 px-3 py-2 text-xs text-muted-foreground bg-muted/30 border-r border-border">MM / YY</div>
+                    <div className="flex-1 px-3 py-2 text-xs text-muted-foreground bg-muted/30">CVC</div>
                   </div>
                 </div>
 
                 {/* Billing Address */}
-                <p className="text-xs font-semibold text-gray-700">Billing address <span className="text-red-400">*</span></p>
-                <div className="border rounded-lg overflow-hidden text-xs text-gray-400">
-                  <div className="px-3 py-2 bg-gray-50 border-b">United Kingdom</div>
-                  <div className="px-3 py-2 bg-gray-50 border-b">Address line 1</div>
-                  <div className="px-3 py-2 bg-gray-50 border-b">City</div>
-                  <div className="px-3 py-2 bg-gray-50">Postcode</div>
+                <p className="text-xs font-semibold text-foreground">Billing address <span className="text-red-400">*</span></p>
+                <div className="border border-border rounded-lg overflow-hidden text-xs text-muted-foreground">
+                  <div className="px-3 py-2 bg-muted/30 border-b border-border">United Kingdom</div>
+                  <div className="px-3 py-2 bg-muted/30 border-b border-border">Address line 1</div>
+                  <div className="px-3 py-2 bg-muted/30 border-b border-border">City</div>
+                  <div className="px-3 py-2 bg-muted/30">Postcode</div>
                 </div>
 
                 {/* Terms */}
                 <div className="flex gap-2 items-start">
                   <div className="w-3.5 h-3.5 border-2 rounded mt-0.5 shrink-0" style={{ borderColor: branding.primaryColor }} />
-                  <p className="text-[9px] text-gray-500 leading-relaxed">
+                  <p className="text-[9px] text-muted-foreground leading-relaxed">
                     By completing this payment you agree to our{" "}
                     <span className="underline" style={{ color: branding.primaryColor }}>Cancellation Policy</span>:
                     appointments cancelled within 48 hours are non-refundable.
@@ -385,7 +385,7 @@ export default function StripeBrandingPage() {
                   Pay £120.00
                 </button>
 
-                <p className="text-[9px] text-gray-400 text-center">
+                <p className="text-[9px] text-muted-foreground text-center">
                   Your payment is secured by Stripe. We'll send a confirmation email.
                 </p>
               </div>

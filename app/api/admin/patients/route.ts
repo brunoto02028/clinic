@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
-    // Check duplicate
+    // Check duplicate email
     const existing = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -115,6 +115,34 @@ export async function POST(request: NextRequest) {
         { error: "A user with this email already exists" },
         { status: 409 }
       );
+    }
+
+    // Check duplicate phone number
+    if (phone) {
+      const normalizedPhone = phone.replace(/\s+/g, '').replace(/^\+/, '');
+      const existingByPhone = await prisma.user.findFirst({
+        where: {
+          phone: { not: null },
+          role: "PATIENT",
+        },
+      });
+      // Check all patients for matching phone (normalized)
+      if (existingByPhone) {
+        const allWithPhone = await prisma.user.findMany({
+          where: { phone: { not: null }, role: "PATIENT" },
+          select: { id: true, phone: true, firstName: true, lastName: true },
+        });
+        const match = allWithPhone.find(p => {
+          const pNorm = (p.phone || '').replace(/\s+/g, '').replace(/^\+/, '');
+          return pNorm === normalizedPhone;
+        });
+        if (match) {
+          return NextResponse.json(
+            { error: `A patient with this phone number already exists: ${match.firstName} ${match.lastName}` },
+            { status: 409 }
+          );
+        }
+      }
     }
 
     // Hash password (use default if not provided)
@@ -207,7 +235,27 @@ export async function PATCH(request: NextRequest) {
     if (firstName !== undefined) updateData.firstName = firstName.trim();
     if (lastName !== undefined) updateData.lastName = lastName.trim();
     if (email !== undefined) updateData.email = email.toLowerCase().trim();
-    if (phone !== undefined) updateData.phone = phone || null;
+    if (phone !== undefined) {
+      updateData.phone = phone || null;
+      // Check duplicate phone on update
+      if (phone) {
+        const normalizedPhone = phone.replace(/\s+/g, '').replace(/^\+/, '');
+        const allWithPhone = await prisma.user.findMany({
+          where: { phone: { not: null }, role: "PATIENT", id: { not: patientId } },
+          select: { id: true, phone: true, firstName: true, lastName: true },
+        });
+        const match = allWithPhone.find(p => {
+          const pNorm = (p.phone || '').replace(/\s+/g, '').replace(/^\+/, '');
+          return pNorm === normalizedPhone;
+        });
+        if (match) {
+          return NextResponse.json(
+            { error: `A patient with this phone number already exists: ${match.firstName} ${match.lastName}` },
+            { status: 409 }
+          );
+        }
+      }
+    }
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const updated = await prisma.user.update({

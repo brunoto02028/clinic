@@ -273,6 +273,81 @@ export async function publishCarousel(params: {
   return { id: published.id };
 }
 
+// ─── Reel Publishing ───
+
+export async function publishReel(params: {
+  igAccountId: string;
+  accessToken: string;
+  videoUrl: string;
+  caption: string;
+  coverUrl?: string;
+  shareToFeed?: boolean;
+}): Promise<PublishResult> {
+  const { igAccountId, accessToken, videoUrl, caption, coverUrl, shareToFeed = true } = params;
+
+  // Step 1: Create reel container
+  const containerBody: any = {
+    media_type: 'REELS',
+    video_url: videoUrl,
+    caption,
+    share_to_feed: shareToFeed,
+    access_token: accessToken,
+  };
+  if (coverUrl) containerBody.cover_url = coverUrl;
+
+  const containerRes = await fetch(
+    `${GRAPH_API_BASE}/${igAccountId}/media`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(containerBody),
+    }
+  );
+
+  if (!containerRes.ok) {
+    const err = await containerRes.json();
+    throw new Error(`Reel container creation failed: ${JSON.stringify(err)}`);
+  }
+
+  const container = await containerRes.json();
+
+  // Step 2: Wait for video processing (may take longer than photos)
+  await waitForMediaReady(container.id, accessToken, 60, 3000);
+
+  // Step 3: Publish
+  const publishRes = await fetch(
+    `${GRAPH_API_BASE}/${igAccountId}/media_publish`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        creation_id: container.id,
+        access_token: accessToken,
+      }),
+    }
+  );
+
+  if (!publishRes.ok) {
+    const err = await publishRes.json();
+    throw new Error(`Reel publishing failed: ${JSON.stringify(err)}`);
+  }
+
+  const published = await publishRes.json();
+
+  let permalink: string | undefined;
+  try {
+    const mediaRes = await fetch(
+      `${GRAPH_API_BASE}/${published.id}?fields=permalink&access_token=${accessToken}`
+    );
+    if (mediaRes.ok) {
+      const mediaData = await mediaRes.json();
+      permalink = mediaData.permalink;
+    }
+  } catch {}
+
+  return { id: published.id, permalink };
+}
+
 // ─── Insights ───
 
 export async function getMediaInsights(

@@ -13,6 +13,41 @@ interface VoiceFormFillProps {
   compact?: boolean;
 }
 
+const LABELS = {
+  "en-GB": {
+    title: "Voice Fill",
+    subtitle: "Speak naturally — AI fills the form for you",
+    explanation: "Press the button and describe your medical history out loud. The AI will listen, understand, and automatically fill in the fields below. You can review and edit after.",
+    startSpeaking: "Start Speaking",
+    stopFill: "Stop & Fill Form",
+    stopFillShort: "Stop & Fill",
+    recording: "Recording",
+    transcribing: "Transcribing...",
+    aiProcessing: "AI is transcribing and filling your form...",
+    filled: "Form fields filled successfully!",
+    filledShort: "Filled!",
+    voiceFill: "Voice Fill",
+    tooShort: "Recording too short. Please speak for at least a few seconds.",
+    micDenied: "Microphone access denied. Please allow microphone permission.",
+  },
+  "pt-BR": {
+    title: "Preenchimento por Voz",
+    subtitle: "Fale naturalmente — a IA preenche o formulário para você",
+    explanation: "Pressione o botão e descreva seu histórico médico em voz alta. A IA vai ouvir, entender e preencher automaticamente os campos abaixo. Você pode revisar e editar depois.",
+    startSpeaking: "Começar a Falar",
+    stopFill: "Parar e Preencher",
+    stopFillShort: "Parar",
+    recording: "Gravando",
+    transcribing: "Transcrevendo...",
+    aiProcessing: "A IA está transcrevendo e preenchendo seu formulário...",
+    filled: "Campos preenchidos com sucesso!",
+    filledShort: "Preenchido!",
+    voiceFill: "Voz IA",
+    tooShort: "Gravação muito curta. Fale por pelo menos alguns segundos.",
+    micDenied: "Acesso ao microfone negado. Permita o acesso ao microfone.",
+  },
+} as const;
+
 export function VoiceFormFill({
   context,
   fields,
@@ -28,6 +63,8 @@ export function VoiceFormFill({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<any>(null);
+
+  const L = (language === "pt-BR" ? LABELS["pt-BR"] : LABELS["en-GB"]);
 
   const startRecording = useCallback(async () => {
     setError(null);
@@ -59,12 +96,12 @@ export function VoiceFormFill({
       }, 1000);
     } catch (err: any) {
       if (err.name === "NotAllowedError") {
-        setError("Microphone access denied. Please allow microphone permission.");
+        setError(L.micDenied);
       } else {
         setError(err.message || "Failed to start recording");
       }
     }
-  }, []);
+  }, [L]);
 
   const stopAndTranscribe = useCallback(async () => {
     if (!mediaRecorderRef.current) return;
@@ -86,7 +123,7 @@ export function VoiceFormFill({
     // Build blob from chunks
     const blob = new Blob(chunksRef.current, { type: "audio/webm" });
     if (blob.size < 100) {
-      setError("Recording too short. Please speak for at least a few seconds.");
+      setError(L.tooShort);
       setProcessing(false);
       return;
     }
@@ -130,18 +167,18 @@ export function VoiceFormFill({
         {processing ? (
           <div className="flex items-center gap-1 text-xs text-primary">
             <Loader2 className="h-3 w-3 animate-spin" />
-            <span>Transcribing...</span>
+            <span>{L.transcribing}</span>
           </div>
         ) : success ? (
           <div className="flex items-center gap-1 text-xs text-green-600">
             <CheckCircle2 className="h-3 w-3" />
-            <span>Filled!</span>
+            <span>{L.filledShort}</span>
           </div>
         ) : recording ? (
           <div className="flex items-center gap-1.5">
             <span className="flex items-center gap-1 text-xs text-red-500">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              {formatTime(duration)}
+              {L.recording} {formatTime(duration)}
             </span>
             <Button
               type="button"
@@ -150,7 +187,7 @@ export function VoiceFormFill({
               className="h-6 text-[10px] px-2 gap-1"
               onClick={stopAndTranscribe}
             >
-              <MicOff className="h-2.5 w-2.5" /> Stop & Fill
+              <MicOff className="h-2.5 w-2.5" /> {L.stopFillShort}
             </Button>
           </div>
         ) : (
@@ -161,7 +198,7 @@ export function VoiceFormFill({
             className="h-6 text-[10px] px-2 gap-1"
             onClick={startRecording}
           >
-            <Mic className="h-2.5 w-2.5" /> Voice Fill
+            <Mic className="h-2.5 w-2.5" /> {L.voiceFill}
           </Button>
         )}
         {error && (
@@ -178,13 +215,16 @@ export function VoiceFormFill({
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Mic className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold">Voice Fill</span>
+          <span className="text-sm font-semibold">{L.title}</span>
           <Badge variant="outline" className="text-[10px] px-1.5 py-0">AI</Badge>
         </div>
         <span className="text-[10px] text-muted-foreground">
-          Speak naturally — AI fills the form for you
+          {L.subtitle}
         </span>
       </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        {L.explanation}
+      </p>
 
       {error && (
         <div className="bg-destructive/10 text-destructive text-xs p-2 rounded flex items-center gap-1.5">
@@ -197,7 +237,7 @@ export function VoiceFormFill({
           <>
             <span className="flex items-center gap-1.5 text-sm text-red-500 font-medium">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-              Recording {formatTime(duration)}
+              {L.recording} {formatTime(duration)}
             </span>
             <Button
               type="button"
@@ -206,18 +246,18 @@ export function VoiceFormFill({
               onClick={stopAndTranscribe}
               className="gap-1.5"
             >
-              <MicOff className="h-3.5 w-3.5" /> Stop & Fill Form
+              <MicOff className="h-3.5 w-3.5" /> {L.stopFill}
             </Button>
           </>
         ) : processing ? (
           <div className="flex items-center gap-2 text-sm text-primary">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>AI is transcribing and filling your form...</span>
+            <span>{L.aiProcessing}</span>
           </div>
         ) : success ? (
           <div className="flex items-center gap-2 text-sm text-green-600">
             <CheckCircle2 className="h-4 w-4" />
-            <span>Form fields filled successfully!</span>
+            <span>{L.filled}</span>
           </div>
         ) : (
           <Button
@@ -227,7 +267,7 @@ export function VoiceFormFill({
             onClick={startRecording}
             className="gap-1.5"
           >
-            <Mic className="h-3.5 w-3.5" /> Start Speaking
+            <Mic className="h-3.5 w-3.5" /> {L.startSpeaking}
           </Button>
         )}
       </div>

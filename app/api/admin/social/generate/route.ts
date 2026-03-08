@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
-import { generateCaption, generateHashtags, improveCaption, generateCampaign } from '@/lib/gemini';
+import { generateCaption, generateHashtags, improveCaption, generateCampaign, generateSuperAutomacao } from '@/lib/gemini';
 
 // POST /api/admin/social/generate - AI content generation
 export async function POST(req: NextRequest) {
@@ -53,8 +53,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(campaign);
       }
 
+      case 'superautomacao': {
+        const result = await generateSuperAutomacao({
+          language: params.language || 'pt-BR',
+          weeks: params.weeks || 4,
+        });
+        return NextResponse.json(result);
+      }
+
       default:
-        return NextResponse.json({ error: 'Invalid action. Use: caption, hashtags, improve, campaign' }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid action. Use: caption, hashtags, improve, campaign, superautomacao' }, { status: 400 });
     }
   } catch (error: any) {
     console.error('[AI GENERATE] error:', error?.message);

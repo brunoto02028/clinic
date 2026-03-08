@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
+import { QRCameraFallback } from "@/components/ui/qr-camera-fallback";
 
 interface BPReading {
   id: string;
@@ -743,6 +744,7 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
   const [torchActive, setTorchActive] = useState(false);
   const [cameraUsed, setCameraUsed] = useState<"rear" | "front" | "">("");
   const [fingerQuality, setFingerQuality] = useState<"none" | "poor" | "fair" | "good">("none");
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const samplesRef = useRef<{ red: number; ts: number }[]>([]);
   const frameIdRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
@@ -793,7 +795,9 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
       setMessage(T("bp.positionFinger"));
     } catch (err) {
       console.error("Camera error:", err);
-      setMessage(locale === "pt-BR" ? "Acesso à câmera negado. Permita o acesso nas configurações do navegador e tente novamente." : "Camera access denied. Please allow camera permission in your browser settings and try again.");
+      const errMsg = locale === "pt-BR" ? "Acesso à câmera negado. Permita o acesso nas configurações do navegador e tente novamente." : "Camera access denied. Please allow camera permission in your browser settings and try again.";
+      setMessage(errMsg);
+      setCameraError(errMsg);
     }
   }, []);
 
@@ -941,6 +945,19 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
     cancelAnimationFrame(frameIdRef.current);
     onCancel();
   };
+
+  // Camera error — show QR code fallback
+  if (cameraError) {
+    return (
+      <QRCameraFallback
+        locale={locale}
+        errorMessage={cameraError}
+        featureName={{ en: "blood pressure measurement", pt: "a medição de pressão arterial" }}
+        onRetry={() => { setCameraError(null); setMessage(""); setPhase("instructions"); }}
+        onCancel={stopAndCancel}
+      />
+    );
+  }
 
   // Practice mode result screen
   if (phase === "practice-result" && practiceResult) {
