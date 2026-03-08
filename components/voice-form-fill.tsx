@@ -43,6 +43,13 @@ export function VoiceFormFill({
 
   const getLabel = (key: string) => fieldLabels[key] || key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
 
+  // Safely convert any value to string (handles arrays, numbers, null, undefined)
+  const safeStr = (v: any): string => {
+    if (v == null) return "";
+    if (Array.isArray(v)) return v.join(", ");
+    return String(v);
+  };
+
   const startRecording = useCallback(async () => {
     setError(null);
     setSuccess(false);
@@ -118,24 +125,35 @@ export function VoiceFormFill({
       if (!res.ok) throw new Error(data.error || (isPt ? "Falha na transcri\u00e7\u00e3o" : "Transcription failed"));
 
       if (data.data && smartReview) {
-        // Merge with previously applied data
-        const merged = { ...appliedSoFarRef.current, ...data.data };
-        setPendingData(merged);
+        try {
+          // Merge with previously applied data
+          const merged = { ...appliedSoFarRef.current, ...data.data };
+          setPendingData(merged);
 
-        // Determine which fields were filled vs still missing
-        const allValues = { ...currentValues, ...appliedSoFarRef.current, ...data.data };
-        const filled: string[] = [];
-        const missing: string[] = [];
-        for (const f of fields) {
-          if (merged[f] && merged[f].trim()) {
-            filled.push(f);
-          } else if (!allValues[f] || !allValues[f].trim()) {
-            missing.push(f);
+          // Determine which fields were filled vs still missing
+          const allValues = { ...currentValues, ...appliedSoFarRef.current, ...data.data };
+          const filled: string[] = [];
+          const missing: string[] = [];
+          for (const f of fields) {
+            const mergedVal = safeStr(merged[f]);
+            const allVal = safeStr(allValues[f]);
+            if (mergedVal.trim()) {
+              filled.push(f);
+            } else if (!allVal.trim()) {
+              missing.push(f);
+            }
           }
+          setFilledKeys(filled);
+          setMissingKeys(missing);
+          setStep("review");
+        } catch (reviewErr: any) {
+          // If review logic fails, still apply the data so patient doesn't lose it
+          console.error("Review error, auto-applying data:", reviewErr);
+          onFieldsFilled(data.data);
+          setSuccess(true);
+          setStep("idle");
+          setTimeout(() => setSuccess(false), 4000);
         }
-        setFilledKeys(filled);
-        setMissingKeys(missing);
-        setStep("review");
       } else if (data.data) {
         // Legacy: no review, apply directly
         onFieldsFilled(data.data);
@@ -144,7 +162,16 @@ export function VoiceFormFill({
         setTimeout(() => setSuccess(false), 4000);
       }
     } catch (err: any) {
-      setError(err.message || (isPt ? "Falha na transcri\u00e7\u00e3o" : "Transcription failed"));
+      // If we already had accumulated data, auto-apply it so the patient doesn't lose progress
+      const accumulated = appliedSoFarRef.current;
+      if (accumulated && Object.keys(accumulated).length > 0) {
+        onFieldsFilled(accumulated);
+        setError(isPt
+          ? "Houve um erro, mas os dados j\u00e1 preenchidos foram salvos. Voc\u00ea pode continuar."
+          : "There was an error, but previously filled data was saved. You can continue.");
+      } else {
+        setError(err.message || (isPt ? "Falha na transcri\u00e7\u00e3o. Tente novamente." : "Transcription failed. Please try again."));
+      }
       setStep("idle");
     }
   }, [context, language, fields, onFieldsFilled, smartReview, currentValues, isPt]);
