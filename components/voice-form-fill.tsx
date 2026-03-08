@@ -153,8 +153,8 @@ export function VoiceFormFill({
     onFieldsFilled(pendingData);
     appliedSoFarRef.current = { ...appliedSoFarRef.current, ...pendingData };
     setPendingData({});
+    // Keep missingKeys visible so patient sees them during next recording
     setStep("idle");
-    // Auto-start recording for missing fields
     setTimeout(() => startRecording(), 300);
   }, [pendingData, onFieldsFilled, startRecording]);
 
@@ -309,32 +309,51 @@ export function VoiceFormFill({
 
       {/* Recording / Processing / Idle */}
       {step !== "review" && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {step === "recording" ? (
-            <>
-              <span className="flex items-center gap-1.5 text-sm text-red-500 font-medium">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                {isPt ? "Gravando" : "Recording"} {formatTime(duration)}
-              </span>
-              <Button type="button" variant="destructive" size="sm" onClick={stopAndTranscribe} className="gap-1.5">
-                <MicOff className="h-3.5 w-3.5" /> {isPt ? "Parar e Analisar" : "Stop & Analyze"}
-              </Button>
-            </>
-          ) : step === "processing" ? (
-            <div className="flex items-center gap-2 text-sm text-primary">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>{isPt ? "A IA est\u00e1 analisando o que voc\u00ea disse..." : "AI is analyzing what you said..."}</span>
+        <div className="space-y-3">
+          {/* Show missing fields during recording/processing so patient knows what to talk about */}
+          {(step === "recording" || step === "processing") && missingKeys.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-amber-400">
+                <AlertCircle className="h-3 w-3 inline mr-1" />
+                {isPt ? `Fale sobre estes campos (${missingKeys.length}):` : `Talk about these fields (${missingKeys.length}):`}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {missingKeys.map((k) => (
+                  <span key={k} className="bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-full px-2.5 py-0.5 text-[11px]">
+                    {getLabel(k)}
+                  </span>
+                ))}
+              </div>
             </div>
-          ) : success ? (
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <CheckCircle2 className="h-4 w-4" />
-              <span>{isPt ? "Campos preenchidos com sucesso!" : "Form fields filled successfully!"}</span>
-            </div>
-          ) : (
-            <Button type="button" variant="default" size="sm" onClick={startRecording} className="gap-1.5">
-              <Mic className="h-3.5 w-3.5" /> {isPt ? "Come\u00e7ar a Falar" : "Start Speaking"}
-            </Button>
           )}
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {step === "recording" ? (
+              <>
+                <span className="flex items-center gap-1.5 text-sm text-red-500 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  {isPt ? "Gravando" : "Recording"} {formatTime(duration)}
+                </span>
+                <Button type="button" variant="destructive" size="sm" onClick={stopAndTranscribe} className="gap-1.5">
+                  <MicOff className="h-3.5 w-3.5" /> {isPt ? "Parar e Analisar" : "Stop & Analyze"}
+                </Button>
+              </>
+            ) : step === "processing" ? (
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{isPt ? "A IA est\u00e1 analisando o que voc\u00ea disse..." : "AI is analyzing what you said..."}</span>
+              </div>
+            ) : success ? (
+              <div className="flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>{isPt ? "Campos preenchidos com sucesso!" : "Form fields filled successfully!"}</span>
+              </div>
+            ) : (
+              <Button type="button" variant="default" size="sm" onClick={startRecording} className="gap-1.5">
+                <Mic className="h-3.5 w-3.5" /> {isPt ? "Come\u00e7ar a Falar" : "Start Speaking"}
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>
