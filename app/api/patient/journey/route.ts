@@ -259,6 +259,45 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, taskCompleted: true, allCompleted, xpGained: totalXpGain });
       }
 
+      case "uncomplete_mission_task": {
+        const { missionId: uncMissionId, taskKey: uncTaskKey } = body;
+        const uncMission = await (prisma as any).dailyMission.findUnique({ where: { id: uncMissionId } });
+        if (!uncMission || uncMission.patientId !== userId) return NextResponse.json({ error: "Mission not found" }, { status: 404 });
+
+        const uncTasks = uncMission.tasks as any[];
+        const uncTask = uncTasks.find((t: any) => t.key === uncTaskKey);
+        if (!uncTask || !uncTask.completed) return NextResponse.json({ error: "Task not found or not completed" }, { status: 400 });
+
+        uncTask.completed = false;
+
+        // If mission was fully completed, revert completedAt
+        await (prisma as any).dailyMission.update({
+          where: { id: uncMissionId },
+          data: {
+            tasks: uncTasks,
+            completedAt: null,
+          },
+        });
+
+        // Deduct XP that was awarded for this task
+        const deductXp = uncTask.xp || 10;
+        const newTotalXpUnc = Math.max(0, progress.totalXpEarned - deductXp);
+        const newLevelUnc = getLevelForXP(newTotalXpUnc);
+
+        await (prisma as any).patientProgress.update({
+          where: { patientId: userId },
+          data: {
+            totalXpEarned: newTotalXpUnc,
+            xp: { decrement: deductXp },
+            level: newLevelUnc.level,
+            levelTitle: newLevelUnc.title,
+            bprCredits: { decrement: Math.floor(deductXp / 10) },
+          },
+        });
+
+        return NextResponse.json({ success: true, taskUncompleted: true, xpDeducted: deductXp });
+      }
+
       case "mark_active": {
         const today = new Date();
         today.setHours(0, 0, 0, 0);

@@ -84,6 +84,12 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     alternates: { canonical },
     metadataBase: new URL(BASE_URL),
+    appleWebApp: {
+      capable: true,
+      title: "BPR",
+      statusBarStyle: "black-translucent",
+    },
+    applicationName: "BPR",
     ...(s?.googleVerification ? { verification: { google: s.googleVerification } } : {}),
   };
 }

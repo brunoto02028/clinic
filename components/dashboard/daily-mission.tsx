@@ -48,14 +48,15 @@ export default function DailyMission() {
   const completedCount = tasks.filter((t) => t.completed).length;
   const totalXp = activeMission.xpReward;
 
-  const handleComplete = async (taskKey: string) => {
+  const handleToggle = async (taskKey: string, isCompleted: boolean) => {
     setCompleting(taskKey);
     try {
+      const action = isCompleted ? "uncomplete_mission_task" : "complete_mission_task";
       const res = await fetch("/api/patient/journey", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "complete_mission_task",
+          action,
           missionId: activeMission.id,
           taskKey,
         }),
@@ -67,7 +68,7 @@ export default function DailyMission() {
             return {
               ...m,
               tasks: (m.tasks as Task[]).map((t) =>
-                t.key === taskKey ? { ...t, completed: true } : t
+                t.key === taskKey ? { ...t, completed: !isCompleted } : t
               ),
             };
           })
@@ -103,8 +104,8 @@ export default function DailyMission() {
                 }`}
               >
                 <button
-                  onClick={() => !task.completed && handleComplete(task.key)}
-                  disabled={!!completing || task.completed}
+                  onClick={() => handleToggle(task.key, task.completed)}
+                  disabled={!!completing}
                   className="shrink-0"
                 >
                   {task.completed ? (

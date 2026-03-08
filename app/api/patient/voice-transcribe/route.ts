@@ -56,7 +56,20 @@ export async function POST(req: NextRequest) {
 
     switch (context) {
       case "medical_screening":
-        systemPrompt = `You are a medical transcription assistant. The patient is speaking about their medical history for a screening form. Extract and organize the information into the following fields: ${fields.join(", ")}. Return a JSON object with these field names as keys and the transcribed/extracted text as values. If the patient mentions medications, list them. If they mention allergies, list them. Keep medical terminology accurate. Language: ${language}.`;
+        systemPrompt = `You are a medical transcription assistant. The patient is speaking about their medical history for a screening form.
+Extract and organize the information into the following fields: ${fields.join(", ")}.
+Return a JSON object with these field names as keys.
+
+IMPORTANT FIELD RULES:
+- painLevel: must be a NUMBER from 0 to 10 (e.g. "dor nivel 7" → painLevel: "7")
+- painTypes: array of keys from: throbbing, sharp, stabbing, burning, dull, pressure, tingling, cramping, radiating (e.g. ["sharp","burning"])
+- painPatterns: array of keys from: constant, intermittent, comes_goes, worsens_activity, worsens_rest, morning, night, weather (e.g. ["constant","morning"])
+- painImpact: array of keys from: sleep, work, mobility, daily_activities, mood, exercise, social, concentration (e.g. ["sleep","work"])
+- painLocation, painDuration, painNotes: free text strings
+- Fields ending in "Details" (e.g. unexplainedWeightLossDetails, nightPainDetails, traumaHistoryDetails, etc.) are for extra details about red flag symptoms the patient mentions. Extract relevant details into these fields.
+- All other fields: plain text strings.
+
+If the patient mentions medications, list them. If they mention allergies, list them. Keep medical terminology accurate. Only include fields that the patient actually mentioned. Language: ${language}.`;
         break;
       case "soap_note":
         systemPrompt = `You are a clinical transcription assistant. The therapist or patient is dictating a SOAP note. Extract into fields: subjective, objective, assessment, plan. Return a JSON object with these keys. Language: ${language}.`;

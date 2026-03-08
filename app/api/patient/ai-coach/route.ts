@@ -111,27 +111,34 @@ export async function GET() {
     // If no clinical data at all, return a generic welcome tip
     if (contextParts.length === 0) {
       const genericTip = isPt
-        ? "Complete seu screening médico e o quiz de perfil para receber dicas personalizadas baseadas na sua condição!"
-        : "Complete your medical screening and profile quiz to receive personalized tips based on your condition!";
-      const genericTitle = isPt ? "Comece sua jornada personalizada" : "Start your personalized journey";
+        ? "Complete seu screening médico e o quiz de perfil para receber dicas personalizadas de reabilitação, treino e performance!"
+        : "Complete your medical screening and profile quiz to receive personalized rehab, training, and performance tips!";
+      const genericTitle = isPt ? "Comece sua jornada de saúde e performance" : "Start your health & performance journey";
       return NextResponse.json({ tip: genericTip, title: genericTitle, cached: false, hasData: false });
     }
 
     const lang = isPt ? "Brazilian Portuguese" : "English";
-    const prompt = `You are an AI health coach for a physiotherapy patient named ${user.firstName || "the patient"}.
-Based on the following clinical data, generate ONE practical, encouraging daily health tip.
+    const prompt = `You are an AI health and performance coach for a user named ${user.firstName || "the patient"}.
+You support people across the full wellness spectrum: physiotherapy patients recovering from injury,
+rehabilitation programs, and individuals pursuing performance training or fitness improvement goals.
+Adapt your tone and advice based on the user's context — if they have clinical conditions, focus on
+safe recovery and rehabilitation; if they are healthy and training, focus on performance optimization,
+mobility, strength, and sport-specific coaching.
+
+Based on the following data, generate ONE practical, encouraging daily tip.
 
 ${contextParts.join("\n\n")}
 
 RULES:
 - Write in ${lang}
 - Keep it under 120 words
-- Be specific to their condition and treatment
+- Be specific to their condition, goals, or training context
 - Include ONE actionable suggestion they can do today
 - Be warm but professional
 - If they have a streak going, acknowledge it
 - If their archetype is known, tailor your communication style
 - Do NOT give medical diagnoses or contradict their treatment plan
+- For performance-focused users, suggest progressive training tips, mobility drills, or recovery strategies
 - Format: Return a JSON object with "title" (short 5-8 word title) and "tip" (the full message)`;
 
     let title = isPt ? "Dica do dia" : "Today's tip";
