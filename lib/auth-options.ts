@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
@@ -8,6 +9,11 @@ import { sysLog, logAudit, trackFailedLogin } from "@/lib/system-logger";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      allowDangerousEmailAccountLinking: true,
+    }),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -36,7 +42,6 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (!user) {
-            // Log failed login - unknown email
             sysLog.auth(`Login failed: unknown email ${credentials.email.toLowerCase()}`, {
               level: "WARN",
               details: { email: credentials.email.toLowerCase(), reason: "unknown_email" },
@@ -49,13 +54,16 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Account is deactivated. Please contact support.");
           }
 
+          if (!user.password) {
+            throw new Error("This account uses Google sign-in. Please use the 'Sign in with Google' button.");
+          }
+
           const isPasswordValid = await bcrypt.compare(
             credentials.password,
             user.password
           );
 
           if (!isPasswordValid) {
-            // Log failed login - wrong password
             sysLog.auth(`Login failed: wrong password for ${user.email}`, {
               level: "WARN",
               details: { email: user.email, userId: user.id, reason: "wrong_password" },
@@ -65,7 +73,6 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Invalid email or password");
           }
 
-          // Log successful login
           logAudit({
             userId: user.id,
             userEmail: user.email,
@@ -107,7 +114,6 @@ export const authOptions: NextAuthOptions = {
           };
         } catch (error: any) {
           console.error("[AUTH] Login error:", error?.message);
-          // Never expose raw DB/Prisma errors to the client
           if (
             error?.message?.includes("Can't reach") ||
             error?.message?.includes("Timed out") ||
@@ -126,8 +132,93 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async signIn({ user, account, profile }) {
+      // For Google OAuth: auto-create or link PATIENT account
+      if (account?.provider === "google" && profile?.email) {
+        try {
+          const email = profile.email.toLowerCase();
+          const existingUser = await prisma.user.findUnique({ where: { email } });
+
+          if (existingUser) {
+            // User exists — allow sign-in if active
+            if (!existingUser.isActive) {
+              return "/login?error=AccountDeactivated";
+            }
+            // Update profile image from Google if not set
+            if (!existingUser.profileImageUrl && (profile as any).picture) {
+              await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                  profileImageUrl: (profile as any).picture,
+                  emailVerified: existingUser.emailVerified || new Date(),
+                },
+              });
+            }
+            logAudit({
+              userId: existingUser.id,
+              userEmail: existingUser.email,
+              userRole: existingUser.role,
+              userName: `${existingUser.firstName} ${existingUser.lastName}`,
+              action: "LOGIN_SUCCESS",
+              entity: "User",
+              entityId: existingUser.id,
+              description: `${existingUser.firstName} ${existingUser.lastName} signed in via Google`,
+            });
+            return true;
+          }
+
+          // New user — create PATIENT account (Google-verified, no password needed)
+          const googleName = profile.name || "";
+          const nameParts = googleName.split(" ");
+          const firstName = (profile as any).given_name || nameParts[0] || "Patient";
+          const lastName = (profile as any).family_name || nameParts.slice(1).join(" ") || "";
+
+          const newUser = await prisma.user.create({
+            data: {
+              email,
+              password: "OAUTH_NO_PASSWORD",
+              firstName,
+              lastName,
+              role: "PATIENT",
+              isActive: true,
+              emailVerified: new Date(),
+              profileImageUrl: (profile as any).picture || null,
+              preferredLocale: "en-GB",
+              consentAcceptedAt: new Date(),
+            },
+          });
+
+          // Send welcome email (async, don't block sign-in)
+          try {
+            const { sendTemplatedEmail } = require("@/lib/email-templates");
+            const appUrl = process.env.NEXTAUTH_URL || "";
+            await sendTemplatedEmail("WELCOME", email, {
+              patientName: firstName,
+              portalUrl: `${appUrl}/dashboard`,
+              clinicPhone: "Contact us via the website",
+            }, newUser.id);
+          } catch {}
+
+          sysLog.auth(`New patient via Google: ${email}`, {
+            level: "INFO",
+            userId: newUser.id,
+            userEmail: email,
+            userRole: "PATIENT",
+            source: "auth",
+          });
+
+          return true;
+        } catch (err: any) {
+          console.error("[AUTH] Google signIn error:", err);
+          return "/login?error=OAuthError";
+        }
+      }
+
+      return true;
+    },
+    async jwt({ token, user, account, trigger }) {
+      // On initial sign-in from credentials provider
+      if (user && !account?.provider) {
         token.id = user.id;
         token.role = (user as any).role;
         token.firstName = (user as any).firstName;
@@ -137,6 +228,36 @@ export const authOptions: NextAuthOptions = {
         token.clinicSlug = (user as any).clinicSlug;
         token.permissions = (user as any).permissions;
       }
+
+      // On initial sign-in from Google OAuth — load user data from DB
+      if (account?.provider === "google" && token.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: (token.email as string).toLowerCase() },
+          include: {
+            clinic: { select: { id: true, name: true, slug: true } },
+          },
+        });
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+          token.firstName = dbUser.firstName;
+          token.lastName = dbUser.lastName;
+          token.clinicId = dbUser.clinicId;
+          token.clinicName = dbUser.clinic?.name || null;
+          token.clinicSlug = dbUser.clinic?.slug || null;
+          token.permissions = {
+            canManageUsers: dbUser.canManageUsers,
+            canManageAppointments: dbUser.canManageAppointments,
+            canManageArticles: dbUser.canManageArticles,
+            canManageSettings: dbUser.canManageSettings,
+            canViewAllPatients: dbUser.canViewAllPatients,
+            canCreateClinicalNotes: dbUser.canCreateClinicalNotes,
+            canManageFootScans: dbUser.canManageFootScans,
+            canManageOrders: dbUser.canManageOrders,
+          };
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {

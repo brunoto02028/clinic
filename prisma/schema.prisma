@@ -465,6 +465,7 @@ model User {
   patientPackages           PatientPackage[]        @relation("PatientPackageRecipient")
   grantedPackages           PatientPackage[]        @relation("PatientPackageGranter")
   consentAcceptedAt         DateTime?
+  socialMediaConsentAt      DateTime?
   preferredLocale           String                  @default("en-GB") // en-GB or pt-BR
   communicationPreference   String                  @default("EMAIL") // EMAIL, SMS, WHATSAPP
   consentLogs               ConsentLog[]            @relation("PatientConsentLogs")
@@ -828,6 +829,9 @@ model SiteSettings {
   
   // Patient Portal Configuration
   patientPortalJson String?  @db.Text  // JSON config for patient portal modules
+  
+  // Screening Configuration
+  screeningConfigJson String? @db.Text  // JSON config for screening form customization
   
   // Consent / Legal Texts
   consentTextsJson  String?  @db.Text  // JSON config for terms, privacy, liability texts
