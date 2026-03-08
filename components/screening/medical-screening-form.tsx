@@ -28,17 +28,29 @@ const STORAGE_KEY = "bpr_screening_draft";
 
 interface ScreeningData {
   unexplainedWeightLoss: boolean;
+  unexplainedWeightLossDetails: string;
   nightPain: boolean;
+  nightPainDetails: string;
   traumaHistory: boolean;
+  traumaHistoryDetails: string;
   neurologicalSymptoms: boolean;
+  neurologicalSymptomsDetails: string;
   bladderBowelDysfunction: boolean;
+  bladderBowelDysfunctionDetails: string;
   recentInfection: boolean;
+  recentInfectionDetails: string;
   cancerHistory: boolean;
+  cancerHistoryDetails: string;
   steroidUse: boolean;
+  steroidUseDetails: string;
   osteoporosisRisk: boolean;
+  osteoporosisRiskDetails: string;
   cardiovascularSymptoms: boolean;
+  cardiovascularSymptomsDetails: string;
   severeHeadache: boolean;
+  severeHeadacheDetails: string;
   dizzinessBalanceIssues: boolean;
+  dizzinessBalanceIssuesDetails: string;
   painLevel: number;
   painLocation: string;
   painTypes: string[];
@@ -147,17 +159,29 @@ const RED_FLAG_QUESTIONS = [
 
 const initialData: ScreeningData = {
   unexplainedWeightLoss: false,
+  unexplainedWeightLossDetails: "",
   nightPain: false,
+  nightPainDetails: "",
   traumaHistory: false,
+  traumaHistoryDetails: "",
   neurologicalSymptoms: false,
+  neurologicalSymptomsDetails: "",
   bladderBowelDysfunction: false,
+  bladderBowelDysfunctionDetails: "",
   recentInfection: false,
+  recentInfectionDetails: "",
   cancerHistory: false,
+  cancerHistoryDetails: "",
   steroidUse: false,
+  steroidUseDetails: "",
   osteoporosisRisk: false,
+  osteoporosisRiskDetails: "",
   cardiovascularSymptoms: false,
+  cardiovascularSymptomsDetails: "",
   severeHeadache: false,
+  severeHeadacheDetails: "",
   dizzinessBalanceIssues: false,
+  dizzinessBalanceIssuesDetails: "",
   painLevel: 0,
   painLocation: "",
   painTypes: [],
@@ -368,7 +392,15 @@ export default function MedicalScreeningForm() {
       {/* Voice Fill */}
       <VoiceFormFill
         context="medical_screening"
-        fields={["currentMedications", "allergies", "surgicalHistory", "otherConditions", "gpDetails", "emergencyContact", "emergencyContactPhone"]}
+        fields={[
+          "currentMedications", "allergies", "surgicalHistory", "otherConditions",
+          "gpDetails", "emergencyContact", "emergencyContactPhone",
+          "painLevel", "painLocation", "painTypes", "painPatterns", "painImpact", "painDuration", "painNotes",
+          "unexplainedWeightLossDetails", "nightPainDetails", "traumaHistoryDetails",
+          "neurologicalSymptomsDetails", "bladderBowelDysfunctionDetails", "recentInfectionDetails",
+          "cancerHistoryDetails", "steroidUseDetails", "osteoporosisRiskDetails",
+          "cardiovascularSymptomsDetails", "severeHeadacheDetails", "dizzinessBalanceIssuesDetails",
+        ]}
         language={locale}
         smartReview
         currentValues={{
@@ -379,26 +411,101 @@ export default function MedicalScreeningForm() {
           gpDetails: formData.gpDetails,
           emergencyContact: formData.emergencyContact,
           emergencyContactPhone: formData.emergencyContactPhone,
+          painLevel: formData.painLevel ? String(formData.painLevel) : "",
+          painLocation: formData.painLocation,
+          painTypes: (formData.painTypes || []).join(", "),
+          painPatterns: (formData.painPatterns || []).join(", "),
+          painImpact: (formData.painImpact || []).join(", "),
+          painDuration: formData.painDuration,
+          painNotes: formData.painNotes,
+          unexplainedWeightLossDetails: formData.unexplainedWeightLossDetails,
+          nightPainDetails: formData.nightPainDetails,
+          traumaHistoryDetails: formData.traumaHistoryDetails,
+          neurologicalSymptomsDetails: formData.neurologicalSymptomsDetails,
+          bladderBowelDysfunctionDetails: formData.bladderBowelDysfunctionDetails,
+          recentInfectionDetails: formData.recentInfectionDetails,
+          cancerHistoryDetails: formData.cancerHistoryDetails,
+          steroidUseDetails: formData.steroidUseDetails,
+          osteoporosisRiskDetails: formData.osteoporosisRiskDetails,
+          cardiovascularSymptomsDetails: formData.cardiovascularSymptomsDetails,
+          severeHeadacheDetails: formData.severeHeadacheDetails,
+          dizzinessBalanceIssuesDetails: formData.dizzinessBalanceIssuesDetails,
         }}
         fieldLabels={{
           currentMedications: isPt ? "Medicamentos Atuais" : "Current Medications",
           allergies: isPt ? "Alergias" : "Allergies",
-          surgicalHistory: isPt ? "Hist\u00f3rico Cir\u00fargico" : "Surgical History",
-          otherConditions: isPt ? "Outras Condi\u00e7\u00f5es" : "Other Conditions",
-          gpDetails: isPt ? "Detalhes do M\u00e9dico (GP)" : "GP Details",
-          emergencyContact: isPt ? "Contato de Emerg\u00eancia" : "Emergency Contact",
-          emergencyContactPhone: isPt ? "Telefone de Emerg\u00eancia" : "Emergency Phone",
+          surgicalHistory: isPt ? "Histórico Cirúrgico" : "Surgical History",
+          otherConditions: isPt ? "Outras Condições" : "Other Conditions",
+          gpDetails: isPt ? "Detalhes do Médico (GP)" : "GP Details",
+          emergencyContact: isPt ? "Contato de Emergência" : "Emergency Contact",
+          emergencyContactPhone: isPt ? "Telefone de Emergência" : "Emergency Phone",
+          painLevel: isPt ? "Nível de Dor (0-10)" : "Pain Level (0-10)",
+          painLocation: isPt ? "Localização da Dor" : "Pain Location",
+          painTypes: isPt ? "Tipos de Dor" : "Pain Types",
+          painPatterns: isPt ? "Padrão de Dor" : "Pain Patterns",
+          painImpact: isPt ? "Áreas Afetadas pela Dor" : "Pain Impact Areas",
+          painDuration: isPt ? "Duração da Dor" : "Pain Duration",
+          painNotes: isPt ? "Notas sobre a Dor" : "Pain Notes",
+          unexplainedWeightLossDetails: isPt ? "Detalhes: Perda de peso" : "Details: Weight loss",
+          nightPainDetails: isPt ? "Detalhes: Dor noturna" : "Details: Night pain",
+          traumaHistoryDetails: isPt ? "Detalhes: Trauma/Lesão" : "Details: Trauma/Injury",
+          neurologicalSymptomsDetails: isPt ? "Detalhes: Sintomas neurológicos" : "Details: Neurological symptoms",
+          bladderBowelDysfunctionDetails: isPt ? "Detalhes: Bexiga/Intestino" : "Details: Bladder/Bowel",
+          recentInfectionDetails: isPt ? "Detalhes: Infecção recente" : "Details: Recent infection",
+          cancerHistoryDetails: isPt ? "Detalhes: Histórico de câncer" : "Details: Cancer history",
+          steroidUseDetails: isPt ? "Detalhes: Uso de esteroides" : "Details: Steroid use",
+          osteoporosisRiskDetails: isPt ? "Detalhes: Risco de osteoporose" : "Details: Osteoporosis risk",
+          cardiovascularSymptomsDetails: isPt ? "Detalhes: Sintomas cardiovasculares" : "Details: Cardiovascular symptoms",
+          severeHeadacheDetails: isPt ? "Detalhes: Dor de cabeça severa" : "Details: Severe headache",
+          dizzinessBalanceIssuesDetails: isPt ? "Detalhes: Tontura/Equilíbrio" : "Details: Dizziness/Balance",
         }}
-        onFieldsFilled={(data) => {
+        onFieldsFilled={(data: any) => {
           setFormData((prev: ScreeningData) => {
             const updated = { ...prev };
-            if (data.currentMedications) updated.currentMedications = data.currentMedications;
-            if (data.allergies) updated.allergies = data.allergies;
-            if (data.surgicalHistory) updated.surgicalHistory = data.surgicalHistory;
-            if (data.otherConditions) updated.otherConditions = data.otherConditions;
-            if (data.gpDetails) updated.gpDetails = data.gpDetails;
-            if (data.emergencyContact) updated.emergencyContact = data.emergencyContact;
-            if (data.emergencyContactPhone) updated.emergencyContactPhone = data.emergencyContactPhone;
+            // Text fields
+            const textKeys = [
+              "currentMedications", "allergies", "surgicalHistory", "otherConditions",
+              "gpDetails", "emergencyContact", "emergencyContactPhone",
+              "painLocation", "painDuration", "painNotes",
+              "unexplainedWeightLossDetails", "nightPainDetails", "traumaHistoryDetails",
+              "neurologicalSymptomsDetails", "bladderBowelDysfunctionDetails", "recentInfectionDetails",
+              "cancerHistoryDetails", "steroidUseDetails", "osteoporosisRiskDetails",
+              "cardiovascularSymptomsDetails", "severeHeadacheDetails", "dizzinessBalanceIssuesDetails",
+            ];
+            for (const k of textKeys) {
+              if (data[k]) (updated as any)[k] = data[k];
+            }
+            // Pain level (number)
+            if (data.painLevel) {
+              const n = parseInt(data.painLevel, 10);
+              if (!isNaN(n) && n >= 0 && n <= 10) updated.painLevel = n;
+            }
+            // Pain multi-select arrays — AI returns comma-separated or array
+            const arrayKeys = ["painTypes", "painPatterns", "painImpact"] as const;
+            for (const k of arrayKeys) {
+              if (data[k]) {
+                const val = Array.isArray(data[k]) ? data[k] : String(data[k]).split(",").map((s: string) => s.trim()).filter(Boolean);
+                if (val.length > 0) updated[k] = val;
+              }
+            }
+            // Auto-set red flag booleans to true if details were provided
+            const rfMap: Record<string, string> = {
+              unexplainedWeightLossDetails: "unexplainedWeightLoss",
+              nightPainDetails: "nightPain",
+              traumaHistoryDetails: "traumaHistory",
+              neurologicalSymptomsDetails: "neurologicalSymptoms",
+              bladderBowelDysfunctionDetails: "bladderBowelDysfunction",
+              recentInfectionDetails: "recentInfection",
+              cancerHistoryDetails: "cancerHistory",
+              steroidUseDetails: "steroidUse",
+              osteoporosisRiskDetails: "osteoporosisRisk",
+              cardiovascularSymptomsDetails: "cardiovascularSymptoms",
+              severeHeadacheDetails: "severeHeadache",
+              dizzinessBalanceIssuesDetails: "dizzinessBalanceIssues",
+            };
+            for (const [detailKey, boolKey] of Object.entries(rfMap)) {
+              if (data[detailKey]) (updated as any)[boolKey] = true;
+            }
             return updated;
           });
         }}
@@ -471,9 +578,22 @@ export default function MedicalScreeningForm() {
                             : "bg-muted/50 border-muted-foreground/20 text-muted-foreground hover:bg-muted"
                         }`}
                       >
-                        {isPt ? "N\u00e3o" : "No"}
+                        {isPt ? "Não" : "No"}
                       </button>
                     </div>
+                    {val && (
+                      <div className="mt-2">
+                        <Textarea
+                          placeholder={isPt ? "Descreva mais detalhes..." : "Provide more details..."}
+                          value={(formData as any)[`${q.key}Details`] || ""}
+                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                            setFormData((prev: ScreeningData) => ({ ...prev, [`${q.key}Details`]: e.target.value }))
+                          }
+                          rows={2}
+                          className="text-sm bg-background/50 border-amber-500/20 focus:border-amber-500/40"
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}

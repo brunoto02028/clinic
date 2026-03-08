@@ -528,6 +528,20 @@ model MedicalScreening {
   severeHeadache          Boolean  @default(false)
   dizzinessBalanceIssues  Boolean  @default(false)
 
+  // Red Flag Details (text when answered Yes)
+  unexplainedWeightLossDetails   String?
+  nightPainDetails               String?
+  traumaHistoryDetails           String?
+  neurologicalSymptomsDetails    String?
+  bladderBowelDysfunctionDetails String?
+  recentInfectionDetails         String?
+  cancerHistoryDetails           String?
+  steroidUseDetails              String?
+  osteoporosisRiskDetails        String?
+  cardiovascularSymptomsDetails  String?
+  severeHeadacheDetails          String?
+  dizzinessBalanceIssuesDetails  String?
+
   // Pain Assessment
   painLevel               Int?     // 0-10 scale
   painLocation            String?  // free text description of pain location(s)
