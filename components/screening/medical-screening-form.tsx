@@ -369,9 +369,28 @@ export default function MedicalScreeningForm() {
       <VoiceFormFill
         context="medical_screening"
         fields={["currentMedications", "allergies", "surgicalHistory", "otherConditions", "gpDetails", "emergencyContact", "emergencyContactPhone"]}
-        language="pt-BR"
+        language={locale}
+        smartReview
+        currentValues={{
+          currentMedications: formData.currentMedications,
+          allergies: formData.allergies,
+          surgicalHistory: formData.surgicalHistory,
+          otherConditions: formData.otherConditions,
+          gpDetails: formData.gpDetails,
+          emergencyContact: formData.emergencyContact,
+          emergencyContactPhone: formData.emergencyContactPhone,
+        }}
+        fieldLabels={{
+          currentMedications: isPt ? "Medicamentos Atuais" : "Current Medications",
+          allergies: isPt ? "Alergias" : "Allergies",
+          surgicalHistory: isPt ? "Hist\u00f3rico Cir\u00fargico" : "Surgical History",
+          otherConditions: isPt ? "Outras Condi\u00e7\u00f5es" : "Other Conditions",
+          gpDetails: isPt ? "Detalhes do M\u00e9dico (GP)" : "GP Details",
+          emergencyContact: isPt ? "Contato de Emerg\u00eancia" : "Emergency Contact",
+          emergencyContactPhone: isPt ? "Telefone de Emerg\u00eancia" : "Emergency Phone",
+        }}
         onFieldsFilled={(data) => {
-          setFormData((prev) => {
+          setFormData((prev: ScreeningData) => {
             const updated = { ...prev };
             if (data.currentMedications) updated.currentMedications = data.currentMedications;
             if (data.allergies) updated.allergies = data.allergies;
@@ -416,31 +435,48 @@ export default function MedicalScreeningForm() {
                 {T("screening.redFlagsDesc")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {RED_FLAG_QUESTIONS.map((q, index) => (
-                <div
-                  key={q.key}
-                  className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
-                    formData[q.key as keyof ScreeningData] === true
-                      ? "bg-amber-500/10 border border-amber-500/20"
-                      : "bg-muted/50"
-                  }`}
-                >
-                  <Checkbox
-                    id={q.key}
-                    checked={formData[q.key as keyof ScreeningData] as boolean}
-                    onCheckedChange={(checked) =>
-                      handleCheckboxChange(q.key, checked as boolean)
-                    }
-                  />
-                  <Label
-                    htmlFor={q.key}
-                    className="font-normal cursor-pointer leading-relaxed"
+            <CardContent className="space-y-3">
+              {RED_FLAG_QUESTIONS.map((q) => {
+                const val = formData[q.key as keyof ScreeningData] as boolean;
+                return (
+                  <div
+                    key={q.key}
+                    className={`p-3 rounded-lg transition-colors ${
+                      val
+                        ? "bg-amber-500/10 border border-amber-500/20"
+                        : "bg-muted/50 border border-transparent"
+                    }`}
                   >
-                    {T(`screening.q.${q.key}`)}
-                  </Label>
-                </div>
-              ))}
+                    <p className="text-sm leading-relaxed mb-2">
+                      {T(`screening.q.${q.key}`)}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCheckboxChange(q.key, true)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                          val
+                            ? "bg-amber-500/25 border-amber-500/50 text-amber-300"
+                            : "bg-muted/50 border-muted-foreground/20 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {isPt ? "Sim" : "Yes"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCheckboxChange(q.key, false)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                          !val
+                            ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                            : "bg-muted/50 border-muted-foreground/20 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {isPt ? "N\u00e3o" : "No"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
 
               {hasRedFlags && (
                 <div className="mt-4 p-4 bg-amber-500/15 rounded-lg border border-amber-500/30">
