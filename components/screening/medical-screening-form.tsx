@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import {
@@ -11,6 +11,8 @@ import {
   Info,
   Lock,
   MessageSquare,
+  Activity,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -21,6 +23,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { VoiceFormFill } from "@/components/voice-form-fill";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
+
+const STORAGE_KEY = "bpr_screening_draft";
 
 interface ScreeningData {
   unexplainedWeightLoss: boolean;
@@ -35,6 +39,13 @@ interface ScreeningData {
   cardiovascularSymptoms: boolean;
   severeHeadache: boolean;
   dizzinessBalanceIssues: boolean;
+  painLevel: number;
+  painLocation: string;
+  painTypes: string[];
+  painPatterns: string[];
+  painImpact: string[];
+  painDuration: string;
+  painNotes: string;
   currentMedications: string;
   allergies: string;
   surgicalHistory: string;
@@ -44,6 +55,40 @@ interface ScreeningData {
   emergencyContactPhone: string;
   consentGiven: boolean;
 }
+
+const PAIN_TYPE_OPTIONS = [
+  { key: "throbbing", en: "Throbbing", pt: "Latejante" },
+  { key: "sharp", en: "Sharp", pt: "Aguda" },
+  { key: "stabbing", en: "Stabbing", pt: "Em facada" },
+  { key: "burning", en: "Burning", pt: "Queima\u00e7\u00e3o" },
+  { key: "dull", en: "Dull / Aching", pt: "Surda / Dolorida" },
+  { key: "pressure", en: "Pressure", pt: "Press\u00e3o" },
+  { key: "tingling", en: "Tingling / Pins & Needles", pt: "Formigamento" },
+  { key: "cramping", en: "Cramping", pt: "C\u00e3ibra" },
+  { key: "radiating", en: "Radiating", pt: "Irradiada" },
+];
+
+const PAIN_PATTERN_OPTIONS = [
+  { key: "constant", en: "Constant", pt: "Constante" },
+  { key: "intermittent", en: "Intermittent", pt: "Intermitente" },
+  { key: "comes_goes", en: "Comes and goes", pt: "Vai e volta" },
+  { key: "worsens_activity", en: "Worsens with activity", pt: "Piora com atividade" },
+  { key: "worsens_rest", en: "Worsens at rest", pt: "Piora em repouso" },
+  { key: "morning", en: "Worse in the morning", pt: "Pior pela manh\u00e3" },
+  { key: "night", en: "Worse at night", pt: "Pior \u00e0 noite" },
+  { key: "weather", en: "Affected by weather", pt: "Afetada pelo clima" },
+];
+
+const PAIN_IMPACT_OPTIONS = [
+  { key: "sleep", en: "Sleep", pt: "Sono" },
+  { key: "work", en: "Work", pt: "Trabalho" },
+  { key: "mobility", en: "Mobility", pt: "Mobilidade" },
+  { key: "daily_activities", en: "Daily activities", pt: "Atividades di\u00e1rias" },
+  { key: "mood", en: "Mood / Mental health", pt: "Humor / Sa\u00fade mental" },
+  { key: "exercise", en: "Exercise / Sport", pt: "Exerc\u00edcio / Esporte" },
+  { key: "social", en: "Social life", pt: "Vida social" },
+  { key: "concentration", en: "Concentration", pt: "Concentra\u00e7\u00e3o" },
+];
 
 const RED_FLAG_QUESTIONS = [
   {
@@ -113,6 +158,13 @@ const initialData: ScreeningData = {
   cardiovascularSymptoms: false,
   severeHeadache: false,
   dizzinessBalanceIssues: false,
+  painLevel: 0,
+  painLocation: "",
+  painTypes: [],
+  painPatterns: [],
+  painImpact: [],
+  painDuration: "",
+  painNotes: "",
   currentMedications: "",
   allergies: "",
   surgicalHistory: "",
@@ -136,6 +188,23 @@ export default function MedicalScreeningForm() {
   const [editRequested, setEditRequested] = useState(false);
   const [requestingEdit, setRequestingEdit] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serverLoadedRef = useRef(false);
+
+  // Auto-save to localStorage on every formData change (debounced 500ms)
+  useEffect(() => {
+    if (!mounted || !serverLoadedRef.current) return;
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+        const now = new Date();
+        setLastSaved(now.toLocaleTimeString(isPt ? "pt-BR" : "en-GB", { hour: "2-digit", minute: "2-digit" }));
+      } catch {}
+    }, 500);
+    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
+  }, [formData, mounted]);
 
   useEffect(() => {
     setMounted(true);
@@ -148,45 +217,83 @@ export default function MedicalScreeningForm() {
       const data = await response.json();
 
       if (data?.screening) {
+        const s = data.screening;
         setFormData({
-          unexplainedWeightLoss: data.screening.unexplainedWeightLoss ?? false,
-          nightPain: data.screening.nightPain ?? false,
-          traumaHistory: data.screening.traumaHistory ?? false,
-          neurologicalSymptoms: data.screening.neurologicalSymptoms ?? false,
-          bladderBowelDysfunction: data.screening.bladderBowelDysfunction ?? false,
-          recentInfection: data.screening.recentInfection ?? false,
-          cancerHistory: data.screening.cancerHistory ?? false,
-          steroidUse: data.screening.steroidUse ?? false,
-          osteoporosisRisk: data.screening.osteoporosisRisk ?? false,
-          cardiovascularSymptoms: data.screening.cardiovascularSymptoms ?? false,
-          severeHeadache: data.screening.severeHeadache ?? false,
-          dizzinessBalanceIssues: data.screening.dizzinessBalanceIssues ?? false,
-          currentMedications: data.screening.currentMedications ?? "",
-          allergies: data.screening.allergies ?? "",
-          surgicalHistory: data.screening.surgicalHistory ?? "",
-          otherConditions: data.screening.otherConditions ?? "",
-          gpDetails: data.screening.gpDetails ?? "",
-          emergencyContact: data.screening.emergencyContact ?? "",
-          emergencyContactPhone: data.screening.emergencyContactPhone ?? "",
-          consentGiven: data.screening.consentGiven ?? false,
+          unexplainedWeightLoss: s.unexplainedWeightLoss ?? false,
+          nightPain: s.nightPain ?? false,
+          traumaHistory: s.traumaHistory ?? false,
+          neurologicalSymptoms: s.neurologicalSymptoms ?? false,
+          bladderBowelDysfunction: s.bladderBowelDysfunction ?? false,
+          recentInfection: s.recentInfection ?? false,
+          cancerHistory: s.cancerHistory ?? false,
+          steroidUse: s.steroidUse ?? false,
+          osteoporosisRisk: s.osteoporosisRisk ?? false,
+          cardiovascularSymptoms: s.cardiovascularSymptoms ?? false,
+          severeHeadache: s.severeHeadache ?? false,
+          dizzinessBalanceIssues: s.dizzinessBalanceIssues ?? false,
+          painLevel: s.painLevel ?? 0,
+          painLocation: s.painLocation ?? "",
+          painTypes: Array.isArray(s.painTypes) ? s.painTypes : [],
+          painPatterns: Array.isArray(s.painPatterns) ? s.painPatterns : [],
+          painImpact: Array.isArray(s.painImpact) ? s.painImpact : [],
+          painDuration: s.painDuration ?? "",
+          painNotes: s.painNotes ?? "",
+          currentMedications: s.currentMedications ?? "",
+          allergies: s.allergies ?? "",
+          surgicalHistory: s.surgicalHistory ?? "",
+          otherConditions: s.otherConditions ?? "",
+          gpDetails: s.gpDetails ?? "",
+          emergencyContact: s.emergencyContact ?? "",
+          emergencyContactPhone: s.emergencyContactPhone ?? "",
+          consentGiven: s.consentGiven ?? false,
         });
         setHasExisting(true);
-        setIsLocked(data.screening.isLocked ?? false);
-        setEditRequested(!!data.screening.editRequestedAt && !data.screening.editApprovedAt);
+        setIsLocked(s.isLocked ?? false);
+        setEditRequested(!!s.editRequestedAt && !s.editApprovedAt);
+        // Server data loaded — clear any stale localStorage draft
+        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      } else {
+        // No server data — try to restore from localStorage draft
+        try {
+          const draft = localStorage.getItem(STORAGE_KEY);
+          if (draft) {
+            const parsed = JSON.parse(draft);
+            setFormData((prev: ScreeningData) => ({ ...prev, ...parsed }));
+            setLastSaved(isPt ? "Rascunho restaurado" : "Draft restored");
+          }
+        } catch {}
       }
     } catch (error) {
       console.error("Error fetching screening:", error);
+      // On network error, try to restore localStorage draft
+      try {
+        const draft = localStorage.getItem(STORAGE_KEY);
+        if (draft) {
+          const parsed = JSON.parse(draft);
+          setFormData((prev: ScreeningData) => ({ ...prev, ...parsed }));
+          setLastSaved(isPt ? "Rascunho restaurado (offline)" : "Draft restored (offline)");
+        }
+      } catch {}
     } finally {
+      serverLoadedRef.current = true;
       setLoading(false);
     }
   };
 
   const handleCheckboxChange = (key: string, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, [key]: checked }));
+    setFormData((prev: ScreeningData) => ({ ...prev, [key]: checked }));
   };
 
   const handleInputChange = (key: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+    setFormData((prev: ScreeningData) => ({ ...prev, [key]: value }));
+  };
+
+  const handleMultiToggle = (field: "painTypes" | "painPatterns" | "painImpact", key: string) => {
+    setFormData((prev: ScreeningData) => {
+      const arr = prev[field] as string[];
+      const newArr = arr.includes(key) ? arr.filter((k) => k !== key) : [...arr, key];
+      return { ...prev, [field]: newArr };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,6 +311,9 @@ export default function MedicalScreeningForm() {
 
       if (response.ok) {
         setHasExisting(true);
+        // Clear localStorage draft on successful save
+        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+        setLastSaved(null);
         toast({
           title: isPt ? "Triagem Salva" : "Screening Saved",
           description: isPt ? "Sua triagem médica foi salva com sucesso." : "Your medical screening has been saved successfully.",
@@ -239,7 +349,15 @@ export default function MedicalScreeningForm() {
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{T("screening.title")}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{T("screening.title")}</h1>
+          {lastSaved && (
+            <div className="flex items-center gap-1.5 text-xs text-emerald-400/70">
+              <Save className="h-3 w-3" />
+              <span>{lastSaved}</span>
+            </div>
+          )}
+        </div>
         <p className="text-muted-foreground text-sm mt-1">
           {T("screening.subtitle")}
         </p>
@@ -339,6 +457,156 @@ export default function MedicalScreeningForm() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Pain Assessment */}
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-rose-500" />
+                {isPt ? "Avaliação da Dor" : "Pain Assessment"}
+              </CardTitle>
+              <CardDescription>
+                {isPt
+                  ? "Selecione todas as opções que se aplicam. Você pode escolher mais de uma."
+                  : "Select all options that apply. You can choose more than one."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Pain Level */}
+              <div>
+                <Label className="mb-3 block">
+                  {isPt ? "Nível de Dor" : "Pain Level"}: <span className="font-bold text-lg ml-1">{formData.painLevel}/10</span>
+                </Label>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={formData.painLevel}
+                  onChange={(e) => setFormData((prev: ScreeningData) => ({ ...prev, painLevel: parseInt(e.target.value) }))}
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                  style={{
+                    background: `linear-gradient(to right, #22c55e ${formData.painLevel * 10}%, #334155 ${formData.painLevel * 10}%)`,
+                  }}
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-0.5">
+                  <span>{isPt ? "Sem dor" : "No pain"}</span>
+                  <span>{isPt ? "Moderada" : "Moderate"}</span>
+                  <span>{isPt ? "Pior possível" : "Worst possible"}</span>
+                </div>
+              </div>
+
+              {/* Pain Location */}
+              <div>
+                <Label htmlFor="painLocation">{isPt ? "Localização da Dor" : "Pain Location"}</Label>
+                <Input
+                  id="painLocation"
+                  placeholder={isPt ? "Ex: Lombar, ombro direito, joelho esquerdo..." : "E.g. Lower back, right shoulder, left knee..."}
+                  value={formData.painLocation}
+                  onChange={(e) => handleInputChange("painLocation", e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
+
+              {/* Pain Types — Multi-select chips */}
+              <div>
+                <Label className="mb-2 block">{isPt ? "Tipo de Dor" : "Pain Type"} <span className="text-xs text-muted-foreground font-normal">({isPt ? "selecione todos que se aplicam" : "select all that apply"})</span></Label>
+                <div className="flex flex-wrap gap-2">
+                  {PAIN_TYPE_OPTIONS.map((opt) => {
+                    const selected = formData.painTypes.includes(opt.key);
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => handleMultiToggle("painTypes", opt.key)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                          selected
+                            ? "bg-rose-500/20 border-rose-500/40 text-rose-300"
+                            : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        {isPt ? opt.pt : opt.en}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pain Patterns — Multi-select chips */}
+              <div>
+                <Label className="mb-2 block">{isPt ? "Padrão da Dor" : "Pain Pattern"} <span className="text-xs text-muted-foreground font-normal">({isPt ? "selecione todos que se aplicam" : "select all that apply"})</span></Label>
+                <div className="flex flex-wrap gap-2">
+                  {PAIN_PATTERN_OPTIONS.map((opt) => {
+                    const selected = formData.painPatterns.includes(opt.key);
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => handleMultiToggle("painPatterns", opt.key)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                          selected
+                            ? "bg-violet-500/20 border-violet-500/40 text-violet-300"
+                            : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        {isPt ? opt.pt : opt.en}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pain Impact — Multi-select chips */}
+              <div>
+                <Label className="mb-2 block">{isPt ? "A dor afeta" : "Pain affects"} <span className="text-xs text-muted-foreground font-normal">({isPt ? "selecione todos que se aplicam" : "select all that apply"})</span></Label>
+                <div className="flex flex-wrap gap-2">
+                  {PAIN_IMPACT_OPTIONS.map((opt) => {
+                    const selected = formData.painImpact.includes(opt.key);
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => handleMultiToggle("painImpact", opt.key)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                          selected
+                            ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                            : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        {isPt ? opt.pt : opt.en}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pain Duration */}
+              <div>
+                <Label htmlFor="painDuration">{isPt ? "Duração da Dor" : "Pain Duration"}</Label>
+                <Input
+                  id="painDuration"
+                  placeholder={isPt ? "Ex: 2 semanas, 3 meses, desde 2023..." : "E.g. 2 weeks, 3 months, since 2023..."}
+                  value={formData.painDuration}
+                  onChange={(e) => handleInputChange("painDuration", e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
+
+              {/* Pain Notes */}
+              <div>
+                <Label htmlFor="painNotes">{isPt ? "Observações sobre a Dor" : "Additional Pain Notes"}</Label>
+                <Textarea
+                  id="painNotes"
+                  placeholder={isPt ? "Descreva qualquer informação adicional sobre sua dor..." : "Describe any additional information about your pain..."}
+                  value={formData.painNotes}
+                  onChange={(e) => handleInputChange("painNotes", e.target.value)}
+                  className="mt-1.5"
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
