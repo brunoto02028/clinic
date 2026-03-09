@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, ReactNode } from "react";
+import { PullToRefresh } from "@/components/dashboard/pull-to-refresh";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -295,7 +296,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 sidebar-futuristic transform transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 h-full w-64 sidebar-futuristic transform transition-transform duration-300 lg:translate-x-0 pt-[env(safe-area-inset-top)] ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -331,7 +332,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
                 : pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
 
               return (
-                <Link key={item.href} href={linkHref}>
+                <Link key={item.href} href={linkHref} onClick={() => setSidebarOpen(false)}>
                   <div
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg sidebar-nav-item ${
                       isActive
@@ -360,7 +361,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
                   const isLocked = item.locked === true;
                   const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
                   return (
-                    <Link key={item.href} href={item.href}>
+                    <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}>
                       <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg sidebar-nav-item ${
                         isActive
                           ? "sidebar-nav-item-active text-primary"
@@ -433,8 +434,8 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 h-16 header-futuristic">
-          <div className="flex items-center justify-between h-full px-4 lg:px-8">
+        <header className="sticky top-0 z-30 header-futuristic pt-[env(safe-area-inset-top)]">
+          <div className="flex items-center justify-between h-16 px-4 lg:px-8">
             <Button
               variant="ghost"
               size="icon"
@@ -532,6 +533,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
         {/* Page content */}
         <main className="p-4 lg:p-8 pb-24 lg:pb-8">
+          <PullToRefresh>
           <MobilePageHeader />
           {/* Consent gate: block everything except the consent page itself — skip during impersonation so admin can navigate */}
           {consentRequired && pathname !== "/dashboard/consent" && !isTherapist && !isPatientPreview && !isImpersonating ? (
@@ -555,6 +557,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
           ) : (
             <ModuleGate>{children}</ModuleGate>
           )}
+          </PullToRefresh>
         </main>
       </div>
 

@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       if (!selectedTherapistId) {
         const therapist = await prisma.user.findFirst({
           where: {
-            role: { in: ["ADMIN", "THERAPIST"] },
+            role: { in: ["ADMIN", "THERAPIST", "SUPERADMIN"] },
           },
         });
         if (!therapist) {

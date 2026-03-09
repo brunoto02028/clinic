@@ -42,6 +42,7 @@ interface AssessmentData {
 interface CrossSessionComparisonProps {
   assessments: AssessmentData[];
   currentId?: string;
+  locale?: string;
 }
 
 // ========== Helpers ==========
@@ -161,7 +162,8 @@ function ImagePair({
 
 // ========== Main Component ==========
 
-export function CrossSessionComparison({ assessments, currentId }: CrossSessionComparisonProps) {
+export function CrossSessionComparison({ assessments, currentId, locale }: CrossSessionComparisonProps) {
+  const isPt = locale === "pt-BR";
   const sorted = useMemo(
     () => [...assessments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [assessments]
@@ -182,8 +184,8 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
       <Card>
         <CardContent className="py-8 text-center">
           <ArrowLeftRight className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Need at least 2 assessments to compare.</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Complete another assessment to unlock comparison.</p>
+          <p className="text-sm text-muted-foreground">{isPt ? "Precisa de pelo menos 2 avaliações para comparar." : "Need at least 2 assessments to compare."}</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">{isPt ? "Complete outra avaliação para desbloquear a comparação." : "Complete another assessment to unlock comparison."}</p>
         </CardContent>
       </Card>
     );
@@ -199,7 +201,7 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <ArrowLeftRight className="w-4 h-4 text-primary" />
-            Compare Assessments
+            {isPt ? "Comparar Avaliações" : "Compare Assessments"}
           </CardTitle>
           {overallDelta !== null && (
             <Badge
@@ -213,11 +215,11 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
               }`}
             >
               {overallDelta > 0 ? (
-                <><TrendingUp className="w-3 h-3 mr-1" />+{overallDelta} pts improvement</>
+                <><TrendingUp className="w-3 h-3 mr-1" />+{overallDelta} {isPt ? "pts melhoria" : "pts improvement"}</>
               ) : overallDelta < 0 ? (
-                <><TrendingDown className="w-3 h-3 mr-1" />{overallDelta} pts decline</>
+                <><TrendingDown className="w-3 h-3 mr-1" />{overallDelta} {isPt ? "pts declínio" : "pts decline"}</>
               ) : (
-                <><Minus className="w-3 h-3 mr-1" />No change</>
+                <><Minus className="w-3 h-3 mr-1" />{isPt ? "Sem mudança" : "No change"}</>
               )}
             </Badge>
           )}
@@ -263,7 +265,7 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
               viewMode === "scores" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Scores
+            {isPt ? "Pontuações" : "Scores"}
           </button>
           <button
             onClick={() => setViewMode("images")}
@@ -271,7 +273,7 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
               viewMode === "images" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Images
+            {isPt ? "Imagens" : "Images"}
           </button>
         </div>
 
@@ -282,7 +284,7 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
               <span className="flex-1" />
               <span className="w-5" />
               <span className="w-10 text-center">{formatDate(assessA.date).split(" ").slice(0, 2).join(" ")}</span>
-              <span className="w-16 text-center">Change</span>
+              <span className="w-16 text-center">{isPt ? "Mudança" : "Change"}</span>
               <span className="w-10 text-center">{formatDate(assessB.date).split(" ").slice(0, 2).join(" ")}</span>
             </div>
 
@@ -298,7 +300,7 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
             {(assessA.segmentScores || assessB.segmentScores) && (
               <div className="rounded-lg bg-muted/50 border px-3 py-1">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide py-1.5 border-b">
-                  Body Segments
+                  {isPt ? "Segmentos Corporais" : "Body Segments"}
                 </p>
                 {SEGMENTS.map((seg) => (
                   <ScoreRow
@@ -316,7 +318,7 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-lg bg-muted/50 border p-2.5">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Findings ({formatDate(assessA.date).split(" ").slice(0, 2).join(" ")})
+                  {isPt ? "Achados" : "Findings"} ({formatDate(assessA.date).split(" ").slice(0, 2).join(" ")})
                 </p>
                 <div className="space-y-1">
                   {(assessA.aiFindings || []).slice(0, 5).map((f, i) => (
@@ -328,13 +330,13 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
                     </div>
                   ))}
                   {(!assessA.aiFindings || assessA.aiFindings.length === 0) && (
-                    <p className="text-[10px] text-muted-foreground/50">No findings</p>
+                    <p className="text-[10px] text-muted-foreground/50">{isPt ? "Sem achados" : "No findings"}</p>
                   )}
                 </div>
               </div>
               <div className="rounded-lg bg-muted/50 border p-2.5">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">
-                  Findings ({formatDate(assessB.date).split(" ").slice(0, 2).join(" ")})
+                  {isPt ? "Achados" : "Findings"} ({formatDate(assessB.date).split(" ").slice(0, 2).join(" ")})
                 </p>
                 <div className="space-y-1">
                   {(assessB.aiFindings || []).slice(0, 5).map((f, i) => (
@@ -346,7 +348,7 @@ export function CrossSessionComparison({ assessments, currentId }: CrossSessionC
                     </div>
                   ))}
                   {(!assessB.aiFindings || assessB.aiFindings.length === 0) && (
-                    <p className="text-[10px] text-muted-foreground/50">No findings</p>
+                    <p className="text-[10px] text-muted-foreground/50">{isPt ? "Sem achados" : "No findings"}</p>
                   )}
                 </div>
               </div>

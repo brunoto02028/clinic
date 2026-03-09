@@ -16,6 +16,8 @@ import {
   Star,
   CheckCircle2,
   ListChecks,
+  Play,
+  Video,
 } from "lucide-react";
 
 // ========== Types ==========
@@ -31,6 +33,8 @@ interface Exercise {
   instructions: string;
   benefits: string;
   musclesTargeted: string[];
+  videoUrl?: string;
+  thumbnailUrl?: string;
 }
 
 interface CorrectiveExercisesProps {
@@ -126,6 +130,7 @@ function ExerciseCard({ exercise, index }: { exercise: Exercise; index: number }
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             Addresses: <span className="text-foreground/70">{exercise.finding}</span>
+            {exercise.videoUrl && <Badge variant="outline" className="ml-2 text-[9px] px-1 py-0 text-blue-400 border-blue-400/30 gap-0.5"><Video className="h-2.5 w-2.5" />Video</Badge>}
           </p>
         </div>
 
@@ -187,6 +192,19 @@ function ExerciseCard({ exercise, index }: { exercise: Exercise; index: number }
               {exercise.instructions}
             </p>
           </div>
+
+          {/* Video */}
+          {exercise.videoUrl && (
+            <div className="rounded-lg overflow-hidden border bg-black/5">
+              <video
+                src={exercise.videoUrl}
+                controls
+                preload="metadata"
+                poster={exercise.thumbnailUrl || undefined}
+                className="w-full max-h-[240px] object-contain"
+              />
+            </div>
+          )}
 
           {/* Benefits */}
           <div className="rounded-lg bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-200 dark:border-emerald-500/10 p-3">

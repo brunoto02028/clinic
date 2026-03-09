@@ -16,9 +16,19 @@ import { AnatomicalAvatar, MuscleHighlight } from "@/components/body-assessment/
 import { PosturalComparisonView } from "@/components/body-assessment/postural-comparison-view";
 import { BodyCapture, BodyCaptureResult } from "@/components/body-assessment/body-capture";
 import { SegmentScores } from "@/components/body-assessment/segment-scores";
+import { TreatmentPriorities } from "@/components/body-assessment/treatment-priorities";
+import { PatientReportSummary } from "@/components/body-assessment/patient-report-summary";
 import { FindingCards } from "@/components/body-assessment/finding-cards";
 import { CorrectiveExercises } from "@/components/body-assessment/corrective-exercises";
+import { enrichExercisesWithVideos } from "@/lib/match-exercise-videos";
 import { ProgressTracker } from "@/components/body-assessment/progress-tracker";
+import { AssessmentProgressChart } from "@/components/body-assessment/assessment-progress-chart";
+import { InteractiveBodyModel } from "@/components/body-assessment/interactive-body-model";
+import dynamic from "next/dynamic";
+const BodyViewer3D = dynamic(() => import("@/components/body-assessment/body-viewer-3d").then(m => m.BodyViewer3D), { ssr: false, loading: () => <div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" /></div> });
+import { PostureAnalysisPanel } from "@/components/body-assessment/posture-analysis-panel";
+import { BeforeAfterAngles } from "@/components/body-assessment/before-after-angles";
+import { PostureStages } from "@/components/body-assessment/posture-stages";
 import { CrossSessionComparison } from "@/components/body-assessment/cross-session-comparison";
 import { SkeletonAnalysisOverlay } from "@/components/body-assessment/skeleton-analysis-overlay";
 import { GaitMetrics } from "@/components/body-assessment/gait-metrics";
@@ -50,12 +60,15 @@ import {
   Target,
   FileDown,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
+import { useSession } from "next-auth/react";
 import AssessmentGate from "@/components/dashboard/assessment-gate";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
 import { HealthMetricsCard } from "@/components/body-assessment/health-metrics-card";
+import { FormattedAISummary } from "@/components/body-assessment/formatted-ai-summary";
 
 interface Assessment {
   id: string;
@@ -226,7 +239,11 @@ function PatientBodyAssessmentsContent() {
   const [bodyMapView, setBodyMapView] = useState<"front" | "back">("front");
   const [detailTab, setDetailTab] = useState<"overview" | "analysis" | "exercises" | "progress" | "videos">("overview");
   const [skeletonView, setSkeletonView] = useState<"front" | "back" | "left" | "right">("front");
+  const [enrichedExercises, setEnrichedExercises] = useState<any[] | null>(null);
+  const [enrichingVideos, setEnrichingVideos] = useState(false);
   const { toast } = useToast();
+  const { data: session } = useSession();
+  const isAdmin = ["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session?.user as any)?.role || "");
 
   useEffect(() => {
     fetchAssessments();
@@ -242,6 +259,23 @@ function PatientBodyAssessmentsContent() {
       console.error("Error:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteAssessment = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!confirm(isPt ? "Deletar esta avaliação corporal? Isso não pode ser desfeito." : "Delete this body assessment? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/body-assessments/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast({ title: isPt ? "Deletado" : "Deleted", description: isPt ? "Avaliação deletada." : "Assessment deleted." });
+        if (selectedAssessment?.id === id) { setShowDetail(false); setSelectedAssessment(null); }
+        fetchAssessments();
+      } else {
+        toast({ title: isPt ? "Erro" : "Error", description: isPt ? "Falha ao deletar." : "Failed to delete.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: isPt ? "Erro" : "Error", description: isPt ? "Falha ao deletar." : "Failed to delete.", variant: "destructive" });
     }
   };
 
@@ -382,6 +416,17 @@ function PatientBodyAssessmentsContent() {
     );
   }
 
+  // Auto-enrich exercises with library videos when detail is opened
+  useEffect(() => {
+    if (showDetail && selectedAssessment?.correctiveExercises?.length && !enrichedExercises && isAdmin) {
+      setEnrichingVideos(true);
+      enrichExercisesWithVideos(selectedAssessment.correctiveExercises)
+        .then(setEnrichedExercises)
+        .finally(() => setEnrichingVideos(false));
+    }
+    if (!showDetail) setEnrichedExercises(null);
+  }, [showDetail, selectedAssessment?.id]);
+
   // Detail view
   if (showDetail && selectedAssessment) {
     const a = selectedAssessment;
@@ -509,6 +554,17 @@ function PatientBodyAssessmentsContent() {
               {isPt ? "Baixar PDF" : "Download PDF"}
             </Button>
           )}
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs gap-1 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              onClick={() => deleteAssessment(a.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {isPt ? "Deletar" : "Delete"}
+            </Button>
+          )}
         </div>
 
         {/* Overall Scores Bar */}
@@ -545,6 +601,95 @@ function PatientBodyAssessmentsContent() {
         {/* ===== OVERVIEW TAB ===== */}
         {detailTab === "overview" && (
           <div className="space-y-6">
+            {/* Patient Report Summary */}
+            <PatientReportSummary
+              patientName={a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : undefined}
+              assessmentDate={a.createdAt}
+              assessmentNumber={a.assessmentNumber}
+              overallScore={a.overallScore}
+              postureScore={a.postureScore}
+              symmetryScore={a.symmetryScore}
+              mobilityScore={a.mobilityScore}
+              segmentScores={a.segmentScores}
+              aiFindings={a.aiFindings}
+              locale={locale}
+            />
+
+            {/* Treatment Priorities */}
+            {a.segmentScores && (
+              <TreatmentPriorities
+                segmentScores={a.segmentScores}
+                aiFindings={a.aiFindings}
+                overallScore={a.overallScore}
+                locale={locale}
+              />
+            )}
+
+            {/* 3D Anatomical Model (React Three Fiber) */}
+            {a.segmentScores && (
+              <BodyViewer3D
+                segmentScores={a.segmentScores}
+                aiFindings={a.aiFindings}
+                postureAnalysis={a.postureAnalysis}
+                assessmentId={a.id}
+                patientName={a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : null}
+                assessmentDate={a.createdAt ? new Date(a.createdAt).toISOString() : null}
+                locale={locale}
+              />
+            )}
+
+            {/* Interactive Body Model */}
+            {a.segmentScores && (
+              <InteractiveBodyModel
+                segmentScores={a.segmentScores}
+                aiFindings={a.aiFindings}
+                locale={locale}
+              />
+            )}
+
+            {/* ── Multi-View Posture Analysis Panel ── */}
+            {a.postureAnalysis && (a.frontImageUrl || a.backImageUrl || a.leftImageUrl || a.rightImageUrl) && (
+              <PostureAnalysisPanel
+                frontImageUrl={a.frontImageUrl}
+                backImageUrl={a.backImageUrl}
+                leftImageUrl={a.leftImageUrl}
+                rightImageUrl={a.rightImageUrl}
+                frontLandmarks={a.frontLandmarks}
+                backLandmarks={a.backLandmarks}
+                leftLandmarks={a.leftLandmarks}
+                rightLandmarks={a.rightLandmarks}
+                deviationLabels={a.deviationLabels || []}
+                idealComparison={a.idealComparison || []}
+                postureAnalysis={a.postureAnalysis}
+                overallScore={a.overallScore}
+                postureScore={a.postureScore}
+                symmetryScore={a.symmetryScore}
+                patientName={a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : undefined}
+                assessmentNumber={a.assessmentNumber}
+                assessmentDate={a.createdAt}
+                locale={locale}
+              />
+            )}
+
+            {/* ── 3 Stages of Posture ── */}
+            {a.postureAnalysis && (
+              <PostureStages
+                overallScore={a.overallScore}
+                postureScore={a.postureScore}
+                postureAnalysis={a.postureAnalysis}
+                locale={locale}
+                frontImageUrl={a.frontImageUrl}
+                backImageUrl={a.backImageUrl}
+                leftImageUrl={a.leftImageUrl}
+                rightImageUrl={a.rightImageUrl}
+                frontLandmarks={a.frontLandmarks}
+                backLandmarks={a.backLandmarks}
+                leftLandmarks={a.leftLandmarks}
+                rightLandmarks={a.rightLandmarks}
+              />
+            )}
+
+
             {/* Segment Scores + Body Map Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Segment Scores */}
@@ -616,7 +761,7 @@ function PatientBodyAssessmentsContent() {
                     {T("bodyAssessment.summary")}
                   </CardTitle>
                 </CardHeader>
-                <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{a.aiSummary}</p></CardContent>
+                <CardContent><FormattedAISummary text={a.aiSummary} locale={locale} /></CardContent>
               </Card>
             )}
 
@@ -800,7 +945,7 @@ function PatientBodyAssessmentsContent() {
                     {T("bodyAssessment.recommendations")}
                   </CardTitle>
                 </CardHeader>
-                <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{a.aiRecommendations}</p></CardContent>
+                <CardContent><FormattedAISummary text={a.aiRecommendations} locale={locale} /></CardContent>
               </Card>
             )}
           </div>
@@ -809,7 +954,7 @@ function PatientBodyAssessmentsContent() {
         {/* ===== EXERCISES TAB ===== */}
         {detailTab === "exercises" && hasExercises && (
           <div className="space-y-6">
-            <CorrectiveExercises exercises={a.correctiveExercises!} />
+            <CorrectiveExercises exercises={enrichedExercises || a.correctiveExercises!} />
 
             {/* Show which findings each exercise addresses */}
             {a.aiFindings && a.aiFindings.length > 0 && (
@@ -894,9 +1039,33 @@ function PatientBodyAssessmentsContent() {
         {/* ===== PROGRESS TAB ===== */}
         {detailTab === "progress" && progressData.length > 1 && (
           <div className="space-y-6">
+            <AssessmentProgressChart assessments={assessments} locale={locale} />
             <ProgressTracker assessments={progressData} />
             {comparisonData.length >= 2 && (
-              <CrossSessionComparison assessments={comparisonData} currentId={a.id} />
+              <CrossSessionComparison assessments={comparisonData} currentId={a.id} locale={locale} />
+            )}
+            {/* Before/After with Angle Measurements */}
+            {assessments.filter(x => x.frontImageUrl || x.backImageUrl).length >= 2 && (
+              <BeforeAfterAngles
+                assessments={assessments
+                  .filter(x => x.frontImageUrl || x.backImageUrl)
+                  .map(x => ({
+                    id: x.id,
+                    date: x.createdAt,
+                    assessmentNumber: x.assessmentNumber,
+                    overallScore: x.overallScore,
+                    frontImageUrl: x.frontImageUrl,
+                    backImageUrl: x.backImageUrl,
+                    leftImageUrl: x.leftImageUrl,
+                    rightImageUrl: x.rightImageUrl,
+                    frontLandmarks: x.frontLandmarks,
+                    backLandmarks: x.backLandmarks,
+                    leftLandmarks: x.leftLandmarks,
+                    rightLandmarks: x.rightLandmarks,
+                  }))}
+                currentId={a.id}
+                locale={locale}
+              />
             )}
           </div>
         )}
@@ -1110,6 +1279,11 @@ function PatientBodyAssessmentsContent() {
                         <Eye className="h-3.5 w-3.5 mr-1" />
                         {isPt ? "Ver" : "View"}
                       </Button>
+                      {isAdmin && (
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={(e) => deleteAssessment(a.id, e)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

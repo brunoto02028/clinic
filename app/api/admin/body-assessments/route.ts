@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     // Generate capture token (for QR/link-based mobile capture)
     const captureToken = crypto.randomBytes(32).toString("hex");
-    const captureTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const captureTokenExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     const assessment = await (prisma as any).bodyAssessment.create({
       data: {

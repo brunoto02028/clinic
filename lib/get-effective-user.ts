@@ -19,6 +19,9 @@ export async function getEffectiveUser(): Promise<{
   const realUserId = (session.user as any).id;
   const realRole = (session.user as any).role;
 
+  // Guard: if session has no user ID, treat as unauthenticated
+  if (!realUserId) return null;
+
   const headerList = headers();
   const headerUserId = headerList.get("x-user-id");
   const headerRole = headerList.get("x-user-role");

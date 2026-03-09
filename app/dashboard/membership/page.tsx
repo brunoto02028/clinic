@@ -8,6 +8,7 @@ import {
   Loader2,
   CreditCard,
   ArrowRight,
+  ArrowLeft,
   Star,
   Zap,
   Shield,
@@ -138,6 +139,11 @@ export default function PatientMembershipPage() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
+      {/* Back button for PWA / mobile */}
+      <Button variant="ghost" size="sm" className="lg:hidden gap-1 text-muted-foreground -mb-4" onClick={() => router.push("/dashboard")}>
+        <ArrowLeft className="h-4 w-4" /> {isPt ? "Voltar" : "Back"}
+      </Button>
+
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">

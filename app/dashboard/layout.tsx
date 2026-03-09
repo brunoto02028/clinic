@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
@@ -30,7 +31,9 @@ export default async function DashboardRootLayout({
     <>
       <ImpersonationBanner />
       <div className={isImpersonating ? "pt-10" : ""}>
-        <DashboardLayout>{children}</DashboardLayout>
+        <Suspense fallback={null}>
+          <DashboardLayout>{children}</DashboardLayout>
+        </Suspense>
       </div>
     </>
   );

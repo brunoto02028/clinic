@@ -63,6 +63,7 @@ export async function PUT(
 
     const body = await request.json();
     const {
+      action,
       status,
       therapistNotes,
       therapistFindings,
@@ -207,6 +208,52 @@ export async function PUT(
     if (activityLevel !== undefined) updateData.activityLevel = activityLevel;
     if (sportModality !== undefined) updateData.sportModality = sportModality;
 
+    // ── Send to Patient action ──
+    if (action === "sendToPatient") {
+      const assessment = await (prisma as any).bodyAssessment.update({
+        where: { id: params.id },
+        data: { sentToPatientAt: new Date(), status: "COMPLETED" },
+        include: {
+          patient: { select: { id: true, firstName: true, lastName: true, email: true } },
+          therapist: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      // Send notification
+      try {
+        const { notifyPatient } = await import("@/lib/notify-patient");
+        await notifyPatient({
+          patientId: assessment.patient.id,
+          emailTemplateSlug: "ASSESSMENT_COMPLETED",
+          emailVars: {
+            assessmentType: "Body Assessment",
+            completedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+            portalUrl: `${process.env.NEXTAUTH_URL || ""}/dashboard/body-assessments`,
+          },
+          plainMessage: `Your body assessment report is ready! Log in to your portal to view your results, corrective exercises, and personalised recommendations.`,
+          plainMessagePt: `Seu relatório de avaliação corporal está pronto! Acesse seu portal para ver seus resultados, exercícios corretivos e recomendações personalizadas.`,
+        });
+      } catch (notifyErr) {
+        console.error("[body-assessment] Failed to send report-ready notification:", notifyErr);
+      }
+
+      return NextResponse.json(assessment);
+    }
+
+    // ── Revoke from Patient action ──
+    if (action === "revokeFromPatient") {
+      const assessment = await (prisma as any).bodyAssessment.update({
+        where: { id: params.id },
+        data: { sentToPatientAt: null, status: "PENDING_REVIEW" },
+        include: {
+          patient: { select: { id: true, firstName: true, lastName: true, email: true } },
+          therapist: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+      return NextResponse.json(assessment);
+    }
+
+    // ── Standard field updates ──
     // Status
     if (status) updateData.status = status;
 
@@ -227,26 +274,6 @@ export async function PUT(
         },
       },
     });
-
-    // Send notification when report is ready for the patient
-    if (status === "REVIEWED" || status === "COMPLETED") {
-      try {
-        const { notifyPatient } = await import("@/lib/notify-patient");
-        await notifyPatient({
-          patientId: assessment.patient.id,
-          emailTemplateSlug: "ASSESSMENT_COMPLETED",
-          emailVars: {
-            assessmentType: "Body Assessment",
-            completedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
-            portalUrl: `${process.env.NEXTAUTH_URL || ""}/dashboard/body-assessments`,
-          },
-          plainMessage: `Your body assessment report is ready! Log in to your portal to view your results, corrective exercises, and personalised recommendations.`,
-          plainMessagePt: `Seu relatório de avaliação corporal está pronto! Acesse seu portal para ver seus resultados, exercícios corretivos e recomendações personalizadas.`,
-        });
-      } catch (notifyErr) {
-        console.error("[body-assessment] Failed to send report-ready notification:", notifyErr);
-      }
-    }
 
     return NextResponse.json(assessment);
   } catch (error) {

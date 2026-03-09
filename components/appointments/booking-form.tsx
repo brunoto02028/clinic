@@ -12,6 +12,8 @@ import {
   Loader2,
   Info,
   Shield,
+  AlertTriangle,
+  Stethoscope,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,13 +42,82 @@ export default function BookingForm() {
     duration: 60,
     price: 0,
   });
+  const [initialAssessmentDone, setInitialAssessmentDone] = useState<boolean | null>(null);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [noAvailability, setNoAvailability] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     fetch("/api/patient/status").then(r => r.json()).then(d => {
       if (d.screeningComplete !== undefined) setScreeningComplete(d.screeningComplete);
     }).catch(() => {});
+
+    // Check if patient has completed an initial assessment
+    fetch("/api/appointments")
+      .then(r => r.json())
+      .then(data => {
+        const appts = data?.appointments ?? [];
+        const hasInitial = appts.some((a: any) =>
+          (a.treatmentType === "Initial Assessment" || a.treatmentType === "Avaliação Inicial") &&
+          (a.status === "COMPLETED" || a.status === "CONFIRMED" || a.status === "PENDING")
+        );
+        setInitialAssessmentDone(hasInitial);
+      })
+      .catch(() => setInitialAssessmentDone(false));
+
+    // Fetch available dates (next 21 days, check each against therapist schedule)
+    fetchAvailableDates();
   }, []);
+
+  const fetchAvailableDates = async () => {
+    const dates: string[] = [];
+    const today = new Date();
+    today.setDate(today.getDate() + 1); // Start from tomorrow
+
+    const checks: string[] = [];
+    for (let i = 0; i < 21; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split("T")[0];
+      checks.push(dateStr);
+    }
+
+    // Check availability for each date in parallel
+    try {
+      const results = await Promise.all(
+        checks.map(date =>
+          fetch(`/api/availability?date=${date}&duration=30`)
+            .then(r => r.json())
+            .catch(() => ({ available: false }))
+        )
+      );
+      results.forEach((res, idx) => {
+        if (res.available && res.slots && res.slots.length > 0) {
+          dates.push(checks[idx]);
+        }
+      });
+    } catch {}
+    setAvailableDates(dates);
+    if (dates.length === 0) setNoAvailability(true);
+  };
+
+  const fetchSlotsForDate = async (date: string) => {
+    setSlotsLoading(true);
+    setAvailableSlots([]);
+    setSelectedTime("");
+    try {
+      const duration = treatment?.duration || 60;
+      const res = await fetch(`/api/availability?date=${date}&duration=${duration}`);
+      const data = await res.json();
+      setAvailableSlots(data?.slots ?? []);
+    } catch {
+      setAvailableSlots([]);
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
 
   const treatment = isCustomTreatment
     ? {
@@ -58,32 +129,7 @@ export default function BookingForm() {
       }
     : TREATMENT_OPTIONS.find((t) => t.id === selectedTreatment);
 
-  // Generate available dates (next 14 days, excluding Sundays)
-  const getAvailableDates = () => {
-    const dates: string[] = [];
-    const today = new Date();
-    today.setDate(today.getDate() + 1); // Start from tomorrow
-
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() + i);
-      // Exclude Sundays
-      if (date.getDay() !== 0) {
-        dates.push(date.toISOString().split("T")[0]);
-      }
-    }
-    return dates;
-  };
-
-  // Generate time slots (9am - 5pm, 30 min intervals)
-  const getTimeSlots = () => {
-    const slots: string[] = [];
-    for (let hour = 9; hour < 17; hour++) {
-      slots.push(`${hour.toString().padStart(2, "0")}:00`);
-      slots.push(`${hour.toString().padStart(2, "0")}:30`);
-    }
-    return slots;
-  };
+  // Available dates and slots now fetched from API (see fetchAvailableDates / fetchSlotsForDate)
 
   const handleCreateAppointment = async () => {
     setLoading(true);
@@ -146,6 +192,11 @@ export default function BookingForm() {
     }
   };
 
+  // Filter treatments based on initial assessment status
+  const availableTreatments = initialAssessmentDone === false
+    ? TREATMENT_OPTIONS.filter(t => t.id === "initial-assessment")
+    : TREATMENT_OPTIONS;
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
@@ -196,7 +247,24 @@ export default function BookingForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {TREATMENT_OPTIONS.map((t) => (
+              {/* Initial Assessment required banner */}
+              {initialAssessmentDone === false && (
+                <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/10 flex items-start gap-3">
+                  <Stethoscope className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-amber-300 text-sm">
+                      {isPt ? "Avaliação Inicial Obrigatória" : "Initial Assessment Required"}
+                    </p>
+                    <p className="text-xs text-amber-400/80 mt-1">
+                      {isPt
+                        ? "Antes de agendar qualquer tratamento, você precisa fazer uma Avaliação Inicial. Isso permite que seu terapeuta entenda suas necessidades e crie um plano personalizado."
+                        : "Before booking any treatment, you need to complete an Initial Assessment. This allows your therapist to understand your needs and create a personalised plan."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {availableTreatments.map((t) => (
                 <div
                   key={t.id}
                   onClick={() => {
@@ -272,32 +340,44 @@ export default function BookingForm() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
-                {getAvailableDates().map((date) => {
-                  const dateObj = new Date(date);
-                  return (
-                    <div
-                      key={date}
-                      onClick={() => setSelectedDate(date)}
-                      className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all ${
-                        selectedDate === date
-                          ? "border-primary bg-primary/5"
-                          : "border-white/10 hover:border-primary/50"
-                      }`}
-                    >
-                      <p className="text-sm text-muted-foreground">
-                        {dateObj.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short" })}
-                      </p>
-                      <p className="font-semibold text-lg text-foreground">
-                        {dateObj.getDate()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {dateObj.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { month: "short" })}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
+              {availableDates.length === 0 && !noAvailability ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-sm text-muted-foreground">{isPt ? "Carregando datas..." : "Loading dates..."}</span>
+                </div>
+              ) : noAvailability ? (
+                <div className="text-center py-8">
+                  <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">{isPt ? "Nenhuma data disponível no momento. Entre em contato com a clínica." : "No available dates at the moment. Please contact the clinic."}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
+                  {availableDates.map((date: string) => {
+                    const dateObj = new Date(date + "T12:00:00");
+                    return (
+                      <div
+                        key={date}
+                        onClick={() => { setSelectedDate(date); fetchSlotsForDate(date); }}
+                        className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all ${
+                          selectedDate === date
+                            ? "border-primary bg-primary/5"
+                            : "border-white/10 hover:border-primary/50"
+                        }`}
+                      >
+                        <p className="text-sm text-muted-foreground">
+                          {dateObj.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short" })}
+                        </p>
+                        <p className="font-semibold text-lg text-foreground">
+                          {dateObj.getDate()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {dateObj.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { month: "short" })}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="flex gap-3 mt-6">
                 <Button variant="outline" onClick={() => setStep(1)}>
@@ -328,8 +408,19 @@ export default function BookingForm() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {slotsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-sm text-muted-foreground">{isPt ? "Carregando horários..." : "Loading slots..."}</span>
+                </div>
+              ) : availableSlots.length === 0 ? (
+                <div className="text-center py-8">
+                  <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">{isPt ? "Nenhum horário disponível nesta data." : "No available slots on this date."}</p>
+                </div>
+              ) : (
               <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3">
-                {getTimeSlots().map((time) => (
+                {availableSlots.map((time: string) => (
                   <div
                     key={time}
                     onClick={() => setSelectedTime(time)}
@@ -343,6 +434,7 @@ export default function BookingForm() {
                   </div>
                 ))}
               </div>
+              )}
 
               {/* Summary */}
               {selectedTime && (

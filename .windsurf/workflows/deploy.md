@@ -39,18 +39,21 @@ scp -r app/api/patient/ root@bpr.rehab:/root/clinic/app/api/patient/
 ```
 
 // turbo
-3. Build e restart na VPS:
+3. Deploy zero-downtime na VPS (usa o script deploy.sh):
 ```bash
-ssh root@bpr.rehab "cd /root/clinic && npm run build && pm2 restart clinic"
+ssh clinic-vps "cd /root/clinic && bash deploy.sh"
 ```
 
 4. Verificar que o app está online:
 ```bash
-ssh root@bpr.rehab "pm2 status clinic"
+ssh clinic-vps "pm2 status clinic"
 ```
 
 ## Notas Importantes
 - O VPS **NÃO** tem repositório git — nunca tente `git pull` lá
 - Sempre faça **GitHub push ANTES** do SCP para VPS
 - O build no VPS demora ~2 minutos (Next.js full build)
-- Se o build falhar, o PM2 restart ainda vai rodar a versão anterior
+- **NUNCA** use `rm -rf .next` antes de buildar — isso quebra o CSS para os pacientes!
+- O script `deploy.sh` faz build in-place (sem deletar .next) e usa `pm2 reload` (graceful)
+- Se o build falhar, a versão anterior continua servindo normalmente
+- O script verifica automaticamente o symlink de uploads após cada deploy

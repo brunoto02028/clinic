@@ -37,9 +37,18 @@ import { ImageAnnotator, Annotation } from "@/components/body-assessment/image-a
 import { PlumbLineOverlay } from "@/components/body-assessment/plumb-line-overlay";
 import { ImageComparison } from "@/components/body-assessment/image-comparison";
 import { SegmentScores } from "@/components/body-assessment/segment-scores";
+import { TreatmentPriorities } from "@/components/body-assessment/treatment-priorities";
 import { FindingCards } from "@/components/body-assessment/finding-cards";
 import { CorrectiveExercises } from "@/components/body-assessment/corrective-exercises";
+import { enrichExercisesWithVideos } from "@/lib/match-exercise-videos";
 import { ProgressTracker } from "@/components/body-assessment/progress-tracker";
+import { AssessmentProgressChart } from "@/components/body-assessment/assessment-progress-chart";
+import { InteractiveBodyModel } from "@/components/body-assessment/interactive-body-model";
+import dynamic from "next/dynamic";
+const BodyViewer3D = dynamic(() => import("@/components/body-assessment/body-viewer-3d").then(m => m.BodyViewer3D), { ssr: false, loading: () => <div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" /></div> });
+import { PostureAnalysisPanel } from "@/components/body-assessment/posture-analysis-panel";
+import { BeforeAfterAngles } from "@/components/body-assessment/before-after-angles";
+import { PostureStages } from "@/components/body-assessment/posture-stages";
 import { CrossSessionComparison } from "@/components/body-assessment/cross-session-comparison";
 import { SkeletonAnalysisOverlay } from "@/components/body-assessment/skeleton-analysis-overlay";
 import { AiChatField } from "@/components/body-assessment/ai-chat-field";
@@ -95,10 +104,14 @@ import {
   Heart,
   Ruler,
   Scale,
+  MessageCircle,
+  Smartphone,
+  Save,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import { BodyCapture, BodyCaptureResult } from "@/components/body-assessment/body-capture";
+import { RemoteCaptureSession } from "@/components/body-assessment/remote-capture-session";
 import { computeAllMetrics } from "@/lib/health-metrics";
 import { HealthMetricsCard } from "@/components/body-assessment/health-metrics-card";
 import { BodyMetricsTab } from "@/components/body-assessment/body-metrics-tab";
@@ -219,12 +232,13 @@ export default function AdminBodyAssessmentsPage() {
   const [showNotesPreview, setShowNotesPreview] = useState(false);
   const [bodyMapView, setBodyMapView] = useState<"front" | "back">("front");
   const [bodyGender, setBodyGender] = useState<"male" | "female">("male");
-  const [detailTab, setDetailTab] = useState<"overview" | "images" | "videos" | "annotate" | "analysis" | "notes" | "metrics">("overview");
+  const [detailTab, setDetailTab] = useState<"overview" | "images" | "videos" | "annotate" | "analysis" | "notes" | "metrics" | "3dmodel">("overview");
   const [annotateView, setAnnotateView] = useState<"front" | "back" | "left" | "right">("front");
   const [annotateMode, setAnnotateMode] = useState<"draw" | "plumb" | "compare">("draw");
   const [skeletonView, setSkeletonView] = useState<"front" | "back" | "left" | "right">("front");
   const [gridOverlayView, setGridOverlayView] = useState<"front" | "back" | "left" | "right" | null>(null);
   const [showCameraCapture, setShowCameraCapture] = useState(false);
+  const [showRemoteCapture, setShowRemoteCapture] = useState(false);
   const [isCaptureUploading, setIsCaptureUploading] = useState(false);
   const [isGeneratingProtocol, setIsGeneratingProtocol] = useState(false);
   const [generatedProtocol, setGeneratedProtocol] = useState<any>(null);
@@ -234,12 +248,21 @@ export default function AdminBodyAssessmentsPage() {
   const [uploadingView, setUploadingView] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const gridOverlayRef = useRef<HTMLDivElement>(null);
+  const [enrichedExercises, setEnrichedExercises] = useState<any[] | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchAssessments();
     fetchPatients();
   }, []);
+
+  // Auto-enrich exercises with library videos
+  useEffect(() => {
+    if (showDetail && selectedAssessment?.correctiveExercises?.length && !enrichedExercises) {
+      enrichExercisesWithVideos(selectedAssessment.correctiveExercises).then(setEnrichedExercises);
+    }
+    if (!showDetail) setEnrichedExercises(null);
+  }, [showDetail, selectedAssessment?.id]);
 
   // Scroll to grid overlay when opened
   useEffect(() => {
@@ -315,6 +338,8 @@ export default function AdminBodyAssessmentsPage() {
   const [analysisObjectives, setAnalysisObjectives] = useState("");
   const [showAnalysisConfig, setShowAnalysisConfig] = useState(false);
   const [isSendingToPatient, setIsSendingToPatient] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const runAiAnalysis = async (assessment: Assessment) => {
     setIsAnalyzing(true);
@@ -347,8 +372,34 @@ export default function AdminBodyAssessmentsPage() {
     }
   };
 
-  const saveTherapistNotes = async () => {
+  const saveDraftNotes = async () => {
     if (!selectedAssessment) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/body-assessments/${selectedAssessment.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ therapistNotes }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSelectedAssessment(updated);
+        fetchAssessments();
+        toast({ title: locale === "pt-BR" ? "Rascunho Salvo" : "Draft Saved", description: locale === "pt-BR" ? "Suas notas foram salvas. Você pode continuar editando." : "Your notes have been saved. You can continue editing." });
+      }
+    } catch {
+      toast({ title: "Error", description: locale === "pt-BR" ? "Falha ao salvar notas." : "Failed to save notes.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const markAsReviewed = async () => {
+    if (!selectedAssessment) return;
+    if (!therapistNotes?.trim()) {
+      toast({ title: locale === "pt-BR" ? "Notas vazias" : "Empty notes", description: locale === "pt-BR" ? "Escreva suas notas antes de marcar como revisado." : "Write your notes before marking as reviewed.", variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/admin/body-assessments/${selectedAssessment.id}`, {
@@ -363,14 +414,17 @@ export default function AdminBodyAssessmentsPage() {
         const updated = await res.json();
         setSelectedAssessment(updated);
         fetchAssessments();
-        toast({ title: "Notes Saved", description: "Assessment marked as reviewed." });
+        toast({ title: locale === "pt-BR" ? "Revisado!" : "Reviewed!", description: locale === "pt-BR" ? "Avaliação marcada como revisada." : "Assessment marked as reviewed." });
       }
     } catch {
-      toast({ title: "Error", description: "Failed to save notes.", variant: "destructive" });
+      toast({ title: "Error", description: locale === "pt-BR" ? "Falha ao salvar." : "Failed to save.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Keep backward compat for AiChatField onSave callback
+  const saveTherapistNotes = saveDraftNotes;
 
   const deleteAssessment = async (id: string) => {
     try {
@@ -385,6 +439,46 @@ export default function AdminBodyAssessmentsPage() {
       }
     } catch {
       toast({ title: "Error", description: "Failed to delete.", variant: "destructive" });
+    }
+  };
+
+  const sendToPatient = async (id: string) => {
+    if (!confirm(locale === "pt-BR" ? "Enviar relatório ao paciente? Ele receberá uma notificação por email." : "Send report to patient? They will receive an email notification.")) return;
+    try {
+      const res = await fetch(`/api/admin/body-assessments/${id}/send-to-patient`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: locale }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        if (selectedAssessment?.id === id) setSelectedAssessment({ ...selectedAssessment, ...updated });
+        fetchAssessments();
+        toast({ title: locale === "pt-BR" ? "Enviado!" : "Sent!", description: locale === "pt-BR" ? "Relatório enviado ao paciente. Notificação por email disparada." : "Report sent to patient. Email notification dispatched." });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Error", description: err.error || "Failed to send.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to send.", variant: "destructive" });
+    }
+  };
+
+  const revokeFromPatient = async (id: string) => {
+    if (!confirm(locale === "pt-BR" ? "Revogar envio? O paciente não verá mais este relatório." : "Revoke? The patient will no longer see this report.")) return;
+    try {
+      const res = await fetch(`/api/admin/body-assessments/${id}/send-to-patient`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        if (selectedAssessment?.id === id) setSelectedAssessment({ ...selectedAssessment, sentToPatientAt: null, status: "PENDING_REVIEW" });
+        fetchAssessments();
+        toast({ title: locale === "pt-BR" ? "Revogado" : "Revoked", description: locale === "pt-BR" ? "Relatório removido da área do paciente." : "Report removed from patient's view." });
+      } else {
+        toast({ title: "Error", description: "Failed to revoke.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to revoke.", variant: "destructive" });
     }
   };
 
@@ -571,6 +665,37 @@ export default function AdminBodyAssessmentsPage() {
       return "pending";
     };
 
+    // Remote capture session mode
+    if (showRemoteCapture && a.captureToken) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => setShowRemoteCapture(false)}>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold">{locale === "pt-BR" ? "Captura Remota" : "Remote Capture"} — {a.assessmentNumber}</h1>
+              <p className="text-sm text-muted-foreground">{a.patient.firstName} {a.patient.lastName}</p>
+            </div>
+          </div>
+          <RemoteCaptureSession
+            assessmentId={a.id}
+            captureToken={a.captureToken}
+            patientName={`${a.patient.firstName} ${a.patient.lastName}`}
+            patientEmail={a.patient.email}
+            locale={locale}
+            onClose={() => {
+              setShowRemoteCapture(false);
+              viewDetail(a); // Refresh data
+            }}
+            onPhotosReceived={() => {
+              fetchAssessments();
+            }}
+          />
+        </div>
+      );
+    }
+
     // Camera capture mode
     if (showCameraCapture) {
       return (
@@ -601,6 +726,7 @@ export default function AdminBodyAssessmentsPage() {
       { id: "annotate" as const, label: "Tools", icon: Pencil },
       { id: "analysis" as const, label: "AI Analysis", icon: Brain },
       { id: "notes" as const, label: "Notes", icon: StickyNote },
+      ...(a.segmentScores ? [{ id: "3dmodel" as const, label: locale === "pt-BR" ? "Modelo 3D" : "3D Model", icon: Eye }] : []),
     ];
 
     return (
@@ -626,19 +752,19 @@ export default function AdminBodyAssessmentsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {a.captureToken && (
+                <Button size="sm" className="bg-white text-indigo-700 hover:bg-blue-50 font-semibold" onClick={() => setShowRemoteCapture(true)}>
+                  <Smartphone className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Captura Remota" : "Remote Capture"}
+                </Button>
+              )}
               {a.status === "PENDING_CAPTURE" && (
-                <Button size="sm" className="bg-white text-indigo-700 hover:bg-blue-50 font-semibold" onClick={() => setShowCameraCapture(true)}>
-                  <Camera className="h-4 w-4 mr-2" /> Capture Now
+                <Button size="sm" className="bg-white/20 text-white hover:bg-white/30 font-semibold" onClick={() => setShowCameraCapture(true)}>
+                  <Camera className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Captura Direta" : "Direct Capture"}
                 </Button>
               )}
               {a.captureToken && (
                 <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" onClick={() => copyCaptureLink(a.captureToken!)}>
                   <Copy className="h-4 w-4 mr-1.5" /> Link
-                </Button>
-              )}
-              {a.captureToken && (
-                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" onClick={() => window.open(`/capture/${a.captureToken}`, '_blank')}>
-                  <ExternalLink className="h-4 w-4 mr-1.5" /> Open Capture
                 </Button>
               )}
               {(a.status === "PENDING_ANALYSIS" || a.status === "PENDING_REVIEW") && (
@@ -791,6 +917,24 @@ export default function AdminBodyAssessmentsPage() {
               />
             )}
 
+            {/* Treatment Priorities */}
+            {a.segmentScores && (
+              <TreatmentPriorities
+                segmentScores={a.segmentScores}
+                aiFindings={a.aiFindings}
+                overallScore={a.overallScore}
+                locale={locale}
+              />
+            )}
+
+            {/* Progress Chart (if patient has multiple assessments) */}
+            {assessments.filter(x => x.patientId === a.patientId && x.overallScore != null).length >= 2 && (
+              <AssessmentProgressChart
+                assessments={assessments.filter(x => x.patientId === a.patientId)}
+                locale={locale}
+              />
+            )}
+
             {/* Segment Scores */}
             {a.segmentScores && (
               <SegmentScores
@@ -905,13 +1049,13 @@ export default function AdminBodyAssessmentsPage() {
                               <Upload className="h-4 w-4 mr-1.5" /> Upload Photos
                             </Button>
                             {a.captureToken && (
-                              <Button variant="outline" size="sm" onClick={() => copyCaptureLink(a.captureToken!)}>
-                                <Copy className="h-4 w-4 mr-1.5" /> Copy Link
+                              <Button size="sm" variant="default" className="bg-purple-600 hover:bg-purple-700" onClick={() => setShowRemoteCapture(true)}>
+                                <Smartphone className="h-4 w-4 mr-1.5" /> {locale === "pt-BR" ? "📱 Captura Remota" : "📱 Remote Capture"}
                               </Button>
                             )}
                             {a.captureToken && (
-                              <Button variant="outline" size="sm" onClick={() => window.open(`/capture/${a.captureToken}`, '_blank')}>
-                                <ExternalLink className="h-4 w-4 mr-1.5" /> Open in New Tab
+                              <Button variant="outline" size="sm" onClick={() => copyCaptureLink(a.captureToken!)}>
+                                <Copy className="h-4 w-4 mr-1.5" /> Copy Link
                               </Button>
                             )}
                           </div>
@@ -1458,6 +1602,73 @@ export default function AdminBodyAssessmentsPage() {
 
             {a.postureAnalysis ? (
               <>
+                {/* ── Multi-View Posture Analysis Panel (Moti Physio-level) ── */}
+                {(a.frontImageUrl || a.backImageUrl || a.leftImageUrl || a.rightImageUrl) && (
+                  <PostureAnalysisPanel
+                    frontImageUrl={a.frontImageUrl}
+                    backImageUrl={a.backImageUrl}
+                    leftImageUrl={a.leftImageUrl}
+                    rightImageUrl={a.rightImageUrl}
+                    frontLandmarks={a.frontLandmarks}
+                    backLandmarks={a.backLandmarks}
+                    leftLandmarks={a.leftLandmarks}
+                    rightLandmarks={a.rightLandmarks}
+                    deviationLabels={a.deviationLabels || []}
+                    idealComparison={a.idealComparison || []}
+                    postureAnalysis={a.postureAnalysis}
+                    overallScore={a.overallScore}
+                    postureScore={a.postureScore}
+                    symmetryScore={a.symmetryScore}
+                    patientName={a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : undefined}
+                    assessmentNumber={a.assessmentNumber}
+                    assessmentDate={a.createdAt}
+                    locale={locale}
+                  />
+                )}
+
+                {/* ── 3 Stages of Posture (Standard / Current / Worsened) ── */}
+                {a.postureAnalysis && (
+                  <PostureStages
+                    overallScore={a.overallScore}
+                    postureScore={a.postureScore}
+                    postureAnalysis={a.postureAnalysis}
+                    locale={locale}
+                    frontImageUrl={a.frontImageUrl}
+                    backImageUrl={a.backImageUrl}
+                    leftImageUrl={a.leftImageUrl}
+                    rightImageUrl={a.rightImageUrl}
+                    frontLandmarks={a.frontLandmarks}
+                    backLandmarks={a.backLandmarks}
+                    leftLandmarks={a.leftLandmarks}
+                    rightLandmarks={a.rightLandmarks}
+                  />
+                )}
+
+
+                {/* ── Before/After Angle Comparison ── */}
+                {assessments.filter(x => x.patientId === a.patientId && (x.frontImageUrl || x.backImageUrl || x.leftImageUrl || x.rightImageUrl)).length >= 2 && (
+                  <BeforeAfterAngles
+                    assessments={assessments
+                      .filter(x => x.patientId === a.patientId && (x.frontImageUrl || x.backImageUrl))
+                      .map(x => ({
+                        id: x.id,
+                        date: x.createdAt,
+                        assessmentNumber: x.assessmentNumber,
+                        overallScore: x.overallScore,
+                        frontImageUrl: x.frontImageUrl,
+                        backImageUrl: x.backImageUrl,
+                        leftImageUrl: x.leftImageUrl,
+                        rightImageUrl: x.rightImageUrl,
+                        frontLandmarks: x.frontLandmarks,
+                        backLandmarks: x.backLandmarks,
+                        leftLandmarks: x.leftLandmarks,
+                        rightLandmarks: x.rightLandmarks,
+                      }))}
+                    currentId={a.id}
+                    locale={locale}
+                  />
+                )}
+
                 {/* Skeleton Analysis with view selector */}
                 {(a.frontImageUrl || a.backImageUrl || a.leftImageUrl || a.rightImageUrl) && (
                   <div className="space-y-3">
@@ -1802,7 +2013,7 @@ export default function AdminBodyAssessmentsPage() {
 
                 {/* Corrective Exercises */}
                 {a.correctiveExercises && a.correctiveExercises.length > 0 && (
-                  <CorrectiveExercises exercises={a.correctiveExercises} />
+                  <CorrectiveExercises exercises={enrichedExercises || a.correctiveExercises} />
                 )}
 
                 {/* Scientific References */}
@@ -2059,9 +2270,15 @@ export default function AdminBodyAssessmentsPage() {
                   rows={14}
                 />
                 <div className="flex justify-end gap-2">
-                  <Button onClick={saveTherapistNotes} disabled={isSubmitting}>
+                  <Button variant="outline" onClick={saveDraftNotes} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    {notesLang === "pt-BR" ? "Salvar Rascunho" : "Save Draft"}
+                  </Button>
+                  <Button onClick={markAsReviewed} disabled={isSubmitting || a.status === "REVIEWED" || a.status === "COMPLETED"}>
                     {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                    {notesLang === "pt-BR" ? "Salvar e Marcar Revisado" : "Save & Mark Reviewed"}
+                    {a.status === "REVIEWED" || a.status === "COMPLETED"
+                      ? (notesLang === "pt-BR" ? "✓ Revisado" : "✓ Reviewed")
+                      : (notesLang === "pt-BR" ? "Marcar como Revisado" : "Mark as Reviewed")}
                   </Button>
                 </div>
               </CardContent>
@@ -2092,55 +2309,50 @@ export default function AdminBodyAssessmentsPage() {
                   )}
 
                   <div className="flex flex-wrap gap-2">
-                    {/* Download PDF */}
+                    {/* Download PDF — with error handling */}
                     <Button
                       variant="outline"
                       size="sm"
                       className="text-xs gap-1.5"
-                      onClick={() => {
-                        const link = document.createElement("a");
-                        link.href = `/api/body-assessments/${a.id}/report-pdf`;
-                        link.download = `body-assessment-${a.assessmentNumber}.pdf`;
-                        link.click();
+                      disabled={isDownloadingPdf}
+                      onClick={async () => {
+                        setIsDownloadingPdf(true);
+                        try {
+                          const res = await fetch(`/api/body-assessments/${a.id}/report-pdf`);
+                          if (!res.ok) {
+                            const err = await res.json().catch(() => ({ error: "Unknown error" }));
+                            toast({ title: locale === "pt-BR" ? "Erro no PDF" : "PDF Error", description: err.error || (locale === "pt-BR" ? "Falha ao gerar PDF. Tente novamente." : "Failed to generate PDF. Please try again."), variant: "destructive" });
+                            return;
+                          }
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = `body-assessment-${a.assessmentNumber}.pdf`;
+                          link.click();
+                          URL.revokeObjectURL(url);
+                          toast({ title: locale === "pt-BR" ? "PDF baixado!" : "PDF downloaded!" });
+                        } catch {
+                          toast({ title: locale === "pt-BR" ? "Erro no PDF" : "PDF Error", description: locale === "pt-BR" ? "Falha na conexão. Tente novamente." : "Connection failed. Please try again.", variant: "destructive" });
+                        } finally {
+                          setIsDownloadingPdf(false);
+                        }
                       }}
                     >
-                      <Download className="h-3.5 w-3.5" />
+                      {isDownloadingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                       {locale === "pt-BR" ? "Baixar PDF" : "Download PDF"}
                     </Button>
 
-                    {/* Share with Patient */}
+                    {/* Share with Patient — opens confirmation dialog */}
                     <Button
                       variant={a.sentToPatientAt ? "outline" : "default"}
                       size="sm"
                       className={`text-xs gap-1.5 ${!a.sentToPatientAt ? "bg-purple-600 hover:bg-purple-700" : ""}`}
-                      disabled={isSendingToPatient}
-                      onClick={async () => {
-                        setIsSendingToPatient(true);
-                        try {
-                          const res = await fetch(`/api/admin/body-assessments/${a.id}/send-to-patient`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ language: locale }),
-                          });
-                          if (res.ok) {
-                            const updated = await res.json();
-                            setSelectedAssessment({ ...a, ...updated, sentToPatientAt: updated.sentToPatientAt, status: updated.status });
-                            fetchAssessments();
-                            toast({ title: locale === "pt-BR" ? "Relatório enviado!" : "Report sent!", description: locale === "pt-BR" ? `Dados disponíveis na área do paciente` : `Data available in patient portal` });
-                          } else {
-                            const err = await res.json();
-                            toast({ title: "Error", description: err.error, variant: "destructive" });
-                          }
-                        } catch {
-                          toast({ title: "Error", variant: "destructive" });
-                        } finally {
-                          setIsSendingToPatient(false);
-                        }
-                      }}
+                      onClick={() => setShowShareDialog(true)}
                     >
-                      {isSendingToPatient ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      <Send className="h-3.5 w-3.5" />
                       {a.sentToPatientAt
-                        ? (locale === "pt-BR" ? "Reenviar" : "Resend")
+                        ? (locale === "pt-BR" ? "Reenviar / Compartilhar" : "Resend / Share")
                         : (locale === "pt-BR" ? "Compartilhar com Paciente" : "Share with Patient")}
                     </Button>
 
@@ -2182,6 +2394,189 @@ export default function AdminBodyAssessmentsPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* ── Share Confirmation Dialog ── */}
+            <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Send className="h-5 w-5 text-purple-500" />
+                    {locale === "pt-BR" ? "Compartilhar Relatório" : "Share Report"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {locale === "pt-BR"
+                      ? "Escolha como deseja compartilhar o relatório com o paciente. Verifique o preview antes de enviar."
+                      : "Choose how you want to share the report with the patient. Check the preview before sending."}
+                  </DialogDescription>
+                </DialogHeader>
+
+                {/* Patient info */}
+                <div className="rounded-lg border p-3 bg-muted/30">
+                  <p className="text-xs text-muted-foreground mb-1">{locale === "pt-BR" ? "Paciente" : "Patient"}</p>
+                  <p className="text-sm font-semibold">{a.patient?.firstName} {a.patient?.lastName}</p>
+                  <p className="text-xs text-muted-foreground">{a.patient?.email}</p>
+                </div>
+
+                {/* Report Preview */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Eye className="h-3.5 w-3.5" />
+                    {locale === "pt-BR" ? "Preview do Relatório" : "Report Preview"}
+                  </p>
+                  <div className="rounded-lg border p-4 bg-card max-h-60 overflow-y-auto space-y-2">
+                    {/* Scores */}
+                    {a.overallScore != null && (
+                      <div className="flex items-center gap-3 pb-2 border-b">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold" style={{ color: a.overallScore >= 80 ? "#22c55e" : a.overallScore >= 60 ? "#f59e0b" : "#ef4444" }}>{Math.round(a.overallScore)}</p>
+                          <p className="text-[9px] text-muted-foreground">Score</p>
+                        </div>
+                        {a.postureScore != null && <div className="text-center border-l pl-3"><p className="text-sm font-bold">{Math.round(a.postureScore)}</p><p className="text-[9px] text-muted-foreground">{locale === "pt-BR" ? "Postura" : "Posture"}</p></div>}
+                        {a.symmetryScore != null && <div className="text-center border-l pl-3"><p className="text-sm font-bold">{Math.round(a.symmetryScore)}</p><p className="text-[9px] text-muted-foreground">{locale === "pt-BR" ? "Simetria" : "Symmetry"}</p></div>}
+                      </div>
+                    )}
+                    {/* AI Summary */}
+                    {a.aiSummary && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">{locale === "pt-BR" ? "Resumo da IA" : "AI Summary"}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-4">{a.aiSummary}</p>
+                      </div>
+                    )}
+                    {/* Therapist Notes */}
+                    {therapistNotes && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">{locale === "pt-BR" ? "Notas do Terapeuta" : "Therapist Notes"}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-4 whitespace-pre-wrap">{therapistNotes}</p>
+                      </div>
+                    )}
+                    {/* Exercises count */}
+                    {(a.correctiveExercises?.length ?? 0) > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        📋 {a.correctiveExercises!.length} {locale === "pt-BR" ? "exercícios corretivos incluídos" : "corrective exercises included"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Share Options */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {locale === "pt-BR" ? "Escolha o destino" : "Choose destination"}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Portal + Email */}
+                    <button
+                      className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition-all text-center"
+                      disabled={isSendingToPatient}
+                      onClick={async () => {
+                        setIsSendingToPatient(true);
+                        try {
+                          const res = await fetch(`/api/admin/body-assessments/${a.id}/send-to-patient`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ language: locale }),
+                          });
+                          if (res.ok) {
+                            const updated = await res.json();
+                            setSelectedAssessment({ ...a, ...updated, sentToPatientAt: updated.sentToPatientAt, status: updated.status });
+                            fetchAssessments();
+                            setShowShareDialog(false);
+                            toast({ title: locale === "pt-BR" ? "Relatório enviado!" : "Report sent!", description: locale === "pt-BR" ? "Disponível no portal do paciente + email de notificação enviado." : "Available in patient portal + notification email sent." });
+                          } else {
+                            const err = await res.json();
+                            toast({ title: "Error", description: err.error, variant: "destructive" });
+                          }
+                        } catch {
+                          toast({ title: "Error", variant: "destructive" });
+                        } finally {
+                          setIsSendingToPatient(false);
+                        }
+                      }}
+                    >
+                      {isSendingToPatient ? <Loader2 className="h-6 w-6 animate-spin text-purple-500" /> : <Send className="h-6 w-6 text-purple-500" />}
+                      <span className="text-xs font-semibold">{locale === "pt-BR" ? "Portal do Paciente" : "Patient Portal"}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {locale === "pt-BR" ? "Paciente verá no portal + recebe email" : "Patient sees in portal + gets email"}
+                      </span>
+                    </button>
+
+                    {/* WhatsApp */}
+                    <button
+                      className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-green-500/30 bg-green-500/5 hover:bg-green-500/10 transition-all text-center"
+                      onClick={() => {
+                        const url = `${window.location.origin}/dashboard/body-assessments`;
+                        const msg = locale === "pt-BR"
+                          ? `Olá ${a.patient?.firstName}! Sua avaliação biomecânica (${a.assessmentNumber}) está pronta. Acesse seu portal para ver o relatório completo: ${url}`
+                          : `Hello ${a.patient?.firstName}! Your biomechanical assessment (${a.assessmentNumber}) is ready. Access your portal to see the full report: ${url}`;
+                        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+                      }}
+                    >
+                      <MessageCircle className="h-6 w-6 text-green-500" />
+                      <span className="text-xs font-semibold">WhatsApp</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {locale === "pt-BR" ? "Abre WhatsApp com link do portal" : "Opens WhatsApp with portal link"}
+                      </span>
+                    </button>
+
+                    {/* Download PDF */}
+                    <button
+                      className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 transition-all text-center"
+                      disabled={isDownloadingPdf}
+                      onClick={async () => {
+                        setIsDownloadingPdf(true);
+                        try {
+                          const res = await fetch(`/api/body-assessments/${a.id}/report-pdf`);
+                          if (!res.ok) {
+                            toast({ title: locale === "pt-BR" ? "Erro no PDF" : "PDF Error", description: locale === "pt-BR" ? "Falha ao gerar PDF." : "Failed to generate PDF.", variant: "destructive" });
+                            return;
+                          }
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = `body-assessment-${a.assessmentNumber}.pdf`;
+                          link.click();
+                          URL.revokeObjectURL(url);
+                          toast({ title: locale === "pt-BR" ? "PDF baixado!" : "PDF downloaded!" });
+                        } catch {
+                          toast({ title: locale === "pt-BR" ? "Erro no PDF" : "PDF Error", variant: "destructive" });
+                        } finally {
+                          setIsDownloadingPdf(false);
+                        }
+                      }}
+                    >
+                      {isDownloadingPdf ? <Loader2 className="h-6 w-6 animate-spin text-blue-500" /> : <Download className="h-6 w-6 text-blue-500" />}
+                      <span className="text-xs font-semibold">{locale === "pt-BR" ? "Baixar PDF" : "Download PDF"}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {locale === "pt-BR" ? "PDF completo para imprimir/enviar" : "Full PDF to print/send"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowShareDialog(false)}>
+                    {locale === "pt-BR" ? "Fechar" : "Close"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+
+        {/* 3D MODEL TAB */}
+        {detailTab === "3dmodel" && a.segmentScores && (
+          <div className="space-y-6">
+            <BodyViewer3D
+              segmentScores={a.segmentScores}
+              aiFindings={a.aiFindings}
+              muscleHypotheses={(a as any).muscleHypotheses}
+              postureAnalysis={a.postureAnalysis}
+              assessmentId={a.id}
+              patientName={a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : null}
+              assessmentDate={a.createdAt ? new Date(a.createdAt).toISOString() : null}
+              locale={locale}
+            />
           </div>
         )}
       </div>
@@ -2268,9 +2663,18 @@ export default function AdminBodyAssessmentsPage() {
                         <StatusIcon className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold">{a.assessmentNumber}</span>
                           <Badge className={sc.color + " text-xs"}>{sc.label}</Badge>
+                          {a.sentToPatientAt ? (
+                            <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-[10px] gap-1">
+                              <Send className="h-2.5 w-2.5" /> {locale === "pt-BR" ? "Enviado" : "Sent"}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground gap-1">
+                              <Clock className="h-2.5 w-2.5" /> {locale === "pt-BR" ? "Não enviado" : "Not sent"}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {a.patient.firstName} {a.patient.lastName} · {a.patient.email}
@@ -2305,6 +2709,16 @@ export default function AdminBodyAssessmentsPage() {
                           {(a.status === "PENDING_ANALYSIS" || a.status === "PENDING_REVIEW") && (
                             <DropdownMenuItem onClick={() => runAiAnalysis(a)}>
                               <Brain className="h-4 w-4 mr-2" /> Run AI Analysis
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          {!a.sentToPatientAt ? (
+                            <DropdownMenuItem onClick={() => sendToPatient(a.id)}>
+                              <Send className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Enviar ao Paciente" : "Send to Patient"}
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => revokeFromPatient(a.id)}>
+                              <Undo2 className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Revogar do Paciente" : "Revoke from Patient"}
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />

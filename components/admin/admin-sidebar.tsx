@@ -57,6 +57,7 @@ import {
   DollarSign,
   Box,
   BarChart3,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -120,6 +121,7 @@ const navigationGroups: NavGroup[] = [
     icon: Stethoscope,
     items: [
       { name: "Appointments", i18nKey: "nav.appointments", href: "/admin/appointments", icon: Calendar, requiredPermission: "canManageAppointments" },
+      { name: "Availability", href: "/admin/appointments/availability", icon: Clock },
       { name: "Treatment Types", i18nKey: "nav.treatments", href: "/admin/treatment-types", icon: Stethoscope },
       { name: "Treatment Plans", i18nKey: "nav.treatmentPlans", href: "/admin/treatment-plans", icon: Package },
       { name: "Membership Plans", href: "/admin/memberships", icon: Crown },

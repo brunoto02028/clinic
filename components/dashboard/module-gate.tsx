@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Lock, Crown, ArrowRight, Loader2, Shield, FileText } from "lucide-react";
+import { Lock, Crown, ArrowRight, ArrowLeft, Loader2, Shield, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePatientAccess } from "@/hooks/use-patient-access";
@@ -59,6 +59,9 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
   if (!access.onboarding.consentAccepted && !isConsentBypass) {
     return (
       <div className="max-w-lg mx-auto mt-12">
+        <Button variant="ghost" size="sm" className="mb-4 gap-1 text-muted-foreground" onClick={() => router.push("/dashboard")}>
+          <ArrowLeft className="h-4 w-4" /> {T("nav.dashboard") || "Dashboard"}
+        </Button>
         <Card className="border-blue-500/20 bg-blue-500/10">
           <CardContent className="p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-blue-500/15 flex items-center justify-center mx-auto mb-4">
@@ -100,6 +103,9 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
     const moduleDef = getModuleByKey(resolvedKey);
     return (
       <div className="max-w-lg mx-auto mt-12">
+        <Button variant="ghost" size="sm" className="mb-4 gap-1 text-muted-foreground" onClick={() => router.push("/dashboard")}>
+          <ArrowLeft className="h-4 w-4" /> {T("nav.dashboard") || "Dashboard"}
+        </Button>
         <Card className="border-violet-500/20 overflow-hidden">
           <div className="h-1.5 bg-gradient-to-r from-violet-500 to-violet-700" />
           <CardContent className="p-8 text-center">
@@ -159,6 +165,9 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
       const moduleDef = getModuleByKey(matchedKey);
       return (
         <div className="max-w-lg mx-auto mt-12">
+          <Button variant="ghost" size="sm" className="mb-4 gap-1 text-muted-foreground" onClick={() => router.push("/dashboard")}>
+            <ArrowLeft className="h-4 w-4" /> {T("nav.dashboard") || "Dashboard"}
+          </Button>
           <Card className="border-violet-500/20 overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-violet-500 to-violet-700" />
             <CardContent className="p-8 text-center">

@@ -11,6 +11,8 @@ import {
   Loader2,
   ChevronRight,
   Filter,
+  Stethoscope,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +60,7 @@ export default function AppointmentsList() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [mounted, setMounted] = useState(false);
+  const [initialAssessmentDone, setInitialAssessmentDone] = useState<boolean | null>(null);
 
   const isTherapist =
     (session?.user as any)?.role === "ADMIN" ||
@@ -76,7 +79,17 @@ export default function AppointmentsList() {
       }
       const response = await fetch(`/api/appointments?${params.toString()}`);
       const data = await response.json();
-      setAppointments(data?.appointments ?? []);
+      const appts = data?.appointments ?? [];
+      setAppointments(appts);
+
+      // Check if initial assessment exists (any status except CANCELLED)
+      if (!isTherapist) {
+        const hasInitial = appts.some((a: Appointment) =>
+          (a.treatmentType === "Initial Assessment" || a.treatmentType === "Avalia\u00e7\u00e3o Inicial") &&
+          a.status !== "CANCELLED"
+        );
+        setInitialAssessmentDone(hasInitial);
+      }
     } catch (error) {
       console.error("Error fetching appointments:", error);
     } finally {
@@ -118,6 +131,35 @@ export default function AppointmentsList() {
           </Button>
         </Link>
       </div>
+
+      {/* Initial Assessment Banner for patients */}
+      {!isTherapist && initialAssessmentDone === false && !loading && (
+        <Card className="border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-card to-amber-500/5 overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/15 shrink-0">
+                <Stethoscope className="h-6 w-6 text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-foreground text-sm">
+                  {isPt ? "Comece com uma Avalia\u00e7\u00e3o Inicial" : "Start with an Initial Assessment"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isPt
+                    ? "Uma avalia\u00e7\u00e3o inicial \u00e9 necess\u00e1ria antes de agendar qualquer tratamento. Seu terapeuta avaliar\u00e1 suas necessidades e criar\u00e1 um plano personalizado."
+                    : "An initial assessment is required before booking any treatment. Your therapist will evaluate your needs and create a personalised plan."}
+                </p>
+              </div>
+              <Link href="/dashboard/appointments/book" className="w-full sm:w-auto shrink-0">
+                <Button size="sm" className="gap-1.5 w-full sm:w-auto bg-amber-600 hover:bg-amber-700">
+                  {isPt ? "Agendar Avalia\u00e7\u00e3o" : "Book Assessment"} <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-4">

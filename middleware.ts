@@ -20,6 +20,7 @@ const publicRoutes = [
   '/api/articles',
   '/api/service-pages',
   '/api/version',
+  '/api/client-error',
   '/api/foot-scans/session',
   '/api/webhooks',
   '/clinics',
@@ -37,6 +38,7 @@ const publicRoutes = [
   '/intake',
   '/api/intake',
   '/api/analytics/track',
+  '/api/sketchfab',
   '/capture',
   '/api/body-assessments/capture',
 ];

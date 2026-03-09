@@ -27,9 +27,141 @@ import {
   Monitor,
   Footprints,
   Clock,
+  HelpCircle,
 } from "lucide-react";
 import { computeAllMetrics } from "@/lib/health-metrics";
 import { HealthMetricsCard } from "./health-metrics-card";
+
+// ═══════════════════════════════════════════
+// Field help definitions (clinical + self-measurement)
+// ═══════════════════════════════════════════
+interface FieldHelp {
+  en: string;
+  pt: string;
+  howEn: string;
+  howPt: string;
+}
+
+const FIELD_HELP: Record<string, FieldHelp> = {
+  height: {
+    en: "Standing height in centimeters. Essential for BMI calculation and body proportion analysis.",
+    pt: "Altura em pé em centímetros. Essencial para cálculo do IMC e análise de proporções corporais.",
+    howEn: "Stand barefoot against a wall, heels touching the wall. Place a flat object (book) on top of your head touching the wall. Mark and measure the height from the floor.",
+    howPt: "Fique descalço(a) encostado(a) na parede, calcanhares tocando a parede. Coloque um objeto plano (livro) no topo da cabeça tocando a parede. Marque e meça a altura do chão.",
+  },
+  weight: {
+    en: "Body weight in kilograms. Used for BMI, body composition estimates, and metabolic calculations.",
+    pt: "Peso corporal em quilogramas. Usado para IMC, estimativas de composição corporal e cálculos metabólicos.",
+    howEn: "Weigh yourself in the morning, after using the toilet, wearing minimal clothing. Use the same scale each time for consistency.",
+    howPt: "Pese-se de manhã, após usar o banheiro, com roupa mínima. Use a mesma balança sempre para consistência.",
+  },
+  waist: {
+    en: "Waist circumference is a key indicator of cardiovascular risk. Values above 94cm (men) or 80cm (women) indicate increased risk.",
+    pt: "Circunferência da cintura é um indicador-chave de risco cardiovascular. Valores acima de 94cm (homens) ou 80cm (mulheres) indicam risco aumentado.",
+    howEn: "Measure around your natural waistline (narrowest point of torso, usually at the navel level). Keep the tape horizontal, snug but not compressing the skin. Breathe out normally before reading.",
+    howPt: "Meça ao redor da cintura natural (ponto mais estreito do torso, geralmente na altura do umbigo). Mantenha a fita horizontal, firme mas sem comprimir a pele. Expire normalmente antes de ler.",
+  },
+  hip: {
+    en: "Hip circumference, used with waist to calculate waist-to-hip ratio (WHR) — a predictor of cardiovascular disease risk.",
+    pt: "Circunferência do quadril, usada com cintura para calcular relação cintura/quadril (RCQ) — preditor de risco de doenças cardiovasculares.",
+    howEn: "Measure around the widest part of your buttocks/hips. Keep tape level and horizontal. Stand with feet together.",
+    howPt: "Meça ao redor da parte mais larga dos glúteos/quadril. Mantenha a fita nivelada e horizontal. Fique com os pés juntos.",
+  },
+  neck: {
+    en: "Neck circumference is used in the Navy body fat estimation method and can indicate sleep apnea risk (>43cm men, >38cm women).",
+    pt: "Circunferência do pescoço é usada no método Navy de estimativa de gordura corporal e pode indicar risco de apneia do sono (>43cm homens, >38cm mulheres).",
+    howEn: "Measure around the neck just below the Adam's apple (laryngeal prominence). Keep tape snug and horizontal.",
+    howPt: "Meça ao redor do pescoço logo abaixo do pomo de Adão (proeminência laríngea). Mantenha a fita firme e horizontal.",
+  },
+  chest: {
+    en: "Chest circumference helps assess upper body proportions and respiratory capacity.",
+    pt: "Circunferência do tórax ajuda a avaliar proporções da parte superior do corpo e capacidade respiratória.",
+    howEn: "Measure around the chest at nipple level. Arms relaxed at sides. Breathe out normally before reading.",
+    howPt: "Meça ao redor do tórax na altura dos mamilos. Braços relaxados ao lado do corpo. Expire normalmente antes de ler.",
+  },
+  thigh: {
+    en: "Thigh circumference indicates lower body muscle mass and is useful for tracking strength training progress.",
+    pt: "Circunferência da coxa indica massa muscular dos membros inferiores e é útil para acompanhar progresso de treino de força.",
+    howEn: "Measure around the widest part of the thigh, usually about 15cm below the groin fold. Stand with weight evenly distributed.",
+    howPt: "Meça ao redor da parte mais larga da coxa, geralmente cerca de 15cm abaixo da dobra inguinal. Fique com o peso distribuído igualmente.",
+  },
+  calf: {
+    en: "Calf circumference reflects lower leg muscle mass. Low values (<31cm) may indicate sarcopenia in older adults.",
+    pt: "Circunferência da panturrilha reflete massa muscular da perna inferior. Valores baixos (<31cm) podem indicar sarcopenia em idosos.",
+    howEn: "Measure around the widest part of the calf. Stand with weight evenly distributed on both feet.",
+    howPt: "Meça ao redor da parte mais larga da panturrilha. Fique com o peso distribuído igualmente nos dois pés.",
+  },
+  arm: {
+    en: "Arm circumference (mid-upper arm) indicates nutritional status and muscle mass.",
+    pt: "Circunferência do braço (meio do braço superior) indica estado nutricional e massa muscular.",
+    howEn: "Measure around the mid-point of the upper arm, between the shoulder and elbow. Arm relaxed, hanging by side.",
+    howPt: "Meça ao redor do ponto médio do braço superior, entre o ombro e o cotovelo. Braço relaxado, ao lado do corpo.",
+  },
+  bodyFat: {
+    en: "Body fat percentage is a more accurate measure of body composition than BMI alone. Healthy ranges: Men 10-20%, Women 18-28%.",
+    pt: "Percentual de gordura corporal é uma medida mais precisa de composição corporal que o IMC sozinho. Faixas saudáveis: Homens 10-20%, Mulheres 18-28%.",
+    howEn: "Best measured by a professional using bioimpedance, DEXA, or skinfold calipers. Home scales with bioimpedance can give estimates.",
+    howPt: "Melhor medido por um profissional usando bioimpedância, DEXA ou adipômetro. Balanças domésticas com bioimpedância podem dar estimativas.",
+  },
+  visceralFat: {
+    en: "Visceral fat level (1-59 scale). Levels 1-12 are healthy. 13+ indicates excess visceral fat which increases disease risk.",
+    pt: "Nível de gordura visceral (escala 1-59). Níveis 1-12 são saudáveis. 13+ indica excesso de gordura visceral que aumenta risco de doenças.",
+    howEn: "Usually measured by bioimpedance scales or DEXA scan. Cannot be measured with a tape measure.",
+    howPt: "Geralmente medido por balanças de bioimpedância ou exame DEXA. Não pode ser medido com fita métrica.",
+  },
+  sitting: {
+    en: "Hours spent sitting per day. Prolonged sitting (>8h/day) is linked to increased cardiovascular risk, regardless of exercise habits.",
+    pt: "Horas sentado por dia. Sentar prolongado (>8h/dia) está ligado a risco cardiovascular aumentado, independentemente de hábitos de exercício.",
+    howEn: "Estimate total daily sitting time: work desk, driving, meals, TV, phone. Include all seated activities.",
+    howPt: "Estime o tempo total sentado diário: mesa de trabalho, dirigindo, refeições, TV, celular. Inclua todas as atividades sentadas.",
+  },
+  screen: {
+    en: "Daily screen time. Excessive screen time can contribute to eye strain, neck pain, and poor posture.",
+    pt: "Tempo de tela diário. Tempo excessivo de tela pode contribuir para fadiga ocular, dor no pescoço e postura inadequada.",
+    howEn: "Check your phone's screen time report. Add computer/TV time. Most smartphones track this automatically.",
+    howPt: "Verifique o relatório de tempo de tela do seu celular. Adicione tempo de computador/TV. A maioria dos smartphones rastreia isso automaticamente.",
+  },
+  walking: {
+    en: "Minutes of walking per day. WHO recommends at least 150 minutes of moderate activity per week (~22 min/day).",
+    pt: "Minutos de caminhada por dia. OMS recomenda pelo menos 150 minutos de atividade moderada por semana (~22 min/dia).",
+    howEn: "Use a pedometer app or fitness tracker. Include all walking: commuting, lunch breaks, errands.",
+    howPt: "Use um app de pedômetro ou rastreador fitness. Inclua toda caminhada: deslocamento, almoço, tarefas.",
+  },
+  steps: {
+    en: "Daily step count. 7,000-10,000 steps/day is associated with significant health benefits.",
+    pt: "Contagem diária de passos. 7.000-10.000 passos/dia está associado a benefícios significativos de saúde.",
+    howEn: "Use your phone's built-in health app or a fitness tracker/smartwatch.",
+    howPt: "Use o app de saúde do seu celular ou um rastreador fitness/smartwatch.",
+  },
+};
+
+function FieldHelpTooltip({ fieldKey, pt }: { fieldKey: string; pt: boolean }) {
+  const [open, setOpen] = useState(false);
+  const help = FIELD_HELP[fieldKey];
+  if (!help) return null;
+  return (
+    <span className="relative inline-block ml-1">
+      <button
+        type="button"
+        className="text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setOpen(!open)}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <HelpCircle className="h-3 w-3" />
+      </button>
+      {open && (
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1 w-72 p-3 rounded-lg border bg-popover text-popover-foreground shadow-lg text-xs space-y-2">
+          <p className="font-medium">{pt ? help.pt : help.en}</p>
+          <div className="border-t pt-2">
+            <p className="text-[10px] font-semibold text-primary mb-0.5">{pt ? "📏 Como medir em casa:" : "📏 How to measure at home:"}</p>
+            <p className="text-muted-foreground text-[10px]">{pt ? help.howPt : help.howEn}</p>
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
 
 interface BodyMetricsTabProps {
   assessment: any;
@@ -194,17 +326,20 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">{pt ? "Altura (cm)" : "Height (cm)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Altura (cm)" : "Height (cm)"}<FieldHelpTooltip fieldKey="height" pt={pt} /></Label>
                   <Input
-                    type="number" step="0.1" placeholder="175"
+                    type="number" step="0.1" min="50" max="250" placeholder="175"
                     value={heightCm} onChange={(e) => { setHeightCm(e.target.value); markDirty(); }}
-                    className={inputCls}
+                    className={`${inputCls} ${heightCm && (parseFloat(heightCm) < 50 || parseFloat(heightCm) > 250) ? "border-red-500" : ""}`}
                   />
+                  {heightCm && (parseFloat(heightCm) < 50 || parseFloat(heightCm) > 250) && (
+                    <p className="text-[10px] text-red-500 mt-0.5">{pt ? "Altura deve ser entre 50-250 cm" : "Height must be 50-250 cm"}</p>
+                  )}
                 </div>
                 <div>
-                  <Label className="text-xs">{pt ? "Peso (kg)" : "Weight (kg)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Peso (kg)" : "Weight (kg)"}<FieldHelpTooltip fieldKey="weight" pt={pt} /></Label>
                   <Input
-                    type="number" step="0.1" placeholder="70"
+                    type="number" step="0.1" min="20" max="300" placeholder="70"
                     value={weightKg} onChange={(e) => { setWeightKg(e.target.value); markDirty(); }}
                     className={inputCls}
                   />
@@ -263,7 +398,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">{pt ? "Cintura (cm)" : "Waist (cm)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Cintura (cm)" : "Waist (cm)"}<FieldHelpTooltip fieldKey="waist" pt={pt} /></Label>
                   <Input
                     type="number" step="0.1" placeholder="85"
                     value={waistCm} onChange={(e) => { setWaistCm(e.target.value); markDirty(); }}
@@ -271,7 +406,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">{pt ? "Quadril (cm)" : "Hip (cm)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Quadril (cm)" : "Hip (cm)"}<FieldHelpTooltip fieldKey="hip" pt={pt} /></Label>
                   <Input
                     type="number" step="0.1" placeholder="95"
                     value={hipCm} onChange={(e) => { setHipCm(e.target.value); markDirty(); }}
@@ -279,7 +414,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">{pt ? "Pescoço (cm)" : "Neck (cm)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Pescoço (cm)" : "Neck (cm)"}<FieldHelpTooltip fieldKey="neck" pt={pt} /></Label>
                   <Input
                     type="number" step="0.1" placeholder="38"
                     value={neckCm} onChange={(e) => { setNeckCm(e.target.value); markDirty(); }}
@@ -287,7 +422,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">{pt ? "Tórax (cm)" : "Chest (cm)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Tórax (cm)" : "Chest (cm)"}<FieldHelpTooltip fieldKey="chest" pt={pt} /></Label>
                   <Input
                     type="number" step="0.1" placeholder="95"
                     value={chestCm} onChange={(e) => { setChestCm(e.target.value); markDirty(); }}
@@ -295,7 +430,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">{pt ? "Coxa (cm)" : "Thigh (cm)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Coxa (cm)" : "Thigh (cm)"}<FieldHelpTooltip fieldKey="thigh" pt={pt} /></Label>
                   <Input
                     type="number" step="0.1" placeholder="55"
                     value={thighCm} onChange={(e) => { setThighCm(e.target.value); markDirty(); }}
@@ -303,7 +438,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">{pt ? "Panturrilha (cm)" : "Calf (cm)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Panturrilha (cm)" : "Calf (cm)"}<FieldHelpTooltip fieldKey="calf" pt={pt} /></Label>
                   <Input
                     type="number" step="0.1" placeholder="38"
                     value={calfCm} onChange={(e) => { setCalfCm(e.target.value); markDirty(); }}
@@ -311,7 +446,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">{pt ? "Braço (cm)" : "Arm (cm)"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Braço (cm)" : "Arm (cm)"}<FieldHelpTooltip fieldKey="arm" pt={pt} /></Label>
                   <Input
                     type="number" step="0.1" placeholder="32"
                     value={armCm} onChange={(e) => { setArmCm(e.target.value); markDirty(); }}
@@ -338,7 +473,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">{pt ? "% Gordura" : "Body Fat %"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "% Gordura" : "Body Fat %"}<FieldHelpTooltip fieldKey="bodyFat" pt={pt} /></Label>
                   <Input
                     type="number" step="0.1" placeholder="22.5"
                     value={bodyFatPercent} onChange={(e) => { setBodyFatPercent(e.target.value); markDirty(); }}
@@ -362,7 +497,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">{pt ? "Gordura Visceral" : "Visceral Fat Level"}</Label>
+                  <Label className="text-xs flex items-center">{pt ? "Gordura Visceral" : "Visceral Fat Level"}<FieldHelpTooltip fieldKey="visceralFat" pt={pt} /></Label>
                   <Input
                     type="number" step="1" placeholder="8"
                     value={visceralFatLevel} onChange={(e) => { setVisceralFatLevel(e.target.value); markDirty(); }}
@@ -386,7 +521,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                 <div>
                   <Label className="text-xs flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {pt ? "Horas sentado/dia" : "Sitting hours/day"}
+                    {pt ? "Horas sentado/dia" : "Sitting hours/day"}<FieldHelpTooltip fieldKey="sitting" pt={pt} />
                   </Label>
                   <Input
                     type="number" step="0.5" placeholder="8"
@@ -397,7 +532,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                 <div>
                   <Label className="text-xs flex items-center gap-1">
                     <Monitor className="h-3 w-3" />
-                    {pt ? "Tempo de tela/dia" : "Screen time/day"}
+                    {pt ? "Tempo de tela/dia" : "Screen time/day"}<FieldHelpTooltip fieldKey="screen" pt={pt} />
                   </Label>
                   <Input
                     type="number" step="0.5" placeholder="6"
@@ -408,7 +543,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                 <div>
                   <Label className="text-xs flex items-center gap-1">
                     <Footprints className="h-3 w-3" />
-                    {pt ? "Caminhada (min/dia)" : "Walking (min/day)"}
+                    {pt ? "Caminhada (min/dia)" : "Walking (min/day)"}<FieldHelpTooltip fieldKey="walking" pt={pt} />
                   </Label>
                   <Input
                     type="number" step="5" placeholder="30"
@@ -419,7 +554,7 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
                 <div>
                   <Label className="text-xs flex items-center gap-1">
                     <Footprints className="h-3 w-3" />
-                    {pt ? "Passos/dia" : "Steps/day"}
+                    {pt ? "Passos/dia" : "Steps/day"}<FieldHelpTooltip fieldKey="steps" pt={pt} />
                   </Label>
                   <Input
                     type="number" step="500" placeholder="5000"

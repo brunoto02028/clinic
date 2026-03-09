@@ -217,7 +217,7 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user, account, trigger }) {
       // On initial sign-in from credentials provider
-      if (user && !account?.provider) {
+      if (user && account?.provider === "credentials") {
         token.id = user.id;
         token.role = (user as any).role;
         token.firstName = (user as any).firstName;

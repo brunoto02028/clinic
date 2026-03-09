@@ -614,11 +614,9 @@ model MedicalScreening {
 
   // Pain Assessment
   painLevel               Int?     // 0-10 scale
-  painLocation            String?  // free text description of pain location(s)
   painTypes               Json?    // array: ["throbbing","sharp","stabbing","burning","dull","aching","pressure","tingling"]
   painPatterns            Json?    // array: ["constant","intermittent","worsens_activity","worsens_rest","morning","night","comes_goes"]
   painImpact              Json?    // array: ["sleep","work","mobility","daily_activities","mood","exercise","social"]
-  painDuration            String?  // e.g. "2 weeks", "3 months"
   painNotes               String?  // free text additional notes about pain
 
   // Additional Information
@@ -921,9 +919,6 @@ model SiteSettings {
   
   // Patient Portal Configuration
   patientPortalJson String? @db.Text  // JSON config for patient portal modules
-  
-  // Screening Configuration
-  screeningConfigJson String? @db.Text  // JSON config for screening form customization
   
   // Consent / Legal Texts
   consentTextsJson  String?  @db.Text  // JSON config for terms, privacy, liability texts

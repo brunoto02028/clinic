@@ -100,8 +100,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en-GB">
-      <body className={inter.className}>
+    <html lang="en-GB" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         <Suspense fallback={null}>
           <SchemaOrgScript />
         </Suspense>

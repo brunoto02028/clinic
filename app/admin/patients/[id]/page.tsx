@@ -7,7 +7,7 @@ import {
   ArrowLeft, User, FileText, Footprints, Activity, Stethoscope, Brain, Heart, FileUp,
   RefreshCw, AlertCircle, CheckCircle2, X, Loader2, Mic, MicOff, Languages, Plus, Save,
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
-  Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink,
+  Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,7 @@ const DOC_TYPES = [
   { value: "CONSENT_FORM", label: "Consent Form" },
   { value: "PREVIOUS_TREATMENT", label: "Previous Treatment" },
   { value: "OTHER", label: "Other" },
+  { value: "THERMOGRAPHY", label: "Thermography" },
 ];
 
 const RED_FLAGS = [
@@ -168,6 +169,14 @@ export default function PatientProfilePage() {
   const [inviteUrl, setInviteUrl] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
+
+  // Thermography
+  const [showThermoUpload, setShowThermoUpload] = useState(false);
+  const [thermoFiles, setThermoFiles] = useState<File[]>([]);
+  const [thermoNotes, setThermoNotes] = useState("");
+  const [thermoUploading, setThermoUploading] = useState(false);
+  const [editingThermoId, setEditingThermoId] = useState<string | null>(null);
+  const [thermoEditNotes, setThermoEditNotes] = useState("");
 
   // AI Import
   const [showAIImport, setShowAIImport] = useState(false);
@@ -392,6 +401,44 @@ export default function PatientProfilePage() {
     finally { setResettingPw(false); }
   };
 
+  // Delete Body Assessment
+  const deleteBA = async (id: string) => {
+    if (!confirm("Delete this body assessment? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/body-assessments/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error);
+      flash("Body assessment deleted"); fetchData();
+    } catch (err: any) { setError(err.message); }
+  };
+
+  // Upload Thermography
+  const handleThermoUpload = async () => {
+    if (thermoFiles.length === 0) return;
+    setThermoUploading(true);
+    try {
+      for (const file of thermoFiles) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("title", thermoNotes || `Thermography - ${new Date().toLocaleDateString()}`);
+        fd.append("documentType", "THERMOGRAPHY");
+        fd.append("source", "ADMIN_UPLOAD");
+        fd.append("description", thermoNotes);
+        const res = await fetch(`/api/admin/patients/${patientId}/documents`, { method: "POST", body: fd });
+        if (!res.ok) throw new Error((await res.json()).error);
+      }
+      setThermoFiles([]); setThermoNotes(""); setShowThermoUpload(false);
+      flash("Thermography images uploaded!"); fetchData();
+    } catch (err: any) { setError(err.message); }
+    finally { setThermoUploading(false); }
+  };
+
+  // Save Thermography notes
+  const saveThermoNotes = async () => {
+    if (!editingThermoId) return;
+    const r = await apiPatch({ action: "edit_document", documentId: editingThermoId, description: thermoEditNotes });
+    if (r) { setEditingThermoId(null); flash("Thermography notes updated"); fetchData(); }
+  };
+
   // Impersonate Patient
   const handleImpersonate = async () => {
     try {
@@ -441,7 +488,7 @@ export default function PatientProfilePage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"><Shield className="h-3.5 w-3.5 mr-1" /> Permissões</Button></Link>
+          <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"><Shield className="h-3.5 w-3.5 mr-1" /> Permissões</Button></Link>
           <Link href={`/admin/patients/${patientId}/documents`}><Button variant="outline" size="sm" className="h-8 text-xs"><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button></Link>
           <Link href={`/admin/patients/${patientId}/diagnosis`}><Button variant="outline" size="sm" className="h-8 text-xs"><Brain className="h-3.5 w-3.5 mr-1" /> AI Assessment</Button></Link>
         </div>
@@ -451,31 +498,31 @@ export default function PatientProfilePage() {
       <div className="flex flex-wrap items-center gap-2">
         {/* Profile/Intake Status */}
         {p.profileCompleted ? (
-          <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px]">
+          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
             <CheckCircle2 className="h-3 w-3 mr-1" /> Perfil Completo
           </Badge>
         ) : (
-          <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+          <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
             <AlertCircle className="h-3 w-3 mr-1" /> Perfil Pendente
           </Badge>
         )}
         {/* Password Status */}
         {p.hasPassword ? (
-          <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px]">
+          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
             <Shield className="h-3 w-3 mr-1" /> Senha Definida
           </Badge>
         ) : (
-          <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">
+          <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px]">
             <AlertCircle className="h-3 w-3 mr-1" /> Sem Senha
           </Badge>
         )}
         {/* Consent Status */}
         {p.consentAcceptedAt ? (
-          <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px]">
+          <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
             <CheckCircle2 className="h-3 w-3 mr-1" /> Consentimento Aceito
           </Badge>
         ) : (
-          <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
+          <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
             <AlertCircle className="h-3 w-3 mr-1" /> Sem Consentimento
           </Badge>
         )}
@@ -483,7 +530,7 @@ export default function PatientProfilePage() {
         <Button
           variant={p.fullAccessOverride ? "default" : "outline"}
           size="sm"
-          className={`h-7 text-[10px] gap-1 ${p.fullAccessOverride ? "bg-emerald-600 hover:bg-emerald-700" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"}`}
+          className={`h-7 text-[10px] gap-1 ${p.fullAccessOverride ? "bg-emerald-600 hover:bg-emerald-700" : "border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10"}`}
           onClick={toggleFullAccess}
           disabled={togglingAccess}
         >
@@ -491,18 +538,18 @@ export default function PatientProfilePage() {
           {p.fullAccessOverride ? "Acesso Total Ativo" : "Liberar Acesso Total"}
         </Button>
         {/* Reset Password */}
-        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={() => setShowResetPw(!showResetPw)}>
+        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10" onClick={() => setShowResetPw(!showResetPw)}>
           <Lock className="h-3 w-3" /> Resetar Senha
         </Button>
         {/* View as Patient */}
-        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-blue-300 text-blue-700 hover:bg-blue-50" onClick={handleImpersonate}>
+        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-blue-500/40 text-blue-400 hover:bg-blue-500/10" onClick={handleImpersonate}>
           <Eye className="h-3 w-3" /> Ver como Paciente
         </Button>
       </div>
 
       {/* Inline Reset Password */}
       {showResetPw && (
-        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
           <Lock className="h-4 w-4 text-amber-600 shrink-0" />
           <div className="relative flex-1 max-w-xs">
             <Input
@@ -527,7 +574,7 @@ export default function PatientProfilePage() {
 
       {/* Messages */}
       {error && <div className="bg-destructive/10 text-destructive text-xs p-2.5 rounded-lg flex items-center gap-2"><AlertCircle className="h-3.5 w-3.5" /> {error} <Button variant="ghost" size="sm" className="ml-auto h-5 w-5 p-0" onClick={() => setError("")}><X className="h-3 w-3" /></Button></div>}
-      {success && <div className="bg-green-50 text-green-700 text-xs p-2.5 rounded-lg flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5" /> {success}</div>}
+      {success && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-2.5 rounded-lg flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5" /> {success}</div>}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
@@ -541,27 +588,27 @@ export default function PatientProfilePage() {
           { icon: Heart, label: "Protocol", ok: data.protocols?.length > 0, c: data.protocols?.length },
           { icon: HeartPulse, label: "BP Readings", ok: data.bpReadings?.length > 0, c: data.bpReadings?.length },
         ].map((s) => (
-          <div key={s.label} className={`rounded-lg border p-2 text-center ${s.ok ? "bg-green-50 border-green-200" : "bg-muted/30"}`}>
-            <s.icon className={`h-3.5 w-3.5 mx-auto mb-0.5 ${s.ok ? "text-green-600" : "text-muted-foreground"}`} />
+          <div key={s.label} className={`rounded-lg border p-2 text-center ${s.ok ? "bg-emerald-500/10 border-emerald-500/30" : "bg-muted/30"}`}>
+            <s.icon className={`h-3.5 w-3.5 mx-auto mb-0.5 ${s.ok ? "text-emerald-400" : "text-muted-foreground"}`} />
             <p className="text-[9px] font-medium">{s.label}</p>
-            <p className={`text-[9px] ${s.ok ? "text-green-600" : "text-muted-foreground"}`}>{s.ok ? (s.c || "✓") : "—"}</p>
+            <p className={`text-[9px] ${s.ok ? "text-emerald-400" : "text-muted-foreground"}`}>{s.ok ? (s.c || "✓") : "—"}</p>
           </div>
         ))}
       </div>
 
       {/* Invite Link */}
-      <div className="flex flex-wrap items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <Link2 className="h-4 w-4 text-blue-600 shrink-0" />
-        <span className="text-xs font-medium text-blue-800">Patient Invite Link</span>
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+        <Link2 className="h-4 w-4 text-blue-400 shrink-0" />
+        <span className="text-xs font-medium text-blue-300">Patient Invite Link</span>
         {inviteUrl ? (
           <>
-            <code className="text-[10px] bg-white border rounded px-2 py-1 text-blue-700 flex-1 min-w-0 truncate">{inviteUrl}</code>
-            <Button variant="outline" size="sm" className="h-7 text-xs border-blue-300 text-blue-700" onClick={copyInvite}>
+            <code className="text-[10px] bg-card border rounded px-2 py-1 text-blue-400 flex-1 min-w-0 truncate">{inviteUrl}</code>
+            <Button variant="outline" size="sm" className="h-7 text-xs border-blue-500/40 text-blue-400" onClick={copyInvite}>
               {inviteCopied ? <><Check className="h-3 w-3 mr-1" /> Copied!</> : <><Copy className="h-3 w-3 mr-1" /> Copy</>}
             </Button>
           </>
         ) : (
-          <Button variant="outline" size="sm" className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100" onClick={generateInvite} disabled={inviteLoading}>
+          <Button variant="outline" size="sm" className="h-7 text-xs border-blue-500/40 text-blue-400 hover:bg-blue-500/10" onClick={generateInvite} disabled={inviteLoading}>
             {inviteLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Link2 className="h-3 w-3 mr-1" />}
             Generate Invite Link
           </Button>
@@ -578,14 +625,14 @@ export default function PatientProfilePage() {
         <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
           {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Generate AI Assessment
         </Button>
-        <Button variant="outline" size="sm" className={`${btnCls} bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100`} onClick={() => setShowAIImport(true)}>
+        <Button variant="outline" size="sm" className={`${btnCls} bg-violet-500/10 border-violet-500/30 text-violet-400 hover:bg-violet-500/20`} onClick={() => setShowAIImport(true)}>
           <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Import
         </Button>
       </div>
 
       {/* AI Import Panel */}
       {showAIImport && (
-        <Card className="border-violet-300 bg-violet-50/50">
+        <Card className="border-violet-500/30 bg-violet-500/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-violet-600" /> AI Patient History Import
@@ -617,7 +664,7 @@ export default function PatientProfilePage() {
                 multiple
                 accept=".pdf,.jpg,.jpeg,.png,.webp,.heic"
                 onChange={(e) => setAiImportFiles(Array.from(e.target.files || []))}
-                className="text-xs w-full file:mr-2 file:py-1 file:px-3 file:rounded-md file:border file:text-xs file:bg-violet-100 file:text-violet-700 file:border-violet-300"
+                className="text-xs w-full file:mr-2 file:py-1 file:px-3 file:rounded-md file:border file:text-xs file:bg-violet-500/20 file:text-violet-400 file:border-violet-500/30"
               />
               {aiImportFiles.length > 0 && (
                 <p className="text-[10px] text-violet-600">{aiImportFiles.length} file(s) selected</p>
@@ -626,11 +673,11 @@ export default function PatientProfilePage() {
 
             {/* AI Import Result Preview */}
             {aiImportResult && (
-              <div className="bg-white border border-violet-200 rounded-lg p-3 space-y-2">
-                <p className="text-xs font-semibold text-violet-800">AI Import Results:</p>
+              <div className="bg-card border border-violet-500/30 rounded-lg p-3 space-y-2">
+                <p className="text-xs font-semibold text-violet-300">AI Import Results:</p>
                 {aiImportResult.screening && (
                   <div className="text-[10px]">
-                    <Badge variant="outline" className="text-[9px] bg-green-50">Screening</Badge>
+                    <Badge variant="outline" className="text-[9px] bg-emerald-500/10">Screening</Badge>
                     <span className="ml-1 text-muted-foreground">
                       {aiImportResult.screening.conditions?.length || 0} conditions,{" "}
                       {aiImportResult.screening.medications ? "medications found" : "no medications"},
@@ -640,13 +687,13 @@ export default function PatientProfilePage() {
                 )}
                 {aiImportResult.soapNotesCreated > 0 && (
                   <div className="text-[10px]">
-                    <Badge variant="outline" className="text-[9px] bg-blue-50">SOAP Notes</Badge>
+                    <Badge variant="outline" className="text-[9px] bg-blue-500/10">SOAP Notes</Badge>
                     <span className="ml-1 text-muted-foreground">{aiImportResult.soapNotesCreated} note(s) created</span>
                   </div>
                 )}
                 {aiImportResult.documentsCreated > 0 && (
                   <div className="text-[10px]">
-                    <Badge variant="outline" className="text-[9px] bg-purple-50">Documents</Badge>
+                    <Badge variant="outline" className="text-[9px] bg-purple-500/10">Documents</Badge>
                     <span className="ml-1 text-muted-foreground">{aiImportResult.documentsCreated} document(s) saved</span>
                   </div>
                 )}
@@ -731,7 +778,7 @@ export default function PatientProfilePage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                 {RED_FLAGS.map((f) => (
                   <button key={f.key} type="button" onClick={() => setScreeningForm({ ...screeningForm, [f.key]: !screeningForm[f.key] })}
-                    className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded cursor-pointer transition-colors ${screeningForm[f.key] ? "bg-red-100 text-red-700 ring-1 ring-red-300" : "bg-green-50 text-green-700"}`}>
+                    className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded cursor-pointer transition-colors ${screeningForm[f.key] ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : "bg-emerald-500/10 text-emerald-400"}`}>
                     {screeningForm[f.key] ? <AlertCircle className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />} {f.label}
                   </button>
                 ))}
@@ -750,7 +797,7 @@ export default function PatientProfilePage() {
             <div className="space-y-2">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                 {RED_FLAGS.map((f) => (
-                  <div key={f.key} className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${data.screening[f.key] ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
+                  <div key={f.key} className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${data.screening[f.key] ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
                     {data.screening[f.key] ? <AlertCircle className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />} {f.label}
                   </div>
                 ))}
@@ -788,7 +835,7 @@ export default function PatientProfilePage() {
               ) : (
                 <>
                   {s.clinicianNotes && <p className="text-[10px] bg-muted/50 p-1.5 rounded">{s.clinicianNotes}</p>}
-                  {s.aiRecommendation && <p className="text-[10px] bg-blue-50 p-1.5 rounded text-blue-800">{s.aiRecommendation}</p>}
+                  {s.aiRecommendation && <p className="text-[10px] bg-blue-500/10 p-1.5 rounded text-blue-400">{s.aiRecommendation}</p>}
                 </>
               )}
             </div>
@@ -804,12 +851,13 @@ export default function PatientProfilePage() {
                 <div className="flex items-center gap-1">
                   <Badge variant="outline" className="text-[9px]">{ba.status}</Badge>
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setBaForm({ therapistNotes: ba.therapistNotes || "", aiSummary: ba.aiSummary || "" }); setEditingBAId(ba.id); }}><Pencil className="h-2.5 w-2.5" /></Button>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-red-400 hover:text-red-300" onClick={() => deleteBA(ba.id)}><Trash2 className="h-2.5 w-2.5" /></Button>
                 </div>
               </div>
               {(ba.postureScore || ba.symmetryScore || ba.mobilityScore || ba.overallScore) && (
                 <div className="grid grid-cols-4 gap-1.5 text-center">
                   {[{ l: "Posture", v: ba.postureScore }, { l: "Symmetry", v: ba.symmetryScore }, { l: "Mobility", v: ba.mobilityScore }, { l: "Overall", v: ba.overallScore }].map((s) => (
-                    <div key={s.l} className="bg-muted/50 rounded p-1"><p className="text-[8px] text-muted-foreground">{s.l}</p><p className={`text-xs font-bold ${s.v >= 70 ? "text-green-600" : s.v >= 50 ? "text-amber-600" : "text-red-600"}`}>{s.v != null ? Math.round(s.v) : "—"}</p></div>
+                    <div key={s.l} className="bg-muted/50 rounded p-1"><p className="text-[8px] text-muted-foreground">{s.l}</p><p className={`text-xs font-bold ${s.v >= 70 ? "text-emerald-400" : s.v >= 50 ? "text-amber-400" : "text-red-400"}`}>{s.v != null ? Math.round(s.v) : "—"}</p></div>
                   ))}
                 </div>
               )}
@@ -821,13 +869,78 @@ export default function PatientProfilePage() {
                 </div>
               ) : (
                 <>
-                  {ba.aiSummary && <p className="text-[10px] bg-blue-50 p-1.5 rounded text-blue-800">{ba.aiSummary}</p>}
+                  {ba.aiSummary && <p className="text-[10px] bg-blue-500/10 p-1.5 rounded text-blue-400">{ba.aiSummary}</p>}
                   {ba.therapistNotes && <p className="text-[10px] bg-muted/50 p-1.5 rounded">{ba.therapistNotes}</p>}
                 </>
               )}
             </div>
           )) : <p className="text-xs text-muted-foreground">No body assessments.</p>}
         </Sec>
+
+        {/* ── Thermography ── */}
+        {(() => {
+          const thermoImages = data.documents?.filter((d: any) => d.documentType === "THERMOGRAPHY") || [];
+          return (
+            <Sec title="Infrared Thermography" icon={Flame} badge={thermoImages.length ? `${thermoImages.length}` : "None"}
+              actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowThermoUpload(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>}
+            >
+              {showThermoUpload && (
+                <div className="border border-primary rounded-lg p-3 mb-3 space-y-2 bg-orange-500/10">
+                  <p className="text-xs font-semibold flex items-center gap-1"><Flame className="h-3.5 w-3.5 text-orange-500" /> Upload Thermography Images</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => e.target.files && setThermoFiles(Array.from(e.target.files))}
+                    className="text-xs w-full file:mr-2 file:py-1 file:px-3 file:rounded-md file:border file:text-xs file:bg-orange-500/20 file:text-orange-400 file:border-orange-500/30"
+                  />
+                  {thermoFiles.length > 0 && <p className="text-[10px] text-orange-600">{thermoFiles.length} image(s) selected</p>}
+                  <EF label="Clinical Notes / Analysis" value={thermoNotes} onChange={setThermoNotes} rows={3} placeholder="Describe findings: inflammation areas, temperature differences, suspected lesions..." />
+                  <div className="flex gap-1.5">
+                    <Button size="sm" className="h-7 text-xs bg-orange-600 hover:bg-orange-700" onClick={handleThermoUpload} disabled={thermoUploading || thermoFiles.length === 0}>
+                      {thermoUploading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />} Upload
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowThermoUpload(false); setThermoFiles([]); setThermoNotes(""); }}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+
+              {thermoImages.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {thermoImages.map((img: any) => (
+                    <div key={img.id} className="border rounded-lg overflow-hidden bg-black/5">
+                      {img.fileUrl && (
+                        <a href={img.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
+                          <img src={img.fileUrl} alt={img.title || "Thermography"} className="w-full h-48 object-contain bg-black/90" />
+                        </a>
+                      )}
+                      <div className="p-2.5 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-medium">{img.title || "Thermography"}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] text-muted-foreground">{new Date(img.createdAt).toLocaleDateString()}</span>
+                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setThermoEditNotes(img.description || ""); setEditingThermoId(img.id); }}><Pencil className="h-2.5 w-2.5" /></Button>
+                          </div>
+                        </div>
+                        {editingThermoId === img.id ? (
+                          <div className="space-y-1.5 bg-muted/30 p-2 rounded">
+                            <EF label="Clinical Analysis" value={thermoEditNotes} onChange={setThermoEditNotes} rows={3} placeholder="Inflammation findings, temperature analysis..." />
+                            <div className="flex gap-1">
+                              <Button size="sm" className="h-6 text-[10px]" onClick={saveThermoNotes} disabled={saving}><Save className="h-2.5 w-2.5 mr-0.5" /> Save</Button>
+                              <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setEditingThermoId(null)}>Cancel</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          img.description && <p className="text-[10px] bg-orange-500/10 p-1.5 rounded text-orange-400">{img.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : !showThermoUpload && <p className="text-xs text-muted-foreground">No thermography images uploaded yet.</p>}
+            </Sec>
+          );
+        })()}
 
         {/* ── SOAP Notes ── */}
         <Sec title="Clinical Notes (SOAP)" icon={Stethoscope} badge={data.soapNotes?.length ? `${data.soapNotes.length}` : "None"} open={true}
@@ -934,7 +1047,7 @@ export default function PatientProfilePage() {
               ) : (
                 <>
                   <p className="text-[10px] whitespace-pre-wrap">{d.summary}</p>
-                  {d.therapistComments && <p className="text-[10px] bg-amber-50 p-1.5 rounded text-amber-800">Therapist: {d.therapistComments}</p>}
+                  {d.therapistComments && <p className="text-[10px] bg-amber-500/10 p-1.5 rounded text-amber-400">Therapist: {d.therapistComments}</p>}
                   <Link href={`/admin/patients/${patientId}/diagnosis`} className="text-[10px] text-primary hover:underline">View full →</Link>
                 </>
               )}

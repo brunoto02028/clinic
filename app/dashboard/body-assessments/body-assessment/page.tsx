@@ -20,6 +20,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { FormattedAISummary } from "@/components/body-assessment/formatted-ai-summary";
+import { TreatmentPriorities } from "@/components/body-assessment/treatment-priorities";
+import { PatientReportSummary } from "@/components/body-assessment/patient-report-summary";
 
 interface PatientAssessment {
   id: string;
@@ -150,6 +153,19 @@ export default function PatientBodyAssessmentPage() {
           </Card>
         )}
 
+        {/* Patient Report Summary */}
+        <PatientReportSummary
+          assessmentDate={a.createdAt}
+          assessmentNumber={a.assessmentNumber}
+          overallScore={a.overallScore}
+          postureScore={a.postureScore}
+          symmetryScore={a.symmetryScore}
+          mobilityScore={a.mobilityScore}
+          segmentScores={a.segmentScores}
+          aiFindings={a.aiFindings}
+          locale={locale}
+        />
+
         {/* AI Summary */}
         {a.aiSummary && (
           <Card>
@@ -160,9 +176,19 @@ export default function PatientBodyAssessmentPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{a.aiSummary}</p>
+              <FormattedAISummary text={a.aiSummary} locale={locale} />
             </CardContent>
           </Card>
+        )}
+
+        {/* Treatment Priorities */}
+        {a.segmentScores && (
+          <TreatmentPriorities
+            segmentScores={a.segmentScores}
+            aiFindings={a.aiFindings}
+            overallScore={a.overallScore}
+            locale={locale}
+          />
         )}
 
         {/* Segment Scores */}
@@ -185,7 +211,7 @@ export default function PatientBodyAssessmentPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{a.aiRecommendations}</p>
+              <FormattedAISummary text={a.aiRecommendations} locale={locale} />
             </CardContent>
           </Card>
         )}
