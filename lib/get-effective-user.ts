@@ -27,11 +27,22 @@ export async function getEffectiveUser(): Promise<{
   const headerRole = headerList.get("x-user-role");
   const impersonatedBy = headerList.get("x-impersonated-by");
 
+  // Validate header values before trusting them
+  const validIdFormat = /^[a-zA-Z0-9_-]{10,50}$/;
+  const validRoles = ["PATIENT", "ADMIN", "THERAPIST", "SUPERADMIN"];
+
   // If middleware set impersonation headers
-  if (impersonatedBy && headerUserId && headerUserId !== realUserId) {
+  if (
+    impersonatedBy &&
+    headerUserId &&
+    headerUserId !== realUserId &&
+    validIdFormat.test(headerUserId) &&
+    validIdFormat.test(impersonatedBy)
+  ) {
+    const safeRole = (headerRole && validRoles.includes(headerRole)) ? headerRole : "PATIENT";
     return {
       userId: headerUserId,
-      role: headerRole || "PATIENT",
+      role: safeRole,
       isImpersonating: true,
       realAdminId: impersonatedBy,
     };

@@ -5,3 +5,4 @@ node_modules
 deploy/.env*
 clinic-deploy.tar
 CREDENTIALS.md
+.aider*

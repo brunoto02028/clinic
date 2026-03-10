@@ -12,7 +12,9 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      allowDangerousEmailAccountLinking: true,
+      // Only link if the Google email is verified (default NextAuth behavior)
+      // This prevents account takeover via unverified email linking
+      allowDangerousEmailAccountLinking: false,
     }),
     CredentialsProvider({
       name: "credentials",
@@ -196,7 +198,9 @@ export const authOptions: NextAuthOptions = {
               portalUrl: `${appUrl}/dashboard`,
               clinicPhone: "Contact us via the website",
             }, newUser.id);
-          } catch {}
+          } catch (emailErr) {
+            console.error("[AUTH] Failed to send welcome email:", emailErr);
+          }
 
           sysLog.auth(`New patient via Google: ${email}`, {
             level: "INFO",

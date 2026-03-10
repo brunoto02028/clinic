@@ -93,7 +93,9 @@ export async function middleware(request: NextRequest) {
   const userClinicId = token.clinicId as string | null;
 
   // ── IMPERSONATION: Admin viewing as patient ──
-  const impersonatePatientId = request.cookies.get('impersonate-patient-id')?.value;
+  const rawImpersonateId = request.cookies.get('impersonate-patient-id')?.value;
+  // Validate cookie is a valid ID format (cuid or uuid) to prevent injection
+  const impersonatePatientId = rawImpersonateId && /^[a-zA-Z0-9_-]{10,50}$/.test(rawImpersonateId) ? rawImpersonateId : undefined;
   const isImpersonating = !!impersonatePatientId && (userRole === 'ADMIN' || userRole === 'SUPERADMIN');
 
   // For SUPERADMIN, check if they have a selected clinic in cookies
@@ -166,7 +168,7 @@ export async function middleware(request: NextRequest) {
 
     if (isImpersonating && !pathname.startsWith('/api/admin')) {
       // Patient-facing APIs: act as the patient
-      requestHeaders.set('x-user-id', impersonatePatientId!);
+      requestHeaders.set('x-user-id', impersonatePatientId || '');
       requestHeaders.set('x-user-role', 'PATIENT');
       requestHeaders.set('x-impersonated-by', token.id as string);
     } else {

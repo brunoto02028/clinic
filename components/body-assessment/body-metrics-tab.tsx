@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -169,10 +169,18 @@ interface BodyMetricsTabProps {
   onSave: (data: any) => Promise<void>;
 }
 
+// Safe parseFloat that returns undefined instead of NaN
+function safeFloat(val: string): number | undefined {
+  if (!val || val.trim() === "") return undefined;
+  const n = parseFloat(val);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabProps) {
   const pt = locale === "pt-BR";
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state — initialized from assessment
   const [heightCm, setHeightCm] = useState<string>(assessment.heightCm?.toString() || "");
@@ -208,8 +216,8 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
   const [computed, setComputed] = useState<any>(null);
 
   const recalculate = useCallback(() => {
-    const h = parseFloat(heightCm);
-    const w = parseFloat(weightKg);
+    const h = safeFloat(heightCm);
+    const w = safeFloat(weightKg);
     if (!h || !w || h < 50 || h > 250 || w < 20 || w > 300) {
       setComputed(null);
       return;
@@ -218,24 +226,27 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
     const result = computeAllMetrics({
       heightCm: h,
       weightKg: w,
-      waistCm: parseFloat(waistCm) || undefined,
-      hipCm: parseFloat(hipCm) || undefined,
-      neckCm: parseFloat(neckCm) || undefined,
+      waistCm: safeFloat(waistCm),
+      hipCm: safeFloat(hipCm),
+      neckCm: safeFloat(neckCm),
       sex,
       activityLevel,
       postureScore: assessment.postureScore || undefined,
       mobilityScore: assessment.mobilityScore || undefined,
-      sittingHoursPerDay: parseFloat(sittingHoursPerDay) || undefined,
-      walkingMinutesDay: parseFloat(walkingMinutesDay) || undefined,
-      bodyFatPercent: parseFloat(bodyFatPercent) || undefined,
+      sittingHoursPerDay: safeFloat(sittingHoursPerDay),
+      walkingMinutesDay: safeFloat(walkingMinutesDay),
+      bodyFatPercent: safeFloat(bodyFatPercent),
       bodyFatMethod: (bodyFatMethod as any) || undefined,
     });
 
     setComputed(result);
   }, [heightCm, weightKg, waistCm, hipCm, neckCm, sex, activityLevel, sittingHoursPerDay, walkingMinutesDay, bodyFatPercent, bodyFatMethod, assessment.postureScore, assessment.mobilityScore]);
 
+  // Debounced recalculate — avoids excessive re-renders on rapid typing
   useEffect(() => {
-    recalculate();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(recalculate, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [recalculate]);
 
   const markDirty = () => setDirty(true);

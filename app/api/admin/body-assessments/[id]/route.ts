@@ -299,10 +299,25 @@ export async function DELETE(
     const userId = (session.user as any).id;
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { role: true, clinicId: true },
     });
 
     if (!user || (user.role !== "ADMIN" && user.role !== "SUPERADMIN")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify the assessment exists and belongs to the admin's clinic
+    const assessment = await (prisma as any).bodyAssessment.findUnique({
+      where: { id: params.id },
+      select: { id: true, patient: { select: { clinicId: true } } },
+    });
+
+    if (!assessment) {
+      return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
+    }
+
+    // SUPERADMIN can delete any; ADMIN must own the clinic
+    if (user.role === "ADMIN" && assessment.patient?.clinicId !== user.clinicId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -1,0 +1,8 @@
+=== Pipeline started 2026-03-10 12:14:39 ===
+[12:14:39] STEP 1 - Pre-flight checks
+  OK: Ollama is running
+  OK: Git: 5 file(s) with changes
+[12:14:41] STEP 2 - Type checking (TypeScript)
+  OK: No TypeScript errors
+[12:14:48] STEP 3 - Aider AI review (Ollama/qwen3-coder:30b)
+  OK: No changed TypeScript files to review
