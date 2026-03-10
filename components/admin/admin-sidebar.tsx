@@ -59,6 +59,7 @@ import {
   BarChart3,
   Clock,
   Sparkles,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -218,6 +219,7 @@ const navigationGroups: NavGroup[] = [
       { name: "System Logs", i18nKey: "nav.systemLogs", href: "/admin/system-logs", icon: ScrollText },
       { name: "Voice Costs", i18nKey: "nav.voiceCosts", href: "/admin/voice-costs", icon: Mic },
       { name: "API & AI Settings", i18nKey: "nav.aiSettings", href: "/admin/ai-settings", icon: Brain, superAdminOnly: true },
+      { name: "AI Co-Worker", href: "/admin/ai-coworker", icon: Bot, superAdminOnly: true },
     ],
   },
 ];
