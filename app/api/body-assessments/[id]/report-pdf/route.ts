@@ -48,7 +48,7 @@ export async function GET(
     const assessment = await (prisma as any).bodyAssessment.findUnique({
       where: { id: params.id },
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true, dateOfBirth: true, gender: true } },
+        patient: { select: { id: true, firstName: true, lastName: true, email: true, preferredLocale: true, dateOfBirth: true } },
         therapist: { select: { firstName: true, lastName: true } },
         clinic: { select: { name: true, logoUrl: true } },
       },
@@ -250,14 +250,6 @@ export async function GET(
       doc.text(`${assessment.therapist.firstName} ${assessment.therapist.lastName}`, pageW / 2 + 30, infoY + 6);
     }
 
-    if (assessment.patient.gender) {
-      doc.setFont("helvetica", "bold");
-      setC(DARK);
-      doc.text(`${L("Gender", "Sexo")}:`, M + 5, infoY + 12);
-      doc.setFont("helvetica", "normal");
-      setC(MID);
-      doc.text(assessment.patient.gender, M + 19, infoY + 12);
-    }
     y += 26;
 
     // ─── OVERALL SCORE HIGHLIGHT ───
