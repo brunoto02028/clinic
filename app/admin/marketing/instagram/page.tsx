@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Instagram, Copy, Send, RefreshCw, Check, Sparkles } from 'lucide-react'
+import { ArrowLeft, Loader2, Instagram, Copy, Send, RefreshCw, Check, Sparkles, Mic, MicOff } from 'lucide-react'
+import { useVoiceInput } from '@/hooks/use-voice-input'
 
 const SERVICES = [
   { value: 'laser_mls', label: 'MLS Laser Therapy' },
@@ -50,6 +51,11 @@ export default function InstagramPage() {
   const [customImagePrompt, setCustomImagePrompt] = useState('')
   const [showImagePrompt, setShowImagePrompt] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  const voice = useVoiceInput({
+    language: 'en-GB',
+    onTranscript: (text) => setTopic(prev => (prev + ' ' + text).trim()),
+  })
 
   useEffect(() => {
     if (result) setEditedCaption(result.caption)
@@ -183,13 +189,34 @@ export default function InstagramPage() {
             <label className="text-xs font-medium text-muted-foreground block mb-2">
               Specific Topic <span className="text-muted-foreground/50">(optional)</span>
             </label>
-            <input
-              type="text"
-              value={topic}
-              onChange={e => setTopic(e.target.value)}
-              placeholder="e.g. 'knee recovery after ACL surgery'"
-              className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:border-primary outline-none placeholder-muted-foreground/50"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={topic}
+                onChange={e => setTopic(e.target.value)}
+                placeholder="e.g. 'knee recovery after ACL surgery'"
+                className="flex-1 bg-card border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:border-primary outline-none placeholder-muted-foreground/50"
+              />
+              {voice.isSupported && (
+                <button
+                  type="button"
+                  onClick={voice.status === 'listening' ? voice.stop : voice.start}
+                  className={`px-3 rounded-lg border transition-all ${
+                    voice.status === 'listening'
+                      ? 'bg-red-500 border-red-500 text-white animate-pulse'
+                      : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/50'
+                  }`}
+                  title={voice.status === 'listening' ? 'Stop' : 'Speak topic'}
+                >
+                  {voice.status === 'listening' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
+            {voice.status === 'listening' && (
+              <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Listening... speak your topic
+              </p>
+            )}
           </div>
 
           {/* Tone */}
