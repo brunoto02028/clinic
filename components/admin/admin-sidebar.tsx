@@ -58,6 +58,7 @@ import {
   Box,
   BarChart3,
   Clock,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -165,6 +166,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Create Post", i18nKey: "nav.createPost", href: "/admin/social/create", icon: PenSquare },
       { name: "Campaigns", i18nKey: "nav.campaigns", href: "/admin/social/campaigns", icon: CalendarRange },
       { name: "Templates", i18nKey: "nav.templates", href: "/admin/social/templates", icon: LayoutTemplate },
+      { name: "Marketing AI", href: "/admin/marketing", icon: Sparkles },
     ],
   },
   {

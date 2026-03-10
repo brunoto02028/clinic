@@ -502,6 +502,11 @@ model User {
   // OAuth
   accounts                  Account[]
 
+  // Marketing AI
+  marketingPosts            MarketingPost[]          @relation("MarketingPostCreator")
+  marketingArticles         MarketingArticle[]       @relation("MarketingArticleCreator")
+  marketingEbooks           MarketingEbook[]         @relation("MarketingEbookCreator")
+
   @@index([clinicId])
   @@index([email])
   @@index([role])
@@ -3847,4 +3852,91 @@ model AnalyticsConversion {
   @@index([clinicId, type, createdAt])
   @@index([visitorId])
   @@index([clinicId, createdAt])
+}
+
+// ============================================
+// MARKETING AI — Social Media Posts
+// ============================================
+
+model MarketingPost {
+  id              String    @id @default(cuid())
+  caption         String    @db.Text
+  captionPt       String?   @db.Text
+  hashtags        String[]
+  imageUrl        String?
+  platform        String    @default("INSTAGRAM")
+  status          String    @default("DRAFT") // DRAFT | SCHEDULED | PUBLISHED | FAILED
+  topic           String?
+  service         String?
+  language        String    @default("en")
+  tone            String?
+  generatedBy     String    @default("CLAUDE")
+  visualSuggestion String?  @db.Text
+  instagramPostId String?
+  publishedAt     DateTime?
+  scheduledAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     String?
+  createdBy       User?     @relation("MarketingPostCreator", fields: [createdById], references: [id])
+
+  @@index([status])
+  @@index([platform])
+  @@map("marketing_posts")
+}
+
+// ============================================
+// MARKETING AI — Blog / SEO Articles
+// ============================================
+
+model MarketingArticle {
+  id              String    @id @default(cuid())
+  title           String
+  slug            String    @unique
+  content         String    @db.Text
+  excerpt         String?   @db.Text
+  metaDescription String?
+  tags            String[]
+  status          String    @default("DRAFT") // DRAFT | PUBLISHED | ARCHIVED
+  keyword         String?
+  language        String    @default("en")
+  generatedBy     String?
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     String?
+  createdBy       User?     @relation("MarketingArticleCreator", fields: [createdById], references: [id])
+
+  @@index([status])
+  @@index([slug])
+  @@map("marketing_articles")
+}
+
+// ============================================
+// MARKETING AI — eBooks / Educational PDFs
+// ============================================
+
+model MarketingEbook {
+  id            String    @id @default(cuid())
+  title         String
+  subtitle      String?
+  topic         String
+  audience      String?
+  content       Json?     // Structured sections JSON
+  coverImageUrl String?
+  pdfUrl        String?   // URL to the generated PDF file
+  status        String    @default("DRAFT") // DRAFT | READY | FOR_SALE | ARCHIVED
+  price         Float?
+  currency      String    @default("GBP")
+  stripePriceId String?
+  stripeProductId String?
+  downloadCount Int       @default(0)
+  language      String    @default("en")
+  generatedBy   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdById   String?
+  createdBy     User?     @relation("MarketingEbookCreator", fields: [createdById], references: [id])
+
+  @@map("marketing_ebooks")
 }
