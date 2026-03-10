@@ -533,7 +533,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
         {/* Page content */}
         <main className="p-4 lg:p-8 pb-24 lg:pb-8">
-          <PullToRefresh>
+          <PullToRefresh disabled={pathname === "/dashboard/screening" || pathname === "/dashboard/profile"}>
           <MobilePageHeader />
           {/* Consent gate: block everything except the consent page itself — skip during impersonation so admin can navigate */}
           {consentRequired && pathname !== "/dashboard/consent" && !isTherapist && !isPatientPreview && !isImpersonating ? (

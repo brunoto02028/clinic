@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import {
@@ -174,6 +174,7 @@ export default function AssessmentScreeningForm() {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
   const isPt = locale === "pt-BR";
+  const DRAFT_KEY = "screening-draft";
   const [formData, setFormData] = useState<ScreeningData>(initialData);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -183,6 +184,42 @@ export default function AssessmentScreeningForm() {
   const [requestingEdit, setRequestingEdit] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [cfg, setCfg] = useState<ScreeningConfig | null>(null);
+  const [restoredDraft, setRestoredDraft] = useState(false);
+  const isDirty = useRef(false);
+
+  // ── Persist draft to localStorage on every change ──
+  const saveDraft = useCallback((data: ScreeningData) => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    } catch {}
+  }, []);
+
+  const clearDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+    isDirty.current = false;
+  }, []);
+
+  const loadDraft = useCallback((): ScreeningData | null => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) return JSON.parse(raw) as ScreeningData;
+    } catch {}
+    return null;
+  }, []);
+
+  // ── Warn before leaving with unsaved changes ──
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -225,6 +262,7 @@ export default function AssessmentScreeningForm() {
 
       if (data?.screening) {
         const s = data.screening;
+        clearDraft();
         setFormData({
           unexplainedWeightLoss: s.unexplainedWeightLoss ?? false,
           nightPain: s.nightPain ?? false,
@@ -284,16 +322,35 @@ export default function AssessmentScreeningForm() {
     } catch (error) {
       console.error("Error fetching screening:", error);
     } finally {
+      // If no existing screening, try to restore draft from localStorage
+      if (!hasExisting) {
+        const draft = loadDraft();
+        if (draft) {
+          setFormData(draft);
+          setRestoredDraft(true);
+          isDirty.current = true;
+        }
+      }
       setLoading(false);
     }
   };
 
   const handleCheckboxChange = (key: string, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, [key]: checked }));
+    setFormData((prev) => {
+      const next = { ...prev, [key]: checked };
+      isDirty.current = true;
+      saveDraft(next);
+      return next;
+    });
   };
 
   const handleInputChange = (key: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [key]: value };
+      isDirty.current = true;
+      saveDraft(next);
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -311,6 +368,8 @@ export default function AssessmentScreeningForm() {
 
       if (response.ok) {
         setHasExisting(true);
+        clearDraft();
+        setRestoredDraft(false);
         toast({
           title: isPt ? "Triagem Salva" : "Screening Saved",
           description: isPt ? "Sua triagem foi salva com sucesso." : "Your screening has been saved successfully.",
@@ -367,6 +426,23 @@ export default function AssessmentScreeningForm() {
       </div>
 
       <ProfessionalReviewBanner descriptionKey="review.descriptionScreening" />
+
+      {restoredDraft && !hasExisting && (
+        <Card className="border-blue-500/20 bg-blue-500/10">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <Info className="h-5 w-5 text-blue-400 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-300">{isPt ? "Rascunho recuperado" : "Draft recovered"}</p>
+                <p className="text-xs text-blue-400/80">{isPt ? "Seus dados anteriores foram restaurados automaticamente." : "Your previous data has been automatically restored."}</p>
+              </div>
+              <button type="button" onClick={() => { clearDraft(); setFormData(initialData); setRestoredDraft(false); }} className="text-xs text-blue-400 hover:text-blue-300 underline shrink-0">
+                {isPt ? "Limpar" : "Clear"}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {hasExisting && formData.consentGiven && (
         <Card className="border-emerald-500/20 bg-emerald-500/10">

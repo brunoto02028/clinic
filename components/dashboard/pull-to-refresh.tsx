@@ -5,9 +5,10 @@ import { Loader2 } from "lucide-react";
 
 interface PullToRefreshProps {
   children: React.ReactNode;
+  disabled?: boolean;
 }
 
-export function PullToRefresh({ children }: PullToRefreshProps) {
+export function PullToRefresh({ children, disabled = false }: PullToRefreshProps) {
   const [pulling, setPulling] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -17,6 +18,7 @@ export function PullToRefresh({ children }: PullToRefreshProps) {
   const THRESHOLD = 80;
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (disabled) return;
     // Only activate if scrolled to top
     if (window.scrollY <= 0) {
       startY.current = e.touches[0].clientY;
