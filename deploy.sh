@@ -10,6 +10,11 @@ echo "$(date '+%Y-%m-%d %H:%M:%S')"
 
 cd "$CLINIC_DIR"
 
+# Step 0: Apply Prisma schema changes (safe, idempotent)
+echo ""
+echo "[0/3] Applying Prisma schema (db push)..."
+npx prisma db push
+
 # Step 1: Build in-place (DO NOT delete .next — old files keep serving during build)
 echo ""
 echo "[1/3] Building (in-place, zero-downtime)..."
