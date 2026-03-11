@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Sparkles, Download, Eye, Loader2, Palette, Type,
   Phone, Globe, MapPin, Mail, CreditCard, ChevronDown, ChevronUp,
-  RotateCcw, QrCode, Instagram, Zap
+  RotateCcw, QrCode, Instagram, Zap, Upload, X, Image as ImageIcon
 } from 'lucide-react'
 
 // ── BPR Services (short names for card back) ──────────────
@@ -124,10 +124,46 @@ export default function BusinessCardCreatorPage() {
   const [suggestingCopy, setSuggestingCopy] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
+  // Logo upload
+  const [logoImage, setLogoImage] = useState<string | null>(null)
+  const [logoSize, setLogoSize] = useState(12) // mm
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  // Gradient options
+  const [gradientEnabled, setGradientEnabled] = useState(false)
+  const [gradientAngle, setGradientAngle] = useState(135)
+  const [gradientColor1, setGradientColor1] = useState('#0d7377')
+  const [gradientColor2, setGradientColor2] = useState('#0a5c5f')
+  const [backGradientEnabled, setBackGradientEnabled] = useState(false)
+  const [backGradientAngle, setBackGradientAngle] = useState(135)
+  const [backGradientColor1, setBackGradientColor1] = useState('#0d7377')
+  const [backGradientColor2, setBackGradientColor2] = useState('#064e52')
 
   function selectTemplate(t: CardTemplate) {
     setTemplate(t)
     setColors(t.colors)
+    // Auto-enable gradient for gradient-style templates
+    if (t.style === 'gradient') {
+      setGradientEnabled(true)
+      setGradientColor1(t.colors.primary)
+      setGradientColor2(t.colors.secondary)
+      setBackGradientEnabled(true)
+      setBackGradientColor1(t.colors.secondary)
+      setBackGradientColor2(t.colors.primary)
+    } else {
+      setGradientEnabled(false)
+      setBackGradientEnabled(false)
+    }
+  }
+
+  function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setLogoImage(ev.target?.result as string)
+    }
+    reader.readAsDataURL(file)
   }
 
   function updateCard(field: keyof CardData, value: any) {
@@ -204,19 +240,28 @@ export default function BusinessCardCreatorPage() {
     const t = template
 
     let bgStyle = `background:${c.bg};`
-    if (t.style === 'gradient') bgStyle = `background:linear-gradient(135deg, ${c.primary}, ${c.secondary});`
-    if (t.style === 'bold') bgStyle = `background:${c.bg};`
+    if (gradientEnabled) {
+      bgStyle = `background:linear-gradient(${gradientAngle}deg, ${gradientColor1}, ${gradientColor2});`
+    } else if (t.style === 'gradient') {
+      bgStyle = `background:linear-gradient(135deg, ${c.primary}, ${c.secondary});`
+    } else if (t.style === 'bold') {
+      bgStyle = `background:${c.bg};`
+    }
 
-    const isLight = c.bg === '#ffffff' || c.bg === '#f8fafc'
+    const isLight = !gradientEnabled && (c.bg === '#ffffff' || c.bg === '#f8fafc')
     const txtCol = isLight ? c.text : '#ffffff'
     const subCol = isLight ? `${c.text}99` : 'rgba(255,255,255,0.65)'
+
+    const logoHtml = logoImage
+      ? `<img src="${logoImage}" style="height:${logoSize}mm;max-width:25mm;object-fit:contain;border-radius:1mm;" />`
+      : `<div style="background:${c.primary};color:#fff;font-weight:800;font-size:11pt;padding:1.5mm 3mm;border-radius:1.5mm;letter-spacing:0.5mm;">${d.logoText}</div>`
 
     return `<div style="width:${CARD_W}mm;height:${CARD_H}mm;${bgStyle}border-radius:2mm;overflow:hidden;position:relative;font-family:'Inter',system-ui,sans-serif;display:flex;flex-direction:column;justify-content:space-between;padding:6mm 7mm;">
       ${t.style === 'classic' ? `<div style="position:absolute;top:0;left:0;right:0;height:2mm;background:${c.accent};"></div>` : ''}
       ${t.style === 'modern' ? `<div style="position:absolute;bottom:0;left:0;width:30mm;height:2mm;background:${c.accent};border-radius:0 1mm 0 0;"></div>` : ''}
       <div>
         <div style="display:flex;align-items:center;gap:3mm;margin-bottom:3mm;">
-          <div style="background:${c.primary};color:#fff;font-weight:800;font-size:11pt;padding:1.5mm 3mm;border-radius:1.5mm;letter-spacing:0.5mm;">${d.logoText}</div>
+          ${logoHtml}
           ${t.style !== 'minimal' ? `<div style="height:0.3mm;flex:1;background:${isLight ? c.primary + '20' : 'rgba(255,255,255,0.15)'};"></div>` : ''}
         </div>
         <h1 style="font-size:12pt;font-weight:700;color:${txtCol};margin:0 0 0.8mm;">${d.name}</h1>
@@ -242,7 +287,11 @@ export default function BusinessCardCreatorPage() {
     const subCol = isBackDark ? 'rgba(255,255,255,0.7)' : `${c.text}88`
 
     let bgStyle = `background:${c.backBg};`
-    if (t.style === 'gradient') bgStyle = `background:linear-gradient(135deg, ${c.secondary}, ${c.primary});`
+    if (backGradientEnabled) {
+      bgStyle = `background:linear-gradient(${backGradientAngle}deg, ${backGradientColor1}, ${backGradientColor2});`
+    } else if (t.style === 'gradient') {
+      bgStyle = `background:linear-gradient(135deg, ${c.secondary}, ${c.primary});`
+    }
 
     const servicesHtml = d.services.map(s =>
       `<div style="display:flex;align-items:center;gap:1.5mm;margin-bottom:1mm;"><div style="width:1.2mm;height:1.2mm;border-radius:50%;background:${c.accent};flex-shrink:0;"></div><span style="font-size:5.5pt;color:${subCol};">${s}</span></div>`
@@ -251,7 +300,10 @@ export default function BusinessCardCreatorPage() {
     return `<div style="width:${CARD_W}mm;height:${CARD_H}mm;${bgStyle}border-radius:2mm;overflow:hidden;position:relative;font-family:'Inter',system-ui,sans-serif;padding:5mm 6mm;display:flex;gap:4mm;">
       <div style="flex:1;">
         <div style="display:flex;align-items:center;gap:2mm;margin-bottom:2.5mm;">
-          <div style="background:${c.accent};color:#fff;font-weight:800;font-size:9pt;padding:1mm 2.5mm;border-radius:1mm;letter-spacing:0.5mm;">${d.logoText}</div>
+          ${logoImage
+            ? `<img src="${logoImage}" style="height:${logoSize * 0.8}mm;max-width:20mm;object-fit:contain;border-radius:1mm;" />`
+            : `<div style="background:${c.accent};color:#fff;font-weight:800;font-size:9pt;padding:1mm 2.5mm;border-radius:1mm;letter-spacing:0.5mm;">${d.logoText}</div>`
+          }
         </div>
         <p style="font-size:6pt;font-weight:600;color:${c.accent};text-transform:uppercase;letter-spacing:0.3mm;margin-bottom:2mm;">Our Services</p>
         ${servicesHtml}
@@ -388,6 +440,94 @@ export default function BusinessCardCreatorPage() {
                   <span className="text-[10px] text-muted-foreground capitalize">{key === 'backBg' ? 'Back' : key}</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Logo Upload */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-emerald-400" />
+              <span className="text-sm font-medium text-foreground">Logo Image</span>
+              <span className="text-[10px] text-muted-foreground">(optional — replaces text logo)</span>
+            </div>
+            <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+            {logoImage ? (
+              <div className="flex items-center gap-3">
+                <div className="bg-muted/30 border border-border rounded-lg p-2 flex items-center justify-center" style={{ width: '60px', height: '40px' }}>
+                  <img src={logoImage} alt="Logo" className="max-h-full max-w-full object-contain" />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-medium text-muted-foreground">Size: {logoSize}mm</label>
+                    <input type="range" min={6} max={20} value={logoSize} onChange={e => setLogoSize(Number(e.target.value))} className="flex-1 accent-primary" />
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => logoInputRef.current?.click()} className="text-[10px] text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded border border-border hover:border-emerald-500/30 transition">Change</button>
+                  <button onClick={() => { setLogoImage(null); if (logoInputRef.current) logoInputRef.current.value = '' }} className="text-[10px] text-red-400 hover:text-red-300 px-2 py-1 rounded border border-border hover:border-red-500/30 transition"><X className="h-3 w-3" /></button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => logoInputRef.current?.click()} className="w-full border-2 border-dashed border-border hover:border-emerald-500/40 rounded-lg py-3 flex flex-col items-center gap-1.5 transition text-muted-foreground hover:text-emerald-400">
+                <Upload className="h-5 w-5" />
+                <span className="text-xs">Upload logo image (PNG, SVG, JPG)</span>
+              </button>
+            )}
+          </div>
+
+          {/* Gradient Background */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-pink-400" />
+              <span className="text-sm font-medium text-foreground">Gradient Background</span>
+            </div>
+            {/* Front gradient */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={gradientEnabled} onChange={e => setGradientEnabled(e.target.checked)} className="accent-primary" />
+                <span className="text-muted-foreground text-xs">Enable gradient on <strong className="text-foreground">Front</strong></span>
+              </label>
+              {gradientEnabled && (
+                <div className="flex flex-wrap items-center gap-3 pl-5">
+                  <div className="flex items-center gap-1.5">
+                    <input type="color" value={gradientColor1} onChange={e => setGradientColor1(e.target.value)} className="w-7 h-7 rounded border border-border cursor-pointer" />
+                    <span className="text-[10px] text-muted-foreground">From</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input type="color" value={gradientColor2} onChange={e => setGradientColor2(e.target.value)} className="w-7 h-7 rounded border border-border cursor-pointer" />
+                    <span className="text-[10px] text-muted-foreground">To</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-[100px]">
+                    <span className="text-[10px] text-muted-foreground">{gradientAngle}°</span>
+                    <input type="range" min={0} max={360} step={15} value={gradientAngle} onChange={e => setGradientAngle(Number(e.target.value))} className="flex-1 accent-primary" />
+                  </div>
+                  <div className="w-8 h-8 rounded border border-border" style={{ background: `linear-gradient(${gradientAngle}deg, ${gradientColor1}, ${gradientColor2})` }} />
+                </div>
+              )}
+            </div>
+            {/* Back gradient */}
+            <div className="space-y-2 pt-1 border-t border-border/50">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={backGradientEnabled} onChange={e => setBackGradientEnabled(e.target.checked)} className="accent-primary" />
+                <span className="text-muted-foreground text-xs">Enable gradient on <strong className="text-foreground">Back</strong></span>
+              </label>
+              {backGradientEnabled && (
+                <div className="flex flex-wrap items-center gap-3 pl-5">
+                  <div className="flex items-center gap-1.5">
+                    <input type="color" value={backGradientColor1} onChange={e => setBackGradientColor1(e.target.value)} className="w-7 h-7 rounded border border-border cursor-pointer" />
+                    <span className="text-[10px] text-muted-foreground">From</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input type="color" value={backGradientColor2} onChange={e => setBackGradientColor2(e.target.value)} className="w-7 h-7 rounded border border-border cursor-pointer" />
+                    <span className="text-[10px] text-muted-foreground">To</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-[100px]">
+                    <span className="text-[10px] text-muted-foreground">{backGradientAngle}°</span>
+                    <input type="range" min={0} max={360} step={15} value={backGradientAngle} onChange={e => setBackGradientAngle(Number(e.target.value))} className="flex-1 accent-primary" />
+                  </div>
+                  <div className="w-8 h-8 rounded border border-border" style={{ background: `linear-gradient(${backGradientAngle}deg, ${backGradientColor1}, ${backGradientColor2})` }} />
+                </div>
+              )}
             </div>
           </div>
 

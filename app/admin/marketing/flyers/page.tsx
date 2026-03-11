@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Sparkles, Download, Eye, Loader2, Palette, Type,
   Image as ImageIcon, RotateCcw, Copy, Phone, Globe, MapPin,
-  Clock, Mail, Megaphone, ChevronDown, ChevronUp, Zap
+  Clock, Mail, Megaphone, ChevronDown, ChevronUp, Zap, Upload, X
 } from 'lucide-react'
 
 // ── BPR Services ──────────────────────────────────────────
@@ -130,10 +130,37 @@ export default function FlyerCreatorPage() {
   const [showPreview, setShowPreview] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
   const previewRef = useRef<HTMLDivElement>(null)
+  // Logo upload
+  const [logoImage, setLogoImage] = useState<string | null>(null)
+  const [logoSize, setLogoSize] = useState(28) // px height in flyer
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  // Gradient options
+  const [gradientEnabled, setGradientEnabled] = useState(false)
+  const [gradientAngle, setGradientAngle] = useState(135)
+  const [gradientColor1, setGradientColor1] = useState('#0d7377')
+  const [gradientColor2, setGradientColor2] = useState('#0a5c5f')
 
   function selectTemplate(t: FlyerTemplate) {
     setTemplate(t)
     setColors(t.colors)
+    if (t.layout === 'gradient-diagonal') {
+      setGradientEnabled(true)
+      setGradientColor1(t.colors.primary)
+      setGradientColor2(t.colors.secondary)
+    } else {
+      setGradientEnabled(false)
+    }
+  }
+
+  function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setLogoImage(ev.target?.result as string)
+    }
+    reader.readAsDataURL(file)
   }
 
   function updateFlyer(field: keyof FlyerData, value: any) {
@@ -214,7 +241,7 @@ export default function FlyerCreatorPage() {
     const f = flyer
     const t = template
 
-    const isDark = t.layout === 'gradient-diagonal' || c.bg.toLowerCase() === '#0f1923' || c.bg.toLowerCase() === '#000000'
+    const isDark = gradientEnabled || t.layout === 'gradient-diagonal' || c.bg.toLowerCase() === '#0f1923' || c.bg.toLowerCase() === '#000000'
 
     const servicesHtml = f.services.map(s =>
       `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><div style="width:6px;height:6px;border-radius:50%;background:${c.accent};flex-shrink:0;"></div><span style="font-size:11pt;color:${isDark || t.layout === 'gradient-diagonal' ? 'rgba(255,255,255,0.85)' : c.text};">${s}</span></div>`
@@ -222,8 +249,15 @@ export default function FlyerCreatorPage() {
     const textColor = isDark ? '#ffffff' : c.text
     const subtextColor = isDark ? 'rgba(255,255,255,0.7)' : `${c.text}99`
 
+    // Logo helper — image or text fallback
+    const logoHtmlInline = (bgColor: string, fontSize: string, padding: string, extraStyle = '') => logoImage
+      ? `<img src="${logoImage}" style="height:${logoSize}pt;max-width:120px;object-fit:contain;border-radius:4px;${extraStyle}" />`
+      : `<div style="display:inline-block;background:${bgColor};color:#fff;font-weight:800;font-size:${fontSize};padding:${padding};border-radius:6px;letter-spacing:2px;${extraStyle}">${f.logoText}</div>`
+
     let bgStyle = `background:${c.bg};`
-    if (t.layout === 'gradient-diagonal') {
+    if (gradientEnabled) {
+      bgStyle = `background:linear-gradient(${gradientAngle}deg, ${gradientColor1}, ${gradientColor2});`
+    } else if (t.layout === 'gradient-diagonal') {
       bgStyle = `background:linear-gradient(135deg, ${c.primary} 0%, ${c.secondary} 50%, ${c.primary}dd 100%);`
     } else if (t.layout === 'hero-top') {
       bgStyle = `background:linear-gradient(180deg, ${c.primary} 0%, ${c.primary}ee 30%, ${c.bg} 30%);`
@@ -243,7 +277,7 @@ export default function FlyerCreatorPage() {
   ${t.layout === 'hero-top' ? `
   <!-- Hero Top Layout -->
   <div style="padding:40px 36px 30px;text-align:center;">
-    <div style="display:inline-block;background:${c.accent};color:#fff;font-weight:800;font-size:24pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:16px;">${f.logoText}</div>
+    ${logoHtmlInline(c.accent, '24pt', '8px 20px', 'margin-bottom:16px;')}
     <h1 style="font-size:28pt;font-weight:800;color:#ffffff;line-height:1.15;margin-bottom:10px;">${f.headline}</h1>
     <p style="font-size:13pt;color:rgba(255,255,255,0.85);font-weight:300;">${f.subheadline}</p>
   </div>
@@ -270,7 +304,7 @@ export default function FlyerCreatorPage() {
   ${t.layout === 'gradient-diagonal' ? `
   <!-- Gradient Diagonal Layout -->
   <div style="padding:48px 40px;">
-    <div style="display:inline-block;background:${c.accent};color:#fff;font-weight:800;font-size:22pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:28px;">${f.logoText}</div>
+    ${logoHtmlInline(c.accent, '22pt', '8px 20px', 'margin-bottom:28px;')}
     <h1 style="font-size:32pt;font-weight:800;color:#ffffff;line-height:1.1;margin-bottom:14px;">${f.headline}</h1>
     <p style="font-size:14pt;color:rgba(255,255,255,0.75);font-weight:300;margin-bottom:28px;">${f.subheadline}</p>
     <p style="font-size:11pt;color:rgba(255,255,255,0.7);line-height:1.7;margin-bottom:28px;">${f.bodyText}</p>
@@ -293,7 +327,7 @@ export default function FlyerCreatorPage() {
   <div style="display:flex;min-height:${t.size.height}mm;">
     <div style="width:38%;background:${c.primary};padding:36px 24px;display:flex;flex-direction:column;justify-content:space-between;">
       <div>
-        <div style="background:${c.accent};color:#fff;font-weight:800;font-size:22pt;padding:8px 16px;border-radius:6px;letter-spacing:2px;display:inline-block;margin-bottom:28px;">${f.logoText}</div>
+        ${logoHtmlInline(c.accent, '22pt', '8px 16px', 'margin-bottom:28px;')}
         <h3 style="font-size:10pt;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;">Our Services</h3>
         ${f.services.map(s => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="width:5px;height:5px;border-radius:50%;background:${c.accent};"></div><span style="font-size:9.5pt;color:rgba(255,255,255,0.85);">${s}</span></div>`).join('')}
       </div>
@@ -318,7 +352,7 @@ export default function FlyerCreatorPage() {
   ${t.layout === 'centered' ? `
   <!-- Centered Layout -->
   <div style="padding:44px 40px;text-align:center;">
-    <div style="display:inline-block;background:${c.primary};color:#fff;font-weight:800;font-size:22pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:28px;">${f.logoText}</div>
+    ${logoHtmlInline(c.primary, '22pt', '8px 20px', 'margin-bottom:28px;')}
     <h1 style="font-size:30pt;font-weight:800;color:${c.text};line-height:1.1;margin-bottom:12px;">${f.headline}</h1>
     <div style="width:60px;height:4px;background:${c.accent};border-radius:2px;margin:0 auto 18px;"></div>
     <p style="font-size:13pt;color:${c.primary};font-weight:500;margin-bottom:24px;">${f.subheadline}</p>
@@ -341,7 +375,7 @@ export default function FlyerCreatorPage() {
   <!-- Minimal Layout -->
   <div style="padding:50px 44px;">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px;">
-      <div style="background:${c.primary};color:#fff;font-weight:800;font-size:18pt;padding:6px 14px;border-radius:6px;letter-spacing:1px;">${f.logoText}</div>
+      ${logoHtmlInline(c.primary, '18pt', '6px 14px', '')}
       <div style="height:1px;flex:1;background:${c.primary}22;"></div>
     </div>
     <h1 style="font-size:30pt;font-weight:800;color:${c.text};line-height:1.08;margin-bottom:14px;">${f.headline}</h1>
@@ -481,6 +515,67 @@ export default function FlyerCreatorPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Logo Upload */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-emerald-400" />
+              <span className="text-sm font-medium text-foreground">Logo Image</span>
+              <span className="text-[10px] text-muted-foreground">(optional — replaces text logo)</span>
+            </div>
+            <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+            {logoImage ? (
+              <div className="flex items-center gap-3">
+                <div className="bg-muted/30 border border-border rounded-lg p-2 flex items-center justify-center" style={{ width: '80px', height: '50px' }}>
+                  <img src={logoImage} alt="Logo" className="max-h-full max-w-full object-contain" />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-medium text-muted-foreground">Size: {logoSize}pt</label>
+                    <input type="range" min={16} max={48} value={logoSize} onChange={e => setLogoSize(Number(e.target.value))} className="flex-1 accent-primary" />
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => logoInputRef.current?.click()} className="text-[10px] text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded border border-border hover:border-emerald-500/30 transition">Change</button>
+                  <button onClick={() => { setLogoImage(null); if (logoInputRef.current) logoInputRef.current.value = '' }} className="text-[10px] text-red-400 hover:text-red-300 px-2 py-1 rounded border border-border hover:border-red-500/30 transition"><X className="h-3 w-3" /></button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => logoInputRef.current?.click()} className="w-full border-2 border-dashed border-border hover:border-emerald-500/40 rounded-lg py-3 flex flex-col items-center gap-1.5 transition text-muted-foreground hover:text-emerald-400">
+                <Upload className="h-5 w-5" />
+                <span className="text-xs">Upload logo image (PNG, SVG, JPG)</span>
+              </button>
+            )}
+          </div>
+
+          {/* Gradient Background */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-pink-400" />
+              <span className="text-sm font-medium text-foreground">Gradient Background</span>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input type="checkbox" checked={gradientEnabled} onChange={e => setGradientEnabled(e.target.checked)} className="accent-primary" />
+              <span className="text-muted-foreground text-xs">Enable custom gradient</span>
+            </label>
+            {gradientEnabled && (
+              <div className="flex flex-wrap items-center gap-3 pl-5">
+                <div className="flex items-center gap-1.5">
+                  <input type="color" value={gradientColor1} onChange={e => setGradientColor1(e.target.value)} className="w-7 h-7 rounded border border-border cursor-pointer" />
+                  <span className="text-[10px] text-muted-foreground">From</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input type="color" value={gradientColor2} onChange={e => setGradientColor2(e.target.value)} className="w-7 h-7 rounded border border-border cursor-pointer" />
+                  <span className="text-[10px] text-muted-foreground">To</span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-1 min-w-[100px]">
+                  <span className="text-[10px] text-muted-foreground">{gradientAngle}°</span>
+                  <input type="range" min={0} max={360} step={15} value={gradientAngle} onChange={e => setGradientAngle(Number(e.target.value))} className="flex-1 accent-primary" />
+                </div>
+                <div className="w-8 h-8 rounded border border-border" style={{ background: `linear-gradient(${gradientAngle}deg, ${gradientColor1}, ${gradientColor2})` }} />
+              </div>
+            )}
           </div>
 
           {/* Copy Editor */}
