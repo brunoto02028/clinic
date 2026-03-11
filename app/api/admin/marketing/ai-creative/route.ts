@@ -26,6 +26,10 @@ export async function POST(req: NextRequest) {
         return handleFullCopy(params)
       case 'design-direction':
         return handleDesignDirection(params)
+      case 'card-design-direction':
+        return handleCardDesignDirection(params)
+      case 'card-full-copy':
+        return handleCardFullCopy(params)
       case 'generate-image':
         return handleGenerateImage(params)
       default:
@@ -167,6 +171,69 @@ Return as JSON array:
 
   const directions = parseAIJson(raw)
   return NextResponse.json({ directions })
+}
+
+// ── Business Card: Design direction ─────────────────────────
+async function handleCardDesignDirection({ purpose, currentStyle }: {
+  purpose?: string
+  currentStyle?: string
+}) {
+  const prompt = `You are an expert graphic designer specializing in business card design for healthcare professionals.
+
+Suggest 3 complete design directions for a physiotherapy clinic business card (85×55mm).
+Purpose: ${purpose || 'Professional networking'}
+Current style: ${currentStyle || 'classic'}
+
+For each direction, provide:
+- A short name
+- Color palette (primary, secondary, accent, bg, text, backBg - all hex colors)
+- Recommended style from: classic, modern, bold, minimal, gradient, elegant, stripe, split-bg
+- Brief design rationale (1 sentence)
+
+Return as JSON array:
+[{
+  "name": "Direction Name",
+  "colors": {"primary":"#hex","secondary":"#hex","accent":"#hex","bg":"#hex","text":"#hex","backBg":"#hex"},
+  "style": "style-name",
+  "rationale": "Why this works"
+}]`
+
+  const raw = await callAI(prompt, {
+    systemPrompt: CLINIC_CONTEXT,
+    temperature: 0.9,
+    maxTokens: 1024,
+  })
+
+  const directions = parseAIJson(raw)
+  return NextResponse.json({ directions })
+}
+
+// ── Business Card: Full copy ────────────────────────────────
+async function handleCardFullCopy({ purpose, language }: {
+  purpose?: string
+  language?: string
+}) {
+  const lang = language || 'British English'
+  const prompt = `You are an expert copywriter for healthcare business cards. Generate professional copy for a physiotherapy clinic business card.
+
+Purpose: ${purpose || 'Professional networking'}
+Language: ${lang}
+
+Generate a complete set. Return as JSON:
+{
+  "title": "Professional job title (e.g. Lead Physiotherapist & Clinic Director)",
+  "qualifications": "Short credentials line (e.g. BSc Physiotherapy · Sports Rehab Specialist)",
+  "tagline": "Short tagline for back of card (max 6 words)"
+}`
+
+  const raw = await callAI(prompt, {
+    systemPrompt: CLINIC_CONTEXT,
+    temperature: 0.9,
+    maxTokens: 512,
+  })
+
+  const copy = parseAIJson(raw)
+  return NextResponse.json({ copy })
 }
 
 // ── Generate image ──────────────────────────────────────────

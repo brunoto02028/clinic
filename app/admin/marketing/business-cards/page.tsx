@@ -185,6 +185,13 @@ export default function BusinessCardCreatorPage() {
   const [savedDesigns, setSavedDesigns] = useState<SavedCardDesign[]>([])
   const [saveName, setSaveName] = useState('')
   const [showSaved, setShowSaved] = useState(false)
+  // AI Creative Assistant
+  const [aiField, setAiField] = useState<string | null>(null)
+  const [aiSuggestions, setAiSuggestions] = useState<{ field: string; items: string[] } | null>(null)
+  const [aiDesigning, setAiDesigning] = useState(false)
+  const [aiDesignOptions, setAiDesignOptions] = useState<Array<{ name: string; colors: any; style: string; rationale: string }>>([])
+  const [aiFullCopyLoading, setAiFullCopyLoading] = useState(false)
+  const [aiPurpose, setAiPurpose] = useState('')
 
   useEffect(() => {
     try {
@@ -192,6 +199,100 @@ export default function BusinessCardCreatorPage() {
       if (stored) setSavedDesigns(JSON.parse(stored))
     } catch {}
   }, [])
+
+  // ── AI: Write suggestions for a specific field ──
+  async function aiWriteField(field: string) {
+    setAiField(field)
+    setAiSuggestions(null)
+    try {
+      const res = await fetch('/api/admin/marketing/ai-creative', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'write-field', field, context: { purpose: aiPurpose || 'physiotherapy business card' } }),
+      })
+      const data = await res.json()
+      if (data.suggestions?.length) setAiSuggestions({ field, items: data.suggestions })
+    } catch {} finally { setAiField(null) }
+  }
+
+  // ── AI: Improve existing text ──
+  async function aiImproveField(field: string, text: string) {
+    if (!text.trim()) return aiWriteField(field)
+    setAiField(field)
+    setAiSuggestions(null)
+    try {
+      const res = await fetch('/api/admin/marketing/ai-creative', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'improve-text', field, text }),
+      })
+      const data = await res.json()
+      if (data.suggestions?.length) setAiSuggestions({ field, items: data.suggestions })
+    } catch {} finally { setAiField(null) }
+  }
+
+  function applyCardSuggestion(field: string, value: string) {
+    updateCard(field as keyof CardData, value)
+    setAiSuggestions(null)
+  }
+
+  // ── AI: Generate full card copy ──
+  async function aiFullCardCopy() {
+    setAiFullCopyLoading(true)
+    try {
+      const res = await fetch('/api/admin/marketing/ai-creative', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'card-full-copy', purpose: aiPurpose || 'professional networking' }),
+      })
+      const data = await res.json()
+      if (data.copy) {
+        setCard(prev => ({
+          ...prev,
+          title: data.copy.title || prev.title,
+          qualifications: data.copy.qualifications || prev.qualifications,
+          tagline: data.copy.tagline || prev.tagline,
+        }))
+      }
+    } catch {} finally { setAiFullCopyLoading(false) }
+  }
+
+  // ── AI: Design direction ──
+  async function aiCardDesignDirection() {
+    setAiDesigning(true)
+    setAiDesignOptions([])
+    try {
+      const res = await fetch('/api/admin/marketing/ai-creative', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'card-design-direction', purpose: aiPurpose, currentStyle: template.style }),
+      })
+      const data = await res.json()
+      if (data.directions?.length) setAiDesignOptions(data.directions)
+    } catch {} finally { setAiDesigning(false) }
+  }
+
+  function applyCardDesignDirection(dir: { colors: any; style: string }) {
+    if (dir.colors) setColors({ ...colors, ...dir.colors })
+    if (dir.style) {
+      const matchTemplate = CARD_TEMPLATES.find(t => t.style === dir.style)
+      if (matchTemplate) {
+        setTemplate({ ...matchTemplate, colors: dir.colors || matchTemplate.colors })
+        if (dir.style === 'gradient') {
+          setGradientEnabled(true)
+          setGradientColor1(dir.colors?.primary || matchTemplate.colors.primary)
+          setGradientColor2(dir.colors?.secondary || matchTemplate.colors.secondary)
+          setBackGradientEnabled(true)
+          setBackGradientColor1(dir.colors?.secondary || matchTemplate.colors.secondary)
+          setBackGradientColor2(dir.colors?.primary || matchTemplate.colors.primary)
+        } else {
+          setGradientEnabled(false)
+          setBackGradientEnabled(false)
+        }
+      }
+    }
+    setAiDesignOptions([])
+  }
 
   function saveDesign() {
     const name = saveName.trim() || `Card ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
@@ -806,7 +907,51 @@ export default function BusinessCardCreatorPage() {
             </div>
           </div>
 
-          {/* Personal Info */}
+          {/* AI Creative Assistant */}
+          <div className="bg-gradient-to-r from-violet-500/10 via-fuchsia-500/10 to-indigo-500/10 border border-violet-500/20 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-violet-400" />
+              <span className="text-sm font-bold text-foreground">AI Creative Assistant</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={aiPurpose}
+                onChange={e => setAiPurpose(e.target.value)}
+                placeholder="Purpose: e.g. Professional networking, Sports clinic branding..."
+                className="flex-1 bg-background/50 border border-border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={aiFullCardCopy} disabled={aiFullCopyLoading} className="bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                {aiFullCopyLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} AI Write All Copy
+              </button>
+              <button onClick={aiCardDesignDirection} disabled={aiDesigning} className="bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                {aiDesigning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Palette className="h-3 w-3" />} AI Design Director
+              </button>
+            </div>
+            {aiDesignOptions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] text-violet-300 font-medium uppercase tracking-wider">Design Suggestions</p>
+                {aiDesignOptions.map((dir, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-background/40 border border-border/50 rounded-lg px-3 py-2">
+                    <div className="flex gap-1">
+                      {['primary','secondary','accent','bg','text','backBg'].map(k => (
+                        <div key={k} className="w-4 h-4 rounded-sm border border-border/50" style={{ background: dir.colors?.[k] || '#ccc' }} title={k} />
+                      ))}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground">{dir.name} <span className="text-muted-foreground">· {dir.style}</span></p>
+                      <p className="text-[10px] text-muted-foreground truncate">{dir.rationale}</p>
+                    </div>
+                    <button onClick={() => applyCardDesignDirection(dir)} className="text-xs bg-fuchsia-500/15 hover:bg-fuchsia-500/25 text-fuchsia-400 px-2.5 py-1 rounded-md transition whitespace-nowrap">Apply</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Personal Info with inline AI */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -814,7 +959,7 @@ export default function BusinessCardCreatorPage() {
                 <span className="text-sm font-medium text-foreground">Personal Info (Front)</span>
               </div>
               <button onClick={suggestCopy} disabled={suggestingCopy} className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50 transition">
-                {suggestingCopy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} AI Suggest
+                {suggestingCopy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} AI Quick Fill
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -828,13 +973,39 @@ export default function BusinessCardCreatorPage() {
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-medium text-muted-foreground block mb-1">Title / Role</label>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-medium text-muted-foreground">Title / Role</label>
+                  <button onClick={() => aiImproveField('title', card.title)} disabled={aiField === 'title'} className="text-[9px] text-violet-400 hover:text-violet-300 flex items-center gap-0.5 disabled:opacity-50">
+                    {aiField === 'title' ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />} AI
+                  </button>
+                </div>
                 <input type="text" value={card.title} onChange={e => updateCard('title', e.target.value)} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
+                {aiSuggestions?.field === 'title' && (
+                  <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-card border border-violet-500/30 rounded-lg shadow-lg overflow-hidden">
+                    {aiSuggestions.items.map((s, i) => (
+                      <button key={i} onClick={() => applyCardSuggestion('title', s)} className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-violet-500/10 border-b border-border/30 last:border-0 transition">{s}</button>
+                    ))}
+                    <button onClick={() => setAiSuggestions(null)} className="w-full text-center px-3 py-1.5 text-[10px] text-muted-foreground hover:text-foreground bg-muted/30 transition">Dismiss</button>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="text-[10px] font-medium text-muted-foreground block mb-1">Qualifications</label>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-medium text-muted-foreground">Qualifications</label>
+                  <button onClick={() => aiWriteField('qualifications')} disabled={aiField === 'qualifications'} className="text-[9px] text-violet-400 hover:text-violet-300 flex items-center gap-0.5 disabled:opacity-50">
+                    {aiField === 'qualifications' ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />} AI
+                  </button>
+                </div>
                 <input type="text" value={card.qualifications} onChange={e => updateCard('qualifications', e.target.value)} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
+                {aiSuggestions?.field === 'qualifications' && (
+                  <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-card border border-violet-500/30 rounded-lg shadow-lg overflow-hidden">
+                    {aiSuggestions.items.map((s, i) => (
+                      <button key={i} onClick={() => applyCardSuggestion('qualifications', s)} className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-violet-500/10 border-b border-border/30 last:border-0 transition">{s}</button>
+                    ))}
+                    <button onClick={() => setAiSuggestions(null)} className="w-full text-center px-3 py-1.5 text-[10px] text-muted-foreground hover:text-foreground bg-muted/30 transition">Dismiss</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -879,9 +1050,22 @@ export default function BusinessCardCreatorPage() {
               <RotateCcw className="h-4 w-4 text-cyan-400" />
               <span className="text-sm font-medium text-foreground">Back Side</span>
             </div>
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Tagline</label>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] font-medium text-muted-foreground">Tagline</label>
+                <button onClick={() => aiImproveField('cardTagline', card.tagline)} disabled={aiField === 'cardTagline'} className="text-[9px] text-violet-400 hover:text-violet-300 flex items-center gap-0.5 disabled:opacity-50">
+                  {aiField === 'cardTagline' ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />} AI
+                </button>
+              </div>
               <input type="text" value={card.tagline} onChange={e => updateCard('tagline', e.target.value)} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
+              {aiSuggestions?.field === 'cardTagline' && (
+                <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-card border border-violet-500/30 rounded-lg shadow-lg overflow-hidden">
+                  {aiSuggestions.items.map((s, i) => (
+                    <button key={i} onClick={() => applyCardSuggestion('tagline', s)} className="w-full text-left px-3 py-2 text-xs text-foreground hover:bg-violet-500/10 border-b border-border/30 last:border-0 transition">{s}</button>
+                  ))}
+                  <button onClick={() => setAiSuggestions(null)} className="w-full text-center px-3 py-1.5 text-[10px] text-muted-foreground hover:text-foreground bg-muted/30 transition">Dismiss</button>
+                </div>
+              )}
             </div>
             <label className="flex items-center gap-2 cursor-pointer text-sm">
               <input type="checkbox" checked={card.showQr} onChange={e => updateCard('showQr', e.target.checked)} className="accent-primary" />
