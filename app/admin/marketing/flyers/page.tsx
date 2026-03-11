@@ -133,6 +133,7 @@ interface FlyerData {
   tagline: string
   promoText: string
   logoText: string
+  heroImage: string
 }
 
 const DEFAULT_FLYER: FlyerData = {
@@ -149,6 +150,7 @@ const DEFAULT_FLYER: FlyerData = {
   tagline: 'Your recovery starts here.',
   promoText: '',
   logoText: 'BPR',
+  heroImage: '',
 }
 
 // ── Saved Flyer Designs ──────────────────────────────────
@@ -163,6 +165,7 @@ interface SavedFlyerDesign {
   logoImage: string | null
   logoSize: number
   gradient: { enabled: boolean; angle: number; color1: string; color2: string }
+  heroImage: string
 }
 
 export default function FlyerCreatorPage() {
@@ -181,6 +184,8 @@ export default function FlyerCreatorPage() {
   const [logoImage, setLogoImage] = useState<string | null>(null)
   const [logoSize, setLogoSize] = useState(28) // px height in flyer
   const logoInputRef = useRef<HTMLInputElement>(null)
+  // Hero image upload
+  const heroImageInputRef = useRef<HTMLInputElement>(null)
   // Gradient options
   const [gradientEnabled, setGradientEnabled] = useState(false)
   const [gradientAngle, setGradientAngle] = useState(135)
@@ -333,6 +338,7 @@ export default function FlyerCreatorPage() {
       logoImage,
       logoSize,
       gradient: { enabled: gradientEnabled, angle: gradientAngle, color1: gradientColor1, color2: gradientColor2 },
+      heroImage: flyer.heroImage || '',
     }
     const updated = [design, ...savedDesigns]
     setSavedDesigns(updated)
@@ -343,7 +349,7 @@ export default function FlyerCreatorPage() {
   function loadDesign(design: SavedFlyerDesign) {
     const t = TEMPLATES.find(t => t.id === design.templateId) || TEMPLATES[0]
     setTemplate(t)
-    setFlyer({ ...design.flyer })
+    setFlyer({ ...design.flyer, heroImage: design.flyer.heroImage || design.heroImage || '' })
     setColors({ ...design.colors })
     setLogoImage(design.logoImage)
     setLogoSize(design.logoSize)
@@ -381,6 +387,21 @@ export default function FlyerCreatorPage() {
       setLogoImage(ev.target?.result as string)
     }
     reader.readAsDataURL(file)
+  }
+
+  function handleHeroImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setFlyer(prev => ({ ...prev, heroImage: ev.target?.result as string }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function insertImageIntoFlyer(imageUrl: string) {
+    setFlyer(prev => ({ ...prev, heroImage: imageUrl }))
   }
 
   function updateFlyer(field: keyof FlyerData, value: any) {
@@ -469,6 +490,12 @@ export default function FlyerCreatorPage() {
     const textColor = isDark ? '#ffffff' : c.text
     const subtextColor = isDark ? 'rgba(255,255,255,0.7)' : `${c.text}99`
 
+    // Hero image helper
+    const heroImg = f.heroImage || ''
+    const heroBlock = (height: string, radius = '10px', margin = '0 0 24px') => heroImg
+      ? `<div style="margin:${margin};border-radius:${radius};overflow:hidden;"><img src="${heroImg}" style="width:100%;height:${height};object-fit:cover;display:block;" /></div>`
+      : `<div style="margin:${margin};border-radius:${radius};height:${height};background:${c.primary}12;display:flex;align-items:center;justify-content:center;"><span style="font-size:10pt;color:${c.primary}55;">Hero Image</span></div>`
+
     // Logo helper — image or text fallback
     const logoHtmlInline = (bgColor: string, fontSize: string, padding: string, extraStyle = '') => logoImage
       ? `<img src="${logoImage}" style="height:${logoSize}pt;max-width:120px;object-fit:contain;border-radius:4px;${extraStyle}" />`
@@ -502,6 +529,7 @@ export default function FlyerCreatorPage() {
     <p style="font-size:13pt;color:rgba(255,255,255,0.85);font-weight:300;">${f.subheadline}</p>
   </div>
   <div style="padding:28px 36px 36px;">
+    ${heroBlock('180px', '10px', '0 0 24px')}
     <p style="font-size:11pt;color:${c.text};line-height:1.7;margin-bottom:24px;">${f.bodyText}</p>
     ${f.promoText ? `<div style="background:${c.accent}15;border:2px solid ${c.accent};border-radius:8px;padding:12px 18px;margin-bottom:24px;text-align:center;"><p style="font-size:13pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
     <h3 style="font-size:12pt;font-weight:700;color:${c.primary};margin-bottom:14px;text-transform:uppercase;letter-spacing:1px;">Our Services</h3>
@@ -527,6 +555,7 @@ export default function FlyerCreatorPage() {
     ${logoHtmlInline(c.accent, '22pt', '8px 20px', 'margin-bottom:28px;')}
     <h1 style="font-size:32pt;font-weight:800;color:#ffffff;line-height:1.1;margin-bottom:14px;">${f.headline}</h1>
     <p style="font-size:14pt;color:rgba(255,255,255,0.75);font-weight:300;margin-bottom:28px;">${f.subheadline}</p>
+    ${heroBlock('160px', '10px', '0 0 28px')}
     <p style="font-size:11pt;color:rgba(255,255,255,0.7);line-height:1.7;margin-bottom:28px;">${f.bodyText}</p>
     ${f.promoText ? `<div style="background:rgba(255,255,255,0.1);border:2px solid ${c.accent};border-radius:8px;padding:14px 20px;margin-bottom:28px;text-align:center;"><p style="font-size:14pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
     <h3 style="font-size:11pt;font-weight:700;color:${c.accent};margin-bottom:16px;text-transform:uppercase;letter-spacing:2px;">Our Services</h3>
@@ -558,6 +587,7 @@ export default function FlyerCreatorPage() {
     <div style="width:62%;padding:40px 32px;background:${c.bg};display:flex;flex-direction:column;justify-content:center;">
       <h1 style="font-size:28pt;font-weight:800;color:${c.text};line-height:1.1;margin-bottom:12px;">${f.headline}</h1>
       <p style="font-size:13pt;color:${c.primary};font-weight:500;margin-bottom:24px;">${f.subheadline}</p>
+      ${heroBlock('140px', '10px', '0 0 24px')}
       <p style="font-size:11pt;color:${c.text}cc;line-height:1.7;margin-bottom:28px;">${f.bodyText}</p>
       ${f.promoText ? `<div style="background:${c.accent}15;border-left:4px solid ${c.accent};padding:12px 18px;margin-bottom:28px;"><p style="font-size:12pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
       <div style="background:${c.primary};border-radius:10px;padding:16px;text-align:center;margin-bottom:20px;">
@@ -576,6 +606,7 @@ export default function FlyerCreatorPage() {
     <h1 style="font-size:30pt;font-weight:800;color:${c.text};line-height:1.1;margin-bottom:12px;">${f.headline}</h1>
     <div style="width:60px;height:4px;background:${c.accent};border-radius:2px;margin:0 auto 18px;"></div>
     <p style="font-size:13pt;color:${c.primary};font-weight:500;margin-bottom:24px;">${f.subheadline}</p>
+    ${heroBlock('160px', '10px', '0 auto 28px')}
     <p style="font-size:11pt;color:${c.text}bb;line-height:1.7;max-width:85%;margin:0 auto 28px;">${f.bodyText}</p>
     ${f.promoText ? `<div style="background:${c.accent}12;border:2px dashed ${c.accent};border-radius:10px;padding:14px 24px;margin-bottom:28px;display:inline-block;"><p style="font-size:13pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
     <h3 style="font-size:11pt;font-weight:700;color:${c.primary};margin-bottom:16px;text-transform:uppercase;letter-spacing:1.5px;">Our Services</h3>
@@ -600,6 +631,7 @@ export default function FlyerCreatorPage() {
     </div>
     <h1 style="font-size:30pt;font-weight:800;color:${c.text};line-height:1.08;margin-bottom:14px;">${f.headline}</h1>
     <p style="font-size:14pt;color:${c.primary};font-weight:400;margin-bottom:28px;border-left:3px solid ${c.accent};padding-left:14px;">${f.subheadline}</p>
+    ${heroBlock('150px', '10px', '0 0 28px')}
     <p style="font-size:11pt;color:${c.text}aa;line-height:1.75;margin-bottom:32px;">${f.bodyText}</p>
     ${f.promoText ? `<div style="background:${c.accent}0d;border-radius:8px;padding:14px 20px;margin-bottom:28px;text-align:center;"><p style="font-size:12pt;font-weight:600;color:${c.accent};">${f.promoText}</p></div>` : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:32px;">
@@ -626,6 +658,7 @@ export default function FlyerCreatorPage() {
       </div>
       <h1 style="font-size:30pt;font-weight:800;color:${textColor};line-height:1.08;margin-bottom:10px;">${f.headline}</h1>
       <p style="font-size:14pt;color:${c.secondary};font-weight:500;margin-bottom:20px;">${f.subheadline}</p>
+      ${heroBlock('130px', '8px', '0 0 20px')}
       <div style="columns:2;column-gap:20px;margin-bottom:24px;">
         <p style="font-size:10pt;color:${subtextColor};line-height:1.75;">${f.bodyText}</p>
       </div>
@@ -663,6 +696,7 @@ export default function FlyerCreatorPage() {
       <p style="font-size:14pt;color:rgba(255,255,255,0.8);font-weight:300;">${f.subheadline}</p>
     </div>
     <div style="padding:32px 40px 36px;background:${c.bg};">
+      ${heroBlock('160px', '10px', '0 0 24px')}
       <p style="font-size:11pt;color:${c.text}bb;line-height:1.7;margin-bottom:24px;text-align:center;max-width:85%;margin-left:auto;margin-right:auto;">${f.bodyText}</p>
       ${f.promoText ? `<div style="background:${c.accent}12;border:2px solid ${c.accent};border-radius:10px;padding:14px 24px;margin-bottom:24px;text-align:center;"><p style="font-size:14pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px;">
@@ -693,9 +727,11 @@ export default function FlyerCreatorPage() {
     <h1 style="font-size:28pt;font-weight:800;color:${textColor};line-height:1.1;margin-bottom:8px;">${f.headline}</h1>
     <p style="font-size:13pt;color:${c.primary};font-weight:500;margin-bottom:24px;">${f.subheadline}</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px;">
-      <div style="background:${c.primary}12;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;"><span style="font-size:9pt;color:${c.primary}88;">Photo 1</span></div>
+      ${heroImg
+        ? `<div style="grid-column:1/4;border-radius:10px;overflow:hidden;"><img src="${heroImg}" style="width:100%;height:180px;object-fit:cover;display:block;" /></div>`
+        : `<div style="background:${c.primary}12;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;"><span style="font-size:9pt;color:${c.primary}88;">Photo 1</span></div>
       <div style="background:${c.primary}12;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;"><span style="font-size:9pt;color:${c.primary}88;">Photo 2</span></div>
-      <div style="background:${c.primary}12;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;"><span style="font-size:9pt;color:${c.primary}88;">Photo 3</span></div>
+      <div style="background:${c.primary}12;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;"><span style="font-size:9pt;color:${c.primary}88;">Photo 3</span></div>`}
     </div>
     <p style="font-size:11pt;color:${c.text}bb;line-height:1.7;margin-bottom:24px;">${f.bodyText}</p>
     ${f.promoText ? `<div style="background:${c.accent}10;border-radius:8px;padding:14px 20px;margin-bottom:24px;text-align:center;"><p style="font-size:13pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
@@ -993,10 +1029,41 @@ export default function FlyerCreatorPage() {
             )}
           </div>
 
+          {/* Hero Image */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-emerald-400" />
+                <span className="text-sm font-medium text-foreground">Hero Image</span>
+                <span className="text-[10px] text-muted-foreground">(appears in flyer layout)</span>
+              </div>
+              {flyer.heroImage && (
+                <button onClick={() => updateFlyer('heroImage', '')} className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1 transition">
+                  <X className="h-3 w-3" /> Remove
+                </button>
+              )}
+            </div>
+            <input ref={heroImageInputRef} type="file" accept="image/*" onChange={handleHeroImageUpload} className="hidden" />
+            {flyer.heroImage ? (
+              <div className="relative group">
+                <img src={flyer.heroImage} alt="Hero" className="w-full h-32 object-cover rounded-lg border border-border" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center gap-2 transition">
+                  <button onClick={() => heroImageInputRef.current?.click()} className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded transition">Change Image</button>
+                  <button onClick={() => updateFlyer('heroImage', '')} className="text-[10px] bg-red-500/50 hover:bg-red-500/70 text-white px-3 py-1.5 rounded transition">Remove</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => heroImageInputRef.current?.click()} className="w-full border-2 border-dashed border-border hover:border-emerald-500/40 rounded-lg py-4 flex flex-col items-center gap-1.5 transition text-muted-foreground hover:text-emerald-400">
+                <Upload className="h-5 w-5" />
+                <span className="text-xs">Upload hero image or use AI Generator below</span>
+              </button>
+            )}
+          </div>
+
           {/* AI Image Generator */}
           <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4 text-amber-400" />
+              <Sparkles className="h-4 w-4 text-amber-400" />
               <span className="text-sm font-medium text-foreground">AI Image Generator</span>
               <span className="text-[10px] text-amber-400/70">Gemini</span>
             </div>
@@ -1019,12 +1086,17 @@ export default function FlyerCreatorPage() {
               ))}
             </div>
             {aiGeneratedImages.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {aiGeneratedImages.map((img, i) => (
                   <div key={i} className="relative group">
                     <img src={img} alt={`Generated ${i + 1}`} className="w-full aspect-[4/3] object-cover rounded-lg border border-border" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center gap-2 transition">
-                      <a href={img} download className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded transition"><Download className="h-3 w-3 inline mr-1" />Save</a>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-lg flex flex-col items-center justify-center gap-2 transition">
+                      <button onClick={() => insertImageIntoFlyer(img)} className="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-3 py-1.5 rounded-md font-medium transition flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" /> Insert into Flyer
+                      </button>
+                      <a href={img} download className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded transition flex items-center gap-1">
+                        <Download className="h-3 w-3" /> Download
+                      </a>
                     </div>
                   </div>
                 ))}
