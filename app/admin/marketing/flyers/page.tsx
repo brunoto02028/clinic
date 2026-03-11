@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Sparkles, Download, Eye, Loader2, Palette, Type,
   Image as ImageIcon, RotateCcw, Copy, Phone, Globe, MapPin,
-  Clock, Mail, Megaphone, ChevronDown, ChevronUp, Zap, Upload, X
+  Clock, Mail, Megaphone, ChevronDown, ChevronUp, Zap, Upload, X,
+  Save, Trash2, FolderOpen
 } from 'lucide-react'
 
 // ── BPR Services ──────────────────────────────────────────
@@ -150,6 +151,20 @@ const DEFAULT_FLYER: FlyerData = {
   logoText: 'BPR',
 }
 
+// ── Saved Flyer Designs ──────────────────────────────────
+const STORAGE_KEY_FLYERS = 'bpr_saved_flyers'
+interface SavedFlyerDesign {
+  id: string
+  name: string
+  savedAt: string
+  templateId: string
+  flyer: FlyerData
+  colors: FlyerTemplate['colors']
+  logoImage: string | null
+  logoSize: number
+  gradient: { enabled: boolean; angle: number; color1: string; color2: string }
+}
+
 export default function FlyerCreatorPage() {
   const [template, setTemplate] = useState<FlyerTemplate>(TEMPLATES[0])
   const [flyer, setFlyer] = useState<FlyerData>({ ...DEFAULT_FLYER })
@@ -171,6 +186,56 @@ export default function FlyerCreatorPage() {
   const [gradientAngle, setGradientAngle] = useState(135)
   const [gradientColor1, setGradientColor1] = useState('#0d7377')
   const [gradientColor2, setGradientColor2] = useState('#0a5c5f')
+  // Saved designs
+  const [savedDesigns, setSavedDesigns] = useState<SavedFlyerDesign[]>([])
+  const [saveName, setSaveName] = useState('')
+  const [showSaved, setShowSaved] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_FLYERS)
+      if (stored) setSavedDesigns(JSON.parse(stored))
+    } catch {}
+  }, [])
+
+  function saveDesign() {
+    const name = saveName.trim() || `Flyer ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    const design: SavedFlyerDesign = {
+      id: Date.now().toString(),
+      name,
+      savedAt: new Date().toISOString(),
+      templateId: template.id,
+      flyer: { ...flyer },
+      colors: { ...colors },
+      logoImage,
+      logoSize,
+      gradient: { enabled: gradientEnabled, angle: gradientAngle, color1: gradientColor1, color2: gradientColor2 },
+    }
+    const updated = [design, ...savedDesigns]
+    setSavedDesigns(updated)
+    localStorage.setItem(STORAGE_KEY_FLYERS, JSON.stringify(updated))
+    setSaveName('')
+  }
+
+  function loadDesign(design: SavedFlyerDesign) {
+    const t = TEMPLATES.find(t => t.id === design.templateId) || TEMPLATES[0]
+    setTemplate(t)
+    setFlyer({ ...design.flyer })
+    setColors({ ...design.colors })
+    setLogoImage(design.logoImage)
+    setLogoSize(design.logoSize)
+    setGradientEnabled(design.gradient.enabled)
+    setGradientAngle(design.gradient.angle)
+    setGradientColor1(design.gradient.color1)
+    setGradientColor2(design.gradient.color2)
+    setShowSaved(false)
+  }
+
+  function deleteDesign(id: string) {
+    const updated = savedDesigns.filter(d => d.id !== id)
+    setSavedDesigns(updated)
+    localStorage.setItem(STORAGE_KEY_FLYERS, JSON.stringify(updated))
+  }
 
   function selectTemplate(t: FlyerTemplate) {
     setTemplate(t)
@@ -586,6 +651,55 @@ export default function FlyerCreatorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* LEFT: Editor */}
         <div className="lg:col-span-3 space-y-4">
+
+          {/* Save / Load Designs */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Save className="h-4 w-4 text-emerald-400" />
+                <span className="text-sm font-medium text-foreground">Save / Load Design</span>
+                {savedDesigns.length > 0 && <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">{savedDesigns.length} saved</span>}
+              </div>
+              {savedDesigns.length > 0 && (
+                <button onClick={() => setShowSaved(!showSaved)} className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition">
+                  <FolderOpen className="h-3 w-3" /> {showSaved ? 'Hide' : 'View saved'}
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={saveName}
+                onChange={e => setSaveName(e.target.value)}
+                placeholder="Design name (optional)"
+                className="flex-1 bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                onKeyDown={e => e.key === 'Enter' && saveDesign()}
+              />
+              <button onClick={saveDesign} className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                <Save className="h-3.5 w-3.5" /> Save
+              </button>
+            </div>
+            {showSaved && savedDesigns.length > 0 && (
+              <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                {savedDesigns.map(d => (
+                  <div key={d.id} className="flex items-center gap-2 bg-muted/50 border border-border/50 rounded-lg px-3 py-2 group">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{d.name}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {TEMPLATES.find(t => t.id === d.templateId)?.name || 'Custom'} · {new Date(d.savedAt).toLocaleDateString('pt-BR')} {new Date(d.savedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <button onClick={() => loadDesign(d)} className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-md transition whitespace-nowrap">
+                      Load
+                    </button>
+                    <button onClick={() => deleteDesign(d.id)} className="text-muted-foreground hover:text-red-400 p-1 transition opacity-0 group-hover:opacity-100">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Templates */}
           <div className="bg-card border border-border rounded-xl p-4">
