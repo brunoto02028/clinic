@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Sparkles, Download, Eye, Loader2, Palette, Type,
   Phone, Globe, MapPin, Mail, CreditCard, ChevronDown, ChevronUp,
   RotateCcw, QrCode, Instagram, Zap
 } from 'lucide-react'
+
+import { ImageGalleryPicker } from '@/components/ui/image-gallery-picker'
 
 // ── BPR Services (short names for card back) ──────────────
 const BPR_SERVICES_SHORT = [
@@ -88,6 +90,7 @@ interface CardData {
   addressLine2: string
   instagram: string
   logoText: string
+  logoUrl?: string
   tagline: string
   services: string[]
   showQr: boolean
@@ -104,6 +107,7 @@ const DEFAULT_CARD: CardData = {
   addressLine2: 'Ipswich, Suffolk',
   instagram: '@bpr.rehab',
   logoText: 'BPR',
+  logoUrl: '',
   tagline: 'Expert Physiotherapy & Rehabilitation',
   services: ['MLS Laser Therapy', 'Custom Insoles & Foot Scans', 'Biomechanical Assessment', 'Sports Injury Treatment', 'Chronic Pain Management', 'Pre/Post Surgery Rehab'],
   showQr: true,
@@ -124,6 +128,12 @@ export default function BusinessCardCreatorPage() {
   const [suggestingCopy, setSuggestingCopy] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
+  const [showLogoPicker, setShowLogoPicker] = useState(false)
+
+  const [clinicDefaults, setClinicDefaults] = useState<{ siteName?: string; logoUrl?: string; phone?: string; email?: string; address?: string; website?: string } | null>(null)
+
+  const previewOuterRef = useRef<HTMLDivElement>(null)
+  const [previewScale, setPreviewScale] = useState(1)
 
   function selectTemplate(t: CardTemplate) {
     setTemplate(t)
@@ -133,6 +143,29 @@ export default function BusinessCardCreatorPage() {
   function updateCard(field: keyof CardData, value: any) {
     setCard(prev => ({ ...prev, [field]: value }))
   }
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/settings')
+        if (!res.ok) return
+        const s = await res.json()
+        if (cancelled) return
+        setClinicDefaults({
+          siteName: s.siteName || '',
+          logoUrl: s.logoUrl || '',
+          phone: s.phone || '',
+          email: s.email || '',
+          address: s.address || '',
+          website: s.businessWebsite || s.website || 'bpr.rehab',
+        })
+      } catch {
+        // ignore
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   function toggleService(service: string) {
     setCard(prev => ({
@@ -211,12 +244,16 @@ export default function BusinessCardCreatorPage() {
     const txtCol = isLight ? c.text : '#ffffff'
     const subCol = isLight ? `${c.text}99` : 'rgba(255,255,255,0.65)'
 
+    const logoHtml = d.logoUrl
+      ? `<img src="${d.logoUrl}" alt="Logo" style="height:9mm;max-width:28mm;object-fit:contain;display:block;" />`
+      : `<div style="background:${c.primary};color:#fff;font-weight:800;font-size:11pt;padding:1.5mm 3mm;border-radius:1.5mm;letter-spacing:0.5mm;">${d.logoText}</div>`
+
     return `<div style="width:${CARD_W}mm;height:${CARD_H}mm;${bgStyle}border-radius:2mm;overflow:hidden;position:relative;font-family:'Inter',system-ui,sans-serif;display:flex;flex-direction:column;justify-content:space-between;padding:6mm 7mm;">
       ${t.style === 'classic' ? `<div style="position:absolute;top:0;left:0;right:0;height:2mm;background:${c.accent};"></div>` : ''}
       ${t.style === 'modern' ? `<div style="position:absolute;bottom:0;left:0;width:30mm;height:2mm;background:${c.accent};border-radius:0 1mm 0 0;"></div>` : ''}
       <div>
         <div style="display:flex;align-items:center;gap:3mm;margin-bottom:3mm;">
-          <div style="background:${c.primary};color:#fff;font-weight:800;font-size:11pt;padding:1.5mm 3mm;border-radius:1.5mm;letter-spacing:0.5mm;">${d.logoText}</div>
+          ${logoHtml}
           ${t.style !== 'minimal' ? `<div style="height:0.3mm;flex:1;background:${isLight ? c.primary + '20' : 'rgba(255,255,255,0.15)'};"></div>` : ''}
         </div>
         <h1 style="font-size:12pt;font-weight:700;color:${txtCol};margin:0 0 0.8mm;">${d.name}</h1>
@@ -241,6 +278,10 @@ export default function BusinessCardCreatorPage() {
     const txtCol = isBackDark ? '#ffffff' : c.text
     const subCol = isBackDark ? 'rgba(255,255,255,0.7)' : `${c.text}88`
 
+    const logoHtml = d.logoUrl
+      ? `<img src="${d.logoUrl}" alt="Logo" style="height:7.5mm;max-width:22mm;object-fit:contain;display:block;" />`
+      : `<div style="background:${c.accent};color:#fff;font-weight:800;font-size:9pt;padding:1mm 2.5mm;border-radius:1mm;letter-spacing:0.5mm;">${d.logoText}</div>`
+
     let bgStyle = `background:${c.backBg};`
     if (t.style === 'gradient') bgStyle = `background:linear-gradient(135deg, ${c.secondary}, ${c.primary});`
 
@@ -251,7 +292,7 @@ export default function BusinessCardCreatorPage() {
     return `<div style="width:${CARD_W}mm;height:${CARD_H}mm;${bgStyle}border-radius:2mm;overflow:hidden;position:relative;font-family:'Inter',system-ui,sans-serif;padding:5mm 6mm;display:flex;gap:4mm;">
       <div style="flex:1;">
         <div style="display:flex;align-items:center;gap:2mm;margin-bottom:2.5mm;">
-          <div style="background:${c.accent};color:#fff;font-weight:800;font-size:9pt;padding:1mm 2.5mm;border-radius:1mm;letter-spacing:0.5mm;">${d.logoText}</div>
+          ${logoHtml}
         </div>
         <p style="font-size:6pt;font-weight:600;color:${c.accent};text-transform:uppercase;letter-spacing:0.3mm;margin-bottom:2mm;">Our Services</p>
         ${servicesHtml}
@@ -306,7 +347,24 @@ export default function BusinessCardCreatorPage() {
     URL.revokeObjectURL(url)
   }
 
-  const SCALE = 2.8
+  const CARD_PX_W = useMemo(() => CARD_W * 3.7795, [])
+
+  useEffect(() => {
+    const el = previewOuterRef.current
+    if (!el) return
+
+    const update = () => {
+      const w = el.clientWidth
+      const available = Math.max(1, w - 48)
+      const next = Math.min(2, available / CARD_PX_W)
+      setPreviewScale(Number.isFinite(next) ? next : 1)
+    }
+
+    update()
+    const ro = new ResizeObserver(() => update())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [CARD_PX_W])
 
   return (
     <div className="space-y-6">
@@ -398,19 +456,52 @@ export default function BusinessCardCreatorPage() {
                 <Type className="h-4 w-4 text-violet-400" />
                 <span className="text-sm font-medium text-foreground">Personal Info (Front)</span>
               </div>
-              <button onClick={suggestCopy} disabled={suggestingCopy} className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50 transition">
-                {suggestingCopy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} AI Suggest
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!clinicDefaults) return
+                    setCard(prev => ({
+                      ...prev,
+                      logoUrl: clinicDefaults.logoUrl || prev.logoUrl,
+                      phone: clinicDefaults.phone || prev.phone,
+                      email: clinicDefaults.email || prev.email,
+                      website: clinicDefaults.website || prev.website,
+                      address: clinicDefaults.address || prev.address,
+                    }))
+                  }}
+                  disabled={!clinicDefaults}
+                  className="text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition"
+                >
+                  Use clinic defaults
+                </button>
+                <button onClick={suggestCopy} disabled={suggestingCopy} className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50 transition">
+                  {suggestingCopy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} AI Suggest
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-medium text-muted-foreground block mb-1">Logo Image</label>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoPicker(true)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary flex items-center justify-between gap-2"
+                >
+                  <span className="truncate text-muted-foreground">
+                    {card.logoUrl ? card.logoUrl : 'Select from Image Library'}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">Pick</span>
+                </button>
+              </div>
               <div>
                 <label className="text-[10px] font-medium text-muted-foreground block mb-1">Logo Text</label>
                 <input type="text" value={card.logoText} onChange={e => updateCard('logoText', e.target.value)} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
               </div>
-              <div>
-                <label className="text-[10px] font-medium text-muted-foreground block mb-1">Name</label>
-                <input type="text" value={card.name} onChange={e => updateCard('name', e.target.value)} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
-              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Name</label>
+              <input type="text" value={card.name} onChange={e => updateCard('name', e.target.value)} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -516,10 +607,10 @@ export default function BusinessCardCreatorPage() {
             </div>
 
             {/* Card Preview */}
-            <div className="bg-muted/20 border border-border rounded-xl p-6 flex justify-center">
+            <div ref={previewOuterRef} className="bg-muted/20 border border-border rounded-xl p-6 flex justify-center overflow-hidden">
               <div
                 style={{
-                  transform: `scale(${SCALE})`,
+                  transform: `scale(${previewScale})`,
                   transformOrigin: 'top center',
                 }}
               >
@@ -537,18 +628,28 @@ export default function BusinessCardCreatorPage() {
             {/* Both sides mini preview */}
             <div className="bg-card border border-border rounded-xl p-4">
               <p className="text-[10px] font-medium text-muted-foreground mb-3">Both Sides</p>
-              <div className="flex gap-3 justify-center">
+              <div className="flex gap-3 justify-center overflow-hidden">
                 <div onClick={() => setSide('front')} className={`cursor-pointer transition ${side === 'front' ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-card rounded-sm' : 'opacity-60 hover:opacity-100'}`}>
-                  <div style={{ transform: 'scale(1.4)', transformOrigin: 'top center' }} dangerouslySetInnerHTML={{ __html: buildCardFrontHtml() }} />
+                  <div style={{ transform: 'scale(1.05)', transformOrigin: 'top center' }} dangerouslySetInnerHTML={{ __html: buildCardFrontHtml() }} />
                 </div>
                 <div onClick={() => setSide('back')} className={`cursor-pointer transition ${side === 'back' ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-card rounded-sm' : 'opacity-60 hover:opacity-100'}`}>
-                  <div style={{ transform: 'scale(1.4)', transformOrigin: 'top center' }} dangerouslySetInnerHTML={{ __html: buildCardBackHtml() }} />
+                  <div style={{ transform: 'scale(1.05)', transformOrigin: 'top center' }} dangerouslySetInnerHTML={{ __html: buildCardBackHtml() }} />
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <ImageGalleryPicker
+        open={showLogoPicker}
+        onOpenChange={setShowLogoPicker}
+        onSelect={(imageUrl) => {
+          updateCard('logoUrl', imageUrl)
+        }}
+        selectedImageUrl={card.logoUrl}
+        category="logo"
+      />
 
       {/* Full Preview Modal */}
       {showPreview && previewHtml && (

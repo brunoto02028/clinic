@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Sparkles, Download, Eye, Loader2, Palette, Type,
   Image as ImageIcon, RotateCcw, Copy, Phone, Globe, MapPin,
   Clock, Mail, Megaphone, ChevronDown, ChevronUp, Zap
 } from 'lucide-react'
+
+import { ImageGalleryPicker } from '@/components/ui/image-gallery-picker'
 
 // ── BPR Services ──────────────────────────────────────────
 const BPR_SERVICES = [
@@ -100,6 +102,7 @@ interface FlyerData {
   tagline: string
   promoText: string
   logoText: string
+  logoUrl?: string
 }
 
 const DEFAULT_FLYER: FlyerData = {
@@ -116,6 +119,7 @@ const DEFAULT_FLYER: FlyerData = {
   tagline: 'Your recovery starts here.',
   promoText: '',
   logoText: 'BPR',
+  logoUrl: '',
 }
 
 export default function FlyerCreatorPage() {
@@ -130,6 +134,12 @@ export default function FlyerCreatorPage() {
   const [showPreview, setShowPreview] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
   const previewRef = useRef<HTMLDivElement>(null)
+  const [showLogoPicker, setShowLogoPicker] = useState(false)
+
+  const [clinicDefaults, setClinicDefaults] = useState<{ siteName?: string; logoUrl?: string; phone?: string; email?: string; address?: string; website?: string } | null>(null)
+
+  const previewOuterRef = useRef<HTMLDivElement>(null)
+  const [previewScale, setPreviewScale] = useState(1)
 
   function selectTemplate(t: FlyerTemplate) {
     setTemplate(t)
@@ -139,6 +149,29 @@ export default function FlyerCreatorPage() {
   function updateFlyer(field: keyof FlyerData, value: any) {
     setFlyer(prev => ({ ...prev, [field]: value }))
   }
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/settings')
+        if (!res.ok) return
+        const s = await res.json()
+        if (cancelled) return
+        setClinicDefaults({
+          siteName: s.siteName || '',
+          logoUrl: s.logoUrl || '',
+          phone: s.phone || '',
+          email: s.email || '',
+          address: s.address || '',
+          website: s.businessWebsite || s.website || 'bpr.rehab',
+        })
+      } catch {
+        // ignore
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   function toggleService(service: string) {
     setFlyer(prev => ({
@@ -229,6 +262,10 @@ export default function FlyerCreatorPage() {
       bgStyle = `background:linear-gradient(180deg, ${c.primary} 0%, ${c.primary}ee 30%, ${c.bg} 30%);`
     }
 
+    const logoHtml = f.logoUrl
+      ? `<img src="${f.logoUrl}" alt="Logo" style="height:44px;max-width:220px;object-fit:contain;display:block;" />`
+      : `${f.logoText}`
+
     return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
@@ -243,7 +280,7 @@ export default function FlyerCreatorPage() {
   ${t.layout === 'hero-top' ? `
   <!-- Hero Top Layout -->
   <div style="padding:40px 36px 30px;text-align:center;">
-    <div style="display:inline-block;background:${c.accent};color:#fff;font-weight:800;font-size:24pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:16px;">${f.logoText}</div>
+    <div style="display:inline-block;background:${c.accent};color:#fff;font-weight:800;font-size:24pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:16px;">${logoHtml}</div>
     <h1 style="font-size:28pt;font-weight:800;color:#ffffff;line-height:1.15;margin-bottom:10px;">${f.headline}</h1>
     <p style="font-size:13pt;color:rgba(255,255,255,0.85);font-weight:300;">${f.subheadline}</p>
   </div>
@@ -270,7 +307,7 @@ export default function FlyerCreatorPage() {
   ${t.layout === 'gradient-diagonal' ? `
   <!-- Gradient Diagonal Layout -->
   <div style="padding:48px 40px;">
-    <div style="display:inline-block;background:${c.accent};color:#fff;font-weight:800;font-size:22pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:28px;">${f.logoText}</div>
+    <div style="display:inline-block;background:${c.accent};color:#fff;font-weight:800;font-size:22pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:28px;">${logoHtml}</div>
     <h1 style="font-size:32pt;font-weight:800;color:#ffffff;line-height:1.1;margin-bottom:14px;">${f.headline}</h1>
     <p style="font-size:14pt;color:rgba(255,255,255,0.75);font-weight:300;margin-bottom:28px;">${f.subheadline}</p>
     <p style="font-size:11pt;color:rgba(255,255,255,0.7);line-height:1.7;margin-bottom:28px;">${f.bodyText}</p>
@@ -293,7 +330,7 @@ export default function FlyerCreatorPage() {
   <div style="display:flex;min-height:${t.size.height}mm;">
     <div style="width:38%;background:${c.primary};padding:36px 24px;display:flex;flex-direction:column;justify-content:space-between;">
       <div>
-        <div style="background:${c.accent};color:#fff;font-weight:800;font-size:22pt;padding:8px 16px;border-radius:6px;letter-spacing:2px;display:inline-block;margin-bottom:28px;">${f.logoText}</div>
+        <div style="background:${c.accent};color:#fff;font-weight:800;font-size:22pt;padding:8px 16px;border-radius:6px;letter-spacing:2px;display:inline-block;margin-bottom:28px;">${logoHtml}</div>
         <h3 style="font-size:10pt;font-weight:600;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;">Our Services</h3>
         ${f.services.map(s => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div style="width:5px;height:5px;border-radius:50%;background:${c.accent};"></div><span style="font-size:9.5pt;color:rgba(255,255,255,0.85);">${s}</span></div>`).join('')}
       </div>
@@ -318,7 +355,7 @@ export default function FlyerCreatorPage() {
   ${t.layout === 'centered' ? `
   <!-- Centered Layout -->
   <div style="padding:44px 40px;text-align:center;">
-    <div style="display:inline-block;background:${c.primary};color:#fff;font-weight:800;font-size:22pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:28px;">${f.logoText}</div>
+    <div style="display:inline-block;background:${c.primary};color:#fff;font-weight:800;font-size:22pt;padding:8px 20px;border-radius:6px;letter-spacing:2px;margin-bottom:28px;">${logoHtml}</div>
     <h1 style="font-size:30pt;font-weight:800;color:${c.text};line-height:1.1;margin-bottom:12px;">${f.headline}</h1>
     <div style="width:60px;height:4px;background:${c.accent};border-radius:2px;margin:0 auto 18px;"></div>
     <p style="font-size:13pt;color:${c.primary};font-weight:500;margin-bottom:24px;">${f.subheadline}</p>
@@ -341,7 +378,7 @@ export default function FlyerCreatorPage() {
   <!-- Minimal Layout -->
   <div style="padding:50px 44px;">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px;">
-      <div style="background:${c.primary};color:#fff;font-weight:800;font-size:18pt;padding:6px 14px;border-radius:6px;letter-spacing:1px;">${f.logoText}</div>
+      <div style="background:${c.primary};color:#fff;font-weight:800;font-size:18pt;padding:6px 14px;border-radius:6px;letter-spacing:1px;">${logoHtml}</div>
       <div style="height:1px;flex:1;background:${c.primary}22;"></div>
     </div>
     <h1 style="font-size:30pt;font-weight:800;color:${c.text};line-height:1.08;margin-bottom:14px;">${f.headline}</h1>
@@ -397,8 +434,25 @@ export default function FlyerCreatorPage() {
     URL.revokeObjectURL(url)
   }
 
-  // ── Scale factor for preview ──
-  const SCALE = 0.38
+  const MM_TO_PX = 3.7795
+  const FLYER_PX_W = useMemo(() => template.size.width * MM_TO_PX, [template.size.width])
+
+  useEffect(() => {
+    const el = previewOuterRef.current
+    if (!el) return
+
+    const update = () => {
+      const w = el.clientWidth
+      const available = Math.max(1, w - 32)
+      const next = Math.min(1, available / FLYER_PX_W)
+      setPreviewScale(Number.isFinite(next) ? next : 1)
+    }
+
+    update()
+    const ro = new ResizeObserver(() => update())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [FLYER_PX_W])
 
   return (
     <div className="space-y-6">
@@ -490,12 +544,45 @@ export default function FlyerCreatorPage() {
                 <Type className="h-4 w-4 text-violet-400" />
                 <span className="text-sm font-medium text-foreground">Content</span>
               </div>
-              <button onClick={suggestCopy} disabled={suggestingCopy} className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50 transition">
-                {suggestingCopy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} AI Write Copy
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!clinicDefaults) return
+                    setFlyer(prev => ({
+                      ...prev,
+                      logoUrl: clinicDefaults.logoUrl || prev.logoUrl,
+                      phone: clinicDefaults.phone || prev.phone,
+                      email: clinicDefaults.email || prev.email,
+                      website: clinicDefaults.website || prev.website,
+                      address: clinicDefaults.address || prev.address,
+                    }))
+                  }}
+                  disabled={!clinicDefaults}
+                  className="text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition"
+                >
+                  Use clinic defaults
+                </button>
+                <button onClick={suggestCopy} disabled={suggestingCopy} className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50 transition">
+                  {suggestingCopy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} AI Write Copy
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-medium text-muted-foreground block mb-1">Logo Image</label>
+                <button
+                  type="button"
+                  onClick={() => setShowLogoPicker(true)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary flex items-center justify-between gap-2"
+                >
+                  <span className="truncate text-muted-foreground">
+                    {flyer.logoUrl ? flyer.logoUrl : 'Select from Image Library'}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">Pick</span>
+                </button>
+              </div>
               <div>
                 <label className="text-[10px] font-medium text-muted-foreground block mb-1">Logo Text</label>
                 <input type="text" value={flyer.logoText} onChange={e => updateFlyer('logoText', e.target.value)} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
@@ -604,11 +691,11 @@ export default function FlyerCreatorPage() {
             </div>
 
             {/* Preview */}
-            <div className="bg-muted/20 border border-border rounded-xl p-4 overflow-hidden flex justify-center">
+            <div ref={previewOuterRef} className="bg-muted/20 border border-border rounded-xl p-4 overflow-hidden flex justify-center">
               <div
                 ref={previewRef}
                 style={{
-                  transform: `scale(${SCALE})`,
+                  transform: `scale(${previewScale})`,
                   transformOrigin: 'top center',
                   width: `${template.size.width}mm`,
                   height: `${template.size.height}mm`,
@@ -642,6 +729,16 @@ export default function FlyerCreatorPage() {
           </div>
         </div>
       )}
+
+      <ImageGalleryPicker
+        open={showLogoPicker}
+        onOpenChange={setShowLogoPicker}
+        onSelect={(imageUrl) => {
+          updateFlyer('logoUrl', imageUrl)
+        }}
+        selectedImageUrl={flyer.logoUrl}
+        category="logo"
+      />
     </div>
   )
 }
