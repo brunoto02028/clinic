@@ -57,12 +57,12 @@ import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 
 const CATEGORIES = [
-  { value: "ELECTROTHERAPY", label: "Electrotherapy", icon: Zap, color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-  { value: "MANUAL_THERAPY", label: "Manual Therapy", icon: Hand, color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { value: "EXERCISE_THERAPY", label: "Exercise Therapy", icon: Dumbbell, color: "bg-green-100 text-green-700 border-green-200" },
-  { value: "ASSESSMENT_SERVICE", label: "Assessment", icon: ClipboardList, color: "bg-purple-100 text-purple-700 border-purple-200" },
-  { value: "CONSULTATION", label: "Consultation", icon: Video, color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  { value: "OTHER", label: "Other", icon: HelpCircle, color: "bg-gray-100 text-gray-700 border-gray-200" },
+  { value: "ELECTROTHERAPY", label: "Electrotherapy", icon: Zap, color: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800" },
+  { value: "MANUAL_THERAPY", label: "Manual Therapy", icon: Hand, color: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+  { value: "EXERCISE_THERAPY", label: "Exercise Therapy", icon: Dumbbell, color: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800" },
+  { value: "ASSESSMENT_SERVICE", label: "Assessment", icon: ClipboardList, color: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800" },
+  { value: "CONSULTATION", label: "Consultation", icon: Video, color: "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800" },
+  { value: "OTHER", label: "Other", icon: HelpCircle, color: "bg-muted text-muted-foreground border-border" },
 ];
 
 const getCat = (c: string) => CATEGORIES.find((x) => x.value === c) || CATEGORIES[5];

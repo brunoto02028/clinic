@@ -866,7 +866,7 @@ export default function AdminBodyAssessmentsPage() {
                       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Videos</p>
                       <p className="text-2xl font-bold mt-1">{videoCount}</p>
                     </div>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${videoCount > 0 ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400"}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${videoCount > 0 ? "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400" : "bg-muted text-muted-foreground"}`}>
                       <Video className="h-5 w-5" />
                     </div>
                   </div>
@@ -898,8 +898,8 @@ export default function AdminBodyAssessmentsPage() {
                     </div>
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       a.overallScore != null
-                        ? a.overallScore >= 80 ? "bg-green-100 text-green-600" : a.overallScore >= 60 ? "bg-amber-100 text-amber-600" : "bg-red-100 text-red-600"
-                        : "bg-gray-100 text-gray-400"
+                        ? a.overallScore >= 80 ? "bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400" : a.overallScore >= 60 ? "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400" : "bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400"
+                        : "bg-muted text-muted-foreground"
                     }`}>
                       <Target className="h-5 w-5" />
                     </div>

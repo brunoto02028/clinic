@@ -101,34 +101,34 @@ interface Protocol {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  GENERATING: "bg-blue-100 text-blue-700",
-  DRAFT: "bg-yellow-100 text-yellow-700",
-  UNDER_REVIEW: "bg-orange-100 text-orange-700",
-  APPROVED: "bg-green-100 text-green-700",
-  SENT_TO_PATIENT: "bg-purple-100 text-purple-700",
-  ARCHIVED: "bg-gray-100 text-gray-700",
+  GENERATING: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300",
+  DRAFT: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300",
+  UNDER_REVIEW: "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300",
+  APPROVED: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
+  SENT_TO_PATIENT: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300",
+  ARCHIVED: "bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300",
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  mild: "bg-green-100 text-green-700",
-  moderate: "bg-yellow-100 text-yellow-700",
-  severe: "bg-red-100 text-red-700",
-  critical: "bg-red-200 text-red-800",
-  low: "bg-green-100 text-green-700",
-  high: "bg-red-100 text-red-700",
+  mild: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
+  moderate: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300",
+  severe: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
+  critical: "bg-red-200 dark:bg-red-500/30 text-red-800 dark:text-red-300",
+  low: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
+  high: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
 };
 
 const PHASE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
-  SHORT_TERM: { label: "Short-Term (Acute)", color: "bg-red-100 text-red-700 border-red-200", desc: "Weeks 1-4" },
-  MEDIUM_TERM: { label: "Medium-Term (Rehab)", color: "bg-amber-100 text-amber-700 border-amber-200", desc: "Weeks 4-12" },
-  LONG_TERM: { label: "Long-Term (Maintenance)", color: "bg-green-100 text-green-700 border-green-200", desc: "Weeks 12+" },
+  SHORT_TERM: { label: "Short-Term (Acute)", color: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", desc: "Weeks 1-4" },
+  MEDIUM_TERM: { label: "Medium-Term (Rehab)", color: "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800", desc: "Weeks 4-12" },
+  LONG_TERM: { label: "Long-Term (Maintenance)", color: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", desc: "Weeks 12+" },
 };
 
 const ITEM_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  IN_CLINIC: { label: "In-Clinic", color: "bg-blue-100 text-blue-700" },
-  HOME_EXERCISE: { label: "Home Exercise", color: "bg-green-100 text-green-700" },
-  HOME_CARE: { label: "Home Care", color: "bg-teal-100 text-teal-700" },
-  ASSESSMENT: { label: "Assessment", color: "bg-purple-100 text-purple-700" },
+  IN_CLINIC: { label: "In-Clinic", color: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300" },
+  HOME_EXERCISE: { label: "Home Exercise", color: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300" },
+  HOME_CARE: { label: "Home Care", color: "bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300" },
+  ASSESSMENT: { label: "Assessment", color: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300" },
 };
 
 // ─── Main Page ───
@@ -546,7 +546,7 @@ function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingP
                   <div key={i} className="border rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="outline" className="text-[10px]">{r.type}</Badge>
-                      <Badge className={`text-[10px] ${r.priority === "immediate" ? "bg-red-100 text-red-700" : r.priority === "high" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>{r.priority}</Badge>
+                      <Badge className={`text-[10px] ${r.priority === "immediate" ? "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300" : r.priority === "high" ? "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300" : "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300"}`}>{r.priority}</Badge>
                     </div>
                     <p className="text-sm">{r.description}</p>
                     {r.rationale && <p className="text-xs text-muted-foreground mt-1">{r.rationale}</p>}
@@ -569,7 +569,7 @@ function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingP
               </h4>
               {d.additionalAssessments.map((a: any, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm mb-1">
-                  <Badge className={`text-[10px] ${a.priority === "required" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>{a.priority}</Badge>
+                  <Badge className={`text-[10px] ${a.priority === "required" ? "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300" : "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300"}`}>{a.priority}</Badge>
                   <span className="font-medium">{a.assessmentType?.replace("_", " ")}</span>
                   <span className="text-muted-foreground">— {a.reason}</span>
                 </div>
@@ -772,7 +772,7 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
               <Badge className={`text-[10px] ${STATUS_COLORS[p.status] || ""}`}>{p.status.replace("_", " ")}</Badge>
               {p.estimatedWeeks && <Badge variant="outline" className="text-[10px]"><Clock className="h-2.5 w-2.5 mr-0.5" /> {p.estimatedWeeks} weeks</Badge>}
               {(p as any).totalSessions && <Badge variant="outline" className="text-[10px]">{(p as any).totalSessions} sessions</Badge>}
-              {hasElectro && <Badge className="text-[10px] bg-yellow-100 text-yellow-700"><Zap className="h-2 w-2 mr-0.5" /> Electro</Badge>}
+              {hasElectro && <Badge className="text-[10px] bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300"><Zap className="h-2 w-2 mr-0.5" /> Electro</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">
               By {p.therapist.firstName} {p.therapist.lastName} · {new Date(p.createdAt).toLocaleString()}

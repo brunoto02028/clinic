@@ -260,10 +260,10 @@ export default function AchievementsPage() {
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   <Badge variant="outline" className="text-[10px]">{a.category}</Badge>
                   <Badge variant="secondary" className="text-[10px]">{TRIGGER_TYPES.find(t => t.value === a.triggerType)?.label || a.triggerType}</Badge>
-                  {a.triggerValue && <Badge className="text-[10px] bg-slate-100 text-slate-600">×{a.triggerValue}</Badge>}
-                  <Badge className="text-[10px] bg-amber-100 text-amber-700">{a.xpReward} XP</Badge>
-                  {a.condition && <Badge className="text-[10px] bg-blue-100 text-blue-700">{a.condition.iconEmoji} {locale === "pt-BR" ? a.condition.namePt : a.condition.nameEn}</Badge>}
-                  <Badge className={`text-[10px] ${a.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                  {a.triggerValue && <Badge className="text-[10px] bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-300">×{a.triggerValue}</Badge>}
+                  <Badge className="text-[10px] bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">{a.xpReward} XP</Badge>
+                  {a.condition && <Badge className="text-[10px] bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300">{a.condition.iconEmoji} {locale === "pt-BR" ? a.condition.namePt : a.condition.nameEn}</Badge>}
+                  <Badge className={`text-[10px] ${a.isPublished ? "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300" : "bg-muted text-muted-foreground"}`}>
                     {a.isPublished ? "Published" : "Draft"}
                   </Badge>
                 </div>

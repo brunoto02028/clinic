@@ -144,6 +144,7 @@ export function buildPdfContentPrompt(params: {
   audience: string
   pages?: number
   includeExercises?: boolean
+  extraInstructions?: string
 }): string {
   const {
     title,
@@ -151,26 +152,35 @@ export function buildPdfContentPrompt(params: {
     audience,
     pages = 12,
     includeExercises = true,
+    extraInstructions = '',
   } = params
 
   return `
 ${BPR_SYSTEM_CONTEXT}
 
-TASK: Create content for a professional educational PDF guide to sell on bpr.rehab
+TASK: Create content for a professional educational PDF guide/eBook to sell on bpr.rehab
 
 Title: "${title}"
 Topic: ${topic}
 Target audience: ${audience}
 Target length: ~${pages} pages of content
 ${includeExercises ? 'Include: A section with practical exercises or self-care tips' : ''}
+${extraInstructions ? `\nADDITIONAL INSTRUCTIONS FROM AUTHOR:\n${extraInstructions}` : ''}
 
 STRUCTURE:
 1. Cover page content (title, subtitle, author: Bruno — BPR)
-2. Introduction (Bruno's personal note — warm, expert)
-3. Main educational sections (4-6 sections)
-4. ${includeExercises ? 'Exercise/self-care section with clear instructions' : 'Action plan section'}
+2. Introduction (Bruno's personal note — warm, expert, as a former professional footballer)
+3. Main educational sections (4-8 sections depending on page count)
+4. ${includeExercises ? 'Exercise/self-care section with clear step-by-step instructions' : 'Action plan section'}
 5. When to seek professional help (soft CTA to book at BPR)
 6. About Bruno & BPR (credibility section)
+7. References & Bibliography (real, credible sources — journals, NHS guidelines, textbooks)
+
+IMPORTANT:
+- Each section MUST include an "image_prompt" field: a detailed prompt to generate a relevant illustration using AI image generation. Describe the image in detail (style, composition, colours, what it shows).
+- Include a "cover_image_prompt" at the top level for the book cover illustration.
+- Include a "references" array with real bibliographic entries in Harvard format.
+- Write substantial content for each section (500-800 words per section minimum).
 
 TONE: Professional medical guide but written in accessible language. Think NHS leaflet quality but warmer and more personal.
 
@@ -179,15 +189,21 @@ Format as JSON:
   "title": "...",
   "subtitle": "...",
   "price_suggestion": "£X.XX",
+  "cover_image_prompt": "Detailed description for AI to generate a professional book cover image...",
   "sections": [
     {
       "heading": "...",
-      "content": "Full section content in markdown...",
-      "type": "intro|educational|exercise|cta|about"
+      "content": "Full section content in markdown (500-800 words)...",
+      "type": "intro|educational|exercise|cta|about",
+      "image_prompt": "Detailed description for an illustration for this section..."
     }
   ],
-  "key_takeaways": ["takeaway1", "takeaway2"],
-  "target_keywords": ["keyword1", "keyword2"]
+  "key_takeaways": ["takeaway1", "takeaway2", "takeaway3", "takeaway4", "takeaway5"],
+  "target_keywords": ["keyword1", "keyword2"],
+  "references": [
+    "Author, A.B. (Year) Title of work. Publisher/Journal. Available at: URL",
+    "NHS (Year) Guidelines on Topic. NHS.uk."
+  ]
 }
 `
 }

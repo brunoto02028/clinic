@@ -60,6 +60,7 @@ import {
   Clock,
   Sparkles,
   Bot,
+  Instagram,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -162,12 +163,11 @@ const navigationGroups: NavGroup[] = [
     i18nKey: "sidebar.marketing",
     icon: Megaphone,
     items: [
-      { name: "Site Analytics", href: "/admin/analytics", icon: BarChart3 },
-      { name: "Social Media", i18nKey: "nav.socialMedia", href: "/admin/social", icon: Megaphone },
-      { name: "Create Post", i18nKey: "nav.createPost", href: "/admin/social/create", icon: PenSquare },
-      { name: "Campaigns", i18nKey: "nav.campaigns", href: "/admin/social/campaigns", icon: CalendarRange },
-      { name: "Templates", i18nKey: "nav.templates", href: "/admin/social/templates", icon: LayoutTemplate },
       { name: "Marketing AI", href: "/admin/marketing", icon: Sparkles },
+      { name: "Instagram", href: "/admin/marketing/instagram", icon: Instagram },
+      { name: "Posts & Drafts", href: "/admin/marketing/instagram?tab=posts", icon: PenSquare },
+      { name: "Campaigns", i18nKey: "nav.campaigns", href: "/admin/social/campaigns", icon: CalendarRange },
+      { name: "Site Analytics", href: "/admin/analytics", icon: BarChart3 },
     ],
   },
   {

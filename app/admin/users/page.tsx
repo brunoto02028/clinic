@@ -421,11 +421,11 @@ export default function AdminUsersPage() {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "ADMIN":
-        return "bg-red-100 text-red-700";
+        return "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300";
       case "THERAPIST":
-        return "bg-blue-100 text-blue-700";
+        return "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300";
     }
   };
 
@@ -449,7 +449,7 @@ export default function AdminUsersPage() {
         <Card>
           <CardContent className="p-3 sm:pt-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-red-100 rounded-lg w-fit">
+              <div className="p-1.5 sm:p-2 bg-red-100 dark:bg-red-500/20 rounded-lg w-fit">
                 <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
               </div>
               <div>
@@ -464,7 +464,7 @@ export default function AdminUsersPage() {
         <Card>
           <CardContent className="p-3 sm:pt-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg w-fit">
+              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg w-fit">
                 <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               </div>
               <div>
@@ -479,7 +479,7 @@ export default function AdminUsersPage() {
         <Card>
           <CardContent className="p-3 sm:pt-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-gray-100 rounded-lg w-fit">
+              <div className="p-1.5 sm:p-2 bg-muted rounded-lg w-fit">
                 <UserCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
               </div>
               <div>
@@ -684,8 +684,8 @@ export default function AdminUsersPage() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-600">
+                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                          <span className="text-sm font-medium text-muted-foreground">
                             {user.firstName[0]}
                             {user.lastName[0]}
                           </span>

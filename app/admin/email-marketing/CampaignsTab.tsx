@@ -17,11 +17,11 @@ export interface EmailGroup { id: string; name: string; _count: { members: numbe
 export interface EmailTemplate { id: string; slug: string; name: string; }
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "bg-gray-100 text-gray-700",
-  SENDING: "bg-yellow-100 text-yellow-700",
-  PAUSED: "bg-orange-100 text-orange-700",
-  COMPLETED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-700",
+  DRAFT: "bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300",
+  SENDING: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300",
+  PAUSED: "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300",
+  COMPLETED: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
+  CANCELLED: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
 };
 
 interface Props {
@@ -218,7 +218,7 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-semibold text-sm truncate">{c.name}</p>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[c.status] || "bg-gray-100 text-gray-600"}`}>{c.status}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[c.status] || "bg-muted text-muted-foreground"}`}>{c.status}</span>
                     </div>
                     <p className="text-xs text-muted-foreground truncate mb-2">{c.subject}</p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">

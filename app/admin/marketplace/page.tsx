@@ -7,7 +7,7 @@ import {
   Eye, EyeOff, Archive, Truck, Box, Globe, Percent, Calculator,
   ClipboardList, ChevronDown, ChevronUp, X, Save, ImageIcon,
   Link2, Hash, Weight, AlertTriangle, CheckCircle, Clock,
-  PackageCheck, Ban, RefreshCw, Filter,
+  PackageCheck, Ban, RefreshCw, Filter, Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,13 +34,13 @@ const CATEGORIES = [
 ];
 
 const ORDER_STATUSES: Record<string, { label: string; color: string; icon: any }> = {
-  pending: { label: "Pending", color: "bg-amber-100 text-amber-700", icon: Clock },
-  paid: { label: "Paid", color: "bg-blue-100 text-blue-700", icon: DollarSign },
-  processing: { label: "Processing", color: "bg-violet-100 text-violet-700", icon: Package },
-  shipped: { label: "Shipped", color: "bg-cyan-100 text-cyan-700", icon: Truck },
-  delivered: { label: "Delivered", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle },
-  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700", icon: Ban },
-  refunded: { label: "Refunded", color: "bg-slate-100 text-slate-600", icon: RefreshCw },
+  pending: { label: "Pending", color: "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300", icon: Clock },
+  paid: { label: "Paid", color: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300", icon: DollarSign },
+  processing: { label: "Processing", color: "bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300", icon: Package },
+  shipped: { label: "Shipped", color: "bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300", icon: Truck },
+  delivered: { label: "Delivered", color: "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300", icon: CheckCircle },
+  cancelled: { label: "Cancelled", color: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300", icon: Ban },
+  refunded: { label: "Refunded", color: "bg-slate-100 dark:bg-slate-500/20 text-slate-600 dark:text-slate-300", icon: RefreshCw },
 };
 
 const emptyProduct = {
@@ -68,6 +68,11 @@ export default function AdminMarketplacePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyProduct });
   const [saving, setSaving] = useState(false);
+
+  // AI Amazon Import
+  const [amazonUrl, setAmazonUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
 
   // Order detail
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -176,6 +181,42 @@ export default function AdminMarketplacePage() {
     } catch {}
   };
 
+  // AI Amazon Import
+  const importFromAmazon = async () => {
+    if (!amazonUrl.trim()) return;
+    setImporting(true); setImportError("");
+    try {
+      const res = await fetch("/api/admin/marketplace/amazon-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: amazonUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Import failed");
+      if (data.product) {
+        setForm({
+          ...emptyProduct,
+          isAffiliate: true,
+          name: data.product.name || "",
+          description: data.product.description || "",
+          shortDescription: data.product.shortDescription || "",
+          category: data.product.category || "equipment",
+          price: String(data.product.price || ""),
+          imageUrl: data.product.imageUrl || "",
+          affiliateUrl: data.product.affiliateUrl || amazonUrl,
+          amazonAsin: data.product.asin || "",
+          affiliateTag: data.product.affiliateTag || "",
+          affiliateCommission: String(data.product.commission || "4.5"),
+        });
+        setAmazonUrl("");
+        setShowForm(true);
+        setEditingId(null);
+      }
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "Import failed");
+    } finally { setImporting(false) }
+  };
+
   // Margin calculator
   const calcMargin = () => {
     const p = parseFloat(form.price || "0");
@@ -226,10 +267,10 @@ export default function AdminMarketplacePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
             <ShoppingCart className="h-6 w-6 text-primary" /> Marketplace Manager
           </h1>
-          <p className="text-sm text-slate-500 mt-1">Products, orders, pricing & affiliate management</p>
+          <p className="text-sm text-muted-foreground mt-1">Products, orders, pricing & affiliate management</p>
         </div>
       </div>
 
@@ -237,52 +278,52 @@ export default function AdminMarketplacePage() {
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Package className="h-4 w-4 text-blue-600" />
+            <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+              <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-lg font-bold text-slate-800">{products.length}</p>
-              <p className="text-[10px] text-slate-500">Products</p>
+              <p className="text-lg font-bold text-foreground">{products.length}</p>
+              <p className="text-[10px] text-muted-foreground">Products</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center">
-              <Globe className="h-4 w-4 text-amber-600" />
+            <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
+              <Globe className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <p className="text-lg font-bold text-slate-800">{products.filter((p) => p.isAffiliate).length}</p>
-              <p className="text-[10px] text-slate-500">Affiliate</p>
+              <p className="text-lg font-bold text-foreground">{products.filter((p) => p.isAffiliate).length}</p>
+              <p className="text-[10px] text-muted-foreground">Affiliate</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center">
-              <DollarSign className="h-4 w-4 text-emerald-600" />
+            <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+              <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-lg font-bold text-slate-800">£{(orderStats?.totalRevenue || 0).toFixed(0)}</p>
-              <p className="text-[10px] text-slate-500">Revenue</p>
+              <p className="text-lg font-bold text-foreground">£{(orderStats?.totalRevenue || 0).toFixed(0)}</p>
+              <p className="text-[10px] text-muted-foreground">Revenue</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center">
-              <ClipboardList className="h-4 w-4 text-violet-600" />
+            <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
+              <ClipboardList className="h-4 w-4 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <p className="text-lg font-bold text-slate-800">{orders.length}</p>
-              <p className="text-[10px] text-slate-500">Orders</p>
+              <p className="text-lg font-bold text-foreground">{orders.length}</p>
+              <p className="text-[10px] text-muted-foreground">Orders</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 bg-muted/30 rounded-lg p-1 w-fit">
         {([
           { key: "products" as Tab, label: "Products", icon: Package },
           { key: "orders" as Tab, label: "Orders", icon: ClipboardList },
@@ -291,7 +332,7 @@ export default function AdminMarketplacePage() {
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              tab === t.key ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              tab === t.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <t.icon className="h-4 w-4" />
@@ -319,12 +360,12 @@ export default function AdminMarketplacePage() {
                 {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+            <div className="flex gap-1 bg-muted/30 rounded-lg p-0.5">
               {(["all", "own", "affiliate"] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setFilterType(t)}
-                  className={`px-3 py-1 rounded text-xs font-medium ${filterType === t ? "bg-white shadow-sm text-slate-800" : "text-slate-500"}`}
+                  className={`px-3 py-1 rounded text-xs font-medium ${filterType === t ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
                 >
                   {t === "all" ? "All" : t === "own" ? "Own Products" : "Affiliate"}
                 </button>
@@ -335,9 +376,34 @@ export default function AdminMarketplacePage() {
             </Button>
           </div>
 
+          {/* AI Amazon Import */}
+          <Card className="border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="h-4 w-4 text-amber-500" />
+                <p className="text-xs font-medium text-foreground">Import from Amazon</p>
+                <span className="text-[10px] text-muted-foreground">— paste an Amazon URL and AI will auto-fill the product</span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={amazonUrl}
+                  onChange={(e) => setAmazonUrl(e.target.value)}
+                  placeholder="https://www.amazon.co.uk/dp/B09XXXXX or full Amazon product URL"
+                  className="flex-1 text-xs"
+                  onKeyDown={(e) => { if (e.key === "Enter") importFromAmazon() }}
+                />
+                <Button onClick={importFromAmazon} disabled={importing || !amazonUrl.trim()} size="sm" className="gap-1 bg-amber-500 hover:bg-amber-400 text-white">
+                  {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {importing ? "Importing..." : "AI Import"}
+                </Button>
+              </div>
+              {importError && <p className="text-xs text-red-400 mt-1.5">{importError}</p>}
+            </CardContent>
+          </Card>
+
           {/* Product Form Modal */}
           {showForm && (
-            <Card className="border-primary/30 bg-white shadow-lg">
+            <Card className="border-primary/30 shadow-lg">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-base">{editingId ? "Edit Product" : "New Product"}</CardTitle>
                 <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}><X className="h-4 w-4" /></Button>
@@ -366,19 +432,19 @@ export default function AdminMarketplacePage() {
                 {/* Basic Info */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Product Name *</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Product Name *</label>
                     <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Resistance Band Set" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Short Description</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Short Description</label>
                     <Input value={form.shortDescription} onChange={(e) => setForm({ ...form, shortDescription: e.target.value })} placeholder="Brief tagline for cards" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Full Description</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Full Description</label>
                     <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Category</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Category</label>
                     <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -387,33 +453,33 @@ export default function AdminMarketplacePage() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Image URL</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Image URL</label>
                     <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." />
                   </div>
                 </div>
 
                 {/* Pricing Section */}
                 <div>
-                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 mb-3">
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5 mb-3">
                     <Calculator className="h-4 w-4 text-emerald-500" /> Pricing & Margins
                   </h3>
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div>
-                      <label className="text-xs font-medium text-slate-600 mb-1 block">Selling Price (£) *</label>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Selling Price (£) *</label>
                       <Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
                     </div>
                     {!form.isAffiliate && (
                       <div>
-                        <label className="text-xs font-medium text-slate-600 mb-1 block">Cost Price (£)</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Cost Price (£)</label>
                         <Input type="number" step="0.01" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} />
                       </div>
                     )}
                     <div>
-                      <label className="text-xs font-medium text-slate-600 mb-1 block">Compare at (£)</label>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Compare at (£)</label>
                       <Input type="number" step="0.01" value={form.compareAtPrice} onChange={(e) => setForm({ ...form, compareAtPrice: e.target.value })} placeholder="Was price" />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-slate-600 mb-1 block">VAT Rate (%)</label>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">VAT Rate (%)</label>
                       <Input type="number" step="0.1" value={form.vatRate} onChange={(e) => setForm({ ...form, vatRate: e.target.value })} />
                     </div>
                     <div className="flex items-end">
@@ -426,23 +492,23 @@ export default function AdminMarketplacePage() {
 
                   {/* Live Margin Calculator */}
                   {(form.price || form.costPrice) && (
-                    <div className="mt-3 bg-slate-50 rounded-lg p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div className="mt-3 bg-muted/50 rounded-lg p-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                       <div>
-                        <p className="text-[10px] text-slate-500">Net Price</p>
-                        <p className="text-sm font-bold text-slate-700">£{calcNetPrice()}</p>
+                        <p className="text-[10px] text-muted-foreground">Net Price</p>
+                        <p className="text-sm font-bold text-foreground">£{calcNetPrice()}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-500">VAT</p>
+                        <p className="text-[10px] text-muted-foreground">VAT</p>
                         <p className="text-sm font-bold text-amber-600">£{calcVat()}</p>
                       </div>
                       {!form.isAffiliate && (
                         <>
                           <div>
-                            <p className="text-[10px] text-slate-500">Margin</p>
+                            <p className="text-[10px] text-muted-foreground">Margin</p>
                             <p className={`text-sm font-bold ${parseFloat(calcMargin()) > 30 ? "text-emerald-600" : parseFloat(calcMargin()) > 0 ? "text-amber-600" : "text-red-600"}`}>{calcMargin()}%</p>
                           </div>
                           <div>
-                            <p className="text-[10px] text-slate-500">Profit</p>
+                            <p className="text-[10px] text-muted-foreground">Profit</p>
                             <p className={`text-sm font-bold ${parseFloat(calcProfit()) > 0 ? "text-emerald-600" : "text-red-600"}`}>£{calcProfit()}</p>
                           </div>
                         </>
@@ -454,29 +520,29 @@ export default function AdminMarketplacePage() {
                 {/* Affiliate Section */}
                 {form.isAffiliate && (
                   <div>
-                    <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 mb-3">
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5 mb-3">
                       <Globe className="h-4 w-4 text-amber-500" /> Amazon Affiliate Details
                     </h3>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="sm:col-span-2">
-                        <label className="text-xs font-medium text-slate-600 mb-1 block">Affiliate URL *</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Affiliate URL *</label>
                         <Input value={form.affiliateUrl} onChange={(e) => setForm({ ...form, affiliateUrl: e.target.value })} placeholder="https://www.amazon.co.uk/dp/..." />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-slate-600 mb-1 block">Amazon ASIN</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Amazon ASIN</label>
                         <Input value={form.amazonAsin} onChange={(e) => setForm({ ...form, amazonAsin: e.target.value })} placeholder="B09XXXXX" />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-slate-600 mb-1 block">Associate Tag</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Associate Tag</label>
                         <Input value={form.affiliateTag} onChange={(e) => setForm({ ...form, affiliateTag: e.target.value })} placeholder="bpr-21" />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-slate-600 mb-1 block">Expected Commission (%)</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Expected Commission (%)</label>
                         <Input type="number" step="0.1" value={form.affiliateCommission} onChange={(e) => setForm({ ...form, affiliateCommission: e.target.value })} />
                       </div>
                     </div>
                     {form.affiliateCommission && form.price && (
-                      <div className="mt-3 bg-amber-50 rounded-lg p-3 text-center">
+                      <div className="mt-3 bg-amber-500/10 rounded-lg p-3 text-center">
                         <p className="text-xs text-amber-600">
                           Estimated commission per sale: <span className="font-bold">£{(parseFloat(form.price) * parseFloat(form.affiliateCommission) / 100).toFixed(2)}</span>
                         </p>
@@ -488,7 +554,7 @@ export default function AdminMarketplacePage() {
                 {/* Shipping & Stock (own products only) */}
                 {!form.isAffiliate && (
                   <div>
-                    <h3 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 mb-3">
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5 mb-3">
                       <Truck className="h-4 w-4 text-cyan-500" /> Shipping & Stock
                     </h3>
                     <div className="grid gap-4 sm:grid-cols-3">
@@ -507,21 +573,21 @@ export default function AdminMarketplacePage() {
                     </div>
                     <div className="grid gap-4 sm:grid-cols-3 mt-3">
                       <div>
-                        <label className="text-xs font-medium text-slate-600 mb-1 block">SKU</label>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">SKU</label>
                         <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="BPR-001" />
                       </div>
                       {!form.isDigital && (
                         <>
                           <div>
-                            <label className="text-xs font-medium text-slate-600 mb-1 block">Weight (kg)</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Weight (kg)</label>
                             <Input type="number" step="0.01" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-slate-600 mb-1 block">Shipping Cost (£)</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Shipping Cost (£)</label>
                             <Input type="number" step="0.01" value={form.shippingCost} onChange={(e) => setForm({ ...form, shippingCost: e.target.value })} />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-slate-600 mb-1 block">Free Shipping Over (£)</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Free Shipping Over (£)</label>
                             <Input type="number" step="0.01" value={form.freeShippingOver} onChange={(e) => setForm({ ...form, freeShippingOver: e.target.value })} placeholder="Leave empty for none" />
                           </div>
                         </>
@@ -529,18 +595,18 @@ export default function AdminMarketplacePage() {
                       {form.trackStock && (
                         <>
                           <div>
-                            <label className="text-xs font-medium text-slate-600 mb-1 block">Stock Quantity</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Stock Quantity</label>
                             <Input type="number" value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: e.target.value })} />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-slate-600 mb-1 block">Low Stock Alert</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Low Stock Alert</label>
                             <Input type="number" value={form.lowStockAlert} onChange={(e) => setForm({ ...form, lowStockAlert: e.target.value })} />
                           </div>
                         </>
                       )}
                       {form.isDigital && (
                         <div className="sm:col-span-2">
-                          <label className="text-xs font-medium text-slate-600 mb-1 block">Digital File URL</label>
+                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Digital File URL</label>
                           <Input value={form.digitalFileUrl} onChange={(e) => setForm({ ...form, digitalFileUrl: e.target.value })} placeholder="https://..." />
                         </div>
                       )}
@@ -551,15 +617,15 @@ export default function AdminMarketplacePage() {
                 {/* Credits & Display */}
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">BPR Credits Cost</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">BPR Credits Cost</label>
                     <Input type="number" value={form.creditsCost} onChange={(e) => setForm({ ...form, creditsCost: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Credits Discount</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Credits Discount</label>
                     <Input type="number" value={form.creditsDiscount} onChange={(e) => setForm({ ...form, creditsDiscount: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600 mb-1 block">Sort Order</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Sort Order</label>
                     <Input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} />
                   </div>
                   <div className="flex items-end gap-4">
@@ -592,7 +658,7 @@ export default function AdminMarketplacePage() {
               <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm min-w-[800px]">
                   <thead>
-                    <tr className="text-left text-xs text-slate-500 border-b bg-slate-50">
+                    <tr className="text-left text-xs text-muted-foreground border-b bg-muted/30">
                       <th className="p-3">Product</th>
                       <th className="p-3">Type</th>
                       <th className="p-3">Category</th>
@@ -609,29 +675,29 @@ export default function AdminMarketplacePage() {
                       const cat = CATEGORIES.find((c) => c.value === p.category);
                       const lowStock = p.trackStock && p.stockQuantity != null && p.stockQuantity <= p.lowStockAlert;
                       return (
-                        <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                        <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30">
                           <td className="p-3">
                             <div className="flex items-center gap-2">
                               {p.imageUrl ? (
                                 <img src={p.imageUrl} alt="" className="w-8 h-8 rounded object-cover" />
                               ) : (
-                                <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center">
+                                <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
                                   <Package className="h-3.5 w-3.5 text-slate-400" />
                                 </div>
                               )}
                               <div>
-                                <p className="font-medium text-slate-800 text-xs">{p.name}</p>
+                                <p className="font-medium text-foreground text-xs">{p.name}</p>
                                 {p.sku && <p className="text-[10px] text-slate-400">SKU: {p.sku}</p>}
                               </div>
                             </div>
                           </td>
                           <td className="p-3">
                             {p.isAffiliate ? (
-                              <Badge className="bg-amber-100 text-amber-700 text-[10px]">
+                              <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px]">
                                 <Globe className="h-2.5 w-2.5 mr-0.5" /> Affiliate
                               </Badge>
                             ) : (
-                              <Badge className="bg-blue-100 text-blue-700 text-[10px]">
+                              <Badge className="bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-[10px]">
                                 <Package className="h-2.5 w-2.5 mr-0.5" /> Own
                               </Badge>
                             )}
@@ -671,9 +737,9 @@ export default function AdminMarketplacePage() {
                           </td>
                           <td className="p-3">
                             {p.isActive ? (
-                              <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Active</Badge>
+                              <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px]">Active</Badge>
                             ) : (
-                              <Badge className="bg-slate-100 text-slate-500 text-[10px]">Inactive</Badge>
+                              <Badge className="bg-slate-100 dark:bg-slate-500/20 text-slate-500 dark:text-slate-300 text-[10px]">Inactive</Badge>
                             )}
                             {p.featured && <Star className="h-3 w-3 text-amber-400 inline ml-1" />}
                           </td>
@@ -727,14 +793,14 @@ export default function AdminMarketplacePage() {
                         {p.imageUrl ? (
                           <img src={p.imageUrl} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0" />
                         ) : (
-                          <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
                             <Package className="h-6 w-6 text-slate-300" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="font-medium text-slate-800 text-sm truncate">{p.name}</p>
+                              <p className="font-medium text-foreground text-sm truncate">{p.name}</p>
                               {p.sku && <p className="text-[10px] text-slate-400">SKU: {p.sku}</p>}
                             </div>
                             <div className="flex gap-1 shrink-0">
@@ -748,20 +814,20 @@ export default function AdminMarketplacePage() {
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             {p.isAffiliate ? (
-                              <Badge className="bg-amber-100 text-amber-700 text-[10px]"><Globe className="h-2.5 w-2.5 mr-0.5" /> Affiliate</Badge>
+                              <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px]"><Globe className="h-2.5 w-2.5 mr-0.5" /> Affiliate</Badge>
                             ) : (
-                              <Badge className="bg-blue-100 text-blue-700 text-[10px]"><Package className="h-2.5 w-2.5 mr-0.5" /> Own</Badge>
+                              <Badge className="bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-[10px]"><Package className="h-2.5 w-2.5 mr-0.5" /> Own</Badge>
                             )}
                             <Badge variant="outline" className="text-[10px]">{cat?.label || p.category}</Badge>
                             {p.isActive ? (
-                              <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Active</Badge>
+                              <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px]">Active</Badge>
                             ) : (
-                              <Badge className="bg-slate-100 text-slate-500 text-[10px]">Inactive</Badge>
+                              <Badge className="bg-slate-100 dark:bg-slate-500/20 text-slate-500 dark:text-slate-300 text-[10px]">Inactive</Badge>
                             )}
-                            {p.featured && <Badge className="bg-amber-100 text-amber-700 text-[10px]"><Star className="h-2.5 w-2.5 mr-0.5" /> Featured</Badge>}
+                            {p.featured && <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px]"><Star className="h-2.5 w-2.5 mr-0.5" /> Featured</Badge>}
                           </div>
                           <div className="flex items-center gap-3 mt-2 text-xs">
-                            <span className="font-bold text-slate-800">£{p.price?.toFixed(2)}</span>
+                            <span className="font-bold text-foreground">£{p.price?.toFixed(2)}</span>
                             {p.compareAtPrice && <span className="text-slate-400 line-through">£{p.compareAtPrice.toFixed(2)}</span>}
                             {p.isAffiliate ? (
                               p.affiliateCommission && <span className="text-amber-600">{p.affiliateCommission}% comm.</span>
@@ -825,7 +891,7 @@ export default function AdminMarketplacePage() {
               <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-slate-500 border-b bg-slate-50">
+                    <tr className="text-left text-xs text-muted-foreground border-b bg-muted/30">
                       <th className="p-3">Order</th>
                       <th className="p-3">Patient</th>
                       <th className="p-3">Items</th>
@@ -841,7 +907,7 @@ export default function AdminMarketplacePage() {
                       const isExpanded = expandedOrder === o.id;
                       return (
                         <React.Fragment key={o.id}>
-                          <tr className="border-b border-slate-50 hover:bg-slate-50/50 cursor-pointer" onClick={() => setExpandedOrder(isExpanded ? null : o.id)}>
+                          <tr className="border-b border-border/50 hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedOrder(isExpanded ? null : o.id)}>
                             <td className="p-3">
                               <span className="font-mono text-xs font-medium">{o.orderNumber}</span>
                             </td>
@@ -863,18 +929,18 @@ export default function AdminMarketplacePage() {
                           </tr>
                           {isExpanded && (
                             <tr>
-                              <td colSpan={7} className="bg-slate-50 p-4">
+                              <td colSpan={7} className="bg-muted/30 p-4">
                                 <div className="grid gap-4 lg:grid-cols-2">
                                   {/* Items */}
                                   <div>
-                                    <h4 className="text-xs font-bold text-slate-600 mb-2">Order Items</h4>
+                                    <h4 className="text-xs font-bold text-muted-foreground mb-2">Order Items</h4>
                                     <div className="space-y-2">
                                       {o.items?.map((item: any) => (
-                                        <div key={item.id} className="flex items-center gap-2 bg-white rounded border p-2">
+                                        <div key={item.id} className="flex items-center gap-2 bg-card rounded border p-2">
                                           {item.product?.imageUrl ? (
                                             <img src={item.product.imageUrl} alt="" className="w-8 h-8 rounded object-cover" />
                                           ) : (
-                                            <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center">
+                                            <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
                                               <Package className="h-3 w-3 text-slate-400" />
                                             </div>
                                           )}
@@ -883,12 +949,12 @@ export default function AdminMarketplacePage() {
                                             <p className="text-[10px] text-slate-400">Qty: {item.quantity} × £{item.unitPrice?.toFixed(2)}</p>
                                           </div>
                                           <span className="text-xs font-bold">£{item.totalPrice?.toFixed(2)}</span>
-                                          {item.isAffiliate && <Badge className="bg-amber-100 text-amber-700 text-[10px]">Affiliate</Badge>}
+                                          {item.isAffiliate && <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px]">Affiliate</Badge>}
                                         </div>
                                       ))}
                                     </div>
                                     {/* Totals */}
-                                    <div className="mt-3 bg-white rounded border p-3 space-y-1 text-xs">
+                                    <div className="mt-3 bg-card rounded border p-3 space-y-1 text-xs">
                                       <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span>£{o.subtotal?.toFixed(2)}</span></div>
                                       <div className="flex justify-between"><span className="text-slate-500">Shipping</span><span>£{o.shippingTotal?.toFixed(2)}</span></div>
                                       <div className="flex justify-between"><span className="text-slate-500">VAT</span><span>£{o.vatTotal?.toFixed(2)}</span></div>
@@ -899,7 +965,7 @@ export default function AdminMarketplacePage() {
 
                                   {/* Status & Shipping */}
                                   <div className="space-y-3">
-                                    <h4 className="text-xs font-bold text-slate-600">Update Status</h4>
+                                    <h4 className="text-xs font-bold text-muted-foreground">Update Status</h4>
                                     <Select value={o.status} onValueChange={(v) => updateOrderStatus(o.id, v)}>
                                       <SelectTrigger><SelectValue /></SelectTrigger>
                                       <SelectContent>
@@ -910,8 +976,8 @@ export default function AdminMarketplacePage() {
                                     </Select>
 
                                     {o.shippingAddress && (
-                                      <div className="bg-white rounded border p-3">
-                                        <h4 className="text-xs font-bold text-slate-600 mb-1">Shipping Address</h4>
+                                      <div className="bg-card rounded border p-3">
+                                        <h4 className="text-xs font-bold text-muted-foreground mb-1">Shipping Address</h4>
                                         <p className="text-xs text-slate-500">
                                           {o.shippingName}<br />
                                           {o.shippingAddress}<br />
@@ -922,15 +988,15 @@ export default function AdminMarketplacePage() {
                                     )}
 
                                     {o.trackingNumber && (
-                                      <div className="bg-white rounded border p-3">
-                                        <h4 className="text-xs font-bold text-slate-600 mb-1">Tracking</h4>
+                                      <div className="bg-card rounded border p-3">
+                                        <h4 className="text-xs font-bold text-muted-foreground mb-1">Tracking</h4>
                                         <p className="text-xs text-slate-500">{o.trackingNumber}</p>
                                       </div>
                                     )}
 
                                     {o.customerNotes && (
-                                      <div className="bg-white rounded border p-3">
-                                        <h4 className="text-xs font-bold text-slate-600 mb-1">Customer Notes</h4>
+                                      <div className="bg-card rounded border p-3">
+                                        <h4 className="text-xs font-bold text-muted-foreground mb-1">Customer Notes</h4>
                                         <p className="text-xs text-slate-500">{o.customerNotes}</p>
                                       </div>
                                     )}

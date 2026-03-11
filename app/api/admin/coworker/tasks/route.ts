@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
-import { getTaskTemplates } from '@/lib/ai-coworker'
+import { getTaskTemplates, suggestTasks, createTaskFromChat } from '@/lib/ai-coworker'
 
 // GET — list tasks + templates
 export async function GET(req: NextRequest) {
@@ -17,6 +17,41 @@ export async function GET(req: NextRequest) {
 
   if (action === 'templates') {
     return NextResponse.json({ templates: getTaskTemplates() })
+  }
+
+  if (action === 'suggest') {
+    try {
+      const result = await suggestTasks()
+      return NextResponse.json({ suggestions: result.suggestions, durationMs: result.durationMs })
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed to suggest tasks' }, { status: 500 })
+    }
+  }
+
+  if (action === 'create-from-chat') {
+    const message = searchParams.get('message')
+    if (!message) return NextResponse.json({ error: 'Message required' }, { status: 400 })
+    try {
+      const result = await createTaskFromChat(message)
+      if (result.task) {
+        const task = await prisma.coWorkerTask.create({
+          data: {
+            name: result.task.name,
+            description: result.task.description || null,
+            type: result.task.type,
+            prompt: result.task.prompt,
+            schedule: result.task.schedule || null,
+            isActive: true,
+            requiresApproval: result.task.requiresApproval,
+            createdById: (session.user as any).id,
+          },
+        })
+        return NextResponse.json({ success: true, task, reply: result.reply, durationMs: result.durationMs })
+      }
+      return NextResponse.json({ success: false, reply: result.reply, durationMs: result.durationMs })
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : 'Failed' }, { status: 500 })
+    }
   }
 
   try {

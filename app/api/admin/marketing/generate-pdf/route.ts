@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { claudeGenerate } from '@/lib/claude'
 import { buildPdfContentPrompt, BPR_SYSTEM_CONTEXT } from '@/lib/marketing-prompts'
+import { generateMarketingImage } from '@/lib/marketing-image'
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,6 +22,12 @@ export async function POST(req: NextRequest) {
       includeExercises = true,
       action = 'generate',
       content,
+      extraInstructions,
+      // Section editing
+      sectionIndex,
+      editPrompt,
+      // Image generation
+      imagePrompt,
     } = body
 
     // Generate Content
@@ -29,21 +36,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Title and topic required' }, { status: 400 })
       }
 
-      const prompt = buildPdfContentPrompt({ title, topic, audience, pages, includeExercises })
+      const prompt = buildPdfContentPrompt({ title, topic, audience, pages, includeExercises, extraInstructions })
       const rawResponse = await claudeGenerate(
         [{ role: 'user', content: prompt }],
-        { temperature: 0.4, maxTokens: 10000, systemPrompt: BPR_SYSTEM_CONTEXT }
+        { temperature: 0.4, maxTokens: 16000, systemPrompt: BPR_SYSTEM_CONTEXT }
       )
 
-      let pdfData: {
-        title: string
-        subtitle: string
-        price_suggestion: string
-        sections: Array<{ heading: string; content: string; type: string }>
-        key_takeaways: string[]
-        target_keywords: string[]
-      }
-
+      let pdfData: any
       try {
         const jsonMatch = rawResponse.match(/\{[\s\S]*\}/)
         if (!jsonMatch) throw new Error('No JSON')
@@ -53,13 +52,65 @@ export async function POST(req: NextRequest) {
           title,
           subtitle: topic,
           price_suggestion: '£9.99',
-          sections: [{ heading: 'Content', content: rawResponse, type: 'educational' }],
+          cover_image_prompt: '',
+          sections: [{ heading: 'Content', content: rawResponse, type: 'educational', image_prompt: '' }],
           key_takeaways: [],
           target_keywords: [],
+          references: [],
         }
       }
 
       return NextResponse.json({ success: true, content: pdfData })
+    }
+
+    // Edit a specific section with AI
+    if (action === 'edit-section' && content && sectionIndex !== undefined && editPrompt) {
+      const section = content.sections?.[sectionIndex]
+      if (!section) {
+        return NextResponse.json({ error: 'Section not found' }, { status: 400 })
+      }
+
+      const prompt = `You are editing a section of an eBook titled "${content.title}".
+
+Current section heading: "${section.heading}"
+Current content (first 1000 chars): ${section.content?.substring(0, 1000)}
+
+User's edit request: "${editPrompt}"
+
+Return ONLY a JSON object with the updated section:
+{
+  "heading": "...",
+  "content": "Full updated content in markdown (500-800 words)...",
+  "type": "${section.type}",
+  "image_prompt": "Updated image description if relevant..."
+}`
+
+      const rawResponse = await claudeGenerate(
+        [{ role: 'user', content: prompt }],
+        { temperature: 0.4, maxTokens: 4096, systemPrompt: BPR_SYSTEM_CONTEXT }
+      )
+
+      let updatedSection = section
+      try {
+        const jsonMatch = rawResponse.match(/\{[\s\S]*\}/)
+        if (jsonMatch) updatedSection = JSON.parse(jsonMatch[0])
+      } catch {}
+
+      const updatedContent = { ...content }
+      updatedContent.sections = [...content.sections]
+      updatedContent.sections[sectionIndex] = { ...section, ...updatedSection }
+
+      return NextResponse.json({ success: true, content: updatedContent, updatedSectionIndex: sectionIndex })
+    }
+
+    // Generate image for a section or cover
+    if (action === 'generate-image' && imagePrompt) {
+      try {
+        const imageUrl = await generateMarketingImage({ prompt: imagePrompt })
+        return NextResponse.json({ success: true, imageUrl })
+      } catch (err) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : 'Image generation failed' }, { status: 500 })
+      }
     }
 
     // Export to HTML (for print-to-PDF)
@@ -68,6 +119,56 @@ export async function POST(req: NextRequest) {
       return new NextResponse(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       })
+    }
+
+    // AI Suggestions for title, topic, cover
+    if (action === 'suggest' && body.field) {
+      const { field, context } = body
+      const ctx = context || {}
+
+      let suggestPrompt = ''
+      if (field === 'title') {
+        suggestPrompt = `You are an eBook title generator for a physiotherapy/rehabilitation clinic called BPR (Bruno Physical Rehabilitation).
+${ctx.topic ? `The topic is: "${ctx.topic}"` : 'No topic specified yet.'}
+${ctx.audience ? `Target audience: ${ctx.audience}` : ''}
+
+Generate 5 compelling, professional eBook titles that would appeal to patients and health-conscious adults. Titles should be clear, actionable, and SEO-friendly.
+
+Return ONLY a JSON array of 5 title strings, e.g. ["Title 1", "Title 2", ...]`
+      } else if (field === 'topic') {
+        suggestPrompt = `You are a content strategist for a physiotherapy/rehabilitation clinic called BPR.
+${ctx.title ? `The eBook title is: "${ctx.title}"` : 'No title specified yet.'}
+${ctx.audience ? `Target audience: ${ctx.audience}` : ''}
+
+Generate 5 compelling topic/subject descriptions for an eBook that a physiotherapy clinic could publish. Each should be 1-2 sentences describing the scope and angle.
+
+Topics should cover: injury recovery, pain management, exercise therapy, biomechanics, preventive care, or wellness.
+
+Return ONLY a JSON array of 5 topic strings, e.g. ["Topic description 1", "Topic description 2", ...]`
+      } else if (field === 'cover') {
+        suggestPrompt = `You are a creative director for eBook cover design.
+${ctx.title ? `eBook title: "${ctx.title}"` : ''}
+${ctx.topic ? `Topic: "${ctx.topic}"` : ''}
+
+Generate 5 detailed cover image prompts for an AI image generator. Each should describe a professional, modern cover design suitable for a health/physiotherapy eBook. Include colors, style, elements, and mood.
+
+Return ONLY a JSON array of 5 prompt strings, e.g. ["Prompt 1", "Prompt 2", ...]`
+      } else {
+        return NextResponse.json({ error: 'Unknown field' }, { status: 400 })
+      }
+
+      const rawResponse = await claudeGenerate(
+        [{ role: 'user', content: suggestPrompt }],
+        { temperature: 0.7, maxTokens: 2000, systemPrompt: BPR_SYSTEM_CONTEXT }
+      )
+
+      let suggestions: string[] = []
+      try {
+        const jsonMatch = rawResponse.match(/\[[\s\S]*\]/)
+        if (jsonMatch) suggestions = JSON.parse(jsonMatch[0])
+      } catch {}
+
+      return NextResponse.json({ success: true, suggestions })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })

@@ -127,6 +127,69 @@ async function gatherSystemContext(taskType: string, config?: Record<string, unk
 }
 
 /**
+ * Send notification after task execution
+ * Config format in task.config: { notifyChannels: ["email","whatsapp","sms","in_app"], notifyEmail: "...", notifyPhone: "..." }
+ */
+async function sendTaskNotification(taskName: string, status: 'SUCCESS' | 'FAILED', outputSummary: string, config?: Record<string, unknown>) {
+  if (!config) return
+  const channels = (config.notifyChannels as string[]) || []
+  if (channels.length === 0) return
+
+  const subject = `AI Co-Worker: ${taskName} — ${status}`
+  const shortOutput = outputSummary.substring(0, 500)
+
+  for (const ch of channels) {
+    try {
+      if (ch === 'email') {
+        const toEmail = (config.notifyEmail as string) || process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com'
+        const { sendEmail } = await import('@/lib/email')
+        await sendEmail({
+          to: toEmail,
+          subject,
+          html: `<div style="font-family:sans-serif;max-width:600px;">
+            <h3 style="color:${status === 'SUCCESS' ? '#10b981' : '#ef4444'};">${subject}</h3>
+            <p style="font-size:13px;color:#64748b;">Task executed at ${new Date().toLocaleString()}</p>
+            <div style="background:#f1f5f9;border-radius:8px;padding:12px;margin:12px 0;">
+              <pre style="white-space:pre-wrap;font-size:12px;color:#334155;">${shortOutput}</pre>
+            </div>
+            <p style="font-size:11px;color:#94a3b8;">— BPR AI Co-Worker</p>
+          </div>`,
+        })
+      }
+
+      if (ch === 'whatsapp') {
+        const phone = (config.notifyPhone as string)
+        if (phone) {
+          const { sendWhatsAppMessage } = await import('@/lib/whatsapp')
+          await sendWhatsAppMessage({ to: phone, message: `${subject}\n\n${shortOutput.substring(0, 200)}` })
+        }
+      }
+
+      if (ch === 'sms') {
+        const phone = (config.notifyPhone as string)
+        if (phone) {
+          const { getConfigValue } = await import('@/lib/system-config')
+          const sid = await getConfigValue('TWILIO_ACCOUNT_SID')
+          const token = await getConfigValue('TWILIO_AUTH_TOKEN')
+          const from = await getConfigValue('TWILIO_PHONE_NUMBER')
+          if (sid && token && from) {
+            await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+              method: 'POST',
+              headers: { Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({ To: phone, From: from, Body: `${subject}\n${shortOutput.substring(0, 140)}` }),
+            })
+          }
+        }
+      }
+
+      // in_app: logged as a CoWorkerLog entry (already done in executeTask)
+    } catch (notifyErr) {
+      console.error(`[coworker] Notification via ${ch} failed:`, notifyErr)
+    }
+  }
+}
+
+/**
  * Execute a Co-Worker task
  */
 export async function executeTask(ctx: TaskContext): Promise<TaskResult> {
@@ -182,6 +245,9 @@ export async function executeTask(ctx: TaskContext): Promise<TaskResult> {
       }).catch(() => null)
     }
 
+    // Send notifications
+    await sendTaskNotification(ctx.taskType, 'SUCCESS', output, ctx.config).catch(() => null)
+
     return { success: true, output, action, data, durationMs }
 
   } catch (err) {
@@ -201,6 +267,9 @@ export async function executeTask(ctx: TaskContext): Promise<TaskResult> {
         },
       }).catch(() => null)
     }
+
+    // Send failure notification
+    await sendTaskNotification(ctx.taskType, 'FAILED', errorMsg, ctx.config).catch(() => null)
 
     return { success: false, output: errorMsg, durationMs }
   }
@@ -242,6 +311,149 @@ export async function coworkerChat(message: string, history: Array<{ role: 'user
   }).catch(() => null)
 
   return { reply, durationMs }
+}
+
+/**
+ * Suggest tasks — Claude analyses the full system and recommends automations
+ */
+export async function suggestTasks(): Promise<{ suggestions: Array<{ name: string; type: TaskType; description: string; prompt: string; schedule: string; priority: 'high' | 'medium' | 'low'; reason: string; requiresApproval: boolean }>; durationMs: number }> {
+  const startTime = Date.now()
+
+  // Gather deep context
+  const now = new Date()
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000)
+
+  const [
+    totalPatients,
+    activePatients,
+    inactiveCount,
+    upcomingAppts,
+    completedThisMonth,
+    newPatientsMonth,
+    socialPosts,
+    existingTasks,
+  ] = await Promise.all([
+    prisma.user.count({ where: { role: 'PATIENT' } }),
+    prisma.user.count({ where: { role: 'PATIENT', isActive: true } }),
+    prisma.user.count({
+      where: {
+        role: 'PATIENT', isActive: true,
+        patientAppointments: { some: { dateTime: { lt: thirtyDaysAgo } }, none: { dateTime: { gte: thirtyDaysAgo } } },
+      },
+    }),
+    prisma.appointment.count({ where: { status: 'CONFIRMED', dateTime: { gte: now } } }),
+    prisma.appointment.count({ where: { status: 'COMPLETED', dateTime: { gte: thirtyDaysAgo } } }),
+    prisma.user.count({ where: { role: 'PATIENT', createdAt: { gte: thirtyDaysAgo } } }),
+    prisma.socialPost.count().catch(() => 0),
+    prisma.coWorkerTask.findMany({ where: { isActive: true }, select: { name: true, type: true } }),
+  ])
+
+  const deepContext = `SYSTEM ANALYSIS FOR TASK SUGGESTIONS:
+Date: ${now.toISOString().split('T')[0]}
+Total patients: ${totalPatients} (active: ${activePatients})
+Inactive patients (30+ days no visit): ${inactiveCount}
+Upcoming appointments: ${upcomingAppts}
+Completed appointments (30 days): ${completedThisMonth}
+New patients (30 days): ${newPatientsMonth}
+Social media posts total: ${socialPosts}
+Currently active AI tasks: ${existingTasks.length} (${existingTasks.map(t => t.name).join(', ') || 'none'})
+
+CLINIC SERVICES: MLS Laser Therapy, Custom Insoles, Biomechanical Assessment, Thermography, Sports Recovery, Exercise Therapy, Shockwave, Foot Scans
+LOCATIONS: Richmond (TW10 6AQ), Ipswich (Suffolk)
+WEBSITE: bpr.rehab`
+
+  const suggestPrompt = `Based on the system data above, suggest 4-6 NEW automated tasks that would benefit this clinic.
+Consider what's NOT already being done by existing tasks.
+
+Focus on:
+- Patient retention and re-engagement
+- Marketing and social media automation
+- Clinical workflow improvements
+- Revenue opportunities
+- Patient experience enhancements
+
+Return ONLY valid JSON:
+{
+  "suggestions": [
+    {
+      "name": "Task Name",
+      "type": "EMAIL_FOLLOWUP|SOCIAL_POST|REPORT|PATIENT_OUTREACH|CUSTOM",
+      "description": "What this task does",
+      "prompt": "The full prompt for Claude to execute this task",
+      "schedule": "cron expression (e.g. 0 9 * * 1-5)",
+      "priority": "high|medium|low",
+      "reason": "Why this task would help based on the data",
+      "requiresApproval": true/false
+    }
+  ]
+}`
+
+  const output = await claudeGenerate(
+    [{ role: 'user', content: `${deepContext}\n\n${suggestPrompt}` }],
+    { temperature: 0.5, maxTokens: 4096, systemPrompt: SYSTEM_PROMPT }
+  )
+
+  const durationMs = Date.now() - startTime
+
+  // Parse suggestions
+  let suggestions: any[] = []
+  try {
+    const jsonMatch = output.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0])
+      suggestions = parsed.suggestions || []
+    }
+  } catch {}
+
+  // Log
+  await prisma.coWorkerLog.create({
+    data: { type: 'TASK_RUN', status: 'SUCCESS', input: 'Suggest Tasks (system analysis)', output: output.substring(0, 5000), durationMs },
+  }).catch(() => null)
+
+  return { suggestions, durationMs }
+}
+
+/**
+ * Create a task from chat — Claude parses natural language into a structured task
+ */
+export async function createTaskFromChat(userMessage: string): Promise<{ task: { name: string; type: TaskType; description: string; prompt: string; schedule: string; requiresApproval: boolean } | null; reply: string; durationMs: number }> {
+  const startTime = Date.now()
+
+  const parsePrompt = `The user wants to create an automated task. Parse their request into a structured task.
+
+User request: "${userMessage}"
+
+Return ONLY valid JSON:
+{
+  "task": {
+    "name": "Short task name",
+    "type": "EMAIL_FOLLOWUP|SOCIAL_POST|REPORT|PATIENT_OUTREACH|CUSTOM",
+    "description": "What this task does",
+    "prompt": "Detailed prompt for Claude to execute this task each time it runs",
+    "schedule": "cron expression (e.g. '0 9 * * 1' for Monday 9am, '0 8 * * *' for daily 8am, '' for manual only)",
+    "requiresApproval": true
+  },
+  "reply": "Friendly confirmation message to the user explaining what was created"
+}
+
+If you cannot parse a valid task, return: { "task": null, "reply": "explanation of what's unclear" }`
+
+  const output = await claudeGenerate(
+    [{ role: 'user', content: parsePrompt }],
+    { temperature: 0.3, maxTokens: 2048, systemPrompt: SYSTEM_PROMPT }
+  )
+
+  const durationMs = Date.now() - startTime
+
+  try {
+    const jsonMatch = output.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0])
+      return { task: parsed.task, reply: parsed.reply || 'Task parsed.', durationMs }
+    }
+  } catch {}
+
+  return { task: null, reply: 'Could not parse a task from that. Please be more specific.', durationMs }
 }
 
 /**

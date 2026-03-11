@@ -40,14 +40,14 @@ const DOC_TYPES = [
 ];
 
 const DOC_TYPE_COLORS: Record<string, string> = {
-  MEDICAL_REFERRAL: "bg-blue-100 text-blue-700",
-  MEDICAL_REPORT: "bg-purple-100 text-purple-700",
-  PRESCRIPTION: "bg-green-100 text-green-700",
-  IMAGING: "bg-amber-100 text-amber-700",
-  INSURANCE: "bg-teal-100 text-teal-700",
-  CONSENT_FORM: "bg-slate-100 text-slate-700",
-  PREVIOUS_TREATMENT: "bg-orange-100 text-orange-700",
-  OTHER: "bg-gray-100 text-gray-700",
+  MEDICAL_REFERRAL: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300",
+  MEDICAL_REPORT: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300",
+  PRESCRIPTION: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
+  IMAGING: "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300",
+  INSURANCE: "bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300",
+  CONSENT_FORM: "bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300",
+  PREVIOUS_TREATMENT: "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300",
+  OTHER: "bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300",
 };
 
 export default function PatientDocumentsPage() {
