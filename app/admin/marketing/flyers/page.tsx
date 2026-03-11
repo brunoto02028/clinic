@@ -31,7 +31,7 @@ interface FlyerTemplate {
   description: string
   size: { width: number; height: number; label: string }
   colors: { primary: string; secondary: string; accent: string; bg: string; text: string }
-  layout: 'hero-top' | 'split' | 'centered' | 'gradient-diagonal' | 'minimal'
+  layout: 'hero-top' | 'split' | 'centered' | 'gradient-diagonal' | 'minimal' | 'magazine' | 'banner' | 'photo-grid'
 }
 
 const TEMPLATES: FlyerTemplate[] = [
@@ -82,6 +82,38 @@ const TEMPLATES: FlyerTemplate[] = [
     size: { width: 148, height: 210, label: 'A5 Portrait' },
     colors: { primary: '#0d7377', secondary: '#0a5c5f', accent: '#c8952a', bg: '#ffffff', text: '#1a2332' },
     layout: 'hero-top',
+  },
+  {
+    id: 'magazine-editorial',
+    name: 'Magazine Editorial',
+    description: 'Two-column editorial with sidebar',
+    size: { width: 210, height: 297, label: 'A4 Portrait' },
+    colors: { primary: '#1a2332', secondary: '#0d7377', accent: '#c8952a', bg: '#ffffff', text: '#1a2332' },
+    layout: 'magazine',
+  },
+  {
+    id: 'bold-banner',
+    name: 'Bold Banner',
+    description: 'Full-width hero banner + grid',
+    size: { width: 210, height: 297, label: 'A4 Portrait' },
+    colors: { primary: '#0d7377', secondary: '#064e52', accent: '#f59e0b', bg: '#f8fafc', text: '#1a2332' },
+    layout: 'banner',
+  },
+  {
+    id: 'photo-showcase',
+    name: 'Photo Showcase',
+    description: 'Grid layout with image placeholders',
+    size: { width: 210, height: 297, label: 'A4 Portrait' },
+    colors: { primary: '#0d7377', secondary: '#0a5c5f', accent: '#c8952a', bg: '#ffffff', text: '#1a2332' },
+    layout: 'photo-grid',
+  },
+  {
+    id: 'luxury-dark-flyer',
+    name: 'Luxury Dark',
+    description: 'Premium dark with gold accents',
+    size: { width: 210, height: 297, label: 'A4 Portrait' },
+    colors: { primary: '#0a0a0a', secondary: '#1a1a1a', accent: '#c8952a', bg: '#0a0a0a', text: '#ffffff' },
+    layout: 'gradient-diagonal',
   },
 ]
 
@@ -393,6 +425,105 @@ export default function FlyerCreatorPage() {
     </div>
     <p style="margin-top:12px;font-size:9pt;color:${c.text}66;">${f.hours}</p>
     <p style="margin-top:18px;font-size:11pt;font-weight:500;color:${c.primary};font-style:italic;">${f.tagline}</p>
+  </div>
+  ` : ''}
+
+  ${t.layout === 'magazine' ? `
+  <!-- Magazine Editorial Layout -->
+  <div style="display:flex;min-height:${t.size.height}mm;">
+    <div style="width:65%;padding:44px 32px 36px 40px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">
+        ${logoHtmlInline(c.primary, '20pt', '6px 16px', '')}
+        <div style="height:1px;flex:1;background:${c.primary}20;"></div>
+      </div>
+      <h1 style="font-size:30pt;font-weight:800;color:${textColor};line-height:1.08;margin-bottom:10px;">${f.headline}</h1>
+      <p style="font-size:14pt;color:${c.secondary};font-weight:500;margin-bottom:20px;">${f.subheadline}</p>
+      <div style="columns:2;column-gap:20px;margin-bottom:24px;">
+        <p style="font-size:10pt;color:${subtextColor};line-height:1.75;">${f.bodyText}</p>
+      </div>
+      ${f.promoText ? `<div style="background:${c.accent}10;border-left:4px solid ${c.accent};padding:14px 18px;margin-bottom:24px;"><p style="font-size:13pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
+      <div style="background:${c.primary};border-radius:8px;padding:16px;text-align:center;margin-bottom:20px;">
+        <p style="font-size:14pt;font-weight:700;color:#fff;">${f.ctaText}</p>
+      </div>
+      <p style="font-size:10pt;font-weight:500;color:${c.primary};font-style:italic;">${f.tagline}</p>
+    </div>
+    <div style="width:35%;background:${c.primary};padding:44px 24px 36px;display:flex;flex-direction:column;justify-content:space-between;">
+      <div>
+        <h3 style="font-size:10pt;font-weight:700;color:${c.accent};text-transform:uppercase;letter-spacing:2px;margin-bottom:20px;">Our Services</h3>
+        ${f.services.map(s => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);"><div style="width:5px;height:5px;border-radius:50%;background:${c.accent};flex-shrink:0;"></div><span style="font-size:9.5pt;color:rgba(255,255,255,0.85);">${s}</span></div>`).join('')}
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:18px;">
+        <div style="font-size:9pt;color:rgba(255,255,255,0.6);line-height:2;">
+          <p>${f.phone}</p>
+          <p>${f.email}</p>
+          <p>${f.website}</p>
+          <p>${f.address}</p>
+          <p style="margin-top:8px;font-weight:600;color:rgba(255,255,255,0.8);">${f.hours}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  ` : ''}
+
+  ${t.layout === 'banner' ? `
+  <!-- Bold Banner Layout -->
+  <div>
+    <div style="background:${gradientEnabled ? `linear-gradient(${gradientAngle}deg, ${gradientColor1}, ${gradientColor2})` : `linear-gradient(135deg, ${c.primary}, ${c.secondary})`};padding:48px 40px 40px;text-align:center;position:relative;">
+      <div style="position:absolute;top:0;left:0;right:0;height:6px;background:${c.accent};"></div>
+      ${logoHtmlInline(c.accent, '24pt', '8px 22px', 'margin-bottom:18px;')}
+      <h1 style="font-size:32pt;font-weight:800;color:#ffffff;line-height:1.1;margin-bottom:10px;">${f.headline}</h1>
+      <p style="font-size:14pt;color:rgba(255,255,255,0.8);font-weight:300;">${f.subheadline}</p>
+    </div>
+    <div style="padding:32px 40px 36px;background:${c.bg};">
+      <p style="font-size:11pt;color:${c.text}bb;line-height:1.7;margin-bottom:24px;text-align:center;max-width:85%;margin-left:auto;margin-right:auto;">${f.bodyText}</p>
+      ${f.promoText ? `<div style="background:${c.accent}12;border:2px solid ${c.accent};border-radius:10px;padding:14px 24px;margin-bottom:24px;text-align:center;"><p style="font-size:14pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px;">
+        ${f.services.map(s => `<div style="display:flex;align-items:center;gap:10px;background:${c.primary}08;border-radius:8px;padding:10px 14px;"><div style="width:8px;height:8px;border-radius:50%;background:${c.accent};flex-shrink:0;"></div><span style="font-size:10pt;color:${c.text};">${s}</span></div>`).join('')}
+      </div>
+      <div style="background:${c.primary};border-radius:10px;padding:18px;text-align:center;margin-bottom:24px;">
+        <p style="font-size:15pt;font-weight:700;color:#fff;">${f.ctaText}</p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:center;font-size:9.5pt;color:${c.text}88;margin-bottom:8px;">
+        <span>${f.phone}</span><span>${f.website}</span><span>${f.email}</span>
+      </div>
+      <p style="text-align:center;font-size:9pt;color:${c.text}66;">${f.address} · ${f.hours}</p>
+      <p style="text-align:center;margin-top:14px;font-size:11pt;font-weight:600;color:${c.primary};font-style:italic;">${f.tagline}</p>
+    </div>
+  </div>
+  ` : ''}
+
+  ${t.layout === 'photo-grid' ? `
+  <!-- Photo Grid / Showcase Layout -->
+  <div style="padding:40px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;">
+      ${logoHtmlInline(c.primary, '20pt', '6px 16px', '')}
+      <div style="text-align:right;">
+        <p style="font-size:9pt;color:${c.text}88;">${f.phone} · ${f.email}</p>
+        <p style="font-size:9pt;color:${c.text}88;">${f.website}</p>
+      </div>
+    </div>
+    <h1 style="font-size:28pt;font-weight:800;color:${textColor};line-height:1.1;margin-bottom:8px;">${f.headline}</h1>
+    <p style="font-size:13pt;color:${c.primary};font-weight:500;margin-bottom:24px;">${f.subheadline}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px;">
+      <div style="background:${c.primary}12;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;"><span style="font-size:9pt;color:${c.primary}88;">Photo 1</span></div>
+      <div style="background:${c.primary}12;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;"><span style="font-size:9pt;color:${c.primary}88;">Photo 2</span></div>
+      <div style="background:${c.primary}12;border-radius:10px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;"><span style="font-size:9pt;color:${c.primary}88;">Photo 3</span></div>
+    </div>
+    <p style="font-size:11pt;color:${c.text}bb;line-height:1.7;margin-bottom:24px;">${f.bodyText}</p>
+    ${f.promoText ? `<div style="background:${c.accent}10;border-radius:8px;padding:14px 20px;margin-bottom:24px;text-align:center;"><p style="font-size:13pt;font-weight:700;color:${c.accent};">${f.promoText}</p></div>` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;">
+      ${f.services.map(s => `<div style="display:flex;align-items:center;gap:8px;"><div style="width:6px;height:6px;border-radius:50%;background:${c.accent};"></div><span style="font-size:10pt;color:${c.text}cc;">${s}</span></div>`).join('')}
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:24px;">
+      <div style="flex:1;background:${c.primary};border-radius:8px;padding:16px;text-align:center;">
+        <p style="font-size:14pt;font-weight:700;color:#fff;">${f.ctaText}</p>
+      </div>
+    </div>
+    <div style="border-top:1px solid ${c.primary}15;padding-top:16px;display:flex;justify-content:space-between;font-size:9pt;color:${c.text}77;">
+      <span>${f.address}</span>
+      <span>${f.hours}</span>
+    </div>
+    <p style="text-align:center;margin-top:14px;font-size:11pt;font-weight:600;color:${c.primary};font-style:italic;">${f.tagline}</p>
   </div>
   ` : ''}
 
