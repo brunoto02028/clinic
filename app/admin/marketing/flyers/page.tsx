@@ -604,7 +604,7 @@ export default function FlyerCreatorPage() {
             </div>
 
             {/* Preview */}
-            <div className="bg-muted/20 border border-border rounded-xl p-4 overflow-hidden flex justify-center">
+            <div className="bg-muted/20 border border-border rounded-xl p-4 overflow-hidden flex justify-center" style={{ height: `${template.size.height * 3.78 * SCALE + 32}px` }}>
               <div
                 ref={previewRef}
                 style={{
@@ -612,6 +612,7 @@ export default function FlyerCreatorPage() {
                   transformOrigin: 'top center',
                   width: `${template.size.width}mm`,
                   height: `${template.size.height}mm`,
+                  flexShrink: 0,
                 }}
                 className="shadow-2xl"
               >

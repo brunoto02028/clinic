@@ -306,7 +306,7 @@ export default function BusinessCardCreatorPage() {
     URL.revokeObjectURL(url)
   }
 
-  const SCALE = 2.8
+  const SCALE = 0.95
 
   return (
     <div className="space-y-6">
@@ -516,11 +516,14 @@ export default function BusinessCardCreatorPage() {
             </div>
 
             {/* Card Preview */}
-            <div className="bg-muted/20 border border-border rounded-xl p-6 flex justify-center">
+            <div className="bg-muted/20 border border-border rounded-xl p-4 flex justify-center overflow-hidden" style={{ height: `${55 * 3.78 * SCALE + 40}px` }}>
               <div
                 style={{
                   transform: `scale(${SCALE})`,
                   transformOrigin: 'top center',
+                  width: `${CARD_W}mm`,
+                  height: `${CARD_H}mm`,
+                  flexShrink: 0,
                 }}
               >
                 <div
@@ -537,12 +540,12 @@ export default function BusinessCardCreatorPage() {
             {/* Both sides mini preview */}
             <div className="bg-card border border-border rounded-xl p-4">
               <p className="text-[10px] font-medium text-muted-foreground mb-3">Both Sides</p>
-              <div className="flex gap-3 justify-center">
-                <div onClick={() => setSide('front')} className={`cursor-pointer transition ${side === 'front' ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-card rounded-sm' : 'opacity-60 hover:opacity-100'}`}>
-                  <div style={{ transform: 'scale(1.4)', transformOrigin: 'top center' }} dangerouslySetInnerHTML={{ __html: buildCardFrontHtml() }} />
+              <div className="flex gap-3 justify-center overflow-hidden" style={{ height: `${55 * 3.78 * 0.45 + 8}px` }}>
+                <div onClick={() => setSide('front')} className={`cursor-pointer transition ${side === 'front' ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-card rounded-sm' : 'opacity-60 hover:opacity-100'}`} style={{ width: `${85 * 3.78 * 0.45}px`, flexShrink: 0 }}>
+                  <div style={{ transform: 'scale(0.45)', transformOrigin: 'top left', width: `${CARD_W}mm`, height: `${CARD_H}mm` }} dangerouslySetInnerHTML={{ __html: buildCardFrontHtml() }} />
                 </div>
-                <div onClick={() => setSide('back')} className={`cursor-pointer transition ${side === 'back' ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-card rounded-sm' : 'opacity-60 hover:opacity-100'}`}>
-                  <div style={{ transform: 'scale(1.4)', transformOrigin: 'top center' }} dangerouslySetInnerHTML={{ __html: buildCardBackHtml() }} />
+                <div onClick={() => setSide('back')} className={`cursor-pointer transition ${side === 'back' ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-card rounded-sm' : 'opacity-60 hover:opacity-100'}`} style={{ width: `${85 * 3.78 * 0.45}px`, flexShrink: 0 }}>
+                  <div style={{ transform: 'scale(0.45)', transformOrigin: 'top left', width: `${CARD_W}mm`, height: `${CARD_H}mm` }} dangerouslySetInnerHTML={{ __html: buildCardBackHtml() }} />
                 </div>
               </div>
             </div>
