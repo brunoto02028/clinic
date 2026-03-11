@@ -356,7 +356,7 @@ export default function BusinessCardCreatorPage() {
     const update = () => {
       const w = el.clientWidth
       const available = Math.max(1, w - 48)
-      const next = Math.min(2, available / CARD_PX_W)
+      const next = Math.min(1, available / CARD_PX_W)
       setPreviewScale(Number.isFinite(next) ? next : 1)
     }
 
