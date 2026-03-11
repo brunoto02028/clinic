@@ -137,6 +137,7 @@ export default function FlyerCreatorPage() {
   const [showLogoPicker, setShowLogoPicker] = useState(false)
 
   const [clinicDefaults, setClinicDefaults] = useState<{ siteName?: string; logoUrl?: string; phone?: string; email?: string; address?: string; website?: string } | null>(null)
+  const [marketingDefaultsJson, setMarketingDefaultsJson] = useState<string>('')
 
   const previewOuterRef = useRef<HTMLDivElement>(null)
   const [previewScale, setPreviewScale] = useState(1)
@@ -166,12 +167,57 @@ export default function FlyerCreatorPage() {
           address: s.address || '',
           website: s.businessWebsite || s.website || 'bpr.rehab',
         })
+        setMarketingDefaultsJson(s.marketingFlyerDefaultsJson || '')
       } catch {
         // ignore
       }
     })()
     return () => { cancelled = true }
   }, [])
+
+  function applyMarketingDefaults() {
+    if (!marketingDefaultsJson) return
+    try {
+      const d = JSON.parse(marketingDefaultsJson)
+
+      const templateId = d?.templateId
+      if (templateId && typeof templateId === 'string') {
+        const nextTemplate = TEMPLATES.find(t => t.id === templateId)
+        if (nextTemplate) {
+          setTemplate(nextTemplate)
+          setColors(nextTemplate.colors)
+        }
+      }
+
+      if (d?.colors && typeof d.colors === 'object') {
+        setColors((prev: any) => ({ ...prev, ...d.colors }))
+      }
+
+      const allowedFlyerKeys: (keyof FlyerData)[] = [
+        'logoText',
+        'logoUrl',
+        'headline',
+        'subheadline',
+        'ctaText',
+        'promoText',
+        'phone',
+        'email',
+        'website',
+        'address',
+        'hours',
+      ]
+
+      setFlyer((prev: FlyerData) => {
+        const next: FlyerData = { ...prev }
+        for (const k of allowedFlyerKeys) {
+          if (d?.[k] !== undefined) (next as any)[k] = d[k]
+        }
+        return next
+      })
+    } catch {
+      // ignore
+    }
+  }
 
   function toggleService(service: string) {
     setFlyer(prev => ({
@@ -545,6 +591,14 @@ export default function FlyerCreatorPage() {
                 <span className="text-sm font-medium text-foreground">Content</span>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={applyMarketingDefaults}
+                  disabled={!marketingDefaultsJson}
+                  className="text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition"
+                >
+                  Apply marketing defaults
+                </button>
                 <button
                   type="button"
                   onClick={() => {
