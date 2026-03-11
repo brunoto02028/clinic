@@ -260,6 +260,9 @@ export async function PUT(request: NextRequest) {
       businessHoursJson: body.businessHoursJson || null,
       businessPriceRange: body.businessPriceRange || null,
       businessCurrency: body.businessCurrency || null,
+
+      marketingBusinessCardDefaultsJson: body.marketingBusinessCardDefaultsJson !== undefined ? (body.marketingBusinessCardDefaultsJson || null) : undefined,
+      marketingFlyerDefaultsJson: body.marketingFlyerDefaultsJson !== undefined ? (body.marketingFlyerDefaultsJson || null) : undefined,
     };
     
     if (settings) {

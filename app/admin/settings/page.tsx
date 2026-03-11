@@ -307,6 +307,10 @@ export default function AdminSettingsPage() {
 
     // MLS Laser
     mlsLaserJson: "",
+
+    // Marketing defaults
+    marketingBusinessCardDefaultsJson: "",
+    marketingFlyerDefaultsJson: "",
   });
 
   const SCREEN_KEYS = [
@@ -437,6 +441,8 @@ export default function AdminSettingsPage() {
           portalFeaturesJson: data.portalFeaturesJson || "",
           contactCardsJson: data.contactCardsJson || "",
           mlsLaserJson: data.mlsLaserJson || "",
+          marketingBusinessCardDefaultsJson: data.marketingBusinessCardDefaultsJson || "",
+          marketingFlyerDefaultsJson: data.marketingFlyerDefaultsJson || "",
         });
         // Load per-screen logos
         if (data.screenLogos && typeof data.screenLogos === 'object') {
@@ -716,6 +722,7 @@ export default function AdminSettingsPage() {
           <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="footer">Footer</TabsTrigger>
           <TabsTrigger value="terms">Terms of Use</TabsTrigger>
+          <TabsTrigger value="marketing">Marketing</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
         </TabsList>
 
@@ -2312,6 +2319,45 @@ export default function AdminSettingsPage() {
                     Clear custom content (use defaults)
                   </Button>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Marketing Tab */}
+        <TabsContent value="marketing" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Marketing Defaults (Cloud)</CardTitle>
+              <CardDescription>
+                Defaults used by Business Card Creator and Flyer Creator. Keep as JSON so we can evolve without changing the database every time.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="marketingBusinessCardDefaultsJson">Business Card Defaults (JSON)</Label>
+                <Textarea
+                  id="marketingBusinessCardDefaultsJson"
+                  value={(settings as any).marketingBusinessCardDefaultsJson || ""}
+                  onChange={(e) => setSettings({ ...settings, marketingBusinessCardDefaultsJson: e.target.value } as any)}
+                  placeholder='{"templateId":"bpr-teal","colors":{"primary":"#0d7377","secondary":"#0a5c5f","accent":"#c8952a","bg":"#ffffff","text":"#1a2332","backBg":"#0d7377"},"logoUrl":"https://...","logoText":"BPR","name":"Bruno","title":"Founder","qualifications":"BSc ...","phone":"+44...","email":"info@...","website":"bpr.rehab","address":"..."}'
+                  rows={8}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">Optional. If empty, creators will fall back to Site Branding + manual inputs.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="marketingFlyerDefaultsJson">Flyer Defaults (JSON)</Label>
+                <Textarea
+                  id="marketingFlyerDefaultsJson"
+                  value={(settings as any).marketingFlyerDefaultsJson || ""}
+                  onChange={(e) => setSettings({ ...settings, marketingFlyerDefaultsJson: e.target.value } as any)}
+                  placeholder='{"templateId":"modern","colors":{"primary":"#0d7377","secondary":"#0a5c5f","accent":"#c8952a","bg":"#ffffff","text":"#1a2332"},"logoUrl":"https://...","logoText":"BPR","headline":"...","subheadline":"...","cta":"...","phone":"+44...","email":"info@...","website":"bpr.rehab","address":"..."}'
+                  rows={8}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">Optional. Use this to standardize flyer copy/colors across templates.</p>
               </div>
             </CardContent>
           </Card>
