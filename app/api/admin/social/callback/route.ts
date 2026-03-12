@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { exchangeCodeForToken, getLongLivedToken, getInstagramBusinessAccount } from '@/lib/instagram';
 
+function getSiteUrl(): string {
+  return process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+}
+
 // GET /api/admin/social/callback - Facebook OAuth callback
 export async function GET(req: NextRequest) {
+  const baseUrl = getSiteUrl();
+
   try {
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
@@ -11,11 +17,11 @@ export async function GET(req: NextRequest) {
     const error = searchParams.get('error');
 
     if (error) {
-      return NextResponse.redirect(new URL('/admin/social?error=oauth_denied', req.url));
+      return NextResponse.redirect(`${baseUrl}/admin/marketing/instagram-connect?error=oauth_denied`);
     }
 
     if (!code || !state) {
-      return NextResponse.redirect(new URL('/admin/social?error=missing_params', req.url));
+      return NextResponse.redirect(`${baseUrl}/admin/marketing/instagram-connect?error=missing_params`);
     }
 
     const clinicId = state;
@@ -61,12 +67,12 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.redirect(
-      new URL(`/admin/social?success=connected&account=${igInfo.igUsername}`, req.url)
+      `${baseUrl}/admin/marketing/instagram-connect?success=connected&account=${igInfo.igUsername}`
     );
   } catch (error: any) {
     console.error('[SOCIAL CALLBACK] error:', error?.message);
     return NextResponse.redirect(
-      new URL(`/admin/social?error=${encodeURIComponent(error?.message || 'connection_failed')}`, req.url)
+      `${baseUrl}/admin/marketing/instagram-connect?error=${encodeURIComponent(error?.message || 'connection_failed')}`
     );
   }
 }

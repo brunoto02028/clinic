@@ -45,6 +45,7 @@ export default function InstagramConnectPage() {
   const [envStatus, setEnvStatus] = useState<{
     hasFbAppId: boolean;
     hasFbAppSecret: boolean;
+    hasConfigId: boolean;
     hasAccessToken: boolean;
     hasBusinessId: boolean;
   } | null>(null);
@@ -126,13 +127,13 @@ export default function InstagramConnectPage() {
     { id: "check-app", label: "1. Pré-requisitos", desc: "Conta Business + Facebook Page" },
     { id: "create-app", label: "2. Criar App Meta", desc: "developers.facebook.com" },
     { id: "configure-app", label: "3. Configurar App", desc: "Business type + permissões" },
-    { id: "add-product", label: "4. Adicionar Instagram", desc: "Product: Instagram Basic Display" },
+    { id: "add-product", label: "4. Configuration", desc: "FB Login for Business + config_id" },
     { id: "set-redirect", label: "5. Redirect URI", desc: "URL de callback no app" },
-    { id: "set-env", label: "6. Variáveis .env", desc: "Copiar App ID e Secret" },
+    { id: "set-env", label: "6. Variáveis .env", desc: "App ID, Secret e Config ID" },
     { id: "connect", label: "7. Conectar", desc: "OAuth com 1 clique" },
   ];
 
-  const isFullyConfigured = envStatus?.hasFbAppId && envStatus?.hasFbAppSecret;
+  const isFullyConfigured = envStatus?.hasFbAppId && envStatus?.hasFbAppSecret && envStatus?.hasConfigId;
   const hasConnectedAccount = accounts.length > 0;
 
   return (
@@ -333,14 +334,27 @@ export default function InstagramConnectPage() {
       )}
 
       {activeStep === "add-product" && (
-        <StepCard title="Adicionar produto Instagram" icon={<Instagram className="h-5 w-5 text-pink-500" />}>
+        <StepCard title="Criar Configuration (Facebook Login for Business)" icon={<Instagram className="h-5 w-5 text-pink-500" />}>
+          <p className="text-sm text-muted-foreground mb-3">
+            O teu app usa <strong className="text-foreground">Facebook Login for Business</strong>, que requer uma <strong className="text-foreground">Configuration</strong> com as permissões do Instagram.
+          </p>
           <ol className="space-y-3 text-sm text-muted-foreground">
-            <Step n={1} text='No painel do App, clica em "+ Add Product" no menu lateral' />
-            <Step n={2} text='Encontra "Instagram" → clica "Set Up"' />
-            <Step n={3} text='Depois adiciona também "Instagram Graph API" se aparecer separado' />
-            <Step n={4} text='Em Permissions, confirma que tens activadas: instagram_basic, instagram_content_publish, instagram_manage_insights, pages_show_list, pages_read_engagement' />
+            <Step n={1} text='No menu lateral do app, clica em "Facebook Login for Business" → "Configurations"' />
+            <Step n={2} text='Clica "Get Started" ou "Create Configuration"' />
+            <Step n={3} text='Dá um nome (ex: "BPR Instagram Access")' />
+            <Step n={4} text='Em "Permissions", adiciona TODAS estas:' />
           </ol>
-          <InfoBox text="ℹ️ A Meta mudou a interface várias vezes. Se vires 'Instagram Platform' em vez de 'Instagram Basic Display', é a versão mais recente — usa essa." />
+          <div className="bg-background border border-border rounded-xl p-3 mt-2 mb-3 space-y-1">
+            <code className="block text-xs text-cyan-400 font-mono">instagram_basic</code>
+            <code className="block text-xs text-cyan-400 font-mono">instagram_content_publish</code>
+            <code className="block text-xs text-cyan-400 font-mono">instagram_manage_insights</code>
+            <code className="block text-xs text-cyan-400 font-mono">pages_show_list</code>
+            <code className="block text-xs text-cyan-400 font-mono">pages_read_engagement</code>
+          </div>
+          <ol className="space-y-3 text-sm text-muted-foreground" start={5}>
+            <Step n={5} text='Guarda a Configuration. Copia o "Configuration ID" (número longo) — vais precisar dele no passo 6.' />
+          </ol>
+          <InfoBox text='⚠️ IMPORTANTE: Sem o config_id, o Facebook rejeita os scopes com erro "Invalid Scopes". O config_id substitui o parâmetro scope no OAuth URL.' />
           <div className="flex gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={() => setActiveStep("configure-app")}>Voltar</Button>
             <Button size="sm" className="gap-1.5 text-xs bg-purple-600 hover:bg-purple-700" onClick={() => setActiveStep("set-redirect")}>
@@ -389,7 +403,7 @@ export default function InstagramConnectPage() {
           <div className="space-y-3">
             <EnvVar
               name="FACEBOOK_APP_ID"
-              placeholder="123456789012345"
+              placeholder="94530663455902"
               desc="O App ID que copiaste do Meta App Dashboard"
               status={envStatus?.hasFbAppId}
               onCopy={() => copyText("FACEBOOK_APP_ID=", "appid")}
@@ -397,11 +411,19 @@ export default function InstagramConnectPage() {
             />
             <EnvVar
               name="FACEBOOK_APP_SECRET"
-              placeholder="a1b2c3d4e5f6..."
+              placeholder="5e704f16a726e0b6c7cd..."
               desc='O App Secret (clica Show no Meta Dashboard → App Settings → Basic)'
               status={envStatus?.hasFbAppSecret}
               onCopy={() => copyText("FACEBOOK_APP_SECRET=", "appsecret")}
               copied={copied === "appsecret"}
+            />
+            <EnvVar
+              name="FACEBOOK_LOGIN_CONFIG_ID"
+              placeholder="1234567890123456"
+              desc='O Configuration ID do passo 4 (Facebook Login for Business → Configurations)'
+              status={envStatus?.hasConfigId}
+              onCopy={() => copyText("FACEBOOK_LOGIN_CONFIG_ID=", "configid")}
+              copied={copied === "configid"}
             />
           </div>
 
@@ -412,6 +434,7 @@ export default function InstagramConnectPage() {
             <p className="text-amber-300 mt-2"># Adiciona estas linhas:</p>
             <p>FACEBOOK_APP_ID=<span className="text-cyan-400">SEU_APP_ID</span></p>
             <p>FACEBOOK_APP_SECRET=<span className="text-cyan-400">SEU_APP_SECRET</span></p>
+            <p>FACEBOOK_LOGIN_CONFIG_ID=<span className="text-cyan-400">SEU_CONFIG_ID</span></p>
             <p className="text-emerald-400 mt-2"># Guarda (Ctrl+X → Y → Enter) e reinicia:</p>
             <p>pm2 restart clinic</p>
           </div>
@@ -434,6 +457,7 @@ export default function InstagramConnectPage() {
             <div className="space-y-2">
               <FinalCheck ok={envStatus?.hasFbAppId ?? false} label="FACEBOOK_APP_ID configurado" />
               <FinalCheck ok={envStatus?.hasFbAppSecret ?? false} label="FACEBOOK_APP_SECRET configurado" />
+              <FinalCheck ok={envStatus?.hasConfigId ?? false} label="FACEBOOK_LOGIN_CONFIG_ID configurado" />
               <FinalCheck ok={true} label={`Redirect URI definido: ${REDIRECT_URI}`} />
               <FinalCheck ok={!hasConnectedAccount} label="Pronto para fazer OAuth" invert />
               {hasConnectedAccount && (
@@ -444,7 +468,7 @@ export default function InstagramConnectPage() {
             {isFullyConfigured ? (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Clica o botão abaixo. Vais ser redirecionado para o Facebook para fazeres login e autorizares a app BPR a aceder ao teu Instagram.
+                  Clica o botão abaixo. Vais ser redirecionado para o Facebook para fazeres login e autorizares a app BPR a aceder ao teu Instagram. A Configuration define as permissões automaticamente.
                 </p>
                 <Button
                   onClick={connectInstagram}
@@ -466,7 +490,7 @@ export default function InstagramConnectPage() {
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
                 <p className="text-sm text-amber-400 flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
-                  Configura o FACEBOOK_APP_ID e FACEBOOK_APP_SECRET no servidor primeiro (passo 6).
+                  Configura o FACEBOOK_APP_ID, FACEBOOK_APP_SECRET e FACEBOOK_LOGIN_CONFIG_ID no servidor primeiro (passo 6).
                 </p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={() => setActiveStep("set-env")}>
                   Ir para passo 6

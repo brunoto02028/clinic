@@ -148,6 +148,8 @@ export default function AdminAppointmentsPage() {
     } catch {}
   };
 
+  const [aiInstructions, setAiInstructions] = useState("");
+
   const handleAiNotes = async () => {
     if (!createForm.patientId || !createForm.treatmentType) {
       toast({ title: "Info", description: isPt ? "Selecione paciente e tratamento primeiro" : "Select patient and treatment first", variant: "destructive" });
@@ -156,26 +158,26 @@ export default function AdminAppointmentsPage() {
     setAiNotesLoading(true);
     try {
       const patient = patients.find(p => p.id === createForm.patientId);
-      const res = await fetch("/api/admin/memberships/generate", {
+      const res = await fetch("/api/admin/appointments/generate-notes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: `Generate professional clinical appointment notes (2-3 sentences) for a physiotherapy appointment. Patient: ${patient?.firstName} ${patient?.lastName}. Treatment: ${createForm.treatmentType}. Duration: ${createForm.duration} min. Write in English. Include: purpose of session, what will be covered, any preparation needed. Return ONLY the notes text, no JSON.`,
+          patientName: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim(),
+          treatmentType: createForm.treatmentType,
+          duration: createForm.duration,
+          instructions: aiInstructions || "",
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        // The AI membership endpoint returns JSON, but we sent a text prompt — extract description or name as fallback
-        const notes = typeof data === "string" ? data : data.description || data.name || "";
-        setCreateForm(f => ({ ...f, notes }));
+        setCreateForm(f => ({ ...f, notes: data.notes || "" }));
       } else {
-        // Fallback: generate simple notes locally
         const patient = patients.find(p => p.id === createForm.patientId);
-        setCreateForm(f => ({ ...f, notes: `${createForm.treatmentType} session for ${patient?.firstName || 'patient'}. Duration: ${createForm.duration} min. Please arrive 10 minutes early.` }));
+        setCreateForm(f => ({ ...f, notes: `${createForm.treatmentType} session for ${patient?.firstName || 'patient'}. Duration: ${createForm.duration} min. Please arrive 10 minutes early and complete your medical screening form.` }));
       }
     } catch {
       const patient = patients.find(p => p.id === createForm.patientId);
-      setCreateForm(f => ({ ...f, notes: `${createForm.treatmentType} session for ${patient?.firstName || 'patient'}. Duration: ${createForm.duration} min. Please arrive 10 minutes early.` }));
+      setCreateForm(f => ({ ...f, notes: `${createForm.treatmentType} session for ${patient?.firstName || 'patient'}. Duration: ${createForm.duration} min. Please arrive 10 minutes early and complete your medical screening form.` }));
     } finally {
       setAiNotesLoading(false);
     }
@@ -661,16 +663,32 @@ export default function AdminAppointmentsPage() {
                 </p>
               )}
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>{isPt ? "Notas" : "Notes"}</Label>
-                <Button type="button" variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-violet-400 hover:text-violet-300"
+            {/* AI Notes Section */}
+            <div className="space-y-3 border border-violet-500/20 rounded-lg p-3 bg-violet-500/5">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-violet-400" />
+                <Label className="text-violet-400 font-medium">{isPt ? "Notas com IA" : "AI Notes"}</Label>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={aiInstructions}
+                  onChange={e => setAiInstructions(e.target.value)}
+                  placeholder={isPt
+                    ? "Ex: paciente precisa preencher triagem antes, trazer exames..."
+                    : "Ex: patient must complete screening first, bring medical records..."}
+                  className="flex-1 text-sm bg-background"
+                />
+                <Button type="button" size="sm" className="gap-1.5 shrink-0 bg-violet-600 hover:bg-violet-700 text-white"
                   onClick={handleAiNotes} disabled={aiNotesLoading || !createForm.patientId || !createForm.treatmentType}>
-                  {aiNotesLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                  {aiNotesLoading ? (isPt ? "Gerando..." : "Generating...") : (isPt ? "Gerar com IA" : "AI Generate")}
+                  {aiNotesLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {aiNotesLoading ? (isPt ? "Gerando..." : "Generating...") : (isPt ? "Gerar" : "Generate")}
                 </Button>
               </div>
-              <Textarea value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder={isPt ? "Notas clínicas sobre a consulta... (ou clique em 'Gerar com IA')" : "Clinical notes about the appointment... (or click 'AI Generate')"} />
+              <p className="text-[10px] text-muted-foreground">{isPt ? "Escreva instruções extras e clique Gerar. A IA cria as notas com base no paciente, tratamento e suas instruções." : "Write extra instructions and click Generate. AI creates notes based on patient, treatment and your instructions."}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>{isPt ? "Notas da Consulta" : "Appointment Notes"}</Label>
+              <Textarea value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder={isPt ? "Notas clínicas sobre a consulta..." : "Clinical notes about the appointment..."} />
             </div>
           </div>
           <DialogFooter>

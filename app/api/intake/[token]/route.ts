@@ -94,6 +94,25 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     }
   }
 
+  // Check duplicate phone number
+  if (phone?.trim()) {
+    const normalizedPhone = phone.trim().replace(/\s+/g, '').replace(/^\+/, '');
+    const allWithPhone = await prisma.user.findMany({
+      where: { phone: { not: null }, role: "PATIENT", id: { not: user.id } },
+      select: { id: true, phone: true },
+    });
+    const match = allWithPhone.find(p => {
+      const pNorm = (p.phone || '').replace(/\s+/g, '').replace(/^\+/, '');
+      return pNorm === normalizedPhone;
+    });
+    if (match) {
+      return NextResponse.json(
+        { error: "This phone number is already registered with another patient. Please use a different number or contact the clinic." },
+        { status: 409 }
+      );
+    }
+  }
+
   // Build update data
   const updateData: any = {
     firstName: firstName.trim(),

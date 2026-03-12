@@ -30,11 +30,23 @@ export interface PublishResult {
 
 // ─── OAuth Helpers ───
 
+function getBaseUrl(): string {
+  return process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+}
+
 export function getInstagramAuthUrl(clinicId: string): string {
   const appId = process.env.FACEBOOK_APP_ID;
-  const redirectUri = `${process.env.NEXTAUTH_URL}/api/admin/social/callback`;
-  const state = clinicId; // Pass clinicId through OAuth state
+  const configId = process.env.FACEBOOK_LOGIN_CONFIG_ID;
+  const redirectUri = `${getBaseUrl()}/api/admin/social/callback`;
+  const state = clinicId;
 
+  // Facebook Login for Business uses config_id (set in Meta Developer Console → Configurations)
+  // Regular Facebook Login uses scope parameter
+  if (configId) {
+    return `https://www.facebook.com/${GRAPH_API_VERSION}/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${configId}&state=${state}&response_type=code`;
+  }
+
+  // Fallback: regular Facebook Login with scope
   const scopes = [
     'instagram_basic',
     'instagram_content_publish',
@@ -52,7 +64,7 @@ export async function exchangeCodeForToken(code: string): Promise<{
 }> {
   const appId = process.env.FACEBOOK_APP_ID;
   const appSecret = process.env.FACEBOOK_APP_SECRET;
-  const redirectUri = `${process.env.NEXTAUTH_URL}/api/admin/social/callback`;
+  const redirectUri = `${getBaseUrl()}/api/admin/social/callback`;
 
   const res = await fetch(
     `${GRAPH_API_BASE}/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`

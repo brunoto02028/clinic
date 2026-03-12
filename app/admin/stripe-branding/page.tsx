@@ -237,24 +237,24 @@ export default function StripeBrandingPage() {
           </div>
 
           {/* Cancellation Policy Info */}
-          <div className="border rounded-2xl p-5 space-y-3 bg-amber-50/50 border-amber-200">
-            <h2 className="font-semibold flex items-center gap-2 text-sm text-amber-800">
+          <div className="border rounded-2xl p-5 space-y-3 bg-amber-500/10 border-amber-500/30">
+            <h2 className="font-semibold flex items-center gap-2 text-sm text-amber-400">
               <Shield className="h-4 w-4" /> Cancellation Policy (shown at checkout)
             </h2>
-            <div className="space-y-2 text-xs text-amber-700">
+            <div className="space-y-2 text-xs text-amber-300/80">
               <div className="flex gap-2">
-                <span className="font-bold">Appointments:</span>
+                <span className="font-bold text-amber-400">Appointments:</span>
                 <span>Free cancellation up to 48 hours before. No refund within 48 hours.</span>
               </div>
               <div className="flex gap-2">
-                <span className="font-bold">Treatment Plans:</span>
+                <span className="font-bold text-amber-400">Treatment Plans:</span>
                 <span>Requires admin review. No automatic self-service cancellation.</span>
               </div>
             </div>
             <a
               href="/cancellation-policy"
               target="_blank"
-              className="inline-flex items-center gap-1 text-xs text-amber-700 underline hover:no-underline"
+              className="inline-flex items-center gap-1 text-xs text-amber-400 underline hover:no-underline"
             >
               View public policy page <ExternalLink className="h-3 w-3" />
             </a>
@@ -297,7 +297,7 @@ export default function StripeBrandingPage() {
 
                 <div className="border-t pt-3 space-y-2">
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Rehabilitation Assessment</span>
+                    <span>Physical Rehabilitation Assessment</span>
                     <span>£120.00</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground italic">

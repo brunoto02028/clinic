@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       hasFbAppId: !!process.env.FACEBOOK_APP_ID,
       hasFbAppSecret: !!process.env.FACEBOOK_APP_SECRET,
+      hasConfigId: !!process.env.FACEBOOK_LOGIN_CONFIG_ID,
       hasAccessToken: !!process.env.INSTAGRAM_ACCESS_TOKEN,
       hasBusinessId: !!process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID,
     })

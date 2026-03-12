@@ -182,6 +182,41 @@ export async function POST(request: NextRequest) {
       console.error('Failed to send appointment confirmation email:', emailErr);
     }
 
+    // Check if patient needs to complete screening and notify them
+    try {
+      const screening = await prisma.medicalScreening.findUnique({
+        where: { userId: patientId },
+      });
+      if (!screening) {
+        const appUrl = process.env.NEXTAUTH_URL || '';
+        const apptDate = new Date(dateTime);
+        const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        await sendEmail({
+          to: appointment.patient.email!,
+          subject: `⚠️ Action Required: Complete your medical screening before your appointment`,
+          html: `
+            <div style="font-family:sans-serif;max-width:600px;">
+              <h2 style="color:#5dc9c0;">Medical Screening Required</h2>
+              <p>Dear <strong>${appointment.patient.firstName}</strong>,</p>
+              <p>Your appointment for <strong>${treatmentType || 'Consultation'}</strong> on <strong>${dateStr}</strong> has been confirmed.</p>
+              <p style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:12px;color:#856404;">
+                <strong>Important:</strong> Please complete your medical screening form before your appointment. This includes your medical history, current medications, allergies, and any relevant health information. This helps us provide you with the best possible care.
+              </p>
+              <p style="margin-top:16px;">
+                <a href="${appUrl}/dashboard/screening" style="display:inline-block;background:#5dc9c0;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+                  Complete Medical Screening →
+                </a>
+              </p>
+              <p style="color:#666;font-size:12px;margin-top:16px;">If you have already completed this, please disregard this message.</p>
+              <p style="color:#666;font-size:12px;">— Bruno Physical Rehabilitation</p>
+            </div>
+          `,
+        });
+      }
+    } catch (screeningErr) {
+      console.error('Failed to check/send screening notification:', screeningErr);
+    }
+
     // Send admin notification copy
     try {
       const adminUser = await prisma.user.findFirst({
