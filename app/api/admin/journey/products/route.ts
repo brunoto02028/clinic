@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { syncProductToStripe, deactivateStripeProduct } from "@/lib/stripe-marketplace";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,11 @@ export async function POST(req: NextRequest) {
         freeShippingOver: body.freeShippingOver ? parseFloat(body.freeShippingOver) : null,
         isDigital: body.isDigital === true,
         digitalFileUrl: body.digitalFileUrl || null,
+        // PDF fields
+        previewFileUrl: body.previewFileUrl || null,
+        pageCount: body.pageCount ? parseInt(body.pageCount) : null,
+        fileSize: body.fileSize ? parseInt(body.fileSize) : null,
+        contentLanguage: body.contentLanguage || null,
         // Amazon Affiliate
         isAffiliate: body.isAffiliate === true,
         affiliateUrl: body.affiliateUrl || null,
@@ -96,6 +102,22 @@ export async function POST(req: NextRequest) {
         sortOrder: parseInt(body.sortOrder || "0"),
       },
     });
+
+    // Auto-sync to Stripe for non-affiliate products with price > 0
+    if (!product.isAffiliate && product.price > 0 && product.isActive) {
+      try {
+        const stripeData = await syncProductToStripe(product);
+        await (prisma as any).marketplaceProduct.update({
+          where: { id: product.id },
+          data: { stripeProductId: stripeData.stripeProductId, stripePriceId: stripeData.stripePriceId },
+        });
+        product.stripeProductId = stripeData.stripeProductId;
+        product.stripePriceId = stripeData.stripePriceId;
+        console.log(`[products] Stripe product created: ${stripeData.stripeProductId}`);
+      } catch (stripeErr: any) {
+        console.error('[products] Stripe sync error (create):', stripeErr.message);
+      }
+    }
 
     return NextResponse.json({ product });
   } catch (err: any) {
@@ -164,6 +186,33 @@ export async function PATCH(req: NextRequest) {
     if (body.sortOrder !== undefined) updateData.sortOrder = parseInt(body.sortOrder);
 
     const product = await (prisma as any).marketplaceProduct.update({ where: { id }, data: updateData });
+
+    // Auto-sync to Stripe when price/name/active status changes
+    if (!product.isAffiliate && product.price > 0) {
+      const priceChanged = body.price !== undefined;
+      const nameChanged = body.name !== undefined;
+      const activeChanged = body.isActive !== undefined;
+
+      if (product.isActive && (priceChanged || nameChanged || !product.stripeProductId)) {
+        try {
+          const stripeData = await syncProductToStripe(product);
+          await (prisma as any).marketplaceProduct.update({
+            where: { id },
+            data: { stripeProductId: stripeData.stripeProductId, stripePriceId: stripeData.stripePriceId },
+          });
+          product.stripeProductId = stripeData.stripeProductId;
+          product.stripePriceId = stripeData.stripePriceId;
+          console.log(`[products] Stripe product synced: ${stripeData.stripeProductId}`);
+        } catch (stripeErr: any) {
+          console.error('[products] Stripe sync error (update):', stripeErr.message);
+        }
+      } else if (activeChanged && !product.isActive && product.stripeProductId) {
+        // Deactivate on Stripe
+        await deactivateStripeProduct(product.stripeProductId);
+        console.log(`[products] Stripe product deactivated: ${product.stripeProductId}`);
+      }
+    }
+
     return NextResponse.json({ product });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

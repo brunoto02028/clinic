@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   ShoppingCart, Package, Loader2, Plus, Trash2, Edit2, Search,
   DollarSign, TrendingUp, BarChart3, ExternalLink, Tag, Star,
   Eye, EyeOff, Archive, Truck, Box, Globe, Percent, Calculator,
   ClipboardList, ChevronDown, ChevronUp, X, Save, ImageIcon,
   Link2, Hash, Weight, AlertTriangle, CheckCircle, Clock,
-  PackageCheck, Ban, RefreshCw, Filter, Sparkles,
+  PackageCheck, Ban, RefreshCw, Filter, Sparkles, BookOpen,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -272,6 +273,11 @@ export default function AdminMarketplacePage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Products, orders, pricing & affiliate management</p>
         </div>
+        <Link href="/admin/marketplace/pdf-creator">
+          <Button className="gap-2 bg-purple-600 hover:bg-purple-700">
+            <BookOpen className="h-4 w-4" /> PDF Creator Pro
+          </Button>
+        </Link>
       </div>
 
       {/* Stats Row */}

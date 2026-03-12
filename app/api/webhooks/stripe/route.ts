@@ -82,6 +82,60 @@ export async function POST(req: NextRequest) {
               }).catch(err => console.error('[stripe-webhook] membership notify error:', err));
             }
           }
+        } else if (session.metadata?.orderId) {
+          // Marketplace order checkout completed
+          const orderId = session.metadata.orderId;
+          try {
+            const order = await (prisma as any).marketplaceOrder.update({
+              where: { id: orderId },
+              data: {
+                status: "paid",
+                paidAt: new Date(),
+                stripePaymentIntentId: session.payment_intent as string || session.id,
+              },
+              include: {
+                patient: { select: { id: true, firstName: true, email: true } },
+                items: { include: { product: { select: { id: true, name: true, isDigital: true, digitalFileUrl: true } } } },
+              },
+            });
+            console.log(`[stripe-webhook] Marketplace order ${orderId} marked as PAID`);
+
+            // Increment download count for digital products
+            const digitalItems = order.items?.filter((i: any) => i.product?.isDigital) || [];
+            for (const item of digitalItems) {
+              if (item.product?.id) {
+                await (prisma as any).marketplaceProduct.update({
+                  where: { id: item.product.id },
+                  data: { downloadCount: { increment: item.quantity } },
+                });
+              }
+            }
+
+            // Notify patient
+            if (order.patient?.id) {
+              const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+              const hasDigital = digitalItems.length > 0;
+              notifyPatient({
+                patientId: order.patient.id,
+                emailTemplateSlug: 'PAYMENT_CONFIRMATION',
+                emailVars: {
+                  packageName: `Order #${order.orderNumber}`,
+                  amount: `£${order.total.toFixed(2)}`,
+                  portalUrl: hasDigital
+                    ? `${BASE}/dashboard/marketplace?order=${orderId}&downloads=true`
+                    : `${BASE}/dashboard/marketplace?order=${orderId}`,
+                },
+                plainMessage: hasDigital
+                  ? `Payment confirmed for order #${order.orderNumber}! Your digital downloads are ready.`
+                  : `Payment confirmed for order #${order.orderNumber}! Your order is being processed.`,
+                plainMessagePt: hasDigital
+                  ? `Pagamento confirmado para pedido #${order.orderNumber}! Seus downloads estão prontos.`
+                  : `Pagamento confirmado para pedido #${order.orderNumber}! Seu pedido está sendo processado.`,
+              }).catch(err => console.error('[stripe-webhook] marketplace notify error:', err));
+            }
+          } catch (orderErr: any) {
+            console.error(`[stripe-webhook] Failed to update order ${orderId}:`, orderErr.message);
+          }
         } else if (packageId) {
           const pkg = await (prisma as any).treatmentPackage.update({
             where: { id: packageId },

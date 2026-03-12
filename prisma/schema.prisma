@@ -3172,6 +3172,11 @@ model MarketplaceProduct {
   freeShippingOver Float? // Free shipping above this order value
   isDigital      Boolean  @default(false) // Digital product (no shipping)
   digitalFileUrl String?  // Download URL for digital products
+  previewFileUrl String?  // Watermarked/preview PDF URL (free)
+  pageCount      Int?     // Number of pages (for PDFs)
+  fileSize       Int?     // File size in bytes
+  contentLanguage String? // "en", "pt-BR", etc.
+  downloadCount  Int      @default(0) // Total downloads
 
   // Amazon Affiliate
   isAffiliate     Boolean  @default(false) // Is this an Amazon affiliate product?
