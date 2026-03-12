@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, FileText, Sparkles, Loader2, Check, Eye, Download,
   ImageIcon, BookOpen, DollarSign, Save, ChevronRight, Tag,
-  RefreshCw, Globe, Layers,
+  RefreshCw, Globe, Layers, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +82,29 @@ export default function PdfCreatorPage() {
 
   // Price
   const [price, setPrice] = useState("9.99");
+
+  // Viral Topics
+  const [viralTopics, setViralTopics] = useState<any[]>([]);
+  const [loadingViralTopics, setLoadingViralTopics] = useState(false);
+  const [showViralTopics, setShowViralTopics] = useState(false);
+
+  async function fetchViralTopics() {
+    setLoadingViralTopics(true);
+    setShowViralTopics(true);
+    try {
+      const res = await fetch("/api/admin/marketing/content-intelligence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "trending-ideas", focus: "PDF health guides for physiotherapy patients", count: 8 }),
+      });
+      const data = await res.json();
+      setViralTopics(data.ideas || []);
+    } catch {
+      setViralTopics([]);
+    } finally {
+      setLoadingViralTopics(false);
+    }
+  }
 
   const generateContent = async () => {
     if (!topic.trim()) return;
@@ -236,7 +259,21 @@ export default function PdfCreatorPage() {
             <Card>
               <CardContent className="p-5 space-y-4">
                 <div className="space-y-2">
-                  <Label className="font-semibold">Topic / Title *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold">Topic / Title *</Label>
+                    <button
+                      type="button"
+                      onClick={showViralTopics ? () => setShowViralTopics(false) : fetchViralTopics}
+                      className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 transition-colors font-medium"
+                    >
+                      {loadingViralTopics ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      {showViralTopics ? "Ocultar sugestões" : "Buscar tópicos virais"}
+                    </button>
+                  </div>
                   <Input
                     placeholder="e.g. Complete Guide to Lower Back Pain Relief, Shoulder Recovery Programme..."
                     value={topic}
@@ -244,6 +281,60 @@ export default function PdfCreatorPage() {
                     className="text-base"
                   />
                   <p className="text-xs text-muted-foreground">Describe the PDF guide you want to create. Be specific for better results.</p>
+
+                  {/* Viral Topics Panel */}
+                  {showViralTopics && (
+                    <div className="border border-amber-500/20 bg-amber-500/5 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" /> Tópicos virais — sugeridos pela IA (clica para usar)
+                        </p>
+                        {loadingViralTopics && <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-400" />}
+                      </div>
+                      {loadingViralTopics && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Claude está a analisar tendências virais em fisioterapia...
+                        </div>
+                      )}
+                      {!loadingViralTopics && viralTopics.length === 0 && (
+                        <p className="text-xs text-muted-foreground">Nenhum tópico encontrado — tenta novamente.</p>
+                      )}
+                      <div className="grid gap-2">
+                        {viralTopics.map((idea: any, i: number) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => { setTopic(idea.title); setShowViralTopics(false); }}
+                            className="w-full text-left bg-background border border-border hover:border-amber-500/40 hover:bg-amber-500/5 rounded-xl p-3 transition-all group"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-foreground group-hover:text-amber-400 transition-colors">{idea.title}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 italic">&ldquo;{idea.hook}&rdquo;</p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {idea.urgency === 'high' && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">🔥 viral</span>
+                                )}
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-amber-400 transition-colors" />
+                              </div>
+                            </div>
+                            {idea.pdfOpportunity && (
+                              <p className="text-[10px] text-emerald-400 mt-1">{idea.pdfOpportunity}</p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={fetchViralTopics}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+                      >
+                        <RefreshCw className="h-3 w-3" /> Gerar mais sugestões
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">

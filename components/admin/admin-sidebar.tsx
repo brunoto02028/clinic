@@ -62,6 +62,7 @@ import {
   Bot,
   Instagram,
   Lightbulb,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -169,6 +170,7 @@ const navigationGroups: NavGroup[] = [
       { name: "SEO Articles", href: "/admin/marketing/articles", icon: FileText },
       { name: "Instagram", href: "/admin/marketing/instagram", icon: Instagram },
       { name: "Posts & Drafts", href: "/admin/marketing/instagram?tab=posts", icon: PenSquare },
+      { name: "Instagram Connect", href: "/admin/marketing/instagram-connect", icon: Link2 },
       { name: "Campaigns", i18nKey: "nav.campaigns", href: "/admin/social/campaigns", icon: CalendarRange },
       { name: "Site Analytics", href: "/admin/analytics", icon: BarChart3 },
     ],
