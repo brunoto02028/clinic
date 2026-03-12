@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         visualSuggestion: postData.visual_suggestion || null,
         createdById: (session.user as any).id,
       },
-    }).catch((e) => { console.error('DB save failed:', e); return null })
+    }).catch((e: any) => { console.error('DB save failed:', e); return null })
 
     return NextResponse.json({
       success: true,

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     });
 
     const categoryList = categories.length > 0
-      ? categories.map(c => `- "${c.name}" (id: ${c.id})${c.description ? ` — ${c.description}` : ""}`).join("\n")
+      ? categories.map((c: any) => `- "${c.name}" (id: ${c.id})${c.description ? ` — ${c.description}` : ""}`).join("\n")
       : "No categories exist yet.";
 
     // Always generate in English — site i18n handles translations

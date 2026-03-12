@@ -46,7 +46,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, excerpt, content, imageUrl, published, authorName } = body;
+    const { title, excerpt, content, imageUrl, published, authorName, metaDescription, tags, keyword } = body;
 
     const updateData: Record<string, unknown> = {};
     if (title !== undefined) {
@@ -61,6 +61,9 @@ export async function PUT(
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     if (published !== undefined) updateData.published = published;
     if (authorName !== undefined) updateData.authorName = authorName || null;
+    if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
+    if (tags !== undefined) updateData.tags = tags;
+    if (keyword !== undefined) updateData.keyword = keyword;
 
     // Fetch current state before update to detect publish transition
     const existing = await prisma.article.findUnique({ where: { id: params.id }, select: { published: true, slug: true } });

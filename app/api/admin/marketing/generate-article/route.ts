@@ -51,24 +51,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Ensure unique slug
-    const existingSlug = await prisma.marketingArticle.findUnique({ where: { slug: articleData.slug } })
+    // Ensure unique slug (check Article table)
+    const existingSlug = await prisma.article.findUnique({ where: { slug: articleData.slug } })
     if (existingSlug) {
       articleData.slug = `${articleData.slug}-${Date.now().toString(36)}`
     }
 
-    const article = await prisma.marketingArticle.create({
+    // Save to unified Article table (same as Blog Manager)
+    const article = await prisma.article.create({
       data: {
         title: articleData.title,
         slug: articleData.slug,
         content: articleData.content,
-        excerpt: articleData.excerpt,
+        excerpt: articleData.excerpt || articleData.content.substring(0, 200),
         metaDescription: articleData.meta_description,
         tags: articleData.tags || [],
-        status: 'DRAFT',
         keyword,
         generatedBy: 'CLAUDE',
-        createdById: (session.user as any).id,
+        published: false,
+        authorId: (session.user as any).id,
       },
     }).catch((e: Error) => { console.error('DB save failed:', e); return null })
 
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
       article: {
         id: article?.id,
         ...articleData,
-        status: 'DRAFT',
+        published: false,
         word_count: articleData.content.split(/\s+/).length,
       },
     })
@@ -102,8 +103,12 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status') || undefined
 
   try {
-    const articles = await prisma.marketingArticle.findMany({
-      where: status ? { status } : undefined,
+    const articles = await prisma.article.findMany({
+      where: {
+        generatedBy: { not: null },
+        ...(status === 'PUBLISHED' ? { published: true } : status === 'DRAFT' ? { published: false } : {}),
+      },
+      include: { author: { select: { firstName: true, lastName: true } } },
       orderBy: { createdAt: 'desc' },
       take: 50,
     })

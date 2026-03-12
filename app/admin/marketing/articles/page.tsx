@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, FileText, Loader2, Copy, Check, Sparkles, User, Bot, ExternalLink } from 'lucide-react'
+import { ArrowLeft, FileText, Loader2, Copy, Check, Sparkles, User, Bot, ExternalLink, Edit } from 'lucide-react'
 import { VoiceChatInput } from '@/components/marketing/voice-chat-input'
 
 interface ChatMessage {
@@ -297,6 +297,14 @@ export default function ArticlesPage() {
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                 <span className="text-sm font-medium">Article Preview</span>
                 <div className="flex gap-2">
+                  {article.id && (
+                    <Link
+                      href={`/admin/articles/${article.id}`}
+                      className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-lg transition flex items-center gap-1"
+                    >
+                      <Edit className="h-3 w-3" /> Edit in Blog Manager
+                    </Link>
+                  )}
                   <button
                     onClick={copyContent}
                     className="text-xs bg-muted hover:bg-muted/80 px-3 py-1.5 rounded-lg transition flex items-center gap-1"
@@ -306,6 +314,12 @@ export default function ArticlesPage() {
                   </button>
                 </div>
               </div>
+              {article.id && (
+                <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="text-xs text-emerald-400">Saved as draft in Blog Manager — edit, add image & publish from there</span>
+                </div>
+              )}
 
               <div className="p-4 max-h-[600px] overflow-y-auto">
                 <h2 className="text-lg font-bold text-foreground mb-2">{article.title}</h2>

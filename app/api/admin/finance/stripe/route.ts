@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
         available: balance.available.map((b) => ({ amount: b.amount / 100, currency: b.currency.toUpperCase() })),
         pending: balance.pending.map((b) => ({ amount: b.amount / 100, currency: b.currency.toUpperCase() })),
       },
-      recentCharges: recentCharges.data.map((c) => ({
+      recentCharges: recentCharges.data.map((c: any) => ({
         id: c.id,
         amount: c.amount / 100,
         currency: c.currency.toUpperCase(),

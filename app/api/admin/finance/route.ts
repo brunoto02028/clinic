@@ -121,11 +121,11 @@ export async function GET(req: NextRequest) {
       pendingExpenses: pendingExpenseAgg._sum.amount || 0,
       overdueExpenses: overdueAgg._sum.amount || 0,
     },
-    incomeByCategory: incomeByCat.map((c) => ({
+    incomeByCategory: incomeByCat.map((c: any) => ({
       category: c.incomeCategory,
       amount: c._sum.amount || 0,
     })),
-    expenseByCategory: expenseByCat.map((c) => ({
+    expenseByCategory: expenseByCat.map((c: any) => ({
       category: c.expenseCategory,
       amount: c._sum.amount || 0,
     })),

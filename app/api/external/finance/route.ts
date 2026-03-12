@@ -111,7 +111,7 @@ async function fetchBreakdown(clinicId: string, dateFrom?: Date, dateTo?: Date) 
   const customCats = await prisma.financialCategory.findMany({
     where: { clinicId, isActive: true },
   });
-  const catMap = new Map(customCats.map((c) => [c.id, c]));
+  const catMap = new Map(customCats.map((c: any) => [c.id, c]));
 
   // Group income by category
   const incomeByCategory: Record<string, { total: number; count: number; hmrcCode?: string; ct600Box?: string }> = {};
@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
     const categories = categoryIds.length > 0
       ? await prisma.financialCategory.findMany({ where: { id: { in: categoryIds } } })
       : [];
-    const catMap = new Map(categories.map((c) => [c.id, c]));
+    const catMap = new Map(categories.map((c: any) => [c.id, c]));
 
     const entries = rawEntries.map((e) => {
       const cat = e.categoryId ? catMap.get(e.categoryId) : null;

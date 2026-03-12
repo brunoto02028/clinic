@@ -51,16 +51,16 @@ export async function GET(req: NextRequest) {
     // Normalise all feedback
     const feedbackItems = [
       ...(appointments || [])
-        .filter((a): a is typeof a & { notes: string } => !!a.notes && a.notes.length > 10)
-        .map((a) => ({
+        .filter((a: any): a is any => !!a.notes && a.notes.length > 10)
+        .map((a: any) => ({
           text: a.notes,
           date: a.updatedAt.toISOString().split('T')[0],
           source: 'appointment_note',
           id: a.id,
         })),
       ...(notes || [])
-        .filter((n) => n.subjective && n.subjective.length > 10)
-        .map((n) => ({
+        .filter((n: any) => n.subjective && n.subjective.length > 10)
+        .map((n: any) => ({
           text: n.subjective || '',
           date: n.createdAt.toISOString().split('T')[0],
           source: 'clinical_note',

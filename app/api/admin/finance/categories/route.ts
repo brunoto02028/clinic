@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const count = await prisma.financialCategory.count({ where: { clinicId: user.clinicId } });
   if (count === 0) {
     await prisma.financialCategory.createMany({
-      data: HMRC_DEFAULT_CATEGORIES.map((c) => ({
+      data: HMRC_DEFAULT_CATEGORIES.map((c: any) => ({
         clinicId: user.clinicId!,
         type: c.type as any,
         name: c.name,

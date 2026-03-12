@@ -806,6 +806,12 @@ model Article {
   authorId    String
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorName  String?  // Optional override for displayed author name
+  // SEO fields (used by AI Article Generator)
+  metaDescription String?
+  tags            String[]
+  keyword         String?
+  generatedBy     String?  // e.g. "CLAUDE", "GEMINI", null for manual
+  language        String?  @default("en")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

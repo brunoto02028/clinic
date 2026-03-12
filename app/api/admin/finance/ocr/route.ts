@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       orderBy: { sortOrder: "asc" },
     });
 
-    const categoryList = categories.map((c) => `- ${c.name} (${c.type}, HMRC: ${c.hmrcCode || "N/A"}, ID: ${c.id})`).join("\n");
+    const categoryList = categories.map((c: any) => `- ${c.name} (${c.type}, HMRC: ${c.hmrcCode || "N/A"}, ID: ${c.id})`).join("\n");
 
     // Convert file to base64 for AI analysis
     const base64 = buffer.toString("base64");
