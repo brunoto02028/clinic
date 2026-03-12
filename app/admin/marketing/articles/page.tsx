@@ -21,6 +21,8 @@ interface GeneratedArticle {
   meta_description: string
   tags: string[]
   word_count: number
+  imageUrl?: string
+  language?: string
 }
 
 export default function ArticlesPage() {
@@ -317,12 +319,24 @@ export default function ArticlesPage() {
               {article.id && (
                 <div className="px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center gap-2">
                   <Check className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-xs text-emerald-400">Saved as draft in Blog Manager — edit, add image & publish from there</span>
+                  <span className="text-xs text-emerald-400">Saved as draft in Blog Manager{article.imageUrl ? ' with cover image' : ''} — edit & publish from there</span>
                 </div>
               )}
 
               <div className="p-4 max-h-[600px] overflow-y-auto">
-                <h2 className="text-lg font-bold text-foreground mb-2">{article.title}</h2>
+                {/* Auto-generated cover image */}
+                {article.imageUrl && (
+                  <div className="mb-4 rounded-lg overflow-hidden border border-border">
+                    <img src={article.imageUrl} alt={article.title} className="w-full aspect-video object-cover" />
+                    <p className="text-[10px] text-muted-foreground text-center py-1 bg-muted/30">AI-generated cover image (auto)</p>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className="text-lg font-bold text-foreground">{article.title}</h2>
+                  {article.language && (
+                    <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full uppercase shrink-0">{article.language}</span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground mb-1">Slug: /{article.slug}</p>
                 <p className="text-xs text-primary mb-3">~{article.word_count} words</p>
 

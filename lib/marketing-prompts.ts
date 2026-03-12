@@ -103,14 +103,16 @@ ${BPR_SYSTEM_CONTEXT}
 
 TASK: Write a comprehensive SEO blog article for bpr.rehab
 
+LANGUAGE: ALWAYS write the article in ENGLISH (UK spelling). Even if the keyword or title is in another language, translate it and write the full article in English. The website handles translations separately.
+
 Primary keyword: "${keyword}"
 ${title ? `Suggested title: ${title}` : ''}
 Target word count: ~${wordCount} words
 Target audience: ${targetAudience}
 
 SEO REQUIREMENTS:
-- Title: Include primary keyword, compelling, under 60 characters
-- Meta description: 150-160 characters, include keyword, compelling CTA
+- Title: Include primary keyword, compelling, under 60 characters. MUST be in English.
+- Meta description: 150-160 characters, include keyword, compelling CTA. In English.
 - Use H2 and H3 subheadings naturally
 - Include the keyword naturally 4-6 times (no stuffing)
 - Include 2-3 related keywords/phrases
@@ -123,15 +125,23 @@ CONTENT REQUIREMENTS:
 - Practical tips the reader can use immediately
 - Explain what BPR offers for this specific condition
 - Conversational but expert tone
+- Content must be formatted in HTML (use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> tags)
+
+IMAGE PROMPT:
+- Also generate a detailed image prompt for an AI image generator to create a professional cover photo for this article.
+- The image prompt should describe a photorealistic scene related to the article topic.
+- Style: warm, professional, modern healthcare/physiotherapy aesthetic.
+- NO text, letters, or words in the image.
 
 Format as JSON:
 {
   "title": "...",
   "meta_description": "...",
   "slug": "url-friendly-slug",
-  "content": "Full markdown article here...",
+  "content": "Full HTML article here (use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>)...",
   "tags": ["tag1", "tag2"],
-  "excerpt": "2-3 sentence summary for blog listing page"
+  "excerpt": "2-3 sentence summary for blog listing page",
+  "image_prompt": "Detailed prompt for AI cover image generation..."
 }
 `
 }

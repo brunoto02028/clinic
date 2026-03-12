@@ -5,6 +5,9 @@ import { authOptions } from '@/lib/auth-options'
 import { claudeGenerate } from '@/lib/claude'
 import { buildSeoArticlePrompt, BPR_SYSTEM_CONTEXT } from '@/lib/marketing-prompts'
 import { prisma } from '@/lib/db'
+import { generateImage } from '@/lib/ai-provider'
+import { writeFile, mkdir } from 'fs/promises'
+import path from 'path'
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,6 +37,7 @@ export async function POST(req: NextRequest) {
       content: string
       tags: string[]
       excerpt: string
+      image_prompt?: string
     }
 
     try {
@@ -57,6 +61,29 @@ export async function POST(req: NextRequest) {
       articleData.slug = `${articleData.slug}-${Date.now().toString(36)}`
     }
 
+    // Auto-generate cover image from the AI's image prompt
+    let coverImageUrl: string | null = null
+    const imagePrompt = articleData.image_prompt || `Professional physiotherapy blog cover image for: ${articleData.title}`
+    try {
+      const fullPrompt = `Professional photograph for a physiotherapy clinic blog: ${imagePrompt}. Realistic, medical/healthcare setting, warm natural lighting, no text overlay.`
+      const urls = await generateImage(fullPrompt, { numImages: 1 })
+      if (urls.length > 0 && urls[0].startsWith('data:image')) {
+        const match = urls[0].match(/^data:image\/\w+;base64,(.+)$/)
+        if (match) {
+          const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads')
+          const uploadsDir = path.join(baseUploadsDir, 'generated')
+          await mkdir(uploadsDir, { recursive: true })
+          const seoSlug = articleData.slug.substring(0, 40)
+          const filename = `bpr-article-${seoSlug}-${Date.now().toString(36)}.png`
+          const filePath = path.join(uploadsDir, filename)
+          await writeFile(filePath, Buffer.from(match[1], 'base64'))
+          coverImageUrl = `/uploads/generated/${filename}`
+        }
+      }
+    } catch (imgErr: any) {
+      console.error('[generate-article] Cover image generation failed:', imgErr.message)
+    }
+
     // Save to unified Article table (same as Blog Manager)
     const article = await prisma.article.create({
       data: {
@@ -67,7 +94,9 @@ export async function POST(req: NextRequest) {
         metaDescription: articleData.meta_description,
         tags: articleData.tags || [],
         keyword,
+        language: 'en',
         generatedBy: 'CLAUDE',
+        imageUrl: coverImageUrl,
         published: false,
         authorId: (session.user as any).id,
       },
@@ -78,6 +107,8 @@ export async function POST(req: NextRequest) {
       article: {
         id: article?.id,
         ...articleData,
+        imageUrl: coverImageUrl,
+        language: 'en',
         published: false,
         word_count: articleData.content.split(/\s+/).length,
       },

@@ -350,7 +350,7 @@ export default function EditArticlePage() {
                     <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5">
                       {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Replace
                     </Button>
-                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} articleContext={{ title, excerpt, content }} />
+                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                 </div>
               ) : (
@@ -362,7 +362,7 @@ export default function EditArticlePage() {
                       {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                       {uploading ? "Uploading..." : "Upload Image"}
                     </Button>
-                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} articleContext={{ title, excerpt, content }} />
+                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                   <div className="pt-2">
                     <Input placeholder="Or paste image URL..." value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="max-w-md mx-auto text-sm" />
@@ -386,7 +386,18 @@ export default function EditArticlePage() {
                     </button>
                   </div>
                 </div>
-                <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physiotherapy clinic website" onApply={(t) => setContent(t)} />
+                <div className="flex items-center gap-2">
+                  <AIImageGenerator
+                    section="Article Body Image"
+                    defaultPrompt={title ? `Illustration for physiotherapy article: ${title}` : ""}
+                    aspectRatio="16:9"
+                    onApply={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
+                    articleContext={{ title, excerpt, content }}
+                    buttonLabel="Add Body Image"
+                    buttonVariant="outline"
+                  />
+                  <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physiotherapy clinic website" onApply={(t) => setContent(t)} />
+                </div>
               </div>
               {showPreview ? (
                 <div className="border rounded-lg p-6 min-h-[350px] bg-white">

@@ -383,6 +383,7 @@ export default function NewArticlePage() {
                       defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""}
                       aspectRatio="16:9"
                       onApply={(url) => setImageUrl(url)}
+                      onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
                       articleContext={{ title, excerpt, content }}
                     />
                   </div>
@@ -401,6 +402,7 @@ export default function NewArticlePage() {
                       defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""}
                       aspectRatio="16:9"
                       onApply={(url) => setImageUrl(url)}
+                      onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
                       articleContext={{ title, excerpt, content }}
                     />
                   </div>
