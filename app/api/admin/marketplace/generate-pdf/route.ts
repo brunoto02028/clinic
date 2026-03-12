@@ -11,7 +11,43 @@ import path from 'path'
 import { BPR_SYSTEM_CONTEXT } from '@/lib/marketing-prompts'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+export const maxDuration = 180
+
+/**
+ * Robust JSON extractor: tries direct parse first, then repairs truncated JSON.
+ * Common cause of "Unexpected end of JSON input" is Claude hitting maxTokens mid-JSON.
+ */
+function extractJson(raw: string): any {
+  // 1. Try direct match of a full JSON object
+  const match = raw.match(/\{[\s\S]*\}/)
+  if (match) {
+    try { return JSON.parse(match[0]) } catch {}
+  }
+  // 2. If truncated, attempt to repair by closing open structures
+  let attempt = raw
+  if (!attempt.includes('{')) throw new Error('No JSON object in response')
+  const start = attempt.indexOf('{')
+  attempt = attempt.slice(start)
+  // Count unclosed brackets/braces
+  let braces = 0, brackets = 0, inString = false, escape = false
+  for (const ch of attempt) {
+    if (escape) { escape = false; continue }
+    if (ch === '\\' && inString) { escape = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (ch === '{') braces++
+    if (ch === '}') braces--
+    if (ch === '[') brackets++
+    if (ch === ']') brackets--
+  }
+  // Close any open arrays/objects
+  if (inString) attempt += '"'
+  while (brackets > 0) { attempt += ']'; brackets-- }
+  while (braces > 0) { attempt += '}'; braces-- }
+  try { return JSON.parse(attempt) } catch (e) {
+    throw new Error('AI response was truncated or malformed. Please try again.')
+  }
+}
 
 const PDF_SYSTEM_PROMPT = `${BPR_SYSTEM_CONTEXT}
 
@@ -47,6 +83,8 @@ export async function POST(req: NextRequest) {
       return generateCover(body)
     } else if (action === 'save-product') {
       return saveAsProduct(body, session)
+    } else if (action === 'update-product') {
+      return updateProduct(body, session)
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
@@ -63,63 +101,125 @@ async function generateContent(body: any) {
     return NextResponse.json({ error: 'Topic is required' }, { status: 400 })
   }
 
-  const prompt = `
-TASK: Create a complete premium PDF guide content.
+  const lang = language === 'pt-BR' ? 'Brazilian Portuguese' : 'English (UK spelling)'
+  // Clamp sections to a safe number to avoid token overflow
+  const numSections = Math.min(Math.max(Math.round(pageTarget / 3), 3), 8)
+
+  // ─── PASS 1: metadata + structure outline (fast, small) ──────────────────
+  const metaPrompt = `
+TASK: Create the METADATA and OUTLINE for a premium PDF health guide.
 
 TOPIC: "${topic}"
 CATEGORY: ${category || 'Health & Rehabilitation'}
-TARGET AUDIENCE: ${targetAudience || 'Adults seeking to improve their health and manage pain/injuries'}
-TARGET LENGTH: ~${pageTarget} pages (approximately ${pageTarget * 300} words)
-LANGUAGE: ${language === 'pt-BR' ? 'Brazilian Portuguese' : 'English (UK spelling)'}
+AUDIENCE: ${targetAudience || 'Adults seeking to improve their health and manage pain'}
+LANGUAGE: ${lang}
+NUMBER OF SECTIONS: ${numSections}
 
-Create the FULL content for a professional PDF guide. Structure it as follows:
-
-FORMAT YOUR RESPONSE AS JSON:
+Respond ONLY with valid JSON (no markdown, no explanation):
 {
-  "title": "Compelling, professional title",
-  "subtitle": "Descriptive subtitle that adds value",
-  "description": "2-3 sentence marketing description for the product listing",
-  "shortDescription": "One sentence for cards/previews",
-  "tableOfContents": ["Chapter 1: ...", "Chapter 2: ...", ...],
-  "sections": [
-    {
-      "title": "Chapter/Section Title",
-      "content": "Full HTML content with <h3>, <p>, <ul>, <li>, <strong>, <em>, <blockquote> tags. Include [1] reference numbers in text.",
-      "keyTakeaways": ["Takeaway 1", "Takeaway 2"]
-    }
-  ],
-  "references": [
-    "1. Author A, et al. Title of study. Journal Name. Year;Volume(Issue):Pages. DOI/PMID.",
-    "2. ..."
-  ],
-  "coverImagePrompt": "Detailed prompt for AI cover image generation — professional, medical/health aesthetic, no text",
-  "tags": ["tag1", "tag2", ...],
+  "title": "Compelling professional title",
+  "subtitle": "Descriptive subtitle",
+  "description": "2-3 sentence marketing description",
+  "shortDescription": "One sentence preview text",
+  "difficulty": "beginner|intermediate|advanced",
   "suggestedPrice": 9.99,
-  "difficulty": "beginner|intermediate|advanced"
-}
+  "coverImagePrompt": "Prompt for AI cover image — professional medical/wellness aesthetic, no text, no letters",
+  "tags": ["tag1","tag2","tag3","tag4","tag5"],
+  "sectionOutline": [
+    {"title": "Section title", "focus": "What this section covers in 1 sentence"}
+  ]
+}`
 
-CONTENT REQUIREMENTS:
-- Start with a powerful introduction that hooks the reader
-- Each section should have practical, actionable content
-- Include exercises with clear instructions (sets, reps, duration)
-- Include lifestyle/nutrition tips where relevant  
-- Include warning signs / when to seek professional help
-- End with a summary and call-to-action to book at BPR
-- MINIMUM 5 references from real medical literature
-- Make it genuinely helpful — this should change someone's life`
-
-  const rawResponse = await claudeGenerate(
-    [{ role: 'user', content: prompt }],
-    { temperature: 0.6, maxTokens: 16384, systemPrompt: PDF_SYSTEM_PROMPT }
+  const metaRaw = await claudeGenerate(
+    [{ role: 'user', content: metaPrompt }],
+    { temperature: 0.5, maxTokens: 2048, systemPrompt: PDF_SYSTEM_PROMPT }
   )
 
-  let pdfData: any
+  let meta: any
   try {
-    const jsonMatch = rawResponse.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('No JSON')
-    pdfData = JSON.parse(jsonMatch[0])
+    meta = extractJson(metaRaw)
+  } catch (e: any) {
+    return NextResponse.json({ error: `Metadata generation failed: ${e.message}` }, { status: 500 })
+  }
+
+  // ─── PASS 2: generate each section individually ───────────────────────────
+  const sections: any[] = []
+  const outline: any[] = meta.sectionOutline || []
+
+  for (let i = 0; i < outline.length; i++) {
+    const sec = outline[i]
+    const isLast = i === outline.length - 1
+
+    const sectionPrompt = `
+Write SECTION ${i + 1} of a premium health PDF guide.
+
+GUIDE TITLE: "${meta.title}"
+SECTION TITLE: "${sec.title}"
+SECTION FOCUS: ${sec.focus}
+LANGUAGE: ${lang}
+${isLast ? 'This is the LAST section — include a call-to-action to book at BPR (bpr.rehab).' : ''}
+
+Respond ONLY with valid JSON (no markdown):
+{
+  "title": "${sec.title}",
+  "content": "<h3>Subheading</h3><p>Paragraph with inline references like [1]. Use <strong>, <em>, <blockquote>, <ul><li> tags. Write 400-600 words of genuinely useful content.</p>",
+  "keyTakeaways": ["Practical takeaway 1", "Practical takeaway 2", "Practical takeaway 3"]
+}`
+
+    try {
+      const secRaw = await claudeGenerate(
+        [{ role: 'user', content: sectionPrompt }],
+        { temperature: 0.6, maxTokens: 3000, systemPrompt: PDF_SYSTEM_PROMPT }
+      )
+      const secData = extractJson(secRaw)
+      sections.push(secData)
+    } catch {
+      // Fallback: add a placeholder section rather than fail entirely
+      sections.push({
+        title: sec.title,
+        content: `<p>Content for "${sec.title}" — please edit this section.</p>`,
+        keyTakeaways: [],
+      })
+    }
+  }
+
+  // ─── PASS 3: references (separate small call) ─────────────────────────────
+  const refPrompt = `
+Generate 6-8 REAL bibliographic references for a health guide about "${topic}".
+Use only real published research (PubMed, NICE, NHS, WHO, Cochrane).
+
+Respond ONLY with valid JSON:
+{
+  "references": [
+    "1. Author A, et al. Title. Journal. Year;Vol(Issue):Pages. PMID/DOI.",
+    "2. ..."
+  ]
+}`
+
+  let references: string[] = []
+  try {
+    const refRaw = await claudeGenerate(
+      [{ role: 'user', content: refPrompt }],
+      { temperature: 0.3, maxTokens: 1500, systemPrompt: PDF_SYSTEM_PROMPT }
+    )
+    const refData = extractJson(refRaw)
+    references = refData.references || []
   } catch {
-    return NextResponse.json({ error: 'AI generated invalid response. Please try again.' }, { status: 500 })
+    references = ['1. Please add real references before publishing.']
+  }
+
+  const pdfData = {
+    title: meta.title,
+    subtitle: meta.subtitle,
+    description: meta.description,
+    shortDescription: meta.shortDescription,
+    difficulty: meta.difficulty,
+    suggestedPrice: meta.suggestedPrice,
+    coverImagePrompt: meta.coverImagePrompt,
+    tags: meta.tags,
+    tableOfContents: sections.map((s: any) => s.title),
+    sections,
+    references,
   }
 
   return NextResponse.json({ success: true, content: pdfData })
@@ -217,6 +317,50 @@ async function saveAsProduct(body: any, session: any) {
       featured: false,
       isActive: false, // Start as draft — admin activates after review
       sortOrder: 0,
+    },
+  })
+
+  return NextResponse.json({ success: true, product })
+}
+
+async function updateProduct(body: any, session: any) {
+  const {
+    productId, title, subtitle, description, shortDescription,
+    sections, references, tags, price, imageUrl, category,
+    difficulty, pageCount, language,
+  } = body
+
+  if (!productId) return NextResponse.json({ error: 'productId required' }, { status: 400 })
+
+  const fullHtml = buildPdfHtml({ title, subtitle, sections, references, difficulty })
+
+  const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads')
+  const uploadsDir = path.join(baseUploadsDir, 'marketplace', 'pdfs')
+  await mkdir(uploadsDir, { recursive: true })
+
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 60)
+  const htmlFilename = `bpr-guide-${slug}-${Date.now().toString(36)}.html`
+  await writeFile(path.join(uploadsDir, htmlFilename), fullHtml, 'utf-8')
+
+  const previewSections = (sections || []).slice(0, 2)
+  const previewHtml = buildPdfHtml({ title, subtitle, sections: previewSections, references: [], difficulty, isPreview: true })
+  const previewFilename = `bpr-preview-${slug}-${Date.now().toString(36)}.html`
+  await writeFile(path.join(uploadsDir, previewFilename), previewHtml, 'utf-8')
+
+  const product = await (prisma as any).marketplaceProduct.update({
+    where: { id: productId },
+    data: {
+      name: title,
+      description: description || subtitle || '',
+      shortDescription: shortDescription || '',
+      category: category || 'digital_program',
+      price: parseFloat(price) || 9.99,
+      imageUrl: imageUrl || undefined,
+      digitalFileUrl: `/uploads/marketplace/pdfs/${htmlFilename}`,
+      previewFileUrl: `/uploads/marketplace/pdfs/${previewFilename}`,
+      pageCount: pageCount || sections?.length * 2 || 10,
+      contentLanguage: language || 'en',
+      tags: tags || [],
     },
   })
 

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -369,88 +370,202 @@ export default function PdfCreatorPage() {
         </div>
       )}
 
-      {/* STEP 2: Review & Edit */}
+      {/* STEP 2: Review & Edit — Full Visual Editor */}
       {step === "review" && content && (
         <div className="grid gap-6 lg:grid-cols-3">
+          {/* ─── LEFT: Editable Content ─── */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Title & Description */}
+
+            {/* Meta info banner */}
+            <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1 text-amber-400"><Sparkles className="h-3 w-3" /> AI generated — edit anything below before saving</span>
+            </div>
+
+            {/* Title, Subtitle, Description */}
             <Card>
               <CardContent className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-bold text-lg text-foreground">{content.title}</h2>
-                  <Badge className="bg-purple-500/15 text-purple-400">{content.difficulty}</Badge>
-                </div>
-                {content.subtitle && <p className="text-sm text-muted-foreground italic">{content.subtitle}</p>}
-                <p className="text-sm text-foreground/80">{content.description}</p>
-
-                {/* Tags */}
-                <div className="flex flex-wrap gap-1">
-                  {content.tags?.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-[10px]">
-                      <Tag className="h-2.5 w-2.5 mr-1" />{tag}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Table of Contents */}
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-purple-500" /> Table of Contents ({content.sections?.length} sections)
-                </h3>
-                <ol className="space-y-1 list-decimal list-inside">
-                  {content.sections?.map((s, i) => (
-                    <li key={i} className="text-sm text-foreground/80">{s.title}</li>
-                  ))}
-                </ol>
-              </CardContent>
-            </Card>
-
-            {/* Sections Preview */}
-            {content.sections?.map((section, i) => (
-              <Card key={i}>
-                <CardContent className="p-5">
-                  <h3 className="font-bold text-base text-foreground mb-2">{i + 1}. {section.title}</h3>
-                  <div
-                    className="text-sm text-foreground/80 prose prose-sm dark:prose-invert max-w-none"
-                    dangerouslySetInnerHTML={{ __html: section.content }}
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Product Details</h3>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Title *</Label>
+                  <Input
+                    value={content.title}
+                    onChange={(e) => setContent({ ...content, title: e.target.value })}
+                    className="font-bold text-base"
+                    placeholder="Guide title..."
                   />
-                  {section.keyTakeaways?.length > 0 && (
-                    <div className="mt-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
-                      <h4 className="text-xs font-bold text-emerald-400 uppercase mb-1">Key Takeaways</h4>
-                      <ul className="space-y-0.5">
-                        {section.keyTakeaways.map((t, j) => (
-                          <li key={j} className="text-xs text-foreground/70 flex items-start gap-1.5">
-                            <Check className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" /> {t}
-                          </li>
-                        ))}
-                      </ul>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Subtitle</Label>
+                  <Input
+                    value={content.subtitle || ""}
+                    onChange={(e) => setContent({ ...content, subtitle: e.target.value })}
+                    placeholder="Descriptive subtitle..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Marketing Description (shown in marketplace listing)</Label>
+                  <Textarea
+                    value={content.description || ""}
+                    onChange={(e) => setContent({ ...content, description: e.target.value })}
+                    rows={3}
+                    placeholder="2-3 sentences describing this guide..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Short Description (card preview)</Label>
+                  <Input
+                    value={content.shortDescription || ""}
+                    onChange={(e) => setContent({ ...content, shortDescription: e.target.value })}
+                    placeholder="One sentence..."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Difficulty</Label>
+                    <select
+                      value={content.difficulty || "beginner"}
+                      onChange={(e) => setContent({ ...content, difficulty: e.target.value })}
+                      className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
+                    >
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Tags (comma-separated)</Label>
+                    <Input
+                      value={(content.tags || []).join(", ")}
+                      onChange={(e) => setContent({ ...content, tags: e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean) })}
+                      placeholder="e.g. back pain, posture, exercise"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sections — each fully editable */}
+            {content.sections?.map((section: any, i: number) => (
+              <Card key={i} className="border-l-4 border-l-purple-500/40">
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-semibold uppercase">Section {i + 1}</span>
+                    <button
+                      className="text-xs text-destructive hover:text-destructive/80 flex items-center gap-1"
+                      onClick={() => {
+                        const updated = [...content.sections];
+                        updated.splice(i, 1);
+                        setContent({ ...content, sections: updated });
+                      }}
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+
+                  {/* Section Title */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Section Title</Label>
+                    <Input
+                      value={section.title}
+                      onChange={(e) => {
+                        const updated = [...content.sections];
+                        updated[i] = { ...updated[i], title: e.target.value };
+                        setContent({ ...content, sections: updated });
+                      }}
+                      className="font-semibold"
+                    />
+                  </div>
+
+                  {/* Section Content — HTML editor */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold">Content (HTML)</Label>
+                      <button
+                        className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                        onClick={() => {
+                          const id = `preview-${i}`;
+                          const el = document.getElementById(id);
+                          if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+                        }}
+                      >
+                        <Eye className="h-3 w-3" /> Toggle preview
+                      </button>
                     </div>
-                  )}
+                    <Textarea
+                      value={section.content}
+                      onChange={(e) => {
+                        const updated = [...content.sections];
+                        updated[i] = { ...updated[i], content: e.target.value };
+                        setContent({ ...content, sections: updated });
+                      }}
+                      rows={8}
+                      className="font-mono text-xs"
+                      placeholder="<h3>Subheading</h3><p>Content...</p>"
+                    />
+                    {/* Live preview */}
+                    <div
+                      id={`preview-${i}`}
+                      className="prose prose-sm dark:prose-invert max-w-none bg-muted/20 rounded-lg p-4 text-sm border border-border/50"
+                      dangerouslySetInnerHTML={{ __html: section.content }}
+                    />
+                  </div>
+
+                  {/* Key Takeaways */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Key Takeaways (one per line)</Label>
+                    <Textarea
+                      value={(section.keyTakeaways || []).join("\n")}
+                      onChange={(e) => {
+                        const updated = [...content.sections];
+                        updated[i] = {
+                          ...updated[i],
+                          keyTakeaways: e.target.value.split("\n").filter(Boolean),
+                        };
+                        setContent({ ...content, sections: updated });
+                      }}
+                      rows={3}
+                      className="text-xs"
+                      placeholder="Key takeaway 1&#10;Key takeaway 2&#10;Key takeaway 3"
+                    />
+                  </div>
                 </CardContent>
               </Card>
             ))}
 
+            {/* Add Section button */}
+            <button
+              className="w-full border-2 border-dashed border-border/50 rounded-xl py-3 text-sm text-muted-foreground hover:border-purple-500/40 hover:text-purple-400 transition-colors flex items-center justify-center gap-2"
+              onClick={() => setContent({
+                ...content,
+                sections: [...(content.sections || []), {
+                  title: "New Section",
+                  content: "<p>Add your content here...</p>",
+                  keyTakeaways: [],
+                }],
+              })}
+            >
+              + Add Section
+            </button>
+
             {/* References */}
-            {content.references?.length > 0 && (
-              <Card>
-                <CardContent className="p-5">
-                  <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-blue-500" /> References ({content.references.length})
-                  </h3>
-                  <ol className="space-y-1 list-decimal list-inside">
-                    {content.references.map((ref, i) => (
-                      <li key={i} className="text-xs text-muted-foreground">{ref}</li>
-                    ))}
-                  </ol>
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardContent className="p-5 space-y-2">
+                <Label className="text-xs font-semibold flex items-center gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5 text-blue-500" /> References (one per line — use real citations)
+                </Label>
+                <Textarea
+                  value={(content.references || []).join("\n")}
+                  onChange={(e) => setContent({ ...content, references: e.target.value.split("\n").filter(Boolean) })}
+                  rows={6}
+                  className="font-mono text-xs"
+                  placeholder="1. Author A, et al. Title. Journal. Year;Vol(Issue):Pages. PMID.&#10;2. ..."
+                />
+                <p className="text-[10px] text-muted-foreground">{content.references?.length || 0} references — minimum 5 recommended</p>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Sidebar: Cover + Price + Actions */}
+          {/* ─── RIGHT: Cover + Price + Actions ─── */}
           <div className="space-y-4">
             {/* Cover Image */}
             <Card>
@@ -466,12 +581,8 @@ export default function PdfCreatorPage() {
                 ) : coverUrl ? (
                   <div className="space-y-2">
                     <img src={coverUrl} alt="Cover" className="w-full rounded-lg border" />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full gap-1 text-xs"
-                      onClick={() => generateCoverImage(content.coverImagePrompt, content.title)}
-                    >
+                    <Button variant="outline" size="sm" className="w-full gap-1 text-xs"
+                      onClick={() => generateCoverImage(content.coverImagePrompt, content.title)}>
                       <RefreshCw className="h-3 w-3" /> Regenerate Cover
                     </Button>
                   </div>
@@ -479,11 +590,8 @@ export default function PdfCreatorPage() {
                   <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
                     <div className="text-center">
                       <ImageIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => generateCoverImage(content.coverImagePrompt, content.title)}
-                      >
+                      <Button variant="outline" size="sm"
+                        onClick={() => generateCoverImage(content.coverImagePrompt, content.title)}>
                         Generate Cover
                       </Button>
                     </div>
@@ -500,17 +608,12 @@ export default function PdfCreatorPage() {
                 </h3>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-bold">£</span>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="text-lg font-bold"
-                  />
+                  <Input type="number" step="0.01" min="0" value={price}
+                    onChange={(e) => setPrice(e.target.value)} className="text-lg font-bold" />
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  AI suggested: £{content.suggestedPrice?.toFixed(2) || "9.99"} — You keep 100% minus Stripe fees (~2.9%)
+                  AI suggested: £{content.suggestedPrice?.toFixed(2) || "9.99"}<br />
+                  You keep 100% minus Stripe fees (~2.9%)
                 </p>
               </CardContent>
             </Card>
@@ -521,7 +624,29 @@ export default function PdfCreatorPage() {
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Globe className="h-4 w-4 text-blue-500" /> Language
                 </h3>
-                <Badge variant="outline" className="text-xs uppercase">{language === "pt-BR" ? "Portuguese (BR)" : "English (UK)"}</Badge>
+                <Badge variant="outline" className="text-xs uppercase">
+                  {language === "pt-BR" ? "Portuguese (BR)" : "English (UK)"}
+                </Badge>
+              </CardContent>
+            </Card>
+
+            {/* Sections count */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Sections</span>
+                  <span className="font-bold">{content.sections?.length || 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">References</span>
+                  <span className={`font-bold ${(content.references?.length || 0) < 5 ? "text-amber-400" : "text-emerald-400"}`}>
+                    {content.references?.length || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Est. pages</span>
+                  <span className="font-bold">{(content.sections?.length || 0) * 2 + 2}</span>
+                </div>
               </CardContent>
             </Card>
 

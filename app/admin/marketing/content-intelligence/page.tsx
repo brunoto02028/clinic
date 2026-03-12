@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Sparkles, Loader2, TrendingUp, Calendar, Zap,
   ShoppingBag, Wand2, Copy, Check, ExternalLink, BookOpen,
   FileText, Instagram, Globe, Target, DollarSign, Clock,
   Flame, Eye, ChevronDown, ChevronUp, RefreshCw, Hash,
-  Lightbulb, BarChart3, Megaphone, Star, Tag, Package,
+  Lightbulb, BarChart3, Megaphone, Star, Tag, Package, Bookmark, Trash2, FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 
-type Tab = "trending" | "calendar" | "hooks" | "marketplace" | "improve";
+type Tab = "trending" | "calendar" | "hooks" | "marketplace" | "improve" | "saved";
 
 const TABS: { key: Tab; label: string; icon: any; desc: string }[] = [
   { key: "trending", label: "Trending Ideas", icon: TrendingUp, desc: "Viral content suggestions" },
@@ -24,6 +24,7 @@ const TABS: { key: Tab; label: string; icon: any; desc: string }[] = [
   { key: "hooks", label: "Viral Hooks", icon: Zap, desc: "Scroll-stopping openers" },
   { key: "marketplace", label: "Marketplace Intel", icon: ShoppingBag, desc: "Product opportunities" },
   { key: "improve", label: "Improve Content", icon: Wand2, desc: "Upgrade existing posts" },
+  { key: "saved", label: "Saved Drafts", icon: Bookmark, desc: "Your saved ideas" },
 ];
 
 const URGENCY_COLORS: Record<string, string> = {
@@ -44,6 +45,47 @@ export default function ContentIntelligencePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Saved Drafts
+  const [drafts, setDrafts] = useState<any[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+
+  const loadDrafts = useCallback(async () => {
+    setDraftsLoading(true);
+    try {
+      const res = await fetch("/api/admin/marketing/content-drafts");
+      const data = await res.json();
+      setDrafts(data.drafts || []);
+    } catch {} finally {
+      setDraftsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { if (tab === "saved") loadDrafts(); }, [tab, loadDrafts]);
+
+  const saveDraft = async (title: string, type: string, data: any) => {
+    try {
+      const res = await fetch("/api/admin/marketing/content-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, type, data }),
+      });
+      if (res.ok) {
+        setSavedMsg(`"${title}" saved!`);
+        setTimeout(() => setSavedMsg(null), 3000);
+      }
+    } catch {}
+  };
+
+  const deleteDraft = async (filename: string) => {
+    await fetch("/api/admin/marketing/content-drafts", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename }),
+    });
+    loadDrafts();
+  };
 
   // Trending Ideas
   const [trendFocus, setTrendFocus] = useState("");
@@ -135,6 +177,13 @@ export default function ContentIntelligencePage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      {/* Saved toast */}
+      {savedMsg && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-sm font-medium animate-in slide-in-from-bottom-2">
+          <Bookmark className="h-4 w-4" /> {savedMsg}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/admin/marketing" className="text-muted-foreground hover:text-foreground">
@@ -340,7 +389,7 @@ export default function ContentIntelligencePage() {
                               )}
                             </div>
                           </div>
-                          <div className="flex gap-2 pt-2 border-t border-border/30">
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-border/30">
                             <Link href={`/admin/marketing/articles?topic=${encodeURIComponent(idea.title)}`} onClick={(e) => e.stopPropagation()}>
                               <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
                                 <FileText className="h-3 w-3" /> Create Article
@@ -355,6 +404,10 @@ export default function ContentIntelligencePage() {
                               onClick={(e) => { e.stopPropagation(); copyText(`${idea.title}\n\n${idea.hook}`, `full-${i}`); }}>
                               {copied === `full-${i}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                               Copy All
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-amber-400 hover:text-amber-300"
+                              onClick={(e) => { e.stopPropagation(); saveDraft(idea.title, 'trending-idea', idea); }}>
+                              <Bookmark className="h-3 w-3" /> Save
                             </Button>
                           </div>
                         </div>
@@ -423,9 +476,15 @@ export default function ContentIntelligencePage() {
               {calData.calendar?.map((week: any, wi: number) => (
                 <Card key={wi}>
                   <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-violet-500/15 text-violet-400">Week {week.week}</Badge>
-                      {week.theme && <span className="text-sm font-medium text-foreground">{week.theme}</span>}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-violet-500/15 text-violet-400">Week {week.week}</Badge>
+                        {week.theme && <span className="text-sm font-medium text-foreground">{week.theme}</span>}
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-amber-400"
+                        onClick={() => saveDraft(`Calendar Week ${week.week}: ${week.theme || ''}`, 'calendar', week)}>
+                        <Bookmark className="h-3 w-3" /> Save week
+                      </Button>
                     </div>
                     <div className="space-y-2">
                       {week.days?.map((day: any, di: number) => (
@@ -513,6 +572,12 @@ export default function ContentIntelligencePage() {
 
           {hookData?.hooks?.length > 0 && (
             <div className="space-y-2">
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-amber-400"
+                  onClick={() => saveDraft(`Hooks: ${hookTopic || 'viral hooks'} (${hookPlatform})`, 'hooks', hookData)}>
+                  <Bookmark className="h-3 w-3" /> Save all hooks
+                </Button>
+              </div>
               {hookData.hooks.map((h: any, i: number) => (
                 <Card key={i}>
                   <CardContent className="p-4">
@@ -620,6 +685,10 @@ export default function ContentIntelligencePage() {
                               <BookOpen className="h-3 w-3" /> Create This PDF
                             </Button>
                           </Link>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-amber-400"
+                            onClick={() => saveDraft(g.title, 'marketplace-pdf', g)}>
+                            <Bookmark className="h-3 w-3" /> Save
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -754,11 +823,17 @@ export default function ContentIntelligencePage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-sm text-emerald-400">Improved Version</h3>
-                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
-                      onClick={() => copyText(improveData.improvedVersion, 'improved')}>
-                      {copied === 'improved' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      {copied === 'improved' ? "Copied!" : "Copy"}
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-amber-400"
+                        onClick={() => saveDraft(`Improved: ${improvePlatform} content`, 'improved-content', { original: improveContent, improved: improveData.improvedVersion, platform: improvePlatform, changes: improveData.changes })}>
+                        <Bookmark className="h-3 w-3" /> Save
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+                        onClick={() => copyText(improveData.improvedVersion, 'improved')}>
+                        {copied === 'improved' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copied === 'improved' ? "Copied!" : "Copy"}
+                      </Button>
+                    </div>
                   </div>
                   <div className="text-sm text-foreground/90 whitespace-pre-line bg-muted/30 p-3 rounded-lg">
                     {improveData.improvedVersion}
@@ -840,6 +915,101 @@ export default function ContentIntelligencePage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ━━━ SAVED DRAFTS ━━━ */}
+      {tab === "saved" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Your saved content ideas, hooks, calendars and opportunities.</p>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={loadDrafts}>
+              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            </Button>
+          </div>
+
+          {draftsLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {!draftsLoading && drafts.length === 0 && (
+            <Card>
+              <CardContent className="p-10 text-center">
+                <FolderOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm font-medium text-foreground">No saved drafts yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Use the Save button on any generated content to save it here.</p>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="space-y-3">
+            {drafts.map((draft: any) => (
+              <Card key={draft.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] capitalize shrink-0">
+                          {draft.type?.replace(/-/g, ' ')}
+                        </Badge>
+                        <h4 className="font-semibold text-sm truncate">{draft.title}</h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Saved {new Date(draft.savedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+
+                      {/* Preview based on type */}
+                      {draft.type === 'trending-idea' && (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-muted-foreground italic">&ldquo;{draft.data?.hook}&rdquo;</p>
+                          <div className="flex flex-wrap gap-1">
+                            {draft.data?.hashtags?.slice(0, 4).map((h: string, i: number) => (
+                              <Badge key={i} variant="outline" className="text-[9px]">{h}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {draft.type === 'hooks' && (
+                        <p className="text-xs text-muted-foreground mt-1">{draft.data?.hooks?.length} hooks saved</p>
+                      )}
+                      {draft.type === 'calendar' && (
+                        <p className="text-xs text-muted-foreground mt-1">{draft.data?.days?.length} days planned</p>
+                      )}
+                      {draft.type === 'improved-content' && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{draft.data?.improved}</p>
+                      )}
+                      {draft.type === 'marketplace-pdf' && (
+                        <p className="text-xs text-muted-foreground mt-1">{draft.data?.description}</p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {(draft.type === 'trending-idea' || draft.type === 'marketplace-pdf') && (
+                        <Link href={`/admin/marketplace/pdf-creator?topic=${encodeURIComponent(draft.title)}`}>
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                            <BookOpen className="h-3 w-3" /> Create PDF
+                          </Button>
+                        </Link>
+                      )}
+                      {draft.type === 'improved-content' && (
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+                          onClick={() => copyText(draft.data?.improved || '', `draft-${draft.id}`)}>
+                          {copied === `draft-${draft.id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          Copy
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        onClick={() => deleteDraft(draft.filename)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
     </div>
