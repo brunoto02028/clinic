@@ -61,6 +61,7 @@ import {
   Sparkles,
   Bot,
   Instagram,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -164,6 +165,8 @@ const navigationGroups: NavGroup[] = [
     icon: Megaphone,
     items: [
       { name: "Marketing AI", href: "/admin/marketing", icon: Sparkles },
+      { name: "Content Intelligence", href: "/admin/marketing/content-intelligence", icon: Lightbulb },
+      { name: "SEO Articles", href: "/admin/marketing/articles", icon: FileText },
       { name: "Instagram", href: "/admin/marketing/instagram", icon: Instagram },
       { name: "Posts & Drafts", href: "/admin/marketing/instagram?tab=posts", icon: PenSquare },
       { name: "Campaigns", i18nKey: "nav.campaigns", href: "/admin/social/campaigns", icon: CalendarRange },
@@ -198,6 +201,7 @@ const navigationGroups: NavGroup[] = [
     icon: ShoppingCart,
     items: [
       { name: "Products & Orders", href: "/admin/marketplace", icon: ShoppingCart },
+      { name: "PDF Creator Pro", href: "/admin/marketplace/pdf-creator", icon: BookOpen },
     ],
   },
   {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, FileText, Sparkles, Loader2, Check, Eye, Download,
@@ -54,6 +54,7 @@ interface PdfContent {
 
 export default function PdfCreatorPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Input state
   const [topic, setTopic] = useState("");
@@ -62,6 +63,12 @@ export default function PdfCreatorPage() {
   const [customAudience, setCustomAudience] = useState("");
   const [pageTarget, setPageTarget] = useState(15);
   const [language, setLanguage] = useState("en");
+
+  // Pre-fill topic from URL query params (from Content Intelligence links)
+  useEffect(() => {
+    const urlTopic = searchParams.get("topic");
+    if (urlTopic) setTopic(urlTopic);
+  }, [searchParams]);
 
   // Generation state
   const [generating, setGenerating] = useState(false);
