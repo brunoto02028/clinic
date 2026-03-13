@@ -19,11 +19,11 @@ export async function POST(req: NextRequest) {
       || url.match(/(?:amazon\.[a-z.]+\/[^/]*\/?)([A-Z0-9]{10})/i);
     const asin = asinMatch?.[1] || "";
 
-    // Get affiliate tag from system config or use default
-    let affiliateTag = "";
-    try {
-      affiliateTag = (await getConfigValue("AMAZON_AFFILIATE_TAG")) || "";
-    } catch {}
+    // Get affiliate tag from env or system config
+    let affiliateTag = process.env.AMAZON_AFFILIATE_TAG || "";
+    if (!affiliateTag) {
+      try { affiliateTag = (await getConfigValue("AMAZON_AFFILIATE_TAG")) || ""; } catch {}
+    }
 
     // Use Gemini to extract product info from the Amazon URL
     const geminiKey = await getConfigValue("GEMINI_API_KEY");

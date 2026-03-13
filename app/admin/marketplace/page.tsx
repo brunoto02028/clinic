@@ -74,6 +74,19 @@ export default function AdminMarketplacePage() {
   const [amazonUrl, setAmazonUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
+  const [importPreview, setImportPreview] = useState<any>(null);
+  const [showImportPanel, setShowImportPanel] = useState(false);
+
+  const PHYSIO_SUGGESTIONS = [
+    { label: "Foam Roller", q: "foam+roller+physio" },
+    { label: "Theraband", q: "theraband+resistance+bands" },
+    { label: "TENS Machine", q: "TENS+machine+pain+relief" },
+    { label: "Insoles", q: "orthotic+insoles+running" },
+    { label: "Massage Gun", q: "massage+gun+muscle" },
+    { label: "Balance Board", q: "balance+board+rehab" },
+    { label: "Ice/Heat Pack", q: "ice+heat+pack+physio" },
+    { label: "Kinesio Tape", q: "kinesio+tape+sports" },
+  ];
 
   // Order detail
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
@@ -185,7 +198,7 @@ export default function AdminMarketplacePage() {
   // AI Amazon Import
   const importFromAmazon = async () => {
     if (!amazonUrl.trim()) return;
-    setImporting(true); setImportError("");
+    setImporting(true); setImportError(""); setImportPreview(null);
     try {
       const res = await fetch("/api/admin/marketplace/amazon-import", {
         method: "POST",
@@ -195,27 +208,33 @@ export default function AdminMarketplacePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Import failed");
       if (data.product) {
-        setForm({
-          ...emptyProduct,
-          isAffiliate: true,
-          name: data.product.name || "",
-          description: data.product.description || "",
-          shortDescription: data.product.shortDescription || "",
-          category: data.product.category || "equipment",
-          price: String(data.product.price || ""),
-          imageUrl: data.product.imageUrl || "",
-          affiliateUrl: data.product.affiliateUrl || amazonUrl,
-          amazonAsin: data.product.asin || "",
-          affiliateTag: data.product.affiliateTag || "",
-          affiliateCommission: String(data.product.commission || "4.5"),
-        });
+        setImportPreview({ ...data.product, _sourceUrl: amazonUrl });
         setAmazonUrl("");
-        setShowForm(true);
-        setEditingId(null);
       }
     } catch (e) {
       setImportError(e instanceof Error ? e.message : "Import failed");
     } finally { setImporting(false) }
+  };
+
+  const confirmImport = () => {
+    if (!importPreview) return;
+    setForm({
+      ...emptyProduct,
+      isAffiliate: true,
+      name: importPreview.name || "",
+      description: importPreview.description || "",
+      shortDescription: importPreview.shortDescription || "",
+      category: importPreview.category || "equipment",
+      price: String(importPreview.price || ""),
+      imageUrl: importPreview.imageUrl || "",
+      affiliateUrl: importPreview.affiliateUrl || importPreview._sourceUrl || "",
+      amazonAsin: importPreview.asin || "",
+      affiliateTag: importPreview.affiliateTag || "",
+      affiliateCommission: String(importPreview.commission || "4"),
+    });
+    setImportPreview(null);
+    setShowForm(true);
+    setEditingId(null);
   };
 
   // Margin calculator
@@ -383,27 +402,109 @@ export default function AdminMarketplacePage() {
           </div>
 
           {/* AI Amazon Import */}
-          <Card className="border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Globe className="h-4 w-4 text-amber-500" />
-                <p className="text-xs font-medium text-foreground">Import from Amazon</p>
-                <span className="text-[10px] text-muted-foreground">— paste an Amazon URL and AI will auto-fill the product</span>
+          <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-amber-500" />
+                  <p className="text-sm font-semibold text-foreground">🛒 Importar da Amazon</p>
+                  <span className="text-[10px] bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full font-medium">tag: bprrrehab-21</span>
+                </div>
+                <button onClick={() => setShowImportPanel(v => !v)} className="text-xs text-muted-foreground hover:text-foreground">
+                  {showImportPanel ? "Ocultar" : "Expandir"}
+                </button>
               </div>
+
+              {/* URL input */}
               <div className="flex gap-2">
                 <Input
                   value={amazonUrl}
                   onChange={(e) => setAmazonUrl(e.target.value)}
-                  placeholder="https://www.amazon.co.uk/dp/B09XXXXX or full Amazon product URL"
+                  placeholder="Cola o URL do produto Amazon aqui — ex: https://www.amazon.co.uk/dp/B09XXXXX"
                   className="flex-1 text-xs"
-                  onKeyDown={(e) => { if (e.key === "Enter") importFromAmazon() }}
+                  onKeyDown={(e) => { if (e.key === "Enter") importFromAmazon(); }}
                 />
-                <Button onClick={importFromAmazon} disabled={importing || !amazonUrl.trim()} size="sm" className="gap-1 bg-amber-500 hover:bg-amber-400 text-white">
+                <Button onClick={importFromAmazon} disabled={importing || !amazonUrl.trim()} size="sm"
+                  className="gap-1 bg-amber-500 hover:bg-amber-400 text-white shrink-0">
                   {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  {importing ? "Importing..." : "AI Import"}
+                  {importing ? "A importar..." : "IA Import"}
                 </Button>
               </div>
-              {importError && <p className="text-xs text-red-400 mt-1.5">{importError}</p>}
+
+              {/* Quick search suggestions */}
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] text-muted-foreground self-center">Pesquisar:</span>
+                {PHYSIO_SUGGESTIONS.map(s => (
+                  <a key={s.q}
+                    href={`https://www.amazon.co.uk/s?k=${s.q}&tag=bprrrehab-21`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-all">
+                    {s.label} ↗
+                  </a>
+                ))}
+              </div>
+
+              {importError && <p className="text-xs text-red-400">{importError}</p>}
+
+              {/* Preview card */}
+              {importPreview && (
+                <div className="border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-3 space-y-3">
+                  <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle className="h-3.5 w-3.5" /> Produto encontrado — confirma antes de guardar
+                  </p>
+                  <div className="flex gap-3">
+                    {importPreview.imageUrl && (
+                      <img src={importPreview.imageUrl} alt="" className="w-20 h-20 rounded-lg object-contain bg-white shrink-0 border border-border" />
+                    )}
+                    {!importPreview.imageUrl && (
+                      <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <Package className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <p className="text-sm font-semibold text-foreground leading-snug">{importPreview.name}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{importPreview.shortDescription || importPreview.description}</p>
+                      <div className="flex gap-2 flex-wrap mt-1">
+                        <span className="text-xs font-bold text-emerald-500">£{importPreview.price}</span>
+                        <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                          {importPreview.commission || 4}% comissão
+                        </span>
+                        <span className="text-[10px] bg-blue-500/15 text-blue-500 px-1.5 py-0.5 rounded capitalize">
+                          {importPreview.category?.replace("_", " ")}
+                        </span>
+                        {importPreview.asin && (
+                          <span className="text-[10px] text-muted-foreground font-mono">ASIN: {importPreview.asin}</span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        🔗 {importPreview.affiliateUrl || importPreview._sourceUrl}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={confirmImport}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white gap-1">
+                      <CheckCircle className="h-3.5 w-3.5" /> Confirmar e Editar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setImportPreview(null)} className="gap-1">
+                      <X className="h-3.5 w-3.5" /> Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Instructions */}
+              {showImportPanel && !importPreview && (
+                <div className="text-[11px] text-muted-foreground space-y-1 border-t border-border/50 pt-3">
+                  <p className="font-semibold text-foreground">Como funciona:</p>
+                  <p>1. Vai a <a href="https://www.amazon.co.uk" target="_blank" className="text-amber-500 underline">amazon.co.uk</a> e encontra um produto relevante para fisioterapia</p>
+                  <p>2. Copia o URL da página do produto</p>
+                  <p>3. Cola aqui e clica "IA Import" — a IA extrai nome, preço, descrição e categoria</p>
+                  <p>4. Confirma o preview e edita os detalhes antes de guardar</p>
+                  <p>5. O teu link de afiliado com tag <strong>bprrrehab-21</strong> é gerado automaticamente</p>
+                  <p className="text-amber-500/80">💡 Comissão típica: 4% em equipamento, suplementos e saúde</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
