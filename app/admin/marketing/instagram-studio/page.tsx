@@ -1049,7 +1049,7 @@ export default function InstagramStudioPage() {
             mediaUrls: [],
             status: "DRAFT",
             aiGenerated: true,
-            aiPrompt: JSON.stringify({ topic: topicText, service: "", tone: "educational", language, viralIdea: { format: idea.format, hook: idea.hook, viral_score: idea.viral_score, content_type: idea.content_type } }),
+            aiPrompt: JSON.stringify({ topic: topicText, service: "", tone: "educational", language, source: "viral", viralIdea: { format: safeStr(idea.format), hook: safeStr(idea.hook), viral_score: idea.viral_score, content_type: safeStr(idea.content_type) } }),
           }),
         });
         if (res.ok) {
@@ -1062,8 +1062,10 @@ export default function InstagramStudioPage() {
     setViralSavedIds(prev => new Set([...prev, ...savedIds]));
     setViralSavedDraftIds(prev => ({ ...prev, ...savedMap }));
     setViralSavingAll(false);
-    setSuccess(`${savedIds.size} ideias guardadas como drafts!`);
-    setTimeout(() => setSuccess(null), 4000);
+    // Reload drafts so they appear immediately in the panel
+    await loadDrafts();
+    setSuccess(`✅ ${savedIds.size} ideias guardadas como drafts! Clica em "Ver Drafts" para usar.`);
+    setTimeout(() => setSuccess(null), 6000);
   }
 
   async function deleteViralDraft(index: number) {
@@ -3565,17 +3567,42 @@ export default function InstagramStudioPage() {
                 let meta: any = {};
                 try { meta = JSON.parse(draft.aiPrompt || "{}"); } catch {}
                 const isScheduled = draft.status === "SCHEDULED";
+                const isViral = meta.source === "viral";
+                const viralIdea = meta.viralIdea;
                 return (
-                  <div key={draft.id} className={`p-4 rounded-xl border transition-all ${isScheduled ? "border-blue-500/30 bg-blue-500/5" : "border-border hover:border-primary/30"}`}>
+                  <div key={draft.id} className={`p-4 rounded-xl border transition-all ${
+                    isScheduled ? "border-blue-500/30 bg-blue-500/5"
+                    : isViral ? "border-orange-500/30 bg-orange-500/5 hover:border-orange-500/50"
+                    : "border-border hover:border-primary/30"
+                  }`}>
                     <div className="flex items-start gap-3">
                       {draft.mediaUrls?.[0] && (
                         <img src={draft.mediaUrls[0]} alt="" className="w-14 h-14 rounded-lg object-cover shrink-0 bg-muted" />
                       )}
+                      {!draft.mediaUrls?.[0] && isViral && (
+                        <div className="w-14 h-14 rounded-lg shrink-0 bg-orange-500/10 flex items-center justify-center text-2xl">🔥</div>
+                      )}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className={`text-[10px] ${isScheduled ? "border-blue-500/40 text-blue-400" : ""}`}>
-                            {isScheduled ? <><Bell className="h-2.5 w-2.5 mr-1" />Agendado</> : "Draft"}
-                          </Badge>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {isViral ? (
+                            <Badge className="text-[10px] bg-orange-500/15 text-orange-400 border-orange-500/30 gap-1">
+                              <Flame className="h-2.5 w-2.5" /> Viral Scout
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className={`text-[10px] ${isScheduled ? "border-blue-500/40 text-blue-400" : ""}`}>
+                              {isScheduled ? <><Bell className="h-2.5 w-2.5 mr-1" />Agendado</> : "Draft"}
+                            </Badge>
+                          )}
+                          {viralIdea?.content_type && (
+                            <Badge className={`text-[10px] ${
+                              viralIdea.content_type === "REEL" ? "bg-purple-500/15 text-purple-400 border-purple-500/30"
+                              : viralIdea.content_type === "CAROUSEL" ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                              : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                            }`}>{viralIdea.content_type}</Badge>
+                          )}
+                          {viralIdea?.viral_score && (
+                            <span className="text-[10px] text-orange-400 font-semibold">★ {viralIdea.viral_score}/10</span>
+                          )}
                           {isScheduled && draft.scheduledAt && (
                             <span className="text-[10px] text-blue-400">
                               {new Date(draft.scheduledAt).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
@@ -3587,6 +3614,9 @@ export default function InstagramStudioPage() {
                         </div>
                         {(meta.topic || meta.service) && (
                           <p className="text-xs font-medium text-foreground truncate">{meta.topic || meta.service}</p>
+                        )}
+                        {viralIdea?.hook && (
+                          <p className="text-[11px] text-orange-300/70 italic truncate mt-0.5">"{viralIdea.hook}"</p>
                         )}
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{draft.caption}</p>
                         <div className="flex gap-1.5 mt-1.5 flex-wrap">
