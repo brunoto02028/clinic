@@ -54,8 +54,9 @@ export default function InstagramStudioPage() {
   const [imageLoading, setImageLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [watermarkedImage, setWatermarkedImage] = useState<string | null>(null);
-  // originalImageRef: always the latest clean image URL (never overwritten by watermark/overlay baking)
-  const originalImageRef = useRef<string | null>(null);
+  // originalImage state: always the latest clean image URL (never overwritten by watermark/overlay baking)
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const originalImageRef = useRef<string | null>(null); // kept for sync in callbacks
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -422,7 +423,7 @@ export default function InstagramStudioPage() {
     if (snap.language) setLanguage(snap.language);
     if (snap.caption) setCaption(snap.caption);
     if (snap.hashtags) setHashtags(snap.hashtags);
-    if (snap.generatedImage) { setGeneratedImage(snap.generatedImage); originalImageRef.current = snap.generatedImage; }
+    if (snap.generatedImage) { setGeneratedImage(snap.generatedImage); setOriginalImage(snap.generatedImage); originalImageRef.current = snap.generatedImage; }
     if (snap.watermarkedImage) setWatermarkedImage(snap.watermarkedImage);
     if (snap.uploadedImages?.length) setUploadedImages(snap.uploadedImages);
     if (snap.textLayers?.length) setTextLayers(snap.textLayers);
@@ -477,6 +478,7 @@ export default function InstagramStudioPage() {
     if (draft.hashtags) setHashtags(draft.hashtags);
     if (draft.mediaUrls?.[0]) {
       setGeneratedImage(draft.mediaUrls[0]);
+      setOriginalImage(draft.mediaUrls[0]);
       originalImageRef.current = draft.mediaUrls[0];
       setWatermarkedImage(null);
       restored.push("imagem");
@@ -508,7 +510,7 @@ export default function InstagramStudioPage() {
   function resetPost() {
     setTopic(""); setService(""); setCaption(""); setHashtags("");
     setGeneratedImage(null); setWatermarkedImage(null); setUploadedImages([]);
-    originalImageRef.current = null;
+    setOriginalImage(null); originalImageRef.current = null;
     setTextLayers([]); setActiveTextId(null); setCustomImagePrompt("");
     setShowCustomPrompt(false); setShowWatermarkPanel(false); setShowTextPanel(false);
     setScheduleDate(""); setScheduleTime("");
@@ -1403,18 +1405,17 @@ export default function InstagramStudioPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  // canvasBaseImage: always the CLEAN image — prefer originalImageRef (never loses the original),
-  // fall back to generatedImage, uploadedImages, or watermarkedImage (last resort, avoids duplicates in practice)
-  const canvasBaseImage = originalImageRef.current || generatedImage || uploadedImages[0] || watermarkedImage || null;
+  // canvasBaseImage: always the CLEAN image (no baked-in overlays)
+  const canvasBaseImage = originalImage || generatedImage || uploadedImages[0] || null;
   // activeImage: what to display in <img> when canvas is hidden
   const activeImage = watermarkedImage || generatedImage || uploadedImages[0] || null;
 
-  // Keep originalImageRef in sync — update when a real new clean image arrives
+  // Keep originalImage in sync whenever a real clean image arrives
   useEffect(() => {
-    if (generatedImage) originalImageRef.current = generatedImage;
+    if (generatedImage) { setOriginalImage(generatedImage); originalImageRef.current = generatedImage; }
   }, [generatedImage]);
   useEffect(() => {
-    if (uploadedImages[0]) originalImageRef.current = uploadedImages[0];
+    if (uploadedImages[0]) { setOriginalImage(uploadedImages[0]); originalImageRef.current = uploadedImages[0]; }
   }, [uploadedImages]);
 
   // Redraw canvas when image/logo/text settings change, or when returning to image tab
