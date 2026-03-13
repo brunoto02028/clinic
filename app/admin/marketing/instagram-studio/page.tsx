@@ -110,6 +110,9 @@ export default function InstagramStudioPage() {
     bgEnabled?: boolean; bgColor?: string; bgOpacity?: number; bgBlur?: number;
   }[]>([]);
   const [activeTextId, setActiveTextId] = useState<string | null>(null);
+  // Undo history — stores snapshots of textLayers
+  const textLayersHistoryRef = useRef<typeof textLayers[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
   const TEXT_FONTS = [
     { label: "Montserrat Bold", value: "bold 1em Montserrat, sans-serif", css: "Montserrat" },
     { label: "Impact", value: "1em Impact, sans-serif", css: "Impact" },
@@ -449,29 +452,46 @@ export default function InstagramStudioPage() {
   }
 
   function applyDraft(draft: any) {
+    const restored: string[] = [];
     if (draft.aiPrompt) {
       try {
         const meta = JSON.parse(draft.aiPrompt);
-        if (meta.topic) setTopic(meta.topic);
-        if (meta.service) setService(meta.service);
+        if (meta.topic) { setTopic(meta.topic); }
+        if (meta.service) { setService(meta.service); }
         if (meta.tone) setTone(meta.tone);
         if (meta.language) setLanguage(meta.language);
-        if (meta.textLayers) setTextLayers(meta.textLayers);
+        if (meta.textLayers && meta.textLayers.length > 0) {
+          setTextLayers(meta.textLayers);
+          textLayersHistoryRef.current = [];
+          setCanUndo(false);
+          restored.push(`${meta.textLayers.length} texto(s)`);
+        }
         if (meta.customImagePrompt) setCustomImagePrompt(meta.customImagePrompt);
       } catch {
         setTopic(draft.aiPrompt);
       }
     }
-    if (draft.caption) setCaption(draft.caption);
+    if (draft.caption) { setCaption(draft.caption); restored.push("legenda"); }
     if (draft.hashtags) setHashtags(draft.hashtags);
     if (draft.mediaUrls?.[0]) {
       setGeneratedImage(draft.mediaUrls[0]);
       setWatermarkedImage(null);
+      restored.push("imagem");
+    }
+    // Restore music
+    if (draft.musicUrl && draft.musicTitle) {
+      setSelectedMusic({ id: `draft-music-${draft.id}`, title: draft.musicTitle, audioUrl: draft.musicUrl });
+      restored.push(`música: ${draft.musicTitle}`);
+    } else {
+      setSelectedMusic(null);
     }
     setShowDraftsPanel(false);
     setTab("image");
-    setSuccess("Draft carregado!");
-    setTimeout(() => setSuccess(null), 3000);
+    const msg = restored.length > 0
+      ? `✅ Draft carregado: ${restored.join(", ")}`
+      : "Draft carregado!";
+    setSuccess(msg);
+    setTimeout(() => setSuccess(null), 5000);
   }
 
   async function deleteDraft(id: string) {
@@ -491,6 +511,7 @@ export default function InstagramStudioPage() {
     setPublishResult(null); setError(null); setSuccess(null);
     setViralIdeas([]); setViralSavedIds(new Set()); setViralSavedDraftIds({});
     setAiTextSuggestions([]);
+    textLayersHistoryRef.current = []; setCanUndo(false);
     localStorage.removeItem(AUTO_SAVE_KEY);
     setTab("image");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -960,6 +981,31 @@ export default function InstagramStudioPage() {
     return () => { if (musicPollRef.current) clearTimeout(musicPollRef.current); };
   }, []);
 
+  // ── Undo helpers ──
+  function pushUndoHistory(layers: typeof textLayers) {
+    textLayersHistoryRef.current = [...textLayersHistoryRef.current.slice(-19), layers];
+    setCanUndo(true);
+  }
+  function undoTextLayers() {
+    const hist = textLayersHistoryRef.current;
+    if (hist.length === 0) return;
+    const prev = hist[hist.length - 1];
+    textLayersHistoryRef.current = hist.slice(0, -1);
+    setTextLayers(prev);
+    setCanUndo(textLayersHistoryRef.current.length > 0);
+  }
+  // Ctrl+Z global listener
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && showTextPanel) {
+        e.preventDefault();
+        undoTextLayers();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showTextPanel]);  // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Viral Batch Save ──
   async function saveAllViralIdeas() {
     if (viralIdeas.length === 0) return;
@@ -1168,12 +1214,13 @@ export default function InstagramStudioPage() {
   }
 
   async function publishNow() {
-    // Auto-bake canvas (text + logo overlays) before publishing
-    const activeImage = watermarkedImage || generatedImage || uploadedImages[0];
-    if (textLayers.length > 0 && activeImage && canvasRef.current) {
-      await new Promise<void>(resolve => drawCanvas(activeImage, () => resolve()));
+    // Auto-bake canvas (text + logo overlays) before publishing — always use CLEAN base image
+    const cleanBase = generatedImage || uploadedImages[0];
+    const hasOverlays = textLayers.length > 0 || (logoLoaded && showWatermarkPanel);
+    if (hasOverlays && cleanBase && canvasRef.current) {
+      await new Promise<void>(resolve => drawCanvas(cleanBase, () => resolve()));
     }
-    let imgUrl = canvasRef.current && textLayers.length > 0
+    let imgUrl = canvasRef.current && hasOverlays
       ? (canvasRef.current.toDataURL("image/jpeg", 0.92))
       : (watermarkedImage || generatedImage || uploadedImages[0]);
     if (!caption) { setError("Caption obrigatória para publicar"); return; }
@@ -1352,17 +1399,19 @@ export default function InstagramStudioPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const activeImage = watermarkedImage || generatedImage || uploadedImages[0] || null;
+  // canvasBaseImage: always the CLEAN image (no watermark baked in) — used for canvas drawing
+  const canvasBaseImage = generatedImage || uploadedImages[0] || null;
+  // activeImage: what to display in <img> when canvas is hidden
+  const activeImage = watermarkedImage || canvasBaseImage || null;
 
   // Redraw canvas when image/logo/text settings change, or when returning to image tab
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (tab === "image" && activeImage && (showWatermarkPanel || showTextPanel)) {
-      // Delay to ensure canvas is mounted after tab switch
-      const t = setTimeout(() => drawCanvas(activeImage), 50);
+    if (tab === "image" && canvasBaseImage && (showWatermarkPanel || showTextPanel)) {
+      const t = setTimeout(() => drawCanvas(canvasBaseImage), 50);
       return () => clearTimeout(t);
     }
-  }, [activeImage, showWatermarkPanel, showTextPanel, logoLoaded, logoPos, wmOpacity, wmScale, textLayers, tab]);
+  }, [canvasBaseImage, showWatermarkPanel, showTextPanel, logoLoaded, logoPos, wmOpacity, wmScale, textLayers, tab]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -1738,12 +1787,12 @@ export default function InstagramStudioPage() {
                           {imageLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
                           {customImagePrompt.trim() ? "Gerar com Prompt" : "Nova Imagem"}
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => { setShowTextPanel(v => !v); if (!showWatermarkPanel && !showTextPanel) drawCanvas(activeImage); }}
+                        <Button size="sm" variant="outline" onClick={() => { setShowTextPanel(v => !v); if (!showWatermarkPanel && !showTextPanel) drawCanvas(canvasBaseImage); }}
                           className="flex-1 border-violet-500/30 text-violet-400 hover:bg-violet-500/10">
                           <Type className="h-3.5 w-3.5 mr-1" />
                           {showTextPanel ? "Fechar Texto" : "Texto"}
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => { setShowWatermarkPanel(v => !v); if (!showWatermarkPanel) drawCanvas(activeImage); }}
+                        <Button size="sm" variant="outline" onClick={() => { setShowWatermarkPanel(v => !v); if (!showWatermarkPanel) drawCanvas(canvasBaseImage); }}
                           className="flex-1 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
                           <Droplets className="h-3.5 w-3.5 mr-1" />
                           Logo
@@ -1833,8 +1882,15 @@ export default function InstagramStudioPage() {
                           {aiTextLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                           IA Sugere
                         </Button>
+                        {canUndo && (
+                          <Button size="sm" variant="ghost" className="h-6 text-[11px] gap-1 text-amber-400"
+                            onClick={undoTextLayers} title="Desfazer (Ctrl+Z)">
+                            <RotateCcw className="h-3 w-3" /> Desfazer
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" className="h-6 text-[11px] gap-1 text-violet-400"
                           onClick={() => {
+                            pushUndoHistory(textLayers);
                             const id = `txt-${Date.now()}`;
                             setTextLayers(prev => [...prev, {
                               id, text: "BPR", font: "Montserrat", size: 8,
@@ -1842,7 +1898,7 @@ export default function InstagramStudioPage() {
                               x: 0.5, y: 0.5, shadow: true, shadowColor: "#000000",
                             }]);
                             setActiveTextId(id);
-                            if (!showWatermarkPanel) drawCanvas(activeImage);
+                            if (!showWatermarkPanel) drawCanvas(canvasBaseImage);
                           }}>
                           <Plus className="h-3 w-3" /> Adicionar
                         </Button>
@@ -1980,6 +2036,7 @@ export default function InstagramStudioPage() {
                           ].map((tpl, ti) => (
                             <button key={ti}
                               onClick={() => {
+                                pushUndoHistory(textLayers);
                                 setTextLayers([]);
                                 setTimeout(() => {
                                   const t = topic || service || "";
@@ -2016,7 +2073,7 @@ export default function InstagramStudioPage() {
                             placeholder="Escreve aqui..."
                             className="flex-1 bg-background border border-border rounded-lg px-2 py-1 text-sm text-foreground outline-none focus:border-violet-500/50"
                           />
-                          <button onClick={e => { e.stopPropagation(); setTextLayers(prev => prev.filter(l => l.id !== layer.id)); }}
+                          <button onClick={e => { e.stopPropagation(); pushUndoHistory(textLayers); setTextLayers(prev => prev.filter(l => l.id !== layer.id)); }}
                             className="text-muted-foreground hover:text-red-400 shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                         {activeTextId === layer.id && (
@@ -2149,8 +2206,8 @@ export default function InstagramStudioPage() {
                     {textLayers.length > 0 && (
                       <Button
                         onClick={() => {
-                          if (activeImage) {
-                            drawCanvas(activeImage, () => {
+                          if (canvasBaseImage) {
+                            drawCanvas(canvasBaseImage, () => {
                               const dataUrl = getCanvasDataUrl();
                               if (dataUrl) {
                                 setWatermarkedImage(dataUrl);
@@ -2160,7 +2217,7 @@ export default function InstagramStudioPage() {
                             });
                           }
                         }}
-                        disabled={!activeImage}
+                        disabled={!canvasBaseImage}
                         className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold">
                         <CheckCircle className="h-4 w-4 mr-2" /> Confirmar Texto na Imagem
                       </Button>
@@ -3419,6 +3476,17 @@ export default function InstagramStudioPage() {
                           <p className="text-xs font-medium text-foreground truncate">{meta.topic || meta.service}</p>
                         )}
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{draft.caption}</p>
+                        <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                          {draft.mediaUrls?.length > 0 && (
+                            <span className="text-[10px] bg-muted/60 text-muted-foreground rounded px-1.5 py-0.5">🖼 Imagem</span>
+                          )}
+                          {meta.textLayers?.length > 0 && (
+                            <span className="text-[10px] bg-violet-500/10 text-violet-400 rounded px-1.5 py-0.5">T {meta.textLayers.length} texto(s)</span>
+                          )}
+                          {draft.musicTitle && (
+                            <span className="text-[10px] bg-violet-500/10 text-violet-400 rounded px-1.5 py-0.5">🎵 {draft.musicTitle}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2 mt-3">
