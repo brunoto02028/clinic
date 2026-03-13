@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { postId, caption, imageUrl, hashtags, publishToFacebook = true, publishToStories = false } = body
+    const { postId, caption, imageUrl, storyImageUrl, hashtags, publishToFacebook = true, publishToStories = false } = body
 
     if (!caption || !imageUrl) {
       return NextResponse.json(
@@ -157,13 +157,15 @@ export async function POST(req: NextRequest) {
     let storyError: string | null = null
     if (publishToStories) {
       try {
+        // Use the 9:16 version if available (avoids cropping), fall back to feed image
+        const storyUrl = storyImageUrl || imageUrl
         const storyContainerRes = await fetch(
           `${META_BASE}/${IG_USER_ID}/media`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              image_url: imageUrl,
+              image_url: storyUrl,
               media_type: 'STORIES',
               access_token: IG_ACCESS_TOKEN,
             }),

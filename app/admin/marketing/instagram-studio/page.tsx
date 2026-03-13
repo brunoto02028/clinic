@@ -1219,6 +1219,60 @@ export default function InstagramStudioPage() {
     finally { setIntelLoading(false); }
   }
 
+  // Convert any image URL/dataURL to a 9:16 canvas data URL (for Stories)
+  async function createStoryImage(srcUrl: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const W = 1080, H = 1920; // Instagram Stories 9:16
+        const canvas = document.createElement("canvas");
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext("2d")!;
+        // Dark gradient background
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, "#0f172a");
+        grad.addColorStop(1, "#1e1b4b");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+        // Draw image centred, scaled to fill width, with padding
+        const padding = 60;
+        const drawW = W - padding * 2;
+        const drawH = drawW; // keep square aspect
+        const drawX = padding;
+        const drawY = (H - drawH) / 2;
+        // Subtle rounded rect clip
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(drawX, drawY, drawW, drawH, 24);
+        ctx.clip();
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        ctx.restore();
+        resolve(canvas.toDataURL("image/jpeg", 0.92));
+      };
+      img.onerror = () => reject(new Error("Failed to load image for Story conversion"));
+      img.src = srcUrl;
+    });
+  }
+
+  // Upload a data URL to server and return a public https URL
+  async function uploadDataUrl(dataUrl: string, filename: string): Promise<string> {
+    const arr = dataUrl.split(",");
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    const blob = new Blob([u8arr], { type: mime });
+    const form = new FormData();
+    form.append("file", blob, filename);
+    const uploadRes = await fetch("/api/upload", { method: "POST", body: form });
+    const uploadData = await uploadRes.json();
+    const uploaded = uploadData.url || uploadData.imageUrl || uploadData.image?.imageUrl;
+    if (!uploaded) throw new Error("Falha ao fazer upload da imagem");
+    return uploaded.startsWith("http") ? uploaded : `https://bpr.rehab${uploaded}`;
+  }
+
   async function publishNow() {
     // Auto-bake canvas (text + logo overlays) before publishing — always use CLEAN base image
     const cleanBase = generatedImage || uploadedImages[0];
@@ -1236,27 +1290,25 @@ export default function InstagramStudioPage() {
     try {
       // If image is a data: URL (canvas output) or blob:, upload it to server first
       if (imgUrl.startsWith("data:") || imgUrl.startsWith("blob:")) {
-        let blob: Blob;
-        if (imgUrl.startsWith("data:")) {
-          const arr = imgUrl.split(",");
-          const mime = arr[0].match(/:(.*?);/)![1];
-          const bstr = atob(arr[1]);
-          let n = bstr.length;
-          const u8arr = new Uint8Array(n);
-          while (n--) u8arr[n] = bstr.charCodeAt(n);
-          blob = new Blob([u8arr], { type: mime });
-        } else {
-          blob = await fetch(imgUrl).then(r => r.blob());
+        if (imgUrl.startsWith("blob:")) {
+          const blobData = await fetch(imgUrl).then(r => r.blob());
+          const reader = new FileReader();
+          imgUrl = await new Promise<string>(res => { reader.onload = () => res(reader.result as string); reader.readAsDataURL(blobData); });
         }
-        const form = new FormData();
-        form.append("file", blob, `ig-post-${Date.now()}.jpg`);
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: form });
-        const uploadData = await uploadRes.json();
-        const uploaded = uploadData.url || uploadData.imageUrl || uploadData.image?.imageUrl;
-        if (!uploaded) throw new Error("Falha ao fazer upload da imagem");
-        imgUrl = uploaded.startsWith("http") ? uploaded : `https://bpr.rehab${uploaded}`;
+        imgUrl = await uploadDataUrl(imgUrl, `ig-post-${Date.now()}.jpg`);
       } else if (imgUrl.startsWith("/")) {
         imgUrl = `https://bpr.rehab${imgUrl}`;
+      }
+
+      // For Stories: generate a 9:16 version of the image (avoids cropping)
+      let storyImageUrl: string | undefined;
+      if (publishToStories) {
+        try {
+          const storyDataUrl = await createStoryImage(imgUrl);
+          storyImageUrl = await uploadDataUrl(storyDataUrl, `ig-story-${Date.now()}.jpg`);
+        } catch (e) {
+          console.warn("[STORY] Could not create 9:16 image, falling back to original:", e);
+        }
       }
 
       const res = await fetch("/api/admin/marketing/publish-instagram", {
@@ -1265,6 +1317,7 @@ export default function InstagramStudioPage() {
         body: JSON.stringify({
           caption,
           imageUrl: imgUrl,
+          storyImageUrl,
           hashtags: hashtags.split(",").map(h => `#${h.trim().replace(/^#/, "")}`).filter(Boolean),
           publishToStories,
         }),
