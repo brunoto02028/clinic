@@ -51,13 +51,29 @@ export async function POST(req: NextRequest) {
       caption_pt?: string
     }
 
+    // Helper: strip HTML tags and normalise whitespace
+    function stripHtml(str: string): string {
+      return str
+        .replace(/<[^>]+>/g, ' ')   // remove HTML tags
+        .replace(/&[a-z]+;/gi, ' ') // remove HTML entities
+        .replace(/\s+/g, ' ')
+        .trim()
+    }
+
     try {
-      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/)
+      // Handle ```json ... ``` code blocks that Claude sometimes wraps output in
+      const cleaned = rawResponse.replace(/```json\s*/gi, '').replace(/```\s*/g, '')
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('No JSON in response')
       postData = JSON.parse(jsonMatch[0])
+      // Strip any accidental HTML from caption fields
+      if (postData.caption) postData.caption = stripHtml(postData.caption)
+      if (postData.caption_pt) postData.caption_pt = stripHtml(postData.caption_pt)
     } catch {
+      // Fallback: use raw response but strip all HTML
+      const plainText = stripHtml(rawResponse)
       postData = {
-        caption: rawResponse,
+        caption: plainText.slice(0, 500),
         hashtags: ['#physiotherapy', '#rehabilitation', '#BPR', '#Richmond', '#sportsinjury'],
         visual_suggestion: 'Professional clinic photo',
         image_prompt: `Professional physiotherapy clinic ${topicToUse}, modern medical setting, teal and navy colors`,

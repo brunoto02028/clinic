@@ -67,6 +67,7 @@ REQUIREMENTS:
 - ${includeHashtags ? 'Include 15-20 relevant hashtags at the end (mix broad and niche)' : 'No hashtags'}
 - Never use generic phrases like "Are you suffering?" or "Don't let pain hold you back"
 - Feel like it was written by Bruno himself, not a marketing agency
+- CRITICAL: caption must be PLAIN TEXT only — absolutely NO HTML tags (<p>, <strong>, <br>, etc.), NO markdown (**, ##), NO code blocks. Just plain human-readable text with line breaks using \\n.
 
 Also provide:
 VISUAL SUGGESTION: One sentence describing the ideal image or video for this post
