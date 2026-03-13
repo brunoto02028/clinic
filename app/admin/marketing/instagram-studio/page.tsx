@@ -97,6 +97,9 @@ export default function InstagramStudioPage() {
   // ── Custom Image Prompt ──
   const [customImagePrompt, setCustomImagePrompt] = useState("");
   const [showCustomPrompt, setShowCustomPrompt] = useState(false);
+  // Smart prompt controls
+  const [imageTextMode, setImageTextMode] = useState<"notext" | "withtext">("notext"); // notext = clean photo, withtext = IA writes on image
+  const [imageStyle, setImageStyle] = useState<string>("photo"); // photo | infographic | motivational | minimal | bold
   const imgPromptVoice = useVoiceInput({
     language: "pt-BR",
     continuous: false,
@@ -793,20 +796,25 @@ export default function InstagramStudioPage() {
     setImageLoading(true);
     setError(null);
     try {
-      // Use custom prompt if provided, else build safe visual prompt from topic
-      const safePrompt = customImagePrompt.trim()
-        ? [
-            customImagePrompt.trim().slice(0, 400),
-            "ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS in any language",
-            "photorealistic, square 1:1 format, professional photography",
-            "teal and navy colour palette, BPR physiotherapy clinic aesthetic",
-          ].join(". ")
-        : [
-            "Professional physiotherapy clinic scene related to:",
-            (service || topic || "").slice(0, 120),
-            "pure photographic scene, no text, no words, no letters in any language",
-            "modern clinical setting, teal and navy colours, high quality photography",
-          ].join(" ");
+      const subject = (customImagePrompt.trim() || service || topic || "").slice(0, 300);
+      const noTextSuffix = "ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO TYPOGRAPHY of any kind";
+      const styleMap: Record<string, string> = {
+        photo: "photorealistic professional photography, clinical setting, teal and navy colour palette, high quality DSLR",
+        infographic: "clean flat design infographic style, icons and shapes, teal and navy colours, modern medical illustration, NO PHOTOS",
+        motivational: "bold inspirational poster design, strong typography layout space, dramatic lighting, dark background with teal accents",
+        minimal: "minimalist white clean background, single hero object, subtle shadows, premium product photography style",
+        bold: "bold graphic design, high contrast, vibrant teal and deep navy, modern and energetic, professional sports medicine aesthetic",
+      };
+      const styleDesc = styleMap[imageStyle] || styleMap.photo;
+      const withTextDesc = imageTextMode === "withtext"
+        ? `Include bold legible text overlay directly on the image with the phrase: "${subject.slice(0, 60)}" — large visible typography integrated into the design`
+        : noTextSuffix;
+      const safePrompt = [
+        subject || "Bruno Physical Rehabilitation physiotherapy clinic",
+        styleDesc,
+        withTextDesc,
+        "square 1:1 format, Instagram post, BPR Bruno Physical Rehabilitation branding",
+      ].join(". ");
       const res = await fetch("/api/admin/marketing/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1820,39 +1828,77 @@ export default function InstagramStudioPage() {
                         )}
                         <div className="absolute bottom-2 right-2 pointer-events-none bg-black/50 rounded text-[9px] text-white px-1.5 py-0.5 backdrop-blur-sm">1:1 · Instagram</div>
                       </div>
-                      {/* Custom prompt row */}
-                      <div className="space-y-2">
-                        <button onClick={() => setShowCustomPrompt(v => !v)}
-                          className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
-                          <Sparkles className="h-3 w-3" />
-                          {showCustomPrompt ? "Ocultar prompt personalizado" : "Escrever prompt para nova imagem"}
-                        </button>
-                        {showCustomPrompt && (
-                          <div className="flex gap-2">
-                            <input
-                              value={customImagePrompt}
-                              onChange={e => setCustomImagePrompt(e.target.value)}
-                              onKeyDown={e => e.key === "Enter" && generateImageOnly()}
-                              placeholder="Descreve a imagem que queres gerar... (em inglês de preferência)"
-                              className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary placeholder:text-muted-foreground/50"
-                            />
+                      {/* ── Smart Prompt Panel ── */}
+                      <div className="space-y-2 border border-border/50 rounded-xl p-3 bg-muted/10">
+                        {/* Row 1: Text mode toggle */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold shrink-0">Texto na imagem:</span>
+                          <div className="flex rounded-lg border border-border overflow-hidden text-[11px] font-medium">
                             <button
-                              type="button"
-                              onClick={imgPromptVoice.status === "listening" ? imgPromptVoice.stop : imgPromptVoice.start}
-                              className={`px-2.5 rounded-lg border transition-all shrink-0 ${
-                                imgPromptVoice.status === "listening"
-                                  ? "bg-red-500 border-red-500 text-white animate-pulse"
-                                  : "bg-card border-border text-muted-foreground hover:text-foreground"
-                              }`}>
-                              {imgPromptVoice.status === "listening" ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                              onClick={() => setImageTextMode("notext")}
+                              className={`px-3 py-1 transition-all ${imageTextMode === "notext" ? "bg-cyan-500/20 text-cyan-400" : "text-muted-foreground hover:text-foreground"}`}>
+                              📷 Sem texto
+                            </button>
+                            <button
+                              onClick={() => setImageTextMode("withtext")}
+                              className={`px-3 py-1 transition-all border-l border-border ${imageTextMode === "withtext" ? "bg-violet-500/20 text-violet-400" : "text-muted-foreground hover:text-foreground"}`}>
+                              ✍️ IA escreve
                             </button>
                           </div>
-                        )}
+                          {imageTextMode === "withtext" && (
+                            <span className="text-[10px] text-violet-400/70 italic">Texto baseado no tema</span>
+                          )}
+                        </div>
+
+                        {/* Row 2: Style presets */}
+                        <div className="flex gap-1.5 flex-wrap">
+                          {[
+                            { id: "photo", label: "📸 Foto", desc: "Fotografia clínica realista" },
+                            { id: "infographic", label: "📊 Infográfico", desc: "Design plano c/ ícones" },
+                            { id: "motivational", label: "💪 Motivacional", desc: "Poster inspiracional" },
+                            { id: "minimal", label: "⬜ Minimal", desc: "Fundo limpo, premium" },
+                            { id: "bold", label: "🔥 Bold", desc: "Gráfico forte e vibrante" },
+                          ].map(s => (
+                            <button key={s.id} onClick={() => setImageStyle(s.id)}
+                              title={s.desc}
+                              className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all ${
+                                imageStyle === s.id
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                              }`}>
+                              {s.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Row 3: Free prompt */}
+                        <div className="flex gap-2">
+                          <input
+                            value={customImagePrompt}
+                            onChange={e => setCustomImagePrompt(e.target.value)}
+                            onKeyDown={e => e.key === "Enter" && generateImageOnly()}
+                            placeholder={imageTextMode === "withtext"
+                              ? "Frase/tema a escrever na imagem... (deixa vazio para usar o tema actual)"
+                              : "Prompt livre opcional — ex: 'hands on shoulder massage, clinical room'"}
+                            className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary placeholder:text-muted-foreground/40"
+                          />
+                          <button
+                            type="button"
+                            onClick={imgPromptVoice.status === "listening" ? imgPromptVoice.stop : imgPromptVoice.start}
+                            title="Falar prompt"
+                            className={`px-2.5 rounded-lg border transition-all shrink-0 ${
+                              imgPromptVoice.status === "listening"
+                                ? "bg-red-500 border-red-500 text-white animate-pulse"
+                                : "bg-card border-border text-muted-foreground hover:text-foreground"
+                            }`}>
+                            {imgPromptVoice.status === "listening" ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={generateImageOnly} disabled={imageLoading} className="flex-1">
-                          {imageLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
-                          {customImagePrompt.trim() ? "Gerar com Prompt" : "Nova Imagem"}
+                        <Button size="sm" variant="outline" onClick={generateImageOnly} disabled={imageLoading} className="flex-1 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30 text-cyan-400 hover:from-cyan-500/20 hover:to-blue-500/20">
+                          {imageLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+                          {imageLoading ? "A gerar..." : `Gerar · ${imageStyle === "photo" ? "📸" : imageStyle === "infographic" ? "📊" : imageStyle === "motivational" ? "💪" : imageStyle === "minimal" ? "⬜" : "🔥"} ${imageTextMode === "withtext" ? "· ✍️" : ""}`}
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => { setShowTextPanel(v => !v); if (!showWatermarkPanel && !showTextPanel) drawCanvas(canvasBaseImage); }}
                           className="flex-1 border-violet-500/30 text-violet-400 hover:bg-violet-500/10">
