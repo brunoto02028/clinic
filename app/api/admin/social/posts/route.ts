@@ -74,6 +74,8 @@ export async function POST(req: NextRequest) {
       status = 'DRAFT',
       aiGenerated = false,
       aiPrompt,
+      musicUrl,
+      musicTitle,
     } = body;
 
     if (!caption) {
@@ -95,6 +97,8 @@ export async function POST(req: NextRequest) {
         status: scheduledAt ? 'SCHEDULED' : status,
         aiGenerated,
         aiPrompt: aiPrompt || null,
+        musicUrl: musicUrl || null,
+        musicTitle: musicTitle || null,
       },
       include: {
         account: { select: { id: true, accountName: true, platform: true } },

@@ -189,6 +189,10 @@ export default function InstagramStudioPage() {
   const [musicLibrary, setMusicLibrary] = useState<any[]>([]);
   const [showMusicLibrary, setShowMusicLibrary] = useState(false);
   const [musicSaving, setMusicSaving] = useState(false);
+  const [musicLibLoading, setMusicLibLoading] = useState(false);
+  const [selectedMusic, setSelectedMusic] = useState<{ id: string; title: string; audioUrl: string } | null>(null);
+  const [musicUploadLoading, setMusicUploadLoading] = useState(false);
+  const musicFileRef = useRef<HTMLInputElement>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
@@ -492,44 +496,80 @@ export default function InstagramStudioPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // ── Music Library (localStorage-based with DB backup) ──
-  const MUSIC_LIB_KEY = "bpr_music_library";
-
-  function loadMusicLibrary() {
+  // ── Music Library (DB-backed) ──
+  async function loadMusicLibrary() {
+    setMusicLibLoading(true);
     try {
-      const raw = localStorage.getItem(MUSIC_LIB_KEY);
-      if (raw) setMusicLibrary(JSON.parse(raw));
+      const res = await fetch('/api/admin/marketing/music-library');
+      const data = await res.json();
+      if (data.tracks) setMusicLibrary(data.tracks);
     } catch {}
+    finally { setMusicLibLoading(false); }
   }
 
   async function saveToMusicLibrary(track: any) {
     if (!track?.audioUrl) return;
     setMusicSaving(true);
     try {
-      const entry = {
-        id: track.id || `music-${Date.now()}`,
-        title: track.title || `${topic || service || "BPR"} · ${musicStyle}`,
-        audioUrl: track.audioUrl,
-        streamUrl: track.streamUrl || null,
-        duration: musicDuration,
-        type: musicType,
-        style: musicStyle,
-        topic: topic || service || "",
-        savedAt: new Date().toISOString(),
-      };
-      const updated = [entry, ...musicLibrary.filter(t => t.id !== entry.id)].slice(0, 50);
-      setMusicLibrary(updated);
-      localStorage.setItem(MUSIC_LIB_KEY, JSON.stringify(updated));
-      setSuccess("Música guardada na biblioteca!");
-      setTimeout(() => setSuccess(null), 3000);
+      const res = await fetch('/api/admin/marketing/music-library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: track.title || `${topic || service || 'BPR'} · ${musicStyle}`,
+          audioUrl: track.audioUrl || track.streamUrl,
+          duration: track.duration || musicDuration,
+          type: musicType,
+          style: musicStyle,
+          topic: topic || service || '',
+          lyrics: musicResult?.lyrics || null,
+          source: 'suno',
+        }),
+      });
+      const data = await res.json();
+      if (data.track) {
+        setMusicLibrary(prev => [data.track, ...prev]);
+        setSuccess('Música guardada na biblioteca!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
     } catch (e: any) { setError(e.message); }
     finally { setMusicSaving(false); }
   }
 
-  function deleteFromLibrary(id: string) {
-    const updated = musicLibrary.filter(t => t.id !== id);
-    setMusicLibrary(updated);
-    localStorage.setItem(MUSIC_LIB_KEY, JSON.stringify(updated));
+  async function deleteFromLibrary(id: string) {
+    await fetch(`/api/admin/marketing/music-library?id=${id}`, { method: 'DELETE' });
+    setMusicLibrary(prev => prev.filter(t => t.id !== id));
+    if (selectedMusic?.id === id) setSelectedMusic(null);
+  }
+
+  async function uploadMusicFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMusicUploadLoading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const uploadRes = await fetch('/api/admin/marketing/music-library/upload', { method: 'POST', body: form });
+      const uploadData = await uploadRes.json();
+      if (!uploadData.url) throw new Error(uploadData.error || 'Upload falhou');
+      // Save to library
+      const res = await fetch('/api/admin/marketing/music-library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: file.name.replace(/\.[^.]+$/, ''),
+          audioUrl: uploadData.url,
+          source: 'upload',
+          type: 'upload',
+        }),
+      });
+      const data = await res.json();
+      if (data.track) {
+        setMusicLibrary(prev => [data.track, ...prev]);
+        setSuccess('Música carregada e guardada!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (e: any) { setError(e.message); }
+    finally { setMusicUploadLoading(false); e.target.value = ''; }
   }
 
   function togglePlay(id: string, url: string) {
@@ -585,7 +625,7 @@ export default function InstagramStudioPage() {
   }
 
   // Load libraries on mount
-  useEffect(() => { loadMusicLibrary(); loadImageLibrary(); }, []);
+  useEffect(() => { loadMusicLibrary(); loadImageLibrary(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reload logo when URL changes
   useEffect(() => {
@@ -1262,6 +1302,8 @@ export default function InstagramStudioPage() {
           status: scheduledAt ? "SCHEDULED" : "DRAFT",
           aiGenerated: true,
           aiPrompt: meta,
+          musicUrl: selectedMusic?.audioUrl || null,
+          musicTitle: selectedMusic?.title || null,
         }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
@@ -2755,34 +2797,65 @@ export default function InstagramStudioPage() {
               {/* ── Music Library ── */}
               <Card className="border-border">
                 <CardContent className="p-4 space-y-3">
-                  <button
-                    onClick={() => setShowMusicLibrary(v => !v)}
-                    className="w-full flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      🎼 Biblioteca de Músicas
-                      {musicLibrary.length > 0 && (
-                        <Badge className="bg-violet-500/15 text-violet-400 border-violet-500/30 text-[10px]">{musicLibrary.length}</Badge>
-                      )}
-                    </span>
-                    {showMusicLibrary ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                  </button>
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => { setShowMusicLibrary(v => !v); if (!showMusicLibrary && musicLibrary.length === 0) loadMusicLibrary(); }}
+                      className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        🎼 Biblioteca de Músicas
+                        {musicLibrary.length > 0 && (
+                          <Badge className="bg-violet-500/15 text-violet-400 border-violet-500/30 text-[10px]">{musicLibrary.length}</Badge>
+                        )}
+                      </span>
+                      {showMusicLibrary ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                    <Button size="sm" variant="outline" onClick={() => musicFileRef.current?.click()}
+                      disabled={musicUploadLoading}
+                      className="shrink-0 text-xs border-violet-500/30 text-violet-400 hover:bg-violet-500/10 gap-1 h-7">
+                      {musicUploadLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                      Upload
+                    </Button>
+                    <input ref={musicFileRef} type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" className="hidden" onChange={uploadMusicFile} />
+                  </div>
+
+                  {/* Selected music indicator */}
+                  {selectedMusic && (
+                    <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
+                      <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <span className="text-xs text-emerald-400 flex-1 truncate">📎 {selectedMusic.title} — vai com o post</span>
+                      <button onClick={() => setSelectedMusic(null)} className="text-muted-foreground hover:text-red-400 shrink-0">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
 
                   {showMusicLibrary && (
                     <div className="space-y-2">
-                      {musicLibrary.length === 0 && (
+                      {musicLibLoading && (
+                        <div className="flex items-center justify-center py-4 gap-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-xs">A carregar biblioteca...</span>
+                        </div>
+                      )}
+                      {!musicLibLoading && musicLibrary.length === 0 && (
                         <p className="text-xs text-muted-foreground text-center py-4">
-                          Nenhuma música guardada ainda. Gera e guarda músicas aqui para criar a tua biblioteca.
+                          Nenhuma música ainda. Gera com Suno AI ou faz upload de um ficheiro MP3.
                         </p>
                       )}
                       {musicLibrary.map(track => (
                         <div key={track.id}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-violet-500/30 transition-all">
+                          className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                            selectedMusic?.id === track.id
+                              ? 'border-emerald-500/60 bg-emerald-500/5'
+                              : 'border-border hover:border-violet-500/30'
+                          }`}
+                          onClick={() => setSelectedMusic(selectedMusic?.id === track.id ? null : { id: track.id, title: track.title, audioUrl: track.audioUrl })}>
                           <button
-                            onClick={() => togglePlay(track.id, track.audioUrl || track.streamUrl)}
+                            onClick={e => { e.stopPropagation(); togglePlay(track.id, track.audioUrl); }}
                             className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 transition-all ${
                               playingId === track.id
-                                ? "bg-violet-500 text-white"
-                                : "bg-violet-500/10 text-violet-400 hover:bg-violet-500/20"
+                                ? 'bg-violet-500 text-white'
+                                : 'bg-violet-500/10 text-violet-400 hover:bg-violet-500/20'
                             }`}>
                             {playingId === track.id
                               ? <span className="text-xs font-bold">■</span>
@@ -2790,15 +2863,23 @@ export default function InstagramStudioPage() {
                           </button>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-medium text-foreground truncate">{track.title}</p>
-                            <p className="text-[10px] text-muted-foreground">{track.style} · {track.duration}s · {track.type}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {track.source === 'upload' ? '📁 Upload' : '🤖 Suno'}
+                              {track.style ? ` · ${track.style}` : ''}
+                              {track.duration ? ` · ${track.duration}s` : ''}
+                              {track.type && track.source !== 'upload' ? ` · ${track.type}` : ''}
+                            </p>
                           </div>
-                          <div className="flex gap-1.5 shrink-0">
-                            <a href={track.audioUrl || track.streamUrl}
-                              download={`${track.title || "bpr-music"}.mp3`}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {selectedMusic?.id === track.id && (
+                              <CheckCircle className="h-4 w-4 text-emerald-400" />
+                            )}
+                            <a href={track.audioUrl} download={`${track.title || 'bpr-music'}.mp3`}
+                              onClick={e => e.stopPropagation()}
                               className="p-1.5 text-muted-foreground hover:text-violet-400 transition-colors" title="Download">
                               <span className="text-xs">⬇️</span>
                             </a>
-                            <button onClick={() => deleteFromLibrary(track.id)}
+                            <button onClick={e => { e.stopPropagation(); deleteFromLibrary(track.id); }}
                               className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -3236,6 +3317,17 @@ export default function InstagramStudioPage() {
               )}
             </div>
           </div>
+
+          {/* Selected music indicator near publish */}
+          {selectedMusic && (
+            <div className="flex items-center gap-2 bg-violet-500/10 border border-violet-500/30 rounded-xl px-3 py-2">
+              <span className="text-sm">🎵</span>
+              <span className="text-xs text-violet-400 flex-1 truncate font-medium">{selectedMusic.title}</span>
+              <button onClick={() => setSelectedMusic(null)} className="text-muted-foreground hover:text-red-400 shrink-0">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-2 flex-wrap">

@@ -242,6 +242,7 @@ model Clinic {
   financialCategories   FinancialCategory[]
   apiKeys               ApiKey[]
   companyProfile        CompanyProfile?
+  musicTracks           MusicTrack[]
 
   // Analytics
   siteVisitors          SiteVisitor[]
@@ -509,6 +510,9 @@ model User {
 
   // AI Co-Worker
   coworkerTasks             CoWorkerTask[]           @relation("CoWorkerTaskCreator")
+
+  // Music Library
+  musicTracksCreated        MusicTrack[]             @relation("MusicTrackCreator")
 
   @@index([clinicId])
   @@index([email])
@@ -1575,6 +1579,10 @@ model SocialPost {
   platformPostId  String?          // ID returned by Instagram after publishing
   publishError    String?          @db.Text
 
+  // Music
+  musicUrl        String?          // URL of attached audio track
+  musicTitle      String?          // Track title for reference
+
   // AI generation metadata
   aiGenerated     Boolean          @default(false)
   aiPrompt        String?          @db.Text
@@ -1632,6 +1640,33 @@ model SocialTemplate {
   updatedAt       DateTime         @updatedAt
 
   @@index([clinicId])
+}
+
+// ============================================
+// MUSIC LIBRARY
+// ============================================
+
+model MusicTrack {
+  id          String   @id @default(cuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?    @relation("MusicTrackCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  title       String
+  audioUrl    String   @db.Text
+  duration    Int?     // seconds
+  type        String   @default("instrumental") // instrumental | vocal | spoken | upload
+  style       String?  // motivational upbeat, etc.
+  topic       String?
+  lyrics      String?  @db.Text
+  source      String   @default("suno")  // suno | upload
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([createdById])
 }
 
 // ============================================
