@@ -77,15 +77,30 @@ export default function AdminMarketplacePage() {
   const [importPreview, setImportPreview] = useState<any>(null);
   const [showImportPanel, setShowImportPanel] = useState(false);
 
+  // AI Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [importingAsins, setImportingAsins] = useState<Set<string>>(new Set());
+  const [importedAsins, setImportedAsins] = useState<Set<string>>(new Set());
+  const [showSearch, setShowSearch] = useState(false);
+  const [bulkSelecting, setBulkSelecting] = useState<Set<number>>(new Set());
+  const [bulkImporting, setBulkImporting] = useState(false);
+
   const PHYSIO_SUGGESTIONS = [
-    { label: "Foam Roller", q: "foam+roller+physio" },
-    { label: "Theraband", q: "theraband+resistance+bands" },
-    { label: "TENS Machine", q: "TENS+machine+pain+relief" },
-    { label: "Insoles", q: "orthotic+insoles+running" },
-    { label: "Massage Gun", q: "massage+gun+muscle" },
-    { label: "Balance Board", q: "balance+board+rehab" },
-    { label: "Ice/Heat Pack", q: "ice+heat+pack+physio" },
-    { label: "Kinesio Tape", q: "kinesio+tape+sports" },
+    { label: "💊 Vitamina D", q: "vitamin D3 supplement" },
+    { label: "🐟 Omega 3", q: "omega 3 fish oil joint" },
+    { label: "🦴 Glucosamina", q: "glucosamine chondroitin joint" },
+    { label: "🧴 Colagénio", q: "collagen supplement joints" },
+    { label: "🏋️ Proteína", q: "whey protein recovery muscle" },
+    { label: "🪄 Magnésio", q: "magnesium muscle cramps" },
+    { label: "🔴 Foam Roller", q: "foam roller physiotherapy" },
+    { label: "🩺 TENS", q: "TENS machine pain relief" },
+    { label: "🦿 Palmilhas", q: "orthotic insoles running" },
+    { label: "💪 Bandas", q: "resistance bands rehabilitation" },
+    { label: "🔫 Massagem", q: "massage gun muscle recovery" },
+    { label: "🧊 Gelo/Calor", q: "ice heat pack physiotherapy" },
   ];
 
   // Order detail
@@ -235,6 +250,94 @@ export default function AdminMarketplacePage() {
     setImportPreview(null);
     setShowForm(true);
     setEditingId(null);
+  };
+
+  // ── AI Product Search ──
+  const searchAmazonProducts = async (q?: string) => {
+    const query = (q || searchQuery).trim();
+    if (!query) return;
+    setSearching(true); setSearchError(""); setSearchResults([]); setBulkSelecting(new Set());
+    setShowSearch(true);
+    try {
+      const res = await fetch("/api/admin/marketplace/amazon-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Search failed");
+      setSearchResults(data.products || []);
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : "Search failed");
+    } finally { setSearching(false); }
+  };
+
+  const importSingleResult = (product: any) => {
+    setForm({
+      ...emptyProduct,
+      isAffiliate: true,
+      name: product.name || "",
+      description: product.description || "",
+      shortDescription: product.shortDescription || "",
+      category: product.category || "supplement",
+      price: String(product.price || ""),
+      imageUrl: product.imageUrl || "",
+      affiliateUrl: product.affiliateUrl || "",
+      amazonAsin: product.asin || "",
+      affiliateTag: product.affiliateTag || "bprrrehab-21",
+      affiliateCommission: String(product.commission || "4"),
+    });
+    setShowForm(true);
+    setEditingId(null);
+    setImportedAsins(prev => new Set([...prev, product.asin]));
+  };
+
+  const toggleBulkSelect = (idx: number) => {
+    setBulkSelecting(prev => {
+      const n = new Set(prev);
+      n.has(idx) ? n.delete(idx) : n.add(idx);
+      return n;
+    });
+  };
+
+  const importBulkSelected = async () => {
+    if (bulkSelecting.size === 0) return;
+    setBulkImporting(true);
+    const toImport = searchResults.filter((_, i) => bulkSelecting.has(i));
+    let saved = 0;
+    for (const product of toImport) {
+      try {
+        const body = {
+          name: product.name,
+          description: product.description,
+          shortDescription: product.shortDescription,
+          category: product.category || "supplement",
+          price: product.price,
+          imageUrl: product.imageUrl || "",
+          isAffiliate: true,
+          affiliateUrl: product.affiliateUrl,
+          amazonAsin: product.asin,
+          affiliateTag: product.affiliateTag || "bprrrehab-21",
+          affiliateCommission: product.commission || 4,
+          isActive: true,
+          vatRate: 20,
+          vatIncluded: true,
+        };
+        const res = await fetch("/api/admin/journey/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          saved++;
+          setImportedAsins(prev => new Set([...prev, product.asin]));
+        }
+      } catch {}
+    }
+    setBulkSelecting(new Set());
+    setBulkImporting(false);
+    fetchProducts();
+    alert(`✅ ${saved} produto(s) importados para o Marketplace!`);
   };
 
   // Margin calculator
@@ -401,7 +504,135 @@ export default function AdminMarketplacePage() {
             </Button>
           </div>
 
-          {/* AI Amazon Import */}
+          {/* ── AI Amazon Search ── */}
+          <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/5 to-violet-500/5">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-blue-500" />
+                <p className="text-sm font-semibold text-foreground">🔍 Pesquisar Produtos Amazon</p>
+                <span className="text-[10px] bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">IA gera lista + afiliação automática</span>
+              </div>
+
+              {/* Search bar */}
+              <div className="flex gap-2">
+                <Input
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && searchAmazonProducts()}
+                  placeholder="ex: vitaminas articulações, omega 3, foam roller, proteína..."
+                  className="flex-1 text-sm"
+                />
+                <Button onClick={() => searchAmazonProducts()} disabled={searching || !searchQuery.trim()} size="sm"
+                  className="gap-1 bg-blue-600 hover:bg-blue-500 text-white shrink-0">
+                  {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                  {searching ? "A pesquisar..." : "Pesquisar"}
+                </Button>
+              </div>
+
+              {/* Category chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {PHYSIO_SUGGESTIONS.map(s => (
+                  <button key={s.q} onClick={() => { setSearchQuery(s.q); searchAmazonProducts(s.q); }}
+                    className="text-[11px] px-2.5 py-1 rounded-full border border-blue-500/30 text-blue-500 dark:text-blue-400 hover:bg-blue-500/10 transition-all font-medium">
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              {searchError && <p className="text-xs text-red-400">{searchError}</p>}
+
+              {/* Loading skeleton */}
+              {searching && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-24 rounded-xl bg-muted/50 animate-pulse" />
+                  ))}
+                </div>
+              )}
+
+              {/* Results */}
+              {!searching && searchResults.length > 0 && (
+                <div className="space-y-3">
+                  {/* Bulk actions bar */}
+                  <div className="flex items-center justify-between gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox"
+                        checked={bulkSelecting.size === searchResults.length}
+                        onChange={() => setBulkSelecting(bulkSelecting.size === searchResults.length ? new Set() : new Set(searchResults.map((_, i) => i)))}
+                        className="rounded" />
+                      <span className="text-xs text-muted-foreground">
+                        {bulkSelecting.size > 0 ? `${bulkSelecting.size} seleccionado(s)` : `${searchResults.length} produtos encontrados`}
+                      </span>
+                    </div>
+                    {bulkSelecting.size > 0 && (
+                      <Button size="sm" onClick={importBulkSelected} disabled={bulkImporting}
+                        className="gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
+                        {bulkImporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        Importar {bulkSelecting.size} produto(s)
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Product cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {searchResults.map((p, i) => {
+                      const isSelected = bulkSelecting.has(i);
+                      const isImported = importedAsins.has(p.asin);
+                      return (
+                        <div key={i} onClick={() => toggleBulkSelect(i)}
+                          className={`relative flex gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                            isImported ? "border-emerald-500/40 bg-emerald-500/5 opacity-60"
+                            : isSelected ? "border-blue-500/60 bg-blue-500/10"
+                            : "border-border hover:border-blue-500/40"
+                          }`}>
+                          <input type="checkbox" checked={isSelected} readOnly
+                            className="absolute top-2 left-2 rounded pointer-events-none" />
+                          <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center shrink-0 ml-4">
+                            {p.imageUrl
+                              ? <img src={p.imageUrl} alt="" className="w-full h-full object-contain rounded-lg" />
+                              : <Package className="h-6 w-6 text-muted-foreground" />
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug">{p.name}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{p.brand}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="text-xs font-bold text-emerald-500">£{p.price}</span>
+                              {p.rating && <span className="text-[10px] text-amber-500">★ {p.rating}</span>}
+                              <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">{p.commission || 4}% comissão</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded capitalize ${
+                                p.category === "supplement" ? "bg-violet-500/15 text-violet-500"
+                                : p.category === "equipment" ? "bg-blue-500/15 text-blue-500"
+                                : "bg-muted text-muted-foreground"
+                              }`}>{p.category?.replace("_", " ")}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                            {isImported ? (
+                              <span className="text-[10px] text-emerald-500 font-semibold">✓ Importado</span>
+                            ) : (
+                              <>
+                                <Button size="sm" onClick={() => importSingleResult(p)}
+                                  className="text-[10px] h-6 px-2 bg-primary/80 hover:bg-primary text-white">
+                                  Editar+Guardar
+                                </Button>
+                                <a href={p.affiliateUrl} target="_blank" rel="noopener noreferrer"
+                                  className="text-[10px] text-center text-muted-foreground hover:text-blue-400 underline">
+                                  Ver Amazon ↗
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Amazon Import (by URL) */}
           <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-orange-500/5">
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
