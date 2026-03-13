@@ -8,7 +8,9 @@ import {
   FileText, Instagram, Globe, Target, DollarSign, Clock,
   Flame, Eye, ChevronDown, ChevronUp, RefreshCw, Hash,
   Lightbulb, BarChart3, Megaphone, Star, Tag, Package, Bookmark, Trash2, FolderOpen,
+  Mic, MicOff,
 } from "lucide-react";
+import { useVoiceInput } from "@/hooks/use-voice-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +41,29 @@ const PLATFORM_ICONS: Record<string, any> = {
   pdf: BookOpen,
   tiktok: Megaphone,
 };
+
+function VoiceMicButton({ onTranscript, className }: { onTranscript: (t: string) => void; className?: string }) {
+  const voice = useVoiceInput({
+    language: "pt-BR",
+    continuous: false,
+    onTranscript,
+  });
+  if (!voice.isSupported) return null;
+  return (
+    <button
+      type="button"
+      onClick={voice.status === "listening" ? voice.stop : voice.start}
+      title={voice.status === "listening" ? "Parar" : "Falar (PT)"}
+      className={`flex items-center justify-center px-2.5 h-10 rounded-md border transition-all shrink-0 ${
+        voice.status === "listening"
+          ? "bg-red-500 border-red-500 text-white animate-pulse"
+          : "bg-background border-input text-muted-foreground hover:text-foreground hover:border-foreground/40"
+      } ${className || ""}`}
+    >
+      {voice.status === "listening" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+    </button>
+  );
+}
 
 export default function ContentIntelligencePage() {
   const [tab, setTab] = useState<Tab>("trending");
@@ -104,6 +129,7 @@ export default function ContentIntelligencePage() {
   const [hookData, setHookData] = useState<any>(null);
 
   // Marketplace
+  const [marketFocus, setMarketFocus] = useState("");
   const [marketData, setMarketData] = useState<any>(null);
 
   // Improve
@@ -165,7 +191,7 @@ export default function ContentIntelligencePage() {
   };
 
   const generateMarketplace = async () => {
-    const data = await callAPI("marketplace-opportunities");
+    const data = await callAPI("marketplace-opportunities", { focus: marketFocus });
     if (data) setMarketData(data);
   };
 
@@ -194,7 +220,12 @@ export default function ContentIntelligencePage() {
             <Sparkles className="h-5 w-5 text-amber-500" />
             Content Intelligence Hub
           </h1>
-          <p className="text-sm text-muted-foreground">AI-powered viral content ideas, calendar, and marketplace opportunities</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-sm text-muted-foreground">AI-powered viral content ideas, calendar, and marketplace opportunities</p>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-500/15 text-violet-400 border border-violet-500/30">
+              <Sparkles className="h-2.5 w-2.5" /> Claude AI
+            </span>
+          </div>
         </div>
         <div className="flex gap-2">
           <Link href="/admin/marketplace/pdf-creator">
@@ -241,11 +272,15 @@ export default function ContentIntelligencePage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="sm:col-span-2 space-y-2">
                   <Label className="font-semibold">Focus Area (optional)</Label>
-                  <Input
-                    placeholder="e.g. back pain, knee surgery recovery, sports injuries, posture..."
-                    value={trendFocus}
-                    onChange={(e) => setTrendFocus(e.target.value)}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. back pain, knee surgery recovery, sports injuries, posture..."
+                      value={trendFocus}
+                      onChange={(e) => setTrendFocus(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && generateTrending()}
+                    />
+                    <VoiceMicButton onTranscript={(t) => setTrendFocus(prev => (prev + " " + t).trim())} />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="font-semibold">Number of Ideas</Label>
@@ -536,11 +571,15 @@ export default function ContentIntelligencePage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label className="font-semibold">Topic</Label>
-                  <Input
-                    placeholder="e.g. knee pain, posture correction..."
-                    value={hookTopic}
-                    onChange={(e) => setHookTopic(e.target.value)}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. knee pain, posture correction..."
+                      value={hookTopic}
+                      onChange={(e) => setHookTopic(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && generateHooks()}
+                    />
+                    <VoiceMicButton onTranscript={(t) => setHookTopic(prev => (prev + " " + t).trim())} />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="font-semibold">Platform</Label>
@@ -628,10 +667,22 @@ export default function ContentIntelligencePage() {
       {tab === "marketplace" && (
         <div className="space-y-4">
           <Card>
-            <CardContent className="p-5">
-              <p className="text-sm text-muted-foreground mb-3">
-                Claude will analyze the physiotherapy/health market and suggest PDF guides, Amazon affiliate products, and bundle opportunities.
-              </p>
+            <CardContent className="p-5 space-y-4">
+              <div className="space-y-2">
+                <Label className="font-semibold">Focus / Niche (optional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. running injuries, posture products, elderly rehab, laser therapy..."
+                    value={marketFocus}
+                    onChange={(e) => setMarketFocus(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && generateMarketplace()}
+                  />
+                  <VoiceMicButton onTranscript={(t) => setMarketFocus(prev => (prev + " " + t).trim())} />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Claude analisa o mercado e sugere guias PDF, produtos Amazon e bundle opportunities para BPR.
+                </p>
+              </div>
               <Button onClick={generateMarketplace} disabled={loading} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingBag className="h-4 w-4" />}
                 {loading ? "Analyzing market..." : "Analyze Marketplace Opportunities"}
@@ -760,9 +811,12 @@ export default function ContentIntelligencePage() {
           <Card>
             <CardContent className="p-5 space-y-4">
               <div className="space-y-2">
-                <Label className="font-semibold">Paste your existing content</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="font-semibold">Paste your existing content</Label>
+                  <VoiceMicButton onTranscript={(t) => setImproveContent(prev => (prev + " " + t).trim())} />
+                </div>
                 <Textarea
-                  placeholder="Paste your Instagram caption, article draft, or any content you want to improve..."
+                  placeholder="Paste your Instagram caption, article draft, or any content you want to improve... (or use voice to dictate)"
                   value={improveContent}
                   onChange={(e) => setImproveContent(e.target.value)}
                   rows={6}
@@ -781,11 +835,14 @@ export default function ContentIntelligencePage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="font-semibold">Goal (optional)</Label>
-                  <Input
-                    placeholder="e.g. more engagement, more clicks, more shares..."
-                    value={improveGoal}
-                    onChange={(e) => setImproveGoal(e.target.value)}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. more engagement, more clicks, more shares..."
+                      value={improveGoal}
+                      onChange={(e) => setImproveGoal(e.target.value)}
+                    />
+                    <VoiceMicButton onTranscript={(t) => setImproveGoal(prev => (prev + " " + t).trim())} />
+                  </div>
                 </div>
               </div>
               <Button onClick={generateImprove} disabled={loading || !improveContent.trim()} className="gap-2 bg-cyan-600 hover:bg-cyan-700 w-full sm:w-auto">

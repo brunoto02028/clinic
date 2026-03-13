@@ -18,7 +18,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
     }
 
-    const imageUrl = await generateMarketingImage({ prompt, service })
+    // Truncate prompt to avoid Gemini token/length failures
+    const safePrompt = typeof prompt === 'string' ? prompt.slice(0, 500) : String(prompt).slice(0, 500)
+    const imageUrl = await generateMarketingImage({ prompt: safePrompt, service })
 
     if (!imageUrl) {
       return NextResponse.json(

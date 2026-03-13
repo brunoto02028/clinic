@@ -69,7 +69,8 @@ export function buildClinicImagePrompt(params: {
     moodGuides[mood] || moodGuides.professional,
     'high quality photography, instagram-ready, 4K sharp details',
     'BPR rehabilitation clinic branding, teal and navy color palette',
-    'no text, no watermarks, no logos',
+    'ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO TYPOGRAPHY, NO CAPTIONS, NO LABELS, NO SIGNS WITH WRITING, no watermarks, no logos',
+    'square 1:1 aspect ratio, 1080x1080 pixels format',
   ].join(', ')
 }
 

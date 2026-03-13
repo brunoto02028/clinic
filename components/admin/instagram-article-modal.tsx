@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Instagram, X, Wand2, Send, Clock, Loader2, CheckCircle,
   AlertCircle, MessageSquare, Image as ImageIcon, Type,
-  Download, RefreshCw, Sparkles, ChevronDown, ChevronUp, Film,
+  Download, RefreshCw, Sparkles, ChevronDown, ChevronUp, Film, ExternalLink, Facebook,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -57,7 +57,8 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   const [igMode, setIgMode] = useState<"now" | "schedule">("now");
   const [igScheduledAt, setIgScheduledAt] = useState("");
   const [igPublishing, setIgPublishing] = useState(false);
-  const [igResult, setIgResult] = useState<{ success?: boolean; error?: string; permalink?: string } | null>(null);
+  const [igResult, setIgResult] = useState<{ success?: boolean; error?: string; permalink?: string; facebook_post_id?: string; facebook_error?: string } | null>(null);
+  const [publishFacebook, setPublishFacebook] = useState(true);
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -162,11 +163,13 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
       const imageToUse = composedImage || currentImage || "";
       const res = await fetch("/api/admin/articles/instagram", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: igMode === "now" ? "publish" : "schedule", articleId: article.id, caption, imageUrls: imageToUse ? [imageToUse] : [], scheduledAt: igMode === "schedule" ? igScheduledAt : undefined }),
+        body: JSON.stringify({ action: igMode === "now" ? "publish" : "schedule", articleId: article.id, caption, imageUrls: imageToUse ? [imageToUse] : [], scheduledAt: igMode === "schedule" ? igScheduledAt : undefined, publishToFacebook: publishFacebook }),
       });
       const data = await res.json();
-      if (data.success) { setIgResult({ success: true, permalink: data.permalink }); toast({ title: igMode === "now" ? "Published! 🎉" : "Scheduled! ✅" }); }
-      else setIgResult({ error: data.error || "Failed" });
+      if (data.success) {
+        setIgResult({ success: true, permalink: data.permalink, facebook_post_id: data.facebook_post_id, facebook_error: data.facebook_error });
+        toast({ title: data.facebook_post_id ? "Published to Instagram + Facebook! 🎉" : igMode === "now" ? "Published to Instagram! 🎉" : "Scheduled! ✅" });
+      } else setIgResult({ error: data.error || "Failed" });
     } catch { setIgResult({ error: "Failed to publish" }); }
     finally { setIgPublishing(false); }
   };
@@ -194,9 +197,13 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
           {igResult?.success && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
               <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
-              <div>
-                <p className="font-semibold text-green-800">{igMode === "now" ? "Published! 🎉" : "Scheduled! ✅"}</p>
-                {igResult.permalink && <a href={igResult.permalink} target="_blank" rel="noopener noreferrer" className="text-sm text-green-700 underline">View on Instagram →</a>}
+              <div className="space-y-1">
+                <p className="font-semibold text-green-800">
+                  {igResult.facebook_post_id ? 'Published to Instagram + Facebook! 🎉' : igMode === "now" ? "Published to Instagram! 🎉" : "Scheduled! ✅"}
+                </p>
+                {igResult.permalink && <a href={igResult.permalink} target="_blank" rel="noopener noreferrer" className="text-sm text-green-700 underline block">View on Instagram →</a>}
+                {igResult.facebook_post_id && <p className="text-xs text-blue-700">✓ Also posted to Facebook Page</p>}
+                {igResult.facebook_error && <p className="text-xs text-amber-600">⚠ Facebook: {igResult.facebook_error}</p>}
               </div>
             </div>
           )}
@@ -239,23 +246,23 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
               )}
 
               {imageTab === "photo" && (<>
-              <div className="border rounded-2xl overflow-hidden bg-white shadow-sm">
-                <div className="flex items-center gap-2 p-3 border-b">
+              <div className="border rounded-2xl overflow-hidden bg-neutral-900 shadow-sm">
+                <div className="flex items-center gap-2 p-3 border-b border-neutral-800">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#f09433] to-[#bc1888] flex items-center justify-center">
                     <Instagram className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-sm font-semibold">brunophysicalrehab</span>
+                  <span className="text-sm font-semibold text-white">brunophysicalrehab</span>
                 </div>
                 {previewImage ? (
                   <img src={previewImage} alt="" className="w-full aspect-square object-cover" />
                 ) : (
-                  <div className="w-full aspect-square bg-slate-100 flex flex-col items-center justify-center gap-2">
-                    <ImageIcon className="h-14 w-14 text-slate-300" />
-                    <p className="text-xs text-slate-400">No image selected</p>
+                  <div className="w-full aspect-square bg-neutral-800 flex flex-col items-center justify-center gap-2">
+                    <ImageIcon className="h-14 w-14 text-neutral-600" />
+                    <p className="text-xs text-neutral-500">No image selected</p>
                   </div>
                 )}
-                <div className="p-3">
-                  <p className="text-[11px] text-slate-700 line-clamp-3 whitespace-pre-wrap">{caption || "Caption will appear here..."}</p>
+                <div className="p-3 bg-neutral-900">
+                  <p className="text-[11px] text-neutral-300 line-clamp-3 whitespace-pre-wrap">{caption || "Caption will appear here..."}</p>
                 </div>
               </div>
 
@@ -411,11 +418,38 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                 <input type="datetime-local" value={igScheduledAt} onChange={e => setIgScheduledAt(e.target.value)} min={new Date().toISOString().slice(0, 16)} className="w-full border rounded-lg px-3 py-2 text-sm" />
               )}
 
+              {/* Facebook toggle */}
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <div onClick={() => setPublishFacebook(!publishFacebook)}
+                  className={`relative w-9 h-5 rounded-full transition-colors ${publishFacebook ? 'bg-blue-600' : 'bg-muted'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${publishFacebook ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </div>
+                <Facebook className="h-4 w-4 text-blue-600" />
+                <span className="text-xs text-muted-foreground">Also publish to Facebook Page</span>
+              </label>
+
               <button onClick={publishToInstagram} disabled={igPublishing || !caption.trim()} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 hover:opacity-90 transition-opacity" style={{ background: "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)" }}>
                 {igPublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : igMode === "now" ? <Send className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                {igPublishing ? "Publishing..." : igMode === "now" ? "Publish to Instagram" : "Schedule Post"}
+                {igPublishing ? "Publishing..." : igMode === "now" ? `Publish${publishFacebook ? ' to Instagram + Facebook' : ' to Instagram'}` : "Schedule Post"}
               </button>
-              <p className="text-[10px] text-muted-foreground text-center">Requires Instagram Business account in Admin → API & AI Settings</p>
+
+              {/* Open in Studio button */}
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams({
+                    topic: article.title,
+                    excerpt: article.excerpt || '',
+                    from: 'article',
+                    image: composedImage || currentImage || '',
+                    caption: caption || '',
+                  });
+                  window.location.href = `/admin/marketing/instagram-studio?${params.toString()}`;
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-violet-500/40 text-violet-400 hover:bg-violet-500/10 transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" /> Abrir no Studio (Imagem + Música + Calendário)
+              </button>
+              <p className="text-[10px] text-muted-foreground text-center">Requires Instagram Business account in Admin → API &amp; AI Settings</p>
             </div>
           </div>
         </div>

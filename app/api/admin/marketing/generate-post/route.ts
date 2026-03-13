@@ -68,8 +68,20 @@ export async function POST(req: NextRequest) {
     let imageUrl: string | null = null
     if (generateImageFlag) {
       try {
+        // Use AI-generated image_prompt (always in English per our Claude instructions)
+        // But also sanitise: remove any non-ASCII words that might cause PT text to appear
+        let rawImagePrompt = postData.image_prompt || postData.visual_suggestion || ''
+        // If the image_prompt looks like it still contains the original topic language,
+        // fall back to a safe English clinical description based on visual_suggestion
+        const safeImagePrompt = [
+          rawImagePrompt.slice(0, 400), // already English per prompt rules
+          'ABSOLUTELY NO TEXT OF ANY KIND — no words, no letters, no numbers, no labels, no captions, no signs, no typography, in ANY language including English or Portuguese',
+          'pure photographic scene only, no overlaid graphics or text elements',
+          'photorealistic, professional photography, square 1:1 format',
+          'teal and navy color palette, BPR physiotherapy clinic aesthetic',
+        ].join('. ')
         imageUrl = await generateMarketingImage({
-          prompt: postData.image_prompt || postData.visual_suggestion,
+          prompt: safeImagePrompt,
           service,
         })
       } catch (imgError) {

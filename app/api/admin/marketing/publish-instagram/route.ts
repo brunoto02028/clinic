@@ -4,10 +4,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 
-const IG_USER_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || ''
-const IG_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN || ''
-const META_API_VERSION = 'v19.0'
-const META_BASE = `https://graph.facebook.com/${META_API_VERSION}`
+const META_API_VERSION = 'v21.0'
+const META_BASE = `https://graph.instagram.com/${META_API_VERSION}`
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { postId, caption, imageUrl, hashtags } = body
+    const { postId, caption, imageUrl, hashtags, publishToFacebook = true, publishToStories = false } = body
 
     if (!caption || !imageUrl) {
       return NextResponse.json(
@@ -26,12 +24,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (!IG_USER_ID || !IG_ACCESS_TOKEN) {
-      return NextResponse.json(
-        { error: 'Instagram credentials not configured. Add INSTAGRAM_BUSINESS_ACCOUNT_ID and INSTAGRAM_ACCESS_TOKEN to .env' },
-        { status: 500 }
-      )
+    // Get token from DB
+    const user = session.user as any
+    const clinicId = user.clinicId
+    const igAccount = await prisma.socialAccount.findFirst({
+      where: { clinicId, platform: 'INSTAGRAM', isActive: true },
+    })
+    if (!igAccount) {
+      return NextResponse.json({ error: 'No connected Instagram account. Go to Instagram Connect first.' }, { status: 400 })
     }
+    const IG_USER_ID = igAccount.accountId
+    const IG_ACCESS_TOKEN = igAccount.accessToken
 
     const fullCaption = hashtags?.length
       ? `${caption}\n\n${hashtags.join(' ')}`
@@ -111,10 +114,101 @@ export async function POST(req: NextRequest) {
       }).catch(() => null)
     }
 
+    // STEP 5: Optionally publish to Facebook Page too
+    let fbPostId: string | null = null
+    let fbError: string | null = null
+    if (publishToFacebook) {
+      try {
+        // Get Facebook Page access token from DB (stored during OAuth)
+        const fbAccount = await prisma.socialAccount.findFirst({
+          where: { clinicId, platform: 'FACEBOOK', isActive: true },
+        })
+        const fbPageId = fbAccount?.accountId || igAccount?.metadata && (igAccount.metadata as any)?.pageId
+        const fbToken = fbAccount?.accessToken || igAccount?.accessToken
+
+        if (fbPageId && fbToken) {
+          // Post photo to Facebook Page
+          const fbRes = await fetch(
+            `https://graph.facebook.com/v21.0/${fbPageId}/photos`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: imageUrl,
+                caption: fullCaption,
+                access_token: fbToken,
+              }),
+            }
+          )
+          const fbData = await fbRes.json()
+          if (fbData.id) fbPostId = fbData.id
+          else fbError = fbData.error?.message || 'Facebook publish failed'
+        } else {
+          fbError = 'No Facebook Page connected. Connect via Instagram Connect page.'
+        }
+      } catch (e: any) {
+        fbError = e?.message || 'Facebook publish error'
+        console.error('[PUBLISH] Facebook error:', fbError)
+      }
+    }
+
+    // STEP 6: Optionally publish to Stories
+    let storyId: string | null = null
+    let storyError: string | null = null
+    if (publishToStories) {
+      try {
+        const storyContainerRes = await fetch(
+          `${META_BASE}/${IG_USER_ID}/media`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image_url: imageUrl,
+              media_type: 'STORIES',
+              access_token: IG_ACCESS_TOKEN,
+            }),
+          }
+        )
+        const storyContainerData = await storyContainerRes.json()
+        if (storyContainerData.id) {
+          // Wait for story container
+          for (let i = 0; i < 10; i++) {
+            await new Promise(r => setTimeout(r, 2000))
+            const st = await fetch(`${META_BASE}/${storyContainerData.id}?fields=status_code&access_token=${IG_ACCESS_TOKEN}`)
+            const stData = await st.json()
+            if (stData.status_code === 'FINISHED') break
+            if (stData.status_code === 'ERROR') throw new Error('Story container failed')
+          }
+          const storyPublishRes = await fetch(
+            `${META_BASE}/${IG_USER_ID}/media_publish`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ creation_id: storyContainerData.id, access_token: IG_ACCESS_TOKEN }),
+            }
+          )
+          const storyPublishData = await storyPublishRes.json()
+          if (storyPublishData.id) storyId = storyPublishData.id
+          else storyError = storyPublishData.error?.message || 'Story publish failed'
+        }
+      } catch (e: any) {
+        storyError = e?.message || 'Story publish error'
+        console.error('[PUBLISH] Story error:', storyError)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       instagram_post_id: igPostId,
-      message: 'Post published successfully to Instagram',
+      facebook_post_id: fbPostId,
+      facebook_error: fbError,
+      story_id: storyId,
+      story_error: storyError,
+      message: fbPostId
+        ? 'Published to Instagram and Facebook'
+        : fbError
+          ? `Published to Instagram. Facebook: ${fbError}`
+          : 'Post published successfully to Instagram',
     })
 
   } catch (error) {

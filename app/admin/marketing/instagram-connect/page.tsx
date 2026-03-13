@@ -40,6 +40,8 @@ export default function InstagramConnectPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<SetupStep>("check-app");
+  const [manualToken, setManualToken] = useState("");
+  const [connectingManual, setConnectingManual] = useState(false);
 
   // Env vars status
   const [envStatus, setEnvStatus] = useState<{
@@ -100,6 +102,31 @@ export default function InstagramConnectPage() {
     } catch {
       setError("Connection error — check console");
       setConnecting(false);
+    }
+  }
+
+  async function connectManual() {
+    if (!manualToken.trim()) return;
+    setConnectingManual(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/social/connect-manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: manualToken.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(`Instagram @${data.username} conectado com sucesso!`);
+        setManualToken("");
+        fetchAccounts();
+      } else {
+        setError(data.error || "Falhou a conexão manual");
+      }
+    } catch {
+      setError("Erro de conexão");
+    } finally {
+      setConnectingManual(false);
     }
   }
 
@@ -171,10 +198,41 @@ export default function InstagramConnectPage() {
         </div>
       )}
 
+      {/* Manual Token Connection */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Key className="h-4 w-4 text-amber-400" />
+            <span className="text-sm font-semibold text-amber-400">Conexão Rápida via Token</span>
+            <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-xs">Recomendado</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Cola o token gerado no Meta Developer Console → Use cases → API setup with Instagram login → Generate token
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+              placeholder="IGAAgVsbCUai..."
+              value={manualToken}
+              onChange={(e) => setManualToken(e.target.value)}
+            />
+            <Button
+              onClick={connectManual}
+              disabled={!manualToken.trim() || connectingManual}
+              className="bg-amber-500 hover:bg-amber-600 text-black font-semibold shrink-0"
+            >
+              {connectingManual ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+              {connectingManual ? "A conectar..." : "Conectar"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Status bar */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <StatusItem
               label="FACEBOOK_APP_ID"
               ok={envStatus?.hasFbAppId ?? false}
@@ -183,6 +241,11 @@ export default function InstagramConnectPage() {
             <StatusItem
               label="FACEBOOK_APP_SECRET"
               ok={envStatus?.hasFbAppSecret ?? false}
+              loading={!envStatus}
+            />
+            <StatusItem
+              label="CONFIG_ID"
+              ok={envStatus?.hasConfigId ?? false}
               loading={!envStatus}
             />
             <StatusItem
@@ -245,19 +308,19 @@ export default function InstagramConnectPage() {
       )}
 
       {/* Step navigation */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {steps.map(s => (
           <button
             key={s.id}
             onClick={() => setActiveStep(s.id)}
-            className={`flex-shrink-0 text-left px-3 py-2 rounded-xl border text-xs transition-all ${
+            className={`text-left px-3 py-2 rounded-xl border text-xs transition-all ${
               activeStep === s.id
                 ? "border-purple-500/40 bg-purple-500/10 text-purple-400"
                 : "border-border text-muted-foreground hover:text-foreground"
             }`}
           >
             <div className="font-semibold">{s.label}</div>
-            <div className="opacity-70 mt-0.5">{s.desc}</div>
+            <div className="opacity-70 mt-0.5 truncate">{s.desc}</div>
           </button>
         ))}
       </div>
@@ -514,6 +577,24 @@ export default function InstagramConnectPage() {
         </StepCard>
       )}
 
+      {/* ─── Credentials Vault ─── */}
+      <Card>
+        <CardContent className="p-5 space-y-3">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <Key className="h-4 w-4 text-amber-500" /> Credenciais Meta / Instagram — Vault
+          </h3>
+          <p className="text-xs text-muted-foreground">Todos os IDs e chaves associadas ao teu app Meta e Instagram. Guardados no servidor (.env).</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <CredentialItem label="Facebook App ID" value="94530663455902" />
+            <CredentialItem label="Facebook App Secret" value="5e704f16a726e0b...fe4290" secret />
+            <CredentialItem label="Config ID (FB Login for Business)" value="791665240649206" />
+            <CredentialItem label="Instagram App ID" value="2275652729596451" />
+            <CredentialItem label="Instagram App Secret" value="966604ebab29...0223" secret />
+            <CredentialItem label="Redirect URI" value="https://bpr.rehab/api/admin/social/callback" />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ─── AI Map ─── */}
       <Card>
         <CardContent className="p-5 space-y-3">
@@ -642,6 +723,33 @@ function FinalCheck({ ok, label, invert }: { ok: boolean; label: string; invert?
         : <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
       }
       {label}
+    </div>
+  );
+}
+
+function CredentialItem({ label, value, secret }: { label: string; value: string; secret?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const [show, setShow] = useState(false);
+  const displayValue = secret && !show ? value.replace(/[a-zA-Z0-9]/g, "•") : value;
+  return (
+    <div className="bg-background border border-border rounded-xl p-3">
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</span>
+        <div className="flex items-center gap-1.5">
+          {secret && (
+            <button onClick={() => setShow(!show)} className="text-muted-foreground hover:text-foreground text-[10px]">
+              {show ? "Ocultar" : "Mostrar"}
+            </button>
+          )}
+          <button
+            onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+          </button>
+        </div>
+      </div>
+      <code className="text-xs text-cyan-400 font-mono break-all">{displayValue}</code>
     </div>
   );
 }

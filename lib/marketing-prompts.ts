@@ -70,14 +70,22 @@ REQUIREMENTS:
 
 Also provide:
 VISUAL SUGGESTION: One sentence describing the ideal image or video for this post
-IMAGE_PROMPT: A detailed prompt for AI image generation (for FLUX model)
+IMAGE_PROMPT: A detailed prompt for Gemini AI image generation
+
+CRITICAL IMAGE PROMPT RULES — you MUST follow these:
+- image_prompt MUST be written in ENGLISH regardless of the post language
+- image_prompt must describe ONLY visual elements: people, lighting, objects, setting, colours, mood
+- ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO LABELS, NO SIGNS, NO TYPOGRAPHY in the image
+- Do NOT include the topic title, condition name, or any text that would appear visually in the image
+- Example good: "physiotherapist treating patient's shoulder, clinical setting, soft teal lighting, focused hands"
+- Example bad: "image with the words MEDO & ESTRESSE" — never do this
 
 Format your response as JSON:
 {
   "caption": "...",
   "hashtags": ["#tag1", "#tag2"],
   "visual_suggestion": "...",
-  "image_prompt": "...",
+  "image_prompt": "English-only visual description, absolutely no text or words...",
   "caption_pt": "..." // only if language is "both"
 }
 `
