@@ -41,6 +41,9 @@ const publicRoutes = [
   '/api/sketchfab',
   '/capture',
   '/api/body-assessments/capture',
+  '/shop',
+  '/api/shop',
+  '/api/amazon-image',
 ];
 
 // Routes that require SUPERADMIN access

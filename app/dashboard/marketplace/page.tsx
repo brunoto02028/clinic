@@ -92,10 +92,21 @@ export default function MarketplacePage() {
     }
   }, []);
 
+  const openAffiliate = async (product: Product) => {
+    // Track click then open Amazon
+    try {
+      await fetch("/api/patient/marketplace/affiliate-click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id }),
+      });
+    } catch {}
+    if (product.affiliateUrl) window.open(product.affiliateUrl, "_blank");
+  };
+
   const addToCart = (product: Product) => {
     if (product.isAffiliate) {
-      // Affiliate products open in new tab
-      if (product.affiliateUrl) window.open(product.affiliateUrl, "_blank");
+      openAffiliate(product);
       return;
     }
     setCart((prev) => {
@@ -462,11 +473,14 @@ export default function MarketplacePage() {
 
                       {product.isAffiliate ? (
                         <div className="space-y-1">
-                          <Button size="sm" className="w-full gap-1 text-xs" onClick={() => addToCart(product)}>
-                            <ShoppingCart className="h-3 w-3" /> {isPt ? "Comprar Produto" : "Buy Product"}
+                          <Button size="sm"
+                            className="w-full gap-1 text-xs bg-[#FF9900] hover:bg-[#e88a00] text-black font-semibold"
+                            onClick={() => openAffiliate(product)}>
+                            <ExternalLink className="h-3 w-3" />
+                            {isPt ? "Comprar na Amazon" : "Buy on Amazon"}
                           </Button>
-                          <p className="text-[9px] text-muted-foreground text-center flex items-center justify-center gap-0.5">
-                            <Truck className="h-2.5 w-2.5" /> {isPt ? "Entrega via Amazon" : "Delivery via Amazon"}
+                          <p className="text-[9px] text-muted-foreground text-center">
+                            {isPt ? "Abre a Amazon • Entrega pela Amazon" : "Opens Amazon • Fulfilled by Amazon"}
                           </p>
                         </div>
                       ) : inCart ? (

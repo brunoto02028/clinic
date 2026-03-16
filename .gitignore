@@ -6,3 +6,17 @@ deploy/.env*
 clinic-deploy.tar
 CREDENTIALS.md
 .aider*
+
+# Debug/test/fix scripts (not part of the app)
+test_*.js
+check_*.js
+fix_*.js
+add_*.js
+delete_*.js
+fetch_*.js
+find_*.js
+list_*.js
+replace_*.js
+update_*.js
+scrape_*.py
+*.mjs

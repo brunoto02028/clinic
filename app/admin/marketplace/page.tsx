@@ -84,6 +84,7 @@ export default function AdminMarketplacePage() {
   const [searchError, setSearchError] = useState("");
   const [importingAsins, setImportingAsins] = useState<Set<string>>(new Set());
   const [importedAsins, setImportedAsins] = useState<Set<string>>(new Set());
+  const [failedAsins, setFailedAsins] = useState<Set<string>>(new Set());
   const [showSearch, setShowSearch] = useState(false);
   const [bulkSelecting, setBulkSelecting] = useState<Set<number>>(new Set());
   const [bulkImporting, setBulkImporting] = useState(false);
@@ -190,13 +191,22 @@ export default function AdminMarketplacePage() {
   };
 
   const deleteProduct = async (id: string) => {
-    if (!confirm("Delete this product?")) return;
-    await fetch("/api/admin/journey/products", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    fetchProducts();
+    if (!confirm("Apagar este produto? Esta acção não pode ser desfeita.")) return;
+    try {
+      const res = await fetch("/api/admin/journey/products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert("Erro ao apagar: " + (d.error || res.statusText));
+        return;
+      }
+      fetchProducts();
+    } catch (e: any) {
+      alert("Erro ao apagar: " + e.message);
+    }
   };
 
   const updateOrderStatus = async (orderId: string, status: string) => {
@@ -272,7 +282,64 @@ export default function AdminMarketplacePage() {
     } finally { setSearching(false); }
   };
 
+  // Best-effort Amazon product image via ASIN — using Amazon Associates widget CDN (no referrer block)
+  const getAmazonImage = (asin: string, imageUrl?: string) => {
+    if (imageUrl && imageUrl.length > 10 && !imageUrl.includes("PLACEHOLDER")) return imageUrl;
+    if (!asin) return "";
+    return `https://ws-eu.amazon-adsystem.com/widgets/q?_encoding=UTF8&ASIN=${asin}&Format=_SL250_&ID=AsinImage&MarketPlace=GB&ServiceVersion=20070822&WS=1`;
+  };
+
+  const saveSingleProduct = async (product: any) => {
+    const asin = product.asin || "";
+    setImportingAsins(prev => new Set([...prev, asin]));
+    try {
+      const rawPrice = product.price;
+      const parsedPrice = typeof rawPrice === "string"
+        ? parseFloat(rawPrice.replace(/[^0-9.]/g, "")) || 0
+        : parseFloat(rawPrice) || 0;
+      const affiliateUrl = product.affiliateUrl
+        || (asin ? `https://www.amazon.co.uk/dp/${asin}?tag=bprrrehab-21` : "");
+      const body = {
+        name: product.name || "",
+        description: product.description || "",
+        shortDescription: product.shortDescription || product.name || "",
+        category: product.category || "equipment",
+        price: parsedPrice,
+        imageUrl: getAmazonImage(asin, product.imageUrl),
+        isAffiliate: true,
+        affiliateUrl,
+        amazonAsin: asin,
+        affiliateTag: "bprrrehab-21",
+        affiliateCommission: product.commission || 4,
+        isActive: true,
+        vatRate: 20,
+        vatIncluded: true,
+        sortOrder: 0,
+      };
+      const res = await fetch("/api/admin/journey/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setImportedAsins(prev => new Set([...prev, asin]));
+        setFailedAsins(prev => { const n = new Set(prev); n.delete(asin); return n; });
+        fetchProducts();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setFailedAsins(prev => new Set([...prev, asin]));
+        console.error("Import failed:", product.name, d.error);
+      }
+    } catch (e: any) {
+      setFailedAsins(prev => new Set([...prev, asin]));
+      console.error("Import error:", e.message);
+    } finally {
+      setImportingAsins(prev => { const n = new Set(prev); n.delete(asin); return n; });
+    }
+  };
+
   const importSingleResult = (product: any) => {
+    const imageUrl = getAmazonImage(product.asin, product.imageUrl);
     setForm({
       ...emptyProduct,
       isAffiliate: true,
@@ -281,7 +348,7 @@ export default function AdminMarketplacePage() {
       shortDescription: product.shortDescription || "",
       category: product.category || "supplement",
       price: String(product.price || ""),
-      imageUrl: product.imageUrl || "",
+      imageUrl,
       affiliateUrl: product.affiliateUrl || "",
       amazonAsin: product.asin || "",
       affiliateTag: product.affiliateTag || "bprrrehab-21",
@@ -289,7 +356,6 @@ export default function AdminMarketplacePage() {
     });
     setShowForm(true);
     setEditingId(null);
-    setImportedAsins(prev => new Set([...prev, product.asin]));
   };
 
   const toggleBulkSelect = (idx: number) => {
@@ -305,23 +371,33 @@ export default function AdminMarketplacePage() {
     setBulkImporting(true);
     const toImport = searchResults.filter((_, i) => bulkSelecting.has(i));
     let saved = 0;
+    const errors: string[] = [];
     for (const product of toImport) {
       try {
+        const rawPrice = product.price;
+        const parsedPrice = typeof rawPrice === "string"
+          ? parseFloat(rawPrice.replace(/[^0-9.]/g, "")) || 0
+          : parseFloat(rawPrice) || 0;
+
+        const affiliateUrl = product.affiliateUrl
+          || (product.asin ? `https://www.amazon.co.uk/dp/${product.asin}?tag=bprrrehab-21` : "");
+
         const body = {
           name: product.name,
-          description: product.description,
-          shortDescription: product.shortDescription,
-          category: product.category || "supplement",
-          price: product.price,
-          imageUrl: product.imageUrl || "",
+          description: product.description || "",
+          shortDescription: product.shortDescription || "",
+          category: product.category || "equipment",
+          price: parsedPrice,
+          imageUrl: getAmazonImage(product.asin, product.imageUrl),
           isAffiliate: true,
-          affiliateUrl: product.affiliateUrl,
-          amazonAsin: product.asin,
-          affiliateTag: product.affiliateTag || "bprrrehab-21",
+          affiliateUrl,
+          amazonAsin: product.asin || "",
+          affiliateTag: "bprrrehab-21",
           affiliateCommission: product.commission || 4,
           isActive: true,
           vatRate: 20,
           vatIncluded: true,
+          sortOrder: 0,
         };
         const res = await fetch("/api/admin/journey/products", {
           method: "POST",
@@ -331,13 +407,24 @@ export default function AdminMarketplacePage() {
         if (res.ok) {
           saved++;
           setImportedAsins(prev => new Set([...prev, product.asin]));
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          errors.push(`${product.name}: ${errData.error || res.statusText}`);
+          console.error("Import failed:", product.name, errData);
         }
-      } catch {}
+      } catch (e: any) {
+        errors.push(`${product.name}: ${e.message}`);
+        console.error("Import error:", e);
+      }
     }
     setBulkSelecting(new Set());
     setBulkImporting(false);
     fetchProducts();
-    alert(`✅ ${saved} produto(s) importados para o Marketplace!`);
+    if (errors.length > 0) {
+      alert(`✅ ${saved} importado(s).\n\n⚠️ Falhou (${errors.length}):\n${errors.join("\n")}`);
+    } else {
+      alert(`✅ ${saved} produto(s) importados para o Marketplace!`);
+    }
   };
 
   // Margin calculator
@@ -587,11 +674,13 @@ export default function AdminMarketplacePage() {
                           }`}>
                           <input type="checkbox" checked={isSelected} readOnly
                             className="absolute top-2 left-2 rounded pointer-events-none" />
-                          <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center shrink-0 ml-4">
-                            {p.imageUrl
-                              ? <img src={p.imageUrl} alt="" className="w-full h-full object-contain rounded-lg" />
-                              : <Package className="h-6 w-6 text-muted-foreground" />
-                            }
+                          <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center shrink-0 ml-4 overflow-hidden">
+                            <img
+                              src={getAmazonImage(p.asin, p.imageUrl)}
+                              alt=""
+                              className="w-full h-full object-contain rounded-lg"
+                              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>'; }}
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug">{p.name}</p>
@@ -609,17 +698,29 @@ export default function AdminMarketplacePage() {
                           </div>
                           <div className="flex flex-col gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                             {isImported ? (
-                              <span className="text-[10px] text-emerald-500 font-semibold">✓ Importado</span>
+                              <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">✓ Adicionado</span>
+                            ) : failedAsins.has(p.asin) ? (
+                              <>
+                                <span className="text-[10px] text-red-400 font-semibold">✗ Erro</span>
+                                <Button size="sm" onClick={() => saveSingleProduct(p)}
+                                  className="text-[10px] h-6 px-2 bg-red-600 hover:bg-red-500 text-white">
+                                  Tentar de novo
+                                </Button>
+                              </>
+                            ) : importingAsins.has(p.asin) ? (
+                              <span className="text-[10px] text-blue-400 flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" /> A guardar...
+                              </span>
                             ) : (
                               <>
-                                <Button size="sm" onClick={() => importSingleResult(p)}
-                                  className="text-[10px] h-6 px-2 bg-primary/80 hover:bg-primary text-white">
-                                  Editar+Guardar
+                                <Button size="sm" onClick={() => saveSingleProduct(p)}
+                                  className="text-[10px] h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white">
+                                  + Adicionar
                                 </Button>
-                                <a href={p.affiliateUrl} target="_blank" rel="noopener noreferrer"
-                                  className="text-[10px] text-center text-muted-foreground hover:text-blue-400 underline">
-                                  Ver Amazon ↗
-                                </a>
+                                <Button size="sm" variant="ghost" onClick={() => importSingleResult(p)}
+                                  className="text-[10px] h-6 px-2 text-muted-foreground hover:text-foreground">
+                                  Editar
+                                </Button>
                               </>
                             )}
                           </div>
@@ -662,16 +763,15 @@ export default function AdminMarketplacePage() {
                 </Button>
               </div>
 
-              {/* Quick search suggestions */}
+              {/* Quick search suggestions — pesquisa interna */}
               <div className="flex flex-wrap gap-1.5">
-                <span className="text-[10px] text-muted-foreground self-center">Pesquisar:</span>
+                <span className="text-[10px] text-muted-foreground self-center">Pesquisa rápida:</span>
                 {PHYSIO_SUGGESTIONS.map(s => (
-                  <a key={s.q}
-                    href={`https://www.amazon.co.uk/s?k=${s.q}&tag=bprrrehab-21`}
-                    target="_blank" rel="noopener noreferrer"
+                  <button key={s.q}
+                    onClick={() => { setSearchQuery(s.q); searchAmazonProducts(s.q); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                     className="text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-all">
-                    {s.label} ↗
-                  </a>
+                    {s.label}
+                  </button>
                 ))}
               </div>
 

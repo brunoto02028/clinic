@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const product = await (prisma as any).marketplaceProduct.create({
       data: {
-        clinicId,
+        ...(clinicId ? { clinic: { connect: { id: clinicId } } } : {}),
         name: body.name,
         description: body.description || null,
         shortDescription: body.shortDescription || null,
@@ -76,11 +76,6 @@ export async function POST(req: NextRequest) {
         freeShippingOver: body.freeShippingOver ? parseFloat(body.freeShippingOver) : null,
         isDigital: body.isDigital === true,
         digitalFileUrl: body.digitalFileUrl || null,
-        // PDF fields
-        previewFileUrl: body.previewFileUrl || null,
-        pageCount: body.pageCount ? parseInt(body.pageCount) : null,
-        fileSize: body.fileSize ? parseInt(body.fileSize) : null,
-        contentLanguage: body.contentLanguage || null,
         // Amazon Affiliate
         isAffiliate: body.isAffiliate === true,
         affiliateUrl: body.affiliateUrl || null,
@@ -220,7 +215,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 /**
- * DELETE /api/admin/journey/products — Delete a product
+ * DELETE /api/admin/journey/products — Delete a product (with full cleanup)
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -231,9 +226,38 @@ export async function DELETE(req: NextRequest) {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
+    // Fetch product before delete (need stripeProductId)
+    const product = await (prisma as any).marketplaceProduct.findUnique({ where: { id } });
+    if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });
+
+    // 1. Deactivate on Stripe if synced
+    if (product.stripeProductId) {
+      try {
+        await deactivateStripeProduct(product.stripeProductId);
+      } catch (stripeErr: any) {
+        console.error('[products] Stripe deactivate error on delete:', stripeErr.message);
+      }
+    }
+
+    // 2. Delete order items referencing this product
+    // (productId is NOT NULL so cannot be nullified — items are deleted)
+    try {
+      await (prisma as any).marketplaceOrderItem.deleteMany({
+        where: { productId: id },
+      });
+    } catch {}
+
+    // 3. Delete affiliate click tracking records
+    try {
+      await (prisma as any).affiliateClick.deleteMany({ where: { productId: id } });
+    } catch {}
+
+    // 4. Delete the product
     await (prisma as any).marketplaceProduct.delete({ where: { id } });
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
+    console.error('[products] Delete error:', err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
