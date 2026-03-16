@@ -10,10 +10,10 @@ description: How to deploy bpr.rehab (clinic) to GitHub and VPS
 
 | Item | Valor |
 |------|-------|
-| **Projeto local** | `c:\Users\bruno\Desktop\clinic` |
+| **Projeto local** | `c:\Bruno Projetos\Clinic\New Clinc\bruno_clinical_system\nextjs_space` |
 | **GitHub repo** | `https://github.com/brunoto02028/clinic` |
 | **Branch** | `main` |
-| **VPS SSH** | `root@bpr.rehab` |
+| **VPS SSH alias** | `clinic-vps` (= `root@bpr.rehab`) |
 | **VPS path** | `/root/clinic` |
 | **VPS process** | PM2, name=`clinic`, port `4010` |
 | **Domain** | `bpr.rehab` (Nginx + Let's Encrypt SSL) |
@@ -21,21 +21,23 @@ description: How to deploy bpr.rehab (clinic) to GitHub and VPS
 
 ## Passos do Deploy
 
+**OBRIGATÓRIO: Fazer GitHub push em CADA deploy, sem excepção.**
+
+// turbo
 1. Commit e push para GitHub:
 ```bash
-# No diretório c:\Users\bruno\Desktop\clinic
-git add -A
-git commit -m "feat: <descrição>"
-git push origin main
+git -C "c:\Bruno Projetos\Clinic\New Clinc\bruno_clinical_system\nextjs_space" add -A
+git -C "c:\Bruno Projetos\Clinic\New Clinc\bruno_clinical_system\nextjs_space" commit -m "feat: <descrição das mudanças>"
+git -C "c:\Bruno Projetos\Clinic\New Clinc\bruno_clinical_system\nextjs_space" push origin main
 ```
 
 2. Copiar arquivos alterados para a VPS via SCP:
 ```bash
 # Exemplo para 1 arquivo:
-scp <caminho/relativo/arquivo> root@bpr.rehab:/root/clinic/<caminho/relativo/arquivo>
+scp "c:\Bruno Projetos\Clinic\New Clinc\bruno_clinical_system\nextjs_space\<caminho>" clinic-vps:/root/clinic/<caminho>
 
-# Exemplo para múltiplos arquivos ou pasta inteira:
-scp -r app/api/patient/ root@bpr.rehab:/root/clinic/app/api/patient/
+# Exemplo para pasta inteira:
+scp -r "c:\Bruno Projetos\Clinic\New Clinc\bruno_clinical_system\nextjs_space\app\api\patient\" clinic-vps:/root/clinic/app/api/patient/
 ```
 
 // turbo
@@ -49,6 +51,12 @@ ssh clinic-vps "cd /root/clinic && bash deploy.sh"
 ssh clinic-vps "pm2 status clinic"
 ```
 
+## Convenção de Commit Messages
+- `feat: <descrição>` — nova funcionalidade
+- `fix: <descrição>` — correcção de bug
+- `refactor: <descrição>` — refactoring sem nova funcionalidade
+- `chore: <descrição>` — mudanças de config, dependências
+
 ## Notas Importantes
 - O VPS **NÃO** tem repositório git — nunca tente `git pull` lá
 - Sempre faça **GitHub push ANTES** do SCP para VPS
@@ -57,3 +65,4 @@ ssh clinic-vps "pm2 status clinic"
 - O script `deploy.sh` faz build in-place (sem deletar .next) e usa `pm2 reload` (graceful)
 - Se o build falhar, a versão anterior continua servindo normalmente
 - O script verifica automaticamente o symlink de uploads após cada deploy
+- Ficheiros `test_*.js`, `fix_*.js`, `check_*.js` estão no `.gitignore` — não vão para o GitHub
