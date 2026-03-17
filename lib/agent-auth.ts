@@ -35,16 +35,17 @@ export async function validateAgentApiKey(
 
   try {
     const agentKey = await prisma.agentApiKey.findUnique({
-      where: { key: apiKey, isActive: true },
+      where: { key: apiKey },
       select: {
         id: true,
         name: true,
         permissions: true,
         expiresAt: true,
+        isActive: true,
       },
     })
 
-    if (!agentKey) {
+    if (!agentKey || !agentKey.isActive) {
       return null
     }
 
