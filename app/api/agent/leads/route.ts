@@ -53,11 +53,11 @@ export async function GET(request: NextRequest) {
         patientAppointments: {
           select: {
             id: true,
-            startTime: true,
+            dateTime: true,
             status: true,
           },
           take: 1,
-          orderBy: { startTime: 'desc' },
+          orderBy: { dateTime: 'desc' },
         },
       },
     })
