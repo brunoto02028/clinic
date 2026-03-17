@@ -1,0 +1,5 @@
+# BPR.rehab OpenClaw Agent - Environment Variables
+# Copie este arquivo para .env e preencha com sua API Key
+
+BPR_API_KEY=bpr_agent_17e9c3e46dc5fc154d5a5d132d09c2b6cd3f327f543a1b0080558ccfec9c5aae
+BPR_BASE_URL=https://bpr.rehab/api/agent
