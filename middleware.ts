@@ -44,6 +44,7 @@ const publicRoutes = [
   '/shop',
   '/api/shop',
   '/api/amazon-image',
+  '/api/agent', // OpenClaw Agent API - uses Bearer token authentication
 ];
 
 // Routes that require SUPERADMIN access
