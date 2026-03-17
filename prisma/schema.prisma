@@ -514,6 +514,9 @@ model User {
   // Music Library
   musicTracksCreated        MusicTrack[]             @relation("MusicTrackCreator")
 
+  // Agent API Keys
+  agentApiKeys              AgentApiKey[]            @relation("AgentApiKeyCreator")
+
   @@index([clinicId])
   @@index([email])
   @@index([role])
@@ -4043,4 +4046,26 @@ model CoWorkerLog {
   @@index([type])
   @@index([createdAt])
   @@map("coworker_logs")
+}
+
+// ============================================
+// AGENT API KEYS — OpenClaw Remote Access
+// ============================================
+
+model AgentApiKey {
+  id          String    @id @default(cuid())
+  name        String    // e.g. "OpenClaw Marketing Agent", "Sales Agent"
+  key         String    @unique // The actual API key (hashed or plain depending on security needs)
+  permissions Json      // { instagram: true, leads: true, patients: true, appointments: false }
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+  expiresAt   DateTime? // Optional expiration
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  createdBy   User?     @relation("AgentApiKeyCreator", fields: [createdById], references: [id])
+  
+  @@index([key])
+  @@index([isActive])
+  @@map("agent_api_keys")
 }
