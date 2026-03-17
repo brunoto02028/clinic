@@ -1,7 +1,7 @@
 // lib/agent-auth.ts
 // Authentication middleware for OpenClaw Agent API access
 
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 import { NextRequest } from 'next/server'
 
 export interface AgentPermissions {

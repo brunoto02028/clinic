@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAgentAuth } from '@/lib/agent-auth'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 import { publishToInstagram } from '@/lib/instagram'
 
 export async function POST(request: NextRequest) {
