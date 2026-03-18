@@ -13,7 +13,7 @@ cd "$CLINIC_DIR"
 # Step 0: Apply Prisma schema changes (safe, idempotent)
 echo ""
 echo "[0/3] Applying Prisma schema (db push)..."
-npx prisma db push
+npx prisma db push --accept-data-loss
 
 # Step 1: Build in-place (DO NOT delete .next — old files keep serving during build)
 echo ""
