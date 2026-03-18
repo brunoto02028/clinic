@@ -23,14 +23,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Caption is required' }, { status: 400 })
     }
 
+    // Get clinic ID (fallback to first active clinic if not provided)
+    const clinic = await prisma.clinic.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    })
+
+    if (!clinic) {
+      return NextResponse.json({ error: 'No active clinic found' }, { status: 500 })
+    }
+
     // Create post in database
     const post = await prisma.socialPost.create({
       data: {
-        platform: 'INSTAGRAM',
+        clinic: { connect: { id: clinic.id } },
         caption,
-        imageUrl: imageUrl || null,
+        mediaUrls: imageUrl ? [imageUrl] : [],
+        mediaPaths: [],
         status: scheduleAt ? 'SCHEDULED' : 'DRAFT',
-        scheduledFor: scheduleAt ? new Date(scheduleAt) : null,
+        scheduledAt: scheduleAt ? new Date(scheduleAt) : null,
         metadata: {
           source: 'openclaw_agent',
           agentId: agent.id,
