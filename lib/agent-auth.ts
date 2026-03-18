@@ -34,20 +34,27 @@ export async function validateAgentApiKey(
   const apiKey = authHeader.substring(7) // Remove "Bearer "
 
   try {
-    const agentKey = await prisma.agentApiKey.findUnique({
-      where: { key: apiKey },
-      select: {
-        id: true,
-        name: true,
-        permissions: true,
-        expiresAt: true,
-        isActive: true,
-      },
-    })
+    // WORKAROUND: Use raw SQL query instead of Prisma Client
+    // Prisma Client is not generating AgentApiKey model correctly
+    const result = await prisma.$queryRaw<Array<{
+      id: string
+      name: string
+      permissions: any
+      expiresAt: Date | null
+      isActive: boolean
+    }>>`
+      SELECT id, name, permissions, "expiresAt", "isActive"
+      FROM agent_api_keys
+      WHERE key = ${apiKey}
+      AND "isActive" = true
+      LIMIT 1
+    `
 
-    if (!agentKey || !agentKey.isActive) {
+    if (!result || result.length === 0) {
       return null
     }
+
+    const agentKey = result[0]
 
     // Check expiration
     if (agentKey.expiresAt && agentKey.expiresAt < new Date()) {
@@ -55,10 +62,11 @@ export async function validateAgentApiKey(
     }
 
     // Update last used timestamp (async, don't wait)
-    prisma.agentApiKey.update({
-      where: { id: agentKey.id },
-      data: { lastUsedAt: new Date() },
-    }).catch(() => {}) // Ignore errors on lastUsedAt update
+    prisma.$executeRaw`
+      UPDATE agent_api_keys
+      SET "lastUsedAt" = NOW()
+      WHERE id = ${agentKey.id}
+    `.catch(() => {}) // Ignore errors on lastUsedAt update
 
     return {
       id: agentKey.id,
