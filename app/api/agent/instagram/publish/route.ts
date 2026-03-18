@@ -42,11 +42,8 @@ export async function POST(request: NextRequest) {
         mediaPaths: [],
         status: scheduleAt ? 'SCHEDULED' : 'DRAFT',
         scheduledAt: scheduleAt ? new Date(scheduleAt) : null,
-        metadata: {
-          source: 'openclaw_agent',
-          agentId: agent.id,
-          agentName: agent.name,
-        },
+        aiGenerated: true,
+        aiPrompt: `OpenClaw Agent: ${agent.name} (${agent.id})`,
       },
     })
 
@@ -63,12 +60,7 @@ export async function POST(request: NextRequest) {
           data: {
             status: 'PUBLISHED',
             publishedAt: new Date(),
-            metadata: {
-              source: 'openclaw_agent',
-              agentId: agent.id,
-              agentName: agent.name,
-              instagramPostId: result.id,
-            },
+            platformPostId: result.id,
           },
         })
 
@@ -85,12 +77,7 @@ export async function POST(request: NextRequest) {
           where: { id: post.id },
           data: {
             status: 'FAILED',
-            metadata: {
-              source: 'openclaw_agent',
-              agentId: agent.id,
-              agentName: agent.name,
-              error: publishError instanceof Error ? publishError.message : 'Unknown error',
-            },
+            publishError: publishError instanceof Error ? publishError.message : 'Unknown error',
           },
         })
 
