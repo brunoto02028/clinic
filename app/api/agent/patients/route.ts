@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         patientAppointments: {
           select: {
             id: true,
-            startTime: true,
+            dateTime: true,
             status: true,
             therapist: {
               select: {
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
               },
             },
           },
-          orderBy: { startTime: 'desc' },
+          orderBy: { dateTime: 'desc' },
           take: 5,
         },
         _count: {
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       totalAppointments: patient._count.patientAppointments,
       recentAppointments: patient.patientAppointments.map(apt => ({
         id: apt.id,
-        date: apt.startTime,
+        date: apt.dateTime,
         status: apt.status,
         therapist: `${apt.therapist.firstName} ${apt.therapist.lastName}`,
       })),
