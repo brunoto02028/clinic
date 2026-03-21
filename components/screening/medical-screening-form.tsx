@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import {
@@ -171,6 +172,7 @@ interface ScreeningConfig {
 
 export default function AssessmentScreeningForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
   const isPt = locale === "pt-BR";
@@ -178,6 +180,8 @@ export default function AssessmentScreeningForm() {
   const [formData, setFormData] = useState<ScreeningData>(initialData);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasExisting, setHasExisting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [editRequested, setEditRequested] = useState(false);
@@ -186,6 +190,7 @@ export default function AssessmentScreeningForm() {
   const [cfg, setCfg] = useState<ScreeningConfig | null>(null);
   const [restoredDraft, setRestoredDraft] = useState(false);
   const isDirty = useRef(false);
+  const formDataRef = useRef(formData);
 
   // ── Persist draft to localStorage on every change ──
   const saveDraft = useCallback((data: ScreeningData) => {
@@ -335,6 +340,28 @@ export default function AssessmentScreeningForm() {
     }
   };
 
+  // Keep ref in sync so periodic save always has latest data
+  useEffect(() => { formDataRef.current = formData; }, [formData]);
+
+  // Periodic DB auto-save every 30s when dirty and not locked
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (!isDirty.current || isLocked || hasExisting) return;
+      try {
+        setAutoSaving(true);
+        await fetch("/api/medical-screening", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...formDataRef.current, _autosave: true }),
+        });
+        isDirty.current = false;
+        setLastSaved(new Date());
+      } catch {}
+      finally { setAutoSaving(false); }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isLocked, hasExisting]);
+
   const handleCheckboxChange = (key: string, checked: boolean) => {
     setFormData((prev) => {
       const next = { ...prev, [key]: checked };
@@ -370,10 +397,13 @@ export default function AssessmentScreeningForm() {
         setHasExisting(true);
         clearDraft();
         setRestoredDraft(false);
+        isDirty.current = false;
         toast({
           title: isPt ? "Triagem Salva" : "Screening Saved",
           description: isPt ? "Sua triagem foi salva com sucesso." : "Your screening has been saved successfully.",
         });
+        // Redirect to dashboard after short delay
+        setTimeout(() => router.push("/dashboard"), 1200);
       } else {
         throw new Error(data?.error || "Failed to save screening");
       }
@@ -420,9 +450,23 @@ export default function AssessmentScreeningForm() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{cfgText(cfg?.formTitle, T("screening.title"))}</h1>
-        <p className="text-muted-foreground text-sm mt-1">{cfgText(cfg?.formSubtitle, T("screening.subtitle"))}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{cfgText(cfg?.formTitle, T("screening.title"))}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{cfgText(cfg?.formSubtitle, T("screening.subtitle"))}</p>
+        </div>
+        {/* Auto-save status */}
+        {!isLocked && (
+          <div className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+            {autoSaving ? (
+              <><Loader2 className="h-3 w-3 animate-spin" /><span>{isPt ? "Salvando..." : "Saving..."}</span></>
+            ) : lastSaved ? (
+              <><CheckCircle className="h-3 w-3 text-emerald-500" /><span className="text-emerald-500">{isPt ? "Salvo" : "Saved"}</span></>
+            ) : (
+              <><Clock className="h-3 w-3" /><span>{isPt ? "Salvo automaticamente a cada 30s" : "Auto-saved every 30s"}</span></>
+            )}
+          </div>
+        )}
       </div>
 
       <ProfessionalReviewBanner descriptionKey="review.descriptionScreening" />

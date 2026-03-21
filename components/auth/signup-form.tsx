@@ -90,9 +90,13 @@ export default function SignupForm() {
         throw new Error(data?.error || "Registration failed");
       }
 
-      // Redirect to verification page (account is inactive until verified)
+      // Store credentials temporarily for auto-login after verification
       const userId = data.user?.id;
       const userEmail = encodeURIComponent(formData.email);
+      try {
+        sessionStorage.setItem("pending-verify-email", formData.email);
+        sessionStorage.setItem("pending-verify-password", formData.password);
+      } catch {}
       router.replace(`/verify?userId=${userId}&email=${userEmail}`);
     } catch (err: any) {
       console.error("Signup error:", err);

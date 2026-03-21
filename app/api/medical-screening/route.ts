@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as any).id;
     const body = await request.json();
+    const isAutosave = !!body?._autosave;
 
     // Check if screening already exists
     const existingScreening = await prisma.medicalScreening.findUnique({
@@ -69,9 +70,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingScreening) {
+      // For autosave: only update if not locked (don't notify, don't change lock state)
+      if (isAutosave && existingScreening.isLocked) {
+        return NextResponse.json({ success: true, autosaved: false, reason: "locked" });
+      }
+
       // Patients can always update their own medical information
-      // Unlock if previously locked
-      // Update existing screening
       const screening = await prisma.medicalScreening.update({
         where: { userId },
         data: {
@@ -132,11 +136,16 @@ export async function POST(request: NextRequest) {
           emergencyContact: body?.emergencyContact ?? null,
           emergencyContactPhone: body?.emergencyContactPhone ?? null,
           consentGiven: body?.consentGiven ?? false,
-          isSubmitted: true,
-          isLocked: true,
-          editApprovedAt: null,
+          isSubmitted: !isAutosave ? true : existingScreening.isSubmitted,
+          isLocked: !isAutosave ? true : existingScreening.isLocked,
+          editApprovedAt: !isAutosave ? null : existingScreening.editApprovedAt,
         } as any,
       });
+
+      // For autosave: skip notifications and return early
+      if (isAutosave) {
+        return NextResponse.json({ success: true, autosaved: true });
+      }
 
       // Notify admin that patient updated their screening
       try {
@@ -239,10 +248,15 @@ export async function POST(request: NextRequest) {
         emergencyContact: body?.emergencyContact ?? null,
         emergencyContactPhone: body?.emergencyContactPhone ?? null,
         consentGiven: body?.consentGiven ?? false,
-        isSubmitted: true,
-        isLocked: true,
+        isSubmitted: !isAutosave,
+        isLocked: !isAutosave,
       } as any,
     });
+
+    // For autosave on new record: skip notifications and return early
+    if (isAutosave) {
+      return NextResponse.json({ success: true, autosaved: true });
+    }
 
     // Send confirmation to patient via preferred channel
     try {
