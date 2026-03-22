@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
 import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 
 // Generate unique assessment number
 async function generateAssessmentNumber(): Promise<string> {
@@ -37,8 +38,9 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
-    const effectiveId = getEffectiveUserId(session, request);
-    const isPreview = isPreviewRequest(session, request);
+    const effectiveUser = await getEffectiveUser();
+    const effectiveId = effectiveUser?.userId;
+    const isPreview = effectiveUser?.isImpersonating ?? false;
     const userId = (session.user as any).id;
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -108,6 +110,10 @@ export async function POST(request: NextRequest) {
     const { patientId } = body;
 
     const userId = (session.user as any).id;
+    const effectiveUser = await getEffectiveUser();
+    const isImpersonating = effectiveUser?.isImpersonating ?? false;
+    const impersonatedId = effectiveUser?.userId;
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, role: true, clinicId: true },
@@ -117,8 +123,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Determine patient ID and clinic
-    const actualPatientId = user.role === "PATIENT" ? user.id : patientId;
+    // Determine patient ID:
+    // - If patient role → their own ID
+    // - If impersonating → use the impersonated patient's ID
+    // - If admin with explicit patientId → use that
+    const actualPatientId =
+      user.role === "PATIENT" ? user.id :
+      isImpersonating ? impersonatedId :
+      patientId;
 
     if (!actualPatientId) {
       return NextResponse.json(
