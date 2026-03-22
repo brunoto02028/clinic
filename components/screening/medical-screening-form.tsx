@@ -64,6 +64,7 @@ interface ScreeningData {
   // Patient Background
   occupation: string;
   dominantSide: string;
+  dominantFootSide: string;
   activityLevel: string;
   hobbiesSports: string;
   // Lifestyle
@@ -136,6 +137,7 @@ const initialData: ScreeningData = {
   mobilityAffected: false,
   occupation: "",
   dominantSide: "",
+  dominantFootSide: "",
   activityLevel: "",
   hobbiesSports: "",
   smoker: false,
@@ -297,6 +299,7 @@ export default function AssessmentScreeningForm() {
           mobilityAffected: s.mobilityAffected ?? false,
           occupation: s.occupation ?? "",
           dominantSide: s.dominantSide ?? "",
+          dominantFootSide: s.dominantFootSide ?? "",
           activityLevel: s.activityLevel ?? "",
           hobbiesSports: s.hobbiesSports ?? "",
           smoker: s.smoker ?? false,
@@ -783,28 +786,44 @@ export default function AssessmentScreeningForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="occupation">{isPt ? "Ocupação / Profissão" : "Occupation"}</Label>
+              <Input
+                id="occupation"
+                placeholder={isPt ? "Ex: professor, motorista, escritório..." : "e.g. teacher, driver, office worker..."}
+                value={formData.occupation}
+                onChange={(e) => handleInputChange("occupation", e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="occupation">{isPt ? "Ocupação / Profissão" : "Occupation"}</Label>
-                <Input
-                  id="occupation"
-                  placeholder={isPt ? "Ex: professor, motorista, escritório..." : "e.g. teacher, driver, office worker..."}
-                  value={formData.occupation}
-                  onChange={(e) => handleInputChange("occupation", e.target.value)}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label>{isPt ? "Lado dominante" : "Dominant side"}</Label>
+                <Label>{isPt ? "Mão dominante" : "Dominant hand"}</Label>
                 <div className="mt-1.5 flex gap-2">
                   {[
-                    { v: "right", l: isPt ? "Direito" : "Right" },
-                    { v: "left", l: isPt ? "Esquerdo" : "Left" },
+                    { v: "right", l: isPt ? "Direita" : "Right" },
+                    { v: "left", l: isPt ? "Esquerda" : "Left" },
                     { v: "ambidextrous", l: isPt ? "Ambidestro" : "Both" },
                   ].map((opt) => (
                     <button key={opt.v} type="button"
                       onClick={() => handleInputChange("dominantSide", opt.v)}
                       className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${formData.dominantSide === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label>{isPt ? "Pé dominante" : "Dominant foot"}</Label>
+                <div className="mt-1.5 flex gap-2">
+                  {[
+                    { v: "right", l: isPt ? "Direito" : "Right" },
+                    { v: "left", l: isPt ? "Esquerdo" : "Left" },
+                    { v: "ambidextrous", l: isPt ? "Ambos" : "Both" },
+                  ].map((opt) => (
+                    <button key={opt.v} type="button"
+                      onClick={() => handleInputChange("dominantFootSide", opt.v)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${formData.dominantFootSide === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                       {opt.l}
                     </button>
                   ))}

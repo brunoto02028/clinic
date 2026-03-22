@@ -590,7 +590,8 @@ model MedicalScreening {
 
   // Patient Background
   occupation              String?
-  dominantSide            String?   // left, right, ambidextrous
+  dominantSide            String?   // left, right, ambidextrous (hand)
+  dominantFootSide        String?   // left, right, ambidextrous (foot)
   activityLevel           String?   // sedentary, lightly_active, moderately_active, very_active
   hobbiesSports           String?
 

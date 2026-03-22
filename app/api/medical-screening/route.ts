@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
           // Patient Background
           occupation: body?.occupation ?? null,
           dominantSide: body?.dominantSide ?? null,
+          dominantFootSide: body?.dominantFootSide ?? null,
           activityLevel: body?.activityLevel ?? null,
           hobbiesSports: body?.hobbiesSports ?? null,
           // Lifestyle
@@ -221,6 +222,7 @@ export async function POST(request: NextRequest) {
         // Patient Background
         occupation: body?.occupation ?? null,
         dominantSide: body?.dominantSide ?? null,
+        dominantFootSide: body?.dominantFootSide ?? null,
         activityLevel: body?.activityLevel ?? null,
         hobbiesSports: body?.hobbiesSports ?? null,
         // Lifestyle
