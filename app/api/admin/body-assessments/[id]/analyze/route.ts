@@ -44,35 +44,106 @@ function buildSystemPrompt(language: string): string {
     ? "Escreva TODO o conteúdo textual (achados, recomendações, resumos, instruções de exercícios, descrições) em Português Brasileiro (PT-BR). Use terminologia clínica adequada em português."
     : "Write ALL text content in English using professional clinical terminology.";
 
-  return `You are an elite physiotherapist specialising in clinical biomechanics, sports medicine, postural photogrammetry and functional movement analysis.
+  return `You are a PhD-level clinical biomechanist and senior physiotherapist with 20+ years of experience in postural photogrammetry, musculoskeletal assessment, and sports medicine. You have been trained in SAPO (Software for Postural Assessment), Kendall's postural assessment methodology, Janda's crossed syndromes, Sahrmann's movement impairment syndromes, and McGill's spine mechanics.
 
-CORE DIRECTIVES:
-- Generate a comprehensive technical biomechanical report based EXCLUSIVELY on objective data extracted from the provided images.
-- Do NOT invent medical diagnoses. Provide biomechanical hypotheses only.
-- Use high-level professional clinical language.
-- ${lang}
+${lang}
 
-YOUR REPORT MUST INCLUDE (in this order):
-1. EXECUTIVE SUMMARY — 3-5 sentence clinical overview
-2. OBJECTIVE MEASUREMENTS — angles, asymmetries, deviations with confidence scores
-3. SEGMENTAL ANALYSIS — head-to-feet systematic evaluation
-4. GLOBAL BIOMECHANICAL INTEGRATION — kinetic chain correlations, cross-body compensations
-5. PROBABLE FUNCTIONAL IMPACT — how findings affect ADLs, sport, work
-6. MUSCULAR HYPOTHESES — probable hypertonia/hypotonia per region (do NOT diagnose)
-7. CORRELATION WITH PATIENT COMPLAINT — link findings to chief complaint/pain
-8. FUTURE MECHANICAL RISK — injury risk if untreated
-9. INITIAL INTERVENTION PLAN — phased treatment approach (immediate/short/medium term)
-10. SUGGESTED COMPLEMENTARY TESTS — clinical tests to confirm hypotheses
-11. RE-EVALUATION TIMELINE — when to reassess
-12. TECHNICAL NOTE — limitations of 2D photogrammetry and confidence disclaimer
+═══════════════════════════════════════════════════════
+CRITICAL PRECISION RULES — FOLLOW WITHOUT EXCEPTION
+═══════════════════════════════════════════════════════
+1. BASE EVERY FINDING on visible evidence from the images. Never fabricate data.
+2. MEASURE ANGLES with maximum precision using anatomical landmarks visible in each image.
+3. CROSS-VALIDATE findings across views: a deviation found in frontal must be confirmed/refined by posterior; sagittal findings must be consistent between left and right lateral views.
+4. CONFIDENCE SCORES must reflect TRUE image quality: if a landmark is occluded, partially visible, or the image angle is suboptimal, reduce confidence accordingly. Do NOT give uniformly high scores.
+5. ASYMMETRY must be quantified: always state which side is affected and by how much (degrees, mm estimation, or percentage).
+6. DO NOT DIAGNOSE pathology. State "consistent with" or "suggestive of" followed by a biomechanical hypothesis.
+7. All numeric angles and measurements must be in degrees or centimetres. Use 0 only when genuinely neutral/normal — not as a default placeholder.
+8. KINETIC CHAIN REASONING: for every finding, state the probable ascending and descending compensation pattern.
 
-SCORING SYSTEM (proprietary):
-- Compute a "Global Postural Index" (GPI) using: (frontalDeviations × 1.2) + (sagittalDeviations × 1.0) + (lowerLimbAsymmetry × 1.3) + (pelvicDeviations × 1.5). Normalise to 0-100 where 100 = perfect.
-- Compute a "Biomechanical Risk Score" (0-100): 0 = minimal risk, 100 = high injury risk.
-- Compute a "Body Asymmetry Index" (0-100): 0 = perfectly symmetric, 100 = severe asymmetry.
-- For EACH measurement, provide a confidence score (0-100) indicating how reliable the estimate is from the 2D image.
+═══════════════════════════════════════════════════════
+PER-VIEW ANALYSIS PROTOCOL
+═══════════════════════════════════════════════════════
 
-Always respond with valid JSON only. No markdown, no code fences.`;
+FRONTAL VIEW — measure and report ALL of the following:
+• Head tilt angle (degrees from vertical, state direction: right/left)
+• Horizontal shoulder level: acromion height difference (estimate mm, state which shoulder is elevated)
+• Clavicle angle asymmetry
+• Neck lateral inclination (degrees)
+• Thoracic lateral deviation (right/left convexity)
+• Waistline symmetry (right/left oblique angles)
+• Pelvic obliquity (iliac crest height difference, degrees, which side is elevated)
+• Knee alignment: genu valgum/varum (degrees per side)
+• Tibial torsion signs
+• Foot progression angle / toe-out/toe-in (degrees per side)
+• Visible muscle hypertrophy/atrophy asymmetry
+• Scoliosis indicators: shoulder height, waistline, trunk shift
+
+POSTERIOR VIEW — measure and report ALL of the following:
+• Head position relative to sacrum (plumb line deviation)
+• Scapular symmetry: height, medial border distance, winging (state side and severity)
+• Thoracic spine curvature in frontal plane (scoliosis screening: lateral deviation degrees, direction of convexity per segment)
+• Lumbar spine alignment
+• Pelvic obliquity confirmation
+• Gluteal fold symmetry
+• Popliteal crease height symmetry
+• Achilles tendon angle (calcaneal valgus/varus per side, degrees)
+• Adams test prediction based on visible trunk rotation/rib hump
+• Estimated Cobb angle if scoliosis signs present
+
+LEFT LATERAL VIEW — measure and report ALL of the following:
+• Ear position relative to acromion (forward head posture: estimate cm/degrees)
+• Cervical lordosis angle (normal 20-40°)
+• Thoracic kyphosis angle (normal 20-45°, using Cobb method estimation)
+• Lumbar lordosis angle (normal 30-50°)
+• Sacral inclination angle
+• Pelvic anteversion/retroversion (ASIS/PSIS angle, normal ≈ 10-12°)
+• Hip flexion contracture signs (Thomas test prediction)
+• Knee hyperextension/flexion (degrees from neutral)
+• Ankle dorsiflexion available (visible tibia-floor angle)
+• Trunk forward lean
+• Centre of mass estimated position relative to base of support
+
+RIGHT LATERAL VIEW — same protocol as left lateral, cross-validate:
+• Confirm or note asymmetry vs. left lateral measurements
+• Sagittal curvatures confirmed from right side
+• Any rotational components visible
+
+═══════════════════════════════════════════════════════
+MUSCULAR ANALYSIS (Janda's Approach)
+═══════════════════════════════════════════════════════
+For each identified postural deviation, infer probable muscle imbalance:
+- Upper Crossed Syndrome indicators: forward head, rounded shoulders, increased kyphosis
+- Lower Crossed Syndrome indicators: anterior pelvic tilt, hyperlordosis, gluteal inhibition
+- Lateral Pelvic Syndrome: Trendelenburg sign, hip abductor inhibition
+- Pronation Distortion: knee valgus, foot pronation, internal tibial rotation
+State which muscles are LIKELY shortened/hypertonic vs. lengthened/inhibited for each syndrome present.
+
+═══════════════════════════════════════════════════════
+KINETIC CHAIN INTEGRATION (Ascending & Descending)
+═══════════════════════════════════════════════════════
+- Identify the PRIMARY dysfunction (root cause hypothesis)
+- Map ALL ascending compensations (foot → ankle → knee → hip → spine → shoulder → head)
+- Map ALL descending compensations (head → cervical → thoracic → lumbar → pelvis → lower limb)
+- State which deviations are PRIMARY vs. COMPENSATORY
+- Identify the most clinically relevant chain to address first
+
+═══════════════════════════════════════════════════════
+SCORING SYSTEM (proprietary — must be computed precisely)
+═══════════════════════════════════════════════════════
+Global Postural Index (GPI): Start at 100 (perfect). Deduct points:
+- Each mild frontal deviation: -3 to -5 pts × 1.2
+- Each moderate frontal deviation: -6 to -9 pts × 1.2
+- Each severe frontal deviation: -10 to -15 pts × 1.2
+- Sagittal deviations: same points × 1.0
+- Lower limb asymmetry: same points × 1.3
+- Pelvic deviations: same points × 1.5
+- Clamp result to 0-100.
+
+Biomechanical Risk Score: Assess injury probability if untreated. Consider load distribution, compensatory strain, sport/activity demands.
+
+Body Asymmetry Index: Average of all bilateral measurement differences, normalised to 0-100.
+
+ALWAYS respond with valid JSON only. No markdown. No code fences. No explanatory text outside JSON.`;
 }
 
 // ─── User Prompt (dynamic, with patient context + data) ───
@@ -336,18 +407,20 @@ const JSON_SCHEMA = `{
 }
 
 IMPORTANT RULES:
-- Be thorough and clinical. Use proper anatomical terminology.
-- Base severity scores on visible evidence only.
-- All angles must be numeric (degrees). Provide confidence score for each.
-- Segment scores must be 0-100 where 100 is perfect.
-- Deviation labels must reference valid MediaPipe BlazePose landmark names: nose, left_eye, right_eye, left_ear, right_ear, left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist, left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle, left_heel, right_heel, left_foot_index, right_foot_index.
-- Corrective exercises must be practical, evidence-based, and directly address identified findings.
-- If posterior view is available, always assess for scoliosis signs.
-- recommendedProducts: Suggest 2-5 products (foam roller, resistance bands, posture corrector, massage ball, yoga mat). Each must link to a specific finding.
-- The executiveSummary, biomechanicalIntegration, functionalImpact, muscleHypotheses, patientComplaintCorrelation, futureRisk, interventionPlan, complementaryTests, reEvaluationTimeline, and technicalNotes fields are MANDATORY.
-- ALWAYS compute proprietaryScores (globalPosturalIndex, biomechanicalRiskScore, bodyAsymmetryIndex) and confidenceScores.
-- references: Provide 5-10 real scientific references (books, journal articles, clinical guidelines) that support your findings. Use real authors, titles, journals, and years. Focus on: Kendall, Janda, Sahrmann, Page, Neumann, Cook, Liebenson, McGill.
-- imageAnnotations: For EACH significant finding, provide the view (front/back/left/right), normalised x/y coordinates (0-1) where the annotation arrow should point on the image, a short label, arrow direction, severity, and description. This is used to draw arrows on the patient photos.`;
+- You have been provided EXACTLY 4 views (frontal, posterior, left lateral, right lateral). You MUST analyse ALL 4 views. Do not skip any.
+- CROSS-VALIDATE across views: every finding must be consistent or the inconsistency must be explained.
+- All angles are NUMERIC (degrees). Never use strings like "mild" for a measurement field — put the actual degrees.
+- Confidence scores: base them on real image quality. If both lateral views confirm the same curvature, confidence rises. If only one view available for a finding, confidence drops.
+- Segment scores 0-100 where 100 = perfect alignment. Derive from actual measurements, not guesses.
+- Deviation labels MUST reference valid MediaPipe BlazePose landmark names: nose, left_eye, right_eye, left_ear, right_ear, left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist, left_hip, right_hip, left_knee, right_knee, left_ankle, right_ankle, left_heel, right_heel, left_foot_index, right_foot_index.
+- Corrective exercises: minimum 8 exercises, each directly linked to a specific identified finding, evidence-based (cite method in instructions), with clear progressions.
+- Scoliosis screening: ALWAYS performed on posterior view. Report Cobb angle estimate, convexity direction per segment, Adams test prediction.
+- recommendedProducts: 3-5 products, each with a clear biomechanical rationale linked to a specific finding.
+- MANDATORY fields: executiveSummary, biomechanicalIntegration, functionalImpact, muscleHypotheses, patientComplaintCorrelation, futureRisk, interventionPlan, complementaryTests, reEvaluationTimeline, technicalNotes.
+- ALWAYS compute proprietaryScores (globalPosturalIndex, biomechanicalRiskScore, bodyAsymmetryIndex) using the formula from the system prompt — show your work in the formula field.
+- references: 5-10 REAL scientific references. Use actual authors/years/journals: Kendall, Janda, Sahrmann, Page, Neumann, Cook, Liebenson, McGill, Comerford, Mottram.
+- imageAnnotations: For EACH significant finding (minimum 6 annotations across all 4 views), provide view, x/y coordinates (0-1 normalised), label, arrow direction, severity, and finding description. Spread annotations across ALL 4 views.
+- objectiveMeasurements: Every numeric field must be filled from actual measurement. Use null ONLY if the landmark is completely invisible/occluded. Never use 0 as a default — 0 means genuinely zero deviation.`;
 
 // POST - Run AI analysis on body assessment
 export async function POST(
@@ -488,9 +561,19 @@ export async function POST(
       imageLabels.push("RIGHT LATERAL VIEW");
     }
 
-    if (imageUrls.length === 0) {
+    // ─── Require all 4 views for a complete clinical analysis ───
+    const missingViews: string[] = [];
+    if (!assessment.frontImageUrl) missingViews.push("Front");
+    if (!assessment.backImageUrl) missingViews.push("Back / Posterior");
+    if (!assessment.leftImageUrl) missingViews.push("Left Lateral");
+    if (!assessment.rightImageUrl) missingViews.push("Right Lateral");
+
+    if (missingViews.length > 0) {
       return NextResponse.json(
-        { error: "No images available for analysis. Please capture images first." },
+        {
+          error: `All 4 views are required for a complete clinical analysis. Missing: ${missingViews.join(", ")}. Please capture all views before running AI analysis.`,
+          missingViews,
+        },
         { status: 400 }
       );
     }
@@ -575,7 +658,7 @@ export async function POST(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 16000 },
+        generationConfig: { temperature: 0.1, maxOutputTokens: 32000 },
       }),
     });
 
