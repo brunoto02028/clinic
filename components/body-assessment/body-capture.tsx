@@ -277,6 +277,17 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
     }
   }, [facingMode]);
 
+  // Reconnect stream to video element whenever preview is dismissed or view changes
+  // (the <video> element may remount or lose srcObject)
+  useEffect(() => {
+    if (!showPreview && streamRef.current && videoRef.current) {
+      if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  }, [showPreview, currentViewIndex]);
+
   // Load pose detection in background (optional enhancement)
   useEffect(() => {
     initPoseDetection().catch(() => {
