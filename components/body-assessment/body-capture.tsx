@@ -159,6 +159,7 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   // Photo state
   const [currentViewIndex, setCurrentViewIndex] = useState(0);
   const [captures, setCaptures] = useState<Record<string, CapturedView>>({});
+  const capturesRef = useRef<Record<string, CapturedView>>({});
   const [showPreview, setShowPreview] = useState(false);
 
   // Video state
@@ -417,10 +418,11 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
         img.src = frame.imageData;
       });
       const blurredImageData = applyFaceBlur(tempCanvas, frame.landmarks);
-      setCaptures((prev) => ({
-        ...prev,
-        [currentView.id]: { imageData: blurredImageData, landmarks: frame.landmarks, timestamp: Date.now() },
-      }));
+      setCaptures((prev) => {
+        const next = { ...prev, [currentView.id]: { imageData: blurredImageData, landmarks: frame.landmarks, timestamp: Date.now() } };
+        capturesRef.current = next;
+        return next;
+      });
       setShowPreview(true);
     } else if (videoRef.current) {
       // Fallback: capture directly from video element (no pose data)
@@ -431,10 +433,11 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0);
         const imageData = captureCanvas.toDataURL("image/jpeg", 0.9);
-        setCaptures((prev) => ({
-          ...prev,
-          [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() },
-        }));
+        setCaptures((prev) => {
+          const next = { ...prev, [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() } };
+          capturesRef.current = next;
+          return next;
+        });
         setShowPreview(true);
       }
     }
@@ -453,10 +456,11 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
     const reader = new FileReader();
     reader.onload = () => {
       const imageData = reader.result as string;
-      setCaptures((prev) => ({
-        ...prev,
-        [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() },
-      }));
+      setCaptures((prev) => {
+        const next = { ...prev, [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() } };
+        capturesRef.current = next;
+        return next;
+      });
       setShowPreview(true);
     };
     reader.readAsDataURL(file);
@@ -472,8 +476,9 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
       setCurrentViewIndex((prev) => prev + 1);
     } else {
       // Photos done — go to transition or finish
+      // Use capturesRef to avoid stale closure
       if (skipVideos) {
-        finishCapture(captures, []);
+        finishCapture(capturesRef.current, []);
       } else {
         setPhase("transition");
       }

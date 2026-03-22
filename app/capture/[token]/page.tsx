@@ -104,26 +104,21 @@ export default function CapturePage() {
         if (!res.ok) throw new Error(`Failed to upload ${view} view`);
       }
 
-      // Upload videos
+      // Upload videos — use FormData multipart to avoid massive base64 JSON on mobile
       if (result.videos && result.videos.length > 0) {
         for (let i = 0; i < result.videos.length; i++) {
           const vid = result.videos[i];
           setUploadProgress(L(`Uploading video ${i + 1}/${result.videos.length} (${vid.label})...`, `Enviando vídeo ${i + 1}/${result.videos.length} (${vid.label})...`));
 
-          // Convert blob to data URL for transfer
-          const videoDataUrl = await blobToDataUrl(vid.blob);
+          const fd = new FormData();
+          fd.append("movementVideo", vid.blob, `${vid.testType}.webm`);
+          fd.append("testType", vid.testType);
+          fd.append("label", vid.label);
+          fd.append("duration", String(vid.duration));
 
           const res = await fetch(`/api/body-assessments/capture/${token}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              movementVideo: {
-                testType: vid.testType,
-                label: vid.label,
-                duration: vid.duration,
-                videoDataUrl,
-              },
-            }),
+            body: fd,
           });
 
           if (!res.ok) throw new Error(`Failed to upload ${vid.label} video`);
