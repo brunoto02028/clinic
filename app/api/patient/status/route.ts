@@ -98,6 +98,13 @@ export async function GET(req: NextRequest) {
     });
 
     for (const sub of activeSubscriptions) {
+      // isFree plan → grant everything (no paywall)
+      if (sub.plan?.isFree) {
+        accessMap.CONSULTATION = true;
+        accessMap.FOOT_SCAN = true;
+        accessMap.BODY_ASSESSMENT = true;
+        break;
+      }
       if (!sub.plan?.features) continue;
       for (const featureKey of sub.plan.features) {
         const svcType = MODULE_TO_SERVICE[featureKey];
