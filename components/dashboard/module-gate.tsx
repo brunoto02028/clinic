@@ -51,12 +51,14 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
     "/dashboard/profile",
     "/dashboard/membership",
     "/dashboard/plans",
+    "/dashboard/screening", // screening has its own flow; consent is shown as dashboard alert
   ];
   const isConsentBypass = consentBypass.some(
     (p) => pathname === p || (p !== "/dashboard" && pathname?.startsWith(p + "/"))
   );
 
-  if (!access.onboarding.consentAccepted && !isConsentBypass) {
+  // Don't block while access is still loading (avoids flash of consent gate)
+  if (!access.onboarding.consentAccepted && !isConsentBypass && !loading) {
     return (
       <div className="max-w-lg mx-auto mt-12">
         <Button variant="ghost" size="sm" className="mb-4 gap-1 text-muted-foreground" onClick={() => router.push("/dashboard")}>
