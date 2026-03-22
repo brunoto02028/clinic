@@ -161,19 +161,12 @@ export async function PUT(
       blurFaceOnFile(localPath).catch(() => {});
       removeBackground(localPath).catch(() => {});
 
-      // Also try S3 upload (non-blocking, keep local as primary)
-      try {
-        const { uploadUrl } = await generatePresignedUploadUrl(key, "image/jpeg");
+      // S3 upload — fire-and-forget, never block mobile response
+      generatePresignedUploadUrl(key, "image/jpeg").then(async ({ uploadUrl }) => {
         const { readFile } = await import("fs/promises");
         const fileBuffer = await readFile(localPath);
-        await fetch(uploadUrl, {
-          method: "PUT",
-          body: fileBuffer,
-          headers: { "Content-Type": "image/jpeg" },
-        });
-      } catch (s3Error) {
-        console.warn("S3 upload failed, using local:", s3Error);
-      }
+        return fetch(uploadUrl, { method: "PUT", body: fileBuffer, headers: { "Content-Type": "image/jpeg" } });
+      }).catch((s3Error) => console.warn("S3 upload failed, using local:", s3Error));
 
       switch (view) {
         case "front":
