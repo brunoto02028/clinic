@@ -26,7 +26,6 @@ import { AssessmentProgressChart } from "@/components/body-assessment/assessment
 import { InteractiveBodyModel } from "@/components/body-assessment/interactive-body-model";
 import dynamic from "next/dynamic";
 const BodyViewer3D = dynamic(() => import("@/components/body-assessment/body-viewer-3d").then(m => m.BodyViewer3D), { ssr: false, loading: () => <div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" /></div> });
-import { QRCodeSVG } from "qrcode.react";
 import { PostureAnalysisPanel } from "@/components/body-assessment/posture-analysis-panel";
 import { BeforeAfterAngles } from "@/components/body-assessment/before-after-angles";
 import { PostureStages } from "@/components/body-assessment/posture-stages";
@@ -403,7 +402,12 @@ function PatientBodyAssessmentsContent() {
           </div>
 
           <div className="bg-white rounded-2xl p-6 mx-auto inline-block shadow-xl">
-            <QRCodeSVG value={captureUrl} size={220} level="M" bgColor="#ffffff" fgColor="#000000" />
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(captureUrl)}`}
+              alt="QR Code"
+              width={220}
+              height={220}
+            />
           </div>
 
           <div className="space-y-2 text-left bg-muted/30 rounded-lg p-4">
