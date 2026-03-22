@@ -754,7 +754,8 @@ export default function AssessmentScreeningForm() {
                   <div key={item.key} className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${formData[item.key as keyof ScreeningData] ? "bg-primary/10 border-primary/40" : "border-border"}`}
                     onClick={() => handleCheckboxChange(item.key, !formData[item.key as keyof ScreeningData])}>
                     <Checkbox
-                      checked={formData[item.key as keyof ScreeningData] as boolean}
+                      checked={!!formData[item.key as keyof ScreeningData]}
+                      onClick={(e) => e.stopPropagation()}
                       onCheckedChange={(checked) => handleCheckboxChange(item.key, checked as boolean)}
                     />
                     <span className="text-sm">{item.label}</span>
@@ -864,7 +865,7 @@ export default function AssessmentScreeningForm() {
             <div className="flex items-center gap-4">
               <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.smoker ? "bg-amber-500/10 border-amber-500/40" : "border-border"}`}
                 onClick={() => handleCheckboxChange("smoker", !formData.smoker)}>
-                <Checkbox checked={formData.smoker} onCheckedChange={(c) => handleCheckboxChange("smoker", c as boolean)} />
+                <Checkbox checked={formData.smoker} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("smoker", c as boolean)} />
                 <span className="text-sm">{isPt ? "Fumante" : "Smoker"}</span>
               </div>
             </div>
@@ -896,7 +897,7 @@ export default function AssessmentScreeningForm() {
             <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.previousPhysio ? "bg-primary/10 border-primary/40" : "border-border"}`}
               onClick={() => handleCheckboxChange("previousPhysio", !formData.previousPhysio)}>
               <div className="flex items-center gap-2">
-                <Checkbox checked={formData.previousPhysio} onCheckedChange={(c) => handleCheckboxChange("previousPhysio", c as boolean)} />
+                <Checkbox checked={formData.previousPhysio} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("previousPhysio", c as boolean)} />
                 <span className="text-sm font-medium">{prevTxLabel("previousPhysio", "Have you had physiotherapy before?", "Já fez fisioterapia anteriormente?")}</span>
               </div>
               {formData.previousPhysio && (
@@ -914,7 +915,7 @@ export default function AssessmentScreeningForm() {
             <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.previousInjections ? "bg-primary/10 border-primary/40" : "border-border"}`}
               onClick={() => handleCheckboxChange("previousInjections", !formData.previousInjections)}>
               <div className="flex items-center gap-2">
-                <Checkbox checked={formData.previousInjections} onCheckedChange={(c) => handleCheckboxChange("previousInjections", c as boolean)} />
+                <Checkbox checked={formData.previousInjections} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("previousInjections", c as boolean)} />
                 <span className="text-sm font-medium">{prevTxLabel("previousInjections", "Have you had injections (corticosteroid, PRP, etc.)?", "Já recebeu injeções (corticosteroide, PRP, etc.)?")}</span>
               </div>
               {formData.previousInjections && (
@@ -932,7 +933,7 @@ export default function AssessmentScreeningForm() {
             <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.currentlyUnderCare ? "bg-primary/10 border-primary/40" : "border-border"}`}
               onClick={() => handleCheckboxChange("currentlyUnderCare", !formData.currentlyUnderCare)}>
               <div className="flex items-center gap-2">
-                <Checkbox checked={formData.currentlyUnderCare} onCheckedChange={(c) => handleCheckboxChange("currentlyUnderCare", c as boolean)} />
+                <Checkbox checked={formData.currentlyUnderCare} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("currentlyUnderCare", c as boolean)} />
                 <span className="text-sm font-medium">{prevTxLabel("currentlyUnderCare", "Currently under care of another health professional?", "Atualmente em acompanhamento com outro profissional de saúde?")}</span>
               </div>
               {formData.currentlyUnderCare && (
@@ -972,12 +973,12 @@ export default function AssessmentScreeningForm() {
             <div className="flex gap-3">
               <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToSport ? "bg-primary/10 border-primary/40" : "border-border"}`}
                 onClick={() => handleCheckboxChange("returnToSport", !formData.returnToSport)}>
-                <Checkbox checked={formData.returnToSport} onCheckedChange={(c) => handleCheckboxChange("returnToSport", c as boolean)} />
+                <Checkbox checked={formData.returnToSport} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("returnToSport", c as boolean)} />
                 <span className="text-sm">{isPt ? "Retornar ao esporte" : "Return to sport"}</span>
               </div>
               <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToWork ? "bg-primary/10 border-primary/40" : "border-border"}`}
                 onClick={() => handleCheckboxChange("returnToWork", !formData.returnToWork)}>
-                <Checkbox checked={formData.returnToWork} onCheckedChange={(c) => handleCheckboxChange("returnToWork", c as boolean)} />
+                <Checkbox checked={formData.returnToWork} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("returnToWork", c as boolean)} />
                 <span className="text-sm">{isPt ? "Retornar ao trabalho" : "Return to work"}</span>
               </div>
             </div>
