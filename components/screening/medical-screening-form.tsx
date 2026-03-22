@@ -191,6 +191,7 @@ export default function AssessmentScreeningForm() {
   const [restoredDraft, setRestoredDraft] = useState(false);
   const isDirty = useRef(false);
   const formDataRef = useRef(formData);
+  const hasExistingRef = useRef(false);
 
   // ── Persist draft to localStorage on every change ──
   const saveDraft = useCallback((data: ScreeningData) => {
@@ -321,6 +322,7 @@ export default function AssessmentScreeningForm() {
           consentGiven: s.consentGiven ?? false,
         });
         setHasExisting(true);
+        hasExistingRef.current = true;
         setIsLocked(s.isLocked ?? false);
         setEditRequested(!!s.editRequestedAt && !s.editApprovedAt);
       }
@@ -328,7 +330,7 @@ export default function AssessmentScreeningForm() {
       console.error("Error fetching screening:", error);
     } finally {
       // If no existing screening, try to restore draft from localStorage
-      if (!hasExisting) {
+      if (!hasExistingRef.current) {
         const draft = loadDraft();
         if (draft) {
           setFormData(draft);
@@ -546,8 +548,7 @@ export default function AssessmentScreeningForm() {
                     <button
                       type="button"
                       onClick={() => {
-                        handleCheckboxChange(q.key, false);
-                        setFormData(prev => ({ ...prev, redFlagDetails: { ...prev.redFlagDetails, [q.key]: "" } }));
+                        setFormData(prev => { const next = { ...prev, [q.key]: false, redFlagDetails: { ...prev.redFlagDetails, [q.key]: "" } }; isDirty.current = true; saveDraft(next); return next; });
                       }}
                       className={`px-4 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                         !isYes && formData[q.key as keyof ScreeningData] !== undefined
@@ -562,7 +563,7 @@ export default function AssessmentScreeningForm() {
                     <Input
                       placeholder={isPt ? "Por favor, dê mais detalhes..." : "Please provide more details..."}
                       value={detailValue}
-                      onChange={(e) => setFormData(prev => ({ ...prev, redFlagDetails: { ...prev.redFlagDetails, [q.key]: e.target.value } }))}
+                      onChange={(e) => { const val = e.target.value; setFormData(prev => { const next = { ...prev, redFlagDetails: { ...prev.redFlagDetails, [q.key]: val } }; isDirty.current = true; saveDraft(next); return next; }); }}
                       className="mt-2 text-sm"
                     />
                   )}
@@ -639,7 +640,7 @@ export default function AssessmentScreeningForm() {
                   min={0}
                   max={10}
                   value={formData.painScore}
-                  onChange={(e) => setFormData(prev => ({ ...prev, painScore: parseInt(e.target.value) }))}
+                  onChange={(e) => { const v = parseInt(e.target.value); setFormData(prev => { const next = { ...prev, painScore: v }; isDirty.current = true; saveDraft(next); return next; }); }}
                   className="w-full accent-primary"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -1003,6 +1004,8 @@ export default function AssessmentScreeningForm() {
                   if (data.allergies) updated.allergies = data.allergies;
                   if (data.surgicalHistory) updated.surgicalHistory = data.surgicalHistory;
                   if (data.otherConditions) updated.otherConditions = data.otherConditions;
+                  isDirty.current = true;
+                  saveDraft(updated);
                   return updated;
                 });
               }}
