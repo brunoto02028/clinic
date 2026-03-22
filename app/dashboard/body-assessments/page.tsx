@@ -256,10 +256,12 @@ function PatientBodyAssessmentsContent() {
     try {
       const res = await fetch("/api/admin/body-assessments");
       if (res.ok) {
-        setAssessments(await res.json());
+        const data = await res.json();
+        setAssessments(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error("Error:", error);
+      setAssessments([]);
     } finally {
       setLoading(false);
     }
