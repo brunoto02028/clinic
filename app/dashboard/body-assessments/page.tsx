@@ -26,6 +26,7 @@ import { AssessmentProgressChart } from "@/components/body-assessment/assessment
 import { InteractiveBodyModel } from "@/components/body-assessment/interactive-body-model";
 import dynamic from "next/dynamic";
 const BodyViewer3D = dynamic(() => import("@/components/body-assessment/body-viewer-3d").then(m => m.BodyViewer3D), { ssr: false, loading: () => <div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" /></div> });
+import { QRCodeSVG } from "qrcode.react";
 import { PostureAnalysisPanel } from "@/components/body-assessment/posture-analysis-panel";
 import { BeforeAfterAngles } from "@/components/body-assessment/before-after-angles";
 import { PostureStages } from "@/components/body-assessment/posture-stages";
@@ -236,6 +237,9 @@ function PatientBodyAssessmentsContent() {
   const [showCapture, setShowCapture] = useState(false);
   const [captureAssessment, setCaptureAssessment] = useState<Assessment | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+  const [qrAssessment, setQrAssessment] = useState<Assessment | null>(null);
+  const [creatingAssessment, setCreatingAssessment] = useState(false);
   const [bodyMapView, setBodyMapView] = useState<"front" | "back">("front");
   const [detailTab, setDetailTab] = useState<"overview" | "analysis" | "exercises" | "progress" | "videos">("overview");
   const [skeletonView, setSkeletonView] = useState<"front" | "back" | "left" | "right">("front");
@@ -280,7 +284,7 @@ function PatientBodyAssessmentsContent() {
   };
 
   const startSelfCapture = async () => {
-    // Create a new assessment for self-capture
+    setCreatingAssessment(true);
     try {
       const res = await fetch("/api/admin/body-assessments", {
         method: "POST",
@@ -289,28 +293,23 @@ function PatientBodyAssessmentsContent() {
       });
       if (res.ok) {
         const data = await res.json();
-        setCaptureAssessment(data);
-        setShowCapture(true);
+        setQrAssessment(data);
+        setShowQR(true);
+        fetchAssessments();
       } else {
         const errData = await res.json().catch(() => ({}));
-        toast({
-          title: T("common.error"),
-          description: errData.error || T("bodyAssessment.startError"),
-          variant: "destructive",
-        });
+        toast({ title: T("common.error"), description: errData.error || T("bodyAssessment.startError"), variant: "destructive" });
       }
     } catch {
-      toast({
-        title: T("common.error"),
-        description: T("bodyAssessment.startError"),
-        variant: "destructive",
-      });
+      toast({ title: T("common.error"), description: T("bodyAssessment.startError"), variant: "destructive" });
+    } finally {
+      setCreatingAssessment(false);
     }
   };
 
   const handleCaptureForExisting = (assessment: Assessment) => {
-    setCaptureAssessment(assessment);
-    setShowCapture(true);
+    setQrAssessment(assessment);
+    setShowQR(true);
   };
 
   const blobToDataUrl = (blob: Blob): Promise<string> => {
@@ -388,14 +387,51 @@ function PatientBodyAssessmentsContent() {
     setShowDetail(true);
   };
 
-  // Capture mode
-  if (showCapture) {
+  // QR Code modal for phone capture
+  if (showQR && qrAssessment?.captureToken) {
+    const captureUrl = `${typeof window !== "undefined" ? window.location.origin : "https://bpr.rehab"}/capture/${qrAssessment.captureToken}`;
     return (
-      <div className="h-screen">
-        <BodyCapture
-          onComplete={handleCaptureComplete}
-          onCancel={() => setShowCapture(false)}
-        />
+      <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 text-center">
+        <div className="max-w-sm w-full space-y-6">
+          <div>
+            <h2 className="text-xl font-bold">{isPt ? "Capture pelo Telemóvel" : "Capture via Phone"}</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isPt
+                ? "Leia o QR Code abaixo com o seu telemóvel para abrir a câmera e tirar as fotos."
+                : "Scan the QR code below with your phone to open the camera and take your photos."}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 mx-auto inline-block shadow-xl">
+            <QRCodeSVG value={captureUrl} size={220} level="M" bgColor="#ffffff" fgColor="#000000" />
+          </div>
+
+          <div className="space-y-2 text-left bg-muted/30 rounded-lg p-4">
+            {[
+              isPt ? "Abra a câmera do telemóvel" : "Open your phone camera",
+              isPt ? "Aponte para o QR Code" : "Point at the QR code",
+              isPt ? "Siga as instruções para tirar as 4 fotos" : "Follow the steps to take 4 photos",
+            ].map((step, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                <span className="text-sm">{step}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-xs text-muted-foreground break-all bg-muted/20 rounded p-2">
+            {captureUrl}
+          </div>
+
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" onClick={() => { setShowQR(false); setQrAssessment(null); fetchAssessments(); }}>
+              {isPt ? "Fechar" : "Close"}
+            </Button>
+            <Button onClick={() => { fetchAssessments(); toast({ title: isPt ? "Atualizado" : "Refreshed" }); }}>
+              {isPt ? "Verificar Resultado" : "Check Result"}
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
