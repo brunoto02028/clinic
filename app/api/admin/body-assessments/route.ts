@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import crypto from "crypto";
 import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { cookies } from "next/headers";
 
 // Generate unique assessment number
 async function generateAssessmentNumber(): Promise<string> {
@@ -110,9 +111,10 @@ export async function POST(request: NextRequest) {
     const { patientId } = body;
 
     const userId = (session.user as any).id;
-    const effectiveUser = await getEffectiveUser();
-    const isImpersonating = effectiveUser?.isImpersonating ?? false;
-    const impersonatedId = effectiveUser?.userId;
+    // Read impersonation cookie directly (middleware does NOT inject headers for /api/admin/* routes)
+    const cookieStore = cookies();
+    const impersonatedPatientId = cookieStore.get("impersonate-patient-id")?.value;
+    const isImpersonating = !!impersonatedPatientId;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -125,11 +127,11 @@ export async function POST(request: NextRequest) {
 
     // Determine patient ID:
     // - If patient role → their own ID
-    // - If impersonating → use the impersonated patient's ID
+    // - If impersonating a patient → use the impersonated patient's ID
     // - If admin with explicit patientId → use that
     const actualPatientId =
       user.role === "PATIENT" ? user.id :
-      isImpersonating ? impersonatedId :
+      isImpersonating ? impersonatedPatientId :
       patientId;
 
     if (!actualPatientId) {
