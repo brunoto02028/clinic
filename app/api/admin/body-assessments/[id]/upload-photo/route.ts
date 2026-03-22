@@ -81,23 +81,14 @@ export async function POST(
     const originalPath = path.join(uploadsDir, originalFilename);
     await copyFile(filePath, originalPath);
 
-    // Apply face blur using Python/OpenCV
-    try {
-      const scriptPath = path.join(process.cwd(), "scripts", "blur-faces.py");
-      const tempBlurred = filePath + ".blurred.jpg";
-      await execFileAsync("python3", [scriptPath, filePath, tempBlurred], { timeout: 30000 });
-      // Replace main file with blurred version
-      await copyFile(tempBlurred, filePath);
-      // Clean up temp file
-      await unlink(tempBlurred).catch(() => {});
-      console.log(`[blur-faces] Successfully blurred face in ${view} view for assessment ${params.id}`);
-    } catch (blurError: any) {
-      console.warn(`[blur-faces] Face blur failed (non-fatal), using original image:`, blurError?.message || blurError);
-      // Continue with original image if blur fails
-    }
-
-    // Remove background (replace with white) using rembg
-    await removeBackground(filePath);
+    // Face blur + bg removal — fire-and-forget so admin upload never times out
+    const scriptPath = path.join(process.cwd(), "scripts", "blur-faces.py");
+    const tempBlurred = filePath + ".blurred.jpg";
+    execFileAsync("python3", [scriptPath, filePath, tempBlurred], { timeout: 30000 })
+      .then(() => copyFile(tempBlurred, filePath))
+      .then(() => unlink(tempBlurred).catch(() => {}))
+      .catch((e: any) => console.warn(`[blur-faces] Non-fatal:`, e?.message));
+    removeBackground(filePath).catch(() => {});
 
     const imageUrl = `/uploads/body-assessments/${params.id}/${filename}`;
 
