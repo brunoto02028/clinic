@@ -352,7 +352,7 @@ export default function AssessmentScreeningForm() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerAutoSave = useCallback(() => {
-    if (isLocked || hasExisting) return;
+    if (isLocked) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(async () => {
       if (!isDirty.current) return;
