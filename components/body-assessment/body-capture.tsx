@@ -277,16 +277,25 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
     }
   }, [facingMode]);
 
-  // Reconnect stream to video element whenever preview is dismissed or view changes
-  // (the <video> element may remount or lose srcObject)
+  // When preview closes or view advances: reconnect stream + restart pose detection
   useEffect(() => {
-    if (!showPreview && streamRef.current && videoRef.current) {
-      if (videoRef.current.srcObject !== streamRef.current) {
-        videoRef.current.srcObject = streamRef.current;
-        videoRef.current.play().catch(() => {});
-      }
+    if (showPreview) return; // nothing to do while preview is showing
+    if (!streamRef.current) return;
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Reconnect stream (may have been detached when preview was shown)
+    if (video.srcObject !== streamRef.current) {
+      video.srcObject = streamRef.current;
+      video.play().catch(() => {});
     }
-  }, [showPreview, currentViewIndex]);
+
+    // Restart pose detection overlay after preview closes
+    if (poseReady && canvasRef.current) {
+      startDetection(video, canvasRef.current);
+    }
+  }, [showPreview, currentViewIndex, poseReady, startDetection]);
 
   // Load pose detection in background (optional enhancement)
   useEffect(() => {
@@ -455,9 +464,9 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   }, [captureFrame, currentView]);
 
   const handlePhotoRetake = () => {
-    setShowPreview(false);
     stableCountRef.current = 0;
     setPoseStable(false);
+    setShowPreview(false); // triggers the useEffect above to reconnect camera
   };
 
   // ============ GALLERY UPLOAD ============
@@ -480,12 +489,13 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   }, [currentView]);
 
   const handlePhotoAccept = () => {
-    setShowPreview(false);
     stableCountRef.current = 0;
     setPoseStable(false);
     if (currentViewIndex < CAPTURE_VIEWS.length - 1) {
-      setCurrentViewIndex((prev) => prev + 1);
-    } else {
+      setCurrentViewIndex((prev) => prev + 1); // triggers useEffect above
+    }
+    setShowPreview(false); // close preview AFTER advancing index
+    if (currentViewIndex >= CAPTURE_VIEWS.length - 1) {
       // Photos done — go to transition or finish
       // Use capturesRef to avoid stale closure
       if (skipVideos) {

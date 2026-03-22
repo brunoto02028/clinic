@@ -21,20 +21,39 @@ export const POSE_LANDMARKS = [
   "left_foot_index", "right_foot_index",
 ];
 
-// Skeleton connections for drawing
+// Skeleton connections for drawing — full body including neck
 export const POSE_CONNECTIONS = [
-  [11, 12], // shoulders
+  // Head & neck: nose(0) to left_shoulder(11) and right_shoulder(12)
+  [0, 11], [0, 12],
+  // Shoulders
+  [11, 12],
+  // Arms
   [11, 13], [13, 15], // left arm
   [12, 14], [14, 16], // right arm
+  // Torso
   [11, 23], [12, 24], // torso sides
   [23, 24], // hips
-  [23, 25], [25, 27], // left leg
-  [24, 26], [26, 28], // right leg
-  [27, 29], [29, 31], // left foot
-  [28, 30], [30, 32], // right foot
-  [15, 17], [15, 19], [15, 21], // left hand
-  [16, 18], [16, 20], [16, 22], // right hand
+  // Legs
+  [23, 25], [25, 27], [27, 31], // left leg + foot
+  [24, 26], [26, 28], [28, 32], // right leg + foot
+  [27, 29], [29, 31], // left heel-foot
+  [28, 30], [30, 32], // right heel-foot
 ];
+
+// Key joint indices for clinical highlighting
+const KEY_JOINTS: Record<number, string> = {
+  0: "#FFFFFF",  // nose (head)
+  11: "#00BFFF", // left shoulder
+  12: "#00BFFF", // right shoulder
+  23: "#FF8C00", // left hip
+  24: "#FF8C00", // right hip
+  25: "#FFD700", // left knee
+  26: "#FFD700", // right knee
+  27: "#00FF88", // left ankle
+  28: "#00FF88", // right ankle
+  13: "#87CEFA", // left elbow
+  14: "#87CEFA", // right elbow
+};
 
 export interface PoseLandmark {
   x: number;
@@ -121,12 +140,15 @@ export function usePoseDetection(options: UsePoseDetectionOptions = {}) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Draw connections (skeleton lines)
-      ctx.strokeStyle = "#00FF88";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       for (const [startIdx, endIdx] of POSE_CONNECTIONS) {
         const start = landmarks[startIdx];
         const end = landmarks[endIdx];
         if (start && end && start.visibility > minConfidence && end.visibility > minConfidence) {
+          // Neck lines (0→11, 0→12) in cyan, legs in green, arms in blue
+          const isNeck = (startIdx === 0);
+          const isLeg = (startIdx >= 23 && startIdx <= 32) || (endIdx >= 23 && endIdx <= 32);
+          ctx.strokeStyle = isNeck ? "#00E5FF" : isLeg ? "#00FF88" : "#5B9EFF";
           ctx.beginPath();
           ctx.moveTo(start.x * videoWidth, start.y * videoHeight);
           ctx.lineTo(end.x * videoWidth, end.y * videoHeight);
@@ -134,24 +156,25 @@ export function usePoseDetection(options: UsePoseDetectionOptions = {}) {
         }
       }
 
-      // Draw landmarks (points)
-      for (const lm of landmarks) {
+      // Draw landmarks (points) — key joints bigger and coloured
+      for (let i = 0; i < landmarks.length; i++) {
+        const lm = landmarks[i];
         if (lm.visibility < minConfidence) continue;
         const x = lm.x * videoWidth;
         const y = lm.y * videoHeight;
-        const radius = lm.visibility > 0.8 ? 6 : 4;
 
-        // Color based on confidence
-        ctx.fillStyle =
-          lm.visibility > 0.8 ? "#00FF88" : lm.visibility > 0.5 ? "#FFD700" : "#FF4444";
+        const isKey = KEY_JOINTS[i] !== undefined;
+        const radius = isKey ? 8 : (lm.visibility > 0.8 ? 5 : 3);
+        const color = KEY_JOINTS[i] || (lm.visibility > 0.8 ? "#00FF88" : "#FFD700");
 
+        ctx.fillStyle = color;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fill();
 
         // White border
         ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = isKey ? 2 : 1;
         ctx.stroke();
       }
     },
