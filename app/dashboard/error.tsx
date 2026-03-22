@@ -38,6 +38,11 @@ export default function DashboardError({
               ? "The app has been updated. Please refresh to continue."
               : "An unexpected error occurred. Your data is safe."}
           </p>
+          {!isChunkError && error?.message && (
+            <p className="text-xs text-red-400 mt-2 font-mono bg-red-500/10 p-2 rounded">
+              {error.message}
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-3">
           <button

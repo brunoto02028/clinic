@@ -39,9 +39,11 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
-    const effectiveUser = await getEffectiveUser();
-    const effectiveId = effectiveUser?.userId;
-    const isPreview = effectiveUser?.isImpersonating ?? false;
+    // Read impersonation cookie directly (middleware does NOT inject headers for /api/admin/* routes)
+    const cookieStore = cookies();
+    const impersonatedPatientId = cookieStore.get("impersonate-patient-id")?.value;
+    const isImpersonating = !!impersonatedPatientId;
+
     const userId = (session.user as any).id;
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -55,8 +57,8 @@ export async function GET(request: NextRequest) {
     // Build query based on role
     const whereClause: any = {};
 
-    if (user.role === "PATIENT" || isPreview) {
-      whereClause.patientId = isPreview ? effectiveId : user.id;
+    if (user.role === "PATIENT" || isImpersonating) {
+      whereClause.patientId = isImpersonating ? impersonatedPatientId : user.id;
     } else if (user.clinicId) {
       whereClause.clinicId = user.clinicId;
       if (patientId) whereClause.patientId = patientId;
