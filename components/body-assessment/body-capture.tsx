@@ -491,13 +491,14 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   const handlePhotoAccept = () => {
     stableCountRef.current = 0;
     setPoseStable(false);
-    if (currentViewIndex < CAPTURE_VIEWS.length - 1) {
-      setCurrentViewIndex((prev) => prev + 1); // triggers useEffect above
-    }
-    setShowPreview(false); // close preview AFTER advancing index
-    if (currentViewIndex >= CAPTURE_VIEWS.length - 1) {
-      // Photos done — go to transition or finish
-      // Use capturesRef to avoid stale closure
+    setShowPreview(false);
+
+    const isLast = currentViewIndex >= CAPTURE_VIEWS.length - 1;
+
+    if (!isLast) {
+      setCurrentViewIndex((prev) => prev + 1);
+    } else {
+      // All photos done — use capturesRef to avoid stale closure
       if (skipVideos) {
         finishCapture(capturesRef.current, []);
       } else {
