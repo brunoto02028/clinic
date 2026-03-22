@@ -28,6 +28,11 @@ import {
   Footprints,
   Clock,
   HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  XCircle,
+  BookOpen,
 } from "lucide-react";
 import { computeAllMetrics } from "@/lib/health-metrics";
 import { HealthMetricsCard } from "./health-metrics-card";
@@ -134,6 +139,321 @@ const FIELD_HELP: Record<string, FieldHelp> = {
     howPt: "Use o app de saúde do seu celular ou um rastreador fitness/smartwatch.",
   },
 };
+
+// ═══════════════════════════════════════════
+// Visual Measurement Guide
+// ═══════════════════════════════════════════
+interface MeasureGuide {
+  keyId: string;
+  labelPt: string;
+  labelEn: string;
+  icon: string;
+  svgBody: React.ReactNode;
+  stepsPt: string[];
+  stepsEn: string[];
+  errorsPt: string[];
+  errorsEn: string[];
+  normalPt: string;
+  normalEn: string;
+}
+
+const MEASURE_GUIDES: MeasureGuide[] = [
+  {
+    keyId: "height",
+    labelPt: "Altura",
+    labelEn: "Height",
+    icon: "📏",
+    svgBody: (
+      <svg viewBox="0 0 80 140" className="w-16 h-28" fill="none">
+        <line x1="10" y1="5" x2="10" y2="135" stroke="#6366f1" strokeWidth="1.5" strokeDasharray="3 2"/>
+        <line x1="6" y1="5" x2="14" y2="5" stroke="#6366f1" strokeWidth="1.5"/>
+        <line x1="6" y1="135" x2="14" y2="135" stroke="#6366f1" strokeWidth="1.5"/>
+        <circle cx="45" cy="18" r="9" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="45" y1="27" x2="45" y2="70" stroke="#94a3b8" strokeWidth="2"/>
+        <line x1="45" y1="42" x2="33" y2="60" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="45" y1="42" x2="57" y2="60" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="45" y1="70" x2="36" y2="100" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="45" y1="70" x2="54" y2="100" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="36" y1="100" x2="34" y2="135" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="54" y1="100" x2="56" y2="135" stroke="#94a3b8" strokeWidth="1.5"/>
+        <rect x="20" y="5" width="12" height="4" rx="1" fill="#6366f1" opacity="0.7"/>
+        <line x1="20" y1="135" x2="70" y2="135" stroke="#64748b" strokeWidth="1.5"/>
+      </svg>
+    ),
+    stepsPt: ["Fique descalço(a)", "Encoste a parede (calcanhares, nádegas, costas, cabeça)", "Coloque um livro/régua no topo da cabeça paralelo ao chão", "Marque a parede e meça do chão até a marca"],
+    stepsEn: ["Stand barefoot", "Back against wall (heels, buttocks, back, head touching)", "Place a book/ruler on top of head parallel to floor", "Mark the wall and measure from floor to mark"],
+    errorsPt: ["Não use sapatos ou meias grossas", "Não curve as costas — postura ereta", "Não levante o queixo"],
+    errorsEn: ["Don't wear shoes or thick socks", "Don't slouch — stand straight", "Don't tilt chin up"],
+    normalPt: "Adultos: 150–200 cm",
+    normalEn: "Adults: 150–200 cm",
+  },
+  {
+    keyId: "weight",
+    labelPt: "Peso",
+    labelEn: "Weight",
+    icon: "⚖️",
+    svgBody: (
+      <svg viewBox="0 0 80 100" className="w-16 h-20" fill="none">
+        <ellipse cx="40" cy="80" rx="22" ry="6" fill="#1e293b" stroke="#6366f1" strokeWidth="1.5"/>
+        <circle cx="40" cy="38" r="20" fill="#1e293b" stroke="#6366f1" strokeWidth="1.5"/>
+        <path d="M28 50 Q20 65 20 80" stroke="#6366f1" strokeWidth="1.5" fill="none"/>
+        <path d="M52 50 Q60 65 60 80" stroke="#6366f1" strokeWidth="1.5" fill="none"/>
+        <text x="33" y="43" fontSize="12" fill="#6366f1" fontWeight="bold">kg</text>
+        <line x1="40" y1="18" x2="40" y2="5" stroke="#94a3b8" strokeWidth="1.5"/>
+        <circle cx="40" cy="4" r="3" stroke="#94a3b8" strokeWidth="1.5"/>
+      </svg>
+    ),
+    stepsPt: ["Use a balança de manhã", "Em jejum ou após usar o banheiro", "Com o mínimo de roupa possível", "Fique imóvel no centro da balança"],
+    stepsEn: ["Weigh yourself in the morning", "After using the toilet, before eating", "With minimal clothing", "Stand still in the centre of the scale"],
+    errorsPt: ["Não pese após refeições (peso falso)", "Não use roupas pesadas", "Use sempre a mesma balança"],
+    errorsEn: ["Don't weigh after meals (false weight)", "Don't wear heavy clothes", "Always use the same scale"],
+    normalPt: "Varia por altura e composição corporal",
+    normalEn: "Varies by height and body composition",
+  },
+  {
+    keyId: "waist",
+    labelPt: "Cintura",
+    labelEn: "Waist",
+    icon: "📐",
+    svgBody: (
+      <svg viewBox="0 0 80 140" className="w-16 h-28" fill="none">
+        <circle cx="40" cy="18" r="9" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="27" x2="40" y2="70" stroke="#94a3b8" strokeWidth="2"/>
+        <line x1="40" y1="42" x2="28" y2="60" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="42" x2="52" y2="60" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="70" x2="31" y2="100" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="70" x2="49" y2="100" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="31" y1="100" x2="29" y2="135" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="49" y1="100" x2="51" y2="135" stroke="#94a3b8" strokeWidth="1.5"/>
+        <ellipse cx="40" cy="56" rx="14" ry="5" stroke="#f59e0b" strokeWidth="2" strokeDasharray="3 2" fill="none"/>
+        <line x1="54" y1="56" x2="68" y2="56" stroke="#f59e0b" strokeWidth="1.5"/>
+        <text x="55" y="53" fontSize="8" fill="#f59e0b">↓ umbigo</text>
+      </svg>
+    ),
+    stepsPt: ["Fique em pé, relaxado(a)", "Expire normalmente (não prenda o ar)", "Meça no ponto mais estreito do tronco (geralmente na altura do umbigo)", "Fita horizontal, firme mas sem comprimir"],
+    stepsEn: ["Stand upright, relaxed", "Breathe out normally (don't hold breath in)", "Measure at the narrowest point of the torso (usually at navel level)", "Tape horizontal, snug but not compressing skin"],
+    errorsPt: ["Não prenda a barriga", "Não meça por cima de roupas", "Fita não deve estar inclinada"],
+    errorsEn: ["Don't suck in your belly", "Don't measure over clothing", "Tape must not be tilted"],
+    normalPt: "Risco aumentado: >94cm homens, >80cm mulheres",
+    normalEn: "Increased risk: >94cm men, >80cm women",
+  },
+  {
+    keyId: "hip",
+    labelPt: "Quadril",
+    labelEn: "Hip",
+    icon: "📐",
+    svgBody: (
+      <svg viewBox="0 0 80 140" className="w-16 h-28" fill="none">
+        <circle cx="40" cy="18" r="9" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="27" x2="40" y2="70" stroke="#94a3b8" strokeWidth="2"/>
+        <line x1="40" y1="42" x2="28" y2="60" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="42" x2="52" y2="60" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="70" x2="31" y2="100" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="70" x2="49" y2="100" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="31" y1="100" x2="29" y2="135" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="49" y1="100" x2="51" y2="135" stroke="#94a3b8" strokeWidth="1.5"/>
+        <ellipse cx="40" cy="73" rx="16" ry="6" stroke="#10b981" strokeWidth="2" strokeDasharray="3 2" fill="none"/>
+        <line x1="56" y1="73" x2="68" y2="73" stroke="#10b981" strokeWidth="1.5"/>
+        <text x="55" y="70" fontSize="8" fill="#10b981">↓ glúteo</text>
+      </svg>
+    ),
+    stepsPt: ["Fique em pé, pés juntos", "Meça na parte mais larga dos glúteos/quadril", "Fita horizontal ao redor do corpo", "Não comprima os tecidos"],
+    stepsEn: ["Stand upright, feet together", "Measure at the widest part of the buttocks/hips", "Tape horizontal around the body", "Don't compress soft tissue"],
+    errorsPt: ["Não meça na cintura — mais abaixo", "Fita não pode estar inclinada", "Não contraia os glúteos"],
+    errorsEn: ["Don't measure at the waist — lower down", "Tape must not be tilted", "Don't contract your glutes"],
+    normalPt: "Referência RCQ: <0.9 homens, <0.85 mulheres",
+    normalEn: "WHR reference: <0.9 men, <0.85 women",
+  },
+  {
+    keyId: "neck",
+    labelPt: "Pescoço",
+    labelEn: "Neck",
+    icon: "📐",
+    svgBody: (
+      <svg viewBox="0 0 80 80" className="w-16 h-16" fill="none">
+        <circle cx="40" cy="22" r="14" stroke="#94a3b8" strokeWidth="1.5"/>
+        <rect x="32" y="36" width="16" height="24" rx="4" stroke="#94a3b8" strokeWidth="1.5"/>
+        <ellipse cx="40" cy="39" rx="10" ry="4" stroke="#8b5cf6" strokeWidth="2" strokeDasharray="3 2" fill="none"/>
+        <line x1="50" y1="39" x2="64" y2="39" stroke="#8b5cf6" strokeWidth="1.5"/>
+        <text x="52" y="36" fontSize="8" fill="#8b5cf6">← pomo</text>
+      </svg>
+    ),
+    stepsPt: ["Olhe para a frente, pescoço relaxado", "Meça logo abaixo do pomo de Adão", "Fita firme mas sem comprimir", "Posição horizontal"],
+    stepsEn: ["Look straight ahead, neck relaxed", "Measure just below the Adam's apple", "Tape snug but not compressing", "Keep horizontal"],
+    errorsPt: ["Não meça acima do pomo de Adão", "Não incline a cabeça"],
+    errorsEn: ["Don't measure above the Adam's apple", "Don't tilt your head"],
+    normalPt: "Risco apneia: >43cm homens, >38cm mulheres",
+    normalEn: "Apnea risk: >43cm men, >38cm women",
+  },
+  {
+    keyId: "chest",
+    labelPt: "Tórax",
+    labelEn: "Chest",
+    icon: "📐",
+    svgBody: (
+      <svg viewBox="0 0 80 100" className="w-16 h-20" fill="none">
+        <circle cx="40" cy="14" r="9" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="23" x2="40" y2="65" stroke="#94a3b8" strokeWidth="2"/>
+        <line x1="40" y1="38" x2="26" y2="55" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="38" x2="54" y2="55" stroke="#94a3b8" strokeWidth="1.5"/>
+        <ellipse cx="40" cy="38" rx="15" ry="5" stroke="#3b82f6" strokeWidth="2" strokeDasharray="3 2" fill="none"/>
+        <text x="56" y="35" fontSize="8" fill="#3b82f6">← mamilos</text>
+      </svg>
+    ),
+    stepsPt: ["Braços relaxados ao lado do corpo", "Meça na altura dos mamilos", "Expire normalmente antes de ler", "Fita horizontal"],
+    stepsEn: ["Arms relaxed at sides", "Measure at nipple level", "Breathe out normally before reading", "Keep tape horizontal"],
+    errorsPt: ["Não segure os braços levantados", "Não prenda a respiração"],
+    errorsEn: ["Don't hold arms raised", "Don't hold your breath"],
+    normalPt: "Varia por porte físico",
+    normalEn: "Varies by body frame",
+  },
+  {
+    keyId: "thigh",
+    labelPt: "Coxa",
+    labelEn: "Thigh",
+    icon: "📐",
+    svgBody: (
+      <svg viewBox="0 0 80 140" className="w-16 h-28" fill="none">
+        <circle cx="40" cy="14" r="9" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="23" x2="40" y2="60" stroke="#94a3b8" strokeWidth="2"/>
+        <line x1="40" y1="60" x2="30" y2="95" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="40" y1="60" x2="50" y2="95" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="30" y1="95" x2="28" y2="135" stroke="#94a3b8" strokeWidth="1.5"/>
+        <line x1="50" y1="95" x2="52" y2="135" stroke="#94a3b8" strokeWidth="1.5"/>
+        <ellipse cx="30" cy="75" rx="9" ry="4" stroke="#f97316" strokeWidth="2" strokeDasharray="3 2" fill="none"/>
+        <line x1="39" y1="75" x2="60" y2="75" stroke="#f97316" strokeWidth="1.5"/>
+        <text x="55" y="72" fontSize="7" fill="#f97316">←15cm</text>
+      </svg>
+    ),
+    stepsPt: ["Fique em pé, peso distribuído igualmente", "Meça ~15cm abaixo da dobra inguinal", "Na parte mais larga da coxa", "Perna relaxada, não contraída"],
+    stepsEn: ["Stand with weight evenly distributed", "Measure ~15cm below the groin fold", "At the widest part of the thigh", "Leg relaxed, not contracted"],
+    errorsPt: ["Não contraia o quadríceps", "Meça sempre no mesmo ponto"],
+    errorsEn: ["Don't flex the quadriceps", "Always measure at the same point"],
+    normalPt: "Referência saúde: >60cm pode indicar boa massa muscular",
+    normalEn: "Health reference: >60cm may indicate good muscle mass",
+  },
+];
+
+function MeasurementGuidePanel({ pt }: { pt: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [activeGuide, setActiveGuide] = useState<string>("waist");
+
+  const guide = MEASURE_GUIDES.find(g => g.keyId === activeGuide) || MEASURE_GUIDES[0];
+
+  return (
+    <div className="rounded-xl border border-blue-500/30 bg-blue-950/20 overflow-hidden">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-blue-950/30 transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+            <BookOpen className="h-4 w-4 text-blue-400" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm text-blue-300">
+              {pt ? "📏 Guia de Medições Corporais" : "📏 Body Measurement Guide"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {pt
+                ? "Leia antes de preencher — posições corretas e erros comuns"
+                : "Read before filling in — correct positions and common mistakes"}
+            </p>
+          </div>
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-blue-400" /> : <ChevronDown className="h-4 w-4 text-blue-400" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-blue-500/20 p-4 space-y-4">
+          {/* Tab selector */}
+          <div className="flex flex-wrap gap-1.5">
+            {MEASURE_GUIDES.map(g => (
+              <button
+                key={g.keyId}
+                type="button"
+                onClick={() => setActiveGuide(g.keyId)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  activeGuide === g.keyId
+                    ? "bg-blue-500 text-white"
+                    : "bg-blue-950/40 text-blue-300 hover:bg-blue-900/50 border border-blue-500/20"
+                }`}
+              >
+                {g.icon} {pt ? g.labelPt : g.labelEn}
+              </button>
+            ))}
+          </div>
+
+          {/* Active guide card */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-background/40 rounded-lg p-4 border border-blue-500/10">
+            {/* SVG illustration */}
+            <div className="flex flex-col items-center justify-center gap-2">
+              <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700">
+                {guide.svgBody}
+              </div>
+              <span className="text-xs text-muted-foreground text-center">
+                {pt ? guide.normalPt : guide.normalEn}
+              </span>
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-green-400 flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {pt ? "Como medir correctamente:" : "How to measure correctly:"}
+              </p>
+              <ol className="space-y-1.5">
+                {(pt ? guide.stepsPt : guide.stepsEn).map((step, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                    <span className="shrink-0 w-4 h-4 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-[10px] font-bold mt-0.5">{i + 1}</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Common errors */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-red-400 flex items-center gap-1">
+                <XCircle className="h-3.5 w-3.5" />
+                {pt ? "Erros comuns a evitar:" : "Common mistakes to avoid:"}
+              </p>
+              <ul className="space-y-1.5">
+                {(pt ? guide.errorsPt : guide.errorsEn).map((err, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                    <XCircle className="shrink-0 h-3 w-3 text-red-400 mt-0.5" />
+                    {err}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-3 pt-3 border-t border-slate-700">
+                <p className="text-[10px] text-muted-foreground">
+                  {pt
+                    ? "💡 Repita a medição 2x e use a média para maior precisão."
+                    : "💡 Repeat measurement twice and use the average for best accuracy."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* General tips banner */}
+          <div className="bg-amber-950/20 border border-amber-500/20 rounded-lg p-3 flex gap-3 items-start">
+            <span className="text-lg leading-none">⚠️</span>
+            <div className="text-xs text-amber-200/80 space-y-1">
+              <p className="font-semibold text-amber-300">{pt ? "Regras gerais de medição:" : "General measurement rules:"}</p>
+              <p>{pt
+                ? "Sempre use uma fita métrica flexível e inelástica (não use fita de costura elástica). Meça sempre no mesmo período do dia. Registe os valores imediatamente após medir."
+                : "Always use a flexible, non-elastic measuring tape. Measure at the same time of day each time. Record values immediately after measuring."
+              }</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FieldHelpTooltip({ fieldKey, pt }: { fieldKey: string; pt: boolean }) {
   const [open, setOpen] = useState(false);
@@ -311,6 +631,9 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
 
   return (
     <div className="space-y-6">
+      {/* Measurement Guide */}
+      <MeasurementGuidePanel pt={pt} />
+
       {/* Save bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
