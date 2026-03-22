@@ -388,6 +388,17 @@ function PatientBodyAssessmentsContent() {
     setShowDetail(true);
   };
 
+  // Auto-enrich exercises — must be BEFORE any conditional returns (Rules of Hooks)
+  useEffect(() => {
+    if (showDetail && selectedAssessment?.correctiveExercises?.length && !enrichedExercises && isAdmin) {
+      setEnrichingVideos(true);
+      enrichExercisesWithVideos(selectedAssessment.correctiveExercises)
+        .then(setEnrichedExercises)
+        .finally(() => setEnrichingVideos(false));
+    }
+    if (!showDetail) setEnrichedExercises(null);
+  }, [showDetail, selectedAssessment?.id]);
+
   // QR Code modal for phone capture
   if (showQR && qrAssessment?.captureToken) {
     const captureUrl = `${typeof window !== "undefined" ? window.location.origin : "https://bpr.rehab"}/capture/${qrAssessment.captureToken}`;
@@ -453,17 +464,6 @@ function PatientBodyAssessmentsContent() {
       </div>
     );
   }
-
-  // Auto-enrich exercises with library videos when detail is opened
-  useEffect(() => {
-    if (showDetail && selectedAssessment?.correctiveExercises?.length && !enrichedExercises && isAdmin) {
-      setEnrichingVideos(true);
-      enrichExercisesWithVideos(selectedAssessment.correctiveExercises)
-        .then(setEnrichedExercises)
-        .finally(() => setEnrichingVideos(false));
-    }
-    if (!showDetail) setEnrichedExercises(null);
-  }, [showDetail, selectedAssessment?.id]);
 
   // Detail view
   if (showDetail && selectedAssessment) {
