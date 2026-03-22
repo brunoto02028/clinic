@@ -763,14 +763,14 @@ export default function AssessmentScreeningForm() {
                   { key: "workAffected", label: isPt ? "Trabalho" : "Work" },
                   { key: "mobilityAffected", label: isPt ? "Mobilidade" : "Mobility" },
                 ].map((item) => (
-                  <div key={item.key} className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${formData[item.key as keyof ScreeningData] ? "bg-primary/10 border-primary/40" : "border-border"}`}
-                    onClick={() => handleCheckboxChange(item.key, !formData[item.key as keyof ScreeningData])}>
+                  <label key={item.key} htmlFor={`chk-${item.key}`} className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${formData[item.key as keyof ScreeningData] ? "bg-primary/10 border-primary/40" : "border-border"}`}>
                     <Checkbox
+                      id={`chk-${item.key}`}
                       checked={!!formData[item.key as keyof ScreeningData]}
-                      onClick={(e) => e.stopPropagation()}
+                      onCheckedChange={(checked) => handleCheckboxChange(item.key, !!checked)}
                     />
                     <span className="text-sm">{item.label}</span>
-                  </div>
+                  </label>
                 ))}
               </div>
             </div>
@@ -890,11 +890,10 @@ export default function AssessmentScreeningForm() {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.smoker ? "bg-amber-500/10 border-amber-500/40" : "border-border"}`}
-                onClick={() => handleCheckboxChange("smoker", !formData.smoker)}>
-                <Checkbox checked={formData.smoker} onClick={(e) => e.stopPropagation()} />
+              <label htmlFor="chk-smoker" className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.smoker ? "bg-amber-500/10 border-amber-500/40" : "border-border"}`}>
+                <Checkbox id="chk-smoker" checked={formData.smoker} onCheckedChange={(c) => handleCheckboxChange("smoker", !!c)} />
                 <span className="text-sm">{isPt ? "Fumante" : "Smoker"}</span>
-              </div>
+              </label>
             </div>
 
             <div>
@@ -921,55 +920,49 @@ export default function AssessmentScreeningForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.previousPhysio ? "bg-primary/10 border-primary/40" : "border-border"}`}
-              onClick={() => handleCheckboxChange("previousPhysio", !formData.previousPhysio)}>
-              <div className="flex items-center gap-2">
-                <Checkbox checked={formData.previousPhysio} onClick={(e) => e.stopPropagation()} />
+            <div className={`p-3 rounded-lg border transition-colors ${formData.previousPhysio ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+              <label htmlFor="chk-previousPhysio" className="flex items-center gap-2 cursor-pointer">
+                <Checkbox id="chk-previousPhysio" checked={formData.previousPhysio} onCheckedChange={(c) => handleCheckboxChange("previousPhysio", !!c)} />
                 <span className="text-sm font-medium">{prevTxLabel("previousPhysio", "Have you had physiotherapy before?", "Já fez fisioterapia anteriormente?")}</span>
-              </div>
+              </label>
               {formData.previousPhysio && (
                 <Textarea
                   rows={2}
                   placeholder={isPt ? "Onde, quando e para quê?" : "Where, when and for what?"}
                   value={formData.previousPhysioDetails}
-                  onChange={(e) => { e.stopPropagation(); handleInputChange("previousPhysioDetails", e.target.value); }}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => handleInputChange("previousPhysioDetails", e.target.value)}
                   className="mt-2"
                 />
               )}
             </div>
 
-            <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.previousInjections ? "bg-primary/10 border-primary/40" : "border-border"}`}
-              onClick={() => handleCheckboxChange("previousInjections", !formData.previousInjections)}>
-              <div className="flex items-center gap-2">
-                <Checkbox checked={formData.previousInjections} onClick={(e) => e.stopPropagation()} />
+            <div className={`p-3 rounded-lg border transition-colors ${formData.previousInjections ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+              <label htmlFor="chk-previousInjections" className="flex items-center gap-2 cursor-pointer">
+                <Checkbox id="chk-previousInjections" checked={formData.previousInjections} onCheckedChange={(c) => handleCheckboxChange("previousInjections", !!c)} />
                 <span className="text-sm font-medium">{prevTxLabel("previousInjections", "Have you had injections (corticosteroid, PRP, etc.)?", "Já recebeu injeções (corticosteroide, PRP, etc.)?")}</span>
-              </div>
+              </label>
               {formData.previousInjections && (
                 <Textarea
                   rows={2}
                   placeholder={isPt ? "Tipo de injeção, local e data aproximada..." : "Type, location and approximate date..."}
                   value={formData.previousInjectionsDetails}
-                  onChange={(e) => { e.stopPropagation(); handleInputChange("previousInjectionsDetails", e.target.value); }}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => handleInputChange("previousInjectionsDetails", e.target.value)}
                   className="mt-2"
                 />
               )}
             </div>
 
-            <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.currentlyUnderCare ? "bg-primary/10 border-primary/40" : "border-border"}`}
-              onClick={() => handleCheckboxChange("currentlyUnderCare", !formData.currentlyUnderCare)}>
-              <div className="flex items-center gap-2">
-                <Checkbox checked={formData.currentlyUnderCare} onClick={(e) => e.stopPropagation()} />
+            <div className={`p-3 rounded-lg border transition-colors ${formData.currentlyUnderCare ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+              <label htmlFor="chk-currentlyUnderCare" className="flex items-center gap-2 cursor-pointer">
+                <Checkbox id="chk-currentlyUnderCare" checked={formData.currentlyUnderCare} onCheckedChange={(c) => handleCheckboxChange("currentlyUnderCare", !!c)} />
                 <span className="text-sm font-medium">{prevTxLabel("currentlyUnderCare", "Currently under care of another health professional?", "Atualmente em acompanhamento com outro profissional de saúde?")}</span>
-              </div>
+              </label>
               {formData.currentlyUnderCare && (
                 <Textarea
                   rows={2}
                   placeholder={isPt ? "Especialidade e tipo de tratamento..." : "Specialty and type of treatment..."}
                   value={formData.currentlyUnderCareDetails}
-                  onChange={(e) => { e.stopPropagation(); handleInputChange("currentlyUnderCareDetails", e.target.value); }}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => handleInputChange("currentlyUnderCareDetails", e.target.value)}
                   className="mt-2"
                 />
               )}
@@ -998,16 +991,14 @@ export default function AssessmentScreeningForm() {
               />
             </div>
             <div className="flex gap-3">
-              <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToSport ? "bg-primary/10 border-primary/40" : "border-border"}`}
-                onClick={() => handleCheckboxChange("returnToSport", !formData.returnToSport)}>
-                <Checkbox checked={formData.returnToSport} onClick={(e) => e.stopPropagation()} />
+              <label htmlFor="chk-returnToSport" className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToSport ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+                <Checkbox id="chk-returnToSport" checked={formData.returnToSport} onCheckedChange={(c) => handleCheckboxChange("returnToSport", !!c)} />
                 <span className="text-sm">{isPt ? "Retornar ao esporte" : "Return to sport"}</span>
-              </div>
-              <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToWork ? "bg-primary/10 border-primary/40" : "border-border"}`}
-                onClick={() => handleCheckboxChange("returnToWork", !formData.returnToWork)}>
-                <Checkbox checked={formData.returnToWork} onClick={(e) => e.stopPropagation()} />
+              </label>
+              <label htmlFor="chk-returnToWork" className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToWork ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+                <Checkbox id="chk-returnToWork" checked={formData.returnToWork} onCheckedChange={(c) => handleCheckboxChange("returnToWork", !!c)} />
                 <span className="text-sm">{isPt ? "Retornar ao trabalho" : "Return to work"}</span>
-              </div>
+              </label>
             </div>
           </CardContent>
         </Card>}
