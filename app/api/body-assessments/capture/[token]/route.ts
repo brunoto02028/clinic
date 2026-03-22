@@ -154,14 +154,12 @@ export async function PUT(
       const originalPath = path.join(uploadsDir, `${view}-${ts}-original.jpg`);
       await copyFile(localPath, originalPath);
 
-      // Apply face blur
-      await blurFaceOnFile(localPath);
-
-      // Remove background (replace with white) using rembg
-      await removeBackground(localPath);
-
-      // Use local URL
+      // Use local URL immediately — do NOT await slow Python scripts on mobile
       const imageUrl = `/uploads/body-assessments/${assessment.id}/${filename}`;
+
+      // Run face blur + bg removal in background (non-blocking — mobile cannot wait)
+      blurFaceOnFile(localPath).catch(() => {});
+      removeBackground(localPath).catch(() => {});
 
       // Also try S3 upload (non-blocking, keep local as primary)
       try {

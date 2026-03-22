@@ -34,6 +34,8 @@ export default function CapturePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [isComplete, setIsComplete] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<BodyCaptureResult | null>(null);
 
   const locale = assessment?.patient?.preferredLocale || "en-GB";
   const pt = locale === "pt-BR";
@@ -75,6 +77,8 @@ export default function CapturePage() {
   };
 
   const handleCaptureComplete = async (result: BodyCaptureResult) => {
+    setLastResult(result);
+    setUploadError(null);
     setIsUploading(true);
     setIsCapturing(false);
 
@@ -139,11 +143,9 @@ export default function CapturePage() {
         description: L("Your images and videos have been uploaded. Your therapist will review them soon.", "Suas imagens e vídeos foram enviados. Seu terapeuta irá revisá-los em breve."),
       });
     } catch (err: any) {
-      toast({
-        title: L("Upload Error", "Erro no Envio"),
-        description: err.message || L("Failed to upload. Please try again.", "Falha no envio. Tente novamente."),
-        variant: "destructive",
-      });
+      const msg = err.message || L("Failed to upload. Please try again.", "Falha no envio. Tente novamente.");
+      setUploadError(msg);
+      toast({ title: L("Upload Error", "Erro no Envio"), description: msg, variant: "destructive" });
     } finally {
       setIsUploading(false);
       setUploadProgress("");
@@ -175,6 +177,30 @@ export default function CapturePage() {
     );
   }
 
+  if (uploadError && !isUploading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center space-y-4">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
+            <h2 className="text-xl font-semibold">{L("Upload Failed", "Erro no Envio")}</h2>
+            <p className="text-sm text-muted-foreground">{uploadError}</p>
+            <div className="flex gap-3 justify-center">
+              {lastResult && (
+                <Button onClick={() => handleCaptureComplete(lastResult)}>
+                  {L("Try Again", "Tentar Novamente")}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => { setUploadError(null); setIsCapturing(true); }}>
+                {L("Retake Photos", "Refazer Fotos")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isUploading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -182,6 +208,7 @@ export default function CapturePage() {
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           <p className="text-lg font-medium">{L("Uploading...", "Enviando...")}</p>
           <p className="text-sm text-muted-foreground">{uploadProgress || L("Please wait while we process your captures", "Aguarde enquanto processamos suas capturas")}</p>
+          <p className="text-xs text-muted-foreground">{L("Do not close this page", "Não feche esta página")}</p>
         </div>
       </div>
     );
