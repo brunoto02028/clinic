@@ -342,13 +342,17 @@ export default function AssessmentScreeningForm() {
     }
   };
 
-  // Keep ref in sync so periodic save always has latest data
+  // Keep ref in sync so debounce always has latest data
   useEffect(() => { formDataRef.current = formData; }, [formData]);
 
-  // Periodic DB auto-save every 30s when dirty and not locked
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (!isDirty.current || isLocked || hasExisting) return;
+  // Debounced DB auto-save: fires 1s after last change, skips if locked or already submitted
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerAutoSave = useCallback(() => {
+    if (isLocked || hasExisting) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      if (!isDirty.current) return;
       try {
         setAutoSaving(true);
         await fetch("/api/medical-screening", {
@@ -360,9 +364,11 @@ export default function AssessmentScreeningForm() {
         setLastSaved(new Date());
       } catch {}
       finally { setAutoSaving(false); }
-    }, 30000);
-    return () => clearInterval(interval);
+    }, 1000);
   }, [isLocked, hasExisting]);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); }, []);
 
   const handleCheckboxChange = (key: string, checked: boolean) => {
     setFormData((prev) => {
@@ -371,6 +377,7 @@ export default function AssessmentScreeningForm() {
       saveDraft(next);
       return next;
     });
+    triggerAutoSave();
   };
 
   const handleInputChange = (key: string, value: string) => {
@@ -380,6 +387,7 @@ export default function AssessmentScreeningForm() {
       saveDraft(next);
       return next;
     });
+    triggerAutoSave();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -549,6 +557,7 @@ export default function AssessmentScreeningForm() {
                       type="button"
                       onClick={() => {
                         setFormData(prev => { const next = { ...prev, [q.key]: false, redFlagDetails: { ...prev.redFlagDetails, [q.key]: "" } }; isDirty.current = true; saveDraft(next); return next; });
+                        triggerAutoSave();
                       }}
                       className={`px-4 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                         !isYes && formData[q.key as keyof ScreeningData] !== undefined
@@ -563,7 +572,7 @@ export default function AssessmentScreeningForm() {
                     <Input
                       placeholder={isPt ? "Por favor, dê mais detalhes..." : "Please provide more details..."}
                       value={detailValue}
-                      onChange={(e) => { const val = e.target.value; setFormData(prev => { const next = { ...prev, redFlagDetails: { ...prev.redFlagDetails, [q.key]: val } }; isDirty.current = true; saveDraft(next); return next; }); }}
+                      onChange={(e) => { const val = e.target.value; setFormData(prev => { const next = { ...prev, redFlagDetails: { ...prev.redFlagDetails, [q.key]: val } }; isDirty.current = true; saveDraft(next); return next; }); triggerAutoSave(); }}
                       className="mt-2 text-sm"
                     />
                   )}
@@ -640,7 +649,7 @@ export default function AssessmentScreeningForm() {
                   min={0}
                   max={10}
                   value={formData.painScore}
-                  onChange={(e) => { const v = parseInt(e.target.value); setFormData(prev => { const next = { ...prev, painScore: v }; isDirty.current = true; saveDraft(next); return next; }); }}
+                  onChange={(e) => { const v = parseInt(e.target.value); setFormData(prev => { const next = { ...prev, painScore: v }; isDirty.current = true; saveDraft(next); return next; }); triggerAutoSave(); }}
                   className="w-full accent-primary"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -756,7 +765,6 @@ export default function AssessmentScreeningForm() {
                     <Checkbox
                       checked={!!formData[item.key as keyof ScreeningData]}
                       onClick={(e) => e.stopPropagation()}
-                      onCheckedChange={(checked) => handleCheckboxChange(item.key, checked as boolean)}
                     />
                     <span className="text-sm">{item.label}</span>
                   </div>
@@ -865,7 +873,7 @@ export default function AssessmentScreeningForm() {
             <div className="flex items-center gap-4">
               <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.smoker ? "bg-amber-500/10 border-amber-500/40" : "border-border"}`}
                 onClick={() => handleCheckboxChange("smoker", !formData.smoker)}>
-                <Checkbox checked={formData.smoker} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("smoker", c as boolean)} />
+                <Checkbox checked={formData.smoker} onClick={(e) => e.stopPropagation()} />
                 <span className="text-sm">{isPt ? "Fumante" : "Smoker"}</span>
               </div>
             </div>
@@ -897,7 +905,7 @@ export default function AssessmentScreeningForm() {
             <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.previousPhysio ? "bg-primary/10 border-primary/40" : "border-border"}`}
               onClick={() => handleCheckboxChange("previousPhysio", !formData.previousPhysio)}>
               <div className="flex items-center gap-2">
-                <Checkbox checked={formData.previousPhysio} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("previousPhysio", c as boolean)} />
+                <Checkbox checked={formData.previousPhysio} onClick={(e) => e.stopPropagation()} />
                 <span className="text-sm font-medium">{prevTxLabel("previousPhysio", "Have you had physiotherapy before?", "Já fez fisioterapia anteriormente?")}</span>
               </div>
               {formData.previousPhysio && (
@@ -915,7 +923,7 @@ export default function AssessmentScreeningForm() {
             <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.previousInjections ? "bg-primary/10 border-primary/40" : "border-border"}`}
               onClick={() => handleCheckboxChange("previousInjections", !formData.previousInjections)}>
               <div className="flex items-center gap-2">
-                <Checkbox checked={formData.previousInjections} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("previousInjections", c as boolean)} />
+                <Checkbox checked={formData.previousInjections} onClick={(e) => e.stopPropagation()} />
                 <span className="text-sm font-medium">{prevTxLabel("previousInjections", "Have you had injections (corticosteroid, PRP, etc.)?", "Já recebeu injeções (corticosteroide, PRP, etc.)?")}</span>
               </div>
               {formData.previousInjections && (
@@ -933,7 +941,7 @@ export default function AssessmentScreeningForm() {
             <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.currentlyUnderCare ? "bg-primary/10 border-primary/40" : "border-border"}`}
               onClick={() => handleCheckboxChange("currentlyUnderCare", !formData.currentlyUnderCare)}>
               <div className="flex items-center gap-2">
-                <Checkbox checked={formData.currentlyUnderCare} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("currentlyUnderCare", c as boolean)} />
+                <Checkbox checked={formData.currentlyUnderCare} onClick={(e) => e.stopPropagation()} />
                 <span className="text-sm font-medium">{prevTxLabel("currentlyUnderCare", "Currently under care of another health professional?", "Atualmente em acompanhamento com outro profissional de saúde?")}</span>
               </div>
               {formData.currentlyUnderCare && (
@@ -973,12 +981,12 @@ export default function AssessmentScreeningForm() {
             <div className="flex gap-3">
               <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToSport ? "bg-primary/10 border-primary/40" : "border-border"}`}
                 onClick={() => handleCheckboxChange("returnToSport", !formData.returnToSport)}>
-                <Checkbox checked={formData.returnToSport} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("returnToSport", c as boolean)} />
+                <Checkbox checked={formData.returnToSport} onClick={(e) => e.stopPropagation()} />
                 <span className="text-sm">{isPt ? "Retornar ao esporte" : "Return to sport"}</span>
               </div>
               <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToWork ? "bg-primary/10 border-primary/40" : "border-border"}`}
                 onClick={() => handleCheckboxChange("returnToWork", !formData.returnToWork)}>
-                <Checkbox checked={formData.returnToWork} onClick={(e) => e.stopPropagation()} onCheckedChange={(c) => handleCheckboxChange("returnToWork", c as boolean)} />
+                <Checkbox checked={formData.returnToWork} onClick={(e) => e.stopPropagation()} />
                 <span className="text-sm">{isPt ? "Retornar ao trabalho" : "Return to work"}</span>
               </div>
             </div>
@@ -1007,6 +1015,7 @@ export default function AssessmentScreeningForm() {
                   if (data.otherConditions) updated.otherConditions = data.otherConditions;
                   isDirty.current = true;
                   saveDraft(updated);
+                  triggerAutoSave();
                   return updated;
                 });
               }}
