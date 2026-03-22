@@ -498,13 +498,19 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
     setCountdown(null);
 
     recordedChunksRef.current = [];
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-      ? "video/webm;codecs=vp9"
-      : MediaRecorder.isTypeSupported("video/webm")
-      ? "video/webm"
-      : "video/mp4";
+    // Detect best supported MIME type — iOS Safari only supports mp4
+    const mimeType = [
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm",
+      "video/mp4;codecs=avc1",
+      "video/mp4",
+    ].find(t => MediaRecorder.isTypeSupported(t)) || "";
 
-    const recorder = new MediaRecorder(streamRef.current, { mimeType, videoBitsPerSecond: 2500000 });
+    const recorderOptions: MediaRecorderOptions = { videoBitsPerSecond: 2000000 };
+    if (mimeType) recorderOptions.mimeType = mimeType;
+
+    const recorder = new MediaRecorder(streamRef.current, recorderOptions);
     mediaRecorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => {

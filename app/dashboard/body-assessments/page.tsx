@@ -343,21 +343,17 @@ function PatientBodyAssessmentsContent() {
         });
       }
 
-      // Upload videos
+      // Upload videos — FormData multipart (no base64 on mobile)
       if (result.videos && result.videos.length > 0) {
         for (const vid of result.videos) {
-          const videoDataUrl = await blobToDataUrl(vid.blob);
+          const fd = new FormData();
+          fd.append("movementVideo", vid.blob, `${vid.testType}.webm`);
+          fd.append("testType", vid.testType);
+          fd.append("label", vid.label);
+          fd.append("duration", String(vid.duration));
           await fetch(`/api/body-assessments/capture/${captureAssessment.captureToken}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              movementVideo: {
-                testType: vid.testType,
-                label: vid.label,
-                duration: vid.duration,
-                videoDataUrl,
-              },
-            }),
+            body: fd,
           });
         }
       }

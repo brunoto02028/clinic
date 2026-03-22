@@ -78,18 +78,25 @@ export function usePoseDetection(options: UsePoseDetectionOptions = {}) {
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
       );
 
-      const poseLandmarker = await PoseLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
-          delegate: "GPU",
-        },
-        runningMode: "VIDEO",
-        numPoses: 1,
-        minPoseDetectionConfidence: minConfidence,
-        minPosePresenceConfidence: minConfidence,
-        minTrackingConfidence: minConfidence,
-      });
+      const modelPath = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+
+      let poseLandmarker: any = null;
+      // Try GPU first, fall back to CPU (important for mobile)
+      for (const delegate of ["GPU", "CPU"] as const) {
+        try {
+          poseLandmarker = await PoseLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: { modelAssetPath: modelPath, delegate },
+            runningMode: "VIDEO",
+            numPoses: 1,
+            minPoseDetectionConfidence: minConfidence,
+            minPosePresenceConfidence: minConfidence,
+            minTrackingConfidence: minConfidence,
+          });
+          break;
+        } catch {
+          if (delegate === "CPU") throw new Error("Pose detection unavailable on this device");
+        }
+      }
 
       poseLandmarkerRef.current = poseLandmarker;
       setIsReady(true);
