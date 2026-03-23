@@ -5,6 +5,8 @@
 const GRAPH_API_VERSION = 'v21.0';
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 const IG_GRAPH_API_BASE = `https://graph.instagram.com`;
+import { prisma } from './db';
+import { SocialPlatform } from '@prisma/client';
 
 // ─── Types ───
 
@@ -569,4 +571,41 @@ async function waitForMediaReady(
     await new Promise(r => setTimeout(r, delayMs));
   }
   throw new Error('Media processing timed out');
+}
+
+/**
+ * High-level wrapper for Instagram publishing used by AI Agents.
+ * Automatically discovers the first active Instagram account and publishes a photo.
+ */
+export async function publishToInstagram(params: {
+  caption: string;
+  imageUrl: string;
+}): Promise<PublishResult> {
+  const { caption, imageUrl } = params;
+
+  // Find the first active Instagram account
+  // In a real multi-tenant scenario, we'd need a clinicId, but for the agent
+  // fallback we'll take the first one available.
+  const socialAccount = await prisma.socialAccount.findFirst({
+    where: {
+      platform: SocialPlatform.INSTAGRAM,
+      isActive: true,
+    },
+    select: {
+      igAccountId: true, // This maps to platformAccountId in our schema if it's IG
+      accessToken: true,
+      platformAccountId: true,
+    },
+  });
+
+  if (!socialAccount) {
+    throw new Error('No active Instagram account found in the database.');
+  }
+
+  return publishPhoto({
+    igAccountId: socialAccount.platformAccountId,
+    accessToken: socialAccount.accessToken,
+    imageUrl,
+    caption,
+  });
 }
