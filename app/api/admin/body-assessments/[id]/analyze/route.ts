@@ -601,10 +601,18 @@ export async function POST(
         continue;
       }
       if (vl.data && Array.isArray(vl.data)) {
-        const visible = vl.data.filter((l: any) => l && l.visibility > 0.5).length;
-        const total = vl.data.length;
+        const ESSENTIAL_LANDMARKS = [
+          "nose", "left_ear", "right_ear", "left_shoulder", "right_shoulder",
+          "left_elbow", "right_elbow", "left_wrist", "right_wrist",
+          "left_hip", "right_hip", "left_knee", "right_knee",
+          "left_ankle", "right_ankle", "left_heel", "right_heel",
+          "left_foot_index", "right_foot_index"
+        ];
+        const filteredData = (vl.data as any[]).filter((l: any) => ESSENTIAL_LANDMARKS.includes(l.name));
+        const visible = filteredData.filter((l: any) => l && l.visibility > 0.5).length;
+        const total = filteredData.length;
         const coverage = Math.round((visible / Math.max(total, 1)) * 100);
-        landmarkInfo.push(`${vl.label} landmarks (${visible}/${total} visible, ${coverage}% coverage): ${JSON.stringify(vl.data)}`);
+        landmarkInfo.push(`${vl.label} landmarks (${visible}/${total} visible, ${coverage}% coverage): ${JSON.stringify(filteredData)}`);
         qualityInfo.push(`${vl.label}: ${coverage >= 60 ? "GOOD" : coverage >= 30 ? "FAIR" : "POOR"} landmark detection (${visible}/${total} points, ${coverage}%)`);
       } else {
         qualityInfo.push(`${vl.label}: Image available but NO landmarks detected — rely on visual analysis only`);

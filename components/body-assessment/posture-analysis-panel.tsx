@@ -407,6 +407,24 @@ function ViewCanvas({
       }
     }
 
+    // ─── Low Confidence Indicators ───
+    for (const lm of lms) {
+      if (lm.visibility < 0.4) {
+        const p = getLmPos(lms, lm.name, w, h);
+        if (p) {
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = "#FACC15"; // Yellow-400
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#FFFFFF";
+          ctx.font = `bold ${Math.max(8, w * 0.015)}px system-ui`;
+          ctx.fillText("!", p.x + 4, p.y - 4);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
     // ─── Deviation Labels ───
     if (showDeviations) {
       const viewDevs = deviationLabels.filter(d => {
