@@ -230,13 +230,36 @@ function analyzePPGSignal(samples: number[], fps: number): PPGAnalysis {
     };
   }
 
+  // 1. Digital Band-pass Filter (0.5Hz - 4Hz)
+  // Removes baseline drift (breathing) and high-frequency noise
+  const filtered: number[] = [];
+  const lowCut = 0.5; // Hz
+  const highCut = 4.0; // Hz
+  const dt = 1 / fps;
+  
+  // Simple RC-based bandpass approximation
+  let lhp = samples[0];
+  let llp = samples[0];
+  const alphaLP = (2 * Math.PI * dt * highCut) / (2 * Math.PI * dt * highCut + 1);
+  const alphaHP = 1 / (2 * Math.PI * dt * lowCut) / (1 / (2 * Math.PI * dt * lowCut) + 1);
+
+  let prevLLP = llp;
+  for (let i = 0; i < n; i++) {
+    // Low pass
+    llp = llp + alphaLP * (samples[i] - llp);
+    // High pass
+    lhp = alphaHP * (lhp + llp - prevLLP);
+    filtered.push(lhp);
+    prevLLP = llp;
+  }
+
   // Smooth signal (moving average, window=5)
   const smoothed: number[] = [];
   for (let i = 0; i < n; i++) {
     const start = Math.max(0, i - 2);
     const end = Math.min(n, i + 3);
     let sum = 0;
-    for (let j = start; j < end; j++) sum += samples[j];
+    for (let j = start; j < end; j++) sum += filtered[j];
     smoothed.push(sum / (end - start));
   }
 
@@ -730,6 +753,7 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
   deviceInfo: DeviceInfo;
 }) {
   const { locale } = useLocale();
+  const { toast } = useToast();
   const T = (key: string) => i18nT(key, locale);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -800,6 +824,27 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
       setCameraError(errMsg);
     }
   }, []);
+
+  // Manual Torch Control
+  const toggleTorch = useCallback(async () => {
+    if (!streamRef.current) return;
+    const track = streamRef.current.getVideoTracks()[0];
+    try {
+      const caps = (track as any).getCapabilities?.() || {};
+      if (caps.torch) {
+        const newState = !torchActive;
+        await (track as any).applyConstraints({ advanced: [{ torch: newState }] });
+        setTorchActive(newState);
+      } else {
+        toast({
+          title: locale === "pt-BR" ? "Flash não suportado" : "Flash not supported",
+          description: locale === "pt-BR" ? "Este dispositivo não permite controle manual do flash." : "This device does not allow manual flash control."
+        });
+      }
+    } catch (err) {
+      console.error("Torch error:", err);
+    }
+  }, [torchActive, locale, toast]);
 
   // Auto-scroll to camera view when countdown starts
   useEffect(() => {
@@ -1150,6 +1195,21 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
            fingerQuality === "fair" ? (T("bp.fingerFair") || "⚠️ Finger position: Fair — press more firmly over camera + flash") :
            fingerQuality === "poor" ? (T("bp.fingerPoor") || "⚠️ Finger position: Poor — make sure your fingertip covers both the camera and flash LED") :
            (T("bp.fingerNone") || "❌ No finger detected — place your fingertip firmly over the rear camera and flash")}
+        </div>
+      )}
+
+      {/* Manual Torch Control */}
+      {(phase === "countdown" || phase === "measuring" || phase === "instructions") && (
+        <div className="flex justify-center mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleTorch}
+            className={`gap-2 rounded-full ${torchActive ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400' : 'text-muted-foreground'}`}
+          >
+            <Flashlight className={`h-4 w-4 ${torchActive ? 'fill-yellow-400' : ''}`} />
+            {torchActive ? (locale === "pt-BR" ? "Flash Ligado" : "Flash ON") : (locale === "pt-BR" ? "Ligar Flash Manual" : "Turn Flash ON")}
+          </Button>
         </div>
       )}
 

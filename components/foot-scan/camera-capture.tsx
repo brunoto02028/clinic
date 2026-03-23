@@ -8,7 +8,7 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, RotateCcw, CheckCircle2, XCircle, Footprints, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Camera, RotateCcw, CheckCircle2, XCircle, Footprints, ArrowRight, AlertTriangle, Zap } from 'lucide-react';
 import { QRCameraFallback } from '@/components/ui/qr-camera-fallback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +24,8 @@ interface CameraCaptureProps {
 
 interface CapturedImage {
   id: string;
-  dataUrl: string;
+  dataUrl: string; // Stores the Object URL
+  blob: Blob;     // Stores the actual image data
   foot: 'left' | 'right';
   angle: string;
   timestamp: number;
@@ -58,6 +59,7 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
 
   const [currentStep, setCurrentStep] = useState<CaptureStep>('instructions');
   const [capturedImages, setCapturedImages] = useState<CapturedImage[]>([]);
+  const [torchActive, setTorchActive] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -72,15 +74,16 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
         : ((currentStepIndex + 1) / CAPTURE_STEPS.length) * 100;
 
   // Start camera
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (isInitial = false) => {
     try {
       setError(null);
 
-      // Stop any existing stream
+      // Stop any existing stream if we are explicitly re-initializing or changing mode
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
 
+      console.log('Starting camera with facingMode:', facingMode);
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
@@ -98,6 +101,9 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
           setCameraReady(true);
         };
       }
+      
+      // Reset torch state if camera re-opened
+      setTorchActive(false);
     } catch (err) {
       console.error('Camera error:', err);
       if (err instanceof Error) {
@@ -110,7 +116,7 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
         }
       }
     }
-  }, [facingMode, stream]);
+  }, [facingMode]);
 
   // Stop camera
   const stopCamera = useCallback(() => {
@@ -126,13 +132,48 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
   }, []);
 
-  // Effect to restart camera when facing mode changes
-  useEffect(() => {
-    if (currentStep !== 'instructions' && currentStep !== 'review' && currentStep !== 'complete') {
-      startCamera();
+  // Toggle torch (flashlight)
+  const toggleTorch = useCallback(async () => {
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    try {
+      const capabilities = (track as any).getCapabilities?.() || {};
+      if (capabilities.torch) {
+        const newState = !torchActive;
+        await (track as any).applyConstraints({
+          advanced: [{ torch: newState }]
+        });
+        setTorchActive(newState);
+      } else {
+        setError('Flashlight (torch) is not supported on this device/camera.');
+      }
+    } catch (err) {
+      console.error('Torch error:', err);
+      setError('Could not access flashlight.');
     }
-    return () => stopCamera();
-  }, [facingMode, currentStep]);
+  }, [stream, torchActive]);
+
+  // Effect to manage camera stream lifecycle
+  useEffect(() => {
+    const isActivePhase = currentStep !== 'instructions' && currentStep !== 'review' && currentStep !== 'complete';
+    
+    if (isActivePhase) {
+      // Only start if we don't have a stream or facingMode changed
+      // (facingMode is in dependency array, so it will trigger startCamera)
+      if (!stream) {
+        startCamera();
+      }
+    }
+    
+    return () => {
+      // We only stop the camera when leaving the active phases entirely
+      if (!isActivePhase && stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+        setCameraReady(false);
+      }
+    };
+  }, [facingMode, currentStep, startCamera, stream]);
 
   // Capture image
   const captureImage = useCallback(() => {
@@ -153,45 +194,74 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
     // Draw video frame to canvas
     context.drawImage(video, 0, 0);
 
-    // Get image data
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-
-    // Find current step info
-    const stepInfo = CAPTURE_STEPS.find(s => s.step === currentStep);
-
-    if (stepInfo) {
-      const newImage: CapturedImage = {
-        id: `${stepInfo.foot}-${stepInfo.angle}-${Date.now()}`,
-        dataUrl,
-        foot: stepInfo.foot,
-        angle: stepInfo.angle,
-        timestamp: Date.now(),
-      };
-
-      const updatedImages = [...capturedImages, newImage];
-      setCapturedImages(updatedImages);
-      onCapture(updatedImages);
-
-      // Move to next step
-      const nextIndex = currentStepIndex + 1;
-      if (nextIndex < CAPTURE_STEPS.length) {
-        setCurrentStep(CAPTURE_STEPS[nextIndex].step);
-      } else {
-        setCurrentStep('review');
-        stopCamera();
+    // Convert to Blob instead of Base64 for better memory usage
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setIsCapturing(false);
+        return;
       }
-    }
 
-    setTimeout(() => setIsCapturing(false), 300);
-  }, [cameraReady, currentStep, currentStepIndex, capturedImages, onCapture, stopCamera]);
+      const dataUrl = URL.createObjectURL(blob);
+      const stepInfo = CAPTURE_STEPS.find(s => s.step === currentStep);
+
+      if (stepInfo) {
+        const newImage: CapturedImage = {
+          id: `${stepInfo.foot}-${stepInfo.angle}-${Date.now()}`,
+          dataUrl,
+          blob,
+          foot: stepInfo.foot,
+          angle: stepInfo.angle,
+          timestamp: Date.now(),
+        };
+
+        setCapturedImages(prev => {
+          const updated = [...prev, newImage];
+          // We call onCapture later to ensure we don't have race conditions with state
+          return updated;
+        });
+
+        // Move to next step
+        const nextIndex = currentStepIndex + 1;
+        if (nextIndex < CAPTURE_STEPS.length) {
+          setCurrentStep(CAPTURE_STEPS[nextIndex].step);
+        } else {
+          setCurrentStep('review');
+          stopCamera();
+        }
+      }
+
+      setTimeout(() => setIsCapturing(false), 300);
+    }, 'image/jpeg', 0.9);
+  }, [cameraReady, currentStep, currentStepIndex, stopCamera]);
+
+  // Sync captured images with parent
+  useEffect(() => {
+    onCapture(capturedImages);
+  }, [capturedImages, onCapture]);
 
   // Retake image
   const retakeImage = useCallback((foot: 'left' | 'right', angle: CapturedImage['angle']) => {
-    setCapturedImages(prev => prev.filter(img => !(img.foot === foot && img.angle === angle)));
+    setCapturedImages(prev => {
+      const imgToRevoke = prev.find(img => img.foot === foot && img.angle === angle);
+      if (imgToRevoke) {
+        URL.revokeObjectURL(imgToRevoke.dataUrl);
+      }
+      return prev.filter(img => !(img.foot === foot && img.angle === angle));
+    });
+    
     const stepToRetake = CAPTURE_STEPS.find(s => s.foot === foot && s.angle === angle);
     if (stepToRetake) {
       setCurrentStep(stepToRetake.step);
     }
+  }, []);
+
+  // Cleanup Object URLs on unmount
+  useEffect(() => {
+    return () => {
+      capturedImages.forEach(img => {
+        URL.revokeObjectURL(img.dataUrl);
+      });
+    };
   }, []);
 
   // Complete scan
@@ -464,13 +534,23 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-bruno-turquoise to-transparent animate-scan-line" />
               </div>
 
-              {/* Camera switch button */}
-              <button
-                onClick={toggleCamera}
-                className="absolute top-4 right-4 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
-              >
-                <RotateCcw className="h-5 w-5" />
-              </button>
+              {/* Camera controls */}
+              <div className="absolute top-4 right-4 flex flex-col gap-2">
+                <button
+                  onClick={toggleCamera}
+                  className="p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                  title="Switch Camera"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={toggleTorch}
+                  className={`p-2 rounded-full text-white transition-colors ${torchActive ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-black/50 hover:bg-black/70'}`}
+                  title="Toggle Flashlight"
+                >
+                  <Zap className={`h-5 w-5 ${torchActive ? 'fill-white' : ''}`} />
+                </button>
+              </div>
 
               {/* Not ready overlay */}
               {!cameraReady && !error && (
