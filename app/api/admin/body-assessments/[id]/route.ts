@@ -90,6 +90,7 @@ export async function PUT(
       aiSummary,
       aiRecommendations,
       correctiveExercises,
+      computedBiomechanics,
       postureAnalysis: postureAnalysisUpdate,
       postureScore,
       symmetryScore,
@@ -127,6 +128,7 @@ export async function PUT(
     if (segmentScores !== undefined) updateData.segmentScores = segmentScores;
     if (deviationLabels !== undefined) updateData.deviationLabels = deviationLabels;
     if (idealComparison !== undefined) updateData.idealComparison = idealComparison;
+    if (computedBiomechanics !== undefined) updateData.computedBiomechanics = computedBiomechanics;
 
     // Posture Analysis — merge with existing so sub-fields can be updated individually
     if (postureAnalysisUpdate !== undefined) {

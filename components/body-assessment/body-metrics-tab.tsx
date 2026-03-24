@@ -593,6 +593,107 @@ export function BodyMetricsTab({ assessment, locale, onSave }: BodyMetricsTabPro
         stepsPerDay: parseInt(stepsPerDay) || null,
       };
 
+      // FIX: Compute health metrics from available form data
+      const h = parseFloat(height) / 100;
+      const w = parseFloat(weightKg) || 0;
+      const bmi = (h > 0 && w > 0) ? w / (h * h) : null;
+      const whr = (parseFloat(waistCm) && parseFloat(hipCm))
+        ? parseFloat(waistCm) / parseFloat(hipCm) : null;
+      const bf = parseFloat(bodyFatPercent) || null;
+      const bps = parseFloat(bloodPressureSystolic);
+      const bpd = parseFloat(bloodPressureDiastolic);
+      const hr = parseFloat(restingHeartRate);
+      const smoke = smokingStatus === 'current' ? 2 : smokingStatus === 'former' ? 1 : 0;
+      const alcohol = alcoholConsumption === 'high' ? 2 : alcoholConsumption === 'moderate' ? 1 : 0;
+      const sitting = parseFloat(sittingHoursPerDay) || 0;
+      const steps = parseInt(stepsPerDay) || 0;
+      const activityMap: Record<string, number> = {
+        sedentary: 0, light: 1, moderate: 2, active: 3, very_active: 4
+      };
+      const activity = activityMap[activityLevel || 'sedentary'] || 0;
+
+      // BMI Classification
+      let bmiClass = 'Normal';
+      if (bmi !== null) {
+        if (bmi < 18.5) bmiClass = 'Underweight';
+        else if (bmi < 25) bmiClass = 'Normal';
+        else if (bmi < 30) bmiClass = 'Overweight';
+        else bmiClass = 'Obese';
+      }
+
+      // BMR (Mifflin-St Jeor)
+      const age = parseInt(age_) || 30;
+      const maleBmr = 10 * w + 6.25 * (parseFloat(height) || 0) - 5 * age + 5;
+      const femaleBmr = 10 * w + 6.25 * (parseFloat(height) || 0) - 5 * age - 161;
+      const bmr = gender === 'male' ? maleBmr : gender === 'female' ? femaleBmr : (maleBmr + femaleBmr) / 2;
+
+      // Lean and fat mass
+      const leanMass = bf && bf > 0 ? w * (1 - bf / 100) : null;
+      const fatMass = bf && bf > 0 ? w * (bf / 100) : null;
+
+      // Cardiovascular risk: 0=none, 1=low, 2=moderate, 3=high, 4=very high
+      let cvRisk = 0;
+      if (bmi !== null && bmi >= 30) cvRisk += 2;
+      else if (bmi !== null && bmi >= 25) cvRisk += 1;
+      if (whr !== null && whr > 1.0) cvRisk += 1;
+      if (bps > 140 || bpd > 90) cvRisk += 2;
+      else if (bps > 130 || bpd > 85) cvRisk += 1;
+      if (smoke >= 1) cvRisk += 1;
+      if (sitting > 8) cvRisk += 1;
+      if (steps < 5000) cvRisk += 1;
+      cvRisk = Math.min(4, cvRisk);
+
+      // Metabolic risk: 0=none, 1=low, 2=moderate, 3=high
+      let metRisk = 0;
+      if (bmi !== null && bmi >= 30) metRisk += 2;
+      else if (bmi !== null && bmi >= 25) metRisk += 1;
+      if (whr !== null && whr > 1.0) metRisk += 1;
+      if (bps > 130 || bpd > 85) metRisk += 1;
+      if (hr > 80) metRisk += 1;
+      if (activity === 0) metRisk += 1;
+      metRisk = Math.min(3, metRisk);
+
+      // Composite health score (0-100, higher = healthier)
+      let healthScore = 100;
+      if (bmi !== null) {
+        if (bmi < 18.5 || bmi >= 30) healthScore -= 15;
+        else if (bmi >= 25) healthScore -= 5;
+      }
+      healthScore -= cvRisk * 10;
+      healthScore -= metRisk * 5;
+      if (smoke === 2) healthScore -= 15;
+      if (smoke === 1) healthScore -= 5;
+      if (alcohol === 2) healthScore -= 5;
+      if (activity >= 3) healthScore += 5;
+      healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
+
+      // Risk factors
+      const healthRiskFactors: string[] = [];
+      if (bmi !== null && bmi >= 30) healthRiskFactors.push('Obesity (BMI)');
+      else if (bmi !== null && bmi >= 25) healthRiskFactors.push('Overweight (BMI)');
+      if (bps > 140 || bpd > 90) healthRiskFactors.push('Hypertension');
+      else if (bps > 130 || bpd > 85) healthRiskFactors.push('Elevated BP');
+      if (smoke === 2) healthRiskFactors.push('Active smoker');
+      else if (smoke === 1) healthRiskFactors.push('Former smoker');
+      if (sitting > 8) healthRiskFactors.push('Sedentary behaviour');
+      if (steps < 5000) healthRiskFactors.push('Low physical activity');
+      if (whr !== null && whr > 1.0) healthRiskFactors.push('Abdominal obesity (WHR)');
+
+      const computed = {
+        bmi: bmi !== null ? Math.round(bmi * 10) / 10 : null,
+        bmiClassification: bmiClass,
+        waistHipRatio: whr !== null ? Math.round(whr * 100) / 100 : null,
+        bodyFatPercent: bf,
+        bodyFatMethod: bodyFatMethod || null,
+        leanMassKg: leanMass !== null ? Math.round(leanMass * 10) / 10 : null,
+        fatMassKg: fatMass !== null ? Math.round(fatMass * 10) / 10 : null,
+        basalMetabolicRate: Math.round(bmr),
+        cardiovascularRisk: cvRisk,
+        metabolicRisk: metRisk,
+        healthScore,
+        healthRiskFactors,
+      };
+
       // Add computed metrics
       if (computed) {
         data.bmi = computed.bmi;

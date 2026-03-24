@@ -1725,6 +1725,7 @@ model BodyAssessment {
   
   // AI Analysis Results
   postureAnalysis   Json?                 // {frontalDeviation, sagittalDeviation, headForward, shoulderRound, pelvicTilt, kyphosis, lordosis}
+  clinicalReliabilityScores  Json?
   symmetryAnalysis  Json?                 // {leftVsRight per region, asymmetryScore}
   jointAngles       Json?                 // {shoulder, hip, knee, ankle angles per side}
   alignmentData     Json?                 // {plumbLine deviations, shoulderLevel, hipLevel, kneeLevel}
