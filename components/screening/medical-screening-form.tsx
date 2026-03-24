@@ -20,6 +20,8 @@ import {
   MapPin,
   Clock,
   Zap,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -191,9 +193,36 @@ export default function AssessmentScreeningForm() {
   const [mounted, setMounted] = useState(false);
   const [cfg, setCfg] = useState<ScreeningConfig | null>(null);
   const [restoredDraft, setRestoredDraft] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const isDirty = useRef(false);
   const formDataRef = useRef(formData);
   const hasExistingRef = useRef(false);
+
+  // ── Wizard Step Definitions (reordered: easy first, red flags later) ──
+  const WIZARD_STEPS = [
+    { id: "patient_background", icon: User, labelEn: "Your Profile", labelPt: "Seu Perfil" },
+    { id: "lifestyle", icon: Heart, labelEn: "Lifestyle", labelPt: "Estilo de Vida" },
+    { id: "chief_complaint", icon: Stethoscope, labelEn: "Pain & Complaint", labelPt: "Dor e Queixa" },
+    { id: "functional_impact", icon: Activity, labelEn: "Functional Impact", labelPt: "Impacto Funcional" },
+    { id: "previous_treatment", icon: Clock, labelEn: "Previous Treatment", labelPt: "Tratamentos Anteriores" },
+    { id: "goals", icon: Target, labelEn: "Goals", labelPt: "Objetivos" },
+    { id: "health_history", icon: Info, labelEn: "Health History", labelPt: "Histórico de Saúde" },
+    { id: "red_flags", icon: AlertTriangle, labelEn: "Safety Questions", labelPt: "Questões de Segurança" },
+    { id: "contact_consent", icon: Shield, labelEn: "Contact & Consent", labelPt: "Contato e Consentimento" },
+  ];
+
+  const activeSteps = WIZARD_STEPS.filter(s => {
+    if (s.id === "contact_consent") return sectionEnabled("contact_details");
+    if (s.id === "red_flags") return sectionEnabled("red_flags");
+    return sectionEnabled(s.id);
+  });
+
+  const totalSteps = activeSteps.length;
+  const stepProgress = Math.round(((currentStep + 1) / totalSteps) * 100);
+  const currentStepId = activeSteps[currentStep]?.id;
+
+  const goNext = () => { if (currentStep < totalSteps - 1) { setCurrentStep(s => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
+  const goPrev = () => { if (currentStep > 0) { setCurrentStep(s => s - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
 
   // ── Persist draft to localStorage on every change ──
   const saveDraft = useCallback((data: ScreeningData) => {
@@ -462,24 +491,47 @@ export default function AssessmentScreeningForm() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{cfgText(cfg?.formTitle, T("screening.title"))}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{cfgText(cfg?.formSubtitle, T("screening.subtitle"))}</p>
-        </div>
-        {/* Auto-save status */}
-        {!isLocked && (
-          <div className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-            {autoSaving ? (
-              <><Loader2 className="h-3 w-3 animate-spin" /><span>{isPt ? "Salvando..." : "Saving..."}</span></>
-            ) : lastSaved ? (
-              <><CheckCircle className="h-3 w-3 text-emerald-500" /><span className="text-emerald-500">{isPt ? "Salvo" : "Saved"}</span></>
-            ) : (
-              <><Clock className="h-3 w-3" /><span>{isPt ? "Salvo automaticamente a cada 30s" : "Auto-saved every 30s"}</span></>
+      {/* ── Sticky Progress Bar ── */}
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border pb-4 pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-lg sm:text-xl font-bold text-foreground">{cfgText(cfg?.formTitle, T("screening.title"))}</h1>
+          <div className="flex items-center gap-2">
+            {!isLocked && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                {autoSaving ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" />{isPt ? "Salvando..." : "Saving..."}</>
+                ) : lastSaved ? (
+                  <><CheckCircle className="h-3 w-3 text-emerald-500" /><span className="text-emerald-500">{isPt ? "Salvo" : "Saved"}</span></>
+                ) : null}
+              </span>
             )}
+            <span className="text-xs font-medium text-muted-foreground">
+              {currentStep + 1} / {totalSteps}
+            </span>
           </div>
-        )}
+        </div>
+        {/* Progress bar */}
+        <div className="w-full bg-muted rounded-full h-2">
+          <div className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${stepProgress}%` }} />
+        </div>
+        {/* Step dots */}
+        <div className="flex items-center justify-between mt-2 gap-1 overflow-x-auto">
+          {activeSteps.map((step, idx) => {
+            const StepIcon = step.icon;
+            const isActive = idx === currentStep;
+            const isDone = idx < currentStep;
+            return (
+              <button key={step.id} type="button" onClick={() => { setCurrentStep(idx); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all whitespace-nowrap ${
+                  isActive ? "bg-primary/15 text-primary" : isDone ? "text-emerald-400" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {isDone ? <CheckCircle className="h-3 w-3" /> : <StepIcon className="h-3 w-3" />}
+                <span className="hidden sm:inline">{isPt ? step.labelPt : step.labelEn}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <ProfessionalReviewBanner descriptionKey="review.descriptionScreening" />
@@ -517,8 +569,8 @@ export default function AssessmentScreeningForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* ── SECTION 1: Red Flags ── */}
-        {sectionEnabled("red_flags") && <Card>
+        {/* ── SECTION: Red Flags (now step-gated) ── */}
+        {currentStepId === "red_flags" && sectionEnabled("red_flags") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -596,8 +648,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 2: Chief Complaint & Pain ── */}
-        {sectionEnabled("chief_complaint") && <Card>
+        {/* ── SECTION: Chief Complaint & Pain ── */}
+        {currentStepId === "chief_complaint" && sectionEnabled("chief_complaint") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Stethoscope className="h-5 w-5 text-primary" />
@@ -734,8 +786,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 3: Functional Impact ── */}
-        {sectionEnabled("functional_impact") && <Card>
+        {/* ── SECTION: Functional Impact ── */}
+        {currentStepId === "functional_impact" && sectionEnabled("functional_impact") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
@@ -777,8 +829,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 4: Patient Background ── */}
-        {sectionEnabled("patient_background") && <Card>
+        {/* ── SECTION: Patient Background ── */}
+        {currentStepId === "patient_background" && sectionEnabled("patient_background") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
@@ -857,8 +909,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 5: Lifestyle ── */}
-        {sectionEnabled("lifestyle") && <Card>
+        {/* ── SECTION: Lifestyle ── */}
+        {currentStepId === "lifestyle" && sectionEnabled("lifestyle") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Heart className="h-5 w-5 text-primary" />
@@ -911,8 +963,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 6: Previous Treatment ── */}
-        {sectionEnabled("previous_treatment") && <Card>
+        {/* ── SECTION: Previous Treatment ── */}
+        {currentStepId === "previous_treatment" && sectionEnabled("previous_treatment") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
@@ -970,8 +1022,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 7: Goals ── */}
-        {sectionEnabled("goals") && <Card>
+        {/* ── SECTION: Goals ── */}
+        {currentStepId === "goals" && sectionEnabled("goals") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
@@ -1003,8 +1055,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 8: Health History ── */}
-        {sectionEnabled("health_history") && <Card>
+        {/* ── SECTION: Health History ── */}
+        {currentStepId === "health_history" && sectionEnabled("health_history") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-primary" />
@@ -1077,8 +1129,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 9: Contact Details ── */}
-        {sectionEnabled("contact_details") && <Card>
+        {/* ── SECTION: Contact Details + Consent (combined in last step) ── */}
+        {currentStepId === "contact_consent" && sectionEnabled("contact_details") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
@@ -1122,29 +1174,46 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 10: Consent ── */}
-        <Card className="border-primary/20">
-          <CardContent className="py-6">
-            <div className="flex items-start gap-3">
-              <Checkbox
-                id="consent"
-                checked={formData.consentGiven}
-                onCheckedChange={(checked) => handleCheckboxChange("consentGiven", checked as boolean)}
-              />
-              <Label htmlFor="consent" className="font-normal cursor-pointer leading-relaxed">
-                {consentLabel}
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── Consent (shown in last step) ── */}
+        {currentStepId === "contact_consent" && (
+          <Card className="border-primary/20">
+            <CardContent className="py-6">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="consent"
+                  checked={formData.consentGiven}
+                  onCheckedChange={(checked) => handleCheckboxChange("consentGiven", checked as boolean)}
+                />
+                <Label htmlFor="consent" className="font-normal cursor-pointer leading-relaxed">
+                  {consentLabel}
+                </Label>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        <Button type="submit" size="lg" className="w-full gap-2" disabled={!formData.consentGiven || saving}>
-          {saving ? (
-            <><Loader2 className="h-4 w-4 animate-spin" />{T("screening.saving")}</>
+        {/* ── Wizard Navigation ── */}
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <Button type="button" variant="outline" size="lg" onClick={goPrev} disabled={currentStep === 0} className="gap-2">
+            <ChevronLeft className="h-4 w-4" />
+            {isPt ? "Anterior" : "Previous"}
+          </Button>
+
+          {currentStep < totalSteps - 1 ? (
+            <Button type="button" size="lg" onClick={goNext} className="gap-2 flex-1 sm:flex-none">
+              {isPt ? "Próximo" : "Next"}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           ) : (
-            <><CheckCircle className="h-4 w-4" />{hasExisting ? T("screening.update") : T("screening.submit")}</>
+            <Button type="submit" size="lg" className="gap-2 flex-1 sm:flex-none" disabled={!formData.consentGiven || saving}>
+              {saving ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />{T("screening.saving")}</>
+              ) : (
+                <><CheckCircle className="h-4 w-4" />{hasExisting ? T("screening.update") : T("screening.submit")}</>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </form>
     </div>
   );

@@ -30,8 +30,8 @@ function VerifyPage() {
   const userId = searchParams?.get("userId") || "";
   const email = searchParams?.get("email") || "";
 
-  const [step, setStep] = useState<"choose" | "input">("choose");
-  const [channel, setChannel] = useState<Channel | null>(null);
+  const [step, setStep] = useState<"choose" | "input">("input");
+  const [channel, setChannel] = useState<Channel | null>("EMAIL");
   const [maskedContact, setMaskedContact] = useState("");
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +42,7 @@ function VerifyPage() {
   const [cooldown, setCooldown] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [hasPhone, setHasPhone] = useState(false);
+  const [autoSendDone, setAutoSendDone] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -100,6 +101,14 @@ function VerifyPage() {
     } finally {
       setIsSending(false);
     }
+  }, [userId]);
+
+  // Auto-send OTP via email on mount (skip channel selection)
+  useEffect(() => {
+    if (!userId || autoSendDone) return;
+    setAutoSendDone(true);
+    sendCode("EMAIL");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const verifyCode = async () => {

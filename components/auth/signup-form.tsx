@@ -39,7 +39,6 @@ export default function SignupForm() {
     email: "",
     phone: "",
     password: "",
-    confirmPassword: "",
   });
 
   useEffect(() => {
@@ -53,12 +52,6 @@ export default function SignupForm() {
 
     if (!termsAccepted) {
       setError(isPt ? "Você deve aceitar os Termos de Uso antes de criar sua conta." : "You must accept the Terms of Use before creating your account.");
-      setIsLoading(false);
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError(isPt ? "As senhas não coincidem" : "Passwords do not match");
       setIsLoading(false);
       return;
     }
@@ -250,30 +243,6 @@ export default function SignupForm() {
                   />
                 </div>
                 <p className="text-xs text-slate-500">{isPt ? "Mínimo 8 caracteres" : "Minimum 8 characters"}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">{isPt ? "Confirmar Senha" : "Confirm Password"}</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="••••••••"
-                    className="pl-10"
-                    value={formData.confirmPassword}
-                    onChange={(e) =>
-                      setFormData({ ...formData, confirmPassword: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                {formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && (
-                  <div className="flex items-center gap-1 text-emerald-600 text-xs">
-                    <CheckCircle className="h-3 w-3" />
-                    <span>{isPt ? "Senhas coincidem" : "Passwords match"}</span>
-                  </div>
-                )}
               </div>
 
               {/* Terms of Use */}
