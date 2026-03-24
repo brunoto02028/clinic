@@ -169,10 +169,10 @@ export default function IntakePage() {
               : "Your information has been saved successfully. You can now access the patient portal."}
           </p>
           <button
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/dashboard")}
             className="w-full bg-gradient-to-r from-teal-500 to-teal-600 text-white py-3 px-6 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
           >
-            {isPt ? "Acessar Portal" : "Go to Login"} →
+            {isPt ? "Ir para o Portal" : "Go to Login"} →
           </button>
         </div>
       </div>
@@ -439,8 +439,8 @@ export default function IntakePage() {
               )}
               <p className="text-xs text-gray-400">
                 {isPt
-                  ? "Se não deseja alterar a senha, deixe os campos em branco."
-                  : "Leave blank if you don't want to change your password."}
+                  ? "Se não criar uma senha, use Esqueci a senha no login."
+                  : "If you don't set a password, use "Forgot password" at login to access the portal."}
               </p>
 
               <div className="flex gap-3">

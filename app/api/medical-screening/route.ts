@@ -21,8 +21,6 @@ export async function GET(request: NextRequest) {
     const userRole = effectiveUser.role;
     const isPreview = effectiveUser.isImpersonating;
 
-    // Patients can only view their own screening
-    // Therapists/Admins can view any patient's screening
     let screening;
 
     if (userRole === "PATIENT" || isPreview) {
@@ -64,6 +62,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const isAutosave = !!body?._autosave;
 
+    // FIX 3: Require consent on full submission (not autosave)
+    if (!isAutosave && !body?.consentGiven) {
+      return NextResponse.json(
+        { error: "Consent is required before submitting the screening" },
+        { status: 400 }
+      );
+    }
+
     // Coerce types to match Prisma schema
     const painScoreNum = body?.painScore != null ? parseInt(String(body.painScore), 10) : null;
     const safeRedFlagDetails = body?.redFlagDetails && typeof body.redFlagDetails === 'object' ? body.redFlagDetails : null;
@@ -79,7 +85,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, autosaved: false, reason: "locked" });
       }
 
-      // Patients can always update their own medical information
       const screening = await prisma.medicalScreening.update({
         where: { userId },
         data: {
@@ -96,7 +101,6 @@ export async function POST(request: NextRequest) {
           severeHeadache: body?.severeHeadache ?? false,
           dizzinessBalanceIssues: body?.dizzinessBalanceIssues ?? false,
           redFlagDetails: safeRedFlagDetails,
-          // Chief Complaint & Pain
           chiefComplaint: body?.chiefComplaint ?? null,
           painLocation: body?.painLocation ?? null,
           painDuration: body?.painDuration ?? null,
@@ -105,34 +109,28 @@ export async function POST(request: NextRequest) {
           painAggravating: body?.painAggravating ?? null,
           painRelieving: body?.painRelieving ?? null,
           painPattern: body?.painPattern ?? null,
-          // Functional Impact
           functionalLimitations: body?.functionalLimitations ?? null,
           sleepAffected: body?.sleepAffected ?? false,
           workAffected: body?.workAffected ?? false,
           mobilityAffected: body?.mobilityAffected ?? false,
-          // Patient Background
           occupation: body?.occupation ?? null,
           dominantSide: body?.dominantSide ?? null,
           dominantFootSide: body?.dominantFootSide ?? null,
           activityLevel: body?.activityLevel ?? null,
           hobbiesSports: body?.hobbiesSports ?? null,
-          // Lifestyle
           smoker: body?.smoker ?? false,
           alcoholUse: body?.alcoholUse ?? null,
           height: body?.height ?? null,
           weight: body?.weight ?? null,
-          // Previous Treatment
           previousPhysio: body?.previousPhysio ?? false,
           previousPhysioDetails: body?.previousPhysioDetails ?? null,
           previousInjections: body?.previousInjections ?? false,
           previousInjectionsDetails: body?.previousInjectionsDetails ?? null,
           currentlyUnderCare: body?.currentlyUnderCare ?? false,
           currentlyUnderCareDetails: body?.currentlyUnderCareDetails ?? null,
-          // Goals
           treatmentGoals: body?.treatmentGoals ?? null,
           returnToSport: body?.returnToSport ?? false,
           returnToWork: body?.returnToWork ?? false,
-          // Medical History
           currentMedications: body?.currentMedications ?? null,
           allergies: body?.allergies ?? null,
           surgicalHistory: body?.surgicalHistory ?? null,
@@ -147,12 +145,11 @@ export async function POST(request: NextRequest) {
         } as any,
       });
 
-      // For autosave: skip notifications and return early
       if (isAutosave) {
         return NextResponse.json({ success: true, autosaved: true });
       }
 
-      // Notify admin that patient updated their screening
+      // FIX 6: Log notification failure with CRITICAL so admin can see in system logs
       try {
         const patient = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true } });
         const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (session.user?.name || 'Patient');
@@ -163,7 +160,7 @@ export async function POST(request: NextRequest) {
 
         await sendEmail({
           to: adminEmail,
-          subject: `📋 Screening Submitted: ${patientName}`,
+          subject: `?? Screening Submitted: ${patientName}`,
           html: `
             <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;">
               <h2 style="color:#607d7d;font-size:20px;margin:0 0 16px;">Assessment Screening Submitted</h2>
@@ -172,17 +169,16 @@ export async function POST(request: NextRequest) {
                 <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                   <tr><td style="padding:4px 0;font-size:13px;color:#6b7280;width:120px;">Chief Complaint</td><td style="padding:4px 0;font-size:14px;color:#111827;font-weight:600;">${complaint}</td></tr>
                   <tr><td style="padding:4px 0;font-size:13px;color:#6b7280;">Pain Score</td><td style="padding:4px 0;font-size:14px;color:#111827;font-weight:600;">${painScore}</td></tr>
-                  <tr><td style="padding:4px 0;font-size:13px;color:#6b7280;">Type</td><td style="padding:4px 0;font-size:14px;color:#111827;font-weight:600;">Updated screening</td></tr>
                 </table>
               </div>
               <div style="text-align:center;margin:20px 0;">
-                <a href="${adminUrl}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:12px 32px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">View Patient Profile →</a>
+                <a href="${adminUrl}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:12px 32px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">View Patient Profile</a>
               </div>
             </div>
           `,
         });
       } catch (notifErr) {
-        console.error('[screening] Failed to notify admin on update:', notifErr);
+        console.error('[screening] CRITICAL: Failed to notify admin on screening update. Patient may not know. Error:', notifErr);
       }
 
       return NextResponse.json({
@@ -209,7 +205,6 @@ export async function POST(request: NextRequest) {
         severeHeadache: body?.severeHeadache ?? false,
         dizzinessBalanceIssues: body?.dizzinessBalanceIssues ?? false,
         redFlagDetails: safeRedFlagDetails,
-        // Chief Complaint & Pain
         chiefComplaint: body?.chiefComplaint ?? null,
         painLocation: body?.painLocation ?? null,
         painDuration: body?.painDuration ?? null,
@@ -218,34 +213,28 @@ export async function POST(request: NextRequest) {
         painAggravating: body?.painAggravating ?? null,
         painRelieving: body?.painRelieving ?? null,
         painPattern: body?.painPattern ?? null,
-        // Functional Impact
         functionalLimitations: body?.functionalLimitations ?? null,
         sleepAffected: body?.sleepAffected ?? false,
         workAffected: body?.workAffected ?? false,
         mobilityAffected: body?.mobilityAffected ?? false,
-        // Patient Background
         occupation: body?.occupation ?? null,
         dominantSide: body?.dominantSide ?? null,
         dominantFootSide: body?.dominantFootSide ?? null,
         activityLevel: body?.activityLevel ?? null,
         hobbiesSports: body?.hobbiesSports ?? null,
-        // Lifestyle
         smoker: body?.smoker ?? false,
         alcoholUse: body?.alcoholUse ?? null,
         height: body?.height ?? null,
         weight: body?.weight ?? null,
-        // Previous Treatment
         previousPhysio: body?.previousPhysio ?? false,
         previousPhysioDetails: body?.previousPhysioDetails ?? null,
         previousInjections: body?.previousInjections ?? false,
         previousInjectionsDetails: body?.previousInjectionsDetails ?? null,
         currentlyUnderCare: body?.currentlyUnderCare ?? false,
         currentlyUnderCareDetails: body?.currentlyUnderCareDetails ?? null,
-        // Goals
         treatmentGoals: body?.treatmentGoals ?? null,
         returnToSport: body?.returnToSport ?? false,
         returnToWork: body?.returnToWork ?? false,
-        // Medical History
         currentMedications: body?.currentMedications ?? null,
         allergies: body?.allergies ?? null,
         surgicalHistory: body?.surgicalHistory ?? null,
@@ -259,12 +248,11 @@ export async function POST(request: NextRequest) {
       } as any,
     });
 
-    // For autosave on new record: skip notifications and return early
     if (isAutosave) {
       return NextResponse.json({ success: true, autosaved: true });
     }
 
-    // Send confirmation to patient via preferred channel
+    // FIX 6: Log with CRITICAL prefix so admin can see in system logs
     try {
       await notifyPatient({
         patientId: userId,
@@ -276,7 +264,7 @@ export async function POST(request: NextRequest) {
         plainMessagePt: 'Sua triagem de avaliação foi recebida e está sendo revisada pela nossa equipe. Obrigado!',
       });
     } catch (emailErr) {
-      console.error('[screening] Failed to send confirmation:', emailErr);
+      console.error('[screening] CRITICAL: Failed to send screening confirmation to patient. Patient may not be notified. Error:', emailErr);
     }
 
     // Analyze screening for red flags
@@ -294,7 +282,7 @@ export async function POST(request: NextRequest) {
       const flagsList = hasRedFlags ? analysis.redFlagAssessment.flags.map((f: any) => f.flag) : [];
       const redFlagHtml = hasRedFlags
         ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;margin:0 0 16px;">
-             <p style="color:#dc2626;font-weight:700;margin:0 0 4px;">🚩 Red Flags Detected</p>
+             <p style="color:#dc2626;font-weight:700;margin:0 0 4px;">?? Red Flags Detected</p>
              <ul style="margin:0;padding-left:20px;color:#991b1b;font-size:13px;">${flagsList.map((f: string) => `<li>${f}</li>`).join('')}</ul>
            </div>`
         : '';
@@ -302,8 +290,8 @@ export async function POST(request: NextRequest) {
       await sendEmail({
         to: adminEmail,
         subject: hasRedFlags
-          ? `🚩 Screening Submitted (RED FLAGS): ${patientName}`
-          : `📋 Screening Submitted: ${patientName}`,
+          ? `?? Screening Submitted (RED FLAGS): ${patientName}`
+          : `?? Screening Submitted: ${patientName}`,
         html: `
           <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;">
             <h2 style="color:#607d7d;font-size:20px;margin:0 0 16px;">New Assessment Screening</h2>
@@ -317,20 +305,20 @@ export async function POST(request: NextRequest) {
               </table>
             </div>
             <div style="text-align:center;margin:20px 0;">
-              <a href="${adminUrl}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:12px 32px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">View Patient Profile →</a>
+              <a href="${adminUrl}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:12px 32px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">View Patient Profile</a>
             </div>
           </div>
         `,
       });
     } catch (err) {
-      console.error('[screening] Failed to notify admin:', err);
+      console.error('[screening] CRITICAL: Failed to notify admin of new screening. Error:', err);
     }
 
     return NextResponse.json({
       success: true,
       message: "Screening submitted successfully",
       screening,
-      analysis, // Return analysis to frontend as well
+      analysis,
     });
   } catch (error) {
     console.error("Error saving medical screening:", error);
