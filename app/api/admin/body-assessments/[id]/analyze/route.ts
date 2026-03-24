@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getConfigValue } from "@/lib/system-config";
 import { readFile } from "fs/promises";
 import path from "path";
+import { computeAllAngles, formatForPrompt, computeDeltas, type Landmark, type BiomechanicsResult } from "@/lib/biomechanics/angle-computations";
 
 async function imageToBase64(url: string): Promise<string | null> {
   try {
@@ -51,11 +52,11 @@ ${lang}
 ═══════════════════════════════════════════════════════
 CRITICAL PRECISION RULES — FOLLOW WITHOUT EXCEPTION
 ═══════════════════════════════════════════════════════
-1. BASE EVERY FINDING on visible evidence from the images. Never fabricate data.
-2. MEASURE ANGLES with maximum precision using anatomical landmarks visible in each image.
+1. OBJECTIVE DATA FIRST: You will receive PRE-COMPUTED biomechanical measurements calculated from BlazePose landmark coordinates. These are MATHEMATICALLY DERIVED values — use them as your PRIMARY data source. Your visual analysis serves to VALIDATE and ENRICH these computed values, NOT to replace them.
+2. When OBJECTIVE MEASUREMENTS are provided with confidence >0.6, you MUST use those values for the corresponding fields in your JSON output. Only override a computed value if your visual assessment reveals an obvious error (e.g., misdetected landmark), and if you do, EXPLAIN the discrepancy in technicalNotes.
 3. CROSS-VALIDATE findings across views: a deviation found in frontal must be confirmed/refined by posterior; sagittal findings must be consistent between left and right lateral views.
-4. CONFIDENCE SCORES must reflect TRUE image quality: if a landmark is occluded, partially visible, or the image angle is suboptimal, reduce confidence accordingly. Do NOT give uniformly high scores.
-5. ASYMMETRY must be quantified: always state which side is affected and by how much (degrees, mm estimation, or percentage).
+4. CONFIDENCE SCORES must reflect TRUE image quality AND computed measurement confidence. If a view has POOR landmark coverage, ALL measurements derived from that view must have proportionally lower confidence.
+5. ASYMMETRY must be quantified: always state which side is affected and by how much (degrees, mm estimation, or percentage). USE the calibrated millimeter values from objective measurements when available.
 6. DO NOT DIAGNOSE pathology. State "consistent with" or "suggestive of" followed by a biomechanical hypothesis.
 7. All numeric angles and measurements must be in degrees or centimetres. Use 0 only when genuinely neutral/normal — not as a default placeholder.
 8. KINETIC CHAIN REASONING: for every finding, state the probable ascending and descending compensation pattern.
@@ -584,6 +585,39 @@ export async function POST(
       data: { status: "ANALYZING" },
     });
 
+    // ─── BIOMECHANICS ENGINE: Compute objective angles from landmarks ───
+    const biomechanicsInput = {
+      frontLandmarks: (assessment.frontLandmarks as Landmark[] | null) || null,
+      backLandmarks: (assessment.backLandmarks as Landmark[] | null) || null,
+      leftLandmarks: (assessment.leftLandmarks as Landmark[] | null) || null,
+      rightLandmarks: (assessment.rightLandmarks as Landmark[] | null) || null,
+      heightCm: assessment.heightCm || (screening?.height ? parseFloat(screening.height) : null),
+    };
+
+    const biomechanicsResult: BiomechanicsResult = computeAllAngles(biomechanicsInput);
+    const objectiveMeasurementsText = formatForPrompt(biomechanicsResult);
+
+    // Load previous assessment's computed angles for delta tracking
+    let deltasText: string | null = null;
+    try {
+      const prevAssessment = await (prisma as any).bodyAssessment.findFirst({
+        where: {
+          patientId: assessment.patientId,
+          id: { not: assessment.id },
+          computedBiomechanics: { not: null },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { computedBiomechanics: true },
+      });
+      if (prevAssessment?.computedBiomechanics) {
+        const prevData = prevAssessment.computedBiomechanics as any;
+        const prevAngles = [...(prevData.sagittalAngles || []), ...(prevData.frontalAngles || [])];
+        deltasText = computeDeltas(biomechanicsResult, prevAngles);
+      }
+    } catch {
+      // Previous assessment may not have computed data yet — that's fine
+    }
+
     // Collect landmark data for enhanced analysis + quality assessment
     const landmarkInfo: string[] = [];
     const qualityInfo: string[] = [];
@@ -645,9 +679,17 @@ export async function POST(
       }
     }
 
+    // ─── INJECT OBJECTIVE BIOMECHANICAL MEASUREMENTS ───
+    parts.push({ text: `\n${objectiveMeasurementsText}` });
+
+    // Inject longitudinal comparison if available
+    if (deltasText) {
+      parts.push({ text: `\n${deltasText}` });
+    }
+
     // Add quality assessment to help AI calibrate confidence
     if (qualityInfo.length > 0) {
-      parts.push({ text: `\n--- CAPTURE QUALITY ASSESSMENT ---\n${qualityInfo.join("\n")}\n\nIMPORTANT: Adjust your confidenceScores based on this quality data. Views with POOR landmark detection should have lower per-measurement confidence. Views with NO landmarks should rely on visual analysis only — state this in technicalNotes. If any view is NOT CAPTURED, clearly note which anatomical assessments are limited by missing data and suggest the patient recapture that specific view.` });
+      parts.push({ text: `\n--- CAPTURE QUALITY ASSESSMENT ---\n${qualityInfo.join("\n")}\n\nIMPORTANT: Adjust your confidenceScores based on this quality data AND the view quality weights from the OBJECTIVE MEASUREMENTS section. Views with POOR landmark detection should have lower per-measurement confidence. Views with NO landmarks should rely on visual analysis only — state this in technicalNotes. If any view is NOT CAPTURED, clearly note which anatomical assessments are limited by missing data and suggest the patient recapture that specific view.` });
     }
 
     if (landmarkInfo.length > 0) {
@@ -743,6 +785,7 @@ export async function POST(
         recommendedProducts: analysisData.recommendedProducts || null,
         deviationLabels: analysisData.deviationLabels || null,
         idealComparison: analysisData.idealComparison || null,
+        computedBiomechanics: biomechanicsResult as any, // Store computed angles for future delta tracking
         aiSummary: aiSummaryText,
         aiRecommendations: recsText,
         aiFindings: analysisData.findings || null,

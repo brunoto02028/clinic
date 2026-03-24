@@ -176,6 +176,7 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [poseStable, setPoseStable] = useState(false);
+  const [captureWarnings, setCaptureWarnings] = useState<string[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -205,6 +206,52 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
       } else {
         stableCountRef.current = 0;
         setPoseStable(false);
+      }
+
+      // ── Real-time capture quality validation ──
+      if (phase === "photos" && !showPreview) {
+        const warnings: string[] = [];
+        const lms = result.landmarks;
+
+        // Check feet in frame
+        const leftFoot = lms[31]; // left_foot_index
+        const rightFoot = lms[32]; // right_foot_index
+        const feetVisible = (leftFoot?.visibility > 0.4 && leftFoot?.y < 0.96) || (rightFoot?.visibility > 0.4 && rightFoot?.y < 0.96);
+        if (!feetVisible && visibleCount >= 10) {
+          warnings.push(pt ? "⬆️ Pés cortados — afaste-se" : "⬆️ Feet cut off — step back");
+        }
+
+        // Check head in frame
+        const nose = lms[0];
+        if (nose && nose.visibility > 0.4 && nose.y < 0.03) {
+          warnings.push(pt ? "⬇️ Cabeça cortada — afaste-se" : "⬇️ Head cut off — step back");
+        }
+
+        // Check centering (frontal/posterior views)
+        const currentViewId = CAPTURE_VIEWS[currentViewIndex]?.id;
+        if ((currentViewId === "front" || currentViewId === "back") && visibleCount >= 15) {
+          const leftShoulder = lms[11];
+          const rightShoulder = lms[12];
+          if (leftShoulder?.visibility > 0.5 && rightShoulder?.visibility > 0.5) {
+            const midX = (leftShoulder.x + rightShoulder.x) / 2;
+            if (midX < 0.3) warnings.push(pt ? "➡️ Centralize-se à direita" : "➡️ Move right to center");
+            if (midX > 0.7) warnings.push(pt ? "⬅️ Centralize-se à esquerda" : "⬅️ Move left to center");
+          }
+        }
+
+        // Check distance (too close if shoulders take >60% of frame width)
+        if (visibleCount >= 15) {
+          const leftShoulder = lms[11];
+          const rightShoulder = lms[12];
+          if (leftShoulder?.visibility > 0.5 && rightShoulder?.visibility > 0.5) {
+            const shoulderSpan = Math.abs(leftShoulder.x - rightShoulder.x);
+            if (shoulderSpan > 0.55) {
+              warnings.push(pt ? "🔍 Muito perto — afaste-se" : "🔍 Too close — step back");
+            }
+          }
+        }
+
+        setCaptureWarnings(warnings);
       }
     },
   });
@@ -815,6 +862,18 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
         {countdown !== null && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20">
             <span className="text-8xl font-bold text-white animate-pulse">{countdown}</span>
+          </div>
+        )}
+
+        {/* Capture quality warnings */}
+        {!isVideoPhase && captureWarnings.length > 0 && countdown === null && (
+          <div className="absolute top-2 left-0 right-0 flex flex-col items-center gap-1 z-10 px-4">
+            {captureWarnings.map((w, i) => (
+              <div key={i} className="bg-yellow-600/90 text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                <AlertTriangle className="h-3 w-3" />
+                {w}
+              </div>
+            ))}
           </div>
         )}
 

@@ -1755,6 +1755,9 @@ model BodyAssessment {
   // Ideal vs Actual Comparison Data
   idealComparison   Json?                 // [{segment, currentAngle, idealAngle, deviationDeg, status}]
   
+  // Computed Biomechanics (objective measurements from BlazePose landmarks)
+  computedBiomechanics Json?              // {sagittalAngles, frontalAngles, positionalDeviations, viewQuality, crossViewValidation, calibration}
+  
   // AI Summary
   aiSummary         String?               @db.Text
   aiRecommendations String?               @db.Text
