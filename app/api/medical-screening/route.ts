@@ -64,6 +64,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const isAutosave = !!body?._autosave;
 
+    // Coerce types to match Prisma schema
+    const painScoreNum = body?.painScore != null ? parseInt(String(body.painScore), 10) : null;
+    const safeRedFlagDetails = body?.redFlagDetails && typeof body.redFlagDetails === 'object' ? body.redFlagDetails : null;
+
     // Check if screening already exists
     const existingScreening = await prisma.medicalScreening.findUnique({
       where: { userId },
@@ -91,12 +95,12 @@ export async function POST(request: NextRequest) {
           cardiovascularSymptoms: body?.cardiovascularSymptoms ?? false,
           severeHeadache: body?.severeHeadache ?? false,
           dizzinessBalanceIssues: body?.dizzinessBalanceIssues ?? false,
-          redFlagDetails: body?.redFlagDetails ?? null,
+          redFlagDetails: safeRedFlagDetails,
           // Chief Complaint & Pain
           chiefComplaint: body?.chiefComplaint ?? null,
           painLocation: body?.painLocation ?? null,
           painDuration: body?.painDuration ?? null,
-          painScore: body?.painScore ?? null,
+          painScore: isNaN(painScoreNum as number) ? null : painScoreNum,
           painType: body?.painType ?? null,
           painAggravating: body?.painAggravating ?? null,
           painRelieving: body?.painRelieving ?? null,
@@ -204,12 +208,12 @@ export async function POST(request: NextRequest) {
         cardiovascularSymptoms: body?.cardiovascularSymptoms ?? false,
         severeHeadache: body?.severeHeadache ?? false,
         dizzinessBalanceIssues: body?.dizzinessBalanceIssues ?? false,
-        redFlagDetails: body?.redFlagDetails ?? null,
+        redFlagDetails: safeRedFlagDetails,
         // Chief Complaint & Pain
         chiefComplaint: body?.chiefComplaint ?? null,
         painLocation: body?.painLocation ?? null,
         painDuration: body?.painDuration ?? null,
-        painScore: body?.painScore ?? null,
+        painScore: isNaN(painScoreNum as number) ? null : painScoreNum,
         painType: body?.painType ?? null,
         painAggravating: body?.painAggravating ?? null,
         painRelieving: body?.painRelieving ?? null,
@@ -330,8 +334,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error saving medical screening:", error);
+    const errMsg = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to save screening" },
+      { error: `Failed to save screening: ${errMsg}` },
       { status: 500 }
     );
   }
