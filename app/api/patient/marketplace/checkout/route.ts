@@ -173,7 +173,8 @@ export async function POST(req: NextRequest) {
     if (needsPayment && !hasOnlyAffiliates) {
       try {
         const Stripe = (await import("stripe")).default;
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", { apiVersion: "2024-06-20" as any });
+        const _stripeKey = process.env.STRIPE_SECRET_KEY;
+    const stripe = _stripeKey ? new Stripe(_stripeKey, { apiVersion: "2024-06-20" }) : null;
 
         const lineItems = orderItems.filter((i: any) => !i.isAffiliate).map((item: any) => ({
           price_data: {
