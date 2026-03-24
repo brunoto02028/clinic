@@ -658,7 +658,7 @@ export async function POST(
     if (!geminiKey) {
       return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
     }
-    const geminiModel = (await getConfigValue('GEMINI_MODEL')) || 'gemini-2.0-flash';
+    const geminiModel = (await getConfigValue('GEMINI_MODEL')) || 'gemini-2.5-pro';
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
 
     const systemPrompt = buildSystemPrompt(language);
