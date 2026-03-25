@@ -6,6 +6,20 @@ import { getConfigValue } from '@/lib/system-config';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
+function parseCaptureViewFromUrl(imageUrl: string): string {
+  const fileName = imageUrl.split('/').pop()?.toLowerCase() || '';
+  if (fileName.includes('-shoe-')) return 'SHOE_SOLE';
+  if (fileName.includes('-sole-')) return 'TRUE_PLANTAR';
+  if (fileName.includes('-medial-')) return 'MEDIAL';
+  if (fileName.includes('-lateral-')) return 'LATERAL';
+  if (fileName.includes('-front-') || fileName.includes('-anterior-')) return 'ANTERIOR';
+  if (fileName.includes('-rear-') || fileName.includes('-posterior-')) return 'POSTERIOR';
+  if (fileName.includes('-dorsal-')) return 'DORSAL';
+  return 'PLANTAR_OUTLINE';
+}
+
 // Convert local image path to base64 data URI
 async function imageToBase64(imagePath: string): Promise<string | null> {
   try {
@@ -126,7 +140,10 @@ export async function POST(
     // Update status to processing
     await prisma.footScan.update({
       where: { id },
-      data: { status: 'PROCESSING' }
+      data: {
+        status: 'PROCESSING',
+        workflowStatus: 'MEASUREMENT_PROCESSING'
+      }
     });
     
     // Prepare patient context
@@ -303,11 +320,122 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
         };
       }
       
+      const confidenceBand = analysis.confidenceLevel?.toUpperCase?.() || null;
+
+      // Dual-write into v2 pipeline tables
+      let measurementSet: any = null;
+      let analysisRecord: any = null;
+      try {
+        const currentSessionId = footScan.currentSessionId || null;
+
+        const latestCalibration = await (prisma as any).footScanCalibration.findFirst({
+          where: { footScanId: id },
+          orderBy: { createdAt: 'desc' }
+        }).catch(() => null);
+
+        measurementSet = await (prisma as any).footScanMeasurementSet.create({
+          data: {
+            footScanId: id,
+            version: 1,
+            sourceSessionId: currentSessionId,
+            extractionMethod: 'AI_VISION',
+            status: 'COMPUTED',
+            leftMeasurements: {
+              footLength: analysis.leftFootLength ?? null,
+              footWidth: analysis.leftFootWidth ?? null,
+              archHeight: analysis.leftArchHeight ?? null,
+            },
+            rightMeasurements: {
+              footLength: analysis.rightFootLength ?? null,
+              footWidth: analysis.rightFootWidth ?? null,
+              archHeight: analysis.rightArchHeight ?? null,
+            },
+            bilateralComparison: {
+              leftRightLengthDelta: (analysis.leftFootLength ?? null) && (analysis.rightFootLength ?? null)
+                ? Math.abs((analysis.leftFootLength ?? 0) - (analysis.rightFootLength ?? 0))
+                : null,
+              leftRightWidthDelta: (analysis.leftFootWidth ?? null) && (analysis.rightFootWidth ?? null)
+                ? Math.abs((analysis.leftFootWidth ?? 0) - (analysis.rightFootWidth ?? 0))
+                : null,
+            },
+            confidenceSummary: {
+              confidenceLevel: analysis.confidenceLevel ?? 'low',
+              imageQualityNotes: analysis.imageQualityNotes ?? null,
+              a4Calibration: analysis.a4Calibration ?? null,
+            },
+            provenance: {
+              source: 'legacy-analyze-route',
+              imagesAnalyzed: [...leftImages, ...rightImages].map((url) => ({
+                url,
+                view: parseCaptureViewFromUrl(url),
+              })),
+            },
+            calibrationId: latestCalibration?.id ?? null,
+          }
+        });
+
+        analysisRecord = await (prisma as any).footScanAnalysis.create({
+          data: {
+            footScanId: id,
+            measurementSetId: measurementSet.id,
+            analysisType: 'BIOMECHANICAL',
+            modelProvider: 'google',
+            modelName: geminiModel,
+            promptVersion: 'footscan-v1',
+            inputSummary: {
+              leftImageCount: leftImages.length,
+              rightImageCount: rightImages.length,
+              hasA4Reference,
+            },
+            output: analysis,
+            confidence: {
+              confidenceLevel: analysis.confidenceLevel ?? 'low',
+              a4Calibration: analysis.a4Calibration ?? null,
+            },
+            status: 'COMPLETE',
+          }
+        });
+
+        await prisma.footScan.update({
+          where: { id },
+          data: {
+            currentMeasurementSetId: measurementSet.id,
+            currentAnalysisId: analysisRecord.id,
+          }
+        });
+
+        if (currentSessionId) {
+          await (prisma as any).footScanSession.update({
+            where: { id: currentSessionId },
+            data: { sessionStatus: 'SUBMITTED', submittedAt: new Date() }
+          }).catch(() => null);
+        }
+
+        await (prisma as any).footScanEvent.create({
+          data: {
+            footScanId: id,
+            sessionId: currentSessionId,
+            eventType: 'ANALYSIS_COMPLETED',
+            actorType: 'SYSTEM',
+            payload: {
+              measurementSetId: measurementSet.id,
+              analysisId: analysisRecord.id,
+              modelName: geminiModel,
+              confidenceLevel: analysis.confidenceLevel ?? 'low',
+            }
+          }
+        }).catch(() => null);
+      } catch (dualWriteErr) {
+        console.error('[foot-scan] Failed to dual-write measurement/analysis:', dualWriteErr);
+      }
+
       // Update foot scan with analysis results
       const updatedScan = await prisma.footScan.update({
         where: { id },
         data: {
           status: 'PENDING_REVIEW',
+          workflowStatus: 'CLINICAL_REVIEW_PENDING',
+          confidenceBand,
           archType: analysis.archType,
           archIndex: analysis.archIndex || null,
           pronation: analysis.pronation,
@@ -361,7 +489,10 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
       // Revert status if AI fails
       await prisma.footScan.update({
         where: { id },
-        data: { status: 'SCANNING' }
+        data: {
+          status: 'SCANNING',
+          workflowStatus: 'CAPTURE_IN_PROGRESS'
+        }
       });
       
       return NextResponse.json({ error: 'AI vision analysis failed', details: String(aiError) }, { status: 500 });

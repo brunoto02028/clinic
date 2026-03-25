@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth-options'
 import { claudeGenerate } from '@/lib/claude'
 import { BPR_SYSTEM_CONTEXT } from '@/lib/marketing-prompts'
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

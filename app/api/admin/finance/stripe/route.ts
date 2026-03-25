@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import Stripe from "stripe";
 
+export const dynamic = 'force-dynamic';
+
 // POST — sync Stripe payments into FinancialEntry
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);

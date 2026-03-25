@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_SOAP_NOTES, devFallbackResponse } from "@/lib/dev-fallback";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const { clinicId, userRole } = await getClinicContext();

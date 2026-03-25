@@ -6,6 +6,8 @@ import { notifyPatient } from "@/lib/notify-patient";
 import { stripe } from "@/lib/stripe";
 import { sendEmail } from "@/lib/email";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const { clinicId, userRole } = await getClinicContext();

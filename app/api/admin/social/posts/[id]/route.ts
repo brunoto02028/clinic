@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { publishPhoto, publishCarousel } from '@/lib/instagram';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin/social/posts/[id]
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {

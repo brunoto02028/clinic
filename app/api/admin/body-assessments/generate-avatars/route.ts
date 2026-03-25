@@ -5,6 +5,8 @@ import { generateImage } from "@/lib/ai-provider";
 import { writeFile, mkdir, access } from "fs/promises";
 import path from "path";
 
+export const dynamic = 'force-dynamic';
+
 const VALID_KEYS = ["male-front", "male-back", "female-front", "female-back"];
 
 const AVATAR_CONFIGS = [

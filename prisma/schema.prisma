@@ -59,6 +59,135 @@ enum FootScanStatus {
   DELIVERED
 }
 
+enum FootScanWorkflowStatus {
+  CASE_CREATED
+  CAPTURE_PREPARED
+  CAPTURE_IN_PROGRESS
+  CAPTURE_INCOMPLETE
+  CAPTURE_SUBMITTED
+  CALIBRATION_PENDING
+  MEASUREMENT_PROCESSING
+  MEASUREMENT_READY
+  CLINICAL_REVIEW_PENDING
+  CHANGES_REQUESTED
+  APPROVED_FOR_PRODUCTION
+  IN_PRODUCTION
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum FootScanCapturePathway {
+  IN_CLINIC_ASSISTED
+  REMOTE_FALLBACK
+  HYBRID
+}
+
+enum FootScanCaptureIntent {
+  PRECISION
+  STANDARD
+  QUICK_REVIEW
+}
+
+enum FootScanSessionMode {
+  SELF
+  CLINICIAN_ASSISTED
+}
+
+enum FootScanSessionStatus {
+  CREATED
+  OPENED
+  IN_PROGRESS
+  UPLOADING
+  SUBMITTED
+  INCOMPLETE
+  ABANDONED
+  EXPIRED
+}
+
+enum FootScanCaptureSide {
+  LEFT
+  RIGHT
+  BILATERAL
+  NONE
+}
+
+enum FootScanCaptureView {
+  PLANTAR_OUTLINE
+  TRUE_PLANTAR
+  MEDIAL
+  LATERAL
+  ANTERIOR
+  POSTERIOR
+  DORSAL
+  SHOE_SOLE
+}
+
+enum FootScanCaptureRole {
+  REQUIRED
+  OPTIONAL
+  FALLBACK
+}
+
+enum FootScanCaptureStatus {
+  UPLOADED
+  ACCEPTED
+  REJECTED
+  SUPERSEDED
+}
+
+enum FootScanCalibrationType {
+  A4
+  AR_MARKER
+  CHECKERBOARD
+  LIDAR_DEPTH
+  MANUAL_REFERENCE
+}
+
+enum FootScanCalibrationStatus {
+  PENDING
+  DETECTED
+  VERIFIED
+  FAILED
+}
+
+enum FootScanMeasurementExtractionMethod {
+  RULE_BASED
+  CV_MODEL
+  AI_VISION
+  HYBRID
+  MANUAL
+}
+
+enum FootScanMeasurementSetStatus {
+  DRAFT
+  COMPUTED
+  VERIFIED
+  SUPERSEDED
+}
+
+enum FootScanAnalysisStatus {
+  PENDING
+  RUNNING
+  COMPLETE
+  FAILED
+}
+
+enum FootScanReviewStatus {
+  PENDING
+  IN_REVIEW
+  VERIFIED
+  CHANGES_REQUESTED
+  APPROVED_FOR_PRODUCTION
+}
+
+enum FootScanLabStatus {
+  DRAFT
+  READY
+  SENT
+  ACKNOWLEDGED
+}
+
 enum BodyAssessmentStatus {
   PENDING_CAPTURE   // Waiting for patient to capture
   CAPTURING         // Capture in progress
@@ -1052,10 +1181,27 @@ model FootScan {
   previewUrl      String?         // Preview image URL
   previewPath     String?         // cloud_storage_path for preview
   
-  // Camera Capture Data
-  leftFootImages  Json?           // Array of captured image URLs (top, side, sole, rear, elevated)
-  rightFootImages Json?           // Array of captured image URLs (top, side, sole, rear, elevated)
+  // Legacy Camera Capture Data (kept for compatibility during migration)
+  leftFootImages  Json?           // Legacy array of captured image URLs
+  rightFootImages Json?           // Legacy array of captured image URLs
   captureMetadata Json?           // Device info, timestamps, angles, isSimulation flag
+  
+  // Workflow v2
+  workflowStatus    FootScanWorkflowStatus  @default(CASE_CREATED)
+  capturePathway    FootScanCapturePathway  @default(IN_CLINIC_ASSISTED)
+  captureIntent     FootScanCaptureIntent   @default(PRECISION)
+  qaStatus          String?
+  clinicalStatus    String?
+  manufacturingStatus String?
+  confidenceBand    String?
+  currentSessionId  String?
+  currentMeasurementSetId String?
+  currentAnalysisId String?
+  reviewedById      String?
+  reviewedAt        DateTime?
+  approvedById      String?
+  approvedAt        DateTime?
+  manufacturingReadyAt DateTime?
   
   // AI & Clinical Analysis Results
   biomechanicData Json?           // Detailed breakdown: { archIndex, valgusAngle, etc }
@@ -1084,11 +1230,11 @@ model FootScan {
   strideLength    Float?          // mm
   cadence         Int?            // steps per minute
   
-  // Scan Session Token (for QR-based mobile capture)
+  // Legacy Scan Session Token (for compatibility)
   scanToken       String?         @unique
   scanTokenExpiry DateTime?
   
-  // Status & Workflow
+  // Status & Workflow (legacy)
   status          FootScanStatus  @default(PENDING_UPLOAD)
   clinicianNotes  String?         @db.Text
   aiRecommendation String?        @db.Text
@@ -1104,11 +1250,246 @@ model FootScan {
   
   // Relations
   order           Order?
+  sessions        FootScanSession[]
+  captures        FootScanCapture[]
+  calibrations    FootScanCalibration[]
+  measurementSets FootScanMeasurementSet[]
+  analyses        FootScanAnalysis[]
+  reviews         FootScanReview[]
+  manufacturingSpecs FootScanManufacturingSpec[]
+  events          FootScanEvent[]
   
   @@index([clinicId])
   @@index([patientId])
   @@index([status])
+  @@index([workflowStatus])
   @@index([scanNumber])
+  @@index([createdAt])
+}
+
+model FootScanSession {
+  id                String                 @id @default(cuid())
+  footScanId        String
+  footScan          FootScan               @relation(fields: [footScanId], references: [id], onDelete: Cascade)
+  mode              FootScanSessionMode
+  pathway           FootScanCapturePathway
+  tokenHash         String?                @unique
+  tokenExpiresAt    DateTime?
+  tokenConsumedAt   DateTime?
+  startedAt         DateTime?
+  submittedAt       DateTime?
+  abandonedAt       DateTime?
+  expiredAt         DateTime?
+  deviceInfo        Json?
+  browserInfo       Json?
+  captureClientVersion String?
+  capturePlanVersion   String?
+  expectedViews     Json?
+  requiredViews     Json?
+  sessionStatus     FootScanSessionStatus  @default(CREATED)
+  createdById       String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  captures          FootScanCapture[]
+  calibrations      FootScanCalibration[]
+  measurements      FootScanMeasurementSet[]
+  events            FootScanEvent[]
+
+  @@index([footScanId])
+  @@index([sessionStatus])
+  @@index([createdAt])
+}
+
+model FootScanCapture {
+  id                String                @id @default(cuid())
+  footScanId        String
+  footScan          FootScan              @relation(fields: [footScanId], references: [id], onDelete: Cascade)
+  footScanSessionId String
+  footScanSession   FootScanSession       @relation(fields: [footScanSessionId], references: [id], onDelete: Cascade)
+  side              FootScanCaptureSide
+  view              FootScanCaptureView
+  captureRole       FootScanCaptureRole   @default(REQUIRED)
+  sequenceNo        Int                   @default(0)
+  status            FootScanCaptureStatus @default(UPLOADED)
+  storageUrl        String
+  storagePath       String?
+  thumbnailUrl      String?
+  mimeType          String?
+  widthPx           Int?
+  heightPx          Int?
+  sizeBytes         Int?
+  capturedAt        DateTime?
+  uploadedAt        DateTime              @default(now())
+  deviceMetadata    Json?
+  qualityScores     Json?
+  calibrationMarkers Json?
+  segmentationMaskUrl String?
+  rejectedReason    String?
+  supersededById    String?
+  approvedForAnalysis Boolean             @default(false)
+  retakeCount       Int                   @default(0)
+
+  sourceCalibrations FootScanCalibration[] @relation("CalibrationSourceCapture")
+
+  @@index([footScanId])
+  @@index([footScanSessionId])
+  @@index([side, view])
+  @@index([status])
+}
+
+model FootScanCalibration {
+  id                String                     @id @default(cuid())
+  footScanId        String
+  footScan          FootScan                   @relation(fields: [footScanId], references: [id], onDelete: Cascade)
+  footScanSessionId String
+  footScanSession   FootScanSession            @relation(fields: [footScanSessionId], references: [id], onDelete: Cascade)
+  type              FootScanCalibrationType
+  sourceCaptureId   String?
+  sourceCapture     FootScanCapture?           @relation("CalibrationSourceCapture", fields: [sourceCaptureId], references: [id])
+  status            FootScanCalibrationStatus  @default(PENDING)
+  mmPerPixel        Float?
+  homography        Json?
+  referenceDimensionsMm Json?
+  confidence        Float?
+  validatedByClinician Boolean                 @default(false)
+  notes             String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  measurementSets   FootScanMeasurementSet[]
+
+  @@index([footScanId])
+  @@index([footScanSessionId])
+  @@index([status])
+}
+
+model FootScanMeasurementSet {
+  id                String                            @id @default(cuid())
+  footScanId        String
+  footScan          FootScan                          @relation(fields: [footScanId], references: [id], onDelete: Cascade)
+  version           Int                               @default(1)
+  sourceSessionId   String?
+  sourceSession     FootScanSession?                  @relation(fields: [sourceSessionId], references: [id])
+  extractionMethod  FootScanMeasurementExtractionMethod
+  status            FootScanMeasurementSetStatus      @default(DRAFT)
+  leftMeasurements  Json?
+  rightMeasurements Json?
+  bilateralComparison Json?
+  confidenceSummary Json?
+  provenance        Json?
+  calibrationId     String?
+  calibration       FootScanCalibration?              @relation(fields: [calibrationId], references: [id])
+  createdAt         DateTime                          @default(now())
+  updatedAt         DateTime                          @updatedAt
+
+  analyses          FootScanAnalysis[]
+  reviews           FootScanReview[]
+  manufacturingSpecs FootScanManufacturingSpec[]
+
+  @@index([footScanId])
+  @@index([sourceSessionId])
+  @@index([status])
+}
+
+model FootScanAnalysis {
+  id                String                 @id @default(cuid())
+  footScanId        String
+  footScan          FootScan               @relation(fields: [footScanId], references: [id], onDelete: Cascade)
+  measurementSetId  String
+  measurementSet    FootScanMeasurementSet @relation(fields: [measurementSetId], references: [id], onDelete: Cascade)
+  analysisType      String
+  modelProvider     String?
+  modelName         String?
+  promptVersion     String?
+  inputSummary      Json?
+  output            Json?
+  confidence        Json?
+  status            FootScanAnalysisStatus @default(PENDING)
+  errorText         String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  reviews           FootScanReview[]
+
+  @@index([footScanId])
+  @@index([measurementSetId])
+  @@index([status])
+}
+
+model FootScanReview {
+  id                String               @id @default(cuid())
+  footScanId        String
+  footScan          FootScan             @relation(fields: [footScanId], references: [id], onDelete: Cascade)
+  measurementSetId  String
+  measurementSet    FootScanMeasurementSet @relation(fields: [measurementSetId], references: [id], onDelete: Cascade)
+  analysisId        String?
+  analysis          FootScanAnalysis?    @relation(fields: [analysisId], references: [id])
+  reviewerId        String?
+  status            FootScanReviewStatus @default(PENDING)
+  clinicianFindings Json?
+  overriddenMeasurements Json?
+  overrideReason    String?
+  notes             String?
+  completedAt       DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  manufacturingSpecs FootScanManufacturingSpec[]
+
+  @@index([footScanId])
+  @@index([measurementSetId])
+  @@index([status])
+}
+
+model FootScanManufacturingSpec {
+  id                String                @id @default(cuid())
+  footScanId        String
+  footScan          FootScan              @relation(fields: [footScanId], references: [id], onDelete: Cascade)
+  sourceMeasurementSetId String?
+  sourceMeasurementSet FootScanMeasurementSet? @relation(fields: [sourceMeasurementSetId], references: [id])
+  sourceReviewId    String?
+  sourceReview      FootScanReview?       @relation(fields: [sourceReviewId], references: [id])
+  specVersion       Int                   @default(1)
+  insoleType        String?
+  sizeSystem        String?
+  sizeValue         String?
+  shellGeometry     Json?
+  heelCupDepth      String?
+  archSupport       Json?
+  posting           Json?
+  materials         Json?
+  offloadingZones   Json?
+  trimline          String?
+  shoeCompatibility String?
+  productionNotes   String?
+  reliabilityNotes  String?
+  labStatus         FootScanLabStatus     @default(DRAFT)
+  createdById       String?
+  approvedById      String?
+  approvedAt        DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([footScanId])
+  @@index([labStatus])
+}
+
+model FootScanEvent {
+  id                String   @id @default(cuid())
+  footScanId        String
+  footScan          FootScan @relation(fields: [footScanId], references: [id], onDelete: Cascade)
+  sessionId         String?
+  session           FootScanSession? @relation(fields: [sessionId], references: [id])
+  eventType         String
+  actorType         String?
+  actorId           String?
+  payload           Json?
+  createdAt         DateTime @default(now())
+
+  @@index([footScanId])
+  @@index([sessionId])
+  @@index([eventType])
   @@index([createdAt])
 }
 

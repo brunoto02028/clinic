@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth-options";
 import * as https from "https";
 import * as zlib from "zlib";
 
+export const dynamic = 'force-dynamic';
+
 // Use native https module — confirmed working on VPS (fetch gets blocked by Amazon, https doesn't)
 function httpsGet(url: string): Promise<string> {
   return new Promise((resolve, reject) => {

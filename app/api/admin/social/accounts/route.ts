@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getInstagramAuthUrl } from '@/lib/instagram';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin/social/accounts - List connected accounts
 export async function GET(req: NextRequest) {
   try {

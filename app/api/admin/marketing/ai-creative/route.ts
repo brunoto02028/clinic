@@ -5,6 +5,8 @@ import { callAI, generateImage, parseAIJson } from '@/lib/ai-provider'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
+export const dynamic = 'force-dynamic';
+
 const CLINIC_CONTEXT = `BPR (Bruno Physical Rehabilitation) is a modern physiotherapy & rehabilitation clinic in the UK (Richmond & Ipswich). Founded by Bruno, a former professional footballer who had 3 major knee surgeries. Services: MLS Laser Therapy, Custom Insoles & Foot Scans, Biomechanical Assessment (AI-powered), Sports Injury Treatment, Chronic Pain Management, Pre/Post Surgery Rehab, Shockwave Therapy, Infrared Thermography, Electrotherapy & Microcurrent, Exercise Therapy. Target audience: athletes, people with chronic pain, post-surgery patients, sports enthusiasts. Tone: professional, trustworthy, modern, empathetic. Brand colors: teal #0d7377, gold #c8952a, dark #1a2332.`
 
 export async function POST(req: NextRequest) {

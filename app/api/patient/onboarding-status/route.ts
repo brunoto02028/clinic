@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const effectiveUser = await getEffectiveUser();
   if (!effectiveUser) {

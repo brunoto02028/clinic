@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getFileUrl, deleteFile } from '@/lib/s3';
 
+export const dynamic = 'force-dynamic';
+
 // GET - Get single foot scan
 export async function GET(
   request: NextRequest,

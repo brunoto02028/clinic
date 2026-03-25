@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 const IG_BASE = 'https://graph.instagram.com/v21.0';
 
 export async function GET(req: NextRequest) {

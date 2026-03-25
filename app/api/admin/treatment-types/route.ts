@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const { clinicId, userRole } = await getClinicContext();

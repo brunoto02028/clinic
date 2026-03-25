@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { callAI } from "@/lib/ai-provider";
 
+export const dynamic = 'force-dynamic';
+
 export const maxDuration = 60;
 
 // POST: AI-powered package creation assistant

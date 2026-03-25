@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { generateMarketingImage } from '@/lib/marketing-image'
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

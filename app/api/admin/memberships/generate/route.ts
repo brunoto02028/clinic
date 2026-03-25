@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { getConfigValue } from "@/lib/system-config";
 import { ALL_FEATURE_KEYS, MODULE_REGISTRY, PERMISSION_REGISTRY } from "@/lib/module-registry";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {

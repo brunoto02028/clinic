@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { claudeGenerate } from '@/lib/claude'
 
+export const dynamic = 'force-dynamic';
+
 const SUNO_API_KEY = process.env.SUNO_API_KEY || 'a267c6defdffa6d854db77642d89044e'
 // sunoapi.org — correct endpoint and auth
 const SUNO_BASE = 'https://api.sunoapi.org/api/v1'

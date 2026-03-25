@@ -8,6 +8,8 @@ import { sendEmail } from "@/lib/email";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_USERS, devFallbackResponse } from "@/lib/dev-fallback";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { clinicId, userRole } = await getClinicContext();

@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 // DELETE /api/admin/social/templates/[id]
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {

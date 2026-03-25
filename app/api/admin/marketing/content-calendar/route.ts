@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db'
 import { claudeGenerate } from '@/lib/claude'
 import { BPR_SYSTEM_CONTEXT } from '@/lib/marketing-prompts'
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/admin/marketing/content-calendar
 // Generate a full month of Instagram posts
 export async function POST(req: NextRequest) {

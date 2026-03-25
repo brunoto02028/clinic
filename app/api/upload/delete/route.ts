@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { deleteFile } from "@/lib/s3";
 
+export const dynamic = 'force-dynamic';
+
 export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(authOptions);

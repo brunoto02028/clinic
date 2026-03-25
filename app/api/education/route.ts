@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getEffectiveUserId } from '@/lib/preview-helpers';
 
+export const dynamic = 'force-dynamic';
+
 // Patient-facing: get assigned content + published content for their clinic
 export async function GET(req: NextRequest) {
   try {

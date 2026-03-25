@@ -3,9 +3,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import { generateApiKey } from '@/lib/agent-auth'
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {

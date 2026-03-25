@@ -4,7 +4,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAgentAuth } from '@/lib/agent-auth'
 import { prisma } from '@/lib/db'
-import { publishToInstagram } from '@/lib/instagram'
+import { publishPhoto } from '@/lib/instagram'
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAgentAuth(request, 'instagram')
@@ -50,9 +52,27 @@ export async function POST(request: NextRequest) {
     // If no schedule time, publish immediately
     if (!scheduleAt && imageUrl) {
       try {
-        const result = await publishToInstagram({
-          caption,
+        const socialAccount = await prisma.socialAccount.findFirst({
+          where: {
+            clinicId: clinic.id,
+            platform: 'INSTAGRAM',
+            isActive: true,
+          },
+          select: {
+            accountId: true,
+            accessToken: true,
+          },
+        })
+
+        if (!socialAccount?.accountId || !socialAccount?.accessToken) {
+          throw new Error('No active Instagram account configured for publishing')
+        }
+
+        const result = await publishPhoto({
+          igAccountId: socialAccount.accountId,
+          accessToken: socialAccount.accessToken,
           imageUrl,
+          caption,
         })
 
         await prisma.socialPost.update({

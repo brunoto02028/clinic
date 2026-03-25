@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { exchangeCodeForToken, getLongLivedToken, getInstagramBusinessAccount } from '@/lib/instagram';
 
+export const dynamic = 'force-dynamic';
+
 function getSiteUrl(): string {
   return process.env.NEXTAUTH_URL || 'https://bpr.rehab';
 }

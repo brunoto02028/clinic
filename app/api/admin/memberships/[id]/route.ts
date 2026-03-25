@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getClinicContext } from "@/lib/clinic-context";
 import { stripe } from "@/lib/stripe";
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { userRole } = await getClinicContext();

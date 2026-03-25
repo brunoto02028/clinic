@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
 
+export const dynamic = 'force-dynamic';
+
 // GET — list all service packages
 export async function GET() {
   const session = await getServerSession(authOptions);

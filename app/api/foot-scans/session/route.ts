@@ -4,6 +4,12 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
+function hashToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 // Generate unique scan number
 async function generateScanNumber(): Promise<string> {
   const year = new Date().getFullYear();
@@ -75,12 +81,35 @@ export async function POST(request: NextRequest) {
         scanToken,
         scanTokenExpiry,
         status: 'PENDING_UPLOAD',
+        workflowStatus: 'CAPTURE_PREPARED',
+        capturePathway: 'REMOTE_FALLBACK',
+        captureIntent: 'PRECISION',
       },
       include: {
         patient: {
           select: { id: true, firstName: true, lastName: true, email: true }
         }
       }
+    });
+
+    const sessionRecord = await (prisma as any).footScanSession.create({
+      data: {
+        footScanId: footScan.id,
+        mode: 'SELF',
+        pathway: 'REMOTE_FALLBACK',
+        tokenHash: hashToken(scanToken),
+        tokenExpiresAt: scanTokenExpiry,
+        capturePlanVersion: 'REMOTE_FALLBACK_V1',
+        expectedViews: ['PLANTAR_OUTLINE', 'MEDIAL', 'LATERAL', 'POSTERIOR', 'ANTERIOR'],
+        requiredViews: ['PLANTAR_OUTLINE', 'MEDIAL', 'LATERAL', 'POSTERIOR'],
+        sessionStatus: 'CREATED',
+        createdById: user.id,
+      }
+    });
+
+    await prisma.footScan.update({
+      where: { id: footScan.id },
+      data: { currentSessionId: sessionRecord.id }
     });
 
     const baseUrl = request.headers.get('origin') || request.headers.get('host') || '';
@@ -136,6 +165,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Scan already completed', status: footScan.status }, { status: 409 });
     }
 
+    const latestSession = footScan.currentSessionId
+      ? await (prisma as any).footScanSession.findUnique({ where: { id: footScan.currentSessionId } }).catch(() => null)
+      : null;
+
+    if (latestSession && latestSession.sessionStatus === 'CREATED') {
+      await (prisma as any).footScanSession.update({
+        where: { id: latestSession.id },
+        data: {
+          sessionStatus: 'OPENED',
+          startedAt: latestSession.startedAt ?? new Date(),
+          tokenConsumedAt: latestSession.tokenConsumedAt ?? new Date(),
+        }
+      }).catch(() => null);
+    }
+
     return NextResponse.json({
       id: footScan.id,
       scanNumber: footScan.scanNumber,
@@ -143,6 +187,8 @@ export async function GET(request: NextRequest) {
       clinicName: footScan.clinic.name,
       clinicLogo: footScan.clinic.logoUrl,
       status: footScan.status,
+      workflowStatus: footScan.workflowStatus,
+      currentSessionId: footScan.currentSessionId,
       hasLidarHint: true, // Flag to enable LiDAR detection on the client
     });
 

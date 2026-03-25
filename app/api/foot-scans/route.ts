@@ -6,6 +6,8 @@ import { generatePresignedUploadUrl, getFileUrl } from '@/lib/s3';
 import { isDbUnreachableError, MOCK_FOOT_SCANS, devFallbackResponse } from '@/lib/dev-fallback';
 import { getEffectiveUserId, isPreviewRequest } from '@/lib/preview-helpers';
 
+export const dynamic = 'force-dynamic';
+
 // Generate unique scan number
 async function generateScanNumber(): Promise<string> {
   const year = new Date().getFullYear();

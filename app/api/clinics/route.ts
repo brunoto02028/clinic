@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 // GET - List all active clinics (public endpoint for directory)
 export async function GET(request: NextRequest) {
   try {

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getClinicContext, getClinicContextFromSession, getDefaultClinic } from "@/lib/clinic-context";
 import { stripe } from "@/lib/stripe";
 
+export const dynamic = 'force-dynamic';
+
 async function resolveClinicContext() {
   let ctx = await getClinicContext();
   if (!ctx.clinicId) ctx = await getClinicContextFromSession();

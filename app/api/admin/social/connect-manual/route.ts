@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getLongLivedToken } from '@/lib/instagram';
 
+export const dynamic = 'force-dynamic';
+
 const IG_GRAPH_API_BASE = 'https://graph.instagram.com';
 const GRAPH_API_VERSION = 'v21.0';
 

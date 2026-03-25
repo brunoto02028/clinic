@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import { executeTask } from '@/lib/ai-coworker'
 
+export const dynamic = 'force-dynamic';
+
 // POST — execute a task manually
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)

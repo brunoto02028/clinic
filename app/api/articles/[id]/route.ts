@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { renderTemplate } from "@/lib/email-templates";
 import { sendEmail } from "@/lib/email";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+
+export const dynamic = 'force-dynamic';
 import { prisma } from "@/lib/db";
 
 // GET - Get patient's body assessments (only sent/completed ones)

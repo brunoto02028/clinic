@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicContext } from "@/lib/clinic-context";
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { clinicId, userRole } = await getClinicContext();

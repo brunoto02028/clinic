@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { callAI } from "@/lib/ai-provider";
 
+export const dynamic = 'force-dynamic';
+
 // POST — AI chat for quiz generation
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);

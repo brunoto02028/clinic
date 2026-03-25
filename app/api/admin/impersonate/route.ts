@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
 
+export const dynamic = 'force-dynamic';
+
 const IMPERSONATE_COOKIE = "impersonate-patient-id";
 const IMPERSONATE_NAME_COOKIE = "impersonate-patient-name";
 const IMPERSONATE_ADMIN_COOKIE = "impersonate-admin-id";

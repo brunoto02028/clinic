@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Cancellation Policy | Bruno Physical Rehabilitation",
   description: "Our cancellation and refund policy for appointments and treatment plans.",

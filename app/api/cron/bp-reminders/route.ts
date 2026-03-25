@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/cron/bp-reminders — Send weekly BP reminder emails
 // Call this via cron job: curl -X POST https://domain/api/cron/bp-reminders?key=SECRET
 export async function POST(request: NextRequest) {

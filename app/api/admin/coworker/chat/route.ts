@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { coworkerChat } from '@/lib/ai-coworker'
 
+export const dynamic = 'force-dynamic';
+
 // POST — chat with the AI Co-Worker
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)

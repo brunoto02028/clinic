@@ -6,6 +6,8 @@ import sharp from 'sharp'
 import path from 'path'
 import fs from 'fs'
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/admin/marketing/watermark
 // Applies logo watermark to an image (from URL or local path)
 export async function POST(req: NextRequest) {

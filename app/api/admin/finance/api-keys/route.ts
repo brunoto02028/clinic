@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
 
+export const dynamic = 'force-dynamic';
+
 function hashKey(key: string): string {
   return crypto.createHash("sha256").update(key).digest("hex");
 }

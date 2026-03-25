@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+export const dynamic = 'force-dynamic';
+
 // Get the clinic ID (single-tenant for now — first active clinic)
 async function getClinicId(): Promise<string | null> {
   const clinic = await prisma.clinic.findFirst({ where: { isActive: true }, select: { id: true } });

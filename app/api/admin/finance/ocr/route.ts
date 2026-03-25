@@ -6,6 +6,8 @@ import { callAI, parseAIJson } from "@/lib/ai-provider";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
+export const dynamic = 'force-dynamic';
+
 // POST — upload invoice/receipt, OCR extract + AI categorize
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);

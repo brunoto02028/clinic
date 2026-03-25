@@ -3,6 +3,22 @@ import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
+const VIEW_MAP: Record<string, string> = {
+  top: 'PLANTAR_OUTLINE',
+  plantar: 'PLANTAR_OUTLINE',
+  sole: 'TRUE_PLANTAR',
+  medial: 'MEDIAL',
+  lateral: 'LATERAL',
+  front: 'ANTERIOR',
+  anterior: 'ANTERIOR',
+  rear: 'POSTERIOR',
+  posterior: 'POSTERIOR',
+  dorsal: 'DORSAL',
+  shoe: 'SHOE_SOLE',
+};
+
 // POST - Upload scan image to local storage (public — accessed via scan token)
 export async function POST(
   request: NextRequest,
@@ -74,6 +90,7 @@ export async function POST(
 
     const updateData: any = {
       status: 'SCANNING',
+      workflowStatus: 'CAPTURE_IN_PROGRESS',
     };
 
     if (foot === 'left') {
@@ -84,10 +101,64 @@ export async function POST(
 
     const isFirstImage = currentImages.length === 0;
 
-    await prisma.footScan.update({
+    const updatedFootScan = await prisma.footScan.update({
       where: { id },
       data: updateData,
     });
+
+    const currentSessionId = updatedFootScan.currentSessionId;
+    if (currentSessionId) {
+      const mappedView = VIEW_MAP[String(angle).toLowerCase()] || 'PLANTAR_OUTLINE';
+      await (prisma as any).footScanCapture.create({
+        data: {
+          footScanId: id,
+          footScanSessionId: currentSessionId,
+          side: foot === 'left' ? 'LEFT' : 'RIGHT',
+          view: mappedView,
+          captureRole: 'REQUIRED',
+          sequenceNo: updatedImages.length,
+          status: 'UPLOADED',
+          storageUrl: imageUrl,
+          storagePath: filePath,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          uploadedAt: new Date(),
+          deviceMetadata: {
+            uploadSource: 'upload-local',
+            originalFileName: file.name,
+            legacyAngle: angle,
+            legacyFoot: foot,
+          },
+          qualityScores: null,
+          approvedForAnalysis: false,
+        }
+      }).catch((captureErr: any) => {
+        console.error('[foot-scan] Failed to dual-write capture:', captureErr);
+      });
+
+      await (prisma as any).footScanSession.update({
+        where: { id: currentSessionId },
+        data: {
+          sessionStatus: 'IN_PROGRESS',
+          startedAt: new Date(),
+        }
+      }).catch(() => null);
+
+      await (prisma as any).footScanEvent.create({
+        data: {
+          footScanId: id,
+          sessionId: currentSessionId,
+          eventType: 'CAPTURE_UPLOADED',
+          actorType: 'PATIENT',
+          payload: {
+            imageUrl,
+            foot,
+            angle,
+            mappedView,
+          }
+        }
+      }).catch(() => null);
+    }
 
     // Send notification on first image upload (scan session started)
     if (isFirstImage) {

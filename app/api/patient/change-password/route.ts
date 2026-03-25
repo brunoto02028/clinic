@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import bcrypt from "bcryptjs";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const effectiveUser = await getEffectiveUser();

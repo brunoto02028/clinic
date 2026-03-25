@@ -6,6 +6,8 @@ import { claudeGenerate } from '@/lib/claude'
 import { buildPdfContentPrompt, BPR_SYSTEM_CONTEXT } from '@/lib/marketing-prompts'
 import { generateMarketingImage } from '@/lib/marketing-image'
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

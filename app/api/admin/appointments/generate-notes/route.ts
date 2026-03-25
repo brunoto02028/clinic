@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getConfigValue } from "@/lib/system-config";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {

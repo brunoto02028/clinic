@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 
+export const dynamic = 'force-dynamic';
+
 // GET single service page by id
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {

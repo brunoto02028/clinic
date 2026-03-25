@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import crypto from "crypto";
 import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
 
+export const dynamic = 'force-dynamic';
+
 // Generate unique assessment number
 async function generateAssessmentNumber(): Promise<string> {
   const year = new Date().getFullYear();

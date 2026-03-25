@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { HMRC_DEFAULT_CATEGORIES } from "@/lib/hmrc-categories";
 
+export const dynamic = 'force-dynamic';
+
 // GET — list categories (auto-seeds defaults if none exist)
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);

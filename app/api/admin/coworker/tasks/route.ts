@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import { getTaskTemplates, suggestTasks, createTaskFromChat } from '@/lib/ai-coworker'
 
+export const dynamic = 'force-dynamic';
+
 // GET — list tasks + templates
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)

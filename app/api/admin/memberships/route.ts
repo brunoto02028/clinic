@@ -5,6 +5,8 @@ import { stripe } from "@/lib/stripe";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 
+export const dynamic = 'force-dynamic';
+
 async function resolveClinicContext() {
   let ctx = await getClinicContext();
   if (!ctx.clinicId) ctx = await getClinicContextFromSession();

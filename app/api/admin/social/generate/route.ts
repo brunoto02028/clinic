@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { generateCaption, generateHashtags, improveCaption, generateCampaign, generateSuperAutomacao } from '@/lib/gemini';
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/admin/social/generate - AI content generation
 export async function POST(req: NextRequest) {
   try {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 
+export const dynamic = 'force-dynamic';
+
 // GET - Check if patient has given social media consent
 export async function GET(req: NextRequest) {
   try {

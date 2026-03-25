@@ -58,6 +58,10 @@ interface FootScan {
   id: string;
   scanNumber: string;
   status: string;
+  workflowStatus?: string | null;
+  clinicalStatus?: string | null;
+  manufacturingStatus?: string | null;
+  confidenceBand?: string | null;
   archType: string | null;
   archIndex: number | null;
   pronation: string | null;
@@ -135,6 +139,8 @@ export default function AdminScansPage() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isSavingManufacturing, setIsSavingManufacturing] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -143,6 +149,24 @@ export default function AdminScansPage() {
     insoleType: '',
     insoleSize: '',
     productionNotes: ''
+  });
+
+  const [reviewForm, setReviewForm] = useState({
+    status: 'VERIFIED',
+    notes: '',
+    approveForProduction: false,
+  });
+
+  const [manufacturingForm, setManufacturingForm] = useState({
+    insoleType: 'Medical',
+    sizeSystem: 'EU',
+    sizeValue: '',
+    heelCupDepth: '',
+    trimline: '',
+    shoeCompatibility: '',
+    productionNotes: '',
+    reliabilityNotes: '',
+    approve: false,
   });
 
   // Report state
@@ -306,6 +330,22 @@ export default function AdminScansPage() {
       insoleSize: scan.insoleSize || '',
       productionNotes: scan.productionNotes || ''
     });
+    setReviewForm({
+      status: scan.clinicalStatus || 'VERIFIED',
+      notes: scan.clinicianNotes || '',
+      approveForProduction: scan.workflowStatus === 'APPROVED_FOR_PRODUCTION',
+    });
+    setManufacturingForm({
+      insoleType: scan.insoleType || 'Medical',
+      sizeSystem: 'EU',
+      sizeValue: scan.insoleSize || '',
+      heelCupDepth: '',
+      trimline: '',
+      shoeCompatibility: '',
+      productionNotes: scan.productionNotes || '',
+      reliabilityNotes: scan.confidenceBand ? `Confidence: ${scan.confidenceBand}` : '',
+      approve: scan.manufacturingStatus === 'READY',
+    });
     setShowDetailDialog(true);
   };
 
@@ -378,6 +418,101 @@ export default function AdminScansPage() {
       console.error('Save error:', error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSubmitClinicalReview = async () => {
+    if (!selectedScan) return;
+
+    setIsSubmittingReview(true);
+    try {
+      const res = await fetch(`/api/foot-scans/${selectedScan.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reviewForm)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedScan(data.footScan);
+        toast({
+          title: 'Clinical review saved',
+          description: reviewForm.approveForProduction
+            ? 'Scan approved for production.'
+            : 'Clinical review recorded successfully.',
+        });
+        fetchScans();
+      } else {
+        const error = await res.json();
+        toast({
+          title: 'Review failed',
+          description: error.error || 'Failed to save clinical review',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Clinical review error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save clinical review',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const handleSaveManufacturingSpec = async () => {
+    if (!selectedScan) return;
+
+    setIsSavingManufacturing(true);
+    try {
+      const res = await fetch(`/api/foot-scans/${selectedScan.id}/manufacturing-spec`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...manufacturingForm,
+          sizeValue: manufacturingForm.sizeValue || null,
+          heelCupDepth: manufacturingForm.heelCupDepth || null,
+          trimline: manufacturingForm.trimline || null,
+          shoeCompatibility: manufacturingForm.shoeCompatibility || null,
+          productionNotes: manufacturingForm.productionNotes || null,
+          reliabilityNotes: manufacturingForm.reliabilityNotes || null,
+          shellGeometry: {},
+          archSupport: {},
+          posting: {},
+          materials: {},
+          offloadingZones: {},
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedScan(data.footScan);
+        toast({
+          title: 'Manufacturing spec saved',
+          description: manufacturingForm.approve
+            ? 'Manufacturing spec approved and ready for production.'
+            : 'Manufacturing draft saved successfully.',
+        });
+        fetchScans();
+      } else {
+        const error = await res.json();
+        toast({
+          title: 'Manufacturing save failed',
+          description: error.error || 'Failed to save manufacturing spec',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Manufacturing spec error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save manufacturing spec',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSavingManufacturing(false);
     }
   };
 
@@ -596,12 +731,14 @@ export default function AdminScansPage() {
 
           {selectedScan && (
             <Tabs defaultValue="overview" className="mt-4">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-8">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="images3d">Images & 3D</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
                 <TabsTrigger value="comparison">Compare</TabsTrigger>
                 <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+                <TabsTrigger value="review">Clinical Review</TabsTrigger>
+                <TabsTrigger value="manufacturing">Manufacturing</TabsTrigger>
                 <TabsTrigger value="actions">Actions</TabsTrigger>
               </TabsList>
 
@@ -937,6 +1074,169 @@ export default function AdminScansPage() {
                     </>
                   );
                 })()}
+              </TabsContent>
+
+              <TabsContent value="review" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Clinical Review Gate</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Workflow:</span>
+                        <p className="font-medium">{selectedScan.workflowStatus || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Confidence:</span>
+                        <p className="font-medium">{selectedScan.confidenceBand || 'N/A'}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Review status</Label>
+                      <Select
+                        value={reviewForm.status}
+                        onValueChange={(v) => setReviewForm({ ...reviewForm, status: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="VERIFIED">Verified</SelectItem>
+                          <SelectItem value="CHANGES_REQUESTED">Changes Requested</SelectItem>
+                          <SelectItem value="IN_REVIEW">In Review</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Clinical review notes</Label>
+                      <Textarea
+                        placeholder="Clinical interpretation, limitations, override reasoning..."
+                        value={reviewForm.notes}
+                        onChange={(e) => setReviewForm({ ...reviewForm, notes: e.target.value })}
+                        rows={5}
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={reviewForm.approveForProduction}
+                        onChange={(e) => setReviewForm({ ...reviewForm, approveForProduction: e.target.checked })}
+                      />
+                      Approve for production
+                    </label>
+
+                    <Button
+                      onClick={handleSubmitClinicalReview}
+                      disabled={isSubmittingReview}
+                      className="bg-bruno-turquoise hover:bg-bruno-turquoise-dark"
+                    >
+                      {isSubmittingReview ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving review...</> : 'Save Clinical Review'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="manufacturing" className="space-y-4 mt-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Manufacturing Specification</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Insole Type</Label>
+                        <Select
+                          value={manufacturingForm.insoleType}
+                          onValueChange={(v) => setManufacturingForm({ ...manufacturingForm, insoleType: v })}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Sport">Sport</SelectItem>
+                            <SelectItem value="Comfort">Comfort</SelectItem>
+                            <SelectItem value="Medical">Medical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Size</Label>
+                        <Input
+                          placeholder="e.g., 42"
+                          value={manufacturingForm.sizeValue}
+                          onChange={(e) => setManufacturingForm({ ...manufacturingForm, sizeValue: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Heel Cup Depth</Label>
+                        <Input
+                          placeholder="low / medium / high"
+                          value={manufacturingForm.heelCupDepth}
+                          onChange={(e) => setManufacturingForm({ ...manufacturingForm, heelCupDepth: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Trimline</Label>
+                        <Input
+                          placeholder="full-length / 3/4"
+                          value={manufacturingForm.trimline}
+                          onChange={(e) => setManufacturingForm({ ...manufacturingForm, trimline: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Shoe Compatibility</Label>
+                      <Input
+                        placeholder="trainer / casual / formal / sport-specific"
+                        value={manufacturingForm.shoeCompatibility}
+                        onChange={(e) => setManufacturingForm({ ...manufacturingForm, shoeCompatibility: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Production Notes</Label>
+                      <Textarea
+                        placeholder="Structured lab notes and special instructions..."
+                        value={manufacturingForm.productionNotes}
+                        onChange={(e) => setManufacturingForm({ ...manufacturingForm, productionNotes: e.target.value })}
+                        rows={4}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Reliability Notes</Label>
+                      <Textarea
+                        placeholder="Confidence, caveats, or calibration notes..."
+                        value={manufacturingForm.reliabilityNotes}
+                        onChange={(e) => setManufacturingForm({ ...manufacturingForm, reliabilityNotes: e.target.value })}
+                        rows={3}
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={manufacturingForm.approve}
+                        onChange={(e) => setManufacturingForm({ ...manufacturingForm, approve: e.target.checked })}
+                      />
+                      Mark manufacturing spec as READY
+                    </label>
+
+                    <Button
+                      onClick={handleSaveManufacturingSpec}
+                      disabled={isSavingManufacturing}
+                      className="bg-bruno-turquoise hover:bg-bruno-turquoise-dark"
+                    >
+                      {isSavingManufacturing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving spec...</> : 'Save Manufacturing Spec'}
+                    </Button>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="actions" className="space-y-4 mt-4">

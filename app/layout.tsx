@@ -12,6 +12,8 @@ import { VersionChecker } from "@/components/version-checker";
 import { prisma } from "@/lib/db";
 import { SchemaOrgScript } from "@/components/schema-org-script";
 
+export const dynamic = 'force-dynamic';
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const viewport: Viewport = {

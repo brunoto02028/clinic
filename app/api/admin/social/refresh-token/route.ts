@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 const IG_GRAPH_API_BASE = 'https://graph.instagram.com';
 
 // POST /api/admin/social/refresh-token

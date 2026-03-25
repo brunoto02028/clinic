@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth-options';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 // POST /api/admin/social/upload - Upload media for social posts
 export async function POST(req: NextRequest) {
   try {

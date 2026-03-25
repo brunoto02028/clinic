@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAgentAuth } from '@/lib/agent-auth'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const authResult = await requireAgentAuth(request, 'patients')
   
