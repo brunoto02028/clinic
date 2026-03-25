@@ -211,6 +211,27 @@ export default function AssessmentScreeningForm() {
     { id: "contact_consent", icon: Shield, labelEn: "Contact & Consent", labelPt: "Contato e Consentimento" },
   ];
 
+  // ── Section helpers (must be before activeSteps) ──
+  const sectionEnabled = (id: string) => {
+    if (!cfg?.sections) return true;
+    const s = cfg.sections.find(s => s.id === id);
+    return s ? s.enabled : true;
+  };
+  const sectionTitle = (id: string, fallbackEn: string, fallbackPt: string) => {
+    if (!cfg?.sections) return isPt ? fallbackPt : fallbackEn;
+    const s = cfg.sections.find(s => s.id === id);
+    return s ? (isPt ? s.title.pt : s.title.en) : (isPt ? fallbackPt : fallbackEn);
+  };
+  const sectionDesc = (id: string, fallbackEn: string, fallbackPt: string) => {
+    if (!cfg?.sections) return isPt ? fallbackPt : fallbackEn;
+    const s = cfg.sections.find(s => s.id === id);
+    return s ? (isPt ? s.description?.pt : s.description?.en) : (isPt ? fallbackPt : fallbackEn);
+  };
+  const cfgText = (obj: any, fallback: string) => {
+    if (!obj) return fallback;
+    return isPt ? (obj.pt || fallback) : (obj.en || fallback);
+  };
+
   const activeSteps = WIZARD_STEPS.filter(s => {
     if (s.id === "contact_consent") return sectionEnabled("contact_details");
     if (s.id === "red_flags") return sectionEnabled("red_flags");
@@ -264,26 +285,6 @@ export default function AssessmentScreeningForm() {
     fetch("/api/screening-config").then(r => r.json()).then(d => { if (d) setCfg(d); }).catch(() => {});
   }, []);
 
-  // Helper to get config text
-  const cfgText = (obj: { en: string; pt: string } | undefined, fallbackEn: string, fallbackPt?: string) => {
-    if (obj) return isPt ? obj.pt : obj.en;
-    return isPt ? (fallbackPt || fallbackEn) : fallbackEn;
-  };
-  const sectionEnabled = (id: string) => {
-    if (!cfg?.sections) return true;
-    const s = cfg.sections.find(s => s.id === id);
-    return s ? s.enabled : true;
-  };
-  const sectionTitle = (id: string, fallbackEn: string, fallbackPt: string) => {
-    if (!cfg?.sections) return isPt ? fallbackPt : fallbackEn;
-    const s = cfg.sections.find(s => s.id === id);
-    return s ? (isPt ? s.title.pt : s.title.en) : (isPt ? fallbackPt : fallbackEn);
-  };
-  const sectionDesc = (id: string, fallbackEn: string, fallbackPt: string) => {
-    if (!cfg?.sections) return isPt ? fallbackPt : fallbackEn;
-    const s = cfg.sections.find(s => s.id === id);
-    return s ? (isPt ? s.description.pt : s.description.en) : (isPt ? fallbackPt : fallbackEn);
-  };
   const activeRedFlags = cfg?.redFlagQuestions?.filter(q => q.enabled) || RED_FLAG_QUESTIONS.map(q => ({ ...q, en: q.question, pt: q.question, enabled: true }));
   const consentLabel = cfg?.consentText ? (isPt ? cfg.consentText.pt : cfg.consentText.en) : T("screening.consentText");
   const prevTxLabel = (key: string, fallbackEn: string, fallbackPt: string) => {
