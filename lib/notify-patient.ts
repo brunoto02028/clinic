@@ -7,6 +7,7 @@
 import { prisma } from "@/lib/db";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { sendWhatsAppMessage, isWhatsAppConfigured, isWhatsAppConfiguredAsync } from "@/lib/whatsapp";
+import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
 
 interface NotifyPatientParams {
@@ -20,7 +21,7 @@ interface NotifyPatientParams {
   /** Portuguese version of plainMessage for pt-BR patients */
   plainMessagePt?: string;
   /** Optional: override the channel (skip preference lookup) */
-  forceChannel?: "EMAIL" | "SMS" | "WHATSAPP";
+  forceChannel?: "EMAIL" | "SMS" | "WHATSAPP" | "TELEGRAM";
 }
 
 export async function notifyPatient({
@@ -64,6 +65,19 @@ export async function notifyPatient({
         triggerEvent: emailTemplateSlug || "NOTIFICATION",
       });
       return { channel: "WHATSAPP", success: result.success, error: result.error };
+    }
+
+    // ─── Telegram ───
+    const tgConfigured = isTelegramConfigured();
+    if ((pref === "TELEGRAM" || pref === "WHATSAPP") && u.telegramChatId && tgConfigured) {
+      // If WhatsApp not configured but user has Telegram, try Telegram as fallback for WHATSAPP preference
+      const chatId = pref === "TELEGRAM" ? u.telegramChatId : u.telegramChatId;
+      const result = await sendTelegramMessage(chatId, `${firstName}, ${msg}`);
+      if (result.success) {
+        return { channel: "TELEGRAM", success: true };
+      }
+      // If Telegram also fails, fall through to email
+      console.error("[notify-patient] Telegram error:", result.error);
     }
 
     // ─── SMS (Twilio) ───

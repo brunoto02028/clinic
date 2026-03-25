@@ -598,7 +598,8 @@ model User {
   consentAcceptedAt         DateTime?
   socialMediaConsentAt      DateTime?
   preferredLocale           String                  @default("en-GB") // en-GB or pt-BR
-  communicationPreference   String                  @default("EMAIL") // EMAIL, SMS, WHATSAPP
+  communicationPreference   String                  @default("EMAIL") // EMAIL, SMS, WHATSAPP, TELEGRAM
+  telegramChatId             String?                 // Telegram chat_id for bot messages
   consentLogs               ConsentLog[]            @relation("PatientConsentLogs")
   screeningEditApprovals    MedicalScreening[]      @relation("ScreeningEditApprover")
   cancellationRequests      CancellationRequest[]   @relation("PatientCancellations")
