@@ -136,6 +136,11 @@ export async function POST(
     if (leftImages.length === 0 && rightImages.length === 0) {
       return NextResponse.json({ error: 'No foot images to analyze' }, { status: 400 });
     }
+
+    // Warn if calibration reference is missing (measurements will be estimated, not calibrated)
+    if (!captureMetadata?.referenceObject) {
+      console.warn(`[foot-scan] Scan ${id} has no A4 calibration reference — measurements will be estimated proportionally`);
+    }
     
     // Update status to processing
     await prisma.footScan.update({
@@ -186,7 +191,7 @@ Carefully examine EACH image and provide a detailed biomechanical assessment. Fo
 
 ${hasA4Reference ? `## A4 Paper Calibration
 The plantar (bottom) photos include an A4 sheet of paper (210mm × 297mm). Use the visible paper edges to estimate REAL measurements in millimetres. Calculate the pixel-to-mm ratio from the A4 dimensions and apply it to foot measurements.` : `## Measurement Estimation
-Without a calibration reference, estimate measurements based on typical adult foot proportions and anatomical landmarks visible in the images.`}
+WITHOUT a calibration reference, all measurements are ESTIMATES based on typical adult foot proportions. You MUST set confidenceLevel to "low" or "medium" at most, and clearly state in imageQualityNotes that measurements are not calibrated. For insole manufacturing specs, add a note that clinical remeasurement with a reference object is recommended.`}
 
 ## Required JSON Output
 Respond with ONLY valid JSON in this exact format:
@@ -268,7 +273,8 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
       if (!geminiKey) {
         throw new Error('GEMINI_API_KEY not configured');
       }
-      const geminiModel = (await getConfigValue('GEMINI_MODEL')) || 'gemini-2.0-flash';
+      // Use a vision-capable model with higher accuracy for clinical foot scan analysis
+      const geminiModel = (await getConfigValue('GEMINI_FOOTSCAN_MODEL')) || (await getConfigValue('GEMINI_MODEL')) || 'gemini-2.5-pro';
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
 
       const geminiRes = await fetch(geminiUrl, {

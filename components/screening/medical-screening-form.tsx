@@ -388,17 +388,30 @@ export default function AssessmentScreeningForm() {
       if (!isDirty.current) return;
       try {
         setAutoSaving(true);
-        await fetch("/api/medical-screening", {
+        const response = await fetch("/api/medical-screening", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...formDataRef.current, _autosave: true }),
         });
+        if (!response.ok) {
+          // Don't mark as saved if server rejected (e.g. session expired)
+          console.warn("[autosave] Server returned", response.status, "— data not saved");
+          return;
+        }
         isDirty.current = false;
         setLastSaved(new Date());
-      } catch {}
-      finally { setAutoSaving(false); }
+        // Keep hasExistingRef in sync so drafts are not incorrectly restored
+        if (!hasExistingRef.current) {
+          hasExistingRef.current = true;
+          setHasExisting(true);
+        }
+      } catch (err) {
+        console.warn("[autosave] Network error — will retry on next change", err);
+      } finally {
+        setAutoSaving(false);
+      }
     }, 1000);
-  }, [isLocked, hasExisting]);
+  }, [isLocked]);
 
   // Cleanup timer on unmount
   useEffect(() => () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); }, []);
