@@ -34,6 +34,8 @@ export default function CapturePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [isComplete, setIsComplete] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<BodyCaptureResult | null>(null);
 
   const locale = assessment?.patient?.preferredLocale || "en-GB";
   const pt = locale === "pt-BR";
@@ -75,6 +77,8 @@ export default function CapturePage() {
   };
 
   const handleCaptureComplete = async (result: BodyCaptureResult) => {
+    setLastResult(result);
+    setUploadError(null);
     setIsUploading(true);
     setIsCapturing(false);
 
@@ -104,26 +108,21 @@ export default function CapturePage() {
         if (!res.ok) throw new Error(`Failed to upload ${view} view`);
       }
 
-      // Upload videos
+      // Upload videos — use FormData multipart to avoid massive base64 JSON on mobile
       if (result.videos && result.videos.length > 0) {
         for (let i = 0; i < result.videos.length; i++) {
           const vid = result.videos[i];
           setUploadProgress(L(`Uploading video ${i + 1}/${result.videos.length} (${vid.label})...`, `Enviando vídeo ${i + 1}/${result.videos.length} (${vid.label})...`));
 
-          // Convert blob to data URL for transfer
-          const videoDataUrl = await blobToDataUrl(vid.blob);
+          const fd = new FormData();
+          fd.append("movementVideo", vid.blob, `${vid.testType}.webm`);
+          fd.append("testType", vid.testType);
+          fd.append("label", vid.label);
+          fd.append("duration", String(vid.duration));
 
           const res = await fetch(`/api/body-assessments/capture/${token}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              movementVideo: {
-                testType: vid.testType,
-                label: vid.label,
-                duration: vid.duration,
-                videoDataUrl,
-              },
-            }),
+            body: fd,
           });
 
           if (!res.ok) throw new Error(`Failed to upload ${vid.label} video`);
@@ -144,11 +143,9 @@ export default function CapturePage() {
         description: L("Your images and videos have been uploaded. Your therapist will review them soon.", "Suas imagens e vídeos foram enviados. Seu terapeuta irá revisá-los em breve."),
       });
     } catch (err: any) {
-      toast({
-        title: L("Upload Error", "Erro no Envio"),
-        description: err.message || L("Failed to upload. Please try again.", "Falha no envio. Tente novamente."),
-        variant: "destructive",
-      });
+      const msg = err.message || L("Failed to upload. Please try again.", "Falha no envio. Tente novamente.");
+      setUploadError(msg);
+      toast({ title: L("Upload Error", "Erro no Envio"), description: msg, variant: "destructive" });
     } finally {
       setIsUploading(false);
       setUploadProgress("");
@@ -180,6 +177,30 @@ export default function CapturePage() {
     );
   }
 
+  if (uploadError && !isUploading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center space-y-4">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
+            <h2 className="text-xl font-semibold">{L("Upload Failed", "Erro no Envio")}</h2>
+            <p className="text-sm text-muted-foreground">{uploadError}</p>
+            <div className="flex gap-3 justify-center">
+              {lastResult && (
+                <Button onClick={() => handleCaptureComplete(lastResult)}>
+                  {L("Try Again", "Tentar Novamente")}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => { setUploadError(null); setIsCapturing(true); }}>
+                {L("Retake Photos", "Refazer Fotos")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isUploading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -187,6 +208,7 @@ export default function CapturePage() {
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           <p className="text-lg font-medium">{L("Uploading...", "Enviando...")}</p>
           <p className="text-sm text-muted-foreground">{uploadProgress || L("Please wait while we process your captures", "Aguarde enquanto processamos suas capturas")}</p>
+          <p className="text-xs text-muted-foreground">{L("Do not close this page", "Não feche esta página")}</p>
         </div>
       </div>
     );

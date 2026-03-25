@@ -63,7 +63,7 @@ export default function ConsentPage() {
       setAlreadyAccepted(true);
       setAcceptedDate(new Date().toISOString());
       toast({ title: T("consent.toastTitle"), description: T("consent.toastDesc") });
-      router.push("/dashboard");
+      setTimeout(() => router.push("/dashboard/screening"), 1200);
     } catch (err: any) {
       toast({ title: T("common.error"), description: err.message, variant: "destructive" });
     } finally {

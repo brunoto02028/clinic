@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 
 export const dynamic = 'force-dynamic';
 
-// GET — Validate token and return patient basic info (public, no auth)
+// GET - Validate token and return patient basic info (public, no auth)
 export async function GET(req: NextRequest, { params }: { params: { token: string } }) {
   const { token } = params;
 
@@ -48,13 +48,13 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
   });
 }
 
-// POST — Patient updates their profile via intake link (public, no auth)
+// POST - Patient updates their profile via intake link (public, no auth)
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
   const { token } = params;
 
   const user = await prisma.user.findUnique({
     where: { intakeToken: token },
-    select: { id: true, intakeTokenExpiry: true },
+    select: { id: true, intakeTokenExpiry: true, email: true },
   });
 
   if (!user) {
@@ -86,8 +86,11 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     return NextResponse.json({ error: "First name, last name, and email are required" }, { status: 400 });
   }
 
-  // Check if email is already taken by another user
-  if (email !== (await prisma.user.findUnique({ where: { intakeToken: token }, select: { email: true } }))?.email) {
+  // Check if email was changed from the one set by the clinic
+  const isEmailChanged = email.toLowerCase().trim() !== user.email.toLowerCase();
+
+  // If email is changed, check it's not already taken
+  if (isEmailChanged) {
     const existing = await prisma.user.findFirst({
       where: { email: email.toLowerCase().trim(), id: { not: user.id } },
     });
@@ -146,6 +149,10 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
   if (acceptConsent) {
     updateData.consentAcceptedAt = new Date();
   }
+
+  // FIX 1: Invalidate token after successful completion to prevent reuse
+  updateData.intakeToken = null;
+  updateData.intakeTokenExpiry = null;
 
   await prisma.user.update({
     where: { id: user.id },

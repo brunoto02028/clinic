@@ -483,6 +483,7 @@ export const FINDING_KEYWORD_MAP: Record<string, string[]> = {
     "anteriorizada", "forward head", "postura anteriorizada", "cabeça anteriorizada",
     "forward head posture", "protrusão cervical", "cervical protraction",
     "anteriorização da cabeça", "head forward", "protruded head",
+    "fhp", "anteriorized head", "head anteriorisation"
   ],
   "cervical_rotation_restriction": [
     "rotação cervical", "cervical rotation", "torcicolo", "torticollis",
@@ -491,12 +492,12 @@ export const FINDING_KEYWORD_MAP: Record<string, string[]> = {
   "scapular_asymmetry": [
     "assimetria escapular", "scapular asymmetry", "escápula elevada",
     "elevated scapula", "winged scapula", "escapula alada",
-    "scapular winging", "shoulder height difference",
+    "scapular winging", "shoulder height difference", "asymmetry scapula"
   ],
   "rounded_shoulders": [
     "ombros arredondados", "rounded shoulders", "protração ombro",
     "shoulder protraction", "ombros protraídos", "internal rotation shoulder",
-    "rotação interna ombro",
+    "rotação interna ombro", "rounded shoulder", "protracted scapula"
   ],
   "increased_thoracic_kyphosis": [
     "cifose", "kyphosis", "cifose torácica", "thoracic kyphosis",
@@ -554,6 +555,14 @@ export const FINDING_KEYWORD_MAP: Record<string, string[]> = {
     "síndrome cruzada inferior", "lower crossed", "cruzada inferior",
     "lower cross syndrome",
   ],
+  "scapular_winging": [
+    "escápula alada", "scapular winging", "winging", "escápula saltada",
+    "winged scapula", "prominent scapula"
+  ],
+  "pelvic_obliquity": [
+    "obliqüidade pélvica", "pelvic obliquity", "desnível pélvico",
+    "pelvic tilt lateral", "hip height asymmetry", "pelvic asymmetry"
+  ],
 };
 
 // ========== AUTO-MAPPING FUNCTION ==========
@@ -609,6 +618,19 @@ export function mapFindingsToStructures(
         if (mapping) result[segmentDefaults[key]] = mapping;
       }
     });
+  }
+
+  // Refine side-specific results based on keywords (e.g., "left", "right")
+  for (const [key, mapping] of Object.entries(result)) {
+    const isLeft = combinedText.includes("left") || combinedText.includes("esquerdo") || combinedText.includes("esquerda");
+    const isRight = combinedText.includes("right") || combinedText.includes("direito") || combinedText.includes("direita");
+
+    if ((isLeft || isRight) && mapping.muscles) {
+      mapping.muscles = mapping.muscles.map(m => ({
+        ...m,
+        side: (isLeft && isRight) ? "bilateral" : isLeft ? "left" : "right"
+      }));
+    }
   }
 
   return result;

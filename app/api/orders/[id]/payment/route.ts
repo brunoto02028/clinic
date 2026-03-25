@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { stripe } from '@/lib/stripe';
+import Stripe from 'stripe';
+
+const _stripeKey = process.env.STRIPE_SECRET_KEY;
+const stripe = _stripeKey ? new Stripe(_stripeKey, { apiVersion: '2025-12-15.clover' }) : null;
 
 // POST - Create payment intent for order
 export async function POST(

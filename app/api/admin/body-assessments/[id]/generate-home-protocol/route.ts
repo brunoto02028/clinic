@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { generateHomeProgram } from "@/lib/biomechanics/exercise-bank";
 
 // POST - Generate home-based treatment protocol from body assessment
 export async function POST(
@@ -81,10 +82,33 @@ export async function POST(
 
     // Build protocol from corrective exercises
     const exercises = assessment.correctiveExercises as any[];
+    const correctiveExerciseIds: string[] = assessment.correctiveExercises as any || [];
+
+    // Generate home program from exercise bank
+    const matchedPatterns: { patternId: string; severity: string }[] = (assessment as any)._matchedPatterns || [];
+    const patternIds = matchedPatterns.map((p: any) => p.patternId);
+    const exerciseBankProgram = patternIds.length > 0
+      ? generateHomeProgram(patternIds)
+      : null;
     const protocolTitle = `Home-Based Corrective Protocol — ${assessment.patient.firstName} ${assessment.patient.lastName}`;
     const protocolSummary = assessment.aiSummary
       ? `Based on biomechanical assessment findings: ${assessment.aiSummary.substring(0, 300)}`
       : "Home-based corrective exercise protocol generated from body assessment analysis.";
+
+    // Build exercise bank context
+    const exerciseBankContext = exerciseBankProgram
+      ? exerciseBankProgram.exercises.map(e => `[${e.difficulty.toUpperCase()}] ${e.namePt} (${e.name}) - ${e.descriptionPt.slice(0, 100)}...`).join('\n')
+      : 'No exercise bank data available.';
+
+    const userPrompt = `The following exercises are available from our exercise bank (prioritize these):
+
+${exerciseBankContext}
+
+Patient: ${assessment.patient.firstName} ${assessment.patient.lastName}
+Clinical Patterns: ${patternIds.join(', ') || 'None'}
+Corrective Exercises from Assessment: ${correctiveExerciseIds.join(', ') || 'None'}
+
+Please generate a structured home exercise protocol using the exercises above. For each exercise include: name (PT+EN), sets/reps, progression, supervision needed, equipment, contraindications.`;
 
     // Create TreatmentProtocol
     const protocol = await (prisma as any).treatmentProtocol.create({
@@ -209,7 +233,18 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(fullProtocol);
+    return NextResponse.json({
+      ...fullProtocol,
+      exerciseBankProgram: exerciseBankProgram ? {
+        totalExercises: exerciseBankProgram.exercises.length,
+        selfAdministeredCount: exerciseBankProgram.selfAdministeredCount,
+        supervisedCount: exerciseBankProgram.supervisedCount,
+        equipmentNeeded: exerciseBankProgram.equipmentNeeded,
+        estimatedDuration: exerciseBankProgram.estimatedDuration,
+        exercises: exerciseBankProgram.exercises.map(e => ({ id: e.id, name: e.name, namePt: e.namePt, difficulty: e.difficulty, selfAdministered: e.selfAdministered })),
+      } : null,
+      patientInfo: fullProtocol?.patient ?? assessment.patient,
+    });
   } catch (error) {
     console.error("Error generating home protocol:", error);
     return NextResponse.json(

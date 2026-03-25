@@ -60,15 +60,18 @@ export function VoiceFormFill({
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
+  const [liveTranscript, setLiveTranscript] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<any>(null);
+  const speechRecognitionRef = useRef<any>(null);
 
   const L = (language === "pt-BR" ? LABELS["pt-BR"] : LABELS["en-GB"]);
 
   const startRecording = useCallback(async () => {
     setError(null);
     setSuccess(false);
+    setLiveTranscript("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, {
@@ -94,6 +97,28 @@ export function VoiceFormFill({
       timerRef.current = setInterval(() => {
         setDuration((d) => d + 1);
       }, 1000);
+
+      // Start live transcription via Web Speech API if available
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = language === "pt-BR" ? "pt-BR" : "en-GB";
+        let finalText = "";
+        recognition.onresult = (event: any) => {
+          let interim = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const t = event.results[i][0].transcript;
+            if (event.results[i].isFinal) { finalText += t + " "; }
+            else { interim = t; }
+          }
+          setLiveTranscript(finalText + interim);
+        };
+        recognition.onerror = () => {};
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      }
     } catch (err: any) {
       if (err.name === "NotAllowedError") {
         setError(L.micDenied);
@@ -101,7 +126,7 @@ export function VoiceFormFill({
         setError(err.message || "Failed to start recording");
       }
     }
-  }, [L]);
+  }, [L, language]);
 
   const stopAndTranscribe = useCallback(async () => {
     if (!mediaRecorderRef.current) return;
@@ -109,6 +134,10 @@ export function VoiceFormFill({
     clearInterval(timerRef.current);
     setRecording(false);
     setProcessing(true);
+    if (speechRecognitionRef.current) {
+      try { speechRecognitionRef.current.stop(); } catch {}
+      speechRecognitionRef.current = null;
+    }
 
     // Stop the recorder and wait for final data
     const recorder = mediaRecorderRef.current;
@@ -249,7 +278,16 @@ export function VoiceFormFill({
               <MicOff className="h-3.5 w-3.5" /> {L.stopFill}
             </Button>
           </>
-        ) : processing ? (
+        ) : null}
+        {recording && (
+          <div className="w-full mt-2 min-h-[60px] max-h-[120px] overflow-y-auto rounded-lg bg-background border border-red-500/20 px-3 py-2 text-sm text-foreground leading-relaxed">
+            {liveTranscript
+              ? <span>{liveTranscript}<span className="inline-block w-1.5 h-4 bg-red-400 animate-pulse ml-0.5 align-middle" /></span>
+              : <span className="text-muted-foreground italic">{language === "pt-BR" ? "Ouvindo... fale agora" : "Listening... speak now"}</span>
+            }
+          </div>
+        )}
+        {!recording && processing ? (
           <div className="flex items-center gap-2 text-sm text-primary">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>{L.aiProcessing}</span>

@@ -1,25 +1,12 @@
 import Stripe from "stripe";
 
-let stripeInstance: Stripe | null = null;
-
-function createStripeClient(): Stripe {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not configured");
-  }
-
-  if (!stripeInstance) {
-    stripeInstance = new Stripe(secretKey, {
-      typescript: true,
-    });
-  }
-
-  return stripeInstance;
-}
-
-export const stripe = new Proxy({} as Stripe, {
-  get(_target, prop, receiver) {
-    const client = createStripeClient();
-    return Reflect.get(client as any, prop, receiver);
-  },
-});
+// Only create Stripe instance when STRIPE_SECRET_KEY is available
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+export const stripe = stripeKey
+  ? new Stripe(stripeKey, { typescript: true })
+  : (new Proxy({} as Stripe, {
+      get(_t, p) {
+        if (p === 'then' || p === 'catch') return undefined;
+        throw new Error("STRIPE_SECRET_KEY not available - Stripe not initialized");
+      }
+    }));

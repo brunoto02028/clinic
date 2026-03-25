@@ -719,7 +719,8 @@ model MedicalScreening {
 
   // Patient Background
   occupation              String?
-  dominantSide            String?   // left, right, ambidextrous
+  dominantSide            String?   // left, right, ambidextrous (hand)
+  dominantFootSide        String?   // left, right, ambidextrous (foot)
   activityLevel           String?   // sedentary, lightly_active, moderately_active, very_active
   hobbiesSports           String?
 
@@ -2105,6 +2106,7 @@ model BodyAssessment {
   
   // AI Analysis Results
   postureAnalysis   Json?                 // {frontalDeviation, sagittalDeviation, headForward, shoulderRound, pelvicTilt, kyphosis, lordosis}
+  clinicalReliabilityScores  Json?
   symmetryAnalysis  Json?                 // {leftVsRight per region, asymmetryScore}
   jointAngles       Json?                 // {shoulder, hip, knee, ankle angles per side}
   alignmentData     Json?                 // {plumbLine deviations, shoulderLevel, hipLevel, kneeLevel}
@@ -2134,6 +2136,9 @@ model BodyAssessment {
   
   // Ideal vs Actual Comparison Data
   idealComparison   Json?                 // [{segment, currentAngle, idealAngle, deviationDeg, status}]
+  
+  // Computed Biomechanics (objective measurements from BlazePose landmarks)
+  computedBiomechanics Json?              // {sagittalAngles, frontalAngles, positionalDeviations, viewQuality, crossViewValidation, calibration}
   
   // AI Summary
   aiSummary         String?               @db.Text

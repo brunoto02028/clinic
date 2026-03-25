@@ -159,6 +159,7 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   // Photo state
   const [currentViewIndex, setCurrentViewIndex] = useState(0);
   const [captures, setCaptures] = useState<Record<string, CapturedView>>({});
+  const capturesRef = useRef<Record<string, CapturedView>>({});
   const [showPreview, setShowPreview] = useState(false);
 
   // Video state
@@ -175,6 +176,7 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [poseStable, setPoseStable] = useState(false);
+  const [captureWarnings, setCaptureWarnings] = useState<string[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -204,6 +206,52 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
       } else {
         stableCountRef.current = 0;
         setPoseStable(false);
+      }
+
+      // ── Real-time capture quality validation ──
+      if (phase === "photos" && !showPreview) {
+        const warnings: string[] = [];
+        const lms = result.landmarks;
+
+        // Check feet in frame
+        const leftFoot = lms[31]; // left_foot_index
+        const rightFoot = lms[32]; // right_foot_index
+        const feetVisible = (leftFoot?.visibility > 0.4 && leftFoot?.y < 0.96) || (rightFoot?.visibility > 0.4 && rightFoot?.y < 0.96);
+        if (!feetVisible && visibleCount >= 10) {
+          warnings.push(pt ? "⬆️ Pés cortados — afaste-se" : "⬆️ Feet cut off — step back");
+        }
+
+        // Check head in frame
+        const nose = lms[0];
+        if (nose && nose.visibility > 0.4 && nose.y < 0.03) {
+          warnings.push(pt ? "⬇️ Cabeça cortada — afaste-se" : "⬇️ Head cut off — step back");
+        }
+
+        // Check centering (frontal/posterior views)
+        const currentViewId = CAPTURE_VIEWS[currentViewIndex]?.id;
+        if ((currentViewId === "front" || currentViewId === "back") && visibleCount >= 15) {
+          const leftShoulder = lms[11];
+          const rightShoulder = lms[12];
+          if (leftShoulder?.visibility > 0.5 && rightShoulder?.visibility > 0.5) {
+            const midX = (leftShoulder.x + rightShoulder.x) / 2;
+            if (midX < 0.3) warnings.push(pt ? "➡️ Centralize-se à direita" : "➡️ Move right to center");
+            if (midX > 0.7) warnings.push(pt ? "⬅️ Centralize-se à esquerda" : "⬅️ Move left to center");
+          }
+        }
+
+        // Check distance (too close if shoulders take >60% of frame width)
+        if (visibleCount >= 15) {
+          const leftShoulder = lms[11];
+          const rightShoulder = lms[12];
+          if (leftShoulder?.visibility > 0.5 && rightShoulder?.visibility > 0.5) {
+            const shoulderSpan = Math.abs(leftShoulder.x - rightShoulder.x);
+            if (shoulderSpan > 0.55) {
+              warnings.push(pt ? "🔍 Muito perto — afaste-se" : "🔍 Too close — step back");
+            }
+          }
+        }
+
+        setCaptureWarnings(warnings);
       }
     },
   });
@@ -275,6 +323,26 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
       startCamera();
     }
   }, [facingMode]);
+
+  // When preview closes or view advances: reconnect stream + restart pose detection
+  useEffect(() => {
+    if (showPreview) return; // nothing to do while preview is showing
+    if (!streamRef.current) return;
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Reconnect stream (may have been detached when preview was shown)
+    if (video.srcObject !== streamRef.current) {
+      video.srcObject = streamRef.current;
+      video.play().catch(() => {});
+    }
+
+    // Restart pose detection overlay after preview closes
+    if (poseReady && canvasRef.current) {
+      startDetection(video, canvasRef.current);
+    }
+  }, [showPreview, currentViewIndex, poseReady, startDetection]);
 
   // Load pose detection in background (optional enhancement)
   useEffect(() => {
@@ -417,10 +485,11 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
         img.src = frame.imageData;
       });
       const blurredImageData = applyFaceBlur(tempCanvas, frame.landmarks);
-      setCaptures((prev) => ({
-        ...prev,
-        [currentView.id]: { imageData: blurredImageData, landmarks: frame.landmarks, timestamp: Date.now() },
-      }));
+      setCaptures((prev) => {
+        const next = { ...prev, [currentView.id]: { imageData: blurredImageData, landmarks: frame.landmarks, timestamp: Date.now() } };
+        capturesRef.current = next;
+        return next;
+      });
       setShowPreview(true);
     } else if (videoRef.current) {
       // Fallback: capture directly from video element (no pose data)
@@ -431,19 +500,20 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0);
         const imageData = captureCanvas.toDataURL("image/jpeg", 0.9);
-        setCaptures((prev) => ({
-          ...prev,
-          [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() },
-        }));
+        setCaptures((prev) => {
+          const next = { ...prev, [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() } };
+          capturesRef.current = next;
+          return next;
+        });
         setShowPreview(true);
       }
     }
   }, [captureFrame, currentView]);
 
   const handlePhotoRetake = () => {
-    setShowPreview(false);
     stableCountRef.current = 0;
     setPoseStable(false);
+    setShowPreview(false); // triggers the useEffect above to reconnect camera
   };
 
   // ============ GALLERY UPLOAD ============
@@ -453,10 +523,11 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
     const reader = new FileReader();
     reader.onload = () => {
       const imageData = reader.result as string;
-      setCaptures((prev) => ({
-        ...prev,
-        [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() },
-      }));
+      setCaptures((prev) => {
+        const next = { ...prev, [currentView.id]: { imageData, landmarks: [], timestamp: Date.now() } };
+        capturesRef.current = next;
+        return next;
+      });
       setShowPreview(true);
     };
     reader.readAsDataURL(file);
@@ -465,15 +536,18 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
   }, [currentView]);
 
   const handlePhotoAccept = () => {
-    setShowPreview(false);
     stableCountRef.current = 0;
     setPoseStable(false);
-    if (currentViewIndex < CAPTURE_VIEWS.length - 1) {
+    setShowPreview(false);
+
+    const isLast = currentViewIndex >= CAPTURE_VIEWS.length - 1;
+
+    if (!isLast) {
       setCurrentViewIndex((prev) => prev + 1);
     } else {
-      // Photos done — go to transition or finish
+      // All photos done — use capturesRef to avoid stale closure
       if (skipVideos) {
-        finishCapture(captures, []);
+        finishCapture(capturesRef.current, []);
       } else {
         setPhase("transition");
       }
@@ -493,13 +567,19 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
     setCountdown(null);
 
     recordedChunksRef.current = [];
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-      ? "video/webm;codecs=vp9"
-      : MediaRecorder.isTypeSupported("video/webm")
-      ? "video/webm"
-      : "video/mp4";
+    // Detect best supported MIME type — iOS Safari only supports mp4
+    const mimeType = [
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm",
+      "video/mp4;codecs=avc1",
+      "video/mp4",
+    ].find(t => MediaRecorder.isTypeSupported(t)) || "";
 
-    const recorder = new MediaRecorder(streamRef.current, { mimeType, videoBitsPerSecond: 2500000 });
+    const recorderOptions: MediaRecorderOptions = { videoBitsPerSecond: 2000000 };
+    if (mimeType) recorderOptions.mimeType = mimeType;
+
+    const recorder = new MediaRecorder(streamRef.current, recorderOptions);
     mediaRecorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => {
@@ -782,6 +862,18 @@ export function BodyCapture({ onComplete, onCancel, skipVideos = false, locale =
         {countdown !== null && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20">
             <span className="text-8xl font-bold text-white animate-pulse">{countdown}</span>
+          </div>
+        )}
+
+        {/* Capture quality warnings */}
+        {!isVideoPhase && captureWarnings.length > 0 && countdown === null && (
+          <div className="absolute top-2 left-0 right-0 flex flex-col items-center gap-1 z-10 px-4">
+            {captureWarnings.map((w, i) => (
+              <div key={i} className="bg-yellow-600/90 text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                <AlertTriangle className="h-3 w-3" />
+                {w}
+              </div>
+            ))}
           </div>
         )}
 

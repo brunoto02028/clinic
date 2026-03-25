@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import {
@@ -19,6 +20,8 @@ import {
   MapPin,
   Clock,
   Zap,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -63,6 +66,7 @@ interface ScreeningData {
   // Patient Background
   occupation: string;
   dominantSide: string;
+  dominantFootSide: string;
   activityLevel: string;
   hobbiesSports: string;
   // Lifestyle
@@ -135,6 +139,7 @@ const initialData: ScreeningData = {
   mobilityAffected: false,
   occupation: "",
   dominantSide: "",
+  dominantFootSide: "",
   activityLevel: "",
   hobbiesSports: "",
   smoker: false,
@@ -171,6 +176,7 @@ interface ScreeningConfig {
 
 export default function AssessmentScreeningForm() {
   const { toast } = useToast();
+  const router = useRouter();
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
   const isPt = locale === "pt-BR";
@@ -178,6 +184,8 @@ export default function AssessmentScreeningForm() {
   const [formData, setFormData] = useState<ScreeningData>(initialData);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasExisting, setHasExisting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [editRequested, setEditRequested] = useState(false);
@@ -185,7 +193,36 @@ export default function AssessmentScreeningForm() {
   const [mounted, setMounted] = useState(false);
   const [cfg, setCfg] = useState<ScreeningConfig | null>(null);
   const [restoredDraft, setRestoredDraft] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const isDirty = useRef(false);
+  const formDataRef = useRef(formData);
+  const hasExistingRef = useRef(false);
+
+  // ── Wizard Step Definitions (reordered: easy first, red flags later) ──
+  const WIZARD_STEPS = [
+    { id: "patient_background", icon: User, labelEn: "Your Profile", labelPt: "Seu Perfil" },
+    { id: "lifestyle", icon: Heart, labelEn: "Lifestyle", labelPt: "Estilo de Vida" },
+    { id: "chief_complaint", icon: Stethoscope, labelEn: "Pain & Complaint", labelPt: "Dor e Queixa" },
+    { id: "functional_impact", icon: Activity, labelEn: "Functional Impact", labelPt: "Impacto Funcional" },
+    { id: "previous_treatment", icon: Clock, labelEn: "Previous Treatment", labelPt: "Tratamentos Anteriores" },
+    { id: "goals", icon: Target, labelEn: "Goals", labelPt: "Objetivos" },
+    { id: "health_history", icon: Info, labelEn: "Health History", labelPt: "Histórico de Saúde" },
+    { id: "red_flags", icon: AlertTriangle, labelEn: "Safety Questions", labelPt: "Questões de Segurança" },
+    { id: "contact_consent", icon: Shield, labelEn: "Contact & Consent", labelPt: "Contato e Consentimento" },
+  ];
+
+  const activeSteps = WIZARD_STEPS.filter(s => {
+    if (s.id === "contact_consent") return sectionEnabled("contact_details");
+    if (s.id === "red_flags") return sectionEnabled("red_flags");
+    return sectionEnabled(s.id);
+  });
+
+  const totalSteps = activeSteps.length;
+  const stepProgress = Math.round(((currentStep + 1) / totalSteps) * 100);
+  const currentStepId = activeSteps[currentStep]?.id;
+
+  const goNext = () => { if (currentStep < totalSteps - 1) { setCurrentStep(s => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
+  const goPrev = () => { if (currentStep > 0) { setCurrentStep(s => s - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
 
   // ── Persist draft to localStorage on every change ──
   const saveDraft = useCallback((data: ScreeningData) => {
@@ -291,6 +328,7 @@ export default function AssessmentScreeningForm() {
           mobilityAffected: s.mobilityAffected ?? false,
           occupation: s.occupation ?? "",
           dominantSide: s.dominantSide ?? "",
+          dominantFootSide: s.dominantFootSide ?? "",
           activityLevel: s.activityLevel ?? "",
           hobbiesSports: s.hobbiesSports ?? "",
           smoker: s.smoker ?? false,
@@ -316,6 +354,7 @@ export default function AssessmentScreeningForm() {
           consentGiven: s.consentGiven ?? false,
         });
         setHasExisting(true);
+        hasExistingRef.current = true;
         setIsLocked(s.isLocked ?? false);
         setEditRequested(!!s.editRequestedAt && !s.editApprovedAt);
       }
@@ -323,7 +362,7 @@ export default function AssessmentScreeningForm() {
       console.error("Error fetching screening:", error);
     } finally {
       // If no existing screening, try to restore draft from localStorage
-      if (!hasExisting) {
+      if (!hasExistingRef.current) {
         const draft = loadDraft();
         if (draft) {
           setFormData(draft);
@@ -335,6 +374,34 @@ export default function AssessmentScreeningForm() {
     }
   };
 
+  // Keep ref in sync so debounce always has latest data
+  useEffect(() => { formDataRef.current = formData; }, [formData]);
+
+  // Debounced DB auto-save: fires 1s after last change, skips if locked or already submitted
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerAutoSave = useCallback(() => {
+    if (isLocked) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      if (!isDirty.current) return;
+      try {
+        setAutoSaving(true);
+        await fetch("/api/medical-screening", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...formDataRef.current, _autosave: true }),
+        });
+        isDirty.current = false;
+        setLastSaved(new Date());
+      } catch {}
+      finally { setAutoSaving(false); }
+    }, 1000);
+  }, [isLocked, hasExisting]);
+
+  // Cleanup timer on unmount
+  useEffect(() => () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); }, []);
+
   const handleCheckboxChange = (key: string, checked: boolean) => {
     setFormData((prev) => {
       const next = { ...prev, [key]: checked };
@@ -342,6 +409,7 @@ export default function AssessmentScreeningForm() {
       saveDraft(next);
       return next;
     });
+    triggerAutoSave();
   };
 
   const handleInputChange = (key: string, value: string) => {
@@ -351,6 +419,7 @@ export default function AssessmentScreeningForm() {
       saveDraft(next);
       return next;
     });
+    triggerAutoSave();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -370,10 +439,13 @@ export default function AssessmentScreeningForm() {
         setHasExisting(true);
         clearDraft();
         setRestoredDraft(false);
+        isDirty.current = false;
         toast({
           title: isPt ? "Triagem Salva" : "Screening Saved",
           description: isPt ? "Sua triagem foi salva com sucesso." : "Your screening has been saved successfully.",
         });
+        // Redirect to dashboard after short delay
+        setTimeout(() => router.push("/dashboard"), 1200);
       } else {
         throw new Error(data?.error || "Failed to save screening");
       }
@@ -419,10 +491,47 @@ export default function AssessmentScreeningForm() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{cfgText(cfg?.formTitle, T("screening.title"))}</h1>
-        <p className="text-muted-foreground text-sm mt-1">{cfgText(cfg?.formSubtitle, T("screening.subtitle"))}</p>
+      {/* ── Sticky Progress Bar ── */}
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border pb-4 pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-lg sm:text-xl font-bold text-foreground">{cfgText(cfg?.formTitle, T("screening.title"))}</h1>
+          <div className="flex items-center gap-2">
+            {!isLocked && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                {autoSaving ? (
+                  <><Loader2 className="h-3 w-3 animate-spin" />{isPt ? "Salvando..." : "Saving..."}</>
+                ) : lastSaved ? (
+                  <><CheckCircle className="h-3 w-3 text-emerald-500" /><span className="text-emerald-500">{isPt ? "Salvo" : "Saved"}</span></>
+                ) : null}
+              </span>
+            )}
+            <span className="text-xs font-medium text-muted-foreground">
+              {currentStep + 1} / {totalSteps}
+            </span>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div className="w-full bg-muted rounded-full h-2">
+          <div className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${stepProgress}%` }} />
+        </div>
+        {/* Step dots */}
+        <div className="flex items-center justify-between mt-2 gap-1 overflow-x-auto">
+          {activeSteps.map((step, idx) => {
+            const StepIcon = step.icon;
+            const isActive = idx === currentStep;
+            const isDone = idx < currentStep;
+            return (
+              <button key={step.id} type="button" onClick={() => { setCurrentStep(idx); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] sm:text-xs font-medium transition-all whitespace-nowrap ${
+                  isActive ? "bg-primary/15 text-primary" : isDone ? "text-emerald-400" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {isDone ? <CheckCircle className="h-3 w-3" /> : <StepIcon className="h-3 w-3" />}
+                <span className="hidden sm:inline">{isPt ? step.labelPt : step.labelEn}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <ProfessionalReviewBanner descriptionKey="review.descriptionScreening" />
@@ -460,8 +569,8 @@ export default function AssessmentScreeningForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* ── SECTION 1: Red Flags ── */}
-        {sectionEnabled("red_flags") && <Card>
+        {/* ── SECTION: Red Flags (now step-gated) ── */}
+        {currentStepId === "red_flags" && sectionEnabled("red_flags") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -502,8 +611,8 @@ export default function AssessmentScreeningForm() {
                     <button
                       type="button"
                       onClick={() => {
-                        handleCheckboxChange(q.key, false);
-                        setFormData(prev => ({ ...prev, redFlagDetails: { ...prev.redFlagDetails, [q.key]: "" } }));
+                        setFormData(prev => { const next = { ...prev, [q.key]: false, redFlagDetails: { ...prev.redFlagDetails, [q.key]: "" } }; isDirty.current = true; saveDraft(next); return next; });
+                        triggerAutoSave();
                       }}
                       className={`px-4 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                         !isYes && formData[q.key as keyof ScreeningData] !== undefined
@@ -518,7 +627,7 @@ export default function AssessmentScreeningForm() {
                     <Input
                       placeholder={isPt ? "Por favor, dê mais detalhes..." : "Please provide more details..."}
                       value={detailValue}
-                      onChange={(e) => setFormData(prev => ({ ...prev, redFlagDetails: { ...prev.redFlagDetails, [q.key]: e.target.value } }))}
+                      onChange={(e) => { const val = e.target.value; setFormData(prev => { const next = { ...prev, redFlagDetails: { ...prev.redFlagDetails, [q.key]: val } }; isDirty.current = true; saveDraft(next); return next; }); triggerAutoSave(); }}
                       className="mt-2 text-sm"
                     />
                   )}
@@ -539,8 +648,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 2: Chief Complaint & Pain ── */}
-        {sectionEnabled("chief_complaint") && <Card>
+        {/* ── SECTION: Chief Complaint & Pain ── */}
+        {currentStepId === "chief_complaint" && sectionEnabled("chief_complaint") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Stethoscope className="h-5 w-5 text-primary" />
@@ -595,7 +704,7 @@ export default function AssessmentScreeningForm() {
                   min={0}
                   max={10}
                   value={formData.painScore}
-                  onChange={(e) => setFormData(prev => ({ ...prev, painScore: parseInt(e.target.value) }))}
+                  onChange={(e) => { const v = parseInt(e.target.value); setFormData(prev => { const next = { ...prev, painScore: v }; isDirty.current = true; saveDraft(next); return next; }); triggerAutoSave(); }}
                   className="w-full accent-primary"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -677,8 +786,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 3: Functional Impact ── */}
-        {sectionEnabled("functional_impact") && <Card>
+        {/* ── SECTION: Functional Impact ── */}
+        {currentStepId === "functional_impact" && sectionEnabled("functional_impact") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
@@ -706,22 +815,22 @@ export default function AssessmentScreeningForm() {
                   { key: "workAffected", label: isPt ? "Trabalho" : "Work" },
                   { key: "mobilityAffected", label: isPt ? "Mobilidade" : "Mobility" },
                 ].map((item) => (
-                  <div key={item.key} className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${formData[item.key as keyof ScreeningData] ? "bg-primary/10 border-primary/40" : "border-border"}`}
-                    onClick={() => handleCheckboxChange(item.key, !formData[item.key as keyof ScreeningData])}>
+                  <label key={item.key} htmlFor={`chk-${item.key}`} className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${formData[item.key as keyof ScreeningData] ? "bg-primary/10 border-primary/40" : "border-border"}`}>
                     <Checkbox
-                      checked={formData[item.key as keyof ScreeningData] as boolean}
-                      onCheckedChange={(checked) => handleCheckboxChange(item.key, checked as boolean)}
+                      id={`chk-${item.key}`}
+                      checked={!!formData[item.key as keyof ScreeningData]}
+                      onCheckedChange={(checked) => handleCheckboxChange(item.key, !!checked)}
                     />
                     <span className="text-sm">{item.label}</span>
-                  </div>
+                  </label>
                 ))}
               </div>
             </div>
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 4: Patient Background ── */}
-        {sectionEnabled("patient_background") && <Card>
+        {/* ── SECTION: Patient Background ── */}
+        {currentStepId === "patient_background" && sectionEnabled("patient_background") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
@@ -729,28 +838,44 @@ export default function AssessmentScreeningForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="occupation">{isPt ? "Ocupação / Profissão" : "Occupation"}</Label>
+              <Input
+                id="occupation"
+                placeholder={isPt ? "Ex: professor, motorista, escritório..." : "e.g. teacher, driver, office worker..."}
+                value={formData.occupation}
+                onChange={(e) => handleInputChange("occupation", e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="occupation">{isPt ? "Ocupação / Profissão" : "Occupation"}</Label>
-                <Input
-                  id="occupation"
-                  placeholder={isPt ? "Ex: professor, motorista, escritório..." : "e.g. teacher, driver, office worker..."}
-                  value={formData.occupation}
-                  onChange={(e) => handleInputChange("occupation", e.target.value)}
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <Label>{isPt ? "Lado dominante" : "Dominant side"}</Label>
+                <Label>{isPt ? "Mão dominante" : "Dominant hand"}</Label>
                 <div className="mt-1.5 flex gap-2">
                   {[
-                    { v: "right", l: isPt ? "Direito" : "Right" },
-                    { v: "left", l: isPt ? "Esquerdo" : "Left" },
+                    { v: "right", l: isPt ? "Direita" : "Right" },
+                    { v: "left", l: isPt ? "Esquerda" : "Left" },
                     { v: "ambidextrous", l: isPt ? "Ambidestro" : "Both" },
                   ].map((opt) => (
                     <button key={opt.v} type="button"
                       onClick={() => handleInputChange("dominantSide", opt.v)}
                       className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${formData.dominantSide === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label>{isPt ? "Pé dominante" : "Dominant foot"}</Label>
+                <div className="mt-1.5 flex gap-2">
+                  {[
+                    { v: "right", l: isPt ? "Direito" : "Right" },
+                    { v: "left", l: isPt ? "Esquerdo" : "Left" },
+                    { v: "ambidextrous", l: isPt ? "Ambos" : "Both" },
+                  ].map((opt) => (
+                    <button key={opt.v} type="button"
+                      onClick={() => handleInputChange("dominantFootSide", opt.v)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${formData.dominantFootSide === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                       {opt.l}
                     </button>
                   ))}
@@ -784,8 +909,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 5: Lifestyle ── */}
-        {sectionEnabled("lifestyle") && <Card>
+        {/* ── SECTION: Lifestyle ── */}
+        {currentStepId === "lifestyle" && sectionEnabled("lifestyle") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Heart className="h-5 w-5 text-primary" />
@@ -817,11 +942,10 @@ export default function AssessmentScreeningForm() {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.smoker ? "bg-amber-500/10 border-amber-500/40" : "border-border"}`}
-                onClick={() => handleCheckboxChange("smoker", !formData.smoker)}>
-                <Checkbox checked={formData.smoker} onCheckedChange={(c) => handleCheckboxChange("smoker", c as boolean)} />
+              <label htmlFor="chk-smoker" className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.smoker ? "bg-amber-500/10 border-amber-500/40" : "border-border"}`}>
+                <Checkbox id="chk-smoker" checked={formData.smoker} onCheckedChange={(c) => handleCheckboxChange("smoker", !!c)} />
                 <span className="text-sm">{isPt ? "Fumante" : "Smoker"}</span>
-              </div>
+              </label>
             </div>
 
             <div>
@@ -839,8 +963,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 6: Previous Treatment ── */}
-        {sectionEnabled("previous_treatment") && <Card>
+        {/* ── SECTION: Previous Treatment ── */}
+        {currentStepId === "previous_treatment" && sectionEnabled("previous_treatment") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
@@ -848,55 +972,49 @@ export default function AssessmentScreeningForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.previousPhysio ? "bg-primary/10 border-primary/40" : "border-border"}`}
-              onClick={() => handleCheckboxChange("previousPhysio", !formData.previousPhysio)}>
-              <div className="flex items-center gap-2">
-                <Checkbox checked={formData.previousPhysio} onCheckedChange={(c) => handleCheckboxChange("previousPhysio", c as boolean)} />
+            <div className={`p-3 rounded-lg border transition-colors ${formData.previousPhysio ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+              <label htmlFor="chk-previousPhysio" className="flex items-center gap-2 cursor-pointer">
+                <Checkbox id="chk-previousPhysio" checked={formData.previousPhysio} onCheckedChange={(c) => handleCheckboxChange("previousPhysio", !!c)} />
                 <span className="text-sm font-medium">{prevTxLabel("previousPhysio", "Have you had physiotherapy before?", "Já fez fisioterapia anteriormente?")}</span>
-              </div>
+              </label>
               {formData.previousPhysio && (
                 <Textarea
                   rows={2}
                   placeholder={isPt ? "Onde, quando e para quê?" : "Where, when and for what?"}
                   value={formData.previousPhysioDetails}
-                  onChange={(e) => { e.stopPropagation(); handleInputChange("previousPhysioDetails", e.target.value); }}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => handleInputChange("previousPhysioDetails", e.target.value)}
                   className="mt-2"
                 />
               )}
             </div>
 
-            <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.previousInjections ? "bg-primary/10 border-primary/40" : "border-border"}`}
-              onClick={() => handleCheckboxChange("previousInjections", !formData.previousInjections)}>
-              <div className="flex items-center gap-2">
-                <Checkbox checked={formData.previousInjections} onCheckedChange={(c) => handleCheckboxChange("previousInjections", c as boolean)} />
+            <div className={`p-3 rounded-lg border transition-colors ${formData.previousInjections ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+              <label htmlFor="chk-previousInjections" className="flex items-center gap-2 cursor-pointer">
+                <Checkbox id="chk-previousInjections" checked={formData.previousInjections} onCheckedChange={(c) => handleCheckboxChange("previousInjections", !!c)} />
                 <span className="text-sm font-medium">{prevTxLabel("previousInjections", "Have you had injections (corticosteroid, PRP, etc.)?", "Já recebeu injeções (corticosteroide, PRP, etc.)?")}</span>
-              </div>
+              </label>
               {formData.previousInjections && (
                 <Textarea
                   rows={2}
                   placeholder={isPt ? "Tipo de injeção, local e data aproximada..." : "Type, location and approximate date..."}
                   value={formData.previousInjectionsDetails}
-                  onChange={(e) => { e.stopPropagation(); handleInputChange("previousInjectionsDetails", e.target.value); }}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => handleInputChange("previousInjectionsDetails", e.target.value)}
                   className="mt-2"
                 />
               )}
             </div>
 
-            <div className={`p-3 rounded-lg border cursor-pointer transition-colors ${formData.currentlyUnderCare ? "bg-primary/10 border-primary/40" : "border-border"}`}
-              onClick={() => handleCheckboxChange("currentlyUnderCare", !formData.currentlyUnderCare)}>
-              <div className="flex items-center gap-2">
-                <Checkbox checked={formData.currentlyUnderCare} onCheckedChange={(c) => handleCheckboxChange("currentlyUnderCare", c as boolean)} />
+            <div className={`p-3 rounded-lg border transition-colors ${formData.currentlyUnderCare ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+              <label htmlFor="chk-currentlyUnderCare" className="flex items-center gap-2 cursor-pointer">
+                <Checkbox id="chk-currentlyUnderCare" checked={formData.currentlyUnderCare} onCheckedChange={(c) => handleCheckboxChange("currentlyUnderCare", !!c)} />
                 <span className="text-sm font-medium">{prevTxLabel("currentlyUnderCare", "Currently under care of another health professional?", "Atualmente em acompanhamento com outro profissional de saúde?")}</span>
-              </div>
+              </label>
               {formData.currentlyUnderCare && (
                 <Textarea
                   rows={2}
                   placeholder={isPt ? "Especialidade e tipo de tratamento..." : "Specialty and type of treatment..."}
                   value={formData.currentlyUnderCareDetails}
-                  onChange={(e) => { e.stopPropagation(); handleInputChange("currentlyUnderCareDetails", e.target.value); }}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => handleInputChange("currentlyUnderCareDetails", e.target.value)}
                   className="mt-2"
                 />
               )}
@@ -904,8 +1022,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 7: Goals ── */}
-        {sectionEnabled("goals") && <Card>
+        {/* ── SECTION: Goals ── */}
+        {currentStepId === "goals" && sectionEnabled("goals") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
@@ -925,22 +1043,20 @@ export default function AssessmentScreeningForm() {
               />
             </div>
             <div className="flex gap-3">
-              <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToSport ? "bg-primary/10 border-primary/40" : "border-border"}`}
-                onClick={() => handleCheckboxChange("returnToSport", !formData.returnToSport)}>
-                <Checkbox checked={formData.returnToSport} onCheckedChange={(c) => handleCheckboxChange("returnToSport", c as boolean)} />
+              <label htmlFor="chk-returnToSport" className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToSport ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+                <Checkbox id="chk-returnToSport" checked={formData.returnToSport} onCheckedChange={(c) => handleCheckboxChange("returnToSport", !!c)} />
                 <span className="text-sm">{isPt ? "Retornar ao esporte" : "Return to sport"}</span>
-              </div>
-              <div className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToWork ? "bg-primary/10 border-primary/40" : "border-border"}`}
-                onClick={() => handleCheckboxChange("returnToWork", !formData.returnToWork)}>
-                <Checkbox checked={formData.returnToWork} onCheckedChange={(c) => handleCheckboxChange("returnToWork", c as boolean)} />
+              </label>
+              <label htmlFor="chk-returnToWork" className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer flex-1 transition-colors ${formData.returnToWork ? "bg-primary/10 border-primary/40" : "border-border"}`}>
+                <Checkbox id="chk-returnToWork" checked={formData.returnToWork} onCheckedChange={(c) => handleCheckboxChange("returnToWork", !!c)} />
                 <span className="text-sm">{isPt ? "Retornar ao trabalho" : "Return to work"}</span>
-              </div>
+              </label>
             </div>
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 8: Health History ── */}
-        {sectionEnabled("health_history") && <Card>
+        {/* ── SECTION: Health History ── */}
+        {currentStepId === "health_history" && sectionEnabled("health_history") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-primary" />
@@ -959,6 +1075,9 @@ export default function AssessmentScreeningForm() {
                   if (data.allergies) updated.allergies = data.allergies;
                   if (data.surgicalHistory) updated.surgicalHistory = data.surgicalHistory;
                   if (data.otherConditions) updated.otherConditions = data.otherConditions;
+                  isDirty.current = true;
+                  saveDraft(updated);
+                  triggerAutoSave();
                   return updated;
                 });
               }}
@@ -1010,8 +1129,8 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 9: Contact Details ── */}
-        {sectionEnabled("contact_details") && <Card>
+        {/* ── SECTION: Contact Details + Consent (combined in last step) ── */}
+        {currentStepId === "contact_consent" && sectionEnabled("contact_details") && <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
@@ -1055,29 +1174,46 @@ export default function AssessmentScreeningForm() {
           </CardContent>
         </Card>}
 
-        {/* ── SECTION 10: Consent ── */}
-        <Card className="border-primary/20">
-          <CardContent className="py-6">
-            <div className="flex items-start gap-3">
-              <Checkbox
-                id="consent"
-                checked={formData.consentGiven}
-                onCheckedChange={(checked) => handleCheckboxChange("consentGiven", checked as boolean)}
-              />
-              <Label htmlFor="consent" className="font-normal cursor-pointer leading-relaxed">
-                {consentLabel}
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── Consent (shown in last step) ── */}
+        {currentStepId === "contact_consent" && (
+          <Card className="border-primary/20">
+            <CardContent className="py-6">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="consent"
+                  checked={formData.consentGiven}
+                  onCheckedChange={(checked) => handleCheckboxChange("consentGiven", checked as boolean)}
+                />
+                <Label htmlFor="consent" className="font-normal cursor-pointer leading-relaxed">
+                  {consentLabel}
+                </Label>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        <Button type="submit" size="lg" className="w-full gap-2" disabled={!formData.consentGiven || saving}>
-          {saving ? (
-            <><Loader2 className="h-4 w-4 animate-spin" />{T("screening.saving")}</>
+        {/* ── Wizard Navigation ── */}
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <Button type="button" variant="outline" size="lg" onClick={goPrev} disabled={currentStep === 0} className="gap-2">
+            <ChevronLeft className="h-4 w-4" />
+            {isPt ? "Anterior" : "Previous"}
+          </Button>
+
+          {currentStep < totalSteps - 1 ? (
+            <Button type="button" size="lg" onClick={goNext} className="gap-2 flex-1 sm:flex-none">
+              {isPt ? "Próximo" : "Next"}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           ) : (
-            <><CheckCircle className="h-4 w-4" />{hasExisting ? T("screening.update") : T("screening.submit")}</>
+            <Button type="submit" size="lg" className="gap-2 flex-1 sm:flex-none" disabled={!formData.consentGiven || saving}>
+              {saving ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />{T("screening.saving")}</>
+              ) : (
+                <><CheckCircle className="h-4 w-4" />{hasExisting ? T("screening.update") : T("screening.submit")}</>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </form>
     </div>
   );

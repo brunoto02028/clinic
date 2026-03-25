@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+// Simple in-memory rate limiting: max 5 captures per IP per hour
+const rateLimitMap = new Map();
+function checkRateLimit(ip: string, max = 5, windowMs = 3600000): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) { rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs }); return true; }
+  if (entry.count >= max) return false;
+  entry.count++;
+  return true;
+}
 import { generatePresignedUploadUrl } from "@/lib/s3";
 import { writeFile, mkdir, copyFile, unlink } from "fs/promises";
 import path from "path";
@@ -9,7 +19,7 @@ import { removeBackground } from "@/lib/remove-bg";
 
 const execFileAsync = promisify(execFile);
 
-async function blurFaceOnFile(filePath: string): Promise<void> {
+async function blurFaceOnFile(filePath: string, patientId?: string, token?: string): Promise<void> {
   try {
     const scriptPath = path.join(process.cwd(), "scripts", "blur-faces.py");
     const tempBlurred = filePath + ".blurred.jpg";
@@ -18,7 +28,18 @@ async function blurFaceOnFile(filePath: string): Promise<void> {
     await unlink(tempBlurred).catch(() => {});
     console.log(`[blur-faces] Blurred face in ${filePath}`);
   } catch (err: any) {
-    console.warn(`[blur-faces] Face blur failed (non-fatal):`, err?.message || err);
+    console.error(`[blur-faces] CRITICAL: Face blur failed for user. Rosto do paciente pode estar exposto. Error:`, err?.message);
+    // Notify admin about face blur failure
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com';
+      await fetch(`${process.env.NEXTAUTH_URL || 'https://bpr.rehab'}/api/admin/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'face-blur-failure', patientId, token, error: err?.message, adminEmail }),
+      }).catch(() => {});
+    } catch (notifyErr) {
+      console.error('[blur-faces] Failed to notify admin:', notifyErr);
+    }
   }
 }
 
@@ -28,9 +49,16 @@ export async function GET(
   { params }: { params: { token: string } }
 ) {
   try {
+    const { token } = params;
+
+    // Rate limit check
+    const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('cf-connecting-ip') || 'unknown';
+    if (!checkRateLimit(clientIp)) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
     const assessment = await (prisma as any).bodyAssessment.findFirst({
       where: {
-        captureToken: params.token,
+        captureToken: token,
         captureTokenExpiry: { gte: new Date() },
       },
       select: {
@@ -154,28 +182,19 @@ export async function PUT(
       const originalPath = path.join(uploadsDir, `${view}-${ts}-original.jpg`);
       await copyFile(localPath, originalPath);
 
-      // Apply face blur
-      await blurFaceOnFile(localPath);
-
-      // Remove background (replace with white) using rembg
-      await removeBackground(localPath);
-
-      // Use local URL
+      // Use local URL immediately — do NOT await slow Python scripts on mobile
       const imageUrl = `/uploads/body-assessments/${assessment.id}/${filename}`;
 
-      // Also try S3 upload (non-blocking, keep local as primary)
-      try {
-        const { uploadUrl } = await generatePresignedUploadUrl(key, "image/jpeg");
+      // Run face blur + bg removal in background (non-blocking — mobile cannot wait)
+      blurFaceOnFile(localPath, assessment.patientId, params.token).catch(() => {});
+      removeBackground(localPath).catch(() => {});
+
+      // S3 upload — fire-and-forget, never block mobile response
+      generatePresignedUploadUrl(key, "image/jpeg").then(async ({ uploadUrl }) => {
         const { readFile } = await import("fs/promises");
         const fileBuffer = await readFile(localPath);
-        await fetch(uploadUrl, {
-          method: "PUT",
-          body: fileBuffer,
-          headers: { "Content-Type": "image/jpeg" },
-        });
-      } catch (s3Error) {
-        console.warn("S3 upload failed, using local:", s3Error);
-      }
+        return fetch(uploadUrl, { method: "PUT", body: fileBuffer, headers: { "Content-Type": "image/jpeg" } });
+      }).catch((s3Error) => console.warn("S3 upload failed, using local:", s3Error));
 
       switch (view) {
         case "front":

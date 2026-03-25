@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import crypto from "crypto";
 import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
+import { getEffectiveUser } from "@/lib/get-effective-user";
+import { cookies } from "next/headers";
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +41,11 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
-    const effectiveId = getEffectiveUserId(session, request);
-    const isPreview = isPreviewRequest(session, request);
+    // Read impersonation cookie directly (middleware does NOT inject headers for /api/admin/* routes)
+    const cookieStore = cookies();
+    const impersonatedPatientId = cookieStore.get("impersonate-patient-id")?.value;
+    const isImpersonating = !!impersonatedPatientId;
+
     const userId = (session.user as any).id;
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -54,8 +59,8 @@ export async function GET(request: NextRequest) {
     // Build query based on role
     const whereClause: any = {};
 
-    if (user.role === "PATIENT" || isPreview) {
-      whereClause.patientId = isPreview ? effectiveId : user.id;
+    if (user.role === "PATIENT" || isImpersonating) {
+      whereClause.patientId = isImpersonating ? impersonatedPatientId : user.id;
     } else if (user.clinicId) {
       whereClause.clinicId = user.clinicId;
       if (patientId) whereClause.patientId = patientId;
@@ -110,6 +115,11 @@ export async function POST(request: NextRequest) {
     const { patientId } = body;
 
     const userId = (session.user as any).id;
+    // Read impersonation cookie directly (middleware does NOT inject headers for /api/admin/* routes)
+    const cookieStore = cookies();
+    const impersonatedPatientId = cookieStore.get("impersonate-patient-id")?.value;
+    const isImpersonating = !!impersonatedPatientId;
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, role: true, clinicId: true },
@@ -119,8 +129,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Determine patient ID and clinic
-    const actualPatientId = user.role === "PATIENT" ? user.id : patientId;
+    // Determine patient ID:
+    // - If patient role → their own ID
+    // - If impersonating a patient → use the impersonated patient's ID
+    // - If admin with explicit patientId → use that
+    const actualPatientId =
+      user.role === "PATIENT" ? user.id :
+      isImpersonating ? impersonatedPatientId :
+      patientId;
 
     if (!actualPatientId) {
       return NextResponse.json(

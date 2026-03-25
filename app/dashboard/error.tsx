@@ -18,7 +18,10 @@ export default function DashboardError({
     error?.message?.includes("ChunkLoadError") ||
     error?.message?.includes("Loading chunk") ||
     error?.message?.includes("Failed to fetch dynamically imported module") ||
-    error?.message?.includes("Unexpected token");
+    error?.message?.includes("Unexpected token") ||
+    error?.message?.includes("Loading CSS chunk") ||
+    error?.message?.includes("prerender-manifest") ||
+    error?.digest?.includes("NEXT");
 
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-6">
@@ -35,6 +38,11 @@ export default function DashboardError({
               ? "The app has been updated. Please refresh to continue."
               : "An unexpected error occurred. Your data is safe."}
           </p>
+          {!isChunkError && error?.message && (
+            <p className="text-xs text-red-400 mt-2 font-mono bg-red-500/10 p-2 rounded">
+              {error.message}
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-3">
           <button

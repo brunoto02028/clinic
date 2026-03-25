@@ -30,8 +30,8 @@ function VerifyPage() {
   const userId = searchParams?.get("userId") || "";
   const email = searchParams?.get("email") || "";
 
-  const [step, setStep] = useState<"choose" | "input">("choose");
-  const [channel, setChannel] = useState<Channel | null>(null);
+  const [step, setStep] = useState<"choose" | "input">("input");
+  const [channel, setChannel] = useState<Channel | null>("EMAIL");
   const [maskedContact, setMaskedContact] = useState("");
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,8 +41,19 @@ function VerifyPage() {
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [hasPhone, setHasPhone] = useState(false);
+  const [autoSendDone, setAutoSendDone] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Check if user has a phone number (to show/hide SMS/WhatsApp)
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/auth/check-phone?userId=${userId}`)
+      .then(r => r.json())
+      .then(d => setHasPhone(!!d.hasPhone))
+      .catch(() => {});
+  }, [userId]);
 
   // Countdown timer for expiration
   useEffect(() => {
@@ -92,6 +103,14 @@ function VerifyPage() {
     }
   }, [userId]);
 
+  // Auto-send OTP via email on mount (skip channel selection)
+  useEffect(() => {
+    if (!userId || autoSendDone) return;
+    setAutoSendDone(true);
+    sendCode("EMAIL");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   const verifyCode = async () => {
     const fullCode = code.join("");
     if (fullCode.length !== 6) {
@@ -113,14 +132,28 @@ function VerifyPage() {
 
       setSuccess(true);
 
-      // Auto-login after successful verification
-      const decodedEmail = decodeURIComponent(email);
-      // Small delay for UX
+      // Auto-login after successful verification using stored credentials
       setTimeout(async () => {
-        // We can't auto-login since we don't have the password at this point
-        // Redirect to login page with success message
+        try {
+          const storedEmail = sessionStorage.getItem("pending-verify-email");
+          const storedPassword = sessionStorage.getItem("pending-verify-password");
+          if (storedEmail && storedPassword) {
+            sessionStorage.removeItem("pending-verify-email");
+            sessionStorage.removeItem("pending-verify-password");
+            const result = await signIn("credentials", {
+              email: storedEmail,
+              password: storedPassword,
+              redirect: false,
+            });
+            if (result?.ok) {
+              router.replace("/dashboard");
+              return;
+            }
+          }
+        } catch {}
+        // Fallback: redirect to login
         router.replace("/login?verified=true");
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
       setError(err.message || "Verification failed");
     } finally {
@@ -276,39 +309,43 @@ function VerifyPage() {
                   {isSending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                 </button>
 
-                {/* WhatsApp */}
-                <button
-                  onClick={() => sendCode("WHATSAPP")}
-                  disabled={isSending}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-[#25D366] hover:bg-[#25D366]/5 transition-all text-left group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-[#25D366]/10 text-[#25D366] flex items-center justify-center shrink-0 group-hover:bg-[#25D366]/20 transition-colors">
-                    <MessageCircle className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">WhatsApp</p>
-                    <p className="text-xs text-muted-foreground">
-                      {isPt ? "Enviar via WhatsApp" : "Send via WhatsApp"}
-                    </p>
-                  </div>
-                </button>
+                {/* WhatsApp — only if user has phone */}
+                {hasPhone && (
+                  <button
+                    onClick={() => sendCode("WHATSAPP")}
+                    disabled={isSending}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-[#25D366] hover:bg-[#25D366]/5 transition-all text-left group"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-[#25D366]/10 text-[#25D366] flex items-center justify-center shrink-0 group-hover:bg-[#25D366]/20 transition-colors">
+                      <MessageCircle className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground">WhatsApp</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isPt ? "Enviar via WhatsApp" : "Send via WhatsApp"}
+                      </p>
+                    </div>
+                  </button>
+                )}
 
-                {/* SMS */}
-                <button
-                  onClick={() => sendCode("SMS")}
-                  disabled={isSending}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-purple-500 hover:bg-purple-50 transition-all text-left group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 group-hover:bg-purple-200 transition-colors">
-                    <Smartphone className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">SMS</p>
-                    <p className="text-xs text-muted-foreground">
-                      {isPt ? "Enviar SMS para seu celular" : "Send SMS to your phone"}
-                    </p>
-                  </div>
-                </button>
+                {/* SMS — only if user has phone */}
+                {hasPhone && (
+                  <button
+                    onClick={() => sendCode("SMS")}
+                    disabled={isSending}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-purple-500 hover:bg-purple-50 transition-all text-left group"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 group-hover:bg-purple-200 transition-colors">
+                      <Smartphone className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground">SMS</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isPt ? "Enviar SMS para seu celular" : "Send SMS to your phone"}
+                      </p>
+                    </div>
+                  </button>
+                )}
 
                 <div className="pt-2 text-center">
                   <Link href="/signup" className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1">

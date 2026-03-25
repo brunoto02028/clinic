@@ -77,22 +77,20 @@ export default function OnboardingWizard() {
   const [allDone, setAllDone] = useState(false);
 
   useEffect(() => {
-    // Check if user already dismissed
-    const wasDismissed = localStorage.getItem("bpr_onboarding_dismissed");
-    if (wasDismissed === "true") {
-      setDismissed(true);
-      setLoading(false);
-      return;
-    }
-
-    // Fetch onboarding status
+    // Fetch onboarding status — always check, ignore localStorage if critical steps incomplete
     fetch("/api/patient/onboarding-status")
       .then((r) => r.json())
       .then((data) => {
         setCompletionMap(data);
-        const done = data.profileComplete && data.screeningComplete && data.consentAccepted && data.hasAppointment;
-        setAllDone(!!done);
-        if (done) {
+        const criticalDone = data.consentAccepted && data.screeningComplete;
+        const allComplete = data.profileComplete && data.screeningComplete && data.consentAccepted && data.hasAppointment;
+        setAllDone(!!allComplete);
+        // Only honour "dismissed" from localStorage if critical steps are done
+        if (criticalDone) {
+          const wasDismissed = localStorage.getItem("bpr_onboarding_dismissed");
+          if (wasDismissed === "true") setDismissed(true);
+        }
+        if (allComplete) {
           localStorage.setItem("bpr_onboarding_dismissed", "true");
         }
       })

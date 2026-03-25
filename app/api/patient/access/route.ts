@@ -118,6 +118,23 @@ export async function GET() {
     const activeSubscriptions = patient.patientSubscriptions || [];
     const activePlans: any[] = [];
 
+    // Check if any active subscription is on a free plan → full access, no paywall
+    const hasFreePlan = activeSubscriptions.some((sub: any) => sub.plan?.isFree === true);
+    if (hasFreePlan) {
+      return NextResponse.json({
+        modules: MODULE_REGISTRY.map(m => m.key),
+        hiddenModules: [],
+        permissions: PERMISSION_REGISTRY.map(p => p.key),
+        role: userRole,
+        fullAccessOverride: false,
+        isFree: true,
+        hasActiveSubscription: true,
+        hasActiveTreatment: true,
+        activePlans: activeSubscriptions.filter((s: any) => s.plan?.isFree).map((s: any) => s.plan),
+        onboarding: { screeningComplete, consentAccepted },
+      });
+    }
+
     for (const sub of activeSubscriptions) {
       if (sub.plan) {
         activePlans.push(sub.plan);
