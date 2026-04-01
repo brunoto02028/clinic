@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Logo } from "@/components/ui/logo";
 
 type CartItem = { productId: string; name: string; price: number; imageUrl?: string; quantity: number; isAffiliate?: boolean; affiliateUrl?: string; amazonAsin?: string; };
 
@@ -24,32 +25,32 @@ const getProductImage = (product: any): string | null => {
 type CheckoutStep = "cart" | "shipping" | "done";
 
 const CATEGORY_CONFIG: Record<string, { label: string; emoji: string; icon: any; color: string; bg: string }> = {
-  supplement:       { label: "Supplements",        emoji: "💊", icon: Heart,   color: "text-pink-400",   bg: "bg-pink-500/10 border-pink-500/20" },
-  equipment:        { label: "Equipment",           emoji: "🏋️", icon: Box,     color: "text-cyan-400",   bg: "bg-cyan-500/10 border-cyan-500/20" },
-  digital_program:  { label: "Digital Programs",   emoji: "📱", icon: Video,   color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
-  physical_product: { label: "Physical Products",  emoji: "📦", icon: Package, color: "text-emerald-400",bg: "bg-emerald-500/10 border-emerald-500/20" },
-  special_session:  { label: "Special Sessions",   emoji: "⚡", icon: Zap,     color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/20" },
-  subscription:     { label: "Subscriptions",      emoji: "👑", icon: Crown,   color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
+  supplement:       { label: "Complementary Add-ons",  emoji: "➕", icon: Heart,   color: "text-pink-400",   bg: "bg-pink-500/10 border-pink-500/20" },
+  equipment:        { label: "3D Rehab Tools",         emoji: "🛠️", icon: Box,     color: "text-cyan-400",   bg: "bg-cyan-500/10 border-cyan-500/20" },
+  digital_program:  { label: "Guides & Education",     emoji: "�", icon: Video,   color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
+  physical_product: { label: "3D Foot Care",           emoji: "🦶", icon: Package, color: "text-emerald-400",bg: "bg-emerald-500/10 border-emerald-500/20" },
+  special_session:  { label: "Custom Assessments",     emoji: "⚡", icon: Zap,     color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/20" },
+  subscription:     { label: "Printed Recovery Boxes", emoji: "�", icon: Crown,   color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
 };
 
 const HERO_SLIDES = [
   {
-    image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1920&q=90&auto=format&fit=crop&crop=center",
-    tag1: "Clinically Curated", tag2: "BPR Approved",
-    title: "Your Recovery,", highlight: "Optimised",
-    sub: "Physiotherapy-grade supplements, equipment and digital programmes — hand-picked by Bruno and the BPR clinical team.",
+    image: "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?w=1920&q=90&auto=format&fit=crop&crop=center",
+    tag1: "3D Printed In-House", tag2: "BPR Designed",
+    title: "Recovery Products,", highlight: "Made by BPR",
+    sub: "Explore BPR's in-house 3D printed foot care tools, supports and rehab accessories produced for real patients and practical day-to-day recovery.",
   },
   {
-    image: "https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=1920&q=90&auto=format&fit=crop&crop=center",
-    tag1: "Expert Selected", tag2: "Top Brands",
-    title: "Supplements for", highlight: "Real Results",
-    sub: "Vitamins, collagen, omega-3 and more — chosen by our physiotherapists for evidence-based recovery support.",
+    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1920&q=90&auto=format&fit=crop&crop=center",
+    tag1: "Foot Care Focus", tag2: "Printed to Order",
+    title: "3D Foot Care for", highlight: "Daily Comfort",
+    sub: "Toe spacers, metatarsal supports, bunion comfort pieces and foot massage tools designed to give patients useful solutions beyond generic retail products.",
   },
   {
-    image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1920&q=90&auto=format&fit=crop&crop=center",
-    tag1: "Fast Delivery", tag2: "Via Amazon",
-    title: "Equipment Built for", highlight: "Recovery",
-    sub: "Foam rollers, TENS machines, resistance bands and physiotherapy tools delivered to your door.",
+    image: "https://images.unsplash.com/photo-1598970434795-0c54fe7c0642?w=1920&q=90&auto=format&fit=crop&crop=center",
+    tag1: "Custom Pathway", tag2: "Clinic-Led",
+    title: "From Accessories to", highlight: "Custom Orthotics",
+    sub: "Use the shop as the entry point into custom BPR products, including guided assessments and your future 3D printed orthotic workflow.",
   },
 ];
 
@@ -57,6 +58,7 @@ type AuthMode = "idle" | "login" | "register";
 
 export default function ShopPage() {
   const { data: session } = useSession();
+  const [settings, setSettings] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -90,6 +92,13 @@ export default function ShopPage() {
     const t = setInterval(nextSlide, 5000);
     return () => clearInterval(t);
   }, [nextSlide]);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d && setSettings(d))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/shop/products")
@@ -216,19 +225,17 @@ export default function ShopPage() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
           <a href="https://bpr.rehab" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
-              <span className="text-white font-black text-base">B</span>
-            </div>
-            <div className="hidden sm:block">
-              <p className="font-black text-sm text-foreground leading-none">BPR Shop</p>
-              <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Recovery Store</p>
-            </div>
+            <Logo
+              logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
+              darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
+              size="md"
+            />
           </a>
 
           <div className="relative flex-1 max-w-lg mx-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search supplements, equipment, programs..."
+              placeholder="Search 3D foot care, rehab tools, custom products..."
               className="pl-9 h-9 text-sm bg-muted/50 border-white/10 focus:border-teal-500/50 rounded-full" />
             {search && (
               <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -533,9 +540,9 @@ export default function ShopPage() {
 
               <div className="flex flex-wrap gap-3 mt-6">
                 {[
-                  { icon: Shield, text: "Expert-approved products" },
-                  { icon: Truck, text: "Fast delivery via Amazon" },
-                  { icon: Star, text: "Top-rated brands only" },
+                  { icon: Shield, text: "Designed and curated by BPR" },
+                  { icon: Truck, text: "Printed to order and shipped by us" },
+                  { icon: Star, text: "Focused on practical 3D recovery tools" },
                 ].map(({ icon: Icon, text }) => (
                   <div key={text} className="flex items-center gap-1.5 text-sm text-slate-300">
                     <Icon className="h-4 w-4 text-teal-400" />
@@ -548,10 +555,10 @@ export default function ShopPage() {
                 <Button
                   className="gap-2 bg-teal-500 hover:bg-teal-400 text-black font-bold px-6 rounded-full shadow-lg shadow-teal-500/30"
                   onClick={() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth" })}>
-                  <ShoppingCart className="h-4 w-4" /> Shop Now
+                  <ShoppingCart className="h-4 w-4" /> Explore Products
                 </Button>
                 <a href="https://bpr.rehab" className="flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors">
-                  Learn about BPR <ChevronRight className="h-3.5 w-3.5" />
+                  Visit bpr.rehab <ChevronRight className="h-3.5 w-3.5" />
                 </a>
               </div>
             </div>
@@ -587,10 +594,10 @@ export default function ShopPage() {
         <section className="bg-muted/30 border-b border-white/5">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-center gap-6 sm:gap-10">
             {[
-              { icon: Shield, text: "Clinically vetted products" },
-              { icon: Award, text: "Expert physiotherapist approved" },
-              { icon: Truck, text: "Delivered by Amazon" },
-              { icon: Star, text: "Top-rated brands" },
+              { icon: Shield, text: "In-house BPR product range" },
+              { icon: Award, text: "Designed around patient recovery use-cases" },
+              { icon: Truck, text: "Printed-to-order physical products" },
+              { icon: Star, text: "Small curated add-ons only where useful" },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Icon className="h-3.5 w-3.5 text-teal-400 shrink-0" />
@@ -750,6 +757,24 @@ export default function ShopPage() {
                           </p>
                         )}
 
+                        <div className="flex flex-wrap gap-1.5">
+                          {!product.isAffiliate && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-300">
+                              BPR made
+                            </span>
+                          )}
+                          {!product.isDigital && !product.isAffiliate && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">
+                              Printed to order
+                            </span>
+                          )}
+                          {product.category === "special_session" && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                              Custom pathway
+                            </span>
+                          )}
+                        </div>
+
                         {/* Price */}
                         <div className="flex items-baseline gap-2 mt-auto">
                           <span className="text-xl font-black text-foreground">
@@ -798,9 +823,9 @@ export default function ShopPage() {
                 <UserPlus className="h-6 w-6 text-teal-400" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-white">Join BPR Shop</h3>
+                <h3 className="text-xl font-black text-white">Join BPR 3D Shop</h3>
                 <p className="text-sm text-slate-300 mt-1 max-w-md mx-auto">
-                  Create a free account to track your orders, get personalised recommendations and access exclusive deals.
+                  Create a free account to track your printed orders, save your favourites and access future custom product pathways.
                 </p>
               </div>
               <Button
@@ -821,7 +846,7 @@ export default function ShopPage() {
                   <span className="text-white font-black text-sm">B</span>
                 </div>
                 <div>
-                  <p className="font-bold text-sm text-foreground">BPR Recovery Shop</p>
+                  <p className="font-bold text-sm text-foreground">BPR 3D Recovery Shop</p>
                   <p className="text-[11px] text-muted-foreground">by <a href="https://bpr.rehab" className="text-teal-400 hover:underline">bpr.rehab</a></p>
                 </div>
               </div>
@@ -832,7 +857,7 @@ export default function ShopPage() {
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground/50 text-center mt-4">
-              Some products link to Amazon. BPR may earn a small commission on qualifying purchases at no extra cost to you.
+              Most products in this shop are BPR in-house items. A small number of complementary external products may link to Amazon and may earn a commission at no extra cost to you.
             </p>
           </div>
         </footer>
