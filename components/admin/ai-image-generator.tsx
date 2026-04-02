@@ -106,7 +106,7 @@ export function AIImageGenerator({
     elapsedRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45000); // Reduced from 90s to 45s
+    const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout for Gemini image generation
 
     try {
       const payload: any = { prompt, aspectRatio, section };
@@ -170,7 +170,7 @@ export function AIImageGenerator({
       }
     } catch (err: any) {
       if (err.name === "AbortError") {
-        setError("AI generation is taking too long (45s timeout). The service may be busy. Please use the 'Upload Image' button instead for instant results.");
+        setError("AI generation timed out after 60 seconds. Gemini may be overloaded. Please try again or use the 'Upload Image' button for instant results.");
       } else {
         setError(err.message || "AI generation failed. Please use the 'Upload Image' button instead.");
       }

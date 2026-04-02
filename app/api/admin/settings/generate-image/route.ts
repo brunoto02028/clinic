@@ -21,6 +21,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
   }
 
+  console.log('[generate-image] Starting generation:', { section, hasRefImage: !!referenceImageBase64, promptLength: prompt.length });
+  const startTime = Date.now();
+
   try {
     let imageBase64: string | null = null;
 
@@ -79,9 +82,14 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // ─── Standard generation (no reference image) ───
+      console.log('[generate-image] Using standard generation (no reference image)');
       const fullPrompt = `Professional photograph for a physiotherapy clinic website: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
       try {
+        console.log('[generate-image] Calling generateImageSmart...');
+        const genStart = Date.now();
         const urls = await generateImageSmart(fullPrompt, { numImages: 1 });
+        console.log(`[generate-image] generateImageSmart completed in ${Date.now() - genStart}ms`);
+        
         if (urls.length > 0) {
           const url = urls[0];
           if (url.startsWith('data:image')) {
@@ -109,6 +117,9 @@ export async function POST(req: NextRequest) {
     // Client will handle saving to database or displaying
     const imageUrl = `data:image/png;base64,${imageBase64}`;
     const filename = `bruno-physical-rehabilitation-${(section || 'image').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}.png`;
+
+    const totalTime = Date.now() - startTime;
+    console.log(`[generate-image] Success! Total time: ${totalTime}ms`);
 
     return NextResponse.json({ imageUrl, filename });
   } catch (error: any) {
