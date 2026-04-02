@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { createS3Client, getBucketConfig } from "@/lib/aws-config";
 
 export const dynamic = "force-dynamic";
 
@@ -36,46 +34,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
     }
 
+    console.log('[upload] Processing file:', file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
+
     // Generate unique filename
     const ext = file.name.split('.').pop() || "jpg";
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(`.${ext}`, "");
     const uniqueName = `${Date.now()}-${safeName}.${ext}`;
 
+    // Convert to data URL (works always on Railway)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString('base64');
+    const imageUrl = `data:${file.type};base64,${base64}`;
+    const cloud_storage_path = `dataurl:${uniqueName}`;
     
-    let imageUrl: string;
-    let cloud_storage_path: string;
-    
-    // Try S3 upload first
-    try {
-      const { bucketName, folderPrefix } = getBucketConfig();
-      cloud_storage_path = `${folderPrefix}public/uploads/${uniqueName}`;
-      
-      const s3Client = createS3Client();
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: cloud_storage_path,
-        Body: buffer,
-        ContentType: file.type,
-        ACL: 'public-read',
-      });
-
-      await s3Client.send(command);
-
-      // Public URL for S3
-      const region = process.env.AWS_REGION || "us-west-2";
-      imageUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${cloud_storage_path}`;
-      
-      console.log('[upload] S3 upload successful:', imageUrl);
-    } catch (s3Error: any) {
-      console.warn('[upload] S3 upload failed, using data URL fallback:', s3Error.message);
-      
-      // Fallback: return data URL (works always, no storage needed)
-      const base64 = buffer.toString('base64');
-      imageUrl = `data:${file.type};base64,${base64}`;
-      cloud_storage_path = `dataurl:${uniqueName}`;
-    }
+    console.log('[upload] Created data URL, size:', `${(base64.length / 1024).toFixed(0)}KB`);
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;

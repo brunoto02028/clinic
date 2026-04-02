@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { deleteFile } from "@/lib/s3";
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +24,11 @@ export async function DELETE(request: Request) {
       );
     }
 
-    await deleteFile(cloud_storage_path);
+    console.log('[delete] Deleting image:', cloud_storage_path);
+
+    // For data URLs, no need to delete from storage (it's in the database only)
+    // For S3 URLs, we would need to delete from S3 (but we're not using S3 now)
+    // Just return success - the database entry will be deleted by the caller
 
     return NextResponse.json({
       success: true,
