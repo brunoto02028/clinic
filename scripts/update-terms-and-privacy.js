@@ -128,19 +128,21 @@ const termsHTML = `
   max-width: 900px;
   margin: 0 auto;
   padding: 2rem;
-  line-height: 1.6;
+  line-height: 1.8;
 }
 
 .terms-content h1 {
   font-size: 2rem;
   margin-bottom: 0.5rem;
-  color: #1a1a1a;
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .terms-content .last-updated {
-  color: #666;
+  color: #a0aec0;
   font-style: italic;
   margin-bottom: 2rem;
+  font-size: 0.95rem;
 }
 
 .terms-content section {
@@ -151,21 +153,24 @@ const termsHTML = `
   font-size: 1.5rem;
   margin-top: 2rem;
   margin-bottom: 1rem;
-  color: #2c5f5d;
-  border-bottom: 2px solid #2c5f5d;
+  color: #7dd3c0;
+  border-bottom: 2px solid #7dd3c0;
   padding-bottom: 0.5rem;
+  font-weight: 600;
 }
 
 .terms-content h3 {
   font-size: 1.2rem;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
-  color: #1a1a1a;
+  color: #e2e8f0;
+  font-weight: 500;
 }
 
 .terms-content p {
   margin-bottom: 1rem;
-  color: #333;
+  color: #cbd5e0;
+  font-size: 1rem;
 }
 
 .terms-content ul {
@@ -175,11 +180,13 @@ const termsHTML = `
 
 .terms-content li {
   margin-bottom: 0.5rem;
-  color: #333;
+  color: #cbd5e0;
+  font-size: 1rem;
 }
 
 .terms-content strong {
-  color: #1a1a1a;
+  color: #ffffff;
+  font-weight: 600;
 }
 </style>
 `;
