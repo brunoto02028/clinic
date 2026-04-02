@@ -369,13 +369,22 @@ export default function LandingPage() {
               </div>
             </div>
             <div>
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-primary/10">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={settings?.heroImageUrl || "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80"}
-                  alt="Professional physiotherapy treatment session"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-gradient-to-br from-teal-900/20 to-cyan-900/20">
+                {settings?.heroImageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={settings.heroImageUrl}
+                    alt="Professional physiotherapy treatment session"
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                )}
+                {!settings?.heroImageUrl && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/30">
+                      <p className="text-sm font-medium">Hero Image</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -648,13 +657,25 @@ export default function LandingPage() {
           {/* Hero row: image + description */}
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div>
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src={settings?.insolesImageUrl || "https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=800&q=80"} 
-                  alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" 
-                  className="absolute inset-0 w-full h-full object-cover" 
-                />
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-blue-900/20 to-cyan-900/20">
+                {settings?.insolesImageUrl && (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={settings.insolesImageUrl} 
+                      alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" 
+                      className="absolute inset-0 w-full h-full object-cover" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  </>
+                )}
+                {!settings?.insolesImageUrl && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/30">
+                      <p className="text-sm font-medium">Insoles Image</p>
+                    </div>
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
@@ -745,13 +766,25 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src={settings?.bioImageUrl || "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80"} 
-                  alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" 
-                  className="absolute inset-0 w-full h-full object-cover" 
-                />
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-purple-900/20 to-blue-900/20">
+                {settings?.bioImageUrl && (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={settings.bioImageUrl} 
+                      alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" 
+                      className="absolute inset-0 w-full h-full object-cover" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  </>
+                )}
+                {!settings?.bioImageUrl && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center text-muted-foreground/30">
+                      <p className="text-sm font-medium">Biomechanics Image</p>
+                    </div>
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
