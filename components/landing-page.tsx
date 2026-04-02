@@ -1030,12 +1030,13 @@ export default function LandingPage() {
             <div>
               <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {settings !== null && settings?.aboutImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
+                {settings !== null && settings?.heroImageUrl && (
                   <img
-                    src={settings.aboutImageUrl}
-                    alt="Bruno - Physical Rehabilitation Therapist"
+                    src={settings.heroImageUrl}
+                    alt="Professional physiotherapy treatment session"
                     className="absolute inset-0 w-full h-full object-cover"
+                    loading="eager"
+                    fetchPriority="high"
                   />
                 )}
               </div>
