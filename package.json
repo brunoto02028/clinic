@@ -81,6 +81,7 @@
     "@types/three": "^0.182.0",
     "adm-zip": "^0.5.16",
     "autoprefixer": "10.4.15",
+    "basic-ftp": "^5.2.0",
     "bcryptjs": "2.4.3",
     "chart.js": "4.4.9",
     "cheerio": "^1.2.0",
