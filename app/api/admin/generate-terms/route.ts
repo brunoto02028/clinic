@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/auth-options";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== "staff") {
+    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
