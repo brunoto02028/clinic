@@ -165,8 +165,10 @@ export default function AdminSettingsPage() {
   const router = useRouter();
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+  const [generatingTerms, setGeneratingTerms] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [currentImageField, setCurrentImageField] = useState<string>("");
   const { toast } = useToast();
@@ -2281,22 +2283,76 @@ export default function AdminSettingsPage() {
             <CardHeader>
               <CardTitle>Terms of Use & Privacy Policy</CardTitle>
               <CardDescription>
-                Edit the content displayed on the /terms page. Use HTML formatting. Leave empty to use the default bilingual terms.
+                Edit the content displayed on the /terms page. Use plain text formatting. Leave empty to use the default bilingual terms.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="termsContentHtml">Custom Terms HTML Content</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="termsContentHtml">Custom Terms Content</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setGeneratingTerms(true);
+                      try {
+                        const res = await fetch("/api/admin/generate-terms", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            businessInfo: {
+                              name: (settings as any).siteName || "BPR Physical Rehabilitation",
+                              location: "Richmond, UK",
+                              services: "Physical therapy, sports rehabilitation, MLS Laser therapy, thermography, biomechanics, insoles",
+                              email: (settings as any).businessEmail || "info@bpr.rehab",
+                              phone: (settings as any).businessPhone || "+44 (0) 20 XXXX XXXX",
+                              address: (settings as any).businessStreet && (settings as any).businessCity
+                                ? `${(settings as any).businessStreet}, ${(settings as any).businessCity}, ${(settings as any).businessPostcode}`
+                                : "Richmond, TW10 6AQ, UK",
+                            },
+                          }),
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setSettings({ ...settings, termsContentHtml: data.terms } as any);
+                          setSuccess("Terms generated successfully!");
+                          setTimeout(() => setSuccess(""), 3000);
+                        } else {
+                          setError(data.error || "Failed to generate terms");
+                        }
+                      } catch (err: any) {
+                        setError(err.message || "Failed to generate terms");
+                      } finally {
+                        setGeneratingTerms(false);
+                      }
+                    }}
+                    disabled={generatingTerms}
+                    className="gap-1.5"
+                  >
+                    {generatingTerms ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Generate with AI
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <Textarea
                   id="termsContentHtml"
                   value={(settings as any).termsContentHtml || ""}
                   onChange={(e) => setSettings({ ...settings, termsContentHtml: e.target.value } as any)}
-                  placeholder="<h2>Terms & Conditions</h2>\n<p>Your custom terms content here...</p>\n\n<h2>Privacy Policy</h2>\n<p>Your custom privacy policy...</p>"
+                  placeholder="TERMS OF USE & PRIVACY POLICY\n\nLast Updated: April 2, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n1. TERMS OF USE\n\n1.1 Section Title\nYour content here...\n\n• Bullet point\n• Bullet point"
                   rows={20}
                   className="font-mono text-xs"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Supports HTML tags: &lt;h2&gt;, &lt;h3&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, &lt;a&gt;, etc.
+                  Use plain text formatting with bullet points (•) and section dividers (━). Click 'Generate with AI' to create professional terms automatically.
                   Leave empty to show the default built-in terms (bilingual EN/PT).
                 </p>
               </div>
