@@ -45,30 +45,12 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    let imageUrl: string;
-    let cloud_storage_path: string;
+    // Use data URL - works always, no external dependencies
+    const base64 = buffer.toString('base64');
+    const imageUrl = `data:${file.type};base64,${base64}`;
+    const cloud_storage_path = `dataurl:${uniqueName}`;
     
-    // Try InterServer FTP upload first
-    if (isInterServerConfigured()) {
-      try {
-        console.log('[upload] Uploading to InterServer FTP...');
-        imageUrl = await uploadToInterServer(buffer, uniqueName);
-        cloud_storage_path = `interserver:${uniqueName}`;
-        console.log('[upload] InterServer upload successful:', imageUrl);
-      } catch (interserverError: any) {
-        console.warn('[upload] InterServer failed, using data URL fallback:', interserverError.message);
-        // Fallback to data URL
-        const base64 = buffer.toString('base64');
-        imageUrl = `data:${file.type};base64,${base64}`;
-        cloud_storage_path = `dataurl:${uniqueName}`;
-      }
-    } else {
-      console.log('[upload] InterServer not configured, using data URL');
-      // Use data URL (works always)
-      const base64 = buffer.toString('base64');
-      imageUrl = `data:${file.type};base64,${base64}`;
-      cloud_storage_path = `dataurl:${uniqueName}`;
-    }
+    console.log('[upload] Created data URL, size:', `${(base64.length / 1024).toFixed(0)}KB`);
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
