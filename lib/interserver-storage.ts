@@ -1,4 +1,5 @@
 import { Client } from 'basic-ftp';
+import { Readable } from 'stream';
 
 interface InterServerConfig {
   host: string;
@@ -16,7 +17,7 @@ function getInterServerConfig(): InterServerConfig {
     user: process.env.INTERSERVER_USER || 'st74638',
     password: process.env.INTERSERVER_PASSWORD || '',
     uploadDir: process.env.INTERSERVER_UPLOAD_DIR || '/uploads/',
-    publicUrl: process.env.INTERSERVER_PUBLIC_URL || 'https://storage2200.is.cc/uploads/',
+    publicUrl: process.env.INTERSERVER_PUBLIC_URL || 'http://67.217.57.194/uploads/',
   };
 }
 
@@ -29,6 +30,7 @@ export async function uploadToInterServer(
 ): Promise<string> {
   const config = getInterServerConfig();
   const client = new Client();
+  client.ftp.verbose = false; // Disable verbose logging
   
   try {
     console.log('[interserver] Connecting to FTP:', config.host);
@@ -39,7 +41,7 @@ export async function uploadToInterServer(
       port: config.port,
       user: config.user,
       password: config.password,
-      secure: false, // Use FTPS if needed
+      secure: false,
     });
     
     console.log('[interserver] Connected successfully');
@@ -48,17 +50,15 @@ export async function uploadToInterServer(
     try {
       await client.ensureDir(config.uploadDir);
     } catch (err) {
-      console.warn('[interserver] Directory may already exist:', err);
+      console.warn('[interserver] Directory may already exist');
     }
     
-    // Upload file
+    // Upload file - convert Buffer to Readable stream
     const remotePath = `${config.uploadDir}${filename}`;
     console.log('[interserver] Uploading to:', remotePath);
     
-    await client.uploadFrom(
-      Buffer.from(buffer) as any,
-      remotePath
-    );
+    const stream = Readable.from(buffer);
+    await client.uploadFrom(stream, remotePath);
     
     console.log('[interserver] Upload successful');
     
