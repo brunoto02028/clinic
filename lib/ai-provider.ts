@@ -1,11 +1,11 @@
-// Unified AI Provider — Gemini only
+// Unified AI Provider — Minimax (primary), Gemini (fallback)
 // All AI calls in the system should go through this layer.
 
 import { getConfigValue } from "@/lib/system-config";
 
 // ─── Types ───
 
-export type AIProvider = "gemini";
+export type AIProvider = "minimax" | "gemini" | "openai";
 
 export interface AICallOptions {
   provider?: AIProvider;
@@ -41,8 +41,16 @@ export interface AIStreamOptions {
 
 // ─── Config helpers ───
 
+async function getMinimaxKey(): Promise<string | null> {
+  return getConfigValue("MINIMAX_API_KEY");
+}
+
 async function getGeminiKey(): Promise<string | null> {
   return getConfigValue("GEMINI_API_KEY");
+}
+
+async function getOpenAIKey(): Promise<string | null> {
+  return getConfigValue("OPENAI_API_KEY");
 }
 
 async function getGeminiModel(): Promise<string> {
@@ -51,6 +59,48 @@ async function getGeminiModel(): Promise<string> {
 
 async function getImageModel(): Promise<string> {
   return (await getConfigValue("AI_IMAGE_MODEL")) || "gemini-2.5-flash-image";
+}
+
+// ─── Minimax AI calls ───
+
+async function callMinimaxDirect(
+  prompt: string,
+  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+): Promise<string> {
+  const apiKey = await getMinimaxKey();
+  if (!apiKey) throw new Error("MINIMAX_API_KEY is not configured.");
+  
+  const url = "https://api.minimax.chat/v1/text/chatcompletion_v2";
+  
+  const messages: any[] = [];
+  if (opts.systemPrompt) {
+    messages.push({ role: "system", content: opts.systemPrompt });
+  }
+  messages.push({ role: "user", content: prompt });
+  
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "abab6.5s-chat",
+      messages,
+      temperature: opts.temperature ?? 0.8,
+      max_tokens: opts.maxTokens ?? 2048,
+    }),
+  });
+  
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Minimax API error (${res.status}): ${err}`);
+  }
+  
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error("No response from Minimax");
+  return text.trim();
 }
 
 // ─── Gemini direct call (text generation) ───
@@ -230,9 +280,24 @@ async function analyzeImageGemini(
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Generate text using Gemini.
+ * Generate text using AI (Minimax primary, Gemini fallback).
  */
 export async function callAI(prompt: string, opts?: AICallOptions): Promise<string> {
+  // Try Minimax first (primary)
+  const minimaxKey = await getMinimaxKey();
+  if (minimaxKey) {
+    try {
+      return await callMinimaxDirect(prompt, {
+        temperature: opts?.temperature,
+        maxTokens: opts?.maxTokens,
+        systemPrompt: opts?.systemPrompt,
+      });
+    } catch (err: any) {
+      console.warn("[ai-provider] Minimax failed, falling back to Gemini:", err.message);
+    }
+  }
+  
+  // Fallback to Gemini
   return callGeminiDirect(prompt, {
     temperature: opts?.temperature,
     maxTokens: opts?.maxTokens,
@@ -378,15 +443,66 @@ export function parseAIJson<T = any>(raw: string): T {
  */
 export async function getActiveProviderInfo(): Promise<{
   provider: string;
-  hasAbacus: boolean;
+  hasMinimax: boolean;
   hasGemini: boolean;
+  hasOpenAI: boolean;
   defaultProvider: string;
 }> {
+  const minimaxKey = await getMinimaxKey();
   const geminiKey = await getGeminiKey();
+  const openaiKey = await getOpenAIKey();
+  
+  let provider = "none";
+  if (minimaxKey) provider = "minimax";
+  else if (geminiKey) provider = "gemini";
+  else if (openaiKey) provider = "openai";
+  
   return {
-    provider: geminiKey ? "gemini" : "none",
-    hasAbacus: false,
+    provider,
+    hasMinimax: !!minimaxKey,
     hasGemini: !!geminiKey,
-    defaultProvider: "gemini",
+    hasOpenAI: !!openaiKey,
+    defaultProvider: "minimax",
   };
+}
+
+/**
+ * Generate images using the best available AI provider.
+ * Priority: DALL-E 3 (OpenAI) > Gemini Image > Stable Diffusion
+ */
+export async function generateImageSmart(prompt: string, opts?: AIImageOptions): Promise<string[]> {
+  // Try OpenAI DALL-E 3 first (best quality)
+  const openaiKey = await getOpenAIKey();
+  if (openaiKey) {
+    try {
+      const res = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiKey}`,
+        },
+        body: JSON.stringify({
+          model: "dall-e-3",
+          prompt,
+          n: 1,
+          size: "1024x1024",
+          quality: opts?.quality === "high" ? "hd" : "standard",
+        }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        return data.data?.map((img: any) => img.url) || [];
+      }
+    } catch (err: any) {
+      console.warn("[ai-provider] DALL-E 3 failed, falling back to Gemini:", err.message);
+    }
+  }
+  
+  // Fallback to Gemini
+  return generateImageGemini(prompt, {
+    model: opts?.model,
+    aspectRatio: opts?.aspectRatio,
+    numImages: opts?.numImages,
+  });
 }

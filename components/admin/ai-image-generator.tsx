@@ -185,16 +185,18 @@ export function AIImageGenerator({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={buttonVariant} size="sm" className="gap-2 text-purple-600 border-purple-200 hover:bg-purple-50">
-          <Sparkles className="h-4 w-4" />
+        <Button variant={buttonVariant} size="sm" className="gap-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-500 hover:to-cyan-500 shadow-md">
+          <Sparkles className="h-4 w-4 animate-pulse" />
           {buttonLabel || "Generate with AI"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600" />
-            AI Image Generator — {section}
+            <Sparkles className="h-5 w-5 text-teal-600 animate-pulse" />
+            <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
+              AI Image Generator — {section}
+            </span>
           </DialogTitle>
         </DialogHeader>
 

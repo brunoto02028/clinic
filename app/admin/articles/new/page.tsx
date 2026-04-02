@@ -242,12 +242,14 @@ export default function NewArticlePage() {
       </div>
 
       {/* AI Chat Panel */}
-      <Card className="border-purple-200 bg-purple-50/30">
+      <Card className="border-teal-500/30 bg-gradient-to-br from-teal-500/5 to-cyan-500/5 shadow-lg shadow-teal-500/5">
         <CardHeader className="pb-3 cursor-pointer" onClick={() => setChatOpen(!chatOpen)}>
           <CardTitle className="flex items-center justify-between text-lg">
             <span className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-purple-600" />
-              AI Article Assistant
+              <Sparkles className="h-5 w-5 text-teal-500 animate-pulse" />
+              <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent font-black">
+                AI Article Assistant
+              </span>
             </span>
             <span className="text-xs font-normal text-muted-foreground">{chatOpen ? "Click to collapse" : "Click to expand"}</span>
           </CardTitle>
@@ -255,7 +257,7 @@ export default function NewArticlePage() {
         {chatOpen && (
           <CardContent className="space-y-3">
             {/* Chat Messages */}
-            <div className="border rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
+            <div className="border border-teal-500/20 rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
               {chatMessages.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-6">
                   Start a conversation with the AI. Describe the article topic, ask questions, request changes — the AI will help you craft the perfect article.
@@ -265,8 +267,8 @@ export default function NewArticlePage() {
                 <div key={i} className={`flex gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                     m.role === "user"
-                      ? "bg-purple-600 text-white"
-                      : "bg-muted text-foreground"
+                      ? "bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md"
+                      : "bg-muted text-foreground border border-teal-500/10"
                   }`}>
                     <div className="whitespace-pre-wrap">{m.role === "assistant" ? formatChatReply(m.content) : m.content}</div>
                   </div>
