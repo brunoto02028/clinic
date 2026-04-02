@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { createS3Client, getBucketConfig } from "@/lib/aws-config";
 
 export const dynamic = "force-dynamic";
 
@@ -36,23 +36,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
     }
 
-    // Use persistent uploads directory (outside project on VPS, inside public/ for dev)
-    const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
-
     // Generate unique filename
-    const ext = path.extname(file.name) || ".jpg";
-    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(ext, "");
-    const uniqueName = `${Date.now()}-${safeName}${ext}`;
-    const filePath = path.join(uploadsDir, uniqueName);
+    const ext = file.name.split('.').pop() || "jpg";
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(`.${ext}`, "");
+    const uniqueName = `${Date.now()}-${safeName}.${ext}`;
 
-    // Write file to disk
+    // Upload to S3
+    const { bucketName, folderPrefix } = getBucketConfig();
+    const cloud_storage_path = `${folderPrefix}public/uploads/${uniqueName}`;
+    
     const bytes = await file.arrayBuffer();
-    await writeFile(filePath, new Uint8Array(bytes));
+    const buffer = Buffer.from(bytes);
+    
+    const s3Client = createS3Client();
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: cloud_storage_path,
+      Body: buffer,
+      ContentType: file.type,
+      ACL: 'public-read', // Make publicly accessible
+    });
 
-    // Public URL
-    const imageUrl = `/uploads/${uniqueName}`;
-    const cloud_storage_path = `local:${imageUrl}`;
+    await s3Client.send(command);
+
+    // Public URL for S3
+    const region = process.env.AWS_REGION || "us-east-1";
+    const imageUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${cloud_storage_path}`;
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
