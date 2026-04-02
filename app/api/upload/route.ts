@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { uploadToInterServer, isInterServerConfigured } from "@/lib/interserver-storage";
+import { writeFileSync, mkdirSync, existsSync } from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -44,24 +45,32 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    
-    // Use data URL - works always, no external dependencies
-    const base64 = buffer.toString('base64');
-    const imageUrl = `data:${file.type};base64,${base64}`;
-    const cloud_storage_path = `dataurl:${uniqueName}`;
-    
-    console.log('[upload] Created data URL, size:', `${(base64.length / 1024).toFixed(0)}KB`);
+
+    // Save to persistent volume
+    const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+    if (!existsSync(uploadsDir)) {
+      mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const filePath = path.join(uploadsDir, uniqueName);
+    writeFileSync(filePath, buffer);
+
+    const imageUrl = `/uploads/${uniqueName}`;
+    const cloud_storage_path = `local:${imageUrl}`;
+
+    console.log('[upload] Saved file to:', filePath);
+    console.log('[upload] Public URL:', imageUrl);
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
     const userEmail = session.user?.email;
-    
+
     // Verify user exists in DB, fallback to email lookup
     const dbUser = await prisma.user.findFirst({
       where: userId ? { id: userId } : { email: userEmail || "" },
       select: { id: true },
     });
-    
+
     if (!dbUser && userEmail) {
       const userByEmail = await prisma.user.findUnique({
         where: { email: userEmail },
