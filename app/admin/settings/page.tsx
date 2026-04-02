@@ -169,6 +169,7 @@ export default function AdminSettingsPage() {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [generatingTerms, setGeneratingTerms] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [currentImageField, setCurrentImageField] = useState<string>("");
   const { toast } = useToast();
