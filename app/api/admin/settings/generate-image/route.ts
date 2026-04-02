@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
-import { generateImage } from '@/lib/ai-provider';
+import { generateImageSmart } from '@/lib/ai-provider';
 import { getConfigValue } from '@/lib/system-config';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       if (!imageBase64) {
         const refPrompt = `Professional photograph for a physiotherapy clinic website, incorporating elements from a provided reference photo: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
         try {
-          const urls = await generateImage(refPrompt, { numImages: 1 });
+          const urls = await generateImageSmart(refPrompt, { numImages: 1 });
           if (urls.length > 0) {
             const url = urls[0];
             if (url.startsWith('data:image')) {
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       // ─── Standard generation (no reference image) ───
       const fullPrompt = `Professional photograph for a physiotherapy clinic website: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
       try {
-        const urls = await generateImage(fullPrompt, { numImages: 1 });
+        const urls = await generateImageSmart(fullPrompt, { numImages: 1 });
         if (urls.length > 0) {
           const url = urls[0];
           if (url.startsWith('data:image')) {

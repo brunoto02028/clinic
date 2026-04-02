@@ -106,7 +106,7 @@ export function AIImageGenerator({
     elapsedRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 90000);
+    const timeout = setTimeout(() => controller.abort(), 45000); // Reduced from 90s to 45s
 
     try {
       const payload: any = { prompt, aspectRatio, section };
@@ -123,7 +123,7 @@ export function AIImageGenerator({
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
         const text = await res.text().catch(() => "");
-        throw new Error(`Server error (${res.status}): ${text.slice(0, 200) || "No response"}. Try again or upload manually.`);
+        throw new Error(`Server error (${res.status}): ${text.slice(0, 200) || "No response"}. Try uploading manually instead.`);
       }
       const data = await res.json();
       if (!res.ok) {
@@ -138,9 +138,9 @@ export function AIImageGenerator({
       setGallery((prev) => [data.imageUrl, ...prev]);
     } catch (err: any) {
       if (err.name === "AbortError") {
-        setError("Image generation timed out after 90 seconds. The AI service may be overloaded. Please try again or upload an image manually.");
+        setError("AI generation is taking too long (45s timeout). The service may be busy. Please use the 'Upload Image' button instead for instant results.");
       } else {
-        setError(err.message || "Unknown error generating image. Please try again.");
+        setError(err.message || "AI generation failed. Please use the 'Upload Image' button instead.");
       }
     } finally {
       clearTimeout(timeout);
