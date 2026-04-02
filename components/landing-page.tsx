@@ -374,8 +374,10 @@ export default function LandingPage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={settings.heroImageUrl}
-                    alt="Professional physiotherapy treatment session"
+                    alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
                     className="absolute inset-0 w-full h-full object-cover"
+                    loading="eager"
+                    fetchPriority="high"
                   />
                 )}
                 {!settings?.heroImageUrl && (
@@ -397,7 +399,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
             <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="relative h-10 w-10 sm:h-11 sm:w-11 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0">
-                <img src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" className="h-full w-full object-cover scale-[1.15]" />
+                <img src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" className="h-full w-full object-cover scale-[1.15]" loading="lazy" />
               </div>
               <div className="text-left">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
@@ -1062,7 +1064,7 @@ export default function LandingPage() {
                   <Card className="h-full card-hover overflow-hidden border border-border cursor-pointer">
                     {article.imageUrl && (
                       <div className="relative aspect-video bg-muted overflow-hidden">
-                        <img src={article.imageUrl} alt={article.title} className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={article.imageUrl} alt={article.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
                       </div>
                     )}
                     <CardContent className="p-4 sm:p-6">
