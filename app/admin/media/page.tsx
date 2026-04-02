@@ -40,6 +40,8 @@ export default function MediaLibraryPage() {
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const fetchImages = useCallback(async () => {
     setLoading(true);
@@ -100,6 +102,35 @@ export default function MediaLibraryPage() {
     } catch {
       setError("Delete failed");
     }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} image(s) permanently?`)) return;
+    
+    setDeleting(true);
+    let deleted = 0;
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/image-library/${id}`, { method: "DELETE" });
+        if (res.ok) deleted++;
+      } catch {}
+    }
+    setDeleting(false);
+    setSelectedIds(new Set());
+    setSuccess(`${deleted} image(s) deleted`);
+    setTimeout(() => setSuccess(""), 3000);
+    fetchImages();
   };
 
   const copyUrl = (url: string) => {
@@ -202,6 +233,18 @@ export default function MediaLibraryPage() {
             </button>
           ))}
         </div>
+        {selectedIds.size > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={deleting}
+            className="gap-1.5"
+          >
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Delete ({selectedIds.size})
+          </Button>
+        )}
       </div>
 
       {/* Drop Zone */}
@@ -237,7 +280,9 @@ export default function MediaLibraryPage() {
           {filtered.map((img) => (
             <div
               key={img.id}
-              className="group relative rounded-lg overflow-hidden border bg-muted/20 aspect-square cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+              className={`group relative rounded-lg overflow-hidden border bg-muted/20 aspect-square cursor-pointer transition-all ${
+                selectedIds.has(img.id) ? "ring-2 ring-destructive" : "hover:ring-2 hover:ring-primary"
+              }`}
               onClick={() => setPreviewImg(img)}
             >
               <img
@@ -245,7 +290,22 @@ export default function MediaLibraryPage() {
                 alt={img.altText || img.originalName}
                 className="w-full h-full object-cover"
                 loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E';
+                  e.currentTarget.onerror = null;
+                }}
               />
+              <div className="absolute top-2 left-2 z-10">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(img.id)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    toggleSelect(img.id);
+                  }}
+                  className="h-4 w-4 rounded border-2 border-white shadow-sm cursor-pointer"
+                />
+              </div>
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end">
                 <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <p className="text-white text-[10px] truncate font-medium">{img.originalName}</p>
