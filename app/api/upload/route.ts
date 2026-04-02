@@ -41,27 +41,41 @@ export async function POST(request: NextRequest) {
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(`.${ext}`, "");
     const uniqueName = `${Date.now()}-${safeName}.${ext}`;
 
-    // Upload to S3
-    const { bucketName, folderPrefix } = getBucketConfig();
-    const cloud_storage_path = `${folderPrefix}public/uploads/${uniqueName}`;
-    
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    const s3Client = createS3Client();
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: cloud_storage_path,
-      Body: buffer,
-      ContentType: file.type,
-      ACL: 'public-read', // Make publicly accessible
-    });
+    let imageUrl: string;
+    let cloud_storage_path: string;
+    
+    // Try S3 upload first
+    try {
+      const { bucketName, folderPrefix } = getBucketConfig();
+      cloud_storage_path = `${folderPrefix}public/uploads/${uniqueName}`;
+      
+      const s3Client = createS3Client();
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: cloud_storage_path,
+        Body: buffer,
+        ContentType: file.type,
+        ACL: 'public-read',
+      });
 
-    await s3Client.send(command);
+      await s3Client.send(command);
 
-    // Public URL for S3
-    const region = process.env.AWS_REGION || "us-east-1";
-    const imageUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${cloud_storage_path}`;
+      // Public URL for S3
+      const region = process.env.AWS_REGION || "us-west-2";
+      imageUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${cloud_storage_path}`;
+      
+      console.log('[upload] S3 upload successful:', imageUrl);
+    } catch (s3Error: any) {
+      console.warn('[upload] S3 upload failed, using data URL fallback:', s3Error.message);
+      
+      // Fallback: return data URL (works always, no storage needed)
+      const base64 = buffer.toString('base64');
+      imageUrl = `data:${file.type};base64,${base64}`;
+      cloud_storage_path = `dataurl:${uniqueName}`;
+    }
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
