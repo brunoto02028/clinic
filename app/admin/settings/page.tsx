@@ -1597,6 +1597,14 @@ export default function AdminSettingsPage() {
                           ) : (
                             <div className="flex gap-2">
                               <Button variant="outline" onClick={() => { setCurrentImageField("__mls_treatment"); setShowImagePicker(true); }}><Upload className="h-4 w-4 mr-2" />Upload</Button>
+                              <AIImageGenerator
+                                section="MLS Laser Treatment"
+                                defaultPrompt="A professional physiotherapist using MLS laser therapy on a patient's shoulder in a modern clinic, medical equipment visible, bright clinical setting"
+                                aspectRatio="16:9"
+                                onApply={(url) => setMls("treatmentImageUrl", url)}
+                                buttonLabel="Generate"
+                                buttonVariant="outline"
+                              />
                             </div>
                           )}
                           <Input value={mls.treatmentImageUrl || ""} onChange={(e) => setMls("treatmentImageUrl", e.target.value)} placeholder="/uploads/mls-laser-treatment.jpg" className="text-xs" />
@@ -1611,6 +1619,14 @@ export default function AdminSettingsPage() {
                           ) : (
                             <div className="flex gap-2">
                               <Button variant="outline" onClick={() => { setCurrentImageField("__mls_device"); setShowImagePicker(true); }}><Upload className="h-4 w-4 mr-2" />Upload</Button>
+                              <AIImageGenerator
+                                section="MLS Laser Device"
+                                defaultPrompt="Professional MLS laser therapy device in a modern clinic, medical equipment, high-tech appearance, clean clinical environment"
+                                aspectRatio="16:9"
+                                onApply={(url) => setMls("deviceImageUrl", url)}
+                                buttonLabel="Generate"
+                                buttonVariant="outline"
+                              />
                             </div>
                           )}
                           <Input value={mls.deviceImageUrl || ""} onChange={(e) => setMls("deviceImageUrl", e.target.value)} placeholder="/uploads/mls-laser-device.jpg" className="text-xs" />
