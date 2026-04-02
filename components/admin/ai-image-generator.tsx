@@ -134,8 +134,40 @@ export function AIImageGenerator({
         }
         return;
       }
-      setPreviewUrl(data.imageUrl);
-      setGallery((prev) => [data.imageUrl, ...prev]);
+      // If imageUrl is a data URL, we need to upload it first
+      if (data.imageUrl.startsWith('data:image')) {
+        setPreviewUrl(data.imageUrl);
+        setGallery((prev) => [data.imageUrl, ...prev]);
+        
+        // Auto-upload the generated image to get a permanent URL
+        try {
+          const blob = await (await fetch(data.imageUrl)).blob();
+          const file = new File([blob], data.filename || 'generated.png', { type: 'image/png' });
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            const permanentUrl = uploadData.url || uploadData.imageUrl;
+            if (permanentUrl) {
+              setPreviewUrl(permanentUrl);
+              setGallery((prev) => [permanentUrl, ...prev.slice(1)]);
+              if (onApply) onApply(permanentUrl);
+            }
+          }
+        } catch (uploadErr) {
+          console.warn('[ai-image-generator] Auto-upload failed, using data URL:', uploadErr);
+          // Still usable as data URL
+        }
+      } else {
+        setPreviewUrl(data.imageUrl);
+        setGallery((prev) => [data.imageUrl, ...prev]);
+      }
     } catch (err: any) {
       if (err.name === "AbortError") {
         setError("AI generation is taking too long (45s timeout). The service may be busy. Please use the 'Upload Image' button instead for instant results.");
