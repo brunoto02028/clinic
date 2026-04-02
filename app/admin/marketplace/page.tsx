@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ImageUploader } from "@/components/admin/ImageUploader";
 
 type Tab = "products" | "orders";
 
@@ -47,7 +48,7 @@ const ORDER_STATUSES: Record<string, { label: string; color: string; icon: any }
 const emptyProduct = {
   name: "", description: "", shortDescription: "", category: "physical_product",
   price: "", costPrice: "", compareAtPrice: "", vatRate: "20", vatIncluded: true,
-  imageUrl: "", sku: "", barcode: "", weight: "", stockQuantity: "",
+  imageUrl: "", images: "[]", sku: "", barcode: "", weight: "", stockQuantity: "",
   lowStockAlert: "5", trackStock: false, shippingCost: "0", freeShippingOver: "",
   isDigital: false, digitalFileUrl: "",
   isAffiliate: false, affiliateUrl: "", affiliateTag: "", affiliateCommission: "", amazonAsin: "",
@@ -147,6 +148,7 @@ export default function AdminMarketplacePage() {
       vatRate: String(p.vatRate ?? "20"),
       vatIncluded: p.vatIncluded !== false,
       imageUrl: p.imageUrl || "",
+      images: p.images || "[]",
       sku: p.sku || "",
       barcode: p.barcode || "",
       weight: String(p.weight ?? ""),
@@ -890,9 +892,23 @@ export default function AdminMarketplacePage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Image URL</label>
-                    <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." />
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Product Images</label>
+                    <ImageUploader
+                      onUpload={(imageUrl) => {
+                        if (!form.imageUrl) {
+                          // First image becomes main image
+                          setForm({ ...form, imageUrl });
+                        } else {
+                          // Additional images go to images array
+                          const currentImages = form.images ? JSON.parse(form.images) : [];
+                          setForm({ ...form, images: JSON.stringify([...currentImages, imageUrl]) });
+                        }
+                      }}
+                      currentImages={[form.imageUrl, ...(form.images ? JSON.parse(form.images) : [])].filter(Boolean)}
+                      maxImages={5}
+                      category="products"
+                    />
                   </div>
                 </div>
 

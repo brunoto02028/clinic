@@ -854,26 +854,74 @@ export default function ShopPage() {
 
         {/* ── Footer ── */}
         <footer className="border-t border-white/5 bg-muted/20 mt-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center">
-                  <span className="text-white font-black text-sm">B</span>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+            {/* Main Footer Content */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+              {/* Brand Column */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <Logo size="sm" />
                 </div>
-                <div>
-                  <p className="font-bold text-sm text-foreground">BPR 3D Recovery Shop</p>
-                  <p className="text-[11px] text-muted-foreground">by <a href="https://bpr.rehab" className="text-teal-400 hover:underline">bpr.rehab</a></p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  3D printed foot care products designed by physiotherapists for real recovery results.
+                </p>
+                <div className="flex items-center gap-3">
+                  <a href="https://instagram.com/bpr.rehab" target="_blank" rel="noopener noreferrer" 
+                    className="w-8 h-8 rounded-lg bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors">
+                    <span className="text-sm">📷</span>
+                  </a>
+                  <a href="https://facebook.com/bpr.rehab" target="_blank" rel="noopener noreferrer"
+                    className="w-8 h-8 rounded-lg bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors">
+                    <span className="text-sm">📘</span>
+                  </a>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <a href="https://bpr.rehab" className="hover:text-foreground transition-colors">About BPR</a>
-                <a href="https://bpr.rehab/privacy" className="hover:text-foreground transition-colors">Privacy</a>
-                <a href="https://bpr.rehab/terms" className="hover:text-foreground transition-colors">Terms</a>
+
+              {/* Shop Column */}
+              <div>
+                <h4 className="font-bold text-sm text-foreground mb-3">Shop</h4>
+                <ul className="space-y-2 text-xs text-muted-foreground">
+                  <li><button onClick={() => setActiveCategory("all")} className="hover:text-foreground transition-colors">All Products</button></li>
+                  <li><button onClick={() => setActiveCategory("toe_support")} className="hover:text-foreground transition-colors">Toe Support</button></li>
+                  <li><button onClick={() => setActiveCategory("arch_heel")} className="hover:text-foreground transition-colors">Arch & Heel</button></li>
+                  <li><button onClick={() => setActiveCategory("recovery_kits")} className="hover:text-foreground transition-colors">Recovery Kits</button></li>
+                  <li><button onClick={() => setActiveCategory("massage_tools")} className="hover:text-foreground transition-colors">Massage Tools</button></li>
+                </ul>
+              </div>
+
+              {/* Support Column */}
+              <div>
+                <h4 className="font-bold text-sm text-foreground mb-3">Support</h4>
+                <ul className="space-y-2 text-xs text-muted-foreground">
+                  <li><a href="https://bpr.rehab/contact" className="hover:text-foreground transition-colors">Contact Us</a></li>
+                  <li><a href="https://bpr.rehab" className="hover:text-foreground transition-colors">About BPR</a></li>
+                  <li><a href="/shop?help=shipping" className="hover:text-foreground transition-colors">Shipping Info</a></li>
+                  <li><a href="/shop?help=returns" className="hover:text-foreground transition-colors">Returns & Refunds</a></li>
+                  <li><a href="/shop?help=faq" className="hover:text-foreground transition-colors">FAQ</a></li>
+                </ul>
+              </div>
+
+              {/* Legal Column */}
+              <div>
+                <h4 className="font-bold text-sm text-foreground mb-3">Legal</h4>
+                <ul className="space-y-2 text-xs text-muted-foreground">
+                  <li><a href="https://bpr.rehab/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
+                  <li><a href="https://bpr.rehab/terms" className="hover:text-foreground transition-colors">Terms of Service</a></li>
+                  <li><a href="https://bpr.rehab/cookies" className="hover:text-foreground transition-colors">Cookie Policy</a></li>
+                  <li><a href="/shop?help=copyright" className="hover:text-foreground transition-colors">Copyright Notice</a></li>
+                </ul>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground/50 text-center mt-4">
-              Most products in this shop are BPR in-house items. A small number of complementary external products may link to Amazon and may earn a commission at no extra cost to you.
-            </p>
+
+            {/* Bottom Bar */}
+            <div className="pt-6 border-t border-white/5">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+                <p>© {new Date().getFullYear()} Bruno Physical Rehabilitation. All rights reserved.</p>
+                <p className="text-center md:text-right">
+                  Most products are BPR in-house 3D printed items. Some external products may link to Amazon and earn a commission at no extra cost to you.
+                </p>
+              </div>
+            </div>
           </div>
         </footer>
       </main>
