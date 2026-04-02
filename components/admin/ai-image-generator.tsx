@@ -106,7 +106,7 @@ export function AIImageGenerator({
     elapsedRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout for Gemini image generation
+    const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout for Gemini (can be slow)
 
     try {
       const payload: any = { prompt, aspectRatio, section };
@@ -170,7 +170,7 @@ export function AIImageGenerator({
       }
     } catch (err: any) {
       if (err.name === "AbortError") {
-        setError("AI generation timed out after 60 seconds. Gemini may be overloaded. Please try again or use the 'Upload Image' button for instant results.");
+        setError("AI generation timed out after 120 seconds. Gemini image generation is very slow. Please use the 'Upload Image' button for instant results, or consider configuring OpenAI for faster generation (10-20s).");
       } else {
         setError(err.message || "AI generation failed. Please use the 'Upload Image' button instead.");
       }
@@ -230,6 +230,11 @@ export function AIImageGenerator({
               AI Image Generator — {section}
             </span>
           </DialogTitle>
+          <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-sm text-amber-800">
+              ⚠️ <strong>Note:</strong> AI generation with Gemini can take 60-120 seconds. For instant results, use the <strong>&quot;Upload Image&quot;</strong> button instead.
+            </p>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">
