@@ -64,7 +64,15 @@ export async function POST(req: NextRequest) {
     }
 
     const hasOnlyAffiliates = orderItems.every((i: any) => i.isAffiliate);
-    const total = parseFloat((subtotal + shippingTotal).toFixed(2));
+    
+    // Calculate Stripe fees (1.5% + £0.20) and add to total
+    let stripeFee = 0;
+    if (!hasOnlyAffiliates) {
+      const baseTotal = subtotal + shippingTotal;
+      stripeFee = (baseTotal * 0.015) + 0.20; // 1.5% + £0.20
+    }
+    
+    const total = parseFloat((subtotal + shippingTotal + stripeFee).toFixed(2));
     const status = hasOnlyAffiliates ? "paid" : total === 0 ? "paid" : "pending";
 
     // Generate order number

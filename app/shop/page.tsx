@@ -25,32 +25,32 @@ const getProductImage = (product: any): string | null => {
 type CheckoutStep = "cart" | "shipping" | "done";
 
 const CATEGORY_CONFIG: Record<string, { label: string; emoji: string; icon: any; color: string; bg: string }> = {
-  supplement:       { label: "Complementary Add-ons",  emoji: "➕", icon: Heart,   color: "text-pink-400",   bg: "bg-pink-500/10 border-pink-500/20" },
-  equipment:        { label: "3D Rehab Tools",         emoji: "🛠️", icon: Box,     color: "text-cyan-400",   bg: "bg-cyan-500/10 border-cyan-500/20" },
-  digital_program:  { label: "Guides & Education",     emoji: "�", icon: Video,   color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
-  physical_product: { label: "3D Foot Care",           emoji: "🦶", icon: Package, color: "text-emerald-400",bg: "bg-emerald-500/10 border-emerald-500/20" },
-  special_session:  { label: "Custom Assessments",     emoji: "⚡", icon: Zap,     color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/20" },
-  subscription:     { label: "Printed Recovery Boxes", emoji: "�", icon: Crown,   color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
+  toe_support:      { label: "Toe Spacers & Support",     emoji: "🦶", icon: Package, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+  arch_heel:        { label: "Arch & Heel Support",       emoji: "�", icon: Box,     color: "text-cyan-400",   bg: "bg-cyan-500/10 border-cyan-500/20" },
+  recovery_kits:    { label: "Recovery Kits",             emoji: "📦", icon: Crown,   color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
+  massage_tools:    { label: "Massage & Mobility Tools",  emoji: "🛠️", icon: Heart,   color: "text-pink-400",   bg: "bg-pink-500/10 border-pink-500/20" },
+  custom_insoles:   { label: "Custom Insoles",            emoji: "⚡", icon: Zap,     color: "text-amber-400",  bg: "bg-amber-500/10 border-amber-500/20" },
+  guides_education: { label: "Guides & Education",        emoji: "📚", icon: Video,   color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
 };
 
 const HERO_SLIDES = [
   {
     image: "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?w=1920&q=90&auto=format&fit=crop&crop=center",
-    tag1: "3D Printed In-House", tag2: "BPR Designed",
-    title: "Recovery Products,", highlight: "Made by BPR",
-    sub: "Explore BPR's in-house 3D printed foot care tools, supports and rehab accessories produced for real patients and practical day-to-day recovery.",
+    tag1: "3D Printed In-House", tag2: "Clinically Designed",
+    title: "3D Printed Foot Care", highlight: "for Real Recovery",
+    sub: "Toe spacers, arch supports, heel lifts and recovery kits designed by physiotherapists. Made in-house with medical-grade materials for plantar fasciitis, bunions and daily comfort.",
   },
   {
     image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1920&q=90&auto=format&fit=crop&crop=center",
-    tag1: "Foot Care Focus", tag2: "Printed to Order",
-    title: "3D Foot Care for", highlight: "Daily Comfort",
-    sub: "Toe spacers, metatarsal supports, bunion comfort pieces and foot massage tools designed to give patients useful solutions beyond generic retail products.",
+    tag1: "Custom Solutions", tag2: "Printed to Order",
+    title: "From Support Tools to", highlight: "Custom Insoles",
+    sub: "Start with ready-made arch supports and toe spacers, then upgrade to semi-custom or fully personalized 3D printed insoles based on clinical assessment.",
   },
   {
     image: "https://images.unsplash.com/photo-1598970434795-0c54fe7c0642?w=1920&q=90&auto=format&fit=crop&crop=center",
-    tag1: "Custom Pathway", tag2: "Clinic-Led",
-    title: "From Accessories to", highlight: "Custom Orthotics",
-    sub: "Use the shop as the entry point into custom BPR products, including guided assessments and your future 3D printed orthotic workflow.",
+    tag1: "Clinical Quality", tag2: "Affordable Access",
+    title: "Professional Grade", highlight: "Foot Support Products",
+    sub: "Skip generic retail products. Get clinically informed 3D printed supports, massage tools and recovery kits designed for real biomechanical needs.",
   },
 ];
 
@@ -389,9 +389,23 @@ export default function ShopPage() {
             {/* Cart footer */}
             {checkoutStep !== "done" && cart.length > 0 && (
               <div className="border-t border-white/10 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total</span>
-                  <span className="text-xl font-black text-foreground">£{cartTotal.toFixed(2)}</span>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-semibold text-foreground">£{cartTotal.toFixed(2)}</span>
+                  </div>
+                  {checkoutStep === "shipping" && !cart.every((i) => i.isAffiliate) && (
+                    <>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Payment processing fee</span>
+                        <span className="text-muted-foreground">£{((cartTotal * 0.015) + 0.20).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                        <span className="font-semibold text-foreground">Total</span>
+                        <span className="text-xl font-black text-foreground">£{(cartTotal + (cartTotal * 0.015) + 0.20).toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
                 {cart.some((i) => i.isAffiliate) && (
                   <p className="text-[11px] text-orange-400">Amazon items will open in a new tab</p>
@@ -490,13 +504,14 @@ export default function ShopPage() {
       )}
 
       <main>
-        {/* ── Hero Rotativo ── */}
-        <section className="relative overflow-hidden border-b border-white/5" style={{ minHeight: 420 }}>
-          {/* Background image rotativa */}
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
+        {/* ── Hero Carousel ── */}
+        <section className="relative h-[450px] sm:h-[500px] overflow-hidden border-b border-white/5">
+          {/* Background image */}
+          <img
+            src={HERO_SLIDES[heroSlide].image}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
             style={{
-              backgroundImage: `url('${HERO_SLIDES[heroSlide].image}')`,
               opacity: heroTransition ? 1 : 0,
             }}
           />
@@ -505,7 +520,7 @@ export default function ShopPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
           {/* Content */}
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
             <div className="max-w-2xl">
               <div
                 className="flex items-center gap-2 mb-4 transition-all duration-500"
@@ -522,7 +537,7 @@ export default function ShopPage() {
               </div>
 
               <h1
-                className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight transition-all duration-500"
+                className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight transition-all duration-500"
                 style={{ opacity: heroTransition ? 1 : 0, transform: heroTransition ? "translateY(0)" : "translateY(12px)" }}
               >
                 {HERO_SLIDES[heroSlide].title}{" "}
@@ -532,7 +547,7 @@ export default function ShopPage() {
               </h1>
 
               <p
-                className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed max-w-xl transition-all duration-500 delay-75"
+                className="mt-3 text-sm sm:text-base text-slate-300 leading-relaxed max-w-xl transition-all duration-500 delay-75"
                 style={{ opacity: heroTransition ? 1 : 0, transform: heroTransition ? "translateY(0)" : "translateY(12px)" }}
               >
                 {HERO_SLIDES[heroSlide].sub}
@@ -551,7 +566,7 @@ export default function ShopPage() {
                 ))}
               </div>
 
-              <div className="flex items-center gap-3 mt-8">
+              <div className="flex items-center gap-3 mt-6">
                 <Button
                   className="gap-2 bg-teal-500 hover:bg-teal-400 text-black font-bold px-6 rounded-full shadow-lg shadow-teal-500/30"
                   onClick={() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth" })}>
@@ -703,7 +718,7 @@ export default function ShopPage() {
 
                       {/* Image area — clickable to product page */}
                       <div className="relative h-48 bg-gradient-to-br from-muted/50 to-muted/20 overflow-hidden flex items-center justify-center cursor-pointer"
-                        onClick={() => router.push(`/shop/${product.id}`)}>
+                        onClick={() => router.push(`/shop/product/${product.slug || product.id}`)}>
                         {product.featured && (
                           <div className="absolute top-3 left-3 z-10">
                             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-black text-[10px] font-black">

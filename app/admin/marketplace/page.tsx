@@ -179,7 +179,7 @@ export default function AdminMarketplacePage() {
       const body: any = { ...form };
       if (editingId) body.id = editingId;
 
-      await fetch("/api/admin/journey/products", {
+      await fetch("/api/admin/marketplace/products", {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
