@@ -84,12 +84,15 @@ export async function DELETE(
 
     // Delete file from storage
     try {
-      if (image.cloud_storage_path.startsWith("local:")) {
+      if (image.cloud_storage_path.startsWith("dataurl:")) {
+        // Data URL - no external storage to delete
+        console.log('[delete] Data URL image, skipping storage deletion');
+      } else if (image.cloud_storage_path.startsWith("local:")) {
         // Local file - delete from disk
         const localPath = image.cloud_storage_path.replace("local:", "");
         const fullPath = path.join(process.cwd(), "public", localPath);
         await unlink(fullPath).catch(() => {});
-      } else {
+      } else if (image.cloud_storage_path.startsWith("s3:")) {
         // S3 file
         await deleteFile(image.cloud_storage_path);
       }
