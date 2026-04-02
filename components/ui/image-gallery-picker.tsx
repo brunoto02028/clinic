@@ -66,6 +66,8 @@ export function ImageGalleryPicker({
   const [uploading, setUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>(category || "all");
+  const [selectedForDelete, setSelectedForDelete] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -185,6 +187,57 @@ export function ImageGalleryPicker({
     }
   };
 
+  const toggleSelectForDelete = (imageId: string) => {
+    const newSelected = new Set(selectedForDelete);
+    if (newSelected.has(imageId)) {
+      newSelected.delete(imageId);
+    } else {
+      newSelected.add(imageId);
+    }
+    setSelectedForDelete(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedForDelete.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedForDelete.size} image(s)?`)) return;
+
+    setIsDeleting(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const imageId of selectedForDelete) {
+        try {
+          const res = await fetch(`/api/image-library/${imageId}`, {
+            method: "DELETE",
+          });
+          if (res.ok) successCount++;
+          else failCount++;
+        } catch {
+          failCount++;
+        }
+      }
+
+      toast({
+        title: "Bulk Delete Complete",
+        description: `Deleted ${successCount} image(s). ${failCount > 0 ? `Failed: ${failCount}` : ''}`,
+        variant: failCount > 0 ? "destructive" : "default",
+      });
+
+      setSelectedForDelete(new Set());
+      await fetchImages();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete images",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
     return new Promise((resolve, reject) => {
       const img = document.createElement("img");
@@ -268,6 +321,21 @@ export function ImageGalleryPicker({
                 <SelectItem value="contact">Contact</SelectItem>
               </SelectContent>
             </Select>
+            {selectedForDelete.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Delete ({selectedForDelete.size})
+              </Button>
+            )}
           </div>
 
           {/* Images Grid */}
@@ -293,6 +361,8 @@ export function ImageGalleryPicker({
                       "relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all",
                       selectedImage === image.imageUrl
                         ? "border-primary ring-2 ring-primary ring-offset-2"
+                        : selectedForDelete.has(image.id)
+                        ? "border-destructive ring-2 ring-destructive ring-offset-2"
                         : "border-transparent hover:border-muted-foreground/20"
                     )}
                     onClick={() => setSelectedImage(image.imageUrl)}
@@ -304,12 +374,27 @@ export function ImageGalleryPicker({
                         alt={image.altText || image.fileName}
                         className="absolute inset-0 w-full h-full object-cover"
                         loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-image.png';
+                          e.currentTarget.onerror = null;
+                        }}
                       />
                       {selectedImage === image.imageUrl && (
                         <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                           <CheckCircle className="h-8 w-8 text-primary" />
                         </div>
                       )}
+                    </div>
+                    <div className="absolute top-2 left-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedForDelete.has(image.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          toggleSelectForDelete(image.id);
+                        }}
+                        className="h-5 w-5 rounded border-2 border-white cursor-pointer"
+                      />
                     </div>
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
