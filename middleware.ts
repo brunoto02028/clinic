@@ -65,6 +65,17 @@ function matchesRoute(path: string, routes: string[]): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Force HTTPS redirect in production
+  if (
+    process.env.NODE_ENV === 'production' &&
+    request.headers.get('x-forwarded-proto') !== 'https'
+  ) {
+    return NextResponse.redirect(
+      `https://${request.headers.get('host')}${request.nextUrl.pathname}${request.nextUrl.search}`,
+      301
+    );
+  }
+
   // Skip middleware for static files and API auth routes
   if (
     pathname.startsWith('/_next') ||
