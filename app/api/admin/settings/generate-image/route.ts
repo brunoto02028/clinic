@@ -114,50 +114,48 @@ export async function POST(req: NextRequest) {
       }, { status: 422 });
     }
 
-    // Optimize and compress image using sharp
-    console.log('[generate-image] Optimizing image...');
-    const optimizeStart = Date.now();
+    // Try to optimize image, but don't fail if optimization doesn't work
+    let finalImageUrl: string;
+    let finalFilename: string;
     
     try {
+      console.log('[generate-image] Attempting optimization with sharp...');
+      const optimizeStart = Date.now();
       const inputBuffer = Buffer.from(imageBase64, 'base64');
       
-      // Convert to WebP with compression (much smaller than PNG)
       const optimizedBuffer = await sharp(inputBuffer)
         .resize(1920, 1080, { 
           fit: 'inside', 
           withoutEnlargement: true 
         })
         .webp({ 
-          quality: 85, // Good balance between quality and size
-          effort: 4    // Compression effort (0-6, higher = smaller but slower)
+          quality: 85,
+          effort: 4
         })
         .toBuffer();
       
       const optimizedBase64 = optimizedBuffer.toString('base64');
       const optimizeTime = Date.now() - optimizeStart;
       
-      // Calculate size reduction
-      const originalSize = (imageBase64.length * 0.75) / 1024; // KB
-      const optimizedSize = (optimizedBase64.length * 0.75) / 1024; // KB
+      const originalSize = (imageBase64.length * 0.75) / 1024;
+      const optimizedSize = (optimizedBase64.length * 0.75) / 1024;
       const reduction = ((1 - optimizedSize / originalSize) * 100).toFixed(1);
       
-      console.log(`[generate-image] Optimization complete in ${optimizeTime}ms`);
+      console.log(`[generate-image] Optimization success in ${optimizeTime}ms`);
       console.log(`[generate-image] Size: ${originalSize.toFixed(0)}KB → ${optimizedSize.toFixed(0)}KB (${reduction}% reduction)`);
       
-      const imageUrl = `data:image/webp;base64,${optimizedBase64}`;
-      const filename = `bruno-physical-rehabilitation-${(section || 'image').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}.webp`;
-
-      const totalTime = Date.now() - startTime;
-      console.log(`[generate-image] Success! Total time: ${totalTime}ms`);
-
-      return NextResponse.json({ imageUrl, filename });
+      finalImageUrl = `data:image/webp;base64,${optimizedBase64}`;
+      finalFilename = `bruno-physical-rehabilitation-${(section || 'image').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}.webp`;
     } catch (optimizeErr: any) {
-      console.error('[generate-image] Optimization failed, returning original:', optimizeErr.message);
-      // Fallback to original if optimization fails
-      const imageUrl = `data:image/png;base64,${imageBase64}`;
-      const filename = `bruno-physical-rehabilitation-${(section || 'image').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}.png`;
-      return NextResponse.json({ imageUrl, filename });
+      console.warn('[generate-image] Optimization failed, using original PNG:', optimizeErr.message);
+      finalImageUrl = `data:image/png;base64,${imageBase64}`;
+      finalFilename = `bruno-physical-rehabilitation-${(section || 'image').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}.png`;
     }
+
+    const totalTime = Date.now() - startTime;
+    console.log(`[generate-image] Success! Total time: ${totalTime}ms`);
+
+    return NextResponse.json({ imageUrl: finalImageUrl, filename: finalFilename });
   } catch (error: any) {
     console.error('[generate-image] Unexpected error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
