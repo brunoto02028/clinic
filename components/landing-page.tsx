@@ -370,14 +370,12 @@ export default function LandingPage() {
             </div>
             <div>
               <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-primary/10">
-                {settings !== null && settings?.heroImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={settings.heroImageUrl}
-                    alt="Professional physiotherapy treatment session"
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={settings?.heroImageUrl || "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80"}
+                  alt="Professional physiotherapy treatment session"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
               </div>
             </div>
           </div>
@@ -651,10 +649,12 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
-                {settings !== null && settings?.insolesImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={settings.insolesImageUrl} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" className="absolute inset-0 w-full h-full object-cover" />
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={settings?.insolesImageUrl || "https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=800&q=80"} 
+                  alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" 
+                  className="absolute inset-0 w-full h-full object-cover" 
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
@@ -746,10 +746,12 @@ export default function LandingPage() {
 
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
-                {settings !== null && settings?.bioImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={settings.bioImageUrl} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" className="absolute inset-0 w-full h-full object-cover" />
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={settings?.bioImageUrl || "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80"} 
+                  alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" 
+                  className="absolute inset-0 w-full h-full object-cover" 
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
@@ -843,15 +845,14 @@ export default function LandingPage() {
             {/* Left: Image + badge */}
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800 aspect-[4/3]">
-                {settings?.thermoImageUrl && (
+                {settings?.thermoImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={settings.thermoImageUrl as string}
                     alt="Infrared thermography scan showing heat patterns on body"
                     className="absolute inset-0 w-full h-full object-cover"
                   />
-                )}
-                {!settings?.thermoImageUrl && (
+                ) : (
                   <div className="absolute inset-0">
                     <ThermographyIllustration className="w-full h-full" />
                   </div>
