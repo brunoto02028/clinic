@@ -112,9 +112,15 @@ export async function generateMarketingImage(params: {
     const ext = match[1] === 'jpeg' ? 'jpg' : match[1]
     const base64Data = match[2]
 
-    const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads')
-    const uploadsDir = path.join(baseUploadsDir, 'marketing')
-    await mkdir(uploadsDir, { recursive: true })
+    const publicDir = path.join(process.cwd(), 'public')
+    const uploadsDir = path.join(publicDir, 'uploads', 'marketing')
+    
+    try {
+      await mkdir(uploadsDir, { recursive: true, mode: 0o755 })
+    } catch (mkdirErr) {
+      console.error('[marketing-image] Failed to create directory:', mkdirErr)
+      return null
+    }
 
     const slug = (service || 'post')
       .toLowerCase()
@@ -123,8 +129,13 @@ export async function generateMarketingImage(params: {
     const filename = `bpr-${slug}-${Date.now().toString(36)}.${ext}`
     const filePath = path.join(uploadsDir, filename)
 
-    const buffer = Buffer.from(base64Data, 'base64')
-    await writeFile(filePath, new Uint8Array(buffer))
+    try {
+      const buffer = Buffer.from(base64Data, 'base64')
+      await writeFile(filePath, new Uint8Array(buffer), { mode: 0o644 })
+    } catch (writeErr) {
+      console.error('[marketing-image] Failed to write file:', writeErr)
+      return null
+    }
 
     return `/uploads/marketing/${filename}`
   } catch (err) {

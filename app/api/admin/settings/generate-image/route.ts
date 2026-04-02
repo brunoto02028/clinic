@@ -105,10 +105,20 @@ export async function POST(req: NextRequest) {
       }, { status: 422 });
     }
 
-    // Save the generated image to persistent uploads directory
-    const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads');
-    const uploadsDir = path.join(baseUploadsDir, 'generated');
-    await mkdir(uploadsDir, { recursive: true });
+    // Save the generated image to public/uploads/generated directory
+    const publicDir = path.join(process.cwd(), 'public');
+    const uploadsDir = path.join(publicDir, 'uploads', 'generated');
+    
+    // Ensure directory exists with proper permissions
+    try {
+      await mkdir(uploadsDir, { recursive: true, mode: 0o755 });
+    } catch (mkdirErr: any) {
+      console.error('[generate-image] Failed to create directory:', mkdirErr);
+      return NextResponse.json({ 
+        error: 'Failed to create uploads directory. Please contact support.',
+        fallback: true 
+      }, { status: 500 });
+    }
 
     // SEO-friendly filename based on section context
     const seoSlug = (section || 'image')
@@ -117,8 +127,17 @@ export async function POST(req: NextRequest) {
       .replace(/(^-|-$)/g, '');
     const filename = `bruno-physical-rehabilitation-${seoSlug}-${Date.now().toString(36)}.png`;
     const filePath = path.join(uploadsDir, filename);
-    const buffer = Buffer.from(imageBase64, 'base64');
-    await writeFile(filePath, new Uint8Array(buffer));
+    
+    try {
+      const buffer = Buffer.from(imageBase64, 'base64');
+      await writeFile(filePath, new Uint8Array(buffer), { mode: 0o644 });
+    } catch (writeErr: any) {
+      console.error('[generate-image] Failed to write file:', writeErr);
+      return NextResponse.json({ 
+        error: 'Failed to save generated image. Please try again.',
+        fallback: true 
+      }, { status: 500 });
+    }
 
     const imageUrl = `/uploads/generated/${filename}`;
 
