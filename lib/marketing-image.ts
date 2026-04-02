@@ -3,6 +3,7 @@
 import { generateImage } from '@/lib/ai-provider'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
+import sharp from 'sharp'
 
 export const INSTAGRAM_VISUAL_TEMPLATES: Record<string, { topic: string; style: string; mood?: string }> = {
   laser_mls: {
@@ -109,35 +110,57 @@ export async function generateMarketingImage(params: {
     const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/)
     if (!match) return null
 
-    const ext = match[1] === 'jpeg' ? 'jpg' : match[1]
     const base64Data = match[2]
 
-    const publicDir = path.join(process.cwd(), 'public')
-    const uploadsDir = path.join(publicDir, 'uploads', 'marketing')
-    
+    // Optimize image with sharp before saving
     try {
-      await mkdir(uploadsDir, { recursive: true, mode: 0o755 })
-    } catch (mkdirErr) {
-      console.error('[marketing-image] Failed to create directory:', mkdirErr)
+      const inputBuffer = Buffer.from(base64Data, 'base64')
+      
+      // Convert to WebP with optimization for Instagram (1080x1080)
+      const optimizedBuffer = await sharp(inputBuffer)
+        .resize(1080, 1080, { 
+          fit: 'cover', 
+          position: 'center' 
+        })
+        .webp({ 
+          quality: 90, // Higher quality for marketing
+          effort: 4 
+        })
+        .toBuffer()
+      
+      const publicDir = path.join(process.cwd(), 'public')
+      const uploadsDir = path.join(publicDir, 'uploads', 'marketing')
+      
+      try {
+        await mkdir(uploadsDir, { recursive: true, mode: 0o755 })
+      } catch (mkdirErr) {
+        console.error('[marketing-image] Failed to create directory:', mkdirErr)
+        return null
+      }
+
+      const slug = (service || 'post')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+      const filename = `bpr-${slug}-${Date.now().toString(36)}.webp`
+      const filePath = path.join(uploadsDir, filename)
+
+      try {
+        await writeFile(filePath, new Uint8Array(optimizedBuffer), { mode: 0o644 })
+      } catch (writeErr) {
+        console.error('[marketing-image] Failed to write file:', writeErr)
+        return null
+      }
+
+      const originalSize = (base64Data.length * 0.75) / 1024
+      const optimizedSize = optimizedBuffer.length / 1024
+      console.log(`[marketing-image] Optimized: ${originalSize.toFixed(0)}KB → ${optimizedSize.toFixed(0)}KB`)
+
+      return `/uploads/marketing/${filename}`
+    } catch (optimizeErr) {
+      console.error('[marketing-image] Optimization failed:', optimizeErr)
       return null
     }
-
-    const slug = (service || 'post')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '')
-    const filename = `bpr-${slug}-${Date.now().toString(36)}.${ext}`
-    const filePath = path.join(uploadsDir, filename)
-
-    try {
-      const buffer = Buffer.from(base64Data, 'base64')
-      await writeFile(filePath, new Uint8Array(buffer), { mode: 0o644 })
-    } catch (writeErr) {
-      console.error('[marketing-image] Failed to write file:', writeErr)
-      return null
-    }
-
-    return `/uploads/marketing/${filename}`
   } catch (err) {
     console.error('[marketing-image] Generation failed:', err)
     return null
