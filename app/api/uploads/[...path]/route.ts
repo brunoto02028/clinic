@@ -45,7 +45,7 @@ export async function GET(
     // Use Railway persistent volume in production, local public folder in dev
     const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
     const uploadsDir = isRailway 
-      ? '/data/uploads' 
+      ? '/app/data/uploads' 
       : path.join(process.cwd(), "public", "uploads");
     const fullPath = path.join(uploadsDir, filePath);
 
