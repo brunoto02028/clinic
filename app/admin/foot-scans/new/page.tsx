@@ -40,6 +40,11 @@ export default function NewFootScanPage() {
   const [rightLateral, setRightLateral] = useState<PhotoUpload[]>([]);
   const [rightPosterior, setRightPosterior] = useState<PhotoUpload[]>([]);
 
+  // Videos
+  const [leftFootVideo, setLeftFootVideo] = useState<File | null>(null);
+  const [rightFootVideo, setRightFootVideo] = useState<File | null>(null);
+  const [walkingVideo, setWalkingVideo] = useState<File | null>(null);
+
   const handleFileUpload = (
     file: File,
     setter: React.Dispatch<React.SetStateAction<PhotoUpload[]>>,
@@ -89,6 +94,11 @@ export default function NewFootScanPage() {
       rightFrontal.forEach((photo, i) => formData.append(`rightFrontal${i}`, photo.file));
       rightLateral.forEach((photo, i) => formData.append(`rightLateral${i}`, photo.file));
       rightPosterior.forEach((photo, i) => formData.append(`rightPosterior${i}`, photo.file));
+
+      // Add videos if present
+      if (leftFootVideo) formData.append("leftFootVideo", leftFootVideo);
+      if (rightFootVideo) formData.append("rightFootVideo", rightFootVideo);
+      if (walkingVideo) formData.append("walkingVideo", walkingVideo);
 
       const res = await fetch("/api/foot-scans", {
         method: "POST",
@@ -171,6 +181,11 @@ export default function NewFootScanPage() {
       rightLateral.forEach((photo, i) => formData.append(`rightLateral${i}`, photo.file));
       rightPosterior.forEach((photo, i) => formData.append(`rightPosterior${i}`, photo.file));
 
+      // Add videos if present
+      if (leftFootVideo) formData.append("leftFootVideo", leftFootVideo);
+      if (rightFootVideo) formData.append("rightFootVideo", rightFootVideo);
+      if (walkingVideo) formData.append("walkingVideo", walkingVideo);
+
       const res = await fetch("/api/foot-scans", {
         method: "POST",
         body: formData,
@@ -208,62 +223,70 @@ export default function NewFootScanPage() {
     title,
     photos,
     setter,
-    maxPhotos,
-    angles,
+    description,
   }: {
     title: string;
     photos: PhotoUpload[];
     setter: React.Dispatch<React.SetStateAction<PhotoUpload[]>>;
-    maxPhotos: number;
-    angles: string[];
+    description: string;
   }) => (
     <div className="space-y-2">
-      <Label>{title}</Label>
-      <div className="grid grid-cols-3 gap-2">
-        {photos.map((photo, index) => (
-          <div key={index} className="relative group">
-            <img
-              src={photo.preview}
-              alt={`${title} ${index + 1}`}
-              className="w-full h-24 object-cover rounded-lg border"
-            />
-            <div className="absolute top-1 right-1">
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-6 w-6 p-0"
-                onClick={() => removePhoto(index, setter)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-            <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
-              {photo.angle}
-            </div>
-          </div>
-        ))}
-        {photos.length < maxPhotos && (
-          <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
-            <Upload className="h-6 w-6 text-muted-foreground mb-1" />
-            <span className="text-xs text-muted-foreground">
-              {angles[photos.length] || "Upload"}
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>{title}</Label>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        </div>
+        <label className="cursor-pointer">
+          <Button type="button" variant="outline" size="sm" asChild>
+            <span>
+              <Upload className="h-4 w-4 mr-2" />
+              Add Photos
             </span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handleFileUpload(file, setter, angles[photos.length] || `Photo ${photos.length + 1}`);
-                }
-              }}
-            />
-          </label>
-        )}
+          </Button>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              files.forEach((file, i) => {
+                handleFileUpload(file, setter, `Photo ${photos.length + i + 1}`);
+              });
+              e.target.value = "";
+            }}
+          />
+        </label>
       </div>
+      {photos.length > 0 && (
+        <div className="grid grid-cols-4 gap-2 mt-2">
+          {photos.map((photo, index) => (
+            <div key={index} className="relative group">
+              <img
+                src={photo.preview}
+                alt={`${title} ${index + 1}`}
+                className="w-full h-20 object-cover rounded-lg border"
+              />
+              <div className="absolute top-1 right-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => removePhoto(index, setter)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                #{index + 1}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <p className="text-xs text-muted-foreground">
-        {photos.length}/{maxPhotos} photos uploaded
+        {photos.length} photo{photos.length !== 1 ? "s" : ""} uploaded
       </p>
     </div>
   );
@@ -403,25 +426,22 @@ export default function NewFootScanPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <PhotoUploadSection
-            title="Frontal Views (3 angles)"
+            title="Frontal Views"
             photos={leftFrontal}
             setter={setLeftFrontal}
-            maxPhotos={3}
-            angles={["Center 0°", "Left -15°", "Right +15°"]}
+            description="Front view of foot - multiple angles recommended"
           />
           <PhotoUploadSection
-            title="Lateral Views (2 angles)"
+            title="Lateral Views"
             photos={leftLateral}
             setter={setLeftLateral}
-            maxPhotos={2}
-            angles={["Inner side", "Outer side"]}
+            description="Side views - inner and outer sides"
           />
           <PhotoUploadSection
-            title="Posterior Views (3 angles) - MOST IMPORTANT"
+            title="Posterior Views - MOST IMPORTANT"
             photos={leftPosterior}
             setter={setLeftPosterior}
-            maxPhotos={3}
-            angles={["Center 0°", "Left -15°", "Right +15°"]}
+            description="Back view of heel - critical for pronation/supination analysis"
           />
         </CardContent>
       </Card>
@@ -436,26 +456,164 @@ export default function NewFootScanPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <PhotoUploadSection
-            title="Frontal Views (3 angles)"
+            title="Frontal Views"
             photos={rightFrontal}
             setter={setRightFrontal}
-            maxPhotos={3}
-            angles={["Center 0°", "Left -15°", "Right +15°"]}
+            description="Front view of foot - multiple angles recommended"
           />
           <PhotoUploadSection
-            title="Lateral Views (2 angles)"
+            title="Lateral Views"
             photos={rightLateral}
             setter={setRightLateral}
-            maxPhotos={2}
-            angles={["Inner side", "Outer side"]}
+            description="Side views - inner and outer sides"
           />
           <PhotoUploadSection
-            title="Posterior Views (3 angles) - MOST IMPORTANT"
+            title="Posterior Views - MOST IMPORTANT"
             photos={rightPosterior}
             setter={setRightPosterior}
-            maxPhotos={3}
-            angles={["Center 0°", "Left -15°", "Right +15°"]}
+            description="Back view of heel - critical for pronation/supination analysis"
           />
+        </CardContent>
+      </Card>
+
+      {/* Step 5: Videos (Optional but Recommended) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Step 5: Upload Videos (Optional but Recommended)</CardTitle>
+          <CardDescription>
+            Videos provide dynamic analysis of gait and foot movement - more accurate than static photos
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* Left Foot Video */}
+            <div className="space-y-2">
+              <Label>Left Foot Video</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                360° rotation around left foot
+              </p>
+              {leftFootVideo ? (
+                <div className="space-y-2">
+                  <video
+                    src={URL.createObjectURL(leftFootVideo)}
+                    className="w-full h-32 object-cover rounded-lg border"
+                    controls
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setLeftFootVideo(null)}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+                  <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                  <span className="text-xs text-muted-foreground">Upload video</span>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setLeftFootVideo(file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Right Foot Video */}
+            <div className="space-y-2">
+              <Label>Right Foot Video</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                360° rotation around right foot
+              </p>
+              {rightFootVideo ? (
+                <div className="space-y-2">
+                  <video
+                    src={URL.createObjectURL(rightFootVideo)}
+                    className="w-full h-32 object-cover rounded-lg border"
+                    controls
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setRightFootVideo(null)}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+                  <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                  <span className="text-xs text-muted-foreground">Upload video</span>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setRightFootVideo(file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Walking Video */}
+            <div className="space-y-2">
+              <Label>Walking Video</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Patient walking 5-10 steps
+              </p>
+              {walkingVideo ? (
+                <div className="space-y-2">
+                  <video
+                    src={URL.createObjectURL(walkingVideo)}
+                    className="w-full h-32 object-cover rounded-lg border"
+                    controls
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setWalkingVideo(null)}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-accent/50 transition-colors">
+                  <Upload className="h-6 w-6 text-muted-foreground mb-1" />
+                  <span className="text-xs text-muted-foreground">Upload video</span>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setWalkingVideo(file);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-900">
+              <strong>💡 Tip:</strong> Videos provide much better analysis than photos alone. The AI can analyze dynamic movement, weight distribution, and gait patterns more accurately.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
