@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFileSync, mkdirSync, existsSync } from "fs";
-import path from "path";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 export const dynamic = "force-dynamic";
 
@@ -37,59 +36,25 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[upload] Processing file:', file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
-    console.log('[upload] RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
 
     // Generate unique filename
     const ext = file.name.split('.').pop() || "jpg";
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(`.${ext}`, "");
-    const uniqueName = `${Date.now()}-${safeName}.${ext}`;
+    const uniqueName = `${Date.now()}-${safeName}`;
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save to persistent volume (Railway volume or local public folder)
-    const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
-    const uploadsDir = isRailway 
-      ? '/app/data' // Railway persistent volume (mounted at /app/data)
-      : path.join(process.cwd(), "public", "uploads"); // Local development
+    // Upload to Cloudinary
+    console.log('[upload] Uploading to Cloudinary...');
+    const cloudinaryResult = await uploadToCloudinary(buffer, uniqueName, 'clinic-uploads');
     
-    console.log('[upload] Environment:', isRailway ? 'Railway (production)' : 'Local (development)');
-    console.log('[upload] Target directory:', uploadsDir);
-    console.log('[upload] Directory exists:', existsSync(uploadsDir));
-    
-    if (!existsSync(uploadsDir)) {
-      console.log('[upload] Creating uploads directory:', uploadsDir);
-      try {
-        mkdirSync(uploadsDir, { recursive: true });
-        console.log('[upload] Directory created successfully');
-      } catch (err: any) {
-        console.error('[upload] Failed to create directory:', err.message);
-        throw new Error(`Failed to create uploads directory: ${err.message}`);
-      }
-    }
+    const imageUrl = cloudinaryResult.url;
+    const cloud_storage_path = `cloudinary:${cloudinaryResult.publicId}`;
 
-    const filePath = path.join(uploadsDir, uniqueName);
-    console.log('[upload] Writing file to:', filePath);
-    
-    try {
-      writeFileSync(filePath, buffer);
-      console.log('[upload] File written successfully');
-    } catch (err: any) {
-      console.error('[upload] Failed to write file:', err.message);
-      throw new Error(`Failed to write file: ${err.message}`);
-    }
-
-    // For Railway, files are served via API route, not public folder
-    const imageUrl = isRailway 
-      ? `/api/uploads/${uniqueName}` 
-      : `/uploads/${uniqueName}`;
-    const cloud_storage_path = isRailway 
-      ? `railway:/data/uploads/${uniqueName}` 
-      : `local:${imageUrl}`;
-
-    console.log('[upload] Environment:', isRailway ? 'Railway' : 'Local');
-    console.log('[upload] Saved file to:', filePath);
-    console.log('[upload] Public URL:', imageUrl);
+    console.log('[upload] Upload successful');
+    console.log('[upload] Cloudinary URL:', imageUrl);
+    console.log('[upload] Public ID:', cloudinaryResult.publicId);
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
