@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[upload] Processing file:', file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
+    console.log('[upload] RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT);
 
     // Generate unique filename
     const ext = file.name.split('.').pop() || "jpg";
@@ -52,13 +53,31 @@ export async function POST(request: NextRequest) {
       ? '/app/data/uploads' // Railway persistent volume
       : path.join(process.cwd(), "public", "uploads"); // Local development
     
+    console.log('[upload] Environment:', isRailway ? 'Railway (production)' : 'Local (development)');
+    console.log('[upload] Target directory:', uploadsDir);
+    console.log('[upload] Directory exists:', existsSync(uploadsDir));
+    
     if (!existsSync(uploadsDir)) {
       console.log('[upload] Creating uploads directory:', uploadsDir);
-      mkdirSync(uploadsDir, { recursive: true });
+      try {
+        mkdirSync(uploadsDir, { recursive: true });
+        console.log('[upload] Directory created successfully');
+      } catch (err: any) {
+        console.error('[upload] Failed to create directory:', err.message);
+        throw new Error(`Failed to create uploads directory: ${err.message}`);
+      }
     }
 
     const filePath = path.join(uploadsDir, uniqueName);
-    writeFileSync(filePath, buffer);
+    console.log('[upload] Writing file to:', filePath);
+    
+    try {
+      writeFileSync(filePath, buffer);
+      console.log('[upload] File written successfully');
+    } catch (err: any) {
+      console.error('[upload] Failed to write file:', err.message);
+      throw new Error(`Failed to write file: ${err.message}`);
+    }
 
     // For Railway, files are served via API route, not public folder
     const imageUrl = isRailway 
