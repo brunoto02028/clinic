@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { uploadToCloudinary } from "@/lib/cloudinary";
 
 export const dynamic = "force-dynamic";
 
@@ -30,31 +29,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Only image files are allowed" }, { status: 400 });
     }
 
-    // Max 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
+    // Max 5MB for base64 storage
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: "File too large (max 5MB)" }, { status: 400 });
     }
 
     console.log('[upload] Processing file:', file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
 
-    // Generate unique filename
-    const ext = file.name.split('.').pop() || "jpg";
-    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(`.${ext}`, "");
-    const uniqueName = `${Date.now()}-${safeName}`;
-
+    // Convert to base64 and store in database
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString('base64');
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    // Upload to Cloudinary
-    console.log('[upload] Uploading to Cloudinary...');
-    const cloudinaryResult = await uploadToCloudinary(buffer, uniqueName, 'clinic-uploads');
-    
-    const imageUrl = cloudinaryResult.url;
-    const cloud_storage_path = `cloudinary:${cloudinaryResult.publicId}`;
+    console.log('[upload] Converted to base64, size:', `${(base64.length / 1024).toFixed(0)}KB`);
 
-    console.log('[upload] Upload successful');
-    console.log('[upload] Cloudinary URL:', imageUrl);
-    console.log('[upload] Public ID:', cloudinaryResult.publicId);
+    const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const imageUrl = dataUrl;
+    const cloud_storage_path = `base64:inline`;
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
