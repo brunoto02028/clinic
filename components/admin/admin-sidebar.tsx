@@ -132,7 +132,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Membership Plans", href: "/admin/memberships", icon: Crown },
       { name: "Video Consultations", i18nKey: "nav.videoConsultations", href: "/admin/video-consultations", icon: Video },
       { name: "Clinical Notes", i18nKey: "nav.clinicalNotes", href: "/admin/clinical-notes", icon: ClipboardList, requiredPermission: "canCreateClinicalNotes" },
-      { name: "Foot Scans", i18nKey: "nav.footScans", href: "/admin/scans", icon: Footprints, requiredPermission: "canManageFootScans" },
+      { name: "Foot Scans", i18nKey: "nav.footScans", href: "/admin/foot-scans", icon: Footprints, requiredPermission: "canManageFootScans" },
       { name: "Assessment Screening", href: "/admin/screening-preview", icon: ShieldCheck },
       { name: "Body Assessment", i18nKey: "nav.bodyAssessment", href: "/admin/body-assessments", icon: Activity },
       { name: "3D Body Models", href: "/admin/body-models", icon: Box },
