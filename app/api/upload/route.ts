@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Save to persistent volume (Railway volume or local public folder)
     const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
     const uploadsDir = isRailway 
-      ? '/app/data/uploads' // Railway persistent volume
+      ? '/app/data' // Railway persistent volume (mounted at /app/data)
       : path.join(process.cwd(), "public", "uploads"); // Local development
     
     console.log('[upload] Environment:', isRailway ? 'Railway (production)' : 'Local (development)');
