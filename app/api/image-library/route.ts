@@ -41,12 +41,19 @@ export async function GET(request: NextRequest) {
 
     // Generate public URLs for ImageLibrary records
     const imagesWithUrls = images.map((img) => {
+      // Base64 inline images - return as-is
+      if (img.cloud_storage_path === "base64:inline" || img.imageUrl.startsWith("data:")) {
+        return img;
+      }
+      // Local filesystem images
       if (img.cloud_storage_path.startsWith("local:")) {
         return { ...img, imageUrl: img.cloud_storage_path.replace("local:", "") };
       }
+      // Already has valid URL
       if (img.imageUrl && img.imageUrl.startsWith("/uploads/")) {
         return img;
       }
+      // Try to get S3/cloud URL
       try {
         return { ...img, imageUrl: getFileUrl(img.cloud_storage_path, true) };
       } catch {
