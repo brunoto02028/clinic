@@ -46,18 +46,29 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save to persistent volume
-    const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+    // Save to persistent volume (Railway volume or local public folder)
+    const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
+    const uploadsDir = isRailway 
+      ? '/data/uploads' // Railway persistent volume
+      : path.join(process.cwd(), "public", "uploads"); // Local development
+    
     if (!existsSync(uploadsDir)) {
+      console.log('[upload] Creating uploads directory:', uploadsDir);
       mkdirSync(uploadsDir, { recursive: true });
     }
 
     const filePath = path.join(uploadsDir, uniqueName);
     writeFileSync(filePath, buffer);
 
-    const imageUrl = `/uploads/${uniqueName}`;
-    const cloud_storage_path = `local:${imageUrl}`;
+    // For Railway, files are served via API route, not public folder
+    const imageUrl = isRailway 
+      ? `/api/uploads/${uniqueName}` 
+      : `/uploads/${uniqueName}`;
+    const cloud_storage_path = isRailway 
+      ? `railway:/data/uploads/${uniqueName}` 
+      : `local:${imageUrl}`;
 
+    console.log('[upload] Environment:', isRailway ? 'Railway' : 'Local');
     console.log('[upload] Saved file to:', filePath);
     console.log('[upload] Public URL:', imageUrl);
 
