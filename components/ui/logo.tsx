@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -12,6 +13,7 @@ interface LogoProps {
   logoUrl?: string | null;
   darkLogoUrl?: string | null;
   variant?: "light" | "dark" | "auto";
+  priority?: boolean;
 }
 
 // Fixed pixel heights for each size — no ambiguity
@@ -26,6 +28,7 @@ export function Logo({
   logoUrl,
   darkLogoUrl,
   variant = "auto",
+  priority = false,
 }: LogoProps) {
   const h = SIZE_PX[size] || 40;
   const [imgError, setImgError] = useState(false);
@@ -36,50 +39,75 @@ export function Logo({
   const hasValidSrc = (lightSrc || darkSrc) && !imgError;
 
   const content = (
-    <div className={cn("inline-flex items-center flex-shrink-0", className)}>
+    <div className={cn("inline-flex items-center flex-shrink-0", className)} style={{ height: h }}>
       {hasValidSrc ? (
         <>
           {variant === "auto" && lightSrc && darkSrc ? (
             <>
-              <img
-                src={lightSrc}
-                alt="Logo"
-                style={{ height: h, width: "auto" }}
-                className="block dark:hidden object-contain"
-                onError={() => setImgError(true)}
-              />
-              <img
-                src={darkSrc}
-                alt="Logo"
-                style={{ height: h, width: "auto" }}
-                className="hidden dark:block object-contain"
-                onError={() => setImgError(true)}
-              />
+              <div className="relative block dark:hidden" style={{ height: h, width: h * 2.5 }}>
+                <Image
+                  src={lightSrc}
+                  alt="Logo"
+                  fill
+                  className="object-contain"
+                  priority={priority}
+                  quality={100}
+                  sizes={`${h * 2.5}px`}
+                  onError={() => setImgError(true)}
+                />
+              </div>
+              <div className="relative hidden dark:block" style={{ height: h, width: h * 2.5 }}>
+                <Image
+                  src={darkSrc}
+                  alt="Logo"
+                  fill
+                  className="object-contain"
+                  priority={priority}
+                  quality={100}
+                  sizes={`${h * 2.5}px`}
+                  onError={() => setImgError(true)}
+                />
+              </div>
             </>
           ) : variant === "dark" && darkSrc ? (
-            <img
-              src={darkSrc}
-              alt="Logo"
-              style={{ height: h, width: "auto" }}
-              className="block object-contain"
-              onError={() => setImgError(true)}
-            />
+            <div className="relative" style={{ height: h, width: h * 2.5 }}>
+              <Image
+                src={darkSrc}
+                alt="Logo"
+                fill
+                className="object-contain"
+                priority={priority}
+                quality={100}
+                sizes={`${h * 2.5}px`}
+                onError={() => setImgError(true)}
+              />
+            </div>
           ) : lightSrc ? (
-            <img
-              src={lightSrc}
-              alt="Logo"
-              style={{ height: h, width: "auto" }}
-              className="block object-contain"
-              onError={() => setImgError(true)}
-            />
+            <div className="relative" style={{ height: h, width: h * 2.5 }}>
+              <Image
+                src={lightSrc}
+                alt="Logo"
+                fill
+                className="object-contain"
+                priority={priority}
+                quality={100}
+                sizes={`${h * 2.5}px`}
+                onError={() => setImgError(true)}
+              />
+            </div>
           ) : darkSrc ? (
-            <img
-              src={darkSrc}
-              alt="Logo"
-              style={{ height: h, width: "auto" }}
-              className="block object-contain"
-              onError={() => setImgError(true)}
-            />
+            <div className="relative" style={{ height: h, width: h * 2.5 }}>
+              <Image
+                src={darkSrc}
+                alt="Logo"
+                fill
+                className="object-contain"
+                priority={priority}
+                quality={100}
+                sizes={`${h * 2.5}px`}
+                onError={() => setImgError(true)}
+              />
+            </div>
           ) : null}
         </>
       ) : (

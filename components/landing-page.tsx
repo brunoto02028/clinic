@@ -115,9 +115,14 @@ interface Article {
   author: { firstName: string; lastName: string };
 }
 
-export default function LandingPage() {
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [articles, setArticles] = useState<Article[]>([]);
+interface LandingPageProps {
+  initialSettings?: SiteSettings | null;
+  initialArticles?: Article[];
+}
+
+export default function LandingPage({ initialSettings = null, initialArticles = [] }: LandingPageProps) {
+  const [settings, setSettings] = useState<SiteSettings | null>(initialSettings);
+  const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [locale, setCurrentLocale] = useState<Locale>("en-GB");
   const [mounted, setMounted] = useState(false);
@@ -125,9 +130,14 @@ export default function LandingPage() {
   useEffect(() => {
     setMounted(true);
     setCurrentLocale(getLocale());
-    fetchSettings();
-    fetchArticles();
-  }, []);
+    // Only fetch if not provided by SSR
+    if (!initialSettings) {
+      fetchSettings();
+    }
+    if (!initialArticles || initialArticles.length === 0) {
+      fetchArticles();
+    }
+  }, [initialSettings, initialArticles]);
 
   const toggleLocale = () => {
     const next = locale === "en-GB" ? "pt-BR" : "en-GB";
@@ -223,7 +233,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {settings ? (
-              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="md" />
+              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="md" priority />
             ) : (
               <div style={{ height: 40, width: 40 }} />
             )}
