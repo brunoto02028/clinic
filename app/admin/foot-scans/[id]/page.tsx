@@ -192,6 +192,13 @@ export default function FootScanDetailPage({ params }: { params: { id: string } 
                 <FileText className="h-4 w-4 mr-2" />
                 View Report
               </Button>
+              <Button
+                onClick={() => window.open(`/api/foot-scans/${params.id}/report?format=pdf`, "_blank")}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download PDF
+              </Button>
             </>
           )}
         </div>

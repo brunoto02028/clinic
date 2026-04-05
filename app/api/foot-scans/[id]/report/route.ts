@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { generateFootScanPDF } from '@/lib/foot-scans/pdf-generator';
 
-// GET - Generate comprehensive scan report data
+// GET - Generate comprehensive scan report data or PDF
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { searchParams } = new URL(request.url);
+  const format = searchParams.get('format'); // 'json' or 'pdf'
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -150,6 +153,25 @@ export async function GET(
         : null,
     };
 
+    // Return PDF if requested
+    if (format === 'pdf') {
+      try {
+        const pdfBytes = await generateFootScanPDF(report);
+        
+        return new NextResponse(pdfBytes, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="foot-scan-${footScan.scanNumber}.pdf"`,
+          },
+        });
+      } catch (pdfError) {
+        console.error('Error generating PDF:', pdfError);
+        return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
+      }
+    }
+
+    // Return JSON by default
     return NextResponse.json(report);
 
   } catch (error) {
