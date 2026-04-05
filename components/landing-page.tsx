@@ -371,13 +371,14 @@ export default function LandingPage() {
             <div>
               <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-gradient-to-br from-teal-900/20 to-cyan-900/20">
                 {settings?.heroImageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={settings.heroImageUrl}
                     alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="eager"
-                    fetchPriority="high"
+                    fill
+                    className="object-cover"
+                    priority
+                    quality={85}
+                    sizes="(max-width: 768px) 100vw, 50vw"
                   />
                 )}
                 {!settings?.heroImageUrl && (
@@ -399,7 +400,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
             <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="relative h-10 w-10 sm:h-11 sm:w-11 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0">
-                <img src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" className="h-full w-full object-cover scale-[1.15]" loading="lazy" />
+                <Image src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" width={44} height={44} className="object-cover scale-[1.15]" loading="lazy" quality={75} />
               </div>
               <div className="text-left">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
@@ -545,11 +546,15 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={treatmentImg}
                   alt="MLS Laser Therapy treatment in action"
+                  width={800}
+                  height={600}
                   className="w-full h-auto max-h-[420px] object-cover"
+                  loading="lazy"
+                  quality={75}
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
@@ -561,11 +566,14 @@ export default function LandingPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-white flex items-center justify-center p-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={deviceImg}
                     alt="MLS Mphi 75 Multiwave Locked System laser device"
-                    className="w-full h-full object-contain"
+                    fill
+                    className="object-contain p-4"
+                    loading="lazy"
+                    quality={75}
+                    sizes="(max-width: 768px) 50vw, 25vw"
                   />
                 </div>
                 <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-blue-600/10 border border-orange-500/20 p-5 flex flex-col justify-center">
@@ -662,11 +670,14 @@ export default function LandingPage() {
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-blue-900/20 to-cyan-900/20">
                 {settings?.insolesImageUrl && (
                   <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
+                    <Image 
                       src={settings.insolesImageUrl} 
                       alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" 
-                      className="absolute inset-0 w-full h-full object-cover" 
+                      fill
+                      className="object-cover" 
+                      loading="lazy"
+                      quality={75}
+                      sizes="(max-width: 768px) 100vw, 50vw"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </>
@@ -771,11 +782,14 @@ export default function LandingPage() {
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-purple-900/20 to-blue-900/20">
                 {settings?.bioImageUrl && (
                   <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
+                    <Image 
                       src={settings.bioImageUrl} 
                       alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" 
-                      className="absolute inset-0 w-full h-full object-cover" 
+                      fill
+                      className="object-cover" 
+                      loading="lazy"
+                      quality={75}
+                      sizes="(max-width: 768px) 100vw, 50vw"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </>
@@ -881,11 +895,14 @@ export default function LandingPage() {
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800 aspect-[4/3]">
                 {settings?.thermoImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={settings.thermoImageUrl as string}
                     alt="Infrared thermography scan showing heat patterns on body"
-                    className="absolute inset-0 w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    loading="lazy"
+                    quality={75}
+                    sizes="(max-width: 768px) 100vw, 50vw"
                   />
                 ) : (
                   <div className="absolute inset-0">
@@ -1029,14 +1046,15 @@ export default function LandingPage() {
             </div>
             <div>
               <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {settings !== null && settings?.heroImageUrl && (
-                  <img
+                  <Image
                     src={settings.heroImageUrl}
                     alt="Professional physiotherapy treatment session"
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="eager"
-                    fetchPriority="high"
+                    fill
+                    className="object-cover"
+                    loading="lazy"
+                    quality={75}
+                    sizes="(max-width: 768px) 100vw, 50vw"
                   />
                 )}
               </div>
@@ -1065,7 +1083,7 @@ export default function LandingPage() {
                   <Card className="h-full card-hover overflow-hidden border border-border cursor-pointer">
                     {article.imageUrl && (
                       <div className="relative aspect-video bg-muted overflow-hidden">
-                        <img src={article.imageUrl} alt={article.title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                        <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={70} sizes="(max-width: 768px) 100vw, 33vw" />
                       </div>
                     )}
                     <CardContent className="p-4 sm:p-6">
