@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Upload, X, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PhotoInstructions } from "@/components/foot-scans/photo-instructions";
 
 interface PhotoUpload {
   file: File;
@@ -21,6 +22,7 @@ export default function NewFootScanPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
 
   // Form data
   const [patientId, setPatientId] = useState("");
@@ -291,6 +293,29 @@ export default function NewFootScanPage() {
     </div>
   );
 
+  // Show instructions first
+  if (showInstructions) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">New Foot Scan Assessment</h1>
+            <p className="text-sm text-muted-foreground">
+              Antes de começar, leia as instruções para garantir fotos de qualidade
+            </p>
+          </div>
+        </div>
+        <PhotoInstructions 
+          onComplete={() => setShowInstructions(false)}
+          type="both"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -304,6 +329,14 @@ export default function NewFootScanPage() {
             Upload 3D scans and photos for AI-powered gait analysis
           </p>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setShowInstructions(true)}
+          className="ml-auto"
+        >
+          Ver Instruções Novamente
+        </Button>
       </div>
 
       {/* Step 1: Patient Information */}
