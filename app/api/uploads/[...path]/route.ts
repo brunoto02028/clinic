@@ -42,12 +42,9 @@ export async function GET(
       return NextResponse.json({ error: "Invalid path" }, { status: 400 });
     }
 
-    // Use Railway persistent volume in production, local public folder in dev
-    const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
-    const uploadsDir = isRailway 
-      ? '/app/data' 
-      : path.join(process.cwd(), "public", "uploads");
-    const fullPath = path.join(uploadsDir, filePath);
+    // Use UPLOADS_DIR if set (Railway Volume), otherwise use local public folder
+    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+    const fullPath = path.join(uploadsBase, filePath);
 
     // Check if file exists
     try {
