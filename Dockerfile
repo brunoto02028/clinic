@@ -37,7 +37,9 @@ ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-RUN mkdir -p ./public/uploads \&\& chown nextjs:nodejs ./public/uploads \&\& chmod 755 ./public/uploads
+RUN mkdir -p ./public/uploads && chown nextjs:nodejs ./public/uploads && chmod 755 ./public/uploads
+# Create Railway Volume upload directory with correct permissions
+RUN mkdir -p /app/data/uploads && chown nextjs:nodejs /app/data/uploads && chmod 755 /app/data/uploads
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
