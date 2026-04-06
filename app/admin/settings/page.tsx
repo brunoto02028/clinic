@@ -2399,38 +2399,153 @@ export default function AdminSettingsPage() {
 
         {/* Marketing Tab */}
         <TabsContent value="marketing" className="space-y-4">
+          {/* Business Card Defaults */}
           <Card>
             <CardHeader>
-              <CardTitle>Marketing Defaults (Cloud)</CardTitle>
+              <CardTitle>Business Card Defaults</CardTitle>
               <CardDescription>
-                Defaults used by Business Card Creator and Flyer Creator. Keep as JSON so we can evolve without changing the database every time.
+                Default settings for Business Card Creator. These values will pre-fill the card generator.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="marketingBusinessCardDefaultsJson">Business Card Defaults (JSON)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="marketingBusinessCardDefaultsJson">Business Card Configuration (JSON)</Label>
+                  <AIFieldHelper
+                    fieldName="marketingBusinessCardDefaultsJson"
+                    fieldLabel="Business Card Defaults"
+                    currentValue={(settings as any).marketingBusinessCardDefaultsJson || ""}
+                    context={`Generate a complete JSON configuration for business cards. Include: templateId (bpr-teal), colors (primary: #4a7c8a, secondary: #2c4f58, accent: #6ba3b0, bg: #ffffff, text: #1a2332, backBg: #4a7c8a), logoUrl from site settings, logoText: "BPR", name: "Bruno Toaz", title: "Physical Rehabilitation Specialist", qualifications: "BSc Sports Therapy, STO Registered", phone: "${settings.businessPhone || '+44 1473 000000'}", email: "${settings.businessEmail || 'info@bpr.rehab'}", website: "bpr.rehab", address: "${settings.businessStreet || ''} ${settings.businessCity || 'Ipswich'}, ${settings.businessPostcode || ''}". Output ONLY valid JSON, no markdown.`}
+                    onApply={(text) => setSettings({ ...settings, marketingBusinessCardDefaultsJson: text } as any)}
+                  />
+                </div>
                 <Textarea
                   id="marketingBusinessCardDefaultsJson"
                   value={(settings as any).marketingBusinessCardDefaultsJson || ""}
                   onChange={(e) => setSettings({ ...settings, marketingBusinessCardDefaultsJson: e.target.value } as any)}
-                  placeholder='{"templateId":"bpr-teal","colors":{"primary":"#0d7377","secondary":"#0a5c5f","accent":"#c8952a","bg":"#ffffff","text":"#1a2332","backBg":"#0d7377"},"logoUrl":"https://...","logoText":"BPR","name":"Bruno","title":"Founder","qualifications":"BSc ...","phone":"+44...","email":"info@...","website":"bpr.rehab","address":"..."}'
-                  rows={8}
+                  placeholder='{"templateId":"bpr-teal","colors":{"primary":"#4a7c8a","secondary":"#2c4f58","accent":"#6ba3b0","bg":"#ffffff","text":"#1a2332","backBg":"#4a7c8a"},"logoUrl":"","logoText":"BPR","name":"Bruno Toaz","title":"Physical Rehabilitation Specialist","qualifications":"BSc Sports Therapy, STO Registered","phone":"+44 1473 000000","email":"info@bpr.rehab","website":"bpr.rehab","address":"Ipswich, Suffolk"}'
+                  rows={6}
                   className="font-mono text-xs"
                 />
-                <p className="text-xs text-muted-foreground">Optional. If empty, creators will fall back to Site Branding + manual inputs.</p>
+                <p className="text-xs text-muted-foreground">💡 Click AI button to auto-generate from your business details. If empty, card creator will use site branding.</p>
               </div>
+            </CardContent>
+          </Card>
 
+          {/* Flyer Defaults */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Flyer Defaults</CardTitle>
+              <CardDescription>
+                Default settings for Flyer Creator. Standardize copy, colors, and branding across all flyers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="marketingFlyerDefaultsJson">Flyer Defaults (JSON)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="marketingFlyerDefaultsJson">Flyer Configuration (JSON)</Label>
+                  <AIFieldHelper
+                    fieldName="marketingFlyerDefaultsJson"
+                    fieldLabel="Flyer Defaults"
+                    currentValue={(settings as any).marketingFlyerDefaultsJson || ""}
+                    context={`Generate a complete JSON configuration for marketing flyers. Include: templateId (modern), colors (primary: #4a7c8a, secondary: #2c4f58, accent: #6ba3b0, bg: #ffffff, text: #1a2332), logoUrl from site settings, logoText: "BPR", headline: "Expert Physical Rehabilitation", subheadline: "Move Better, Feel Stronger, Live Pain-Free", cta: "Book Your Free Consultation Today", services: ["Physiotherapy", "Sports Rehabilitation", "Biomechanical Assessment", "Custom Insoles", "Electrotherapy", "Shockwave Therapy"], phone: "${settings.businessPhone || '+44 1473 000000'}", email: "${settings.businessEmail || 'info@bpr.rehab'}", website: "bpr.rehab", address: "${settings.businessStreet || ''} ${settings.businessCity || 'Ipswich'}, ${settings.businessPostcode || ''}". Output ONLY valid JSON, no markdown.`}
+                    onApply={(text) => setSettings({ ...settings, marketingFlyerDefaultsJson: text } as any)}
+                  />
+                </div>
                 <Textarea
                   id="marketingFlyerDefaultsJson"
                   value={(settings as any).marketingFlyerDefaultsJson || ""}
                   onChange={(e) => setSettings({ ...settings, marketingFlyerDefaultsJson: e.target.value } as any)}
-                  placeholder='{"templateId":"modern","colors":{"primary":"#0d7377","secondary":"#0a5c5f","accent":"#c8952a","bg":"#ffffff","text":"#1a2332"},"logoUrl":"https://...","logoText":"BPR","headline":"...","subheadline":"...","cta":"...","phone":"+44...","email":"info@...","website":"bpr.rehab","address":"..."}'
-                  rows={8}
+                  placeholder='{"templateId":"modern","colors":{"primary":"#4a7c8a","secondary":"#2c4f58","accent":"#6ba3b0","bg":"#ffffff","text":"#1a2332"},"logoUrl":"","logoText":"BPR","headline":"Expert Physical Rehabilitation","subheadline":"Move Better, Feel Stronger, Live Pain-Free","cta":"Book Your Free Consultation Today","services":["Physiotherapy","Sports Rehabilitation","Biomechanical Assessment","Custom Insoles"],"phone":"+44 1473 000000","email":"info@bpr.rehab","website":"bpr.rehab","address":"Ipswich, Suffolk"}'
+                  rows={6}
                   className="font-mono text-xs"
                 />
-                <p className="text-xs text-muted-foreground">Optional. Use this to standardize flyer copy/colors across templates.</p>
+                <p className="text-xs text-muted-foreground">💡 Click AI button to auto-generate professional flyer copy. Use this to maintain consistent messaging.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Email Marketing */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Email Marketing Defaults</CardTitle>
+              <CardDescription>
+                Default sender info and templates for email campaigns and newsletters.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="marketingEmailFromName">From Name</Label>
+                  <Input
+                    id="marketingEmailFromName"
+                    value={(settings as any).marketingEmailFromName || ""}
+                    onChange={(e) => setSettings({ ...settings, marketingEmailFromName: e.target.value } as any)}
+                    placeholder="Bruno Physical Rehabilitation"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="marketingEmailFromAddress">From Email</Label>
+                  <Input
+                    id="marketingEmailFromAddress"
+                    value={(settings as any).marketingEmailFromAddress || ""}
+                    onChange={(e) => setSettings({ ...settings, marketingEmailFromAddress: e.target.value } as any)}
+                    placeholder="info@bpr.rehab"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="marketingEmailReplyTo">Reply-To Email</Label>
+                  <Input
+                    id="marketingEmailReplyTo"
+                    value={(settings as any).marketingEmailReplyTo || ""}
+                    onChange={(e) => setSettings({ ...settings, marketingEmailReplyTo: e.target.value } as any)}
+                    placeholder="bruno@bpr.rehab"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="marketingEmailFooter">Email Footer</Label>
+                  <Input
+                    id="marketingEmailFooter"
+                    value={(settings as any).marketingEmailFooter || ""}
+                    onChange={(e) => setSettings({ ...settings, marketingEmailFooter: e.target.value } as any)}
+                    placeholder="© 2026 BPR - Bruno Physical Rehabilitation"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Social Media */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Social Media Defaults</CardTitle>
+              <CardDescription>
+                Default hashtags, mentions, and copy for social media posts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="marketingSocialHashtags">Default Hashtags</Label>
+                <Input
+                  id="marketingSocialHashtags"
+                  value={(settings as any).marketingSocialHashtags || ""}
+                  onChange={(e) => setSettings({ ...settings, marketingSocialHashtags: e.target.value } as any)}
+                  placeholder="#Physiotherapy #SportsRehab #BPR #IpswichPhysio #PainRelief"
+                />
+                <p className="text-xs text-muted-foreground">Separate with spaces. These will be suggested when creating social posts.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="marketingSocialBio">Social Media Bio</Label>
+                <Textarea
+                  id="marketingSocialBio"
+                  value={(settings as any).marketingSocialBio || ""}
+                  onChange={(e) => setSettings({ ...settings, marketingSocialBio: e.target.value } as any)}
+                  placeholder="Expert Physical Rehabilitation & Sports Therapy in Ipswich & London. Helping you move better, feel stronger, and live pain-free. 📍 Ipswich & Richmond 📞 +44 1473 000000"
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">Used for Instagram, Twitter, LinkedIn bios.</p>
               </div>
             </CardContent>
           </Card>
