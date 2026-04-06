@@ -1029,6 +1029,10 @@ model SiteSettings {
   whatsappEnabled Boolean  @default(false)  // Show WhatsApp button in header/site
   whatsappMessage String?  // Pre-filled message e.g. "Hello, I'd like to book an appointment"
   
+  // Accreditation Badges
+  stoLogoUrl      String?  // Sports Therapy Organisation badge logo
+  stoLogoPath     String?  // cloud_storage_path for STO logo
+  
   // Footer (Block 9)
   footerText      String?  @db.Text
   footerLinksJson String?  @db.Text  // JSON array of footer links
