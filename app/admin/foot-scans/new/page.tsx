@@ -138,15 +138,9 @@ export default function NewFootScanPage() {
       return;
     }
 
-    if (!leftFootScan || !rightFootScan) {
-      toast({
-        title: "Error",
-        description: "Please upload both foot scans",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Check if at least SOMETHING is uploaded
+    const hasLeftScan = !!leftFootScan;
+    const hasRightScan = !!rightFootScan;
     const totalPhotos =
       leftFrontal.length +
       leftLateral.length +
@@ -155,13 +149,37 @@ export default function NewFootScanPage() {
       rightLateral.length +
       rightPosterior.length;
 
-    if (totalPhotos < 12) {
+    if (!hasLeftScan && !hasRightScan && totalPhotos === 0) {
       toast({
-        title: "Warning",
-        description: "Minimum 12 photos recommended for accurate analysis (6 per foot)",
+        title: "Error",
+        description: "Please upload at least one STL file or photo to analyze",
         variant: "destructive",
       });
       return;
+    }
+
+    // Show informative warnings but allow to proceed
+    const warnings = [];
+    if (!hasLeftScan && !hasRightScan) {
+      warnings.push("No STL files - analysis based on photos only");
+    } else if (!hasLeftScan) {
+      warnings.push("Right foot only");
+    } else if (!hasRightScan) {
+      warnings.push("Left foot only");
+    }
+
+    if (totalPhotos === 0) {
+      warnings.push("No photos - 3D scans only");
+    } else if (totalPhotos < 12) {
+      warnings.push(`${totalPhotos} photos (12 recommended)`);
+    }
+
+    if (warnings.length > 0) {
+      toast({
+        title: "🧪 Test Mode",
+        description: warnings.join(" • "),
+        duration: 5000,
+      });
     }
 
     setAnalyzing(true);
@@ -376,9 +394,9 @@ export default function NewFootScanPage() {
       {/* Step 2: 3D Scans */}
       <Card>
         <CardHeader>
-          <CardTitle>Step 2: Upload 3D Scans *</CardTitle>
+          <CardTitle>Step 2: Upload 3D Scans (Optional)</CardTitle>
           <CardDescription>
-            Upload STL files from 3D scan app (e.g., Polycam, 3D Scanner App)
+            Upload 1 or 2 STL files for testing - You can analyze just one foot or both
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -452,9 +470,9 @@ export default function NewFootScanPage() {
       {/* Step 3: Photos - Left Foot */}
       <Card>
         <CardHeader>
-          <CardTitle>Step 3: Upload Photos - Left Foot *</CardTitle>
+          <CardTitle>Step 3: Upload Photos - Left Foot (Optional)</CardTitle>
           <CardDescription>
-            Minimum 6 photos recommended: 3 frontal, 2 lateral, 3 posterior
+            Upload 1 or more photos for testing - Recommended: 3 frontal, 2 lateral, 3 posterior
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -482,9 +500,9 @@ export default function NewFootScanPage() {
       {/* Step 4: Photos - Right Foot */}
       <Card>
         <CardHeader>
-          <CardTitle>Step 4: Upload Photos - Right Foot *</CardTitle>
+          <CardTitle>Step 4: Upload Photos - Right Foot (Optional)</CardTitle>
           <CardDescription>
-            Minimum 6 photos recommended: 3 frontal, 2 lateral, 3 posterior
+            Upload 1 or more photos for testing - Recommended: 3 frontal, 2 lateral, 3 posterior
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
