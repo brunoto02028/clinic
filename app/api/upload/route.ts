@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -29,24 +31,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Only image files are allowed" }, { status: 400 });
     }
 
-    // Max 5MB for base64 storage
-    if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large (max 5MB)" }, { status: 400 });
+    // Max 10MB for file storage
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
     }
 
     console.log('[upload] Processing file:', file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
 
-    // Convert to base64 and store in database
+    // Save file to persistent storage (Railway Volume or local)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
-    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    console.log('[upload] Converted to base64, size:', `${(base64.length / 1024).toFixed(0)}KB`);
+    // Determine upload directory (Railway Volume or local)
+    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads');
+    const categoryDir = path.join(uploadsBase, 'library', category);
+    
+    // Ensure directory exists
+    await mkdir(categoryDir, { recursive: true });
 
-    const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const imageUrl = dataUrl;
-    const cloud_storage_path = `base64:inline`;
+    // Generate unique filename
+    const timestamp = Date.now();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const uniqueName = `${timestamp}-${sanitizedName}`;
+    const filePath = path.join(categoryDir, uniqueName);
+
+    // Write file to disk
+    await writeFile(filePath, buffer);
+
+    console.log('[upload] File saved to:', filePath);
+
+    // Generate URL (relative to public or absolute for Railway Volume)
+    const imageUrl = `/uploads/library/${category}/${uniqueName}`;
+    const cloud_storage_path = `local:${filePath}`;
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
