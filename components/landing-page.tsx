@@ -1057,9 +1057,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             </div>
             <div>
               <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
-                {settings !== null && settings?.heroImageUrl && (
+                {settings?.aboutImageUrl && (
                   <Image
-                    src={`${settings.heroImageUrl}${settings.heroImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`}
+                    src={`${settings.aboutImageUrl}${settings.aboutImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`}
                     alt="Professional physiotherapy treatment session"
                     fill
                     className="object-cover"
