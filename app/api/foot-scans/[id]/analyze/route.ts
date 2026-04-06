@@ -132,9 +132,114 @@ export async function POST(
     const leftImages = (footScan.leftFootImages as string[]) || [];
     const rightImages = (footScan.rightFootImages as string[]) || [];
     const captureMetadata = footScan.captureMetadata as any;
+    const hasLeftSTL = !!footScan.leftFootScanUrl;
+    const hasRightSTL = !!footScan.rightFootScanUrl;
     
-    if (leftImages.length === 0 && rightImages.length === 0) {
-      return NextResponse.json({ error: 'No foot images to analyze' }, { status: 400 });
+    // Allow analysis with STL only (no images required for testing)
+    if (leftImages.length === 0 && rightImages.length === 0 && !hasLeftSTL && !hasRightSTL) {
+      return NextResponse.json({ error: 'No foot images or STL files to analyze' }, { status: 400 });
+    }
+    
+    // If no images but has STL, provide mock analysis for testing
+    if (leftImages.length === 0 && rightImages.length === 0 && (hasLeftSTL || hasRightSTL)) {
+      // STL-only test mode - return mock analysis
+      const mockAnalysis = {
+        archType: 'Normal',
+        archIndex: 0.25,
+        pronation: 'Neutral',
+        calcanealAlignment: 0,
+        halluxValgusAngle: 10,
+        metatarsalSpread: 95,
+        navicularHeight: 25,
+        leftFootLength: hasLeftSTL ? 260 : 0,
+        rightFootLength: hasRightSTL ? 260 : 0,
+        leftFootWidth: hasLeftSTL ? 100 : 0,
+        rightFootWidth: hasRightSTL ? 100 : 0,
+        leftArchHeight: hasLeftSTL ? 25 : 0,
+        rightArchHeight: hasRightSTL ? 25 : 0,
+        gaitAnalysis: {
+          pattern: 'Normal',
+          symmetry: 'Symmetric',
+          concerns: []
+        },
+        strideLength: 750,
+        cadence: 110,
+        biomechanicFindings: {
+          pressureDistribution: 'STL-only test mode - no visual data available',
+          alignmentIssues: [],
+          muscularImbalances: [],
+          riskFactors: [],
+          skinConditions: [],
+          toeDeformities: []
+        },
+        a4Calibration: {
+          detected: false,
+          confidence: 'low',
+          estimatedScale: null
+        },
+        recommendations: {
+          insoleType: 'Comfort',
+          supportLevel: 'Moderate',
+          archSupportHeight: 15,
+          heelCupDepth: 12,
+          metatarsalPad: false,
+          additionalSupport: [],
+          exercises: [],
+          footwearAdvice: 'STL-only test mode'
+        },
+        clinicalSummary: 'TEST MODE: Analysis based on STL files only without photographs. This is for calibration testing purposes. Measurements are estimated defaults.',
+        patientSummary: 'This is a test analysis using 3D scan files only.',
+        confidenceLevel: 'low',
+        shoeWearAnalysis: null,
+        imageQualityNotes: `STL-only test mode. ${hasLeftSTL ? 'Left foot STL uploaded. ' : ''}${hasRightSTL ? 'Right foot STL uploaded. ' : ''}No photographs available for visual assessment.`
+      };
+      
+      // Update foot scan with mock analysis
+      const updatedScan = await prisma.footScan.update({
+        where: { id },
+        data: {
+          status: 'PENDING_REVIEW',
+          workflowStatus: 'CLINICAL_REVIEW_PENDING',
+          confidenceBand: 'LOW',
+          archType: mockAnalysis.archType,
+          archIndex: mockAnalysis.archIndex,
+          pronation: mockAnalysis.pronation,
+          calcanealAlignment: mockAnalysis.calcanealAlignment,
+          halluxValgusAngle: mockAnalysis.halluxValgusAngle,
+          metatarsalSpread: mockAnalysis.metatarsalSpread,
+          navicularHeight: mockAnalysis.navicularHeight,
+          leftFootLength: mockAnalysis.leftFootLength,
+          rightFootLength: mockAnalysis.rightFootLength,
+          leftFootWidth: mockAnalysis.leftFootWidth,
+          rightFootWidth: mockAnalysis.rightFootWidth,
+          leftArchHeight: mockAnalysis.leftArchHeight,
+          rightArchHeight: mockAnalysis.rightArchHeight,
+          strideLength: mockAnalysis.strideLength,
+          cadence: mockAnalysis.cadence,
+          gaitAnalysis: mockAnalysis.gaitAnalysis,
+          biomechanicData: mockAnalysis.biomechanicFindings,
+          aiRecommendation: JSON.stringify({
+            recommendations: mockAnalysis.recommendations,
+            clinicalSummary: mockAnalysis.clinicalSummary,
+            patientSummary: mockAnalysis.patientSummary,
+            confidenceLevel: mockAnalysis.confidenceLevel
+          }),
+          insoleType: mockAnalysis.recommendations.insoleType
+        },
+        include: {
+          patient: {
+            select: { id: true, firstName: true, lastName: true, email: true }
+          }
+        }
+      });
+      
+      return NextResponse.json({
+        success: true,
+        footScan: updatedScan,
+        analysis: mockAnalysis,
+        testMode: true,
+        message: 'STL-only test mode - mock analysis generated'
+      });
     }
 
     // Warn if calibration reference is missing (measurements will be estimated, not calibrated)
