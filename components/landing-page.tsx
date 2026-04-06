@@ -382,13 +382,14 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-gradient-to-br from-teal-900/20 to-cyan-900/20">
                 {settings?.heroImageUrl && (
                   <Image
-                    src={settings.heroImageUrl}
+                    src={`${settings.heroImageUrl}${settings.heroImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`}
                     alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
                     fill
                     className="object-cover"
                     priority
                     quality={85}
                     sizes="(max-width: 768px) 100vw, 50vw"
+                    unoptimized
                   />
                 )}
                 {!settings?.heroImageUrl && (
@@ -1058,13 +1059,14 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
                 {settings !== null && settings?.heroImageUrl && (
                   <Image
-                    src={settings.heroImageUrl}
+                    src={`${settings.heroImageUrl}${settings.heroImageUrl.includes('?') ? '&' : '?'}t=${Date.now()}`}
                     alt="Professional physiotherapy treatment session"
                     fill
                     className="object-cover"
                     loading="lazy"
                     quality={75}
                     sizes="(max-width: 768px) 100vw, 50vw"
+                    unoptimized
                   />
                 )}
               </div>

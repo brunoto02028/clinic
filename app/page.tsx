@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import LandingPage from "@/components/landing-page";
 
+// Disable caching for this page to always show fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
 
