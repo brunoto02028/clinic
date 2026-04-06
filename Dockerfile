@@ -26,7 +26,7 @@ ENV NEXT_OUTPUT_MODE=${NEXT_OUTPUT_MODE}
 RUN npm run build
 
 FROM base AS runner
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl su-exec
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -38,8 +38,6 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 RUN mkdir -p ./public/uploads && chown nextjs:nodejs ./public/uploads && chmod 755 ./public/uploads
-# Create Railway Volume upload directory with correct permissions
-RUN mkdir -p /app/data/uploads && chown nextjs:nodejs /app/data/uploads && chmod 755 /app/data/uploads
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -49,8 +47,9 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 COPY --from=builder /app/node_modules/@img ./node_modules/@img
 
-USER nextjs
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 EXPOSE 4002
 
-CMD ["node", "server.js"]
+CMD ["/start.sh"]
