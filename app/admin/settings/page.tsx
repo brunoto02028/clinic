@@ -184,8 +184,6 @@ export default function AdminSettingsPage() {
     darkLogoUrl: "",
     darkLogoPath: "",
     faviconUrl: "",
-    stoLogoUrl: "",
-    stoLogoPath: "",
 
     // Hero Section (Block 2)
     heroTitle: "",
@@ -355,8 +353,6 @@ export default function AdminSettingsPage() {
           darkLogoUrl: data.darkLogoUrl || "",
           darkLogoPath: data.darkLogoPath || "",
           faviconUrl: data.faviconUrl || "",
-          stoLogoUrl: (data as any).stoLogoUrl || "",
-          stoLogoPath: (data as any).stoLogoPath || "",
           heroTitle: data.heroTitle || "",
           heroSubtitle: data.heroSubtitle || "",
           heroImageUrl: data.heroImageUrl || "",
@@ -877,36 +873,6 @@ export default function AdminSettingsPage() {
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       Upload Favicon
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label>STO Badge Logo</Label>
-                  <p className="text-xs text-muted-foreground">Sports Therapy Organisation accreditation badge (recommended: square PNG with transparent background)</p>
-                  {(settings as any).stoLogoUrl ? (
-                    <div className="relative inline-block">
-                      <img
-                        src={(settings as any).stoLogoUrl}
-                        alt="STO Badge"
-                        style={{ width: 64, height: 64 }}
-                        className="object-contain border rounded bg-white p-1"
-                      />
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 h-5 w-5 p-0 rounded-full"
-                        onClick={() => setSettings({ ...settings, stoLogoUrl: "" } as any)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      onClick={() => openImagePicker("stoLogoUrl")}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload STO Badge
                     </Button>
                   )}
                 </div>
