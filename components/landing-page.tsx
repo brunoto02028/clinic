@@ -410,8 +410,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
             <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="relative h-10 w-10 sm:h-11 sm:w-11 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0">
-                <Image src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" width={44} height={44} className="object-cover scale-[1.15]" loading="lazy" quality={75} />
+              <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0 bg-white p-1">
+                <Image src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" width={56} height={56} className="object-contain w-full h-full" loading="lazy" quality={75} />
               </div>
               <div className="text-left">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
