@@ -203,13 +203,20 @@ function PatientScansContent() {
   // Upload image to Railway Volume via upload-local (session-auth)
   const uploadImage = async (scanId: string, image: any, uploadType: string): Promise<string | null> => {
     try {
-      // Convert data URL to blob/file
-      const response = await fetch(image.dataUrl);
-      const blob = await response.blob();
+      // Use image.blob directly if available (preferred), otherwise fetch from dataUrl
+      let blob: Blob;
+      if (image.blob instanceof Blob) {
+        blob = image.blob;
+      } else {
+        const res = await fetch(image.dataUrl);
+        blob = await res.blob();
+      }
       const foot = uploadType === 'leftFoot' ? 'left' : 'right';
       const angle = image.angle || uploadType;
-      const fileName = `${foot}-${angle}-${Date.now()}.jpg`;
-      const file = new File([blob], fileName, { type: 'image/jpeg' });
+      const mimeType = blob.type || 'image/jpeg';
+      const ext = mimeType.split('/')[1]?.split('+')[0] || 'jpg';
+      const fileName = `${foot}-${angle}-${Date.now()}.${ext}`;
+      const file = new File([blob], fileName, { type: mimeType });
 
       const formData = new FormData();
       formData.append('file', file);
