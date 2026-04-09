@@ -200,41 +200,32 @@ function PatientScansContent() {
     setShowViewDialog(true);
   };
 
-  // Upload image to S3
+  // Upload image to Railway Volume via upload-local (session-auth)
   const uploadImage = async (scanId: string, image: any, uploadType: string): Promise<string | null> => {
     try {
-      // Get presigned URL
-      const fileName = `${uploadType}-${image.angle}-${Date.now()}.jpg`;
-      const presignRes = await fetch(`/api/foot-scans/${scanId}/upload`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName,
-          fileType: 'image/jpeg',
-          uploadType
-        })
-      });
-
-      if (!presignRes.ok) return null;
-
-      const { uploadUrl, cloud_storage_path } = await presignRes.json();
-
-      // Convert data URL to blob
+      // Convert data URL to blob/file
       const response = await fetch(image.dataUrl);
       const blob = await response.blob();
+      const foot = uploadType === 'leftFoot' ? 'left' : 'right';
+      const angle = image.angle || uploadType;
+      const fileName = `${foot}-${angle}-${Date.now()}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
 
-      // Upload to S3
-      const uploadRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'image/jpeg' },
-        body: blob
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('angle', angle);
+      formData.append('foot', foot);
+      // No scanToken — uses session auth
+
+      const uploadRes = await fetch(`/api/foot-scans/${scanId}/upload-local`, {
+        method: 'POST',
+        body: formData,
       });
 
-      if (uploadRes.ok) {
-        return cloud_storage_path;
-      }
+      if (!uploadRes.ok) return null;
 
-      return null;
+      const data = await uploadRes.json();
+      return data.imageUrl || null;
     } catch (error) {
       console.error('Upload error:', error);
       return null;

@@ -24,7 +24,15 @@ function parseCaptureViewFromUrl(imageUrl: string): string {
 async function imageToBase64(imagePath: string): Promise<string | null> {
   try {
     // imagePath is like /uploads/scans/FS-2026-00001/left-plantar-123.jpg
-    const fullPath = path.join(process.cwd(), 'public', imagePath);
+    let fullPath: string;
+    if (process.env.UPLOADS_DIR && imagePath.startsWith('/uploads/')) {
+      // Railway Volume: resolve relative to UPLOADS_DIR
+      const relative = imagePath.replace(/^\/uploads\//, '');
+      fullPath = path.join(process.env.UPLOADS_DIR, relative);
+    } else {
+      // Local dev: resolve from public folder
+      fullPath = path.join(process.cwd(), 'public', imagePath);
+    }
     const buffer = await readFile(fullPath);
     const ext = imagePath.split('.').pop()?.toLowerCase() || 'jpg';
     const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -31,27 +33,57 @@ export async function POST(
     const file = formData.get('file') as File;
     const angle = formData.get('angle') as string;
     const foot = formData.get('foot') as string; // 'left' or 'right'
-    const scanToken = formData.get('scanToken') as string;
+    const scanToken = formData.get('scanToken') as string | null;
 
-    if (!file || !angle || !foot || !scanToken) {
+    if (!file || !angle || !foot) {
       return NextResponse.json(
-        { error: 'file, angle, foot, and scanToken are required' },
+        { error: 'file, angle, and foot are required' },
         { status: 400 }
       );
     }
 
-    // Validate scan by token
-    const footScan = await (prisma.footScan as any).findUnique({
-      where: { scanToken },
-    });
+    let footScan: any;
 
-    if (!footScan || footScan.id !== id) {
-      return NextResponse.json({ error: 'Invalid scan token or ID' }, { status: 403 });
-    }
+    if (scanToken) {
+      // Token-based auth (patient mobile scan link)
+      footScan = await (prisma.footScan as any).findUnique({
+        where: { scanToken },
+      });
 
-    // Check token expiry
-    if (footScan.scanTokenExpiry && new Date() > new Date(footScan.scanTokenExpiry)) {
-      return NextResponse.json({ error: 'Scan token expired' }, { status: 410 });
+      if (!footScan || footScan.id !== id) {
+        return NextResponse.json({ error: 'Invalid scan token or ID' }, { status: 403 });
+      }
+
+      if (footScan.scanTokenExpiry && new Date() > new Date(footScan.scanTokenExpiry)) {
+        return NextResponse.json({ error: 'Scan token expired' }, { status: 410 });
+      }
+    } else {
+      // Session-based auth (patient dashboard or staff)
+      const session = await getServerSession(authOptions);
+      if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      const userId = (session.user as any).id;
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true },
+      });
+
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      footScan = await (prisma.footScan as any).findUnique({ where: { id } });
+
+      if (!footScan) {
+        return NextResponse.json({ error: 'Scan not found' }, { status: 404 });
+      }
+
+      // Patients can only upload to their own scans
+      if (user.role === 'PATIENT' && footScan.patientId !== userId) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
     }
 
     // Validate file
@@ -65,8 +97,9 @@ export async function POST(
       return NextResponse.json({ error: 'File too large (max 20MB)' }, { status: 400 });
     }
 
-    // Create directory structure
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'scans', footScan.scanNumber);
+    // Create directory structure — use Railway Volume (UPLOADS_DIR) or local public folder
+    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads');
+    const uploadDir = path.join(uploadsBase, 'scans', footScan.scanNumber);
     await mkdir(uploadDir, { recursive: true });
 
     // Generate filename
