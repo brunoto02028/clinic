@@ -254,14 +254,11 @@ function PatientScansContent() {
     }
   };
 
-  // Photo angles guide data
+  // Photo angles guide data — 3 angles × 2 feet = 6 fotos
   const photoAngles = [
-    { emoji: '👆', label: isPt ? 'Planta do Pé' : 'Sole (Plantar)', desc: isPt ? 'De cima, pé no papel A4' : 'From above, foot on A4 paper', foot: isPt ? 'Esq & Dir' : 'L & R' },
-    { emoji: '◀', label: isPt ? 'Lado Interno' : 'Inner Side (Medial)', desc: isPt ? 'Câmera no chão, lado do arco' : 'Camera on floor, arch side', foot: isPt ? 'Esq & Dir' : 'L & R' },
-    { emoji: '▶', label: isPt ? 'Lado Externo' : 'Outer Side (Lateral)', desc: isPt ? 'Câmera no chão, lado externo' : 'Camera on floor, outer side', foot: isPt ? 'Esq & Dir' : 'L & R' },
-    { emoji: '⬇', label: isPt ? 'Frente (Dedos)' : 'Front (Toes)', desc: isPt ? 'Câmera ao nível dos dedos' : 'Camera at toe level', foot: isPt ? 'Esq & Dir' : 'L & R' },
-    { emoji: '⬆', label: isPt ? 'Atrás (Calcanhar)' : 'Back (Heel)', desc: isPt ? 'Câmera atrás do calcanhar' : 'Camera behind heel', foot: isPt ? 'Esq & Dir' : 'L & R' },
-    { emoji: '👟', label: isPt ? 'Sola do Sapato' : 'Shoe Sole', desc: isPt ? 'Mostra o padrão de desgaste' : 'Shows wear pattern', foot: isPt ? 'Esq & Dir' : 'L & R' },
+    { emoji: '⬆', label: isPt ? 'Vista de Cima' : 'Top View', desc: isPt ? 'Pé assente sobre uma folha A4 no chão; fotografar de cima' : 'Foot flat on A4 paper on floor; shoot from above', foot: isPt ? 'Esq & Dir' : 'L & R' },
+    { emoji: '◀', label: isPt ? 'Lado Interno' : 'Inner Side (Arch)', desc: isPt ? 'Câmera ao nível do chão, do lado do arco do pé' : 'Camera at floor level on the arch side', foot: isPt ? 'Esq & Dir' : 'L & R' },
+    { emoji: '👆', label: isPt ? 'Planta do Pé' : 'Sole (Plantar)', desc: isPt ? 'Levantar o pé e fotografar a sola' : 'Lift foot and photograph the sole', foot: isPt ? 'Esq & Dir' : 'L & R' },
   ];
 
   if (loading) {
@@ -316,8 +313,8 @@ function PatientScansContent() {
               num: '1',
               title: isPt ? 'Tire as Fotos' : 'Take the Photos',
               desc: isPt
-                ? '12 fotos guiadas: 5 ângulos de cada pé + as solas dos seus sapatos. Use a câmera do browser ou o link que o seu terapeuta enviar para o telemóvel.'
-                : '12 guided photos: 5 angles per foot + both shoe soles. Use your browser camera or the mobile link your therapist sends.',
+                ? '6 fotos guiadas: 3 ângulos de cada pé (cima, lado interno e planta). O sistema guia passo a passo com instruções para cada foto.'
+                : '6 guided photos: 3 angles per foot (top, inner side, sole). The system guides you step by step with instructions for each shot.',
             },
             {
               icon: Brain,
@@ -360,7 +357,7 @@ function PatientScansContent() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ImageIcon className="h-4 w-4 text-amber-400" />
-            {isPt ? 'As 12 Fotos que Precisa Tirar' : 'The 12 Photos You Need to Take'}
+            {isPt ? 'As 6 Fotos que Precisa Tirar (3 por pé)' : 'The 6 Photos You Need to Take (3 per foot)'}
           </CardTitle>
           <CardDescription className="text-xs">
             {isPt

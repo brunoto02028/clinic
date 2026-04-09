@@ -44,13 +44,13 @@ interface ScanData {
 
 type CaptureStep = 'instructions' | 'left-top' | 'left-side' | 'left-bottom' | 'right-top' | 'right-side' | 'right-bottom' | 'review' | 'complete';
 
-const CAPTURE_STEPS: { step: CaptureStep; foot: 'left' | 'right'; angle: string; instruction: string }[] = [
-  { step: 'left-top', foot: 'left', angle: 'top', instruction: 'Position your LEFT foot flat and capture from above' },
-  { step: 'left-side', foot: 'left', angle: 'side', instruction: 'Capture the INNER side of your LEFT foot' },
-  { step: 'left-bottom', foot: 'left', angle: 'bottom', instruction: 'Lift your LEFT foot and capture the sole' },
-  { step: 'right-top', foot: 'right', angle: 'top', instruction: 'Position your RIGHT foot flat and capture from above' },
-  { step: 'right-side', foot: 'right', angle: 'side', instruction: 'Capture the INNER side of your RIGHT foot' },
-  { step: 'right-bottom', foot: 'right', angle: 'bottom', instruction: 'Lift your RIGHT foot and capture the sole' },
+const CAPTURE_STEPS: { step: CaptureStep; foot: 'left' | 'right'; angle: string; instruction: string; tip: string }[] = [
+  { step: 'left-top', foot: 'left', angle: 'top', instruction: '📸 PÉ ESQUERDO — Vista de Cima', tip: 'Coloque uma folha A4 no chão. Pise em cima e fotografe de cima com o pé bem assente.' },
+  { step: 'left-side', foot: 'left', angle: 'side', instruction: '📸 PÉ ESQUERDO — Lado Interno', tip: 'Sente-se e coloque a câmera ao nível do chão, do lado do arco do pé. Deixe o pé no chão.' },
+  { step: 'left-bottom', foot: 'left', angle: 'bottom', instruction: '📸 PÉ ESQUERDO — Planta do Pé', tip: 'Levante o pé esquerdo e fotografe a sola. Tente manter a planta bem visível.' },
+  { step: 'right-top', foot: 'right', angle: 'top', instruction: '📸 PÉ DIREITO — Vista de Cima', tip: 'Mantenha a folha A4 no chão. Mude para o pé direito e fotografe de cima.' },
+  { step: 'right-side', foot: 'right', angle: 'side', instruction: '📸 PÉ DIREITO — Lado Interno', tip: 'Câmera ao nível do chão, do lado do arco do pé direito.' },
+  { step: 'right-bottom', foot: 'right', angle: 'bottom', instruction: '📸 PÉ DIREITO — Planta do Pé', tip: 'Levante o pé direito e fotografe a sola.' },
 ];
 
 export function CameraCapture({ onCapture, onComplete, patientId, isSimulation = false }: CameraCaptureProps) {
@@ -291,53 +291,54 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Footprints className="h-6 w-6 text-bruno-turquoise" />
-            {isSimulation ? 'Trial Scan / Simulação' : 'Foot Scan Instructions'}
+            {isSimulation ? 'Teste de Câmera (Simulação)' : 'Pronto para tirar as fotos?'}
           </CardTitle>
           {isSimulation && (
             <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-200">
-              MODO SIMULAÇÃO - Nenhum dado será salvo
+              MODO TESTE — nenhum dado será guardado
             </Badge>
           )}
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-800 mb-2">Before you start:</h4>
-            <ul className="text-blue-700 space-y-2 text-sm">
-              <li>• Find a well-lit area</li>
-              <li>• Remove socks and any foot jewellery</li>
-              <li>• Place your feet on a plain, contrasting surface</li>
-              <li>• For REAR view, keep the camera level with your heel</li>
-              <li>• For ELEVATED view, lift your foot or lie down</li>
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+            <h4 className="font-semibold text-blue-300 mb-2">Antes de começar:</h4>
+            <ul className="text-blue-400 space-y-1.5 text-sm">
+              <li>• Retire as meias e adornos nos pés</li>
+              <li>• Escolha um local bem iluminado</li>
+              <li>• Coloque uma folha A4 no chão (para a foto de cima)</li>
+              <li>• Coloque os pés numa superfície de cor contrastante</li>
+              <li>• A câmera traseira do telemóvel dá melhores resultados</li>
             </ul>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="text-3xl mb-2">📸</div>
-              <p className="text-sm font-medium">10 Photos</p>
-              <p className="text-xs text-muted-foreground">5 per foot</p>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="p-3 rounded-lg bg-muted/40 border border-border/40">
+              <div className="text-2xl mb-1">📸</div>
+              <p className="text-sm font-semibold">6 Fotos</p>
+              <p className="text-xs text-muted-foreground">3 por pé</p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="text-3xl mb-2">⏱️</div>
-              <p className="text-sm font-medium">3-4 Minutes</p>
-              <p className="text-xs text-muted-foreground">Total time</p>
+            <div className="p-3 rounded-lg bg-muted/40 border border-border/40">
+              <div className="text-2xl mb-1">⏱️</div>
+              <p className="text-sm font-semibold">2-3 Minutos</p>
+              <p className="text-xs text-muted-foreground">Tempo total</p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="text-3xl mb-2">🦶</div>
-              <p className="text-sm font-medium">Both Feet</p>
-              <p className="text-xs text-muted-foreground">Pro Diagnostic</p>
+            <div className="p-3 rounded-lg bg-muted/40 border border-border/40">
+              <div className="text-2xl mb-1">🦶</div>
+              <p className="text-sm font-semibold">Ambos os Pés</p>
+              <p className="text-xs text-muted-foreground">Diagnóstico completo</p>
             </div>
           </div>
 
           <Button
-            className="w-full"
+            className="w-full bg-bruno-turquoise hover:bg-bruno-turquoise/90"
             size="lg"
             onClick={() => {
               setCurrentStep('left-top');
               startCamera();
             }}
           >
-            {isSimulation ? 'Iniciar Simulação' : 'Start Scanning'} <ArrowRight className="ml-2 h-4 w-4" />
+            <Camera className="mr-2 h-5 w-5" />
+            {isSimulation ? 'Iniciar Teste' : 'Começar a Tirar Fotos'} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </CardContent>
       </Card>
@@ -346,44 +347,46 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
 
   // Render review
   if (currentStep === 'review') {
+    const angleLabels: Record<string, string> = { top: 'Cima', side: 'Interno', bottom: 'Planta' };
     return (
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-6 w-6 text-green-500" />
-              Review Your Captures
+              Rever as Fotos Tiradas
             </div>
             {isSimulation && <Badge className="bg-orange-100 text-orange-800 uppercase">Simulação</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Left Foot */}
+            {/* Pé Esquerdo */}
             <div>
-              <h4 className="font-semibold mb-3">Left Foot</h4>
-              <div className="grid grid-cols-5 gap-2">
-                {['top', 'side', 'sole', 'rear', 'elevated'].map(angle => {
+              <h4 className="font-semibold mb-3">🦶 Pé Esquerdo</h4>
+              <div className="grid grid-cols-3 gap-2">
+                {['top', 'side', 'bottom'].map(angle => {
                   const img = capturedImages.find(i => i.foot === 'left' && i.angle === angle);
                   return (
-                    <div key={`left-${angle}`} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                    <div key={`left-${angle}`} className="relative aspect-square rounded-lg overflow-hidden bg-muted/50 border border-border">
                       {img ? (
                         <>
-                          <img src={img.dataUrl} alt={`Left ${angle}`} className="w-full h-full object-cover" />
+                          <img src={img.dataUrl} alt={`Esquerdo ${angle}`} className="w-full h-full object-cover" />
                           <button
                             onClick={() => retakeImage('left', angle)}
                             className="absolute bottom-1 right-1 p-1 bg-white/80 rounded-full hover:bg-white shadow-sm"
+                            title="Repetir foto"
                           >
                             <RotateCcw className="h-3 w-3" />
                           </button>
                         </>
                       ) : (
-                        <div className="flex items-center justify-center h-full text-gray-400">
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
                           <XCircle className="h-6 w-6" />
                         </div>
                       )}
-                      <span className="absolute top-0 left-0 text-[10px] bg-black/50 text-white px-1 py-0.5 rounded-br">
-                        {angle}
+                      <span className="absolute top-0 left-0 text-[10px] bg-black/60 text-white px-1 py-0.5 rounded-br">
+                        {angleLabels[angle] || angle}
                       </span>
                     </div>
                   );
@@ -391,31 +394,32 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
               </div>
             </div>
 
-            {/* Right Foot */}
+            {/* Pé Direito */}
             <div>
-              <h4 className="font-semibold mb-3">Right Foot</h4>
-              <div className="grid grid-cols-5 gap-2">
-                {['top', 'side', 'sole', 'rear', 'elevated'].map(angle => {
+              <h4 className="font-semibold mb-3">🦶 Pé Direito</h4>
+              <div className="grid grid-cols-3 gap-2">
+                {['top', 'side', 'bottom'].map(angle => {
                   const img = capturedImages.find(i => i.foot === 'right' && i.angle === angle);
                   return (
-                    <div key={`right-${angle}`} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                    <div key={`right-${angle}`} className="relative aspect-square rounded-lg overflow-hidden bg-muted/50 border border-border">
                       {img ? (
                         <>
-                          <img src={img.dataUrl} alt={`Right ${angle}`} className="w-full h-full object-cover" />
+                          <img src={img.dataUrl} alt={`Direito ${angle}`} className="w-full h-full object-cover" />
                           <button
                             onClick={() => retakeImage('right', angle)}
                             className="absolute bottom-1 right-1 p-1 bg-white/80 rounded-full hover:bg-white shadow-sm"
+                            title="Repetir foto"
                           >
                             <RotateCcw className="h-3 w-3" />
                           </button>
                         </>
                       ) : (
-                        <div className="flex items-center justify-center h-full text-gray-400">
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
                           <XCircle className="h-6 w-6" />
                         </div>
                       )}
-                      <span className="absolute top-0 left-0 text-[10px] bg-black/50 text-white px-1 py-0.5 rounded-br">
-                        {angle}
+                      <span className="absolute top-0 left-0 text-[10px] bg-black/60 text-white px-1 py-0.5 rounded-br">
+                        {angleLabels[angle] || angle}
                       </span>
                     </div>
                   );
@@ -424,7 +428,11 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <p className="text-sm text-muted-foreground text-center">
+            {capturedImages.length} de 6 fotos tiradas. Pode repetir qualquer foto clicando no ícone de repetição.
+          </p>
+
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -433,15 +441,15 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
               }}
             >
               <RotateCcw className="mr-2 h-4 w-4" />
-              Start Over
+              Recomeçar
             </Button>
             <Button
-              className="flex-1 bg-bruno-turquoise hover:bg-bruno-turquoise-dark"
+              className="flex-1 bg-bruno-turquoise hover:bg-bruno-turquoise/90"
               onClick={completeScan}
-              disabled={capturedImages.length < 10 && !isSimulation}
+              disabled={capturedImages.length < 6 && !isSimulation}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              {isSimulation ? 'Finalizar Teste' : `Submit Scan (${capturedImages.length}/10 images)`}
+              {isSimulation ? 'Finalizar Teste' : `Enviar ${capturedImages.length}/6 Fotos`}
             </Button>
           </div>
         </CardContent>
@@ -454,15 +462,14 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
     return (
       <Card className="max-w-2xl mx-auto text-center">
         <CardContent className="py-12">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-green-500/15 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="h-10 w-10 text-green-500" />
           </div>
-          <h3 className="text-2xl font-bold mb-2">{isSimulation ? 'Simulação Concluída' : 'Scan Complete!'}</h3>
+          <h3 className="text-2xl font-bold mb-2">{isSimulation ? 'Teste Concluído!' : 'Fotos Enviadas!'}</h3>
           {isSimulation ? (
             <>
               <p className="text-muted-foreground mb-6">
-                Excelente! Você completou os passos do escaneamento diagnóstico.
-                Nenhuma imagem foi arquivada neste modo de teste.
+                Excelente! Completou todos os passos do teste. Nenhuma imagem foi guardada.
               </p>
               <Button onClick={() => setCurrentStep('instructions')} variant="outline">
                 <RotateCcw className="mr-2 h-4 w-4" /> Tentar Novamente
@@ -470,11 +477,11 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
             </>
           ) : (
             <>
-              <p className="text-muted-foreground mb-6">
-                Your foot scan has been submitted successfully. Our AI will analyse your scans and your clinician will review the results.
+              <p className="text-muted-foreground mb-4">
+                As suas fotos foram enviadas com sucesso. A nossa IA vai analisar as imagens e o seu terapeuta irá rever os resultados.
               </p>
               <p className="text-sm text-muted-foreground">
-                You will receive a notification when your analysis is ready.
+                Receberá uma notificação quando a análise estiver pronta. Pode fechar esta janela.
               </p>
             </>
           )}
@@ -490,25 +497,31 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
     <Card className="max-w-2xl mx-auto overflow-hidden">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">
-            {stepInfo?.foot === 'left' ? 'Left' : 'Right'} Foot - {stepInfo?.angle}
+          <CardTitle className="text-base">
+            Foto {currentStepIndex + 1} de {CAPTURE_STEPS.length}
           </CardTitle>
           <span className="text-sm text-muted-foreground">
-            {currentStepIndex + 1} of {CAPTURE_STEPS.length}
+            {stepInfo?.foot === 'left' ? '🦶 Pé Esquerdo' : '🦶 Pé Direito'}
           </span>
         </div>
         <Progress value={progress} className="h-2" />
       </CardHeader>
 
-      <CardContent className="space-y-4 p-0">
+      <CardContent className="space-y-0 p-0">
         {error ? (
           <QRCameraFallback
             errorMessage={error}
-            featureName={{ en: "the foot scan", pt: "o escaneamento dos pés" }}
+            featureName={{ en: "the foot scan", pt: "o envio de fotos dos pés" }}
             onRetry={() => { setError(null); startCamera(); }}
           />
         ) : (
           <>
+            {/* Instruction banner above camera */}
+            <div className="px-4 py-3 bg-bruno-turquoise/15 border-b border-bruno-turquoise/20">
+              <p className="text-sm font-semibold text-center">{stepInfo?.instruction}</p>
+              <p className="text-xs text-muted-foreground text-center mt-0.5">{stepInfo?.tip}</p>
+            </div>
+
             {/* Camera View */}
             <div className="relative aspect-[4/3] bg-black">
               <video
@@ -521,16 +534,13 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
 
               {/* Overlay Guide */}
               <div className="absolute inset-0 pointer-events-none">
-                {/* Foot outline guide */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-48 h-64 border-2 border-white/50 border-dashed rounded-3xl">
-                    <div className="absolute top-2 left-1/2 -translate-x-1/2 text-white/70 text-xs">
-                      Position foot here
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 text-white/70 text-xs whitespace-nowrap">
+                      Posicione o pé aqui
                     </div>
                   </div>
                 </div>
-
-                {/* Scan animation */}
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-bruno-turquoise to-transparent animate-scan-line" />
               </div>
 
@@ -539,14 +549,14 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
                 <button
                   onClick={toggleCamera}
                   className="p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
-                  title="Switch Camera"
+                  title="Mudar câmera"
                 >
                   <RotateCcw className="h-5 w-5" />
                 </button>
                 <button
                   onClick={toggleTorch}
                   className={`p-2 rounded-full text-white transition-colors ${torchActive ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-black/50 hover:bg-black/70'}`}
-                  title="Toggle Flashlight"
+                  title="Lanterna"
                 >
                   <Zap className={`h-5 w-5 ${torchActive ? 'fill-white' : ''}`} />
                 </button>
@@ -557,28 +567,22 @@ export function CameraCapture({ onCapture, onComplete, patientId, isSimulation =
                 <div className="absolute inset-0 flex items-center justify-center bg-black/80">
                   <div className="text-white text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2" />
-                    <p>Starting camera...</p>
+                    <p className="text-sm">A iniciar câmera...</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Instruction */}
-            <div className="px-6 py-4 bg-blue-50 border-t border-b border-blue-100">
-              <p className="text-blue-800 text-center font-medium">
-                {stepInfo?.instruction}
-              </p>
-            </div>
-
             {/* Capture Button */}
-            <div className="p-6 flex justify-center">
+            <div className="p-5 flex flex-col items-center gap-2">
               <button
                 onClick={captureImage}
                 disabled={!cameraReady || isCapturing}
-                className="w-20 h-20 rounded-full bg-bruno-turquoise hover:bg-bruno-turquoise-dark disabled:bg-gray-300 transition-colors flex items-center justify-center shadow-lg"
+                className="w-20 h-20 rounded-full bg-bruno-turquoise hover:bg-bruno-turquoise/90 disabled:bg-muted transition-colors flex items-center justify-center shadow-lg"
               >
-                <Camera className="h-10 w-10 text-white" />
+                <Camera className="h-9 w-9 text-white" />
               </button>
+              <p className="text-xs text-muted-foreground">Toque para tirar a foto</p>
             </div>
           </>
         )}
