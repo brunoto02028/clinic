@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
       fileKey: string;
     }> = metadataRaw ? JSON.parse(metadataRaw) : [];
 
-    const videosDir = path.join(process.cwd(), "public", "uploads", "exercises");
+    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+    const videosDir = path.join(uploadsBase, "exercises");
     const thumbDir = path.join(videosDir, "thumbnails");
     await mkdir(videosDir, { recursive: true });
     await mkdir(thumbDir, { recursive: true });

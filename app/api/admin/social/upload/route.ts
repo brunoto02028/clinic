@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'social');
+    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads');
+    const uploadsDir = path.join(uploadsBase, 'social');
     await mkdir(uploadsDir, { recursive: true });
 
     const uploaded: { url: string; filename: string; size: number }[] = [];

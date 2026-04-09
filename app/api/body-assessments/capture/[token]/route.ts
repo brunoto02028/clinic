@@ -160,7 +160,8 @@ export async function PUT(
 
     // Handle image upload per view
     if (view && (imageData || imageFile)) {
-      const uploadsDir = path.join(process.cwd(), "public", "uploads", "body-assessments", assessment.id);
+      const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+      const uploadsDir = path.join(uploadsBase, "body-assessments", assessment.id);
       await mkdir(uploadsDir, { recursive: true });
 
       const ts = Date.now();
@@ -226,7 +227,8 @@ export async function PUT(
 
       if (movementVideo.videoFile) {
         // FormData video — save to disk
-        const videoDir = path.join(process.cwd(), "public", "uploads", "body-assessments", assessment.id);
+        const videoUploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+        const videoDir = path.join(videoUploadsBase, "body-assessments", assessment.id);
         await mkdir(videoDir, { recursive: true });
         const vidFilename = `${movementVideo.testType}-${Date.now()}.webm`;
         const vidPath = path.join(videoDir, vidFilename);

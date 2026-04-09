@@ -68,8 +68,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File too large (max 25MB)" }, { status: 400 });
     }
 
-    // Create uploads directory
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "documents", userId);
+    // Create uploads directory (Railway Volume or local)
+    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+    const uploadDir = path.join(uploadsBase, "documents", userId);
     await mkdir(uploadDir, { recursive: true });
 
     // Generate unique filename

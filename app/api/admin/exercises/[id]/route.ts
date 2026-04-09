@@ -111,7 +111,8 @@ export async function PATCH(
         return NextResponse.json({ error: "Video too large (max 500MB)" }, { status: 400 });
       }
 
-      const videosDir = path.join(process.cwd(), "public", "uploads", "exercises");
+      const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+      const videosDir = path.join(uploadsBase, "exercises");
       await mkdir(videosDir, { recursive: true });
 
       const ext = path.extname(videoFile.name) || ".mp4";
@@ -131,7 +132,8 @@ export async function PATCH(
     // Handle thumbnail
     const thumbnailFile = formData.get("thumbnail") as File | null;
     if (thumbnailFile && thumbnailFile.size > 0) {
-      const thumbDir = path.join(process.cwd(), "public", "uploads", "exercises", "thumbnails");
+      const uploadsBase2 = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+      const thumbDir = path.join(uploadsBase2, "exercises", "thumbnails");
       await mkdir(thumbDir, { recursive: true });
 
       const ext = path.extname(thumbnailFile.name) || ".jpg";

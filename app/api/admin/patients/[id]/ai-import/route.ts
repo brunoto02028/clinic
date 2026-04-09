@@ -41,8 +41,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   for (const file of files) {
     try {
-      // Save the file locally
-      const uploadDir = path.join(process.cwd(), "public", "uploads", "documents", patientId);
+      // Save the file locally (Railway Volume or local)
+      const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+      const uploadDir = path.join(uploadsBase, "documents", patientId);
       fs.mkdirSync(uploadDir, { recursive: true });
       const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const filepath = path.join(uploadDir, safeName);

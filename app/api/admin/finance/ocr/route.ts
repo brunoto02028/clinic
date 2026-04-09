@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
     const ext = path.extname(file.name) || ".pdf";
     const filename = `invoice_${Date.now()}${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "invoices");
+    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
+    const uploadDir = path.join(uploadsBase, "invoices");
 
     await mkdir(uploadDir, { recursive: true });
     const filepath = path.join(uploadDir, filename);
