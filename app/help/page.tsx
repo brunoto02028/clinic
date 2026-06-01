@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SiteHeader } from "@/components/site-header";
 
 const faqs = [
   {
@@ -113,10 +114,12 @@ export default function HelpPage() {
   })).filter(category => category.questions.length > 0);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
+    <>
+      <SiteHeader />
+      <div className="min-h-screen bg-background">
+        <div className="max-w-4xl mx-auto px-4 py-12">
+          {/* Header */}
+          <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Central de Ajuda</h1>
           <p className="text-muted-foreground text-lg mb-8">
             Encontre respostas para suas dúvidas
@@ -243,7 +246,8 @@ export default function HelpPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
