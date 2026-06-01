@@ -1,5 +1,14 @@
 {
-  "version": "1.0.1780295582707",
-  "timestamp": 1780295582707,
-  "buildDate": "2026-06-01T06:33:02.707Z"
+  "version": "2.0.0",
+  "timestamp": 1780297200000,
+  "buildDate": "2026-06-01T10:30:00.000Z",
+  "release": "PRODUCTION_READY",
+  "features": [
+    "Real STL Generation",
+    "3D Insole Viewer",
+    "Production Timeline",
+    "Patient Notifications",
+    "Event Tracking",
+    "Complete Documentation"
+  ]
 }
