@@ -10,6 +10,8 @@ import { SiteTracker } from "@/components/analytics/site-tracker";
 import { CookieConsentBanner } from "@/components/cookie-consent";
 import { VersionChecker } from "@/components/version-checker";
 import { WebVitals } from "@/components/web-vitals";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { Hotjar } from "@/components/analytics/hotjar";
 import { prisma } from "@/lib/db";
 import { SchemaOrgScript } from "@/components/schema-org-script";
 
@@ -146,6 +148,8 @@ export default async function RootLayout({
           <CookieConsentBanner />
           <VersionChecker />
           <WebVitals />
+          <GoogleAnalytics />
+          <Hotjar />
         </Providers>
       </body>
     </html>
