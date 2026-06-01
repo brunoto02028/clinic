@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+# Run migrations on startup
+echo "[start.sh] Running database migrations..."
+npx prisma migrate deploy || echo "[start.sh] Migration failed or already up to date"
+
 # Create upload directories if UPLOADS_DIR is set
 if [ -n "$UPLOADS_DIR" ]; then
   mkdir -p "$UPLOADS_DIR" || true
@@ -10,4 +14,5 @@ if [ -n "$UPLOADS_DIR" ]; then
 fi
 
 # Start the app (Railway handles port via $PORT env var)
+echo "[start.sh] Starting Next.js server..."
 exec su-exec nextjs node server.js
