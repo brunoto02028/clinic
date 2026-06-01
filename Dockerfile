@@ -1,22 +1,29 @@
 FROM node:20-alpine AS base
 
+# ── Stage 1: Dependencies (cached unless package*.json changes) ──
 FROM base AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
-RUN npm install --legacy-peer-deps sharp
+RUN npm ci --legacy-peer-deps && \
+    npm install --legacy-peer-deps sharp
 
+# ── Stage 2: Builder ──
 FROM base AS builder
 RUN apk add --no-cache openssl
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
 
+# Copy prisma schema first (cached unless schema changes)
+COPY prisma ./prisma
 RUN npx prisma generate
 
+# Copy source code
+COPY . .
+
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 ARG DATABASE_URL
 ARG STRIPE_SECRET_KEY
 ARG NEXT_OUTPUT_MODE=standalone
@@ -25,6 +32,7 @@ ENV STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
 ENV NEXT_OUTPUT_MODE=${NEXT_OUTPUT_MODE}
 RUN npm run build
 
+# ── Stage 3: Production runner (minimal image) ──
 FROM base AS runner
 RUN apk add --no-cache openssl su-exec
 WORKDIR /app
@@ -33,8 +41,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 RUN mkdir -p ./public/uploads && chown nextjs:nodejs ./public/uploads && chmod 755 ./public/uploads
 COPY --from=builder /app/public ./public
