@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { getConfigValue } from "@/lib/system-config";
+import { callAI } from "@/lib/ai-provider";
 
 export const dynamic = 'force-dynamic';
 
@@ -12,12 +12,6 @@ export async function POST(req: Request) {
   }
 
   const { patientName, treatmentType, duration, instructions } = await req.json();
-
-  const geminiKey = await getConfigValue("GEMINI_API_KEY") || process.env.GEMINI_API_KEY;
-  if (!geminiKey) {
-    return NextResponse.json({ error: "AI not configured. Add GEMINI_API_KEY in AI Settings." }, { status: 500 });
-  }
-  const geminiModel = (await getConfigValue("GEMINI_MODEL")) || "gemini-2.0-flash";
 
   const prompt = `You are a clinical notes generator for a physiotherapy clinic (Bruno Physical Rehabilitation - BPR).
 Generate professional appointment notes for:
@@ -36,22 +30,7 @@ Write 3-5 sentences covering:
 Write in English. Return ONLY the notes text, no markdown, no formatting, no JSON.`;
 
   try {
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
-    const res = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
-      }),
-    });
-
-    if (!res.ok) {
-      return NextResponse.json({ error: "AI generation failed" }, { status: 500 });
-    }
-
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const text = await callAI(prompt, { temperature: 0.7, maxTokens: 512 });
     return NextResponse.json({ notes: text.trim() });
   } catch (e: any) {
     console.error("AI notes generation error:", e);

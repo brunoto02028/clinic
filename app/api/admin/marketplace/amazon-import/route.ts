@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getConfigValue } from "@/lib/system-config";
+import { callAI, parseAIJson } from "@/lib/ai-provider";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,14 +28,7 @@ export async function POST(req: NextRequest) {
       try { affiliateTag = (await getConfigValue("AMAZON_AFFILIATE_TAG")) || ""; } catch {}
     }
 
-    // Use Gemini to extract product info from the Amazon URL
-    const geminiKey = await getConfigValue("GEMINI_API_KEY");
-    const geminiModel = (await getConfigValue("GEMINI_MODEL")) || "gemini-2.0-flash";
-
-    if (!geminiKey) {
-      return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
-    }
-
+    // Use AI to extract product info from the Amazon URL
     const prompt = `You are a product data extraction assistant. Given this Amazon product URL: ${url}
 
 Extract or infer the following product information. If the URL contains an ASIN (${asin || 'unknown'}), use your knowledge of Amazon products to provide accurate details.
@@ -61,34 +55,8 @@ For category, use these guidelines:
 Make the description relevant to a physiotherapy/rehabilitation clinic marketplace.
 Return ONLY the JSON object, no markdown, no explanation.`;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1000 },
-        }),
-      }
-    );
-
-    if (!geminiRes.ok) {
-      const errData = await geminiRes.json().catch(() => ({}));
-      throw new Error(`Gemini API error: ${errData?.error?.message || geminiRes.statusText}`);
-    }
-
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-    // Parse JSON from response (strip markdown fences if present)
-    const jsonStr = rawText.replace(/```json?\n?/g, "").replace(/```\n?/g, "").trim();
-    let product;
-    try {
-      product = JSON.parse(jsonStr);
-    } catch {
-      throw new Error("Failed to parse AI response as JSON");
-    }
+    const rawText = await callAI(prompt, { temperature: 0.3, maxTokens: 1000 });
+    const product = parseAIJson(rawText);
 
     // Build the affiliate URL with tag
     let affiliateUrl = url;

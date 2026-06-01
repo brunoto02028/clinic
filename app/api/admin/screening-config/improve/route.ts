@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
+import { callAI } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,6 @@ export async function POST(request: NextRequest) {
 
     if (!text) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 });
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "AI API key not configured" }, { status: 500 });
     }
 
     const systemPrompt = `You are a UK healthcare compliance expert specialising in physiotherapy, sports therapy, and physical rehabilitation clinics. 
@@ -45,33 +41,16 @@ Language: ${language === "pt" ? "Brazilian Portuguese" : "British English"}
 
 Return ONLY the improved text, nothing else. No explanations, no quotes, just the improved text.`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Improve this ${fieldType || "question"} for a UK rehabilitation clinic screening form:\n\n"${text}"` }] }],
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
-        }),
-      }
+    const improved = await callAI(
+      `Improve this ${fieldType || "question"} for a UK rehabilitation clinic screening form:\n\n"${text}"`,
+      { systemPrompt, temperature: 0.3, maxTokens: 300 }
     );
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("Gemini error:", errText);
-      return NextResponse.json({ error: "AI service error" }, { status: 502 });
-    }
-
-    const data = await res.json();
-    const improved = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
     if (!improved) {
       return NextResponse.json({ error: "No suggestion generated" }, { status: 500 });
     }
 
-    return NextResponse.json({ improved });
+    return NextResponse.json({ improved: improved.trim() });
   } catch (error) {
     console.error("Error improving text:", error);
     return NextResponse.json({ error: "Failed to generate improvement" }, { status: 500 });

@@ -1,11 +1,11 @@
-// Unified AI Provider — Minimax (primary), Gemini (fallback)
+// Unified AI Provider — Groq (primary), Minimax (secondary), Gemini (fallback)
 // All AI calls in the system should go through this layer.
 
 import { getConfigValue } from "@/lib/system-config";
 
 // ─── Types ───
 
-export type AIProvider = "minimax" | "gemini" | "openai";
+export type AIProvider = "groq" | "minimax" | "gemini" | "openai";
 
 export interface AICallOptions {
   provider?: AIProvider;
@@ -49,6 +49,10 @@ async function getGeminiKey(): Promise<string | null> {
   return getConfigValue("GEMINI_API_KEY");
 }
 
+async function getGroqKey(): Promise<string | null> {
+  return (await getConfigValue("GROQ_API_KEY")) || process.env.GROQ_API_KEY || null;
+}
+
 async function getOpenAIKey(): Promise<string | null> {
   return getConfigValue("OPENAI_API_KEY");
 }
@@ -59,6 +63,88 @@ async function getGeminiModel(): Promise<string> {
 
 async function getImageModel(): Promise<string> {
   return (await getConfigValue("AI_IMAGE_MODEL")) || "gemini-2.5-flash-image";
+}
+
+// ─── Groq AI calls ───
+
+async function callGroqDirect(
+  prompt: string,
+  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+): Promise<string> {
+  const apiKey = await getGroqKey();
+  if (!apiKey) throw new Error("GROQ_API_KEY is not configured.");
+
+  const messages: any[] = [];
+  if (opts.systemPrompt) {
+    messages.push({ role: "system", content: opts.systemPrompt });
+  }
+  messages.push({ role: "user", content: prompt });
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages,
+      temperature: opts.temperature ?? 0.7,
+      max_tokens: opts.maxTokens ?? 4096,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Groq API error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error("No response from Groq");
+  return text.trim();
+}
+
+async function callGroqChat(
+  messages: Array<{ role: string; content: string }>,
+  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+): Promise<string> {
+  const apiKey = await getGroqKey();
+  if (!apiKey) throw new Error("GROQ_API_KEY is not configured.");
+
+  const apiMessages: any[] = [];
+  if (opts.systemPrompt) {
+    apiMessages.push({ role: "system", content: opts.systemPrompt });
+  }
+  for (const m of messages) {
+    if (m.role === "system" && opts.systemPrompt) continue;
+    apiMessages.push({
+      role: m.role === "model" ? "assistant" : m.role,
+      content: m.content,
+    });
+  }
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: apiMessages,
+      temperature: opts.temperature ?? 0.7,
+      max_tokens: opts.maxTokens ?? 4096,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Groq chat error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || "";
 }
 
 // ─── Minimax AI calls ───
@@ -280,29 +366,38 @@ async function analyzeImageGemini(
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Generate text using AI (Minimax primary, Gemini fallback).
+ * Generate text using AI.
+ * Priority chain: Groq (fastest) → Minimax → Gemini (fallback)
  */
 export async function callAI(prompt: string, opts?: AICallOptions): Promise<string> {
-  // Try Minimax first (primary)
+  const callOpts = {
+    temperature: opts?.temperature,
+    maxTokens: opts?.maxTokens,
+    systemPrompt: opts?.systemPrompt,
+  };
+
+  // 1. Try Groq first (fastest inference)
+  const groqKey = await getGroqKey();
+  if (groqKey) {
+    try {
+      return await callGroqDirect(prompt, callOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Groq failed, trying Minimax:", err.message);
+    }
+  }
+
+  // 2. Try Minimax (good multilingual)
   const minimaxKey = await getMinimaxKey();
   if (minimaxKey) {
     try {
-      return await callMinimaxDirect(prompt, {
-        temperature: opts?.temperature,
-        maxTokens: opts?.maxTokens,
-        systemPrompt: opts?.systemPrompt,
-      });
+      return await callMinimaxDirect(prompt, callOpts);
     } catch (err: any) {
       console.warn("[ai-provider] Minimax failed, falling back to Gemini:", err.message);
     }
   }
   
-  // Fallback to Gemini
-  return callGeminiDirect(prompt, {
-    temperature: opts?.temperature,
-    maxTokens: opts?.maxTokens,
-    systemPrompt: opts?.systemPrompt,
-  });
+  // 3. Fallback to Gemini
+  return callGeminiDirect(prompt, callOpts);
 }
 
 /**
@@ -332,10 +427,10 @@ export async function analyzeImage(
 }
 
 /**
- * Stream AI response. Wraps Gemini full response as a simple stream.
+ * Stream AI response. Uses the callAI chain (Groq → Minimax → Gemini).
  */
 export async function streamAI(prompt: string, opts?: AIStreamOptions): Promise<ReadableStream<Uint8Array>> {
-  const text = await callGeminiDirect(prompt, {
+  const text = await callAI(prompt, {
     temperature: opts?.temperature,
     maxTokens: opts?.maxTokens,
     systemPrompt: opts?.systemPrompt,
@@ -349,10 +444,91 @@ export async function streamAI(prompt: string, opts?: AIStreamOptions): Promise<
 }
 
 /**
- * Multi-turn chat using Gemini.
+ * Multi-turn chat using AI.
+ * Priority chain: Groq → Minimax → Gemini
  * messages: array of { role: "user"|"assistant"|"system", content: string }
  */
 export async function callAIChat(
+  messages: Array<{ role: string; content: string }>,
+  opts?: { provider?: AIProvider; model?: string; temperature?: number; maxTokens?: number; systemPrompt?: string }
+): Promise<string> {
+  const chatOpts = {
+    temperature: opts?.temperature,
+    maxTokens: opts?.maxTokens,
+    systemPrompt: opts?.systemPrompt,
+  };
+
+  // 1. Try Groq first (fastest)
+  const groqKey = await getGroqKey();
+  if (groqKey) {
+    try {
+      return await callGroqChat(messages, chatOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Groq chat failed, trying Minimax:", err.message);
+    }
+  }
+
+  // 2. Try Minimax
+  const minimaxKey = await getMinimaxKey();
+  if (minimaxKey) {
+    try {
+      return await callMinimaxChat(messages, chatOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Minimax chat failed, falling back to Gemini:", err.message);
+    }
+  }
+
+  // 3. Fallback to Gemini
+  return callGeminiChat(messages, opts);
+}
+
+// ─── Minimax Chat ───
+
+async function callMinimaxChat(
+  messages: Array<{ role: string; content: string }>,
+  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+): Promise<string> {
+  const apiKey = await getMinimaxKey();
+  if (!apiKey) throw new Error("MINIMAX_API_KEY is not configured.");
+
+  const apiMessages: any[] = [];
+  if (opts.systemPrompt) {
+    apiMessages.push({ role: "system", content: opts.systemPrompt });
+  }
+  for (const m of messages) {
+    if (m.role === "system" && opts.systemPrompt) continue;
+    apiMessages.push({
+      role: m.role === "model" ? "assistant" : m.role,
+      content: m.content,
+    });
+  }
+
+  const res = await fetch("https://api.minimax.chat/v1/text/chatcompletion_v2", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "abab6.5s-chat",
+      messages: apiMessages,
+      temperature: opts.temperature ?? 0.7,
+      max_tokens: opts.maxTokens ?? 4096,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Minimax chat error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || "";
+}
+
+// ─── Gemini Chat ───
+
+async function callGeminiChat(
   messages: Array<{ role: string; content: string }>,
   opts?: { provider?: AIProvider; model?: string; temperature?: number; maxTokens?: number; systemPrompt?: string }
 ): Promise<string> {
@@ -443,26 +619,37 @@ export function parseAIJson<T = any>(raw: string): T {
  */
 export async function getActiveProviderInfo(): Promise<{
   provider: string;
+  hasGroq: boolean;
   hasMinimax: boolean;
   hasGemini: boolean;
   hasOpenAI: boolean;
   defaultProvider: string;
+  fallbackChain: string[];
 }> {
+  const groqKey = await getGroqKey();
   const minimaxKey = await getMinimaxKey();
   const geminiKey = await getGeminiKey();
   const openaiKey = await getOpenAIKey();
   
   let provider = "none";
-  if (minimaxKey) provider = "minimax";
+  if (groqKey) provider = "groq";
+  else if (minimaxKey) provider = "minimax";
   else if (geminiKey) provider = "gemini";
   else if (openaiKey) provider = "openai";
+
+  const chain: string[] = [];
+  if (groqKey) chain.push("groq");
+  if (minimaxKey) chain.push("minimax");
+  if (geminiKey) chain.push("gemini");
   
   return {
     provider,
+    hasGroq: !!groqKey,
     hasMinimax: !!minimaxKey,
     hasGemini: !!geminiKey,
     hasOpenAI: !!openaiKey,
-    defaultProvider: "minimax",
+    defaultProvider: "groq",
+    fallbackChain: chain,
   };
 }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { getConfigValue } from "@/lib/system-config";
+import { callAI, parseAIJson } from "@/lib/ai-provider";
 import { ALL_FEATURE_KEYS, MODULE_REGISTRY, PERMISSION_REGISTRY } from "@/lib/module-registry";
 
 export const dynamic = 'force-dynamic';
@@ -16,13 +16,6 @@ export async function POST(req: Request) {
   if (!prompt || typeof prompt !== "string") {
     return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
   }
-
-  // Get Gemini API key (same pattern as body assessment AI)
-  const geminiKey = await getConfigValue("GEMINI_API_KEY") || process.env.GEMINI_API_KEY;
-  if (!geminiKey) {
-    return NextResponse.json({ error: "AI not configured. Add GEMINI_API_KEY in AI Settings." }, { status: 500 });
-  }
-  const geminiModel = (await getConfigValue("GEMINI_MODEL")) || "gemini-2.0-flash";
 
   // Build available modules/permissions list for the AI
   const modulesList = MODULE_REGISTRY.map(m => `${m.key}: ${m.label} — ${m.description}${m.alwaysVisible ? " (CORE - always included)" : ""}`).join("\n");
@@ -59,34 +52,8 @@ Rules:
 - Price should be in GBP (£)`;
 
   try {
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
-    const res = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          { role: "user", parts: [{ text: `${systemPrompt}\n\nUser request: ${prompt}` }] },
-        ],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("Gemini error:", err);
-      return NextResponse.json({ error: "AI generation failed" }, { status: 500 });
-    }
-
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-    // Extract JSON from response (handle markdown code blocks)
-    let jsonStr = text.trim();
-    if (jsonStr.startsWith("```")) {
-      jsonStr = jsonStr.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
-    }
-
-    const plan = JSON.parse(jsonStr);
+    const text = await callAI(prompt, { systemPrompt, temperature: 0.7, maxTokens: 1024 });
+    const plan = parseAIJson(text);
 
     // Validate features — only allow known keys
     const validKeys = new Set(ALL_FEATURE_KEYS);
