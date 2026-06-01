@@ -44,6 +44,10 @@ BPR Clinical System is a comprehensive web application designed for physiotherap
 - **Blood Pressure Monitor** — PPG camera-based estimation + manual cuff entry with NHS guidelines
 - **Body Assessments** — AI-powered posture analysis with MediaPipe pose detection
 - **Foot Scans** — 3D foot scanning with guided camera capture and AI biomechanical analysis
+- **🆕 Custom Insoles** — 3D visualization of personalized insoles with interactive viewer
+- **🆕 Production Timeline** — Real-time tracking of insole manufacturing progress
+- **🆕 Usage Instructions** — Step-by-step guides for insole adaptation and care
+- **🆕 Notifications** — In-app and email notifications for scan results and production updates
 - **Gamification** — XP system, levels, daily missions, achievements, recovery ring
 - **Educational Content** — Video/article library assigned by therapists
 - **Quizzes** — Health knowledge quizzes with XP rewards
@@ -58,6 +62,9 @@ BPR Clinical System is a comprehensive web application designed for physiotherap
 - **Patient Management** — Full CRUD, clinical notes, treatment protocols
 - **Appointment System** — Scheduling, status tracking, automated reminders
 - **Clinical Analysis** — AI-powered report generation (Gemini/OpenAI)
+- **🆕 Insole Manufacturing** — Real STL generation with Three.js for 3D printing
+- **🆕 Biomechanical Specs** — Automatic calculation of arch support, posting, and corrections
+- **🆕 Event Tracking** — Complete audit log of all patient interactions
 - **Email System** — SMTP/IMAP integration, templated emails, inbox management
 - **Membership Management** — Plan creation, module permissions, Stripe integration
 - **Social Media** — Instagram publishing, AI caption generation, campaign management
@@ -77,11 +84,13 @@ BPR Clinical System is a comprehensive web application designed for physiotherap
 | **Authentication** | NextAuth.js (Credentials + JWT) |
 | **Styling** | Tailwind CSS 3 + shadcn/ui |
 | **Payments** | Stripe (Checkout, Subscriptions, Webhooks) |
-| **AI** | Google Gemini + OpenAI Vision |
+| **AI** | Ensemble AI (Groq + Minimax + Gemini) |
 | **Email** | Nodemailer (SMTP) + IMAP sync |
 | **Messaging** | WhatsApp Business API (Meta Cloud) |
 | **Pose Detection** | MediaPipe BlazePose |
-| **3D Rendering** | Three.js |
+| **3D Rendering** | Three.js + React Three Fiber |
+| **3D Export** | STL Binary Format |
+| **Testing** | Jest + Testing Library + Playwright |
 | **Deployment** | VPS (PM2 + Nginx + Let's Encrypt) |
 
 ---

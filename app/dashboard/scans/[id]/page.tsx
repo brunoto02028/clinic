@@ -9,11 +9,14 @@ import { UsageInstructions } from '@/components/insoles/usage-instructions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageLoading } from '@/components/ui/loading-spinner';
+import { ErrorState, NotFoundError } from '@/components/ui/error-state';
 
 export default function PatientScanPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [scan, setScan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchScan();
@@ -21,24 +24,65 @@ export default function PatientScanPage({ params }: { params: { id: string } }) 
 
   const fetchScan = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
       const res = await fetch(`/api/foot-scans/${params.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setScan(data);
+      
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError('not_found');
+        } else if (res.status === 403) {
+          setError('permission_denied');
+        } else {
+          setError('unknown');
+        }
+        return;
       }
+      
+      const data = await res.json();
+      setScan(data);
     } catch (error) {
       console.error('Error fetching scan:', error);
+      setError('network');
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
+    return <PageLoading text="Carregando suas palmilhas..." />;
+  }
+
+  if (error === 'not_found') {
+    return <NotFoundError resourceName="scan" />;
+  }
+
+  if (error === 'permission_denied') {
+    return (
+      <ErrorState
+        title="Acesso Negado"
+        message="Você não tem permissão para visualizar este scan."
+        showHomeButton
+        fullScreen
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        title="Erro ao Carregar"
+        message="Não foi possível carregar os dados do scan."
+        onRetry={fetchScan}
+        showHomeButton
+        fullScreen
+      />
+    );
   }
 
   if (!scan) {
-    return <div className="p-6">Scan não encontrado</div>;
+    return <NotFoundError resourceName="scan" />;
   }
 
   return (
