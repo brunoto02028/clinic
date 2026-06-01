@@ -42,6 +42,7 @@ export function SiteHeader({ currentPage }: SiteHeaderProps) {
     { href: "/#insoles", label: T("home.navInsoles") },
     { href: "/#biomechanics", label: T("home.navBiomechanics") },
     { href: "/articles", label: T("home.articlesLabel") || "Articles", active: currentPage === "articles" || currentPage === "article" },
+    { href: "/help", label: isPt ? "Ajuda" : "Help" },
     { href: "/#about", label: T("home.about") },
     { href: "/#contact", label: T("home.contact") },
   ];
