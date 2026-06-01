@@ -265,31 +265,47 @@ async function generateImageGemini(
   const model = opts.model || (await getImageModel());
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-    }),
-  });
+  const MAX_RETRIES = 3;
+  let lastError = "";
 
-  if (!res.ok) {
-    const errText = await res.text();
-    let errMsg = `Gemini image generation error (${res.status})`;
-    try { errMsg += `: ${JSON.parse(errText).error?.message || errText.slice(0, 200)}`; } catch { errMsg += `: ${errText.slice(0, 200)}`; }
-    throw new Error(errMsg);
-  }
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+      }),
+    });
 
-  const data = await res.json();
-  const urls: string[] = [];
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  for (const part of parts) {
-    if (part.inlineData?.mimeType?.startsWith("image/")) {
-      urls.push(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
+    if (res.status === 429 && attempt < MAX_RETRIES) {
+      const waitMs = Math.pow(2, attempt + 1) * 15000; // 30s, 60s, 120s
+      console.log(`[ai-provider] Image generation rate limited (429), retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
     }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      try { lastError = JSON.parse(errText).error?.message || errText.slice(0, 300); } catch { lastError = errText.slice(0, 300); }
+      if (res.status === 429) {
+        throw new Error(`Gemini image quota exceeded. ${lastError}. Please try again later or upload an image manually.`);
+      }
+      throw new Error(`Gemini image generation error (${res.status}): ${lastError}`);
+    }
+
+    const data = await res.json();
+    const urls: string[] = [];
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.mimeType?.startsWith("image/")) {
+        urls.push(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
+      }
+    }
+    return urls;
   }
-  return urls;
+
+  throw new Error(`Gemini image generation failed after ${MAX_RETRIES} retries: ${lastError}`);
 }
 
 // ─── Gemini vision (image analysis) ───

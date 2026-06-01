@@ -100,8 +100,11 @@ export async function POST(req: NextRequest) {
         }
       } catch (providerErr: any) {
         console.error('[generate-image] Generation error:', providerErr.message);
+        const is429 = providerErr.message?.includes('429') || providerErr.message?.includes('quota');
         return NextResponse.json({ 
-          error: `Image generation failed: ${providerErr.message}. Please try a different prompt or upload an image manually.`,
+          error: is429
+            ? 'Gemini image generation quota exceeded. The free tier limit has been reached. Please wait a few minutes and try again, or upload an image manually.'
+            : `Image generation failed: ${providerErr.message}. Please try a different prompt or upload an image manually.`,
           fallback: true 
         }, { status: 422 });
       }
