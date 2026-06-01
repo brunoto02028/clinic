@@ -4,9 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import LandingPage from "@/components/landing-page";
 
-// Disable caching for this page to always show fresh data
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Enable ISR (Incremental Static Regeneration) - revalidate every 1 hour
+export const revalidate = 3600;
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
@@ -31,7 +30,13 @@ export default async function HomePage() {
         where: { published: true },
         take: 3,
         orderBy: { createdAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          excerpt: true,
+          imageUrl: true,
+          createdAt: true,
           author: {
             select: { firstName: true, lastName: true }
           }

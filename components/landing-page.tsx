@@ -387,9 +387,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     fill
                     className="object-cover"
                     priority
-                    quality={85}
+                    quality={75}
                     sizes="(max-width: 768px) 100vw, 50vw"
-                    unoptimized
                   />
                 )}
                 {!settings?.heroImageUrl && (
@@ -565,8 +564,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   height={600}
                   className="w-full h-auto max-h-[420px] object-cover"
                   loading="lazy"
-                  quality={75}
+                  quality={60}
                   sizes="(max-width: 768px) 100vw, 50vw"
+                  placeholder="blur"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
@@ -584,7 +584,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     fill
                     className="object-contain p-4"
                     loading="lazy"
-                    quality={75}
+                    quality={60}
                     sizes="(max-width: 768px) 50vw, 25vw"
                   />
                 </div>
@@ -688,7 +688,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                       fill
                       className="object-cover" 
                       loading="lazy"
-                      quality={75}
+                      quality={60}
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
@@ -800,7 +800,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                       fill
                       className="object-cover" 
                       loading="lazy"
-                      quality={75}
+                      quality={60}
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
@@ -913,7 +913,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     fill
                     className="object-cover"
                     loading="lazy"
-                    quality={75}
+                    quality={60}
                     sizes="(max-width: 768px) 100vw, 50vw"
                   />
                 ) : (
@@ -1065,9 +1065,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     fill
                     className="object-cover"
                     loading="lazy"
-                    quality={75}
+                    quality={60}
                     sizes="(max-width: 768px) 100vw, 50vw"
-                    unoptimized
                   />
                 )}
               </div>
@@ -1096,7 +1095,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   <Card className="h-full card-hover overflow-hidden border border-border cursor-pointer">
                     {article.imageUrl && (
                       <div className="relative aspect-video bg-muted overflow-hidden">
-                        <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={70} sizes="(max-width: 768px) 100vw, 33vw" />
+                        <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" />
                       </div>
                     )}
                     <CardContent className="p-4 sm:p-6">
