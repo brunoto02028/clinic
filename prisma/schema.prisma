@@ -958,6 +958,7 @@ model Article {
   @@index([slug])
   @@index([published])
   @@index([authorId])
+  @@index([published, createdAt(sort: Desc)])
 }
 
 // ============================================
@@ -1267,6 +1268,9 @@ model FootScan {
   @@index([workflowStatus])
   @@index([scanNumber])
   @@index([createdAt])
+  @@index([patientId, status])
+  @@index([patientId, createdAt(sort: Desc)])
+  @@index([workflowStatus, createdAt(sort: Desc)])
 }
 
 model FootScanSession {

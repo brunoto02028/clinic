@@ -9,12 +9,20 @@ import { Suspense } from "react";
 import { SiteTracker } from "@/components/analytics/site-tracker";
 import { CookieConsentBanner } from "@/components/cookie-consent";
 import { VersionChecker } from "@/components/version-checker";
+import { WebVitals } from "@/components/web-vitals";
 import { prisma } from "@/lib/db";
 import { SchemaOrgScript } from "@/components/schema-org-script";
 
 export const dynamic = 'force-dynamic';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  display: 'swap',
+  preload: true,
+  variable: '--font-inter',
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Arial', 'sans-serif'],
+  adjustFontFallback: true,
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -103,6 +111,26 @@ export default async function RootLayout({
 }) {
   return (
     <html lang="en-GB" suppressHydrationWarning>
+      <head>
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            /* Critical CSS - Above the fold */
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { 
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+              line-height: 1.5;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+            .hero { min-height: 100vh; }
+            img { max-width: 100%; height: auto; }
+          `
+        }} />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://bpr.rehab" />
+      </head>
       <body className={inter.className} suppressHydrationWarning>
         <Suspense fallback={null}>
           <SchemaOrgScript />
@@ -117,6 +145,7 @@ export default async function RootLayout({
           </Suspense>
           <CookieConsentBanner />
           <VersionChecker />
+          <WebVitals />
         </Providers>
       </body>
     </html>

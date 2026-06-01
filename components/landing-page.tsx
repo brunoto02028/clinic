@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
+import { LazyLoadSection } from "@/components/lazy-load-section";
 import {
   Calendar,
   ClipboardList,
@@ -47,9 +49,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Logo } from "@/components/ui/logo";
-import { ThermographyIllustration } from "@/components/thermography-illustration";
 import { t, getLocale, setLocale } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+
+// Code splitting - lazy load heavy components
+const ThermographyIllustration = dynamic(
+  () => import("@/components/thermography-illustration").then(mod => ({ default: mod.ThermographyIllustration })),
+  { 
+    ssr: false,
+    loading: () => <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 animate-pulse rounded-2xl" />
+  }
+);
 
 interface ScreenLogoEntry { logoUrl?: string | null; darkLogoUrl?: string | null; }
 interface FooterModules { logo?: boolean; links?: boolean; social?: boolean; contact?: boolean; copyright?: boolean; newsletter?: boolean; }
@@ -1087,34 +1097,46 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           </div>
 
           {articles.length > 0 ? (
-            <>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {articles.map((article, index) => (
-                <div key={article.slug || index}>
-                  <Link href={`/articles/${article.slug}`}>
-                  <Card className="h-full card-hover overflow-hidden border border-border cursor-pointer">
-                    {article.imageUrl && (
-                      <div className="relative aspect-video bg-muted overflow-hidden">
-                        <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" />
-                      </div>
-                    )}
-                    <CardContent className="p-4 sm:p-6">
-                      <h3 className="font-semibold text-lg text-foreground mb-2 line-clamp-2">{article.title}</h3>
-                      <p className="text-muted-foreground text-sm line-clamp-3 mb-4">{article.excerpt}</p>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>By {article.author.firstName} {article.author.lastName}</span>
-                        <span>{new Date(article.createdAt).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  </Link>
+            <LazyLoadSection 
+              threshold={0.1} 
+              rootMargin="200px"
+              fallback={
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-80 bg-muted animate-pulse rounded-lg" />
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="text-center mt-8">
-              <Link href="/articles"><Button variant="outline" className="gap-2">{T("home.articlesLabel")} <ArrowRight className="h-4 w-4" /></Button></Link>
-            </div>
-            </>
+              }
+            >
+              <>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {articles.map((article, index) => (
+                  <div key={article.slug || index}>
+                    <Link href={`/articles/${article.slug}`}>
+                    <Card className="h-full card-hover overflow-hidden border border-border cursor-pointer">
+                      {article.imageUrl && (
+                        <div className="relative aspect-video bg-muted overflow-hidden">
+                          <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" />
+                        </div>
+                      )}
+                      <CardContent className="p-4 sm:p-6">
+                        <h3 className="font-semibold text-lg text-foreground mb-2 line-clamp-2">{article.title}</h3>
+                        <p className="text-muted-foreground text-sm line-clamp-3 mb-4">{article.excerpt}</p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>By {article.author.firstName} {article.author.lastName}</span>
+                          <span>{new Date(article.createdAt).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              <div className="text-center mt-8">
+                <Link href="/articles"><Button variant="outline" className="gap-2">{T("home.articlesLabel")} <ArrowRight className="h-4 w-4" /></Button></Link>
+              </div>
+              </>
+            </LazyLoadSection>
           ) : (
             <div className="text-center py-12 bg-background rounded-2xl border border-border">
               <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
