@@ -33,6 +33,7 @@ const publicRoutes = [
   '/biomechanical-assessment',
   '/services',
   '/articles',
+  '/help',
   '/terms',
   '/privacy',
   '/cookies',

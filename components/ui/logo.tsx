@@ -112,14 +112,38 @@ export function Logo({
         </>
       ) : (
         <svg
-          width={h * 2.5}
+          width={h * 3.5}
           height={h}
-          viewBox="0 0 250 100"
+          viewBox="0 0 350 100"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <text x="0" y="76" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="80" letterSpacing="-2" fill="hsl(var(--primary))">BPR</text>
-          <text x="175" y="76" fontFamily="system-ui, -apple-system, sans-serif" fontWeight="800" fontSize="80" letterSpacing="-2" fill="hsl(var(--secondary))">.</text>
+          {/* BPR text */}
+          <text 
+            x="5" 
+            y="72" 
+            fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" 
+            fontWeight="700" 
+            fontSize="64" 
+            letterSpacing="-1" 
+            fill="currentColor"
+            className="fill-primary"
+          >
+            BPR
+          </text>
+          {/* Subtitle */}
+          <text 
+            x="5" 
+            y="95" 
+            fontFamily="system-ui, -apple-system, sans-serif" 
+            fontWeight="500" 
+            fontSize="14" 
+            letterSpacing="0.5" 
+            fill="currentColor"
+            className="fill-muted-foreground"
+          >
+            Physical Rehabilitation
+          </text>
         </svg>
       )}
     </div>
