@@ -15,6 +15,7 @@
     "@types/node": "20.6.2",
     "@types/react": "18.2.22",
     "@types/react-dom": "18.2.7",
+    "@types/three": "^0.184.1",
     "@typescript-eslint/eslint-plugin": "6.21.0",
     "@typescript-eslint/parser": "6.21.0",
     "eslint": "8.57.0",
@@ -28,6 +29,7 @@
     "tailwind-merge": "2.5.2",
     "tailwindcss": "3.3.3",
     "tailwindcss-animate": "1.0.7",
+    "three-stdlib": "^2.36.1",
     "ts-node": "10.9.2",
     "tsx": "4.20.3",
     "typescript": "5.2.2"
@@ -79,7 +81,6 @@
     "@types/nodemailer": "^7.0.10",
     "@types/plotly.js": "2.35.5",
     "@types/react-plotly.js": "2.6.3",
-    "@types/three": "^0.182.0",
     "adm-zip": "^0.5.16",
     "autoprefixer": "10.4.15",
     "basic-ftp": "^5.2.0",
