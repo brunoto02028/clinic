@@ -6,6 +6,7 @@ import { getConfigValue } from "@/lib/system-config";
 import { readFile } from "fs/promises";
 import path from "path";
 import { computeAllAngles, formatForPrompt, computeDeltas, type Landmark, type BiomechanicsResult } from "@/lib/biomechanics/angle-computations";
+import { runEnsembleAnalysis, combineEnsembleResults } from "@/lib/biomechanics/ensemble-analysis";
 
 async function imageToBase64(url: string): Promise<string | null> {
   try {
@@ -653,6 +654,27 @@ export async function POST(
       }
     }
 
+    // ─── ENSEMBLE ANALYSIS: Run Groq + Minimax in parallel ───
+    const systemPrompt = buildSystemPrompt(language);
+    const userPrompt = buildUserPrompt(patientContext);
+    
+    let ensembleResults: { groq: any; minimax: any } | null = null;
+    
+    try {
+      console.log('[Biomechanics] Running ensemble analysis (Groq + Minimax)...');
+      ensembleResults = await runEnsembleAnalysis({
+        systemPrompt,
+        userPrompt,
+        objectiveMeasurements: objectiveMeasurementsText,
+        landmarkData: landmarkInfo.length > 0 ? landmarkInfo.join("\n") : undefined,
+        temperature: 0.05,
+      });
+      console.log('[Biomechanics] Ensemble analysis complete');
+    } catch (ensembleError) {
+      console.error('[Biomechanics] Ensemble analysis failed:', ensembleError);
+      // Continue with Gemini only if ensemble fails
+    }
+
     // Build Gemini request with vision — using system + user prompt architecture
     const geminiKey = await getConfigValue('GEMINI_API_KEY') || process.env.GEMINI_API_KEY;
     if (!geminiKey) {
@@ -660,9 +682,6 @@ export async function POST(
     }
     const geminiModel = (await getConfigValue('GEMINI_MODEL')) || 'gemini-2.5-pro';
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
-
-    const systemPrompt = buildSystemPrompt(language);
-    const userPrompt = buildUserPrompt(patientContext);
 
     const parts: any[] = [
       { text: systemPrompt + "\n\n" + userPrompt },
@@ -732,6 +751,34 @@ export async function POST(
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
       analysisData = { rawResponse: responseText };
+    }
+
+    // ─── COMBINE ENSEMBLE RESULTS ───
+    if (ensembleResults) {
+      console.log('[Biomechanics] Combining ensemble results...');
+      try {
+        const combined = combineEnsembleResults({
+          groq: ensembleResults.groq,
+          minimax: ensembleResults.minimax,
+          gemini: analysisData,
+          weights: { groq: 0.25, minimax: 0.25, gemini: 0.50 },
+        });
+        
+        // Use combined result as the final analysis
+        analysisData = combined.combined;
+        
+        // Add ensemble metadata to technical notes
+        const ensembleNote = `\n\n[ENSEMBLE ANALYSIS]\nThis analysis combines results from 3 AI models:\n- Groq Llama 3.3 70B (landmark analysis)\n- Minimax abab7 (cross-validation)\n- Gemini 2.5 Pro (visual analysis)\n\nModel Agreement: ${combined.modelAgreement}%\nEnsemble Confidence: ${combined.confidence}%\nConsensus Findings: ${combined.consensusFindings.length}`;
+        
+        if (analysisData.postureAnalysis?.technicalNotes) {
+          analysisData.postureAnalysis.technicalNotes += ensembleNote;
+        }
+        
+        console.log(`[Biomechanics] Ensemble complete - Agreement: ${combined.modelAgreement}%, Confidence: ${combined.confidence}%`);
+      } catch (combineError) {
+        console.error('[Biomechanics] Failed to combine ensemble results:', combineError);
+        // Fall back to Gemini-only result
+      }
     }
 
     // Build enhanced postureAnalysis object that includes all new report sections
