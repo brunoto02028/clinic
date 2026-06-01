@@ -409,7 +409,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       <section className="py-5 sm:py-6 border-y border-border/40 bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
-            <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
+            {/* Temporariamente comentado - adicionar imagem sto-member-badge.png */}
+            {/* <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0 bg-white p-1">
                 <Image src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" width={56} height={56} className="object-contain w-full h-full" loading="lazy" quality={75} unoptimized />
               </div>
@@ -417,7 +418,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
                 <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Sports Therapy Organisation</p>
               </div>
-            </a>
+            </a> */}
           </div>
         </div>
       </section>
