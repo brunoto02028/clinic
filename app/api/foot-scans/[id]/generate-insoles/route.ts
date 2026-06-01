@@ -6,6 +6,8 @@ import { InsoleMeshGenerator } from '@/lib/insoles/generators/mesh-generator';
 import { GeometryValidator } from '@/lib/insoles/validators/geometry-validator';
 import { STLExporter } from '@/lib/insoles/exporters/stl-exporter';
 import { InsoleSpecCalculator } from '@/lib/insoles/spec-calculator';
+import { notifyInProduction } from '@/lib/notifications/patient-notifications';
+import { logInsolesGenerated, logApprovedForProduction } from '@/lib/events/foot-scan-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -158,32 +160,40 @@ export async function POST(
     };
     
     // Update foot scan with insole generation status
-    await prisma.footScan.update({
+    const updatedScan = await prisma.footScan.update({
       where: { id },
       data: {
         workflowStatus: 'APPROVED_FOR_PRODUCTION',
         manufacturingStatus: 'READY',
         insoleSpecs: insoleSpecs as any,
+        leftInsoleSTL: leftInsoleUrl,
+        rightInsoleSTL: rightInsoleUrl,
       }
     });
     
-    // Create event log
+    // Registrar eventos
+    await logInsolesGenerated(id, userId, {
+      left: leftInsoleUrl,
+      right: rightInsoleUrl,
+    });
+    
+    await logApprovedForProduction(id, userId);
+    
+    // Notificar paciente
     try {
-      await (prisma as any).footScanEvent.create({
-        data: {
-          footScanId: id,
-          eventType: 'INSOLES_GENERATED',
-          actorType: 'STAFF',
-          actorId: userId,
-          payload: {
-            insoleSpecs,
-            leftInsoleUrl,
-            rightInsoleUrl,
-          }
-        }
-      });
+      const estimatedDelivery = new Date();
+      estimatedDelivery.setDate(estimatedDelivery.getDate() + 5); // 5 dias
+      
+      await notifyInProduction(
+        footScan.patientId,
+        id,
+        footScan.scanNumber,
+        estimatedDelivery
+      );
+      
+      console.log('[Insoles] Patient notified');
     } catch (err) {
-      console.warn('Failed to create event log:', err);
+      console.warn('[Insoles] Failed to notify patient:', err);
     }
     
     return NextResponse.json({
@@ -191,6 +201,10 @@ export async function POST(
       leftInsoleUrl,
       rightInsoleUrl,
       insoleSpecs,
+      validation: {
+        left: leftValidation,
+        right: rightValidation,
+      },
       message: 'Insole models generated successfully'
     });
     
