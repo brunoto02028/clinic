@@ -253,6 +253,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               {navAnchors.map((a) => (
                 <button key={a.id} onClick={() => scrollTo(a.id)} className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{a.label}</button>
               ))}
+              <Link href="/articles" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{T("home.articlesLabel") || "Articles"}</Link>
+              <Link href="/help" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
             </nav>
 
             {/* WhatsApp button in header */}
@@ -318,8 +320,10 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <div>
               <nav className="flex flex-col gap-1">
                 {navAnchors.map((a) => (
-                  <button key={a.id} onClick={() => scrollTo(a.id)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{a.label}</button>
+                  <button key={a.id} onClick={() => { scrollTo(a.id); setMobileMenuOpen(false); }} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{a.label}</button>
                 ))}
+                <Link href="/articles" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{T("home.articlesLabel") || "Articles"}</Link>
+                <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
                   <Link href="/login"><Button variant="outline" className="w-full">{T("home.patientLogin")}</Button></Link>
                   <Link href="/signup"><Button className="w-full">{T("home.getStarted")}</Button></Link>

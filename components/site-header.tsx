@@ -16,27 +16,30 @@ interface ServiceLink {
 
 interface SiteHeaderProps {
   currentPage?: "articles" | "article" | "services" | "other";
+  initialSettings?: any;
 }
 
-export function SiteHeader({ currentPage }: SiteHeaderProps) {
+export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(initialSettings || null);
   const [serviceLinks, setServiceLinks] = useState<ServiceLink[]>([]);
   const { locale, toggleLocale, t: T } = useLocale();
   const isPt = locale === "pt-BR";
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setSettings(d))
-      .catch(() => {});
+    if (!initialSettings) {
+      fetch("/api/settings")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => d && setSettings(d))
+        .catch(() => {});
+    }
     fetch("/api/service-pages")
       .then((r) => r.ok ? r.json() : [])
       .then((pages: ServiceLink[]) => setServiceLinks(pages.filter((p) => p.showInMenu)))
       .catch(() => {});
-  }, []);
+  }, [initialSettings]);
 
   const navLinks = [
     { href: "/#insoles", label: T("home.navInsoles") },
