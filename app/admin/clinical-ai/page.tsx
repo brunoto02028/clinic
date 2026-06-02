@@ -177,20 +177,20 @@ function AmbientScribe() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/40">
+      <Card className="border-violet-400/30 dark:border-violet-500/30 bg-violet-500/10 dark:bg-violet-500/10">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
-            <Mic className="h-5 w-5 text-violet-500 dark:text-violet-400" />
-            <h2 className="font-semibold text-lg text-foreground">Ambient Clinical Scribe</h2>
+            <Mic className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <h2 className="font-semibold text-lg text-gray-900 dark:text-white">Ambient Clinical Scribe</h2>
           </div>
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             Record your consultation, get it transcribed, and auto-generate SOAP notes with patient context.
           </p>
 
           {/* Settings row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Language</Label>
+              <Label className="text-xs text-gray-800 dark:text-white">Language</Label>
               <Select value={language} onValueChange={setLanguage}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -200,7 +200,7 @@ function AmbientScribe() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Appointment Type</Label>
+              <Label className="text-xs text-gray-800 dark:text-white">Appointment Type</Label>
               <Select value={appointmentType} onValueChange={setAppointmentType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -214,7 +214,7 @@ function AmbientScribe() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Patient ID (optional)</Label>
+              <Label className="text-xs text-gray-800 dark:text-white">Patient ID (optional)</Label>
               <Input
                 value={patientId}
                 onChange={(e) => setPatientId(e.target.value)}
@@ -381,13 +381,13 @@ function EvidenceSearch() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40">
+      <Card className="border-emerald-400/30 dark:border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/10">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
-            <h2 className="font-semibold text-lg text-foreground">Evidence-Based Clinical Search</h2>
+            <BookOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <h2 className="font-semibold text-lg text-gray-900 dark:text-white">Evidence-Based Clinical Search</h2>
           </div>
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             Ask clinical questions and get answers grounded in research literature with references.
           </p>
 
@@ -556,13 +556,13 @@ function PatientIntelligence() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40">
+      <Card className="border-blue-400/30 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/10">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
-            <Brain className="h-5 w-5 text-blue-500 dark:text-blue-400" />
-            <h2 className="font-semibold text-lg text-foreground">Patient Intelligence</h2>
+            <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="font-semibold text-lg text-gray-900 dark:text-white">Patient Intelligence</h2>
           </div>
-          <p className="text-sm text-foreground/70">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             Comprehensive AI analysis of a patient's entire clinical history. Identifies patterns, risks, and optimal treatment paths.
           </p>
 
