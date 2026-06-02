@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   GraduationCap, Award, Plus, Trash2, Edit2, Loader2, MessageSquare,
   Send, Bot, Calendar, Clock, MapPin, ExternalLink, BookOpen, Sparkles,
-  CheckCircle, BookmarkPlus, X,
+  CheckCircle, BookmarkPlus, X, Upload, Camera, FileImage,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -74,6 +74,9 @@ export default function MyEducationPage() {
     dateAchieved: "", cpdHours: "", level: "", category: "general_cpd",
     accreditation: "", tutor: "", location: "", description: "", status: "completed", notes: "",
   });
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -114,6 +117,50 @@ export default function MyEducationPage() {
     });
     setEditingId(null);
     setShowForm(false);
+    setPreviewImage(null);
+  };
+
+  const handleCertificateUpload = async (file: File) => {
+    setOcrLoading(true);
+    try {
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewImage(e.target?.result as string);
+      reader.readAsDataURL(file);
+
+      const formDataUpload = new FormData();
+      formDataUpload.append("image", file);
+
+      const res = await fetch("/api/admin/qualifications/ocr", {
+        method: "POST",
+        body: formDataUpload,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const ext = data.extracted;
+      setFormData((prev) => ({
+        ...prev,
+        title: ext.title || prev.title,
+        provider: ext.provider || prev.provider,
+        providerUrl: ext.providerUrl || prev.providerUrl,
+        certificateNumber: ext.certificateNumber || prev.certificateNumber,
+        dateAchieved: ext.dateAchieved || prev.dateAchieved,
+        cpdHours: ext.cpdHours?.toString() || prev.cpdHours,
+        level: ext.level || prev.level,
+        category: ext.category || prev.category,
+        accreditation: ext.accreditation || prev.accreditation,
+        tutor: ext.tutor || prev.tutor,
+        location: ext.location || prev.location,
+        description: ext.description || prev.description,
+      }));
+
+      toast({ title: "Certificate scanned!", description: `Extracted: ${ext.title || "data from image"}` });
+    } catch (err: any) {
+      toast({ title: "OCR failed", description: err.message, variant: "destructive" });
+    } finally {
+      setOcrLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -324,13 +371,13 @@ export default function MyEducationPage() {
       {/* AI Career Advisor Tab */}
       {activeTab === "advisor" && (
         <div className="space-y-4">
-          <Card className="border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20">
+          <Card className="border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/40">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Bot className="h-5 w-5 text-indigo-600" />
-                <h2 className="font-semibold">AI Career & Education Advisor</h2>
+                <Bot className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
+                <h2 className="font-semibold text-foreground">AI Career & Education Advisor</h2>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-foreground/70">
                 Specialist in UK healthcare, physiotherapy, and rehabilitation. Knows your qualifications, equipment, and practice. Ask about next steps, licensing, career pathways, or specific courses.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
@@ -344,7 +391,7 @@ export default function MyEducationPage() {
                     key={suggestion}
                     variant="outline"
                     size="sm"
-                    className="text-xs h-7"
+                    className="text-xs h-7 border-indigo-300 dark:border-indigo-600 text-foreground hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
                     onClick={() => { setChatInput(suggestion); }}
                   >
                     {suggestion}
@@ -355,13 +402,13 @@ export default function MyEducationPage() {
           </Card>
 
           {/* Chat area */}
-          <Card className="min-h-[400px] max-h-[600px] flex flex-col">
+          <Card className="min-h-[400px] max-h-[600px] flex flex-col border-border">
             <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
               {chatMessages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-12">
-                  <Sparkles className="h-10 w-10 mb-3 text-indigo-400" />
-                  <p className="font-medium">Start a conversation with your Career Advisor</p>
-                  <p className="text-sm mt-1">Ask about qualifications, career paths, or next steps for your practice.</p>
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <Sparkles className="h-10 w-10 mb-3 text-indigo-400 dark:text-indigo-300" />
+                  <p className="font-medium text-foreground">Start a conversation with your Career Advisor</p>
+                  <p className="text-sm mt-1 text-foreground/60">Ask about qualifications, career paths, or next steps for your practice.</p>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
@@ -413,6 +460,39 @@ export default function MyEducationPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Certificate Upload with OCR */}
+            <div className="border-2 border-dashed border-indigo-300 dark:border-indigo-700 rounded-lg p-4 text-center">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { if (e.target.files?.[0]) handleCertificateUpload(e.target.files[0]); }}
+              />
+              {previewImage ? (
+                <div className="space-y-2">
+                  <img src={previewImage} alt="Certificate" className="max-h-32 mx-auto rounded" />
+                  <p className="text-xs text-green-600 dark:text-green-400 font-medium">Data extracted from image</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Camera className="h-8 w-8 mx-auto text-indigo-400" />
+                  <p className="text-sm font-medium text-foreground">Upload Certificate Photo</p>
+                  <p className="text-xs text-foreground/60">AI will auto-read and fill all fields</p>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 gap-2"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={ocrLoading}
+              >
+                {ocrLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                {ocrLoading ? "Scanning..." : previewImage ? "Upload Another" : "Choose Image"}
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2 space-y-1">
                 <Label className="text-xs">Title *</Label>
