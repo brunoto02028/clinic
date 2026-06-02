@@ -4440,6 +4440,41 @@ model CoWorkerLog {
 }
 
 // ============================================
+// CPD COURSE OPPORTUNITIES — AI Course Discovery
+// ============================================
+
+model CourseOpportunity {
+  id             String    @id @default(cuid())
+  title          String
+  provider       String    // e.g. "CSP", "AACP", "PhysioUK", "University of..."
+  url            String?   // Link to course page
+  description    String    @db.Text
+  aiSummary      String?   @db.Text // AI-generated summary
+  category       String    // e.g. "shockwave", "laser", "sports_rehab", "manual_therapy"
+  type           String    // "online", "in_person", "hybrid"
+  location       String?   // City/venue for in-person
+  postcode       String?   // Postcode for distance calc
+  distance       String?   // Estimated distance from user
+  cost           String?   // Price info
+  duration       String?   // e.g. "2 days", "6 weeks online"
+  startDate      String?   // When it starts
+  accreditation  String?   // CPD points, HCPC, CSP approved
+  relevanceScore Int       @default(0) // 1-100 AI-assessed relevance
+  status         String    @default("new") // new, interested, applied, completed, dismissed
+  notes          String?   @db.Text // User's personal notes
+  searchQuery    String?   // What search generated this
+  searchPostcode String?   // User's postcode when searched
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([type])
+  @@index([relevanceScore])
+  @@map("course_opportunities")
+}
+
+// ============================================
 // AGENT API KEYS — OpenClaw Remote Access
 // ============================================
 

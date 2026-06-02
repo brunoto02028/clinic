@@ -187,6 +187,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Create Content", i18nKey: "nav.createContent", href: "/admin/education/create", icon: PenSquare },
       { name: "Categories", i18nKey: "nav.categories", href: "/admin/education/categories", icon: FolderOpen },
       { name: "Assignments", i18nKey: "nav.assignments", href: "/admin/education/assignments", icon: ClipboardCheck },
+      { name: "CPD Courses", href: "/admin/cpd-courses", icon: Award },
     ],
   },
   {
