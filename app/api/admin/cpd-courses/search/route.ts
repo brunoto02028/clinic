@@ -22,6 +22,22 @@ const CATEGORIES = [
   "clinical_pilates",
   "business_and_leadership",
   "general_cpd",
+  "injection_therapy",
+  "prescribing_rights",
+  "diagnostic_ultrasound",
+  "msk_sonography",
+  "advanced_practice",
+  "first_contact_practitioner",
+  "return_to_sport",
+  "strength_conditioning",
+  "nutrition_supplementation",
+  "mental_health_wellbeing",
+];
+
+const SEARCH_MODES = [
+  { value: "cpd", label: "CPD Courses & Workshops" },
+  { value: "licence", label: "Licences & New Qualifications" },
+  { value: "all", label: "Everything (CPD + Licences)" },
 ];
 
 export async function POST(req: NextRequest) {
@@ -30,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { postcode, interests, type, radius } = await req.json();
+  const { postcode, interests, type, radius, searchMode } = await req.json();
 
   if (!postcode) {
     return NextResponse.json({ error: "Postcode is required" }, { status: 400 });
@@ -43,53 +59,99 @@ export async function POST(req: NextRequest) {
   const typeFilter = type === "online" ? "ONLINE ONLY" : type === "in_person" ? "IN-PERSON ONLY" : "both online and in-person";
   const radiusInfo = radius ? `within ${radius} miles of postcode ${postcode}` : `near postcode ${postcode} (within 50 miles)`;
 
-  const prompt = `You are a CPD (Continuing Professional Development) course discovery agent for a UK-based physiotherapist named Bruno who owns "Bruno Physical Rehabilitation" (BPR) clinic in Richmond (London) and Ipswich (Suffolk).
+  const mode = searchMode || "all";
+
+  const licenceBlock = mode !== "cpd" ? `
+
+LICENCES & ADDITIONAL QUALIFICATIONS TO SEARCH:
+As a HCPC-registered physiotherapist in the UK, Bruno can expand his scope of practice with:
+
+1. INJECTION THERAPY — Musculoskeletal injection courses (corticosteroid, hyaluronic acid, PRP). Physios can legally inject in the UK with appropriate training.
+   - Providers: CSP Injection Therapy courses, Arthritis Research UK, University post-grad certs
+   
+2. INDEPENDENT/SUPPLEMENTARY PRESCRIBING — Physiotherapist Independent Prescriber (PIP). Allows prescribing from BNF. University-level qualification.
+   - Providers: UK universities with HCPC-approved prescribing programmes
+   
+3. DIAGNOSTIC ULTRASOUND / MSK SONOGRAPHY — Real-time imaging for diagnosis, not just therapy ultrasound.
+   - Providers: Case4Health, Musculoskeletal Ultrasound courses, university PgCerts
+   
+4. FIRST CONTACT PRACTITIONER (FCP) — NHS pathway. Allows direct access without GP referral.
+   - Providers: HEE, CSP FCP training, NHS credential pathway
+   
+5. ADVANCED CLINICAL PRACTITIONER (ACP) — MSc-level. Broadest scope: assess, diagnose, treat, prescribe, refer.
+   - Providers: University MSc programmes, HEE credential
+   
+6. ACUPUNCTURE / DRY NEEDLING — AACP membership + training allows physios to needle.
+   - Providers: AACP Foundation & Advanced courses
+   
+7. STRENGTH & CONDITIONING (CSCS/ASCC) — Certified S&C coach for return-to-sport.
+   - Providers: UKSCA, NSCA (CSCS)
+   
+8. SPORTS MEDICINE DIPLOMA — Extended scope in sports medicine.
+   - Providers: University of Bath, University of Glasgow, FIFA Diploma
+   
+9. PLATELET-RICH PLASMA (PRP) — Licence to perform PRP injections.
+   - Providers: RCGP courses, private training companies
+   
+10. CLINICAL NUTRITION / SUPPLEMENTATION — Understanding prescription of supplements for recovery.
+    - Providers: IOC Diploma in Sports Nutrition, SENR registration
+    
+11. OCCUPATIONAL HEALTH — Workplace assessments, DSE, ergonomics.
+    - Providers: University post-grad programmes, IOSH courses` : "";
+
+  const cpdBlock = mode !== "licence" ? `
+
+CPD COURSES & WORKSHOPS TO SEARCH:
+- Chartered Society of Physiotherapy (CSP) courses
+- AACP (acupuncture for physios)
+- EMS/Storz/BTL manufacturer training (shockwave, laser, electrotherapy)
+- University post-graduate certificates/diplomas
+- Sports Medicine conferences
+- Pain Science courses (NOI Group, Explain Pain, Butler/Moseley)
+- BSRM courses (rehabilitation medicine)
+- PhysioFirst courses
+- Private training companies (Kinetic Control, MACP, MCSP advanced)
+- Equipment manufacturer advanced certifications` : "";
+
+  const prompt = `You are a professional development and licensing discovery agent for a UK-based physiotherapist named Bruno who owns "Bruno Physical Rehabilitation" (BPR) clinic in Richmond (London) and Ipswich (Suffolk).
 
 BRUNO'S PROFILE:
 - Ex-professional footballer (played in Brazil, Germany, Sweden), had 3 major knee surgeries
-- Now a qualified physiotherapist in the UK
+- Now a qualified HCPC-registered physiotherapist in the UK
 - Specialises in: MLS Laser Therapy, Shockwave Therapy, Biomechanical Assessment (AI-powered), Electrotherapy, Sports Injury, Chronic Pain, Custom Insoles (3D foot scanning)
 - Equipment: MLS Mphi 75 Laser (£30k), Shockwave machine, Infrared Thermography, 3D Foot Scanner
-- Looking to specialise further and stay ahead of the competition
+- Looking to specialise further, expand scope of practice, gain new licences/credentials to offer more services
 - Postcode: ${postcode}
 
-TASK: Find and recommend ${typeFilter} CPD courses, training, workshops, and certification programmes that are relevant to Bruno's practice.
+TASK: Find and recommend ${typeFilter} ${mode === "licence" ? "licensing programmes, certifications, and new qualifications" : mode === "cpd" ? "CPD courses, training, and workshops" : "CPD courses, licensing programmes, certifications, new qualifications, and professional development"} that are relevant to Bruno's practice and career growth.
 
 FOCUS AREAS: ${interestList}
 
 SEARCH SCOPE: 
 - ${typeFilter === "ONLINE ONLY" ? "Online courses accessible from the UK" : typeFilter === "IN-PERSON ONLY" ? `In-person courses/workshops ${radiusInfo}` : `Both online and in-person courses. For in-person, focus ${radiusInfo}`}
-- UK-based providers preferred (CSP, AACP, HCPC-approved, university post-grad, equipment manufacturers)
+- UK-based providers preferred (HCPC-approved, university programmes, CSP, AACP, NHS pathway)
 - International online courses from reputable providers also welcome
+${licenceBlock}${cpdBlock}
 
-IMPORTANT: Generate REALISTIC courses from REAL UK physiotherapy CPD providers. Use your knowledge of actual organisations and typical courses they offer. Include:
-- Chartered Society of Physiotherapy (CSP) courses
-- AACP (acupuncture for physios)
-- EMS/Storz/BTL manufacturer training
-- University post-graduate certificates/diplomas
-- Sports Medicine conferences
-- Pain Science courses (NOI Group, Explain Pain)
-- BSRM courses
-- PhysioFirst courses
-- Private training companies (e.g. Kinetic Control, MACP, MCSP advanced courses)
+IMPORTANT: Generate REALISTIC opportunities from REAL UK providers. Use your knowledge of actual organisations, universities, and the UK regulatory framework for physiotherapy scope of practice.
 
-Return a JSON array of 8-12 course opportunities. Each course MUST have:
+Return a JSON array of 8-12 opportunities. Each MUST have:
 {
-  "title": "Course title",
+  "title": "Course/Programme title",
   "provider": "Organisation name",
   "url": "https://realistic-url.example.com/course (use real org domains where possible)",
-  "description": "2-3 sentence description of what the course covers",
-  "aiSummary": "Why this is relevant for Bruno specifically — how it connects to his practice, equipment, or growth goals",
+  "description": "2-3 sentence description of what the course covers and what qualification/licence it grants",
+  "aiSummary": "Why this is relevant for Bruno specifically — how it connects to his practice, equipment, revenue potential, or growth goals. Include what new services he could offer after completing this.",
   "category": "one of: ${CATEGORIES.join(", ")}",
   "type": "online | in_person | hybrid",
   "location": "City/venue or 'Online' for online courses",
   "postcode": "Venue postcode for in-person, null for online",
   "distance": "Estimated distance from ${postcode} for in-person, null for online",
-  "cost": "Price in GBP (e.g. '£350', '£1,200', 'Free for CSP members')",
-  "duration": "e.g. '2 days', '6 weeks online', '3-day intensive'",
+  "cost": "Price in GBP (e.g. '£350', '£1,200', '£4,500 per year')",
+  "duration": "e.g. '2 days', '6 weeks online', '1 year part-time', 'MSc 2-3 years'",
   "startDate": "Approximate next available date (e.g. 'September 2026', 'Monthly intake', 'On-demand')",
-  "accreditation": "e.g. '12 CPD points', 'HCPC approved', 'CSP endorsed', 'Level 7 credits'",
-  "relevanceScore": number 1-100 (how relevant this is for Bruno's specific practice and growth)
+  "accreditation": "e.g. '12 CPD points', 'HCPC approved', 'Grants prescribing rights', 'Level 7 MSc credits', 'Allows injection therapy'",
+  "relevanceScore": number 1-100 (how relevant and impactful this is for Bruno's practice growth and revenue)
 }
 
 Return ONLY the JSON array, no markdown, no explanation.`;

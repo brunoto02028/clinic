@@ -34,6 +34,16 @@ const CATEGORIES = [
   { value: "clinical_pilates", label: "Clinical Pilates" },
   { value: "business_and_leadership", label: "Business & Leadership" },
   { value: "general_cpd", label: "General CPD" },
+  { value: "injection_therapy", label: "\u{1F489} Injection Therapy" },
+  { value: "prescribing_rights", label: "\u{1F4CB} Prescribing Rights" },
+  { value: "diagnostic_ultrasound", label: "\u{1F4F7} Diagnostic Ultrasound" },
+  { value: "msk_sonography", label: "\u{1F4F7} MSK Sonography" },
+  { value: "advanced_practice", label: "\u{2B50} Advanced Practice" },
+  { value: "first_contact_practitioner", label: "\u{1F3E5} First Contact Practitioner" },
+  { value: "return_to_sport", label: "\u26BD Return to Sport" },
+  { value: "strength_conditioning", label: "\u{1F4AA} Strength & Conditioning" },
+  { value: "nutrition_supplementation", label: "\u{1F96C} Nutrition & Supplementation" },
+  { value: "mental_health_wellbeing", label: "\u{1F9E0} Mental Health" },
 ];
 
 const STATUS_OPTIONS = [
@@ -113,6 +123,7 @@ export default function CPDCoursesPage() {
   const [postcode, setPostcode] = useState("TW9 1DN");
   const [radius, setRadius] = useState("50");
   const [searchType, setSearchType] = useState("all");
+  const [searchMode, setSearchMode] = useState("all");
   const [searchInterests, setSearchInterests] = useState("");
 
   // Filters
@@ -158,6 +169,7 @@ export default function CPDCoursesPage() {
           postcode: postcode.trim(),
           radius: parseInt(radius),
           type: searchType,
+          searchMode,
           interests,
         }),
       });
@@ -250,7 +262,7 @@ export default function CPDCoursesPage() {
             <h2 className="font-semibold text-lg">AI Course Agent</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Your Postcode</Label>
               <Input
@@ -258,6 +270,17 @@ export default function CPDCoursesPage() {
                 value={postcode}
                 onChange={(e) => setPostcode(e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Search Mode</Label>
+              <Select value={searchMode} onValueChange={setSearchMode}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Everything</SelectItem>
+                  <SelectItem value="cpd">CPD Only</SelectItem>
+                  <SelectItem value="licence">Licences & Qualifications</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Radius (miles)</Label>
@@ -286,7 +309,7 @@ export default function CPDCoursesPage() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Specific Interests</Label>
               <Input
-                placeholder="e.g. shockwave, laser (optional)"
+                placeholder="e.g. injection, prescribing (optional)"
                 value={searchInterests}
                 onChange={(e) => setSearchInterests(e.target.value)}
               />
