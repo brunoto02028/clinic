@@ -19,41 +19,17 @@ export async function POST(req: NextRequest) {
   }
 
   // Fetch comprehensive patient data
-  const patient = await prisma.user.findUnique({
+  const patient: any = await prisma.user.findUnique({
     where: { id: patientId },
-    select: {
-      firstName: true,
-      lastName: true,
-      email: true,
-      dateOfBirth: true,
-      createdAt: true,
-      medicalScreening: {
-        select: { responses: true, completedAt: true },
-      },
+    include: {
+      medicalScreening: true,
       soapNotesFor: {
         orderBy: { createdAt: "desc" },
         take: 20,
-        select: {
-          subjective: true,
-          objective: true,
-          assessment: true,
-          plan: true,
-          painLevel: true,
-          rangeOfMotion: true,
-          functionalTests: true,
-          treatmentNotes: true,
-          createdAt: true,
-        },
       },
       patientAppointments: {
-        orderBy: { startTime: "desc" },
+        orderBy: { dateTime: "desc" },
         take: 20,
-        select: {
-          startTime: true,
-          type: true,
-          status: true,
-          notes: true,
-        },
       },
     },
   });
@@ -79,7 +55,7 @@ ${patient.dateOfBirth ? `DOB: ${new Date(patient.dateOfBirth).toLocaleDateString
   // SOAP Notes history
   if (patient.soapNotesFor?.length > 0) {
     patientData += `\n\nCLINICAL NOTES HISTORY (${patient.soapNotesFor.length} notes):\n`;
-    patient.soapNotesFor.forEach((note, i) => {
+    patient.soapNotesFor.forEach((note: any, i: number) => {
       const date = new Date(note.createdAt).toLocaleDateString("en-GB");
       patientData += `\n--- Session ${i + 1} (${date}) ---`;
       patientData += `\nSubjective: ${note.subjective}`;
@@ -96,8 +72,8 @@ ${patient.dateOfBirth ? `DOB: ${new Date(patient.dateOfBirth).toLocaleDateString
   // Appointments
   if (patient.patientAppointments?.length > 0) {
     patientData += `\n\nAPPOINTMENT HISTORY (${patient.patientAppointments.length} appointments):\n`;
-    patient.patientAppointments.forEach((apt) => {
-      const date = new Date(apt.startTime).toLocaleDateString("en-GB");
+    patient.patientAppointments.forEach((apt: any) => {
+      const date = new Date(apt.dateTime).toLocaleDateString("en-GB");
       patientData += `- ${date}: ${apt.type || "General"} (${apt.status})${apt.notes ? ` — ${apt.notes.slice(0, 100)}` : ""}\n`;
     });
   }

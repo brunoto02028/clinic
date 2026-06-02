@@ -22,24 +22,13 @@ export async function POST(req: NextRequest) {
   let patientContext = "";
   if (patientId) {
     try {
-      const patient = await prisma.user.findUnique({
+      const patient: any = await prisma.user.findUnique({
         where: { id: patientId },
-        select: {
-          firstName: true,
-          lastName: true,
-          medicalScreening: {
-            select: { responses: true },
-          },
+        include: {
+          medicalScreening: true,
           soapNotesFor: {
             orderBy: { createdAt: "desc" },
             take: 3,
-            select: {
-              subjective: true,
-              objective: true,
-              assessment: true,
-              plan: true,
-              createdAt: true,
-            },
           },
         },
       });
@@ -56,9 +45,9 @@ export async function POST(req: NextRequest) {
 
         if (patient.soapNotesFor?.length > 0) {
           patientContext += `\n\nPREVIOUS NOTES (most recent ${patient.soapNotesFor.length}):`;
-          patient.soapNotesFor.forEach((note, i) => {
+          patient.soapNotesFor.forEach((note: any, i: number) => {
             const date = new Date(note.createdAt).toLocaleDateString("en-GB");
-            patientContext += `\n[${date}] S: ${note.subjective.slice(0, 150)}... | A: ${note.assessment.slice(0, 150)}... | P: ${note.plan.slice(0, 150)}...`;
+            patientContext += `\n[${date}] S: ${note.subjective?.slice(0, 150)}... | A: ${note.assessment?.slice(0, 150)}... | P: ${note.plan?.slice(0, 150)}...`;
           });
         }
       }
