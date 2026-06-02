@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth-options";
+import { prisma } from "@/lib/db";
 
 // GET — Get full recording including audio (for playback/transcription)
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {

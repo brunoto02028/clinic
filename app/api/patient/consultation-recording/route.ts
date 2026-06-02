@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { authOptions } from "@/lib/auth-options";
+import { prisma } from "@/lib/db";
 
 // GET — List patient's own recordings
 export async function GET(req: NextRequest) {
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   // Auto-transcribe using existing transcription endpoint logic
   try {
-    const { getConfigValue } = await import("@/lib/config");
+    const { getConfigValue } = await import("@/lib/system-config");
     const geminiKey = await getConfigValue("GEMINI_API_KEY");
 
     if (geminiKey) {
