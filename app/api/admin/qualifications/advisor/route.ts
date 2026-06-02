@@ -3,8 +3,39 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIChat } from "@/lib/ai-provider";
+import { getConfigValue } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
+
+// Helper: Search the web using Gemini with Google Search grounding
+async function searchWebWithGemini(query: string, geminiKey: string): Promise<string | null> {
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: query }] }],
+        tools: [{ googleSearch: {} }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const groundingMeta = data.candidates?.[0]?.groundingMetadata;
+    let result = text || "";
+    if (groundingMeta?.groundingChunks?.length > 0) {
+      result += "\n\nSources:\n";
+      groundingMeta.groundingChunks.slice(0, 5).forEach((chunk: any) => {
+        if (chunk.web?.uri) result += `- ${chunk.web.title || chunk.web.uri}: ${chunk.web.uri}\n`;
+      });
+    }
+    return result || null;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -12,10 +43,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { messages } = await req.json();
+  const { messages, enableWebSearch } = await req.json();
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: "messages array is required" }, { status: 400 });
+  }
+
+  // If web search is enabled, search for latest info related to the user's question
+  let webContext = "";
+  if (enableWebSearch !== false) {
+    const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
+    if (lastUserMsg) {
+      const geminiKey = await getConfigValue("GEMINI_API_KEY");
+      if (geminiKey) {
+        const searchQuery = `UK physiotherapy ${lastUserMsg.content} courses qualifications 2024 2025`;
+        const webResult = await searchWebWithGemini(searchQuery, geminiKey);
+        if (webResult) {
+          webContext = `\n\nWEB SEARCH RESULTS (live, current data):\n${webResult.slice(0, 3000)}`;
+        }
+      }
+    }
   }
 
   // Fetch all qualifications for context
@@ -96,7 +143,10 @@ COMMUNICATION STYLE:
 - Include realistic costs, timelines, and prerequisites
 - Mention specific providers/courses where relevant
 - Be honest about limitations (e.g., if HCPC registration is needed first)
-- Respond in the same language as Bruno's message (English or Portuguese)`;
+- Respond in the same language as Bruno's message (English or Portuguese)
+- When you have web search results, reference them and cite sources with URLs
+- Learn from Bruno's questions and adapt — remember context from the conversation
+${webContext}`;
 
   try {
     const reply = await callAIChat(messages, {
