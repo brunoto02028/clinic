@@ -378,13 +378,13 @@ export default function MyEducationPage() {
                 <h2 className="font-semibold text-foreground">AI Career & Education Advisor</h2>
               </div>
               <p className="text-sm text-foreground/70">
-                Specialist in UK healthcare, physiotherapy, and rehabilitation. Knows your qualifications, equipment, and practice. Ask about next steps, licensing, career pathways, or specific courses.
+                Expert in UK healthcare, insurance, clinic operations, certifications, and property. Knows your qualifications and practice. Ask about licences, insurance, leasing, courses, or business requirements.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
                 {[
-                  "What should I study next?",
+                  "What insurance do I need for my clinic?",
                   "How can I get HCPC registered?",
-                  "What new services can I offer?",
+                  "What certifications do I need to lease a clinic?",
                   "Injection therapy pathway?",
                 ].map((suggestion) => (
                   <Button

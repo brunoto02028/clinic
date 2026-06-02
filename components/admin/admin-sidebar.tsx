@@ -187,7 +187,7 @@ const navigationGroups: NavGroup[] = [
     icon: GraduationCap,
     items: [
       { name: "My Education", href: "/admin/my-education", icon: GraduationCap },
-      { name: "CPD Courses", href: "/admin/cpd-courses", icon: Award },
+      { name: "Courses & Licences", href: "/admin/cpd-courses", icon: Award },
       { name: "Content Library", i18nKey: "nav.contentLibrary", href: "/admin/education", icon: GraduationCap },
       { name: "Create Content", i18nKey: "nav.createContent", href: "/admin/education/create", icon: PenSquare },
       { name: "Categories", i18nKey: "nav.categories", href: "/admin/education/categories", icon: FolderOpen },

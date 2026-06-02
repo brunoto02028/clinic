@@ -243,10 +243,10 @@ export default function CPDCoursesPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <GraduationCap className="h-7 w-7 text-teal-600" />
-            CPD Course Discovery
+            Courses & Licences
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            AI-powered search for continuing professional development opportunities
+            AI-powered search for courses, certifications, licences, and professional requirements
           </p>
         </div>
         <Badge variant="outline" className="text-sm px-3 py-1">
