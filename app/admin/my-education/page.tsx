@@ -371,13 +371,13 @@ export default function MyEducationPage() {
       {/* AI Career Advisor Tab */}
       {activeTab === "advisor" && (
         <div className="space-y-4">
-          <Card className="border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/40">
+          <Card className="border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/10 dark:bg-indigo-500/10">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Bot className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
-                <h2 className="font-semibold text-foreground">AI Career & Education Advisor</h2>
+                <Bot className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">AI Career & Education Advisor</h2>
               </div>
-              <p className="text-sm text-foreground/70">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
                 Expert in UK healthcare, insurance, clinic operations, certifications, and property. Knows your qualifications and practice. Ask about licences, insurance, leasing, courses, or business requirements.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
@@ -391,7 +391,7 @@ export default function MyEducationPage() {
                     key={suggestion}
                     variant="outline"
                     size="sm"
-                    className="text-xs h-7 border-indigo-300 dark:border-indigo-600 text-foreground hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+                    className="text-xs h-7 border-indigo-400/50 dark:border-indigo-400/40 text-gray-800 dark:text-gray-200 bg-white/60 dark:bg-white/5 hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
                     onClick={() => { setChatInput(suggestion); }}
                   >
                     {suggestion}
@@ -402,13 +402,13 @@ export default function MyEducationPage() {
           </Card>
 
           {/* Chat area */}
-          <Card className="min-h-[400px] max-h-[600px] flex flex-col border-border">
+          <Card className="min-h-[400px] max-h-[600px] flex flex-col bg-card">
             <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
               {chatMessages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <Sparkles className="h-10 w-10 mb-3 text-indigo-400 dark:text-indigo-300" />
-                  <p className="font-medium text-foreground">Start a conversation with your Career Advisor</p>
-                  <p className="text-sm mt-1 text-foreground/60">Ask about qualifications, career paths, or next steps for your practice.</p>
+                  <Sparkles className="h-10 w-10 mb-3 text-indigo-500 dark:text-indigo-400" />
+                  <p className="font-medium text-gray-900 dark:text-gray-100">Start a conversation with your Career Advisor</p>
+                  <p className="text-sm mt-1 text-gray-600 dark:text-gray-400">Ask about qualifications, career paths, or next steps for your practice.</p>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
@@ -416,7 +416,7 @@ export default function MyEducationPage() {
                   <div className={`max-w-[85%] rounded-lg p-3 text-sm ${
                     msg.role === "user"
                       ? "bg-indigo-600 text-white"
-                      : "bg-muted"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   }`}>
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                   </div>
@@ -424,8 +424,8 @@ export default function MyEducationPage() {
               ))}
               {chatLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg p-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
                   </div>
                 </div>
               )}
@@ -433,7 +433,7 @@ export default function MyEducationPage() {
             </CardContent>
 
             {/* Input */}
-            <div className="border-t p-3 flex gap-2">
+            <div className="border-t border-border p-3 flex gap-2">
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
