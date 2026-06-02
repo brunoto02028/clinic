@@ -4525,3 +4525,50 @@ model AgentApiKey {
   @@index([isActive])
   @@map("agent_api_keys")
 }
+
+// ============================================
+// SALES PIPELINE
+// ============================================
+
+model SalesLead {
+  id              String    @id @default(cuid())
+  clinicId        String?
+
+  // Contact info
+  name            String
+  email           String?
+  phone           String?
+  source          String    // website, instagram, referral, walk_in, google, ads, organic
+
+  // Pipeline stage
+  stage           String    @default("new") // new, contacted, consultation_booked, attended, converted, lost
+  priority        String    @default("medium") // low, medium, high, urgent
+
+  // Service interest
+  interestedIn    String?   // e.g. "physiotherapy", "sports_rehab", "foot_scan"
+  estimatedValue  Float?    // Estimated revenue from this lead
+  actualValue     Float?    // Actual revenue after conversion
+
+  // Follow-up
+  lastContactAt   DateTime?
+  nextFollowUpAt  DateTime?
+  followUpCount   Int       @default(0)
+
+  // Notes & activity
+  notes           String?   @db.Text
+  lostReason      String?   // too_expensive, no_response, went_elsewhere, not_needed
+
+  // Conversion
+  convertedAt     DateTime?
+  convertedToId   String?   // User ID of converted patient
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([stage])
+  @@index([source])
+  @@index([priority])
+  @@index([nextFollowUpAt])
+  @@index([clinicId])
+  @@map("sales_leads")
+}

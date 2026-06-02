@@ -167,6 +167,7 @@ const navigationGroups: NavGroup[] = [
     i18nKey: "sidebar.marketing",
     icon: Megaphone,
     items: [
+      { name: "Sales Pipeline", href: "/admin/sales", icon: Target },
       { name: "Marketing AI", href: "/admin/marketing", icon: Sparkles },
       { name: "Content Intelligence", href: "/admin/marketing/content-intelligence", icon: Lightbulb },
       { name: "SEO Articles", href: "/admin/marketing/articles", icon: FileText },
