@@ -407,8 +407,8 @@ export default function MyEducationPage() {
               {chatMessages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
                   <Sparkles className="h-10 w-10 mb-3 text-indigo-500 dark:text-indigo-400" />
-                  <p className="font-medium text-gray-900 dark:text-gray-100">Start a conversation with your Career Advisor</p>
-                  <p className="text-sm mt-1 text-gray-600 dark:text-gray-400">Ask about qualifications, career paths, or next steps for your practice.</p>
+                  <p className="font-medium text-gray-900 dark:text-white">Start a conversation with your Career Advisor</p>
+                  <p className="text-sm mt-1 text-gray-600 dark:text-gray-300">Ask about qualifications, career paths, or next steps for your practice.</p>
                 </div>
               )}
               {chatMessages.map((msg, i) => (
