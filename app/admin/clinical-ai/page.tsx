@@ -177,13 +177,13 @@ function AmbientScribe() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20">
+      <Card className="border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/40">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
-            <Mic className="h-5 w-5 text-violet-600" />
-            <h2 className="font-semibold text-lg">Ambient Clinical Scribe</h2>
+            <Mic className="h-5 w-5 text-violet-500 dark:text-violet-400" />
+            <h2 className="font-semibold text-lg text-foreground">Ambient Clinical Scribe</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-foreground/70">
             Record your consultation, get it transcribed, and auto-generate SOAP notes with patient context.
           </p>
 
@@ -381,13 +381,13 @@ function EvidenceSearch() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/20">
+      <Card className="border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="h-5 w-5 text-emerald-600" />
-            <h2 className="font-semibold text-lg">Evidence-Based Clinical Search</h2>
+            <BookOpen className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+            <h2 className="font-semibold text-lg text-foreground">Evidence-Based Clinical Search</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-foreground/70">
             Ask clinical questions and get answers grounded in research literature with references.
           </p>
 
@@ -461,8 +461,8 @@ function EvidenceSearch() {
             </div>
 
             {result.keyFindings?.length > 0 && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-3">
-                <p className="text-xs font-bold mb-2">KEY FINDINGS:</p>
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-lg p-3">
+                <p className="text-xs font-bold mb-2 text-foreground">KEY FINDINGS:</p>
                 <ul className="space-y-1">
                   {result.keyFindings.map((f: string, i: number) => (
                     <li key={i} className="text-sm flex items-start gap-2">
@@ -556,13 +556,13 @@ function PatientIntelligence() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">
+      <Card className="border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
-            <Brain className="h-5 w-5 text-blue-600" />
-            <h2 className="font-semibold text-lg">Patient Intelligence</h2>
+            <Brain className="h-5 w-5 text-blue-500 dark:text-blue-400" />
+            <h2 className="font-semibold text-lg text-foreground">Patient Intelligence</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-foreground/70">
             Comprehensive AI analysis of a patient's entire clinical history. Identifies patterns, risks, and optimal treatment paths.
           </p>
 
