@@ -264,7 +264,7 @@ export default function CPDCoursesPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Your Postcode</Label>
+              <Label className="text-xs font-medium text-gray-800 dark:text-white">Your Postcode</Label>
               <Input
                 placeholder="e.g. TW9 1DN"
                 value={postcode}
@@ -272,7 +272,7 @@ export default function CPDCoursesPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Search Mode</Label>
+              <Label className="text-xs font-medium text-gray-800 dark:text-white">Search Mode</Label>
               <Select value={searchMode} onValueChange={setSearchMode}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -283,7 +283,7 @@ export default function CPDCoursesPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Radius (miles)</Label>
+              <Label className="text-xs font-medium text-gray-800 dark:text-white">Radius (miles)</Label>
               <Select value={radius} onValueChange={setRadius}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -296,7 +296,7 @@ export default function CPDCoursesPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Course Type</Label>
+              <Label className="text-xs font-medium text-gray-800 dark:text-white">Course Type</Label>
               <Select value={searchType} onValueChange={setSearchType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -307,7 +307,7 @@ export default function CPDCoursesPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Specific Interests</Label>
+              <Label className="text-xs font-medium text-gray-800 dark:text-white">Specific Interests</Label>
               <Input
                 placeholder="e.g. injection, prescribing (optional)"
                 value={searchInterests}
