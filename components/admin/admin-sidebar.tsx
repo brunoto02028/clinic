@@ -183,11 +183,12 @@ const navigationGroups: NavGroup[] = [
     i18nKey: "sidebar.education",
     icon: GraduationCap,
     items: [
+      { name: "My Education", href: "/admin/my-education", icon: GraduationCap },
+      { name: "CPD Courses", href: "/admin/cpd-courses", icon: Award },
       { name: "Content Library", i18nKey: "nav.contentLibrary", href: "/admin/education", icon: GraduationCap },
       { name: "Create Content", i18nKey: "nav.createContent", href: "/admin/education/create", icon: PenSquare },
       { name: "Categories", i18nKey: "nav.categories", href: "/admin/education/categories", icon: FolderOpen },
       { name: "Assignments", i18nKey: "nav.assignments", href: "/admin/education/assignments", icon: ClipboardCheck },
-      { name: "CPD Courses", href: "/admin/cpd-courses", icon: Award },
     ],
   },
   {

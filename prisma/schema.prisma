@@ -4440,6 +4440,36 @@ model CoWorkerLog {
 }
 
 // ============================================
+// MY QUALIFICATIONS — Personal Education Portfolio
+// ============================================
+
+model Qualification {
+  id              String    @id @default(cuid())
+  title           String    // e.g. "Dry Needling (Foundation Course)"
+  provider        String    // e.g. "Core Elements Training"
+  providerUrl     String?   // e.g. "https://coreelements.uk.com"
+  certificateNumber String? // e.g. "09202509"
+  dateAchieved    DateTime? // When completed
+  cpdHours        Int?      // CPD hours awarded
+  level           String?   // e.g. "Foundation", "Advanced", "Level 7", "MSc"
+  category        String    // e.g. "dry_needling", "electrotherapy", "manual_therapy"
+  accreditation   String?   // e.g. "STO + FHT accredited", "HCPC approved"
+  tutor           String?   // e.g. "Dawn Morse MSc"
+  location        String?   // Where it was done
+  description     String?   @db.Text
+  certificateUrl  String?   // Upload path to certificate image/PDF
+  status          String    @default("completed") // completed, in_progress, planned
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([dateAchieved])
+  @@map("qualifications")
+}
+
+// ============================================
 // CPD COURSE OPPORTUNITIES — AI Course Discovery
 // ============================================
 
