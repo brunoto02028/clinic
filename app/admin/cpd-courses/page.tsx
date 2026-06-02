@@ -255,11 +255,11 @@ export default function CPDCoursesPage() {
       </div>
 
       {/* Search Panel */}
-      <Card className="border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950/40">
+      <Card className="border-teal-400/30 dark:border-teal-400/30 bg-teal-50 dark:bg-teal-900/30">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-5 w-5 text-teal-500 dark:text-teal-400 animate-pulse" />
-            <h2 className="font-semibold text-lg text-foreground">AI Course Agent</h2>
+            <h2 className="font-semibold text-lg text-gray-900 dark:text-white">AI Course Agent</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

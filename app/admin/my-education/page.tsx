@@ -371,7 +371,7 @@ export default function MyEducationPage() {
       {/* AI Career Advisor Tab */}
       {activeTab === "advisor" && (
         <div className="space-y-4">
-          <Card className="border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/10 dark:bg-indigo-500/10">
+          <Card className="border-indigo-400/30 dark:border-indigo-400/30 bg-indigo-50 dark:bg-indigo-900/30">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Bot className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />

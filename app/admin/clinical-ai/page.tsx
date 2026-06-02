@@ -179,7 +179,7 @@ function AmbientScribe() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-violet-400/30 dark:border-violet-500/30 bg-violet-500/10 dark:bg-violet-500/10">
+      <Card className="border-violet-400/30 dark:border-violet-400/30 bg-violet-50 dark:bg-violet-900/30">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <Mic className="h-5 w-5 text-violet-600 dark:text-violet-400" />
@@ -446,7 +446,7 @@ function EvidenceSearch() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-emerald-400/30 dark:border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-500/10">
+      <Card className="border-emerald-400/30 dark:border-emerald-400/30 bg-emerald-50 dark:bg-emerald-900/30">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <BookOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -621,7 +621,7 @@ function PatientIntelligence() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-blue-400/30 dark:border-blue-500/30 bg-blue-500/10 dark:bg-blue-500/10">
+      <Card className="border-blue-400/30 dark:border-blue-400/30 bg-blue-50 dark:bg-blue-900/30">
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
