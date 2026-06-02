@@ -4572,3 +4572,37 @@ model SalesLead {
   @@index([clinicId])
   @@map("sales_leads")
 }
+
+// ─── Patient Pre-Consultation Recording ───
+model ConsultationRecording {
+  id              String    @id @default(cuid())
+  patientId       String
+  appointmentId   String?
+  clinicId        String?
+
+  // Audio data
+  audioUrl        String    @db.Text
+  duration        Int?      // seconds
+  language        String    @default("en")
+
+  // Transcription
+  transcript      String?   @db.Text
+  transcribedAt   DateTime?
+
+  // Status
+  status          String    @default("pending") // pending, transcribed, reviewed, used_in_soap
+  reviewedBy      String?   // Admin who reviewed it
+  reviewedAt      DateTime?
+
+  // Context
+  chiefComplaint  String?   @db.Text // AI-extracted summary of patient's main complaint
+  symptoms        String?   @db.Text // AI-extracted symptoms list (JSON)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([patientId])
+  @@index([appointmentId])
+  @@index([status])
+  @@map("consultation_recordings")
+}

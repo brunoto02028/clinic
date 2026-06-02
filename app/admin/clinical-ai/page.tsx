@@ -83,6 +83,8 @@ function AmbientScribe() {
   const [soapNote, setSoapNote] = useState<any>(null);
   const [transcribing, setTranscribing] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [patientRecordings, setPatientRecordings] = useState<any[]>([]);
+  const [loadingRecordings, setLoadingRecordings] = useState(false);
   const [language, setLanguage] = useState("en");
   const [patientId, setPatientId] = useState("");
   const [appointmentType, setAppointmentType] = useState("physiotherapy");
@@ -249,6 +251,69 @@ function AmbientScribe() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Patient Pre-Recordings */}
+      <Card>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
+              <Mic className="h-4 w-4 text-amber-500" /> Patient Pre-Recordings
+            </h3>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7"
+              onClick={async () => {
+                setLoadingRecordings(true);
+                try {
+                  const url = patientId
+                    ? `/api/admin/clinical-scribe/recordings?status=transcribed&patientId=${patientId}`
+                    : `/api/admin/clinical-scribe/recordings?status=transcribed`;
+                  const res = await fetch(url);
+                  const data = await res.json();
+                  setPatientRecordings(data.recordings || []);
+                } catch { /* ignore */ } finally { setLoadingRecordings(false); }
+              }}
+            >
+              {loadingRecordings ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Load Patient Recordings
+            </Button>
+          </div>
+
+          {patientRecordings.length === 0 ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              No pending recordings. Click "Load" to check, or paste a Patient ID above to filter.
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {patientRecordings.map((rec: any) => (
+                <div key={rec.id} className="flex items-center justify-between p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{rec.patientName}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-1">{rec.chiefComplaint || rec.transcript?.slice(0, 80) || "No transcript"}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                      {new Date(rec.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      {rec.duration ? ` • ${Math.floor(rec.duration / 60)}:${(rec.duration % 60).toString().padStart(2, "0")}` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="text-xs h-7 bg-amber-600 hover:bg-amber-700 text-white ml-2"
+                    onClick={() => {
+                      // Use as subjective context
+                      const subjectiveText = rec.transcript || rec.chiefComplaint || "";
+                      setTranscript((prev: string) => prev ? `[Patient Pre-Recording]\n${subjectiveText}\n\n[Consultation]\n${prev}` : subjectiveText);
+                      toast({ title: "Patient recording loaded as Subjective context" });
+                    }}
+                  >
+                    Use as Subjective
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -34,6 +34,7 @@ import {
   Trophy,
   ShoppingCart,
   BookOpen,
+  Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +102,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
     "/dashboard/consent": "patient.consent",
     "/dashboard/guide": "patient.guide",
     "/dashboard/profile": "patient.profile",
+    "/dashboard/recordings": "patient.recordings",
     "/dashboard/clinical-notes": "patient.clinicalNotes",
     "/dashboard/quizzes": "patient.quizzes",
     "/dashboard/achievements": "patient.achievements",

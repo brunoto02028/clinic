@@ -32,6 +32,7 @@ import {
   Award,
   Map,
   ShoppingCart,
+  Mic,
   type LucideIcon,
 } from "lucide-react";
 
@@ -151,6 +152,16 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     href: "/dashboard/records",
     category: "clinical",
     defaultEnabled: false,
+  },
+  {
+    key: "mod_recordings",
+    label: "Pre-Consultation Recording",
+    labelPt: "Gravação Pré-Consulta",
+    description: "Record symptoms before your appointment",
+    icon: Mic,
+    href: "/dashboard/recordings",
+    category: "clinical",
+    defaultEnabled: true,
   },
   {
     key: "mod_clinical_notes",
