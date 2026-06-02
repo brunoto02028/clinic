@@ -2,6 +2,43 @@ import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// ─── INLINE SECURITY (Edge Runtime compatible) ───
+const rateLimitStore = new Map<string, { count: number; first: number; blocked: boolean; until?: number }>();
+
+function checkRateLimit(ip: string, path: string, opts: { maxRequests: number; windowMs: number; blockDurationMs: number }) {
+  const key = `${ip}:${path}`;
+  const now = Date.now();
+  let entry = rateLimitStore.get(key);
+  if (!entry) { entry = { count: 1, first: now, blocked: false }; rateLimitStore.set(key, entry); return { blocked: false, retryAfter: 0 }; }
+  if (entry.blocked && entry.until && now > entry.until) { entry.blocked = false; entry.count = 1; entry.first = now; return { blocked: false, retryAfter: 0 }; }
+  if (entry.blocked) { return { blocked: true, retryAfter: Math.ceil(((entry.until || now + opts.blockDurationMs) - now) / 1000) }; }
+  if (now - entry.first > opts.windowMs) { entry.count = 1; entry.first = now; return { blocked: false, retryAfter: 0 }; }
+  entry.count++;
+  if (entry.count > opts.maxRequests) { entry.blocked = true; entry.until = now + opts.blockDurationMs; return { blocked: true, retryAfter: Math.ceil(opts.blockDurationMs / 1000) }; }
+  return { blocked: false, retryAfter: 0 };
+}
+
+function detectThreats(path: string, query: string): boolean {
+  const fullUrl = path + query;
+  const dangerPatterns = [
+    /(\b(union|select|insert|delete|drop)\b.*\b(from|into|table)\b)/i,
+    /('|").*(-{2}|\/\*)/,
+    /<script[\s>]/i, /javascript:/i, /on(error|load|click)\s*=/i,
+    /\.\.\//g, /%2e%2e/i, /etc\/passwd/i,
+    /wp-admin/i, /wp-login/i, /xmlrpc\.php/i, /phpmyadmin/i, /\.env$/i, /\.git\//i,
+    /shell\.php/i, /cmd\.php/i, /admin\.php/i,
+  ];
+  return dangerPatterns.some(p => p.test(fullUrl));
+}
+
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "X-XSS-Protection": "1; mode=block",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=self, microphone=self, geolocation=()",
+};
+
 // Routes that don't require authentication
 const publicRoutes = [
   '/',
@@ -86,6 +123,46 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/auth')
   ) {
     return NextResponse.next();
+  }
+
+  // ─── SECURITY LAYER ───
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+
+  // Threat detection (SQL injection, XSS, path traversal, scanners)
+  const isThreat = detectThreats(pathname, request.nextUrl.search);
+
+  if (isThreat) {
+    // Block malicious requests immediately
+    return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', ...SECURITY_HEADERS },
+    });
+  }
+
+  // Rate limiting for API routes
+  if (pathname.startsWith('/api') && !pathname.startsWith('/api/auth')) {
+    // Stricter limits for login/auth attempts
+    const isAuthAttempt = pathname.includes('login') || pathname.includes('signin');
+    const limits = isAuthAttempt
+      ? { maxRequests: 10, windowMs: 60000, blockDurationMs: 600000 }   // 10 req/min, block 10 min
+      : pathname.startsWith('/api/admin')
+      ? { maxRequests: 100, windowMs: 60000, blockDurationMs: 300000 }  // 100 req/min for admin
+      : { maxRequests: 60, windowMs: 60000, blockDurationMs: 120000 };  // 60 req/min public
+
+    const rateCheck = checkRateLimit(ip, pathname.split('/').slice(0, 4).join('/'), limits);
+
+    if (rateCheck.blocked) {
+      return new NextResponse(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateCheck.retryAfter || 60),
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
   }
 
   // Allow public routes
