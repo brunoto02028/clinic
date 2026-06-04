@@ -29,10 +29,17 @@ export function NativeLoginShell({ children, webShell }: NativeLoginShellProps) 
 
     // Fetch system logo for native shell
     if (native) {
-      fetch("/api/settings/public")
-        .then(r => r.json())
+      fetch("/api/settings")
+        .then(r => r.ok ? r.json() : null)
         .then(d => {
-          setLogoUrl(d?.darkLogoUrl || d?.logoUrl || null);
+          if (!d) return;
+          const url =
+            d?.screenLogos?.landingHeader?.darkLogoUrl ||
+            d?.darkLogoUrl ||
+            d?.screenLogos?.landingHeader?.logoUrl ||
+            d?.logoUrl ||
+            null;
+          setLogoUrl(url);
         })
         .catch(() => {});
     }

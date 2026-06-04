@@ -3,9 +3,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.bpr.rehab',
   appName: 'BPR Rehab',
-  // Point to the live deployed site — no static export needed
+  // Point to the live deployed site — start at /dashboard (redirects to /login if not authenticated)
   server: {
-    url: 'https://bpr.rehab',
+    url: 'https://bpr.rehab/dashboard',
     cleartext: false,
   },
   // Native splash & status bar
