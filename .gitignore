@@ -20,3 +20,8 @@ replace_*.js
 update_*.js
 scrape_*.py
 *.mjs
+
+# Capacitor native projects (auto-generated, large)
+ios/
+android/
+www/
