@@ -33,6 +33,7 @@ import {
   Map,
   ShoppingCart,
   Mic,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 
@@ -152,6 +153,16 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     href: "/dashboard/records",
     category: "clinical",
     defaultEnabled: false,
+  },
+  {
+    key: "mod_tasks",
+    label: "Pending Actions",
+    labelPt: "Ações Pendentes",
+    description: "View and complete actions requested by your clinic",
+    icon: Bell,
+    href: "/dashboard/tasks",
+    category: "clinical",
+    defaultEnabled: true,
   },
   {
     key: "mod_recordings",

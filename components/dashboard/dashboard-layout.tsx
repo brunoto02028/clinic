@@ -102,6 +102,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
     "/dashboard/consent": "patient.consent",
     "/dashboard/guide": "patient.guide",
     "/dashboard/profile": "patient.profile",
+    "/dashboard/tasks": "patient.tasks",
     "/dashboard/recordings": "patient.recordings",
     "/dashboard/clinical-notes": "patient.clinicalNotes",
     "/dashboard/quizzes": "patient.quizzes",

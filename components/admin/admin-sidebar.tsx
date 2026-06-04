@@ -64,6 +64,7 @@ import {
   Lightbulb,
   Link2,
   Shield,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -158,6 +159,7 @@ const navigationGroups: NavGroup[] = [
     icon: Heart,
     items: [
       { name: "All Patients", i18nKey: "nav.allPatients", href: "/admin/patients", icon: UserCheck, requiredPermission: "canViewAllPatients" },
+      { name: "Patient Tasks", href: "/admin/patient-tasks", icon: Bell },
       { name: "Patient Portal", i18nKey: "nav.patientPortal", href: "/admin/patient-portal", icon: Users },
       { name: "Exercise Library", i18nKey: "nav.exerciseLibrary", href: "/admin/exercises", icon: Dumbbell },
     ],

@@ -129,6 +129,31 @@ export async function GET(request: NextRequest) {
       }
     } catch {}
 
+    // 5. Pending patient tasks (from admin)
+    try {
+      const pendingTasks = await (prisma as any).patientTask.findMany({
+        where: { patientId: userId, status: { in: ["pending", "in_progress"] } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      });
+      for (const task of pendingTasks) {
+        const isUrgent = task.priority === "urgent" || task.priority === "high";
+        notifications.push({
+          id: `task-${task.id}`,
+          type: "task",
+          title: task.title,
+          titlePt: task.titlePt || task.title,
+          message: task.description || "Your clinic has requested an action from you.",
+          messagePt: task.descriptionPt || "A sua clinica solicitou uma acao.",
+          link: task.actionUrl || "/dashboard/tasks",
+          icon: "Bell",
+          color: isUrgent ? "red" : "violet",
+          createdAt: task.createdAt?.toISOString?.() || now.toISOString(),
+          isUrgent,
+        });
+      }
+    } catch {}
+
     // Sort: urgent first, then by date
     notifications.sort((a, b) => {
       if (a.isUrgent && !b.isUrgent) return -1;

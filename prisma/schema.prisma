@@ -4606,3 +4606,35 @@ model ConsultationRecording {
   @@index([status])
   @@map("consultation_recordings")
 }
+
+// ============================================
+// PATIENT TASKS (Admin → Patient Action Requests)
+// ============================================
+
+model PatientTask {
+  id            String    @id @default(cuid())
+  clinicId      String?
+  patientId     String
+  createdById   String
+  type          String    // UPLOAD_DOCUMENT, COMPLETE_SCREENING, RECORD_AUDIO, SIGN_CONSENT, UPDATE_PROFILE, CONFIRM_APPOINTMENT, PAY_INVOICE, CUSTOM
+  title         String
+  titlePt       String?
+  description   String?   @db.Text
+  descriptionPt String?   @db.Text
+  priority      String    @default("normal") // low, normal, high, urgent
+  status        String    @default("pending") // pending, in_progress, completed, cancelled
+  dueDate       DateTime?
+  completedAt   DateTime?
+  actionUrl     String?
+  metadata      Json?
+  emailSent     Boolean   @default(false)
+  emailSentAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([patientId])
+  @@index([status])
+  @@index([createdById])
+  @@index([clinicId])
+  @@map("patient_tasks")
+}
