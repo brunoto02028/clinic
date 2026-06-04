@@ -241,7 +241,7 @@ export default function AgentKeysPage() {
         {keys.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
-              No API keys created yet. Click "New API Key" to create one.
+              No API keys created yet. Click &ldquo;New API Key&rdquo; to create one.
             </CardContent>
           </Card>
         ) : (

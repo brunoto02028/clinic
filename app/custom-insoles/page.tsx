@@ -127,7 +127,7 @@ export default function CustomInsolesPage() {
             {processSteps.map((step, i) => {
               const Icon = step.icon;
               return (
-                <div>
+                <div key={i}>
                   <Card className="h-full border border-border hover:shadow-md transition-shadow">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4">
@@ -162,7 +162,7 @@ export default function CustomInsolesPage() {
             {conditions.map((c, i) => {
               const Icon = c.icon;
               return (
-                <div>
+                <div key={i}>
                   <Card className="h-full hover:shadow-md transition-shadow">
                     <CardContent className="p-5">
                       <div className="flex items-start gap-3">

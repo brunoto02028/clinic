@@ -210,7 +210,7 @@ export default function FeedbackPage() {
               {chatMessages.length === 0 && (
                 <div className="text-center text-muted-foreground/50 text-sm py-6">
                   <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-30" />
-                  <p>Click "Analyze with AI" to start,</p>
+                  <p>Click &ldquo;Analyze with AI&rdquo; to start,</p>
                   <p>or ask a question about patient feedback.</p>
                 </div>
               )}

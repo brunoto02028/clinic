@@ -664,7 +664,7 @@ export default function AdminScansPage() {
             const StatusIcon = statusConfig.icon;
 
             return (
-              <div>
+              <div key={scan.id || index}>
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleViewScan(scan)}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">

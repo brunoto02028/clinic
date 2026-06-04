@@ -149,7 +149,7 @@ export default function TemplatesPage() {
     } catch {}
   };
 
-  const useTemplate = (t: Template) => {
+  const applyTemplate = (t: Template) => {
     const params = new URLSearchParams();
     params.set("template", t.id);
     params.set("caption", t.captionTemplate);
@@ -294,7 +294,7 @@ export default function TemplatesPage() {
                   )}
 
                   <div className="flex gap-2 pt-2 border-t">
-                    <Button size="sm" variant="outline" className="flex-1 text-xs gap-1" onClick={() => useTemplate(t)}>
+                    <Button size="sm" variant="outline" className="flex-1 text-xs gap-1" onClick={() => applyTemplate(t)}>
                       <Copy className="h-3 w-3" /> Use
                     </Button>
                     <Button size="sm" variant="ghost" className="text-xs gap-1 text-red-500" onClick={() => deleteTemplate(t.id)}>

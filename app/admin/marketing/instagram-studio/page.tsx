@@ -647,7 +647,7 @@ export default function InstagramStudioPage() {
     localStorage.setItem(IMAGE_LIB_KEY, JSON.stringify(updated));
   }
 
-  function useImageFromLibrary(url: string) {
+  function applyImageFromLibrary(url: string) {
     setGeneratedImage(url);
     setWatermarkedImage(null);
     setShowImageLibrary(false);
@@ -905,7 +905,7 @@ export default function InstagramStudioPage() {
     finally { setViralLoading(false); }
   }
 
-  function useViralIdea(idea: any) {
+  function applyViralIdea(idea: any) {
     // Sanitise: only use plain text strings, never objects or JSON
     const safeStr = (v: any): string => {
       if (!v) return "";
@@ -1964,7 +1964,7 @@ export default function InstagramStudioPage() {
                             <img src={img.url} alt={img.topic} className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">
                               <button
-                                onClick={() => useImageFromLibrary(img.url)}
+                                onClick={() => applyImageFromLibrary(img.url)}
                                 className="text-[10px] text-white bg-cyan-500/80 hover:bg-cyan-500 px-2 py-1 rounded font-medium w-full text-center">
                                 Usar
                               </button>
@@ -2693,7 +2693,7 @@ export default function InstagramStudioPage() {
                             )}
                             <Button
                               size="sm"
-                              onClick={() => useViralIdea(idea)}
+                              onClick={() => applyViralIdea(idea)}
                               className="bg-orange-500 hover:bg-orange-600 text-white text-xs"
                             >
                               <Zap className="h-3.5 w-3.5 mr-1" /> Usar
