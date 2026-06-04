@@ -4638,3 +4638,22 @@ model PatientTask {
   @@index([clinicId])
   @@map("patient_tasks")
 }
+
+// ============================================
+// PUSH DEVICE TOKENS (Mobile Push Notifications)
+// ============================================
+
+model PushDeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @db.Text
+  platform  String   // ios, android, web
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([active])
+  @@map("push_device_tokens")
+}

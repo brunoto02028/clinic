@@ -576,3 +576,29 @@ input:focus, textarea:focus, select:focus, [role="combobox"]:focus {
   max-width: 100%;
   overflow-wrap: break-word;
 }
+
+/* ============================================
+   MOBILE APP (Capacitor) — Safe Areas
+   ============================================ */
+
+/* iOS notch / Dynamic Island safe areas */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Prevent pull-to-refresh in native app */
+html.native-app {
+  overscroll-behavior-y: contain;
+}
+
+/* Disable text selection on native (more app-like feel) */
+html.native-app button,
+html.native-app a,
+html.native-app [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}

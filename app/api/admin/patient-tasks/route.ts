@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
+import { sendPushToUser } from "@/lib/push-send";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,13 @@ export async function POST(req: NextRequest) {
       where: { id: task.id },
       data: { emailSent: true, emailSentAt: new Date() },
     });
+
+    // Also send push notification to patient's mobile devices
+    await sendPushToUser(patientId, {
+      title: titlePt || title,
+      body: plainMessagePt,
+      url: actionUrl || "/dashboard/tasks",
+    }).catch(() => {});
   } catch (err) {
     console.error("[patient-tasks] Failed to notify patient:", err);
   }
