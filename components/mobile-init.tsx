@@ -34,6 +34,13 @@ async function initMobile() {
     // Add native-app class to HTML element for CSS targeting
     document.documentElement.classList.add("native-app");
 
+    // Redirect away from landing page — native app should never show the marketing site
+    const path = window.location.pathname;
+    if (path === "/" || path === "") {
+      window.location.href = "/dashboard";
+      return;
+    }
+
     // Set status bar style
     await setStatusBarDark();
 
