@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState, useEffect } from "react";
-import { Logo } from "@/components/ui/logo";
+import Image from "next/image";
 import { LocaleToggle } from "@/components/locale-toggle";
 
 interface NativeLoginShellProps {
@@ -17,6 +17,7 @@ interface NativeLoginShellProps {
 export function NativeLoginShell({ children, webShell }: NativeLoginShellProps) {
   const [isNative, setIsNative] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const w = window as any;
@@ -25,6 +26,16 @@ export function NativeLoginShell({ children, webShell }: NativeLoginShellProps) 
       document.documentElement.classList.contains("native-app");
     setIsNative(native);
     setChecked(true);
+
+    // Fetch system logo for native shell
+    if (native) {
+      fetch("/api/settings/public")
+        .then(r => r.json())
+        .then(d => {
+          setLogoUrl(d?.darkLogoUrl || d?.logoUrl || null);
+        })
+        .catch(() => {});
+    }
   }, []);
 
   // Before detection, render nothing to avoid flash
@@ -43,13 +54,23 @@ export function NativeLoginShell({ children, webShell }: NativeLoginShellProps) 
   return (
     <div className="min-h-screen bg-background bg-grid-pattern flex flex-col pt-[env(safe-area-inset-top)]">
       {/* App-style header with logo */}
-      <div className="flex flex-col items-center pt-12 pb-6 px-6">
-        <div className="mb-4">
-          <Logo size="lg" linkTo="/" />
+      <div className="flex flex-col items-center pt-10 pb-4 px-6">
+        <div className="h-14 w-40 relative mb-3">
+          {logoUrl ? (
+            <Image
+              src={logoUrl}
+              alt="BPR Rehab"
+              fill
+              className="object-contain"
+              priority
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <span className="text-2xl font-bold text-primary tracking-wide">BPR</span>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <LocaleToggle />
-        </div>
+        <LocaleToggle />
       </div>
 
       {/* Login form — centered, full width */}
