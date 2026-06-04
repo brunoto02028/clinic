@@ -1,0 +1,68 @@
+"use client";
+
+import { ReactNode, useState, useEffect } from "react";
+import { Logo } from "@/components/ui/logo";
+import { LocaleToggle } from "@/components/locale-toggle";
+
+interface NativeLoginShellProps {
+  children: ReactNode;   // Login form — shown in native app
+  webShell: ReactNode;   // Full web layout — shown on browser
+}
+
+/**
+ * Detects if running in Capacitor native app.
+ * - Native: Shows clean app login (logo + form, no site header/footer)
+ * - Web: Shows the full website layout with header/footer
+ */
+export function NativeLoginShell({ children, webShell }: NativeLoginShellProps) {
+  const [isNative, setIsNative] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    const w = window as any;
+    const native =
+      !!w.Capacitor?.isNativePlatform?.() ||
+      document.documentElement.classList.contains("native-app");
+    setIsNative(native);
+    setChecked(true);
+  }, []);
+
+  // Before detection, render nothing to avoid flash
+  if (!checked) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Web: return normal website layout
+  if (!isNative) return <>{webShell}</>;
+
+  // Native: clean app-like login
+  return (
+    <div className="min-h-screen bg-background bg-grid-pattern flex flex-col pt-[env(safe-area-inset-top)]">
+      {/* App-style header with logo */}
+      <div className="flex flex-col items-center pt-12 pb-6 px-6">
+        <div className="mb-4">
+          <Logo size="lg" linkTo="/" />
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <LocaleToggle />
+        </div>
+      </div>
+
+      {/* Login form — centered, full width */}
+      <main className="flex-1 flex items-start justify-center px-4 pb-8">
+        {children}
+      </main>
+
+      {/* Minimal footer */}
+      <div className="pb-[env(safe-area-inset-bottom)] px-4 py-3 text-center">
+        <p className="text-[11px] text-muted-foreground/50">
+          BPR Rehab &copy; {new Date().getFullYear()}
+        </p>
+      </div>
+    </div>
+  );
+}

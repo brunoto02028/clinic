@@ -60,7 +60,7 @@ export function SiteFooter() {
   const hasTopRow = hasLogo || hasLinks || hasContact || hasSocial;
 
   return (
-    <footer className="border-t border-white/5 py-4 mt-auto">
+    <footer className="border-t border-white/5 py-4 mt-auto site-footer-web-only">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Top row — logo, links, contact, social */}

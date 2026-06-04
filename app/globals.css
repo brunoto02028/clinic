@@ -602,3 +602,29 @@ html.native-app [role="button"] {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Bigger touch targets on native for inputs and buttons */
+html.native-app input,
+html.native-app textarea,
+html.native-app select {
+  font-size: 16px !important; /* Prevents iOS zoom on focus */
+  min-height: 48px;
+}
+
+html.native-app button,
+html.native-app [role="button"],
+html.native-app a {
+  min-height: 44px; /* Apple HIG minimum touch target */
+}
+
+/* Smooth scroll on native */
+html.native-app {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide site header/footer elements that leak into native app via other pages */
+html.native-app .site-header-web-only,
+html.native-app .site-footer-web-only {
+  display: none !important;
+}

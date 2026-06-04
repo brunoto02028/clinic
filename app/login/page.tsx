@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import LoginForm from "@/components/auth/login-form";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { NativeLoginShell } from "@/components/auth/native-login-shell";
 
 export default async function LoginPage() {
   const session = await getServerSession(authOptions);
@@ -18,12 +19,18 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background bg-grid-pattern flex flex-col">
-      <SiteHeader currentPage="other" />
-      <main className="flex-1 flex items-center justify-center p-4 py-8">
-        <LoginForm />
-      </main>
-      <SiteFooter />
-    </div>
+    <NativeLoginShell
+      webShell={
+        <div className="min-h-screen bg-background bg-grid-pattern flex flex-col">
+          <SiteHeader currentPage="other" />
+          <main className="flex-1 flex items-center justify-center p-4 py-8">
+            <LoginForm />
+          </main>
+          <SiteFooter />
+        </div>
+      }
+    >
+      <LoginForm />
+    </NativeLoginShell>
   );
 }
