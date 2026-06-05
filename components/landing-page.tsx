@@ -395,15 +395,23 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <div>
               <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-gradient-to-br from-teal-900/20 to-cyan-900/20">
                 {settings?.heroImageUrl && (
-                  <Image
-                    src={settings.heroImageUrl}
-                    alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
-                    fill
-                    className="object-cover"
-                    priority
-                    quality={75}
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                  />
+                  settings.heroImageUrl.startsWith('data:') ? (
+                    <img
+                      src={settings.heroImageUrl}
+                      alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
+                      className="object-cover absolute inset-0 w-full h-full"
+                    />
+                  ) : (
+                    <Image
+                      src={settings.heroImageUrl}
+                      alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
+                      fill
+                      className="object-cover"
+                      priority
+                      quality={75}
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+                  )
                 )}
                 {!settings?.heroImageUrl && (
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -571,18 +579,11 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800">
-                <Image
-                  src={treatmentImg}
-                  alt="MLS Laser Therapy treatment in action"
-                  width={800}
-                  height={600}
-                  className="w-full h-auto max-h-[420px] object-cover"
-                  loading="lazy"
-                  quality={60}
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  placeholder="blur"
-                  blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAABv/EAB8QAAICAgIDAQAAAAAAAAAAAAECAwQABREhBhIxQf/EABUBAQEAAAAAAAAAAAAAAAAAAAAB/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AkuO9Rjj2FmrHbhMkUEjxq6KfVmAJBI/RxjGAf/Z"
-                />
+                {treatmentImg.startsWith('data:') ? (
+                  <img src={treatmentImg} alt="MLS Laser Therapy treatment in action" className="w-full h-auto max-h-[420px] object-cover" />
+                ) : (
+                  <Image src={treatmentImg} alt="MLS Laser Therapy treatment in action" width={800} height={600} className="w-full h-auto max-h-[420px] object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
@@ -593,15 +594,11 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-white flex items-center justify-center p-4">
-                  <Image
-                    src={deviceImg}
-                    alt="MLS Mphi 75 Multiwave Locked System laser device"
-                    fill
-                    className="object-contain p-4"
-                    loading="lazy"
-                    quality={60}
-                    sizes="(max-width: 768px) 50vw, 25vw"
-                  />
+                  {deviceImg.startsWith('data:') ? (
+                    <img src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" className="object-contain p-4 absolute inset-0 w-full h-full" />
+                  ) : (
+                    <Image src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" fill className="object-contain p-4" loading="lazy" quality={60} sizes="(max-width: 768px) 50vw, 25vw" />
+                  )}
                 </div>
                 <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-blue-600/10 border border-orange-500/20 p-5 flex flex-col justify-center">
                   <div className="space-y-3">
@@ -697,15 +694,11 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-blue-900/20 to-cyan-900/20">
                 {settings?.insolesImageUrl && (
                   <>
-                    <Image 
-                      src={settings.insolesImageUrl} 
-                      alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" 
-                      fill
-                      className="object-cover" 
-                      loading="lazy"
-                      quality={60}
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
+                    {settings.insolesImageUrl.startsWith('data:') ? (
+                      <img src={settings.insolesImageUrl} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
+                    ) : (
+                      <Image src={settings.insolesImageUrl} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </>
                 )}
@@ -809,15 +802,11 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-purple-900/20 to-blue-900/20">
                 {settings?.bioImageUrl && (
                   <>
-                    <Image 
-                      src={settings.bioImageUrl} 
-                      alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" 
-                      fill
-                      className="object-cover" 
-                      loading="lazy"
-                      quality={60}
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
+                    {settings.bioImageUrl.startsWith('data:') ? (
+                      <img src={settings.bioImageUrl} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
+                    ) : (
+                      <Image src={settings.bioImageUrl} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </>
                 )}
@@ -922,15 +911,11 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800 aspect-[4/3]">
                 {settings?.thermoImageUrl ? (
-                  <Image
-                    src={settings.thermoImageUrl as string}
-                    alt="Infrared thermography scan showing heat patterns on body"
-                    fill
-                    className="object-cover"
-                    loading="lazy"
-                    quality={60}
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                  />
+                  (settings.thermoImageUrl as string).startsWith('data:') ? (
+                    <img src={settings.thermoImageUrl as string} alt="Infrared thermography scan showing heat patterns on body" className="object-cover absolute inset-0 w-full h-full" />
+                  ) : (
+                    <Image src={settings.thermoImageUrl as string} alt="Infrared thermography scan showing heat patterns on body" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                  )
                 ) : (
                   <div className="absolute inset-0">
                     <ThermographyIllustration className="w-full h-full" />
@@ -1074,15 +1059,11 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <div>
               <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
                 {settings?.aboutImageUrl && (
-                  <Image
-                    src={settings.aboutImageUrl}
-                    alt="Professional physiotherapy treatment session"
-                    fill
-                    className="object-cover"
-                    loading="lazy"
-                    quality={60}
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                  />
+                  settings.aboutImageUrl.startsWith('data:') ? (
+                    <img src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" className="object-cover absolute inset-0 w-full h-full" />
+                  ) : (
+                    <Image src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                  )
                 )}
               </div>
             </div>
@@ -1121,7 +1102,11 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     <Card className="h-full card-hover overflow-hidden border border-border cursor-pointer">
                       {article.imageUrl && (
                         <div className="relative aspect-video bg-muted overflow-hidden">
-                          <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" />
+                          {article.imageUrl.startsWith('data:') ? (
+                            <img src={article.imageUrl} alt={article.title} className="object-cover absolute inset-0 w-full h-full" />
+                          ) : (
+                            <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" />
+                          )}
                         </div>
                       )}
                       <CardContent className="p-4 sm:p-6">

@@ -1,31 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useEffect } from "react";
 
 export function DynamicFavicon() {
-  const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
-    setMounted(true);
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
-        if (data?.faviconUrl) setFaviconUrl(data.faviconUrl);
+        if (data?.faviconUrl) {
+          // Manipulate DOM directly instead of createPortal to avoid hydration mismatch
+          const url = data.faviconUrl;
+
+          // Update existing favicon links or create new ones
+          const updateOrCreate = (rel: string) => {
+            let link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+            if (link) {
+              link.href = url;
+            } else {
+              link = document.createElement("link");
+              link.rel = rel;
+              link.href = url;
+              document.head.appendChild(link);
+            }
+          };
+
+          updateOrCreate("icon");
+          updateOrCreate("shortcut icon");
+          updateOrCreate("apple-touch-icon");
+        }
       })
       .catch(() => {});
   }, []);
 
-  // Use React portal to render into <head> without direct DOM manipulation
-  if (!mounted || !faviconUrl) return null;
-
-  return createPortal(
-    <>
-      <link rel="icon" href={faviconUrl} />
-      <link rel="shortcut icon" href={faviconUrl} />
-      <link rel="apple-touch-icon" href={faviconUrl} />
-    </>,
-    document.head
-  );
+  return null;
 }
