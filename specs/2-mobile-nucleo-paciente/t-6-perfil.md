@@ -1,6 +1,6 @@
 # T-6: Perfil — ver + editar dados básicos
 
-**Status:** pendente
+**Status:** concluído (QA `report-t-6.md` aprovado 4/4)
 **Depende de:** T-1, T-2
 
 ## Objetivo

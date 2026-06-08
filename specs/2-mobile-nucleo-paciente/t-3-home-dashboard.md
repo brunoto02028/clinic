@@ -1,6 +1,6 @@
 # T-3: Home (dashboard) — próximo agendamento + resumo
 
-**Status:** pendente
+**Status:** concluído (QA `report-t-3.md` aprovado 3/3)
 **Depende de:** T-1, T-2
 
 ## Objetivo

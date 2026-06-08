@@ -1,6 +1,6 @@
 # Atividade 2 — App nativo do paciente: Núcleo (Fase 1)
 
-**Status geral:** pendente (aguardando aprovação)
+**Status geral:** concluído (T-1 a T-6 com QA aprovado + review)
 **Criada em:** 07/06/2026
 **Depende de:** Atividade 1 (Fundação) — concluída
 
@@ -34,10 +34,10 @@ prescritos** e **Perfil**, consumindo as APIs Next.js existentes via autenticaç
 |--------|------|--------|------------|
 | T-1 | Auth dual no backend (helper + aplicar nas rotas da fase) | concluído | — |
 | T-2 | Navegação por abas + esqueleto das telas | concluído | — |
-| T-3 | Home (dashboard): próximo agendamento + resumo | pendente | T-1, T-2 |
-| T-4 | Agendamentos: lista + detalhe | pendente | T-1, T-2 |
-| T-5 | Exercícios prescritos: lista + detalhe | pendente | T-1, T-2 |
-| T-6 | Perfil: ver + editar dados básicos | pendente | T-1, T-2 |
+| T-3 | Home (dashboard): próximo agendamento + resumo | concluído | T-1, T-2 |
+| T-4 | Agendamentos: lista + detalhe | concluído | T-1, T-2 |
+| T-5 | Exercícios prescritos: lista + detalhe | concluído | T-1, T-2 |
+| T-6 | Perfil: ver + editar dados básicos | concluído | T-1, T-2 |
 
 ## Suposições (validar)
 

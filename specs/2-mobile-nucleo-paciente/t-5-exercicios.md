@@ -1,6 +1,6 @@
 # T-5: Exercícios prescritos — lista + detalhe
 
-**Status:** pendente
+**Status:** concluído (QA `report-t-5.md` aprovado 3/3)
 **Depende de:** T-1, T-2
 
 ## Objetivo

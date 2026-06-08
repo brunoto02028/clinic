@@ -1,6 +1,6 @@
 # T-4: Agendamentos — lista + detalhe
 
-**Status:** pendente
+**Status:** concluído (QA `report-t-4.md` aprovado 3/3)
 **Depende de:** T-1, T-2
 
 ## Objetivo
