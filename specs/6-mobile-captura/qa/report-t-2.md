@@ -13,3 +13,9 @@
 
 Nota: permissão/câmera/preview rodam no device — eu não controlo o iPhone; validação visual
 é do usuário. Backend (criar scan + upload) validado via curl.
+
+## ✅ Validação no iPhone real (Expo Go) — 08/06/2026
+Usuário capturou no device: câmera abriu, 6 fotos tiradas e enviadas. Confirmado no
+backend — arquivos persistidos em `public/uploads/scans/FS-2026-00004/`:
+`left-plantar`, `left-medial`, `left-lateral`, `right-plantar`, `right-medial`, `right-lateral`.
+Scan → status SCANNING. Captura nativa **validada end-to-end no device físico**.
