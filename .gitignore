@@ -25,3 +25,6 @@ scrape_*.py
 ios/
 android/
 www/
+
+# Playwright MCP test artifacts
+.playwright-mcp/
