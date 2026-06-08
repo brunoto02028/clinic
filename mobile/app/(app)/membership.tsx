@@ -1,18 +1,30 @@
 import { useState } from "react";
-import { FlatList, View } from "react-native";
+import { FlatList, Linking, View } from "react-native";
 import { Stack } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
-import { fetchPlans, fetchSubscription } from "@/api/extras";
+import { fetchPlans, fetchSubscription, subscribeToPlan } from "@/api/extras";
 
 export default function Membership() {
+  const qc = useQueryClient();
   const plans = useQuery({ queryKey: ["plans"], queryFn: fetchPlans });
   const sub = useQuery({ queryKey: ["subscription"], queryFn: fetchSubscription });
   const [notice, setNotice] = useState<string | null>(null);
 
-  // STUB: real checkout needs Stripe keys; surfaced as a notice for now.
-  const subscribe = (planName: string) =>
-    setNotice(`Pagamento de "${planName}" via Stripe estará disponível em breve no app.`);
+  const mutation = useMutation({
+    mutationFn: (planId: string) => subscribeToPlan(planId),
+    onSuccess: async (res) => {
+      if (res.checkoutUrl) {
+        // Paid plan with Stripe configured → open hosted checkout.
+        setNotice("Abrindo o pagamento seguro…");
+        Linking.openURL(res.checkoutUrl).catch(() => setNotice("Não foi possível abrir o checkout."));
+      } else {
+        setNotice(res.message || "Assinatura ativada.");
+        qc.invalidateQueries({ queryKey: ["subscription"] });
+      }
+    },
+    onError: (e) => setNotice((e as Error).message || "Falha ao assinar."),
+  });
 
   return (
     <Screen testID="membership-screen">
@@ -48,9 +60,12 @@ export default function Membership() {
               <Text variant="label">
                 {item.isFree ? "Grátis" : `£${item.price.toFixed(2)} / ${item.interval.toLowerCase()}`}
               </Text>
-              {!item.isFree ? (
-                <Button title="Assinar" onPress={() => subscribe(item.name)} testID={`sub-${item.id}`} />
-              ) : null}
+              <Button
+                title={item.isFree ? "Ativar" : "Assinar"}
+                onPress={() => mutation.mutate(item.id)}
+                loading={mutation.isPending && mutation.variables === item.id}
+                testID={`sub-${item.id}`}
+              />
             </Card>
           )}
         />

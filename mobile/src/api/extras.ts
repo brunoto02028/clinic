@@ -37,6 +37,18 @@ export function fetchSubscription(): Promise<{ subscription: any | null }> {
   return apiFetch<{ subscription: any | null }>("/api/patient/membership/subscription");
 }
 
+export interface SubscribeResult {
+  checkoutUrl?: string; // present when Stripe checkout is required
+  subscription?: any; // present when activated directly (free / manual mode)
+  message?: string;
+}
+export function subscribeToPlan(planId: string): Promise<SubscribeResult> {
+  return apiFetch<SubscribeResult>("/api/patient/membership/subscribe", {
+    method: "POST",
+    body: JSON.stringify({ planId }),
+  });
+}
+
 // ─── Quizzes ───
 export interface Quiz {
   id: string;
