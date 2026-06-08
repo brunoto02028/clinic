@@ -125,6 +125,63 @@ async function main() {
     console.log("Prescriptions already exist:", rxCount);
   }
 
+  // Blood pressure reading
+  if ((await prisma.bloodPressureReading.count({ where: { patientId: patient.id } })) === 0) {
+    await prisma.bloodPressureReading.create({
+      data: { patientId: patient.id, clinicId: clinic.id, systolic: 122, diastolic: 78, heartRate: 70 },
+    });
+    console.log("Created BP reading");
+  }
+
+  // Patient task
+  if ((await prisma.patientTask.count({ where: { patientId: patient.id } })) === 0) {
+    await prisma.patientTask.create({
+      data: {
+        clinicId: clinic.id,
+        patientId: patient.id,
+        createdById: therapist.id,
+        type: "UPDATE_PROFILE",
+        title: "Complete your profile",
+        titlePt: "Complete seu perfil",
+        priority: "high",
+        status: "pending",
+      },
+    });
+    console.log("Created task");
+  }
+
+  // Patient document
+  if ((await prisma.patientDocument.count({ where: { patientId: patient.id } })) === 0) {
+    await prisma.patientDocument.create({
+      data: {
+        clinicId: clinic.id,
+        patientId: patient.id,
+        uploadedById: therapist.id,
+        fileName: "referral-letter.pdf",
+        fileUrl: "https://bpr.rehab/uploads/sample-referral.pdf",
+        fileType: "application/pdf",
+        title: "Carta de encaminhamento",
+      },
+    });
+    console.log("Created document");
+  }
+
+  // Education content (published)
+  if ((await prisma.educationContent.count({ where: { clinicId: clinic.id } })) === 0) {
+    await prisma.educationContent.create({
+      data: {
+        clinicId: clinic.id,
+        createdById: therapist.id,
+        title: "Cuidando do seu tornozelo",
+        description: "Dicas para prevenir lesões e fortalecer a articulação.",
+        contentType: "article",
+        body: "Mantenha os exercícios prescritos, use calçado adequado e evite sobrecarga.",
+        isPublished: true,
+      },
+    });
+    console.log("Created education content");
+  }
+
   console.log(`\nTest login → ${PATIENT.email} / ${PATIENT.password}`);
 }
 

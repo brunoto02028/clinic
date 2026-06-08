@@ -42,6 +42,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="health"
+        options={{
+          title: "Saúde",
+          tabBarIcon: ({ color }) => <TabIcon emoji="❤️" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Perfil",
