@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new foot scan
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getRequestSession(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
