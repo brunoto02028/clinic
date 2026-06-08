@@ -87,6 +87,14 @@ export default function Profile() {
           </>
         )}
 
+        <Text variant="subtitle">Conta</Text>
+        <View style={{ gap: 8 }}>
+          <Button title="Conquistas" variant="secondary" onPress={() => router.push("/achievements")} testID="link-achievements" />
+          <Button title="Assinatura" variant="secondary" onPress={() => router.push("/membership")} testID="link-membership" />
+          <Button title="Quizzes" variant="secondary" onPress={() => router.push("/quizzes")} testID="link-quizzes" />
+          <Button title="Notificações" variant="secondary" onPress={() => router.push("/notifications")} testID="link-notifications" />
+        </View>
+
         <Button title="Sair" variant="ghost" onPress={onLogout} testID="logout" />
       </View>
     </Screen>
