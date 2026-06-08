@@ -17,7 +17,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      router.replace("/home");
+      router.replace("/");
     } catch (e) {
       setError(
         e instanceof AuthError ? e.message : "Could not sign in. Please try again."

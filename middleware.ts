@@ -170,6 +170,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Mobile (bearer-token) API requests: skip the cookie-session gate and let the
+  // route handler verify the JWT (Node runtime — jsonwebtoken isn't Edge-safe).
+  // Restricted to patient-facing prefixes, and we STRIP client-supplied identity
+  // headers (x-user-*, x-clinic-id, x-impersonated-by) so a forged Bearer can't
+  // spoof them past the gate into header-trusting routes. Threat detection and
+  // rate limiting above still apply.
+  const authHeader = request.headers.get('authorization');
+  const MOBILE_API_PREFIXES = ['/api/appointments', '/api/exercises', '/api/patient'];
+  if (
+    authHeader?.toLowerCase().startsWith('bearer ') &&
+    MOBILE_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  ) {
+    const safeHeaders = new Headers(request.headers);
+    safeHeaders.delete('x-user-id');
+    safeHeaders.delete('x-user-role');
+    safeHeaders.delete('x-clinic-id');
+    safeHeaders.delete('x-impersonated-by');
+    return NextResponse.next({ request: { headers: safeHeaders } });
+  }
+
   // Get the user token
   const token = await getToken({
     req: request,
