@@ -1,6 +1,6 @@
 # T-3: Envio → status → resultado (viewer 3D)
 
-**Status:** pendente
+**Status:** concluído (QA aprovado; captura visual no device)
 **Depende de:** T-1, T-2
 
 ## Objetivo

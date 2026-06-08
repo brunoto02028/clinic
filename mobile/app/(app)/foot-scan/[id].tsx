@@ -32,6 +32,17 @@ export default function FootScanDetail() {
       ) : (
         <View style={{ gap: 12 }}>
           <Text variant="title">{data.scanNumber}</Text>
+          {data.leftFootLength == null && data.rightFootLength == null ? (
+            <Card testID="scan-pending">
+              <Text variant="subtitle">Fotos enviadas ✓</Text>
+              <Text muted>
+                Em análise pela clínica. As medidas e o modelo 3D aparecerão aqui quando a
+                avaliação for concluída.
+              </Text>
+              <Text variant="caption" muted>Status: {data.status}</Text>
+            </Card>
+          ) : (
+          <>
           <FootViewer measurements={data} />
           <Text variant="caption" muted>Arraste para girar o modelo.</Text>
           <Card>
@@ -49,6 +60,8 @@ export default function FootScanDetail() {
             <Measure label="Pronação" value={data.pronation} />
             <Measure label="Hálux valgo" value={data.halluxValgusAngle ? `${data.halluxValgusAngle}°` : null} />
           </Card>
+          </>
+          )}
         </View>
       )}
     </Screen>

@@ -1,6 +1,6 @@
 # T-2: Tela de captura guiada
 
-**Status:** pendente
+**Status:** concluído (QA aprovado; captura visual no device)
 **Depende de:** T-1
 
 ## Objetivo

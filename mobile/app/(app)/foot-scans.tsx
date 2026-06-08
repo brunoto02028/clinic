@@ -1,7 +1,7 @@
-import { FlatList, Pressable } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Screen, Text, Card, Spinner } from "@/components/ui";
+import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchFootScans } from "@/api/footscans";
 import { formatDate } from "@/lib/format";
 
@@ -14,6 +14,13 @@ export default function FootScans() {
   return (
     <Screen testID="foot-scans-screen">
       <Stack.Screen options={{ headerShown: true, title: "Scans 3D" }} />
+      <View style={{ marginBottom: 12 }}>
+        <Button
+          title="Capturar novo scan"
+          onPress={() => router.push("/foot-scan/capture")}
+          testID="new-scan"
+        />
+      </View>
       {isLoading ? (
         <Spinner center />
       ) : isError ? (

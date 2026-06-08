@@ -1,6 +1,6 @@
 # Atividade 6 — Captura nativa: roadmap + Foot scan por fotos (Fase A)
 
-**Status geral:** pendente (aguardando aprovação)
+**Status geral:** Fase A concluída (T-1 a T-3; captura visual valida no iPhone). Fases B/C futuras.
 **Criada em:** 08/06/2026
 **Depende de:** Atividades 1–5 (app do paciente + viewer 3D)
 
