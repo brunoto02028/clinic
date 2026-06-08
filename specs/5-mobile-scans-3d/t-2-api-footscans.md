@@ -1,6 +1,6 @@
 # T-2: Auth dual nas rotas de foot-scans + camada de API
 
-**Status:** pendente
+**Status:** concluído (QA report-t-2.md aprovado)
 **Depende de:** nenhuma
 
 ## Objetivo

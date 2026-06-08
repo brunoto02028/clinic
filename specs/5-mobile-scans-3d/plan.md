@@ -1,6 +1,6 @@
 # Atividade 5 — App nativo do paciente: Scans 3D nativos (Fase 3)
 
-**Status geral:** pendente (aguardando aprovação)
+**Status geral:** concluído (T-1 a T-4; render 3D nativo validado no emulador)
 **Criada em:** 08/06/2026
 **Depende de:** Atividades 1-2 (concluídas); reusa auth dual
 
@@ -35,9 +35,9 @@ Levar a visualização 3D dos **foot scans** para o app nativo, renderizando no 
 | Tarefa | Nome | Status | Depende de |
 |--------|------|--------|------------|
 | T-1 | Pipeline 3D nativo: instalar libs + cena de prova rodando no emulador Android | concluído | — |
-| T-2 | Auth dual nas rotas de foot-scans + camada de API (lista + detalhe) | pendente | — |
-| T-3 | Tela de lista de foot scans do paciente | pendente | T-2 |
-| T-4 | Viewer 3D nativo do foot scan (geometria procedural das measurements) | pendente | T-1, T-2, T-3 |
+| T-2 | Auth dual nas rotas de foot-scans + camada de API (lista + detalhe) | concluído | — |
+| T-3 | Tela de lista de foot scans do paciente | concluído | T-2 |
+| T-4 | Viewer 3D nativo do foot scan (geometria procedural das measurements) | concluído | T-1, T-2, T-3 |
 
 ## Suposições (validar)
 1. `@react-three/fiber` (native) + `expo-gl` + `expo-three` são compatíveis com Expo SDK 56

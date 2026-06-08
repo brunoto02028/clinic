@@ -193,6 +193,28 @@ async function main() {
     console.log("Created membership plans");
   }
 
+  // Foot scan with measurements (for the native 3D viewer)
+  if ((await prisma.footScan.count({ where: { patientId: patient.id } })) === 0) {
+    await prisma.footScan.create({
+      data: {
+        scanNumber: "FS-2026-00001",
+        clinicId: clinic.id,
+        patientId: patient.id,
+        status: "APPROVED",
+        leftFootLength: 260,
+        rightFootLength: 262,
+        leftFootWidth: 98,
+        rightFootWidth: 99,
+        leftArchHeight: 25,
+        rightArchHeight: 23,
+        archType: "Normal",
+        pronation: "Neutral",
+        halluxValgusAngle: 12.5,
+      } as any,
+    });
+    console.log("Created foot scan");
+  }
+
   console.log(`\nTest login → ${PATIENT.email} / ${PATIENT.password}`);
 }
 

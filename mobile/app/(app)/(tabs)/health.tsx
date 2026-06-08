@@ -4,6 +4,7 @@ import { Screen, Text, Button } from "@/components/ui";
 
 const LINKS = [
   { label: "Pressão arterial", path: "/blood-pressure" },
+  { label: "Scans 3D", path: "/foot-scans" },
   { label: "Tarefas", path: "/tasks" },
   { label: "Documentos", path: "/documents" },
   { label: "Educação", path: "/education" },

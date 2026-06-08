@@ -1,6 +1,6 @@
 # T-4: Viewer 3D nativo do foot scan (procedural)
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-1, T-2, T-3
 
 ## Objetivo

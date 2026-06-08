@@ -1,6 +1,6 @@
 # T-3: Tela de lista de foot scans
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-2
 
 ## Objetivo
