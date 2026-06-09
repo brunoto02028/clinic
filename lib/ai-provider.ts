@@ -184,9 +184,10 @@ async function callMinimaxDirect(
   }
   
   const data = await res.json();
-  const text = data.choices?.[0]?.message?.content;
-  if (!text) throw new Error("No response from Minimax");
-  return text.trim();
+  const raw = data.choices?.[0]?.message?.content;
+  if (!raw) throw new Error("No response from Minimax");
+  // Strip <think>...</think> reasoning blocks (MiniMax-M3 chain-of-thought)
+  return raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
 // ─── Gemini direct call (text generation) ───
@@ -539,7 +540,8 @@ async function callMinimaxChat(
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || "";
+  const raw = data.choices?.[0]?.message?.content || "";
+  return raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
 // ─── Minimax Audio Transcription ───
