@@ -44,6 +44,18 @@ export async function uploadFootPhoto(
   }
 }
 
+/** Saves capture context (shoe size + scale reference) into captureMetadata, for the
+ *  clinic's AI analysis to use as scale anchors. */
+export function updateScanMeta(
+  scanId: string,
+  meta: { shoeSize?: string; scaleReference?: string }
+): Promise<any> {
+  return apiFetch(`/api/foot-scans/${scanId}`, {
+    method: "PUT",
+    body: JSON.stringify({ captureMetadata: meta }),
+  });
+}
+
 /** Triggers the AI (Gemini) analysis for the scan. */
 export function analyzeFootScan(scanId: string): Promise<any> {
   return apiFetch(`/api/foot-scans/${scanId}/analyze`, {
