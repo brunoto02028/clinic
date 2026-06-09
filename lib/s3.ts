@@ -138,6 +138,38 @@ export async function getFileUrl(
 }
 
 /**
+ * Upload a Buffer directly to S3 from the server (no presigned URL needed)
+ * Returns the public URL of the uploaded file
+ */
+export async function uploadToS3(
+  key: string,
+  body: Buffer,
+  contentType: string = "image/jpeg"
+): Promise<string> {
+  const { bucketName } = getBucketConfig();
+
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  });
+
+  await getS3Client().send(command);
+
+  return getPublicS3Url(key);
+}
+
+/**
+ * Get the public URL for an S3 key
+ */
+export function getPublicS3Url(key: string): string {
+  const { bucketName } = getBucketConfig();
+  const region = process.env.AWS_REGION || "us-east-1";
+  return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+}
+
+/**
  * Delete a file from S3
  */
 export async function deleteFile(cloud_storage_path: string) {

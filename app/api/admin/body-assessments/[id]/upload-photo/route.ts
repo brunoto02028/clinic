@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir, copyFile, unlink } from "fs/promises";
+import { writeFile, mkdir, copyFile, unlink, readFile } from "fs/promises";
 import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { removeBackground } from "@/lib/remove-bg";
+import { uploadToS3 } from "@/lib/s3";
 
 const execFileAsync = promisify(execFile);
 
@@ -90,7 +91,14 @@ export async function POST(
       .catch((e: any) => console.warn(`[blur-faces] Non-fatal:`, e?.message));
     removeBackground(filePath).catch(() => {});
 
-    const imageUrl = `/uploads/body-assessments/${params.id}/${filename}`;
+    // Upload to S3 for persistence across redeploys
+    const s3Key = `body-assessments/${params.id}/${filename}`;
+    let imageUrl = `/uploads/body-assessments/${params.id}/${filename}`;
+    try {
+      imageUrl = await uploadToS3(s3Key, buffer, file.type || "image/jpeg");
+    } catch (s3Err: any) {
+      console.warn("[upload-photo] S3 upload failed, using local URL:", s3Err?.message);
+    }
 
     // Update the assessment with the image URL
     const updateData: any = {};

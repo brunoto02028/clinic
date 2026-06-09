@@ -21,17 +21,26 @@ function parseCaptureViewFromUrl(imageUrl: string): string {
   return 'PLANTAR_OUTLINE';
 }
 
-// Convert local image path to base64 data URI
+// Convert image path (local or S3 URL) to base64 data URI
 async function imageToBase64(imagePath: string): Promise<string | null> {
   try {
-    // imagePath is like /uploads/scans/FS-2026-00001/left-plantar-123.jpg
+    if (imagePath.startsWith("data:")) return imagePath;
+
+    // Handle S3/external URLs
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      const response = await fetch(imagePath);
+      if (!response.ok) return null;
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      return `data:${contentType};base64,${Buffer.from(buffer).toString("base64")}`;
+    }
+
+    // Local path: /uploads/scans/FS-2026-00001/left-plantar-123.jpg
     let fullPath: string;
     if (process.env.UPLOADS_DIR && imagePath.startsWith('/uploads/')) {
-      // Railway Volume: resolve relative to UPLOADS_DIR
       const relative = imagePath.replace(/^\/uploads\//, '');
       fullPath = path.join(process.env.UPLOADS_DIR, relative);
     } else {
-      // Local dev: resolve from public folder
       fullPath = path.join(process.cwd(), 'public', imagePath);
     }
     const buffer = await readFile(fullPath);

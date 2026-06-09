@@ -1,7 +1,7 @@
 /**
- * Minimax AI Provider
- * Advanced Chinese AI with excellent multilingual support
- * Best for: Creative content, PT-BR, Marketing
+ * Minimax AI Provider (MiniMax-M3)
+ * OpenAI-compatible API at api.minimaxi.chat
+ * Primary model: MiniMax-M3 (multimodal, reasoning)
  */
 
 export interface MinimaxChatParams {
@@ -35,11 +35,11 @@ export interface MinimaxResponse {
 }
 
 /**
- * Call Minimax Chat Completion API
- * Models: abab7-chat-preview (latest), abab6.5s-chat, abab6.5g-chat
+ * Call Minimax Chat Completion API (MiniMax-M3)
+ * Uses OpenAI-compatible endpoint at api.minimaxi.chat
  */
 export async function callMinimax({
-  model = 'abab7-chat-preview',
+  model = 'MiniMax-M3',
   messages,
   temperature = 0.1,
   maxTokens = 8000,
@@ -51,8 +51,8 @@ export async function callMinimax({
     throw new Error('MINIMAX_API_KEY not configured in environment variables');
   }
 
-  // Minimax API endpoint
-  const endpoint = 'https://api.minimax.chat/v1/text/chatcompletion_v2';
+  // MiniMax-M3 OpenAI-compatible endpoint
+  const endpoint = 'https://api.minimaxi.chat/v1/chat/completions';
 
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -64,30 +64,24 @@ export async function callMinimax({
       model,
       messages,
       temperature,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
       top_p: topP,
       stream,
-      // Minimax-specific parameters
-      tokens_to_generate: maxTokens,
-      reply_constraints: {
-        sender_type: 'BOT',
-        sender_name: 'BPR Assistant',
-      },
+      thinking: { type: 'disabled' },
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[Minimax] API error:', errorText);
-    throw new Error(`Minimax API error (${response.status}): ${errorText}`);
+    console.error('[Minimax M3] API error:', errorText);
+    throw new Error(`Minimax M3 API error (${response.status}): ${errorText}`);
   }
 
   const result = await response.json();
-  
-  // Check for API-level errors
-  if (result.base_resp?.status_code !== 0) {
-    throw new Error(`Minimax API error: ${result.base_resp?.status_msg || 'Unknown error'}`);
-  }
+
+  // Normalize response to match MinimaxResponse interface
+  if (!result.usage) result.usage = { total_tokens: 0 };
+  if (!result.base_resp) result.base_resp = { status_code: 0, status_msg: 'ok' };
 
   return result;
 }
@@ -96,43 +90,37 @@ export async function callMinimax({
  * Available Minimax Models
  */
 export const MINIMAX_MODELS = {
-  // abab7 Series (Latest - Best Performance)
-  ABAB7_CHAT_PREVIEW: 'abab7-chat-preview',  // Most advanced, preview access
+  // MiniMax-M3 (Current - Best Performance)
+  M3: 'MiniMax-M3',
   
-  // abab6.5 Series (Stable Production)
-  ABAB6_5S_CHAT: 'abab6.5s-chat',  // Stable version
-  ABAB6_5G_CHAT: 'abab6.5g-chat',  // General purpose
-  ABAB6_5T_CHAT: 'abab6.5t-chat',  // Turbo (fast)
-  
-  // abab6 Series (Legacy)
-  ABAB6_CHAT: 'abab6-chat',
+  // Legacy aliases (all point to M3 now)
+  ABAB7_CHAT_PREVIEW: 'MiniMax-M3',
+  ABAB6_5S_CHAT: 'MiniMax-M3',
+  ABAB6_5G_CHAT: 'MiniMax-M3',
+  ABAB6_5T_CHAT: 'MiniMax-M3',
+  ABAB6_CHAT: 'MiniMax-M3',
 } as const;
 
 /**
  * Model Recommendations by Use Case
  */
 export const MINIMAX_USE_CASES = {
-  // Marketing & Content (Best Creativity)
-  MARKETING: MINIMAX_MODELS.ABAB7_CHAT_PREVIEW,
-  
-  // Clinical Analysis (Stable & Accurate)
-  CLINICAL: MINIMAX_MODELS.ABAB6_5S_CHAT,
-  
-  // General Chat (Balanced)
-  CHAT: MINIMAX_MODELS.ABAB6_5G_CHAT,
-  
-  // Quick Tasks (Fast)
-  QUICK: MINIMAX_MODELS.ABAB6_5T_CHAT,
-  
-  // PT-BR Content (Best for Portuguese)
-  PORTUGUESE: MINIMAX_MODELS.ABAB7_CHAT_PREVIEW,
+  // All use cases now use MiniMax-M3
+  MARKETING: MINIMAX_MODELS.M3,
+  CLINICAL: MINIMAX_MODELS.M3,
+  CHAT: MINIMAX_MODELS.M3,
+  QUICK: MINIMAX_MODELS.M3,
+  PORTUGUESE: MINIMAX_MODELS.M3,
+  BIOMECHANICS: MINIMAX_MODELS.M3,
 } as const;
 
 /**
  * Helper: Extract content from Minimax response
  */
 export function extractContentFromMinimax(response: MinimaxResponse): string {
-  return response.choices[0]?.message?.content || '';
+  const raw = response.choices[0]?.message?.content || '';
+  // Strip M3 thinking tags if present
+  return raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 }
 
 /**
@@ -158,16 +146,9 @@ export function extractJsonFromMinimax(response: MinimaxResponse): any {
  * Helper: Calculate cost estimate
  */
 export function estimateMinimaxCost(response: MinimaxResponse): number {
-  // Minimax pricing (approximate):
-  // abab7: ~$0.50/1M tokens
-  // abab6.5: ~$0.30/1M tokens
-  
-  const model = response.model;
+  // MiniMax-M3 pricing: ~$0.11/1M input, ~$0.43/1M output
   const tokens = response.usage.total_tokens;
-  
-  const pricePerMillion = model.includes('abab7') ? 0.50 : 0.30;
-  
-  return (tokens / 1_000_000) * pricePerMillion;
+  return (tokens / 1_000_000) * 0.30; // blended estimate
 }
 
 /**
@@ -212,12 +193,12 @@ Requirements:
 - Focus on patient benefits and outcomes`;
 
   const response = await callMinimax({
-    model: MINIMAX_MODELS.ABAB7_CHAT_PREVIEW,
+    model: MINIMAX_MODELS.M3,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    temperature: 0.7, // Higher for creativity
+    temperature: 0.7,
     maxTokens: 1000,
   });
 
@@ -251,12 +232,12 @@ Style: ${style} - ${styleGuidelines[style]}`;
   const userPrompt = `Improve this clinical text:\n\n${text}\n\nMake it more ${style} while keeping all medical facts accurate.`;
 
   const response = await callMinimax({
-    model: MINIMAX_MODELS.ABAB6_5S_CHAT,
+    model: MINIMAX_MODELS.M3,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    temperature: 0.3, // Lower for accuracy
+    temperature: 0.3,
     maxTokens: 2000,
   });
 

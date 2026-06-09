@@ -745,7 +745,7 @@ export async function POST(
         analysisData = combined.combined;
         
         // Add ensemble metadata to technical notes
-        const ensembleNote = `\n\n[ENSEMBLE ANALYSIS]\nThis analysis combines results from 3 AI models:\n- Groq Llama 3.3 70B (landmark analysis)\n- Minimax abab7 (cross-validation)\n- Gemini 2.5 Pro (visual analysis)\n\nModel Agreement: ${combined.modelAgreement}%\nEnsemble Confidence: ${combined.confidence}%\nConsensus Findings: ${combined.consensusFindings.length}`;
+        const ensembleNote = `\n\n[ENSEMBLE ANALYSIS]\nThis analysis combines results from 3 AI models:\n- Groq Llama 3.3 70B (landmark analysis)\n- MiniMax-M3 (cross-validation + clinical reasoning)\n- MiniMax-M3 Vision (primary visual analysis)\n\nModel Agreement: ${combined.modelAgreement}%\nEnsemble Confidence: ${combined.confidence}%\nConsensus Findings: ${combined.consensusFindings.length}`;
         
         if (analysisData.postureAnalysis?.technicalNotes) {
           analysisData.postureAnalysis.technicalNotes += ensembleNote;
@@ -754,7 +754,7 @@ export async function POST(
         console.log(`[Biomechanics] Ensemble complete - Agreement: ${combined.modelAgreement}%, Confidence: ${combined.confidence}%`);
       } catch (combineError) {
         console.error('[Biomechanics] Failed to combine ensemble results:', combineError);
-        // Fall back to Gemini-only result
+        // Fall back to M3 vision-only result
       }
     }
 
