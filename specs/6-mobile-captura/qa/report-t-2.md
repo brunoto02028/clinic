@@ -19,3 +19,8 @@ Usuário capturou no device: câmera abriu, 6 fotos tiradas e enviadas. Confirma
 backend — arquivos persistidos em `public/uploads/scans/FS-2026-00004/`:
 `left-plantar`, `left-medial`, `left-lateral`, `right-plantar`, `right-medial`, `right-lateral`.
 Scan → status SCANNING. Captura nativa **validada end-to-end no device físico**.
+
+## ✅ Validação da escala (shoe size + A4) no iPhone — 09/06/2026
+Scan FS-2026-00006 capturado no device com o passo inicial: `captureMetadata =
+{"shoeSize":"BR 41","scaleReference":"A4"}` + 6 fotos persistidas. Âncoras de escala
+prontas para a análise da IA.
