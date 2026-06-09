@@ -5,9 +5,13 @@ import LoginForm from "@/components/auth/login-form";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { NativeLoginShell } from "@/components/auth/native-login-shell";
+import { getSiteSettingsLogo } from "@/lib/get-site-settings";
 
 export default async function LoginPage() {
-  const session = await getServerSession(authOptions);
+  const [session, settings] = await Promise.all([
+    getServerSession(authOptions),
+    getSiteSettingsLogo(),
+  ]);
 
   if (session?.user) {
     const userRole = (session.user as any)?.role;
@@ -22,7 +26,7 @@ export default async function LoginPage() {
     <NativeLoginShell
       webShell={
         <div className="min-h-screen bg-background bg-grid-pattern flex flex-col">
-          <SiteHeader currentPage="other" />
+          <SiteHeader currentPage="other" initialSettings={settings} />
           <main className="flex-1 flex items-center justify-center p-4 py-8">
             <LoginForm />
           </main>
