@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getConfigValue } from "@/lib/system-config";
+import { createPatientNotification } from "@/lib/notifications/patient-notifications";
+import { sendEmail } from "@/lib/email";
 import { readFile } from "fs/promises";
 import path from "path";
 import { computeAllAngles, formatForPrompt, computeDeltas, type Landmark, type BiomechanicsResult } from "@/lib/biomechanics/angle-computations";
@@ -848,6 +850,35 @@ export async function POST(
         },
       },
     });
+
+    // Notify patient that analysis is ready
+    try {
+      if (updated.patient?.id) {
+        await createPatientNotification({
+          patientId: updated.patient.id,
+          type: 'ANALYSIS_READY',
+          title: 'Posture Analysis Ready!',
+          message: 'Your posture assessment has been analysed. View your results now!',
+          actionUrl: `/dashboard/body-assessments`,
+          metadata: { assessmentId: updated.id, assessmentNumber: updated.assessmentNumber },
+        });
+
+        if (updated.patient.email) {
+          await sendEmail({
+            to: updated.patient.email,
+            subject: 'Your Posture Analysis is Ready - BPR Clinic',
+            template: 'analysis-ready',
+            data: {
+              firstName: updated.patient.firstName,
+              scanNumber: updated.assessmentNumber,
+              scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/body-assessments`,
+            },
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error('[body-assessment] Notification error (non-blocking):', notifErr);
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

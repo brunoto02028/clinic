@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getConfigValue } from '@/lib/system-config';
+import { notifyAnalysisReady } from '@/lib/notifications/patient-notifications';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
@@ -594,6 +595,17 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
         }
       });
       
+      // Send notification to patient
+      try {
+        await notifyAnalysisReady(
+          updatedScan.patient.id,
+          updatedScan.id,
+          updatedScan.scanNumber
+        );
+      } catch (notifErr) {
+        console.error('[foot-scan] Notification error (non-blocking):', notifErr);
+      }
+
       return NextResponse.json({
         success: true,
         footScan: updatedScan,
