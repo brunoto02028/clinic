@@ -52,6 +52,8 @@ import { Logo } from "@/components/ui/logo";
 import { t, getLocale, setLocale } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
+import { VapiVoiceWidget } from "@/components/vapi-voice-widget";
+
 // Code splitting - lazy load heavy components
 const ThermographyIllustration = dynamic(
   () => import("@/components/thermography-illustration").then(mod => ({ default: mod.ThermographyIllustration })),
@@ -1232,6 +1234,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           </footer>
         );
       })()}
+      <VapiVoiceWidget />
     </div>
   );
 }

@@ -65,6 +65,7 @@ import {
   Link2,
   Shield,
   Bell,
+  PhoneIncoming,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Treatment Plans", i18nKey: "nav.treatmentPlans", href: "/admin/treatment-plans", icon: Package },
       { name: "Membership Plans", href: "/admin/memberships", icon: Crown },
       { name: "Video Consultations", i18nKey: "nav.videoConsultations", href: "/admin/video-consultations", icon: Video },
+      { name: "AI Phone Receptionist", href: "/admin/calls", icon: PhoneIncoming },
       { name: "Clinical AI Hub", href: "/admin/clinical-ai", icon: Brain },
       { name: "Clinical Notes", i18nKey: "nav.clinicalNotes", href: "/admin/clinical-notes", icon: ClipboardList, requiredPermission: "canCreateClinicalNotes" },
       { name: "Foot Scans", i18nKey: "nav.footScans", href: "/admin/foot-scans", icon: Footprints, requiredPermission: "canManageFootScans" },
