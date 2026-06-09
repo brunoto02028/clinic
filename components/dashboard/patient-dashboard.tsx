@@ -18,6 +18,7 @@ import {
   Activity,
   Dumbbell,
   FileUp,
+  Stethoscope,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -193,6 +194,41 @@ export default function PatientDashboard() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Full Assessment Flow CTA */}
+      {stats?.screeningComplete && (
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-emerald-500/15">
+                <Stethoscope className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-foreground">
+                  {locale === "pt-BR" ? "Avaliação Biomecânica Completa" : "Complete Biomechanical Assessment"}
+                </h3>
+                <p className="text-sm mt-1 text-muted-foreground">
+                  {locale === "pt-BR"
+                    ? "Fotos posturais + scan dos pés + análise IA. Siga o passo a passo para a sua avaliação completa."
+                    : "Posture photos + foot scan + AI analysis. Follow the step-by-step guide for your complete assessment."}
+                </p>
+                <div className="flex items-center gap-3 mt-3 flex-wrap">
+                  <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                    <Link href="/dashboard/assessment-flow">
+                      {locale === "pt-BR" ? "Iniciar Avaliação" : "Start Assessment"}
+                      <ArrowRight className="h-4 w-4 ml-1" />
+                    </Link>
+                  </Button>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {locale === "pt-BR" ? "~10 min" : "~10 min"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Onboarding Wizard */}
