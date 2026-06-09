@@ -6,11 +6,72 @@ import { getEffectiveUser } from '@/lib/get-effective-user';
 
 export const dynamic = "force-dynamic";
 
-// Gemini Flash pricing: ~$0.075 per minute of audio
-const GEMINI_COST_PER_MINUTE_USD = 0.075;
+// Pricing estimates
+const MINIMAX_COST_PER_MINUTE_USD = 0.01;  // ~$0.01/min for speech-01-hd
+const GEMINI_COST_PER_MINUTE_USD = 0.075;  // ~$0.075/min for Gemini Flash
 const MARGIN_PERCENT = 20;
 
-// POST — Patient sends audio blob, we transcribe via Gemini and track cost
+// ─── Minimax transcription + extraction ──────────────────────────────────────
+
+async function transcribeWithMinimax(
+  audioBuffer: ArrayBuffer,
+  mimeType: string,
+  systemPrompt: string,
+  language: string
+): Promise<string> {
+  const apiKey = process.env.MINIMAX_API_KEY;
+  if (!apiKey) throw new Error("MINIMAX_API_KEY not configured");
+
+  // Step 1: STT — audio → raw transcript
+  const formData = new FormData();
+  const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
+  formData.append("file", blob, `audio.${mimeType.split("/")[1] || "webm"}`);
+  formData.append("model", "speech-01-hd");
+  formData.append("language", language.split("-")[0]); // e.g. "pt" from "pt-BR"
+
+  const sttRes = await fetch("https://api.minimaxi.chat/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: formData,
+  });
+
+  if (!sttRes.ok) {
+    const err = await sttRes.text();
+    throw new Error(`Minimax STT error (${sttRes.status}): ${err}`);
+  }
+
+  const sttData = await sttRes.json();
+  const rawTranscript: string = sttData.text || "";
+  if (!rawTranscript) throw new Error("Empty transcript from Minimax STT");
+
+  // Step 2: LLM extraction — transcript → structured JSON
+  const llmRes = await fetch("https://api.minimaxi.chat/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "MiniMax-M3",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: rawTranscript },
+      ],
+      temperature: 0.1,
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!llmRes.ok) {
+    const err = await llmRes.text();
+    throw new Error(`Minimax LLM error (${llmRes.status}): ${err}`);
+  }
+
+  const llmData = await llmRes.json();
+  return llmData.choices?.[0]?.message?.content || rawTranscript;
+}
+
+// POST — Patient sends audio blob, we transcribe via Minimax M3 (fallback: Gemini)
 export async function POST(req: NextRequest) {
   try {
     const effectiveUser = await getEffectiveUser();
@@ -31,19 +92,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Audio file is required" }, { status: 400 });
     }
 
-    // Get Gemini API key
-    const config = await (prisma as any).systemConfig.findUnique({ where: { key: "GEMINI_API_KEY" } });
-    const apiKey = config?.value || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
-    }
-
-    const modelConfig = await (prisma as any).systemConfig.findUnique({ where: { key: "GEMINI_MODEL" } });
-    const model = modelConfig?.value || "gemini-2.0-flash";
-
-    // Convert audio to base64
     const audioBuffer = await audioFile.arrayBuffer();
-    const audioBase64 = Buffer.from(audioBuffer).toString("base64");
     const audioMimeType = audioFile.type || "audio/webm";
 
     // Estimate audio duration (rough: ~16KB per second for webm/opus)
@@ -81,54 +130,53 @@ If the patient mentions medications, list them. If they mention allergies, list 
         systemPrompt = `Transcribe the following audio accurately. If there are form fields to fill (${fields.join(", ")}), extract the relevant information into a JSON object with those field names as keys. Otherwise return { "transcript": "..." }. Language: ${language}.`;
     }
 
-    // Call Gemini API with audio (with retry for 429 rate limits)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const requestBody = JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: systemPrompt },
-            {
-              inline_data: {
-                mime_type: audioMimeType,
-                data: audioBase64,
-              },
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 4096,
-      },
-    });
+    // ── Try Minimax M3 first (STT + LLM extraction) ─────────────────────────
+    let rawText = "";
+    let usedProvider = "gemini";
+    let costPerMin = GEMINI_COST_PER_MINUTE_USD;
 
-    let geminiRes: Response | null = null;
-    const maxRetries = 3;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      geminiRes = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: requestBody,
-      });
+    try {
+      rawText = await transcribeWithMinimax(audioBuffer, audioMimeType, systemPrompt, language);
+      usedProvider = "minimax";
+      costPerMin = MINIMAX_COST_PER_MINUTE_USD;
+      console.log("[voice-transcribe] Minimax M3 transcription OK");
+    } catch (minimaxErr: any) {
+      console.warn("[voice-transcribe] Minimax failed, falling back to Gemini:", minimaxErr.message);
 
-      if (geminiRes.status === 429 && attempt < maxRetries) {
-        const waitMs = Math.min(1000 * Math.pow(2, attempt), 8000); // 1s, 2s, 4s
-        console.warn(`[voice-transcribe] Rate limited (429), retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
-        await new Promise(r => setTimeout(r, waitMs));
-        continue;
+      // ── Fallback: Gemini multimodal ─────────────────────────────────────────
+      const geminiConfig = await (prisma as any).systemConfig.findUnique({ where: { key: "GEMINI_API_KEY" } });
+      const geminiApiKey = geminiConfig?.value || process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) throw new Error("No AI provider available for transcription");
+
+      const modelConfig = await (prisma as any).systemConfig.findUnique({ where: { key: "GEMINI_MODEL" } });
+      const geminiModel = modelConfig?.value || "gemini-2.0-flash";
+      const audioBase64 = Buffer.from(audioBuffer).toString("base64");
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
+
+      let geminiRes: Response | null = null;
+      for (let attempt = 0; attempt <= 3; attempt++) {
+        geminiRes = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt }, { inline_data: { mime_type: audioMimeType, data: audioBase64 } }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+          }),
+        });
+        if (geminiRes.status === 429 && attempt < 3) {
+          await new Promise(r => setTimeout(r, Math.min(1000 * Math.pow(2, attempt), 8000)));
+          continue;
+        }
+        break;
       }
-      break;
-    }
 
-    if (!geminiRes || !geminiRes.ok) {
-      const errData = await geminiRes?.json().catch(() => ({})) || {};
-      console.error("[voice-transcribe] Gemini error:", errData);
-      throw new Error(errData.error?.message || `Gemini API error: ${geminiRes?.status || "unknown"}`);
+      if (!geminiRes || !geminiRes.ok) {
+        const errData = await geminiRes?.json().catch(() => ({})) || {};
+        throw new Error(errData.error?.message || `Gemini API error: ${geminiRes?.status}`);
+      }
+      const geminiData = await geminiRes.json();
+      rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
     }
-
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     // Parse JSON from response
     let parsedData: any = {};
@@ -145,7 +193,7 @@ If the patient mentions medications, list them. If they mention allergies, list 
 
     // Calculate costs
     const durationMin = estimatedDurationSec / 60;
-    const apiCostUsd = durationMin * GEMINI_COST_PER_MINUTE_USD;
+    const apiCostUsd = durationMin * costPerMin;
     const totalCostUsd = apiCostUsd * (1 + MARGIN_PERCENT / 100);
 
     // Track the transcription cost (optional — skip if no clinicId or model missing)
