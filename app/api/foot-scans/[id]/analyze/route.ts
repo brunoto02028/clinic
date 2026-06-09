@@ -292,6 +292,7 @@ You are examining REAL photographs of a patient's feet taken from multiple angle
 - Date: ${captureMetadata?.timestamp || footScan.createdAt.toISOString()}
 - Total Images: ${leftImages.length + rightImages.length} (${leftImages.length} left, ${rightImages.length} right)
 ${hasA4Reference ? '- Reference Object: A4 paper (210mm × 297mm) visible in plantar views for scale calibration' : ''}
+${captureMetadata?.shoeSize ? `- Patient-reported shoe size: ${captureMetadata.shoeSize} — use as an additional scale anchor (approximate the typical foot length for this size), especially if the A4 reference is unclear or absent` : ''}
 
 ## Your Task
 Carefully examine EACH image and provide a detailed biomechanical assessment. Focus on:

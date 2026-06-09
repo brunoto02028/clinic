@@ -48,7 +48,7 @@ export async function uploadFootPhoto(
  *  clinic's AI analysis to use as scale anchors. */
 export function updateScanMeta(
   scanId: string,
-  meta: { shoeSize?: string; scaleReference?: string }
+  meta: { shoeSize?: string; referenceObject?: string }
 ): Promise<any> {
   return apiFetch(`/api/foot-scans/${scanId}`, {
     method: "PUT",

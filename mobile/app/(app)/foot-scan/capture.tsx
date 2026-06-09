@@ -58,7 +58,7 @@ export default function CaptureFootScan() {
         const s = await createFootScan();
         await updateScanMeta(s.id, {
           shoeSize: shoeSize.trim() || undefined,
-          scaleReference: useA4 ? "A4" : undefined,
+          referenceObject: useA4 ? "A4_paper" : undefined,
         });
         setScanId(s.id);
         setPhase("capturing");
