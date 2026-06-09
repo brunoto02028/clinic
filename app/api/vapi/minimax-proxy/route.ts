@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
       ...body,
       model: body.model || MINIMAX_MODEL,
       stream: isStreaming,
+      // Disable chain-of-thought thinking for voice — reduces latency from ~3s to ~0.5s
+      thinking: { type: "disabled" },
     };
 
     const upstream = await fetch(`${MINIMAX_BASE}/chat/completions`, {
