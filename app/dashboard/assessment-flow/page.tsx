@@ -49,6 +49,7 @@ interface AssessmentProgress {
 
 const STEP_ICONS: Record<string, any> = {
   screening: ClipboardList,
+  outcome_measures: TrendingUp,
   body_assessment: Activity,
   foot_scan: Footprints,
   results: FileText,
@@ -94,6 +95,10 @@ export default function AssessmentFlowPage() {
     switch (stepId) {
       case "screening":
         router.push("/dashboard/screening");
+        break;
+
+      case "outcome_measures":
+        router.push("/dashboard/outcome-measures");
         break;
 
       case "body_assessment": {
@@ -188,6 +193,10 @@ export default function AssessmentFlowPage() {
         en: "Complete your medical history, pain assessment, and treatment goals. This helps us understand your condition before the assessment.",
         pt: "Complete o seu historial médico, avaliação da dor e objectivos de tratamento. Isto ajuda-nos a compreender a sua condição.",
       },
+      outcome_measures: {
+        en: "Rate your pain level (VAS) and complete the FAAM questionnaire to measure your foot and ankle function. These scores track your progress over time.",
+        pt: "Avalie o seu nível de dor (VAS) e complete o questionário FAAM para medir a função do pé e tornozelo. Estes scores medem a sua evolução.",
+      },
       body_assessment: {
         en: "Capture 4 posture photos (front, back, left, right) using your phone camera. Our AI analyses your posture, alignment, and identifies areas of concern.",
         pt: "Capture 4 fotos posturais (frente, costas, esquerda, direita) com a câmera. A nossa IA analisa postura, alinhamento e identifica áreas de preocupação.",
@@ -212,6 +221,11 @@ export default function AssessmentFlowPage() {
       case "screening":
         return step.data.chiefComplaint
           ? `${isPt ? "Queixa" : "Complaint"}: ${step.data.chiefComplaint}${step.data.painScore ? ` | ${isPt ? "Dor" : "Pain"}: ${step.data.painScore}/10` : ""}`
+          : null;
+
+      case "outcome_measures":
+        return step.data?.vasScore !== undefined
+          ? `VAS: ${step.data.vasScore}/10${step.data.faamAdlPercent ? ` | FAAM ADL: ${step.data.faamAdlPercent}%` : ""}${step.data.faamSportPercent ? ` | Sport: ${step.data.faamSportPercent}%` : ""}`
           : null;
 
       case "body_assessment":

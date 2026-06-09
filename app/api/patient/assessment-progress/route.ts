@@ -32,6 +32,7 @@ export async function GET() {
       painLevel: true,
       painLocation: true,
       consentGiven: true,
+      redFlagDetails: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -80,6 +81,17 @@ export async function GET() {
     },
   });
 
+  // Check outcome measures
+  let outcomeMeasures = null;
+  if (screening) {
+    try {
+      const details = (screening as any).redFlagDetails as any;
+      if (details?.outcomeMeasures) {
+        outcomeMeasures = details.outcomeMeasures;
+      }
+    } catch {}
+  }
+
   // Calculate overall progress
   const steps = [
     {
@@ -88,6 +100,13 @@ export async function GET() {
       labelPt: "Triagem Médica",
       status: screening?.isSubmitted ? "completed" : screening ? "in_progress" : "pending",
       data: screening,
+    },
+    {
+      id: "outcome_measures",
+      label: "Pain & Function Measures",
+      labelPt: "Medidas de Dor e Função",
+      status: outcomeMeasures?.vasScore !== undefined ? "completed" : "pending",
+      data: outcomeMeasures,
     },
     {
       id: "body_assessment",
