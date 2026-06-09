@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { getConfigValue } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
 
@@ -20,22 +19,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No image file provided" }, { status: 400 });
     }
 
-    const geminiKey = await getConfigValue("GEMINI_API_KEY");
-    if (!geminiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
-    }
-
     // Convert to base64
     const arrayBuffer = await imageFile.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
     const mimeType = imageFile.type || "image/jpeg";
 
-    // Call Gemini Vision for OCR
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
-
-    const prompt = `You are an expert at reading certificates, diplomas, and qualification documents.
-
-Analyse this certificate/diploma image and extract ALL information you can find.
+    const prompt = `Analyse this certificate/diploma image and extract ALL information you can find.
 
 Return a JSON object with these fields (use null if not found):
 {
@@ -56,28 +45,16 @@ Return a JSON object with these fields (use null if not found):
 
 Return ONLY the JSON object, no markdown, no explanation.`;
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inlineData: { mimeType, data: base64 } },
-            { text: prompt },
-          ],
-        }],
-        generationConfig: { temperature: 0.1 },
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("[qualifications/ocr] Gemini error:", errText);
-      return NextResponse.json({ error: "Failed to process image" }, { status: 500 });
-    }
-
-    const data = await res.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    // Use unified AI provider: Minimax M3 vision (primary) → Gemini (fallback)
+    const { analyzeMultipleImages } = await import("@/lib/ai-provider");
+    const responseText = await analyzeMultipleImages(
+      [{ url: "", base64, mimeType }],
+      prompt,
+      {
+        temperature: 0.1,
+        systemPrompt: "You are an expert at reading certificates, diplomas, and qualification documents.",
+      }
+    );
 
     // Parse JSON from response
     let extracted;

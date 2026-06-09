@@ -190,6 +190,76 @@ async function callMinimaxDirect(
   return raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
+// ─── Minimax Vision (image analysis via M3 multimodal) ───
+
+async function callMinimaxVision(
+  images: Array<{ url: string; base64?: string; mimeType?: string }>,
+  prompt: string,
+  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+): Promise<string> {
+  const apiKey = await getMinimaxKey();
+  if (!apiKey) throw new Error("MINIMAX_API_KEY is not configured.");
+
+  const url = "https://api.minimaxi.chat/v1/chat/completions";
+
+  // Build content array with images + text
+  const contentParts: any[] = [];
+
+  for (const img of images) {
+    if (img.base64) {
+      // Send as data URI
+      const mime = img.mimeType || "image/jpeg";
+      contentParts.push({
+        type: "image_url",
+        image_url: { url: `data:${mime};base64,${img.base64}` },
+      });
+    } else if (img.url.startsWith("data:image")) {
+      contentParts.push({
+        type: "image_url",
+        image_url: { url: img.url },
+      });
+    } else if (img.url.startsWith("http")) {
+      contentParts.push({
+        type: "image_url",
+        image_url: { url: img.url },
+      });
+    }
+  }
+
+  contentParts.push({ type: "text", text: prompt });
+
+  const messages: any[] = [];
+  if (opts.systemPrompt) {
+    messages.push({ role: "system", content: opts.systemPrompt });
+  }
+  messages.push({ role: "user", content: contentParts });
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "MiniMax-M3",
+      thinking: { type: "disabled" },
+      messages,
+      max_completion_tokens: opts.maxTokens ?? 8192,
+      temperature: opts.temperature ?? 0.3,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Minimax vision error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content;
+  if (!raw) throw new Error("No response from Minimax vision");
+  return raw.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+}
+
 // ─── Gemini direct call (text generation) ───
 
 interface GeminiResponse {
@@ -429,18 +499,69 @@ export async function generateImage(prompt: string, opts?: AIImageOptions): Prom
 }
 
 /**
- * Analyze an image using Gemini vision capabilities.
+ * Analyze an image using AI vision capabilities.
+ * Priority chain: Minimax M3 (primary) → Gemini (fallback)
  */
 export async function analyzeImage(
   imageUrl: string,
   prompt: string,
   opts?: AIVisionOptions & { systemPrompt?: string }
 ): Promise<string> {
-  return analyzeImageGemini(imageUrl, prompt, {
+  const callOpts = {
     temperature: opts?.temperature,
     maxTokens: opts?.maxTokens,
     systemPrompt: opts?.systemPrompt,
-  });
+  };
+
+  // 1. Try Minimax M3 vision first
+  const minimaxKey = await getMinimaxKey();
+  if (minimaxKey) {
+    try {
+      return await callMinimaxVision(
+        [{ url: imageUrl }],
+        prompt,
+        callOpts
+      );
+    } catch (err: any) {
+      console.warn("[ai-provider] Minimax M3 vision failed, falling back to Gemini:", err.message);
+    }
+  }
+
+  // 2. Fallback to Gemini
+  return analyzeImageGemini(imageUrl, prompt, callOpts);
+}
+
+/**
+ * Analyze multiple images using AI vision capabilities.
+ * Priority chain: Minimax M3 (primary) → Gemini (fallback, first image only)
+ */
+export async function analyzeMultipleImages(
+  images: Array<{ url: string; base64?: string; mimeType?: string }>,
+  prompt: string,
+  opts?: AIVisionOptions & { systemPrompt?: string }
+): Promise<string> {
+  const callOpts = {
+    temperature: opts?.temperature,
+    maxTokens: opts?.maxTokens,
+    systemPrompt: opts?.systemPrompt,
+  };
+
+  // 1. Try Minimax M3 — supports multiple images natively
+  const minimaxKey = await getMinimaxKey();
+  if (minimaxKey) {
+    try {
+      return await callMinimaxVision(images, prompt, callOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Minimax M3 multi-vision failed, falling back to Gemini:", err.message);
+    }
+  }
+
+  // 2. Fallback to Gemini (use first image)
+  const firstImage = images[0];
+  const imgUrl = firstImage?.base64
+    ? `data:${firstImage.mimeType || "image/jpeg"};base64,${firstImage.base64}`
+    : firstImage?.url || "";
+  return analyzeImageGemini(imgUrl, prompt, callOpts);
 }
 
 /**
