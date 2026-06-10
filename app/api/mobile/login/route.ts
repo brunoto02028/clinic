@@ -37,10 +37,17 @@ export async function POST(request: NextRequest) {
     }
 
     const accessToken = signAccessToken(user);
-    const refreshToken = await issueRefreshToken(
-      user.id,
-      request.headers.get("user-agent") || undefined
-    );
+
+    let refreshToken: string | null = null;
+    try {
+      refreshToken = await issueRefreshToken(
+        user.id,
+        request.headers.get("user-agent") || undefined
+      );
+    } catch {
+      // mobile_refresh_tokens table may not exist yet — login still works
+      // with access token only; refresh will fail gracefully on the client.
+    }
 
     return corsJson({ accessToken, refreshToken, user });
   } catch (error: any) {
