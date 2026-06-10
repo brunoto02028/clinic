@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { uploadToS3 } from '@/lib/s3';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,8 +113,14 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     await writeFile(filePath, new Uint8Array(bytes));
 
-    // Public URL
-    const imageUrl = `/uploads/scans/${footScan.scanNumber}/${fileName}`;
+    // Upload to S3 for persistence, fall back to local URL
+    const s3Key = `scans/${footScan.scanNumber}/${fileName}`;
+    let imageUrl = `/uploads/scans/${footScan.scanNumber}/${fileName}`;
+    try {
+      imageUrl = await uploadToS3(s3Key, Buffer.from(bytes), file.type || 'image/jpeg');
+    } catch (s3Err: any) {
+      console.warn('[foot-scan upload] S3 failed, using local:', s3Err?.message);
+    }
 
     // Update the footScan record — append image URL to the correct array
     const currentImages = (foot === 'left'

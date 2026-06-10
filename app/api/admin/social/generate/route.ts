@@ -69,8 +69,8 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('[AI GENERATE] error:', error?.message);
 
-    if (error?.message?.includes('GEMINI_API_KEY')) {
-      return NextResponse.json({ error: 'Gemini API key not configured. Add GEMINI_API_KEY to your environment variables.' }, { status: 500 });
+    if (error?.message?.includes('API_KEY') || error?.message?.includes('not configured')) {
+      return NextResponse.json({ error: 'AI provider not configured. Check API keys in Admin → API & AI Settings.' }, { status: 500 });
     }
 
     return NextResponse.json({ error: error?.message || 'AI generation failed' }, { status: 500 });

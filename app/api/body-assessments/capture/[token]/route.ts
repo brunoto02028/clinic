@@ -10,7 +10,7 @@ function checkRateLimit(ip: string, max = 5, windowMs = 3600000): boolean {
   entry.count++;
   return true;
 }
-import { generatePresignedUploadUrl } from "@/lib/s3";
+import { uploadToS3, getPublicS3Url } from "@/lib/s3";
 import { writeFile, mkdir, copyFile, unlink } from "fs/promises";
 import path from "path";
 import { execFile } from "child_process";
@@ -183,19 +183,19 @@ export async function PUT(
       const originalPath = path.join(uploadsDir, `${view}-${ts}-original.jpg`);
       await copyFile(localPath, originalPath);
 
-      // Use local URL immediately — do NOT await slow Python scripts on mobile
-      const imageUrl = `/uploads/body-assessments/${assessment.id}/${filename}`;
-
-      // Run face blur + bg removal in background (non-blocking — mobile cannot wait)
+      // Run face blur + bg removal in background (non-blocking)
       blurFaceOnFile(localPath, assessment.patientId, params.token).catch(() => {});
       removeBackground(localPath).catch(() => {});
 
-      // S3 upload — fire-and-forget, never block mobile response
-      generatePresignedUploadUrl(key, "image/jpeg").then(async ({ uploadUrl }) => {
-        const { readFile } = await import("fs/promises");
-        const fileBuffer = await readFile(localPath);
-        return fetch(uploadUrl, { method: "PUT", body: fileBuffer, headers: { "Content-Type": "image/jpeg" } });
-      }).catch((s3Error) => console.warn("S3 upload failed, using local:", s3Error));
+      // Upload to S3 and use S3 URL in DB (persistent across redeploys)
+      let imageUrl = `/uploads/body-assessments/${assessment.id}/${filename}`;
+      try {
+        const { readFile: readFs } = await import("fs/promises");
+        const fileBuffer = await readFs(localPath);
+        imageUrl = await uploadToS3(key, fileBuffer, "image/jpeg");
+      } catch (s3Error: any) {
+        console.warn("[capture] S3 upload failed, using local URL:", s3Error?.message);
+      }
 
       switch (view) {
         case "front":
@@ -226,22 +226,31 @@ export async function PUT(
       const existing: any[] = Array.isArray(assessment.movementVideos) ? assessment.movementVideos : [];
 
       if (movementVideo.videoFile) {
-        // FormData video — save to disk
+        // FormData video — save to disk + S3
         const videoUploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
         const videoDir = path.join(videoUploadsBase, "body-assessments", assessment.id);
         await mkdir(videoDir, { recursive: true });
         const vidFilename = `${movementVideo.testType}-${Date.now()}.webm`;
         const vidPath = path.join(videoDir, vidFilename);
-        const vidBuffer = await movementVideo.videoFile.arrayBuffer();
-        await writeFile(vidPath, Buffer.from(vidBuffer));
+        const vidBuffer = Buffer.from(await movementVideo.videoFile.arrayBuffer());
+        await writeFile(vidPath, vidBuffer);
+
+        // Upload video to S3
+        const vidKey = `body-assessments/${assessment.id}/${vidFilename}`;
+        let videoUrl = `/uploads/body-assessments/${assessment.id}/${vidFilename}`;
+        try {
+          videoUrl = await uploadToS3(vidKey, vidBuffer, "video/webm");
+        } catch (s3Err: any) {
+          console.warn("[capture] S3 video upload failed, using local:", s3Err?.message);
+        }
 
         const videoEntry = {
           id: `${movementVideo.testType}_${Date.now()}`,
           testType: movementVideo.testType,
           label: movementVideo.label,
           duration: movementVideo.duration,
-          videoUrl: `/uploads/body-assessments/${assessment.id}/${vidFilename}`,
-          videoPath: vidPath,
+          videoUrl,
+          videoPath: vidKey,
           createdAt: new Date().toISOString(),
         };
         const filtered = existing.filter((v: any) => v.testType !== movementVideo.testType);

@@ -378,6 +378,9 @@ model Clinic {
   analyticsPageViews    AnalyticsPageView[]
   analyticsClicks       AnalyticsClick[]
   analyticsConversions  AnalyticsConversion[]
+
+  // Voice AI (Vapi)
+  vapiCalls             VapiCall[]
   
   @@index([slug])
   @@index([isActive])
@@ -4676,4 +4679,46 @@ model MobileRefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("mobile_refresh_tokens")
+}
+
+// ============================================
+// VAPI CALL LOGS (Voice AI Phone Receptionist)
+// ============================================
+
+model VapiCall {
+  id              String    @id @default(cuid())
+  clinicId        String?
+  clinic          Clinic?   @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+
+  vapiCallId      String    @unique  // Vapi's own call ID
+  phoneNumber     String?             // caller phone number
+  callerName      String?             // name provided during call
+  callerEmail     String?             // email provided during call
+  callerNotes     String?   @db.Text // chief complaint / reason for calling
+
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationSec     Int?
+
+  status          String    @default("in-progress") // in-progress | ended
+  endedReason     String?   // customer-ended-call | assistant-ended-call | silence-timed-out | etc
+  direction       String    @default("inbound")     // inbound | outbound | web
+
+  transcript      String?   @db.Text
+  summary         String?   @db.Text
+  recordingUrl    String?
+
+  appointmentId   String?   // if a booking was made during the call
+  appointmentData Json?     // raw appointment details captured (before DB record created)
+
+  costUsd         Float?    // Vapi billing cost
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([clinicId])
+  @@index([vapiCallId])
+  @@index([phoneNumber])
+  @@index([status])
+  @@map("vapi_calls")
 }

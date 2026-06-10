@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getConfigValue } from "@/lib/system-config";
+import { createPatientNotification } from "@/lib/notifications/patient-notifications";
+import { sendEmail } from "@/lib/email";
 import { readFile } from "fs/promises";
 import path from "path";
 import { computeAllAngles, formatForPrompt, computeDeltas, type Landmark, type BiomechanicsResult } from "@/lib/biomechanics/angle-computations";
@@ -675,70 +677,45 @@ export async function POST(
       // Continue with Gemini only if ensemble fails
     }
 
-    // Build Gemini request with vision — using system + user prompt architecture
-    const geminiKey = await getConfigValue('GEMINI_API_KEY') || process.env.GEMINI_API_KEY;
-    if (!geminiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
-    }
-    const geminiModel = (await getConfigValue('GEMINI_MODEL')) || 'gemini-2.5-pro';
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
-
-    const parts: any[] = [
-      { text: systemPrompt + "\n\n" + userPrompt },
-    ];
-
+    // Build images array for unified AI provider
+    const visionImages: Array<{ url: string; base64?: string; mimeType?: string }> = [];
     for (let i = 0; i < imageUrls.length; i++) {
-      parts.push({ text: `\n--- ${imageLabels[i]} ---` });
-      const base64 = await imageToBase64(imageUrls[i]);
-      if (base64) {
-        const match = base64.match(/^data:(.+?);base64,(.+)$/);
+      const b64 = await imageToBase64(imageUrls[i]);
+      if (b64) {
+        const match = b64.match(/^data:(.+?);base64,(.+)$/);
         if (match) {
-          parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+          visionImages.push({ url: imageUrls[i], base64: match[2], mimeType: match[1] });
         }
       }
     }
 
-    // ─── INJECT OBJECTIVE BIOMECHANICAL MEASUREMENTS ───
-    parts.push({ text: `\n${objectiveMeasurementsText}` });
-
-    // Inject longitudinal comparison if available
+    // Build comprehensive text prompt
+    let fullPrompt = userPrompt;
+    fullPrompt += `\n\nImage labels in order: ${imageLabels.join(", ")}`;
+    fullPrompt += `\n\n${objectiveMeasurementsText}`;
     if (deltasText) {
-      parts.push({ text: `\n${deltasText}` });
+      fullPrompt += `\n${deltasText}`;
     }
-
-    // Add quality assessment to help AI calibrate confidence
     if (qualityInfo.length > 0) {
-      parts.push({ text: `\n--- CAPTURE QUALITY ASSESSMENT ---\n${qualityInfo.join("\n")}\n\nIMPORTANT: Adjust your confidenceScores based on this quality data AND the view quality weights from the OBJECTIVE MEASUREMENTS section. Views with POOR landmark detection should have lower per-measurement confidence. Views with NO landmarks should rely on visual analysis only — state this in technicalNotes. If any view is NOT CAPTURED, clearly note which anatomical assessments are limited by missing data and suggest the patient recapture that specific view.` });
+      fullPrompt += `\n--- CAPTURE QUALITY ASSESSMENT ---\n${qualityInfo.join("\n")}\n\nIMPORTANT: Adjust your confidenceScores based on this quality data AND the view quality weights from the OBJECTIVE MEASUREMENTS section. Views with POOR landmark detection should have lower per-measurement confidence. Views with NO landmarks should rely on visual analysis only — state this in technicalNotes. If any view is NOT CAPTURED, clearly note which anatomical assessments are limited by missing data and suggest the patient recapture that specific view.`;
     }
-
     if (landmarkInfo.length > 0) {
-      parts.push({ text: `\n--- POSE DETECTION LANDMARKS (MediaPipe BlazePose) ---\n${landmarkInfo.join("\n")}` });
+      fullPrompt += `\n--- POSE DETECTION LANDMARKS (MediaPipe BlazePose) ---\n${landmarkInfo.join("\n")}`;
     }
-
     if (assessment.movementVideos && Array.isArray(assessment.movementVideos) && assessment.movementVideos.length > 0) {
       const videoInfo = assessment.movementVideos.map((v: any) => 
         `- ${v.label || v.testType}: ${v.duration}s recorded`
       ).join("\n");
-      parts.push({ text: `\n--- MOVEMENT TESTS RECORDED ---\n${videoInfo}` });
+      fullPrompt += `\n--- MOVEMENT TESTS RECORDED ---\n${videoInfo}`;
     }
 
-    const geminiRes = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 32000 },
-      }),
-    });
-
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error("Gemini API error:", errText);
-      throw new Error(`Gemini API error (${geminiRes.status})`);
-    }
-
-    const geminiData = await geminiRes.json();
-    const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    // Use unified AI provider: Minimax M3 vision (primary) → Gemini (fallback)
+    const { analyzeMultipleImages } = await import("@/lib/ai-provider");
+    const responseText = await analyzeMultipleImages(
+      visionImages,
+      fullPrompt,
+      { temperature: 0.1, maxTokens: 32000, systemPrompt }
+    );
 
     // Parse JSON from response
     let analysisData: any = {};
@@ -768,7 +745,7 @@ export async function POST(
         analysisData = combined.combined;
         
         // Add ensemble metadata to technical notes
-        const ensembleNote = `\n\n[ENSEMBLE ANALYSIS]\nThis analysis combines results from 3 AI models:\n- Groq Llama 3.3 70B (landmark analysis)\n- Minimax abab7 (cross-validation)\n- Gemini 2.5 Pro (visual analysis)\n\nModel Agreement: ${combined.modelAgreement}%\nEnsemble Confidence: ${combined.confidence}%\nConsensus Findings: ${combined.consensusFindings.length}`;
+        const ensembleNote = `\n\n[ENSEMBLE ANALYSIS]\nThis analysis combines results from 3 AI models:\n- Groq Llama 3.3 70B (landmark analysis)\n- MiniMax-M3 (cross-validation + clinical reasoning)\n- MiniMax-M3 Vision (primary visual analysis)\n\nModel Agreement: ${combined.modelAgreement}%\nEnsemble Confidence: ${combined.confidence}%\nConsensus Findings: ${combined.consensusFindings.length}`;
         
         if (analysisData.postureAnalysis?.technicalNotes) {
           analysisData.postureAnalysis.technicalNotes += ensembleNote;
@@ -777,7 +754,7 @@ export async function POST(
         console.log(`[Biomechanics] Ensemble complete - Agreement: ${combined.modelAgreement}%, Confidence: ${combined.confidence}%`);
       } catch (combineError) {
         console.error('[Biomechanics] Failed to combine ensemble results:', combineError);
-        // Fall back to Gemini-only result
+        // Fall back to M3 vision-only result
       }
     }
 
@@ -848,6 +825,35 @@ export async function POST(
         },
       },
     });
+
+    // Notify patient that analysis is ready
+    try {
+      if (updated.patient?.id) {
+        await createPatientNotification({
+          patientId: updated.patient.id,
+          type: 'ANALYSIS_READY',
+          title: 'Posture Analysis Ready!',
+          message: 'Your posture assessment has been analysed. View your results now!',
+          actionUrl: `/dashboard/body-assessments`,
+          metadata: { assessmentId: updated.id, assessmentNumber: updated.assessmentNumber },
+        });
+
+        if (updated.patient.email) {
+          await sendEmail({
+            to: updated.patient.email,
+            subject: 'Your Posture Analysis is Ready - BPR Clinic',
+            template: 'analysis-ready',
+            data: {
+              firstName: updated.patient.firstName,
+              scanNumber: updated.assessmentNumber,
+              scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/body-assessments`,
+            },
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error('[body-assessment] Notification error (non-blocking):', notifErr);
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

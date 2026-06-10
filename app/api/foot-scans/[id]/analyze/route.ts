@@ -4,6 +4,7 @@ import { getRequestSession } from '@/lib/dual-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getConfigValue } from '@/lib/system-config';
+import { notifyAnalysisReady } from '@/lib/notifications/patient-notifications';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
@@ -21,17 +22,26 @@ function parseCaptureViewFromUrl(imageUrl: string): string {
   return 'PLANTAR_OUTLINE';
 }
 
-// Convert local image path to base64 data URI
+// Convert image path (local or S3 URL) to base64 data URI
 async function imageToBase64(imagePath: string): Promise<string | null> {
   try {
-    // imagePath is like /uploads/scans/FS-2026-00001/left-plantar-123.jpg
+    if (imagePath.startsWith("data:")) return imagePath;
+
+    // Handle S3/external URLs
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      const response = await fetch(imagePath);
+      if (!response.ok) return null;
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      return `data:${contentType};base64,${Buffer.from(buffer).toString("base64")}`;
+    }
+
+    // Local path: /uploads/scans/FS-2026-00001/left-plantar-123.jpg
     let fullPath: string;
     if (process.env.UPLOADS_DIR && imagePath.startsWith('/uploads/')) {
-      // Railway Volume: resolve relative to UPLOADS_DIR
       const relative = imagePath.replace(/^\/uploads\//, '');
       fullPath = path.join(process.env.UPLOADS_DIR, relative);
     } else {
-      // Local dev: resolve from public folder
       fullPath = path.join(process.cwd(), 'public', imagePath);
     }
     const buffer = await readFile(fullPath);
@@ -381,34 +391,51 @@ Respond with ONLY valid JSON in this exact format:
 Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE in the images. If an image is unclear, note it in imageQualityNotes and adjust confidence accordingly.`;
     
     try {
-      // Build Gemini vision parts with actual images
-      const parts = await buildGeminiParts(leftImages, rightImages, analysisPrompt);
+      // Build images array for unified AI provider
+      const visionImages: Array<{ url: string; base64?: string; mimeType?: string }> = [];
+      const imageLabels: string[] = [];
 
-      const geminiKey = await getConfigValue('GEMINI_API_KEY') || process.env.GEMINI_API_KEY;
-      if (!geminiKey) {
-        throw new Error('GEMINI_API_KEY not configured');
-      }
-      // Use a vision-capable model with higher accuracy for clinical foot scan analysis
-      const geminiModel = (await getConfigValue('GEMINI_FOOTSCAN_MODEL')) || (await getConfigValue('GEMINI_MODEL')) || 'gemini-2.5-pro';
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`;
-
-      const geminiRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 4000 },
-        }),
-      });
-
-      if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        console.error('Gemini API error:', errText);
-        throw new Error(`Gemini API error (${geminiRes.status})`);
+      for (let i = 0; i < Math.min(leftImages.length, 7); i++) {
+        const b64 = await imageToBase64(leftImages[i]);
+        if (b64) {
+          const match = b64.match(/^data:(.+?);base64,(.+)$/);
+          if (match) {
+            const fileName = leftImages[i].split('/').pop() || '';
+            const isShoe = fileName.includes('shoe');
+            const angle = fileName.split('-')[1] || `image ${i + 1}`;
+            imageLabels.push(isShoe ? `Left Shoe — Sole Wear Pattern` : `Left Foot — ${angle}`);
+            visionImages.push({ url: leftImages[i], base64: match[2], mimeType: match[1] });
+          }
+        }
       }
 
-      const geminiData = await geminiRes.json();
-      const responseContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      for (let i = 0; i < Math.min(rightImages.length, 7); i++) {
+        const b64 = await imageToBase64(rightImages[i]);
+        if (b64) {
+          const match = b64.match(/^data:(.+?);base64,(.+)$/);
+          if (match) {
+            const fileName = rightImages[i].split('/').pop() || '';
+            const isShoe = fileName.includes('shoe');
+            const angle = fileName.split('-')[1] || `image ${i + 1}`;
+            imageLabels.push(isShoe ? `Right Shoe — Sole Wear Pattern` : `Right Foot — ${angle}`);
+            visionImages.push({ url: rightImages[i], base64: match[2], mimeType: match[1] });
+          }
+        }
+      }
+
+      const fullPrompt = `Image labels in order: ${imageLabels.join(", ")}\n\n${analysisPrompt}`;
+
+      // Use unified AI provider: Minimax M3 vision (primary) → Gemini (fallback)
+      const { analyzeMultipleImages } = await import("@/lib/ai-provider");
+      const responseContent = await analyzeMultipleImages(
+        visionImages,
+        fullPrompt,
+        {
+          temperature: 0.2,
+          maxTokens: 8192,
+          systemPrompt: 'You are a clinical biomechanics expert with computer vision capabilities. Analyse the provided foot photographs carefully. Always respond with valid JSON only. No markdown, no code blocks, just raw JSON.',
+        }
+      );
       
       // Parse JSON response
       let analysis;
@@ -596,6 +623,17 @@ Be precise. Base ALL measurements and observations on what you can ACTUALLY SEE 
         }
       });
       
+      // Send notification to patient
+      try {
+        await notifyAnalysisReady(
+          updatedScan.patient.id,
+          updatedScan.id,
+          updatedScan.scanNumber
+        );
+      } catch (notifErr) {
+        console.error('[foot-scan] Notification error (non-blocking):', notifErr);
+      }
+
       return NextResponse.json({
         success: true,
         footScan: updatedScan,
