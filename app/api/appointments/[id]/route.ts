@@ -8,13 +8,14 @@ import { getAppName, getSenderEmail } from "@/lib/utils";
 import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
+import { getRequestSession } from "@/lib/dual-auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getRequestSession(request);
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });

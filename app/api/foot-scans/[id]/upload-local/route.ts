@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { getRequestSession } from '@/lib/dual-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
@@ -60,7 +61,7 @@ export async function POST(
       }
     } else {
       // Session-based auth (patient dashboard or staff)
-      const session = await getServerSession(authOptions);
+      const session = await getRequestSession(request);
       if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }

@@ -3,13 +3,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getEffectiveUserId } from '@/lib/preview-helpers';
+import { getRequestSession } from '@/lib/dual-auth';
 
 export const dynamic = 'force-dynamic';
 
 // Patient-facing: get assigned content + published content for their clinic
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getRequestSession(req);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
     const user = session.user as any;

@@ -25,3 +25,10 @@ scrape_*.py
 ios/
 android/
 www/
+
+# Playwright MCP test artifacts
+.playwright-mcp/
+
+# Uploaded patient files (PII — never commit; runtime storage)
+public/uploads/
+mobile/.expo/
