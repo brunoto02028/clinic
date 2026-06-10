@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { generatePresignedUploadUrl, getFileUrl } from '@/lib/s3';
 import { isDbUnreachableError, MOCK_FOOT_SCANS, devFallbackResponse } from '@/lib/dev-fallback';
 import { getEffectiveUserId, isPreviewRequest } from '@/lib/preview-helpers';
+import { getRequestSession } from '@/lib/dual-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,7 @@ async function generateScanNumber(): Promise<string> {
 // GET - List foot scans
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getRequestSession(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -117,7 +118,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new foot scan
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getRequestSession(request);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

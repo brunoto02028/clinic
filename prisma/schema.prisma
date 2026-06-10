@@ -554,6 +554,7 @@ model User {
   updatedAt       DateTime  @updatedAt
 
   // Relations
+  mobileRefreshTokens   MobileRefreshToken[]
   patientAppointments   Appointment[]     @relation("PatientAppointments")
   therapistAppointments Appointment[]     @relation("TherapistAppointments")
   medicalScreening      MedicalScreening?
@@ -4659,6 +4660,25 @@ model PushDeviceToken {
   @@index([userId])
   @@index([active])
   @@map("push_device_tokens")
+}
+
+// ============================================
+// MOBILE REFRESH TOKENS (Native app auth)
+// ============================================
+
+model MobileRefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // sha256 of the opaque refresh token
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("mobile_refresh_tokens")
 }
 
 // ============================================

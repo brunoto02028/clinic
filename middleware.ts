@@ -39,6 +39,20 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Permissions-Policy": "camera=self, microphone=self, geolocation=()",
 };
 
+// Patient-facing API prefixes reachable by the mobile app (bearer-authenticated).
+const MOBILE_API_PREFIXES = ['/api/appointments', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile'];
+// CORS for the Expo Web / PWA browser target. Native apps don't enforce CORS;
+// bearer (not cookie) auth means "*" doesn't expose any ambient session.
+const MOBILE_CORS_ORIGIN = process.env.MOBILE_CORS_ORIGIN || '*';
+const MOBILE_CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': MOBILE_CORS_ORIGIN,
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+function isMobileApiPath(pathname: string): boolean {
+  return MOBILE_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
+}
+
 // Routes that don't require authentication
 const publicRoutes = [
   '/',
@@ -120,9 +134,15 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/static') ||
     pathname.startsWith('/favicon') ||
     pathname.includes('.') ||
-    pathname.startsWith('/api/auth')
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/mobile')
   ) {
     return NextResponse.next();
+  }
+
+  // CORS preflight for mobile-facing API routes (browser target only).
+  if (isMobileApiPath(pathname) && request.method === 'OPTIONS') {
+    return new NextResponse(null, { status: 204, headers: MOBILE_CORS_HEADERS });
   }
 
   // ─── SECURITY LAYER ───
@@ -168,6 +188,24 @@ export async function middleware(request: NextRequest) {
   // Allow public routes
   if (matchesRoute(pathname, publicRoutes)) {
     return NextResponse.next();
+  }
+
+  // Mobile (bearer-token) API requests: skip the cookie-session gate and let the
+  // route handler verify the JWT (Node runtime — jsonwebtoken isn't Edge-safe).
+  // Restricted to patient-facing prefixes, and we STRIP client-supplied identity
+  // headers (x-user-*, x-clinic-id, x-impersonated-by) so a forged Bearer can't
+  // spoof them past the gate into header-trusting routes. Threat detection and
+  // rate limiting above still apply.
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.toLowerCase().startsWith('bearer ') && isMobileApiPath(pathname)) {
+    const safeHeaders = new Headers(request.headers);
+    safeHeaders.delete('x-user-id');
+    safeHeaders.delete('x-user-role');
+    safeHeaders.delete('x-clinic-id');
+    safeHeaders.delete('x-impersonated-by');
+    const res = NextResponse.next({ request: { headers: safeHeaders } });
+    res.headers.set('Access-Control-Allow-Origin', MOBILE_CORS_ORIGIN);
+    return res;
   }
 
   // Get the user token

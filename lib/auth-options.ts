@@ -3,8 +3,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/db";
-import bcrypt from "bcryptjs";
-import { sysLog, logAudit, trackFailedLogin } from "@/lib/system-logger";
+import { sysLog, logAudit } from "@/lib/system-logger";
+import { validateCredentials } from "@/lib/auth-credentials";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -23,109 +23,10 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Please provide both email and password");
-        }
-
-        try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email.toLowerCase() },
-            include: {
-              clinic: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                  primaryColor: true,
-                  secondaryColor: true,
-                },
-              },
-            },
-          });
-
-          if (!user) {
-            sysLog.auth(`Login failed: unknown email ${credentials.email.toLowerCase()}`, {
-              level: "WARN",
-              details: { email: credentials.email.toLowerCase(), reason: "unknown_email" },
-              source: "auth",
-            });
-            throw new Error("Invalid email or password");
-          }
-
-          if (!user.isActive) {
-            throw new Error("Account is deactivated. Please contact support.");
-          }
-
-          if (!user.password) {
-            throw new Error("This account uses Google sign-in. Please use the 'Sign in with Google' button.");
-          }
-
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password,
-            user.password
-          );
-
-          if (!isPasswordValid) {
-            sysLog.auth(`Login failed: wrong password for ${user.email}`, {
-              level: "WARN",
-              details: { email: user.email, userId: user.id, reason: "wrong_password" },
-              source: "auth",
-            });
-            trackFailedLogin(user.email, "unknown");
-            throw new Error("Invalid email or password");
-          }
-
-          logAudit({
-            userId: user.id,
-            userEmail: user.email,
-            userRole: user.role,
-            userName: `${user.firstName} ${user.lastName}`,
-            action: "LOGIN_SUCCESS",
-            entity: "User",
-            entityId: user.id,
-            description: `${user.firstName} ${user.lastName} logged in successfully`,
-          });
-          sysLog.auth(`Login success: ${user.email} (${user.role})`, {
-            level: "INFO",
-            userId: user.id,
-            userEmail: user.email,
-            userRole: user.role,
-            source: "auth",
-          });
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: `${user.firstName} ${user.lastName}`,
-            role: user.role,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            clinicId: user.clinicId,
-            clinicName: user.clinic?.name || null,
-            clinicSlug: user.clinic?.slug || null,
-            permissions: {
-              canManageUsers: user.canManageUsers,
-              canManageAppointments: user.canManageAppointments,
-              canManageArticles: user.canManageArticles,
-              canManageSettings: user.canManageSettings,
-              canViewAllPatients: user.canViewAllPatients,
-              canCreateClinicalNotes: user.canCreateClinicalNotes,
-              canManageFootScans: user.canManageFootScans,
-              canManageOrders: user.canManageOrders,
-            },
-          };
-        } catch (error: any) {
-          console.error("[AUTH] Login error:", error?.message);
-          if (
-            error?.message?.includes("Can't reach") ||
-            error?.message?.includes("Timed out") ||
-            error?.message?.includes("connection pool") ||
-            error?.message?.includes("prisma")
-          ) {
-            throw new Error("Service temporarily unavailable. Please try again in a moment.");
-          }
-          throw error;
-        }
+        return await validateCredentials(
+          credentials?.email ?? "",
+          credentials?.password ?? ""
+        );
       },
     }),
   ],
