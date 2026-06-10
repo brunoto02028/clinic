@@ -11,12 +11,11 @@ export interface ScreenProps {
   testID?: string;
 }
 
-/** Themed screen container with safe-area insets and optional scroll/padding. */
 export function Screen({ children, scroll, padded = true, style, testID }: ScreenProps) {
   const t = useTheme();
   const inner: ViewStyle = {
     flex: scroll ? undefined : 1,
-    padding: padded ? t.spacing.lg : 0,
+    padding: padded ? t.spacing.xl : 0,
     backgroundColor: t.colors.background,
   };
 
@@ -26,7 +25,11 @@ export function Screen({ children, scroll, padded = true, style, testID }: Scree
       testID={testID}
     >
       {scroll ? (
-        <ScrollView contentContainerStyle={[inner, style]} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[inner, style]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {children}
         </ScrollView>
       ) : (

@@ -20,7 +20,7 @@ export function Input({ label, error, style, ...rest }: InputProps) {
   return (
     <View style={styles.wrap}>
       {label ? (
-        <Text variant="label" muted style={styles.label}>
+        <Text variant="label" color={t.colors.textSecondary} style={styles.label}>
           {label}
         </Text>
       ) : null}
@@ -30,12 +30,12 @@ export function Input({ label, error, style, ...rest }: InputProps) {
           styles.input,
           {
             color: t.colors.text,
-            backgroundColor: t.colors.surfaceMuted,
+            backgroundColor: "rgba(255, 255, 255, 0.04)",
             borderColor: error
               ? t.colors.danger
               : focused
-              ? t.colors.primary
-              : t.colors.border,
+              ? "rgba(74, 124, 138, 0.5)"
+              : "rgba(255, 255, 255, 0.08)",
             borderRadius: t.radius.md,
           },
           style,
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   label: { marginLeft: 2 },
   input: {
     minHeight: 48,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderWidth: 1,
     fontSize: 16,
   },

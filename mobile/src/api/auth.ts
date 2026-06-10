@@ -17,17 +17,17 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 export function loginRequest(email: string, password: string): Promise<AuthResponse> {
-  return postJson<AuthResponse>("/api/auth/mobile/login", { email, password });
+  return postJson<AuthResponse>("/api/mobile/login", { email, password });
 }
 
 export function refreshRequest(refreshToken: string): Promise<AuthResponse> {
-  return postJson<AuthResponse>("/api/auth/mobile/refresh", { refreshToken });
+  return postJson<AuthResponse>("/api/mobile/refresh", { refreshToken });
 }
 
 export async function logoutRequest(refreshToken: string): Promise<void> {
   // Best-effort; ignore failures so logout always proceeds locally.
   try {
-    await postJson<{ success: boolean }>("/api/auth/mobile/logout", { refreshToken });
+    await postJson<{ success: boolean }>("/api/mobile/logout", { refreshToken });
   } catch {
     // no-op
   }

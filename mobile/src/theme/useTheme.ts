@@ -1,4 +1,3 @@
-import { useColorScheme } from "react-native";
 import { themes, theme, type ThemeColors } from "./index";
 
 export interface Theme {
@@ -10,15 +9,14 @@ export interface Theme {
   scheme: "light" | "dark";
 }
 
-/** Resolves the active theme from the OS color scheme. */
+/** Always returns dark theme to match the web app identity. */
 export function useTheme(): Theme {
-  const scheme = useColorScheme() === "dark" ? "dark" : "light";
   return {
-    colors: themes[scheme],
+    colors: themes.dark,
     spacing: theme.spacing,
     radius: theme.radius,
     fontSize: theme.fontSize,
     fontWeight: theme.fontWeight,
-    scheme,
+    scheme: "dark",
   };
 }

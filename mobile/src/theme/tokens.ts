@@ -1,33 +1,49 @@
 /**
- * Design tokens derived from the web app's Tailwind config (BPR brand).
- * Brand: slate #607d7d (primary), turquoise #5dc9c0 (secondary),
- * dark surface #0f172a (used by splash/status bar on the Capacitor build).
+ * Design tokens aligned with the BPR Clinic web app's dark futuristic theme.
+ * Brand: teal #4a7c8a (primary), turquoise #5dc9c0 (secondary),
+ * dark surface #0f172a, glassmorphism effects.
  */
 
 export const palette = {
-  // Brand
-  slate: "#607d7d",
-  slateDark: "#4a6363",
-  slateLight: "#7a9494",
+  // Brand — aligned with web CSS variables
+  primary: "#4a7c8a",
+  primaryDark: "#2c4f58",
+  primaryLight: "#6ba3b0",
   turquoise: "#5dc9c0",
   turquoiseDark: "#4ab3ab",
   turquoiseLight: "#7dd4cd",
 
-  // Neutrals (slate scale aligned with the web dark surfaces)
-  ink: "#0f172a",
-  ink800: "#1e293b",
-  ink700: "#334155",
+  // Bruno brand (kept for compat)
+  slate: "#607d7d",
+  slateDark: "#4a6363",
+  slateLight: "#7a9494",
+
+  // Dark surfaces — matching web hsl(200 35% 7%) etc.
+  ink: "#0d1520",
+  ink900: "#111b2b",
+  ink800: "#1a2740",
+  ink700: "#243352",
+  ink600: "#2e3f5e",
   ink500: "#64748b",
+  ink400: "#8494a7",
   ink300: "#cbd5e1",
+  ink200: "#e2e8f0",
   ink100: "#f1f5f9",
   white: "#ffffff",
   black: "#000000",
 
+  // Neon accents (for glows/shadows)
+  neonCyan: "rgba(74, 124, 138, 0.4)",
+  neonCyanStrong: "rgba(93, 201, 192, 0.5)",
+
   // Feedback
-  danger: "#dc2626",
-  dangerLight: "#fecaca",
-  success: "#16a34a",
-  warning: "#d97706",
+  danger: "#ef4444",
+  dangerLight: "#fca5a5",
+  success: "#10b981",
+  successLight: "#a7f3d0",
+  warning: "#f59e0b",
+  warningLight: "#fde68a",
+  info: "#3b82f6",
 } as const;
 
 export const spacing = {
@@ -41,17 +57,18 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 6,
-  md: 10,
-  lg: 14,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
   full: 9999,
 } as const;
 
 export const fontSize = {
-  xs: 12,
-  sm: 14,
-  md: 16,
-  lg: 18,
+  xs: 11,
+  sm: 13,
+  md: 15,
+  lg: 17,
   xl: 22,
   "2xl": 28,
   "3xl": 34,
