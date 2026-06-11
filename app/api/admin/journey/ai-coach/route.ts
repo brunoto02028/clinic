@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { callAI } from "@/lib/ai-provider";
+import { callAIClinical } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
 
@@ -262,7 +262,7 @@ Respond in JSON format:
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    const rawText = await callAI(prompt, { temperature: 0.7, maxTokens: 2048 });
+    const rawText = await callAIClinical(prompt, { temperature: 0.7, maxTokens: 2048 });
 
     // Try to extract JSON from the response
     let parsed: any = null;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { callAI } from "@/lib/ai-provider";
+import { callAIClinical } from "@/lib/ai-provider";
 import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
@@ -166,7 +166,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
   ]
 }`;
 
-    const rawText = await callAI(prompt, { temperature: 0.3, maxTokens: 8192 });
+    const rawText = await callAIClinical(prompt, { temperature: 0.3, maxTokens: 8192 });
     if (!rawText) throw new Error("No response from AI. Please try again.");
 
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);

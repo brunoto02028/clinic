@@ -62,15 +62,30 @@ export async function POST(req: NextRequest) {
 
   // Auto-transcribe using unified AI provider
   try {
-    const { transcribeAudioMinimax, callAI } = await import("@/lib/ai-provider");
-    const audioBuffer = Buffer.from(arrayBuffer);
+    const { callAIClinical } = await import("@/lib/ai-provider");
+    const { getConfigValue: getCfg } = await import("@/lib/system-config");
 
-    // 1. Transcribe: Minimax STT primary → Gemini fallback
+    // 1. Transcribe: Groq Whisper primary → Gemini fallback (GDPR-safe, no Minimax)
     let transcript: string | null = null;
     try {
-      transcript = await transcribeAudioMinimax(audioBuffer, mimeType, language);
+      const groqKey = (await getCfg("GROQ_API_KEY")) || process.env.GROQ_API_KEY;
+      if (groqKey) {
+        const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("mp3") ? "mp3" : mimeType.includes("wav") ? "wav" : "webm";
+        const gForm = new FormData();
+        gForm.append("file", new Blob([new Uint8Array(arrayBuffer)], { type: mimeType }), `audio.${ext}`);
+        gForm.append("model", "whisper-large-v3-turbo");
+        gForm.append("response_format", "text");
+        if (language) gForm.append("language", language.split("-")[0]);
+        const gRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${groqKey}` },
+          body: gForm,
+        });
+        if (gRes.ok) transcript = (await gRes.text()).trim() || null;
+        else console.warn("[consultation-recording] Groq Whisper failed:", await gRes.text());
+      }
     } catch (err: any) {
-      console.warn("[consultation-recording] Minimax STT failed:", err.message);
+      console.warn("[consultation-recording] Groq Whisper error:", err.message);
     }
 
     if (!transcript) {
@@ -102,7 +117,7 @@ export async function POST(req: NextRequest) {
       let chiefComplaint = null;
       let symptoms = null;
       try {
-        const extractText = await callAI(
+        const extractText = await callAIClinical(
           `From this patient's pre-consultation recording transcript, extract:\n1. A brief chief complaint (1-2 sentences)\n2. A list of symptoms mentioned\n\nTranscript: "${transcript}"\n\nRespond in JSON: { "chiefComplaint": "...", "symptoms": ["..."] }\nRespond in ${language === "pt" ? "Portuguese" : "English"}.`,
           { temperature: 0.2, maxTokens: 1024 }
         );

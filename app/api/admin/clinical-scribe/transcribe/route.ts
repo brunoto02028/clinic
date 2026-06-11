@@ -53,19 +53,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Try Minimax STT (speech-01-hd)
-    try {
-      const { transcribeAudioMinimax } = await import("@/lib/ai-provider");
-      const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
-      const transcript = await transcribeAudioMinimax(audioBuffer, audioFile.type || "audio/webm", language);
-      if (transcript) {
-        return NextResponse.json({ transcript, provider: "minimax-stt" });
-      }
-    } catch (err: any) {
-      console.warn("[clinical-scribe] Minimax STT failed:", err.message);
-    }
-
-    // Fallback to Gemini multimodal transcription
+    // Fallback to Gemini multimodal transcription (Minimax removed — GDPR: no patient audio to Minimax)
     const geminiKey = await getConfigValue("GEMINI_API_KEY");
     if (geminiKey) {
       const arrayBuffer = await audioFile.arrayBuffer();

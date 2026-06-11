@@ -1,16 +1,16 @@
 /**
- * Ensemble Biomechanical Analysis
- * Combines Groq + Minimax + Gemini for maximum precision
+ * Ensemble Biomechanical Analysis (GDPR-compliant — no Minimax for patient data)
+ * Combines Groq + Claude Opus + Gemini for maximum precision
  * 
  * Strategy:
  * 1. Groq (Llama 3.3 70B) - Fast landmark-based analysis
- * 2. Minimax (abab7) - Cross-validation and clinical reasoning
+ * 2. Claude Opus 4.8 - Cross-validation and clinical reasoning
  * 3. Gemini (2.5 Pro) - Visual analysis with images
  * 4. Combine results with weighted consensus
  */
 
 import { callGroq, GROQ_USE_CASES, extractJsonFromGroq } from '@/lib/ai-providers/groq';
-import { callMinimax, MINIMAX_USE_CASES, extractJsonFromMinimax } from '@/lib/ai-providers/minimax';
+import { callAIClinical, parseAIJson } from '@/lib/ai-provider';
 
 export interface EnsembleParams {
   systemPrompt: string;
@@ -23,7 +23,7 @@ export interface EnsembleParams {
 export interface EnsembleResult {
   combined: any;
   groq: any;
-  minimax: any;
+  claude: any;
   gemini?: any;
   confidence: number;
   modelAgreement: number;
@@ -31,7 +31,7 @@ export interface EnsembleResult {
 }
 
 /**
- * Run ensemble analysis with Groq + Minimax
+ * Run ensemble analysis with Groq + Claude Opus (GDPR-safe)
  * (Gemini is called separately with images in the main endpoint)
  */
 export async function runEnsembleAnalysis({
@@ -40,7 +40,7 @@ export async function runEnsembleAnalysis({
   objectiveMeasurements,
   landmarkData,
   temperature = 0.05,
-}: EnsembleParams): Promise<{ groq: any; minimax: any }> {
+}: EnsembleParams): Promise<{ groq: any; claude: any }> {
   
   // Build enhanced prompt with objective measurements
   const enhancedPrompt = `${userPrompt}\n\n${objectiveMeasurements}${landmarkData ? `\n\n${landmarkData}` : ''}`;
@@ -58,20 +58,21 @@ export async function runEnsembleAnalysis({
   });
   const groqData = extractJsonFromGroq(groqResponse);
 
-  // LAYER 2: Minimax - Cross-validation
-  console.log('[Ensemble] Running Minimax analysis...');
-  const minimaxResponse = await callMinimax({
-    model: MINIMAX_USE_CASES.CLINICAL,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: enhancedPrompt },
-    ],
-    temperature,
-    maxTokens: 16000,
-  });
-  const minimaxData = extractJsonFromMinimax(minimaxResponse);
+  // LAYER 2: Claude Opus 4.8 - Cross-validation & clinical reasoning (GDPR-safe)
+  console.log('[Ensemble] Running Claude Opus analysis...');
+  let claudeData: any = null;
+  try {
+    const claudeResponse = await callAIClinical(enhancedPrompt, {
+      systemPrompt,
+      temperature,
+      maxTokens: 16000,
+    });
+    claudeData = parseAIJson(claudeResponse);
+  } catch (err: any) {
+    console.warn('[Ensemble] Claude analysis failed:', err.message);
+  }
 
-  return { groq: groqData, minimax: minimaxData };
+  return { groq: groqData, claude: claudeData };
 }
 
 /**
@@ -79,14 +80,14 @@ export async function runEnsembleAnalysis({
  */
 export function combineEnsembleResults({
   groq,
-  minimax,
+  claude,
   gemini,
-  weights = { groq: 0.25, minimax: 0.25, gemini: 0.50 },
+  weights = { groq: 0.25, claude: 0.25, gemini: 0.50 },
 }: {
   groq: any;
-  minimax: any;
+  claude: any;
   gemini: any;
-  weights?: { groq: number; minimax: number; gemini: number };
+  weights?: { groq: number; claude: number; gemini: number };
 }): EnsembleResult {
   
   console.log('[Ensemble] Combining results...');
@@ -94,21 +95,21 @@ export function combineEnsembleResults({
   // Combine scores with weighted average
   const combinedScores = combineScores([
     { data: groq, weight: weights.groq },
-    { data: minimax, weight: weights.minimax },
+    { data: claude, weight: weights.claude },
     { data: gemini, weight: weights.gemini },
   ]);
 
   // Combine angles using median (eliminates outliers)
-  const combinedAngles = combineAngles([groq, minimax, gemini]);
+  const combinedAngles = combineAngles([groq, claude, gemini]);
 
   // Find consensus findings (appear in 2+ models)
-  const consensusFindings = findConsensusFindings([groq, minimax, gemini], 2);
+  const consensusFindings = findConsensusFindings([groq, claude, gemini], 2);
 
   // Calculate model agreement
-  const modelAgreement = calculateModelAgreement([groq, minimax, gemini]);
+  const modelAgreement = calculateModelAgreement([groq, claude, gemini]);
 
   // Calculate ensemble confidence
-  const confidence = calculateEnsembleConfidence([groq, minimax, gemini], modelAgreement);
+  const confidence = calculateEnsembleConfidence([groq, claude, gemini], modelAgreement);
 
   // Build combined result (use Gemini as base, enhance with consensus)
   const combined = {
@@ -120,14 +121,14 @@ export function combineEnsembleResults({
       modelAgreement,
       confidence,
       weights,
-      modelsUsed: ['groq-llama-3.3-70b', 'minimax-abab7', 'gemini-2.5-pro'],
+      modelsUsed: ['groq-llama-3.3-70b', 'claude-opus-4-8', 'gemini-2.5-pro'],
     },
   };
 
   return {
     combined,
     groq,
-    minimax,
+    claude,
     gemini,
     confidence,
     modelAgreement,

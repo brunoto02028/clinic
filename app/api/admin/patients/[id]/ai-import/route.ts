@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { callAI } from "@/lib/ai-provider";
+import { callAIClinical } from "@/lib/ai-provider";
 import { extractText } from "@/lib/docling";
 import fs from "fs";
 import path from "path";
@@ -120,7 +120,7 @@ Rules:
 - Return ONLY valid JSON, no markdown fences`;
 
   try {
-    const aiResponse = await callAI(
+    const aiResponse = await callAIClinical(
       `Patient: ${patient.firstName} ${patient.lastName}\n\n${allText}`,
       {
         systemPrompt,
