@@ -45,6 +45,11 @@ export default function NewArticlePage() {
   });
   const recognitionRef = useRef<any>(null);
   const fullTranscriptRef = useRef("");
+  // Output language for the generated article (independent of voice/chat language)
+  const [articleLang, setArticleLang] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("ai_article_lang") || "en-GB";
+    return "en-GB";
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { toast } = useToast();
@@ -89,7 +94,7 @@ export default function NewArticlePage() {
       const res = await fetch("/api/admin/articles/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, language: articleLang }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -306,6 +311,25 @@ export default function NewArticlePage() {
               </div>
             )}
 
+            {/* Article output language selector */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-foreground">Write article in:</span>
+              {([
+                { code: "en-GB", label: "English (UK)" },
+                { code: "en-US", label: "English (US)" },
+                { code: "pt-BR", label: "Português (BR)" },
+                { code: "pt-PT", label: "Português (PT)" },
+              ] as const).map(({ code, label }) => (
+                <button key={code} type="button"
+                  onClick={() => { setArticleLang(code); if (typeof window !== "undefined") localStorage.setItem("ai_article_lang", code); }}
+                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                    articleLang === code ? "bg-teal-600 text-white border-teal-600" : "bg-muted text-muted-foreground border-border hover:border-teal-400"
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {/* Chat Input */}
             <div className="flex gap-2">
               <Input
@@ -452,9 +476,29 @@ export default function NewArticlePage() {
               {showPreview ? (
                 <div className="border rounded-lg p-6 min-h-[350px] bg-white">
                   <div
-                    className="article-content prose prose-lg max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-blockquote:border-l-primary/30 prose-blockquote:text-muted-foreground prose-img:rounded-xl prose-img:shadow-md"
-                    dangerouslySetInnerHTML={{ __html: content || "<p class='text-muted-foreground italic'>No content yet. Switch to Edit mode to start writing.</p>" }}
+                    className="article-preview max-w-none"
+                    dangerouslySetInnerHTML={{ __html: content || "<p style='color:#9ca3af;font-style:italic'>No content yet. Switch to Edit mode to start writing.</p>" }}
                   />
+                  <style jsx global>{`
+                    /* Match the Quill editor spacing exactly so preview == edit */
+                    .article-preview { color: #1f2937; font-size: 0.95rem; line-height: 1.6; }
+                    .article-preview p { margin: 0 0 0.75em; }
+                    .article-preview h1, .article-preview h2, .article-preview h3 { color: #111827; font-weight: 700; margin: 1em 0 0.5em; line-height: 1.3; }
+                    .article-preview h1 { font-size: 1.6em; }
+                    .article-preview h2 { font-size: 1.35em; }
+                    .article-preview h3 { font-size: 1.15em; }
+                    .article-preview ul, .article-preview ol { margin: 0 0 0.75em; padding-left: 1.5em; }
+                    .article-preview ul { list-style: disc; }
+                    .article-preview ol { list-style: decimal; }
+                    .article-preview li { margin-bottom: 0.25em; }
+                    .article-preview a { color: #0d9488; text-decoration: underline; }
+                    .article-preview strong { font-weight: 700; color: #111827; }
+                    .article-preview em { font-style: italic; }
+                    .article-preview blockquote { border-left: 3px solid #14b8a6; padding-left: 1em; margin: 0 0 0.75em; color: #4b5563; font-style: italic; }
+                    .article-preview img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 1em 0; }
+                    /* Collapse Quill's empty paragraphs so they don't create big white gaps */
+                    .article-preview p:empty { display: none; margin: 0; }
+                  `}</style>
                 </div>
               ) : (
                 <RichTextEditor value={content} onChange={setContent} placeholder="Write your article content here..." />
