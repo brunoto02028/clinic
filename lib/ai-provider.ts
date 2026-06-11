@@ -67,8 +67,14 @@ async function getClaudeKey(): Promise<string | null> {
 }
 
 const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
-const CLAUDE_DEFAULT_MODEL = "claude-haiku-4-5-20251001"; // fast + cost-effective for general use
-const CLAUDE_CLINICAL_MODEL = "claude-sonnet-4-6";         // clinical analysis + vision
+
+// 3-tier model routing
+export const CLAUDE_HAIKU_MODEL  = "claude-haiku-4-5-20251001"; // form extraction, classification, simple tasks
+export const CLAUDE_SONNET_MODEL = "claude-sonnet-4-6";          // articles, reports, drafts, communications
+export const CLAUDE_OPUS_MODEL   = "claude-opus-4-8";            // clinical reasoning, biomechanical analysis, complex synthesis
+
+const CLAUDE_DEFAULT_MODEL  = CLAUDE_HAIKU_MODEL;
+const CLAUDE_CLINICAL_MODEL = CLAUDE_OPUS_MODEL;
 
 async function getGeminiModel(): Promise<string> {
   return (await getConfigValue("GEMINI_MODEL")) || "gemini-2.0-flash";
@@ -628,6 +634,7 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
     temperature: opts?.temperature,
     maxTokens: opts?.maxTokens,
     systemPrompt: opts?.systemPrompt,
+    model: opts?.model,
   };
 
   // 1. Claude (primary)
@@ -801,6 +808,7 @@ export async function callAIChat(
     temperature: opts?.temperature,
     maxTokens: opts?.maxTokens,
     systemPrompt: opts?.systemPrompt,
+    model: opts?.model,
   };
 
   // 1. Claude (primary)

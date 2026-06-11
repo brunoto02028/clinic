@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
-import { callAIChat } from '@/lib/ai-provider';
+import { callAIChat, CLAUDE_SONNET_MODEL } from '@/lib/ai-provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,6 +100,7 @@ CRITICAL HTML FORMATTING RULES for the "content" field:
   try {
     const reply = await callAIChat(messages, {
       systemPrompt: systemInstruction,
+      model: CLAUDE_SONNET_MODEL,
       temperature: 0.7,
       maxTokens: 8192,
     });
