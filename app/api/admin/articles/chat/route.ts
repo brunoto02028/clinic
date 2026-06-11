@@ -110,8 +110,18 @@ CRITICAL HTML FORMATTING RULES for the "content" field:
   </ol>
 - The final result must look professional, well-structured, and easy to scan when rendered in a web browser`;
 
+  // Reinforce the output language by appending an explicit directive to the latest user turn.
+  // System prompts alone are sometimes overridden when the whole conversation is in another language.
+  const enrichedMessages = messages.map((m: any) => ({ ...m }));
+  for (let i = enrichedMessages.length - 1; i >= 0; i--) {
+    if (enrichedMessages[i].role === "user") {
+      enrichedMessages[i].content = `${enrichedMessages[i].content}\n\n[LANGUAGE REQUIREMENT: If you produce the article JSON block, the "title", "excerpt" and "content" MUST be written entirely in ${articleLanguage}. Do not write the article in any other language, even if this message is in a different language.]`;
+      break;
+    }
+  }
+
   try {
-    const reply = await callAIChat(messages, {
+    const reply = await callAIChat(enrichedMessages, {
       systemPrompt: systemInstruction,
       model: CLAUDE_SONNET_MODEL,
       temperature: 0.7,
