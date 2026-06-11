@@ -422,7 +422,7 @@ export default function EditArticlePage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Target Keyword</Label>
-                    <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. physiotherapy Richmond" className="text-sm" />
+                    <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. physiotherapy Ipswich" className="text-sm" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Tags (comma-separated)</Label>

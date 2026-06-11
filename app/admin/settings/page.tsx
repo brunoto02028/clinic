@@ -496,7 +496,7 @@ export default function AdminSettingsPage() {
           }
         } else {
           setContactCards([
-            { id: "1", icon: "MapPin", title: "Location", content: "London: The Vineyard, Richmond TW10 6AQ\nIpswich: Suffolk, IP1" },
+            { id: "1", icon: "MapPin", title: "Location", content: "Ipswich, Suffolk" },
             { id: "2", icon: "Clock", title: "Hours", content: "Open every day including weekends" },
           ]);
         }
@@ -979,7 +979,7 @@ export default function AdminSettingsPage() {
                     })()}
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    {settings.heroSubtitle || "Expert physical rehabilitation and sports therapy in Richmond, UK."}
+                    {settings.heroSubtitle || "Expert physical rehabilitation and sports therapy in Ipswich, Suffolk."}
                   </p>
                   <div className="flex gap-2">
                     <span className="bg-primary text-primary-foreground text-[10px] px-3 py-1.5 rounded-md font-medium">
@@ -990,7 +990,7 @@ export default function AdminSettingsPage() {
                   <div className="flex gap-4 text-[10px] text-muted-foreground">
                     <span>✓ Fully Insured</span>
                     <span>✓ Open Every Day</span>
-                    <span>✓ Richmond TW10 6AQ</span>
+                    <span>✓ Ipswich, Suffolk</span>
                   </div>
                 </div>
                 <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted">
@@ -1978,7 +1978,7 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address">Address</Label>
-                  <Input id="address" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} placeholder="The Vineyard, Richmond TW10 6AQ" />
+                  <Input id="address" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} placeholder="Ipswich, Suffolk" />
                 </div>
               </div>
 
@@ -2216,7 +2216,7 @@ export default function AdminSettingsPage() {
                   id="footerAddress"
                   value={settings.address}
                   onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                  placeholder="The Vineyard, Richmond TW10 6AQ"
+                  placeholder="Ipswich, Suffolk"
                 />
               </div>
               <p className="text-xs text-muted-foreground">These fields are shared with the Contact section</p>
@@ -2320,13 +2320,13 @@ export default function AdminSettingsPage() {
                           body: JSON.stringify({
                             businessInfo: {
                               name: (settings as any).siteName || "BPR Physical Rehabilitation",
-                              location: "Richmond, UK",
+                              location: "Ipswich, Suffolk, UK",
                               services: "Physical therapy, sports rehabilitation, MLS Laser therapy, thermography, biomechanics, insoles",
                               email: (settings as any).businessEmail || "info@bpr.rehab",
                               phone: (settings as any).businessPhone || "+44 (0) 20 XXXX XXXX",
                               address: (settings as any).businessStreet && (settings as any).businessCity
                                 ? `${(settings as any).businessStreet}, ${(settings as any).businessCity}, ${(settings as any).businessPostcode}`
-                                : "Richmond, TW10 6AQ, UK",
+                                : "Ipswich, Suffolk, UK",
                             },
                           }),
                         });
@@ -2542,7 +2542,7 @@ export default function AdminSettingsPage() {
                   id="marketingSocialBio"
                   value={(settings as any).marketingSocialBio || ""}
                   onChange={(e) => setSettings({ ...settings, marketingSocialBio: e.target.value } as any)}
-                  placeholder="Expert Physical Rehabilitation & Sports Therapy in Ipswich & London. Helping you move better, feel stronger, and live pain-free. 📍 Ipswich & Richmond 📞 +44 1473 000000"
+                  placeholder="Expert Physical Rehabilitation & Sports Therapy in Ipswich, Suffolk. Helping you move better, feel stronger, and live pain-free. 📍 Ipswich 📞 +44 1473 000000"
                   rows={3}
                 />
                 <p className="text-xs text-muted-foreground">Used for Instagram, Twitter, LinkedIn bios.</p>
@@ -2561,18 +2561,18 @@ export default function AdminSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <FieldLabel htmlFor="metaTitle" fieldName="metaTitle" label="Meta Title" context="SEO meta title for search engines — physiotherapy clinic in Richmond, London (50-60 chars)" />
-                <Input id="metaTitle" value={settings.metaTitle} onChange={(e) => setSettings({ ...settings, metaTitle: e.target.value })} placeholder="Bruno Physical Rehabilitation - Professional Physiotherapy in Richmond" />
+                <FieldLabel htmlFor="metaTitle" fieldName="metaTitle" label="Meta Title" context="SEO meta title for search engines — physiotherapy clinic in Ipswich, Suffolk (50-60 chars)" />
+                <Input id="metaTitle" value={settings.metaTitle} onChange={(e) => setSettings({ ...settings, metaTitle: e.target.value })} placeholder="Bruno Physical Rehabilitation - Professional Physiotherapy in Ipswich" />
                 <p className="text-xs text-muted-foreground">Recommended: 50-60 characters ({settings.metaTitle?.length || 0} chars)</p>
               </div>
               <div className="space-y-2">
                 <FieldLabel htmlFor="metaDescription" fieldName="metaDescription" label="Meta Description" context="SEO meta description for a physiotherapy clinic — include location, services, and unique selling points (150-160 chars)" />
-                <Textarea id="metaDescription" value={settings.metaDescription} onChange={(e) => setSettings({ ...settings, metaDescription: e.target.value })} placeholder="Professional physiotherapy and sports rehabilitation services in Richmond, TW10..." rows={4} />
+                <Textarea id="metaDescription" value={settings.metaDescription} onChange={(e) => setSettings({ ...settings, metaDescription: e.target.value })} placeholder="Professional physiotherapy and sports rehabilitation services in Ipswich, Suffolk..." rows={4} />
                 <p className="text-xs text-muted-foreground">Recommended: 150-160 characters ({settings.metaDescription?.length || 0} chars)</p>
               </div>
               <div className="space-y-2">
                 <FieldLabel htmlFor="metaKeywords" fieldName="metaKeywords" label="Meta Keywords" context="SEO keywords for a physiotherapy clinic — include services, locations, conditions treated, comma-separated" />
-                <Textarea id="metaKeywords" value={settings.metaKeywords} onChange={(e) => setSettings({ ...settings, metaKeywords: e.target.value })} placeholder="physiotherapy, sports rehabilitation, Richmond, London, TW10..." rows={3} />
+                <Textarea id="metaKeywords" value={settings.metaKeywords} onChange={(e) => setSettings({ ...settings, metaKeywords: e.target.value })} placeholder="physiotherapy, sports rehabilitation, Ipswich, Suffolk..." rows={3} />
                 <p className="text-xs text-muted-foreground">Separate keywords with commas</p>
               </div>
               <div className="grid grid-cols-2 gap-4">

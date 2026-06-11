@@ -17,7 +17,7 @@ IMPORTANT RULES:
 3. For reports, include: { "action": "report", "title": "...", "data": {...}, "summary": "..." }
 4. For analysis, include: { "action": "analysis", "findings": [...], "recommendations": [...] }
 5. Be professional, empathetic with patients, and data-driven
-6. Clinic locations: Richmond (TW10 6AQ) and Ipswich, Suffolk
+6. Clinic location: Ipswich, Suffolk
 7. Website: bpr.rehab
 8. Never share patient data externally
 9. Use British English for UK patients, Portuguese for Brazilian patients
@@ -359,7 +359,7 @@ Social media posts total: ${socialPosts}
 Currently active AI tasks: ${existingTasks.length} (${existingTasks.map(t => t.name).join(', ') || 'none'})
 
 CLINIC SERVICES: MLS Laser Therapy, Custom Insoles, Biomechanical Assessment, Thermography, Sports Recovery, Exercise Therapy, Shockwave, Foot Scans
-LOCATIONS: Richmond (TW10 6AQ), Ipswich (Suffolk)
+LOCATION: Ipswich (Suffolk)
 WEBSITE: bpr.rehab`
 
   const suggestPrompt = `Based on the system data above, suggest 4-6 NEW automated tasks that would benefit this clinic.

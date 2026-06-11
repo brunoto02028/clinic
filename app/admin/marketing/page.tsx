@@ -257,13 +257,13 @@ export default function MarketingDashboard() {
       {/* SEO Article Suggestions */}
       <div className="bg-card border border-border rounded-xl p-6">
         <h2 className="text-lg font-semibold mb-1">SEO Article Ideas</h2>
-        <p className="text-muted-foreground text-sm mb-5">High-potential keywords for Richmond and Ipswich UK</p>
+        <p className="text-muted-foreground text-sm mb-5">High-potential keywords for Ipswich, Suffolk UK</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            { keyword: 'physiotherapy Richmond Surrey', title: 'Best Physiotherapy in Richmond — Expert Guide' },
+            { keyword: 'physiotherapy Ipswich Suffolk', title: 'Best Physiotherapy in Ipswich — Expert Guide' },
             { keyword: 'MLS laser therapy knee pain', title: 'MLS Laser Therapy for Knee Pain: What to Expect' },
             { keyword: 'custom orthotics Ipswich', title: 'Custom Insoles in Ipswich — Walk Pain-Free' },
-            { keyword: 'sports injury treatment Richmond', title: 'Sports Injury Treatment in Richmond — Return to Sport Fast' },
+            { keyword: 'sports injury treatment Ipswich', title: 'Sports Injury Treatment in Ipswich — Return to Sport Fast' },
             { keyword: 'biomechanical assessment UK', title: 'What is a Biomechanical Assessment? Complete Guide' },
             { keyword: 'infrared thermography physiotherapy', title: 'Infrared Thermography: The Future of Physiotherapy Monitoring' },
           ].map((s) => (
