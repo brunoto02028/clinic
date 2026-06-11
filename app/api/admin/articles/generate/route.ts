@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
-import { callAI } from '@/lib/ai-provider';
+import { callAI, CLAUDE_SONNET_MODEL } from '@/lib/ai-provider';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +60,7 @@ Respond in this exact JSON format (no markdown wrapping, no code blocks):
 }`;
 
   try {
-    const raw = await callAI(prompt, { temperature: 0.7, maxTokens: 4096 });
+    const raw = await callAI(prompt, { model: CLAUDE_SONNET_MODEL, temperature: 0.7, maxTokens: 4096 });
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Failed to parse article from AI response');
     const article = JSON.parse(jsonMatch[0]);
