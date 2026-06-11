@@ -425,16 +425,43 @@ async function computeRecoveryRing(patientId: string) {
     const progress = await (prisma as any).patientProgress.findUnique({ where: { patientId } });
     const consistencyPercent = progress ? Math.min(100, Math.round((progress.streakDays / 7) * 100)) : 0;
 
-    // Wellbeing ring: average inverse pain (10 - pain) / 10 * 100
-    // For now use a simple calculation based on last body assessment score
-    let wellbeingPercent = 50; // default
-    const lastAssessment = await (prisma as any).bodyAssessment.findFirst({
-      where: { patientId },
-      orderBy: { createdAt: "desc" },
-      select: { overallScore: true },
+    // Wellbeing ring: last 7 daily check-ins — avg of (10-pain)/10*60 + mood/5*40
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentCheckIns = await (prisma as any).dailyCheckIn.findMany({
+      where: {
+        patientId,
+        checkinDate: { gte: sevenDaysAgo.toISOString().split("T")[0] },
+      },
+      orderBy: { checkinDate: "desc" },
+      take: 7,
     });
-    if (lastAssessment?.overallScore) {
-      wellbeingPercent = Math.round(lastAssessment.overallScore);
+
+    let wellbeingPercent = 50; // default when no check-ins
+    if (recentCheckIns.length > 0) {
+      const avgScore = recentCheckIns.reduce((sum: number, c: any) => {
+        const painScore = ((10 - c.painLevel) / 10) * 60;
+        const moodScore = ((c.moodLevel - 1) / 4) * 40;
+        return sum + painScore + moodScore;
+      }, 0) / recentCheckIns.length;
+      wellbeingPercent = Math.round(avgScore);
+
+      // Boost exercise ring if check-ins show exercises done
+      const exerciseDoneCount = recentCheckIns.filter((c: any) => c.exercisesDone).length;
+      if (exerciseDoneCount > 0 && exercisePercent === 0) {
+        // Fallback: use check-in data if no protocol assigned
+        exercisePercent = Math.round((exerciseDoneCount / 7) * 100);
+      }
+    } else {
+      // Fallback: last body assessment score
+      const lastAssessment = await (prisma as any).bodyAssessment.findFirst({
+        where: { patientId },
+        orderBy: { createdAt: "desc" },
+        select: { overallScore: true },
+      });
+      if (lastAssessment?.overallScore) {
+        wellbeingPercent = Math.round(lastAssessment.overallScore);
+      }
     }
 
     return {

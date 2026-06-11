@@ -47,9 +47,14 @@ export default function BookingForm() {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [noAvailability, setNoAvailability] = useState(false);
+  const [sessionDiscount, setSessionDiscount] = useState(0);
 
   useEffect(() => {
     setMounted(true);
+    fetch("/api/patient/membership/subscription").then(r => r.json()).then(d => {
+      const discount = d?.subscription?.plan?.sessionDiscount || 0;
+      setSessionDiscount(discount);
+    }).catch(() => {});
     fetch("/api/patient/status").then(r => r.json()).then(d => {
       if (d.screeningComplete !== undefined) setScreeningComplete(d.screeningComplete);
     }).catch(() => {});
@@ -129,6 +134,12 @@ export default function BookingForm() {
       }
     : TREATMENT_OPTIONS.find((t) => t.id === selectedTreatment);
 
+  const discountedPrice = treatment
+    ? sessionDiscount > 0
+      ? parseFloat((treatment.price * (1 - sessionDiscount / 100)).toFixed(2))
+      : treatment.price
+    : 0;
+
   // Available dates and slots now fetched from API (see fetchAvailableDates / fetchSlotsForDate)
 
   const handleCreateAppointment = async () => {
@@ -143,7 +154,7 @@ export default function BookingForm() {
           dateTime: dateTime.toISOString(),
           duration: treatment?.duration ?? 60,
           treatmentType: treatment?.name ?? "Appointment",
-          price: treatment?.price ?? 60,
+          price: discountedPrice ?? 60,
         }),
       });
 
@@ -287,9 +298,11 @@ export default function BookingForm() {
                         {isPt ? "Duração" : "Duration"}: {t.duration} {isPt ? "minutos" : "minutes"}
                       </p>
                     </div>
-                    <p className="font-bold text-lg text-primary">
-                      £{t.price}
-                    </p>
+                    <div className="text-right">
+                      {sessionDiscount > 0 && <p className="text-xs line-through text-muted-foreground">£{t.price}</p>}
+                      <p className="font-bold text-lg text-primary">£{sessionDiscount > 0 ? parseFloat((t.price * (1 - sessionDiscount / 100)).toFixed(2)) : t.price}</p>
+                      {sessionDiscount > 0 && <p className="text-xs text-emerald-500">{sessionDiscount}% off</p>}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -459,9 +472,11 @@ export default function BookingForm() {
                     <p>
                       <span className="font-medium">{isPt ? "Duração:" : "Duration:"}</span> {treatment?.duration ?? 60} {isPt ? "minutos" : "minutes"}
                     </p>
-                    <p className="text-lg font-bold text-primary mt-2">
-                      Total: £{treatment?.price ?? 60}
-                    </p>
+                    <div className="mt-2">
+                      {sessionDiscount > 0 && <p className="text-sm line-through text-muted-foreground">£{treatment?.price ?? 60}</p>}
+                      <p className="text-lg font-bold text-primary">Total: £{discountedPrice}</p>
+                      {sessionDiscount > 0 && <p className="text-xs text-emerald-500 font-medium">{sessionDiscount}% membership discount applied</p>}
+                    </div>
                   </div>
                 </div>
               )}
@@ -544,7 +559,7 @@ export default function BookingForm() {
                     <div className="border-t pt-2 mt-2">
                       <div className="flex justify-between text-base">
                         <span className="font-semibold">Total</span>
-                        <span className="font-bold text-primary">£{treatment?.price ?? 60}</span>
+                        <span className="font-bold text-primary">£{discountedPrice}</span>
                       </div>
                     </div>
                   </div>

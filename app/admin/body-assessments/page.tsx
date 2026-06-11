@@ -203,15 +203,15 @@ interface Assessment {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; labelPt: string; color: string; icon: any }> = {
-  PENDING_CAPTURE: { label: "Pending Capture", labelPt: "Aguardando Captura", color: "bg-orange-100 text-orange-700", icon: Camera },
-  CAPTURING: { label: "Capturing", labelPt: "Capturando", color: "bg-blue-100 text-blue-700", icon: Camera },
-  PENDING_ANALYSIS: { label: "Pending Analysis", labelPt: "Aguardando Análise", color: "bg-yellow-100 text-yellow-700", icon: Clock },
-  ANALYZING: { label: "Analyzing...", labelPt: "Analisando...", color: "bg-purple-100 text-purple-700", icon: Brain },
-  PENDING_REVIEW: { label: "Pending Review", labelPt: "Aguardando Revisão", color: "bg-indigo-100 text-indigo-700", icon: ClipboardList },
-  REVIEWED: { label: "Reviewed", labelPt: "Revisado", color: "bg-teal-100 text-teal-700", icon: CheckCircle2 },
-  SENT_TO_PATIENT: { label: "Sent to Patient", labelPt: "Enviado ao Paciente", color: "bg-cyan-100 text-cyan-700", icon: Mail },
-  COMPLETED: { label: "Completed", labelPt: "Concluído", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
-  RECAPTURE_REQUESTED: { label: "Recapture Requested", labelPt: "Re-captura Solicitada", color: "bg-orange-100 text-orange-700", icon: RefreshCw },
+  PENDING_CAPTURE: { label: "Pending Capture", labelPt: "Aguardando Captura", color: "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300", icon: Camera },
+  CAPTURING: { label: "Capturing", labelPt: "Capturando", color: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300", icon: Camera },
+  PENDING_ANALYSIS: { label: "Pending Analysis", labelPt: "Aguardando Análise", color: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300", icon: Clock },
+  ANALYZING: { label: "Analyzing...", labelPt: "Analisando...", color: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300", icon: Brain },
+  PENDING_REVIEW: { label: "Pending Review", labelPt: "Aguardando Revisão", color: "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300", icon: ClipboardList },
+  REVIEWED: { label: "Reviewed", labelPt: "Revisado", color: "bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300", icon: CheckCircle2 },
+  SENT_TO_PATIENT: { label: "Sent to Patient", labelPt: "Enviado ao Paciente", color: "bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300", icon: Mail },
+  COMPLETED: { label: "Completed", labelPt: "Concluído", color: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300", icon: CheckCircle2 },
+  RECAPTURE_REQUESTED: { label: "Recapture Requested", labelPt: "Re-captura Solicitada", color: "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300", icon: RefreshCw },
 };
 
 export default function AdminBodyAssessmentsPage() {
@@ -651,10 +651,10 @@ export default function AdminBodyAssessmentsPage() {
     const capturedViews = [a.frontImageUrl, a.backImageUrl, a.leftImageUrl, a.rightImageUrl].filter(Boolean).length;
     const videoCount = Array.isArray(a.movementVideos) ? a.movementVideos.length : 0;
     const WORKFLOW_STEPS = [
-      { key: "PENDING_CAPTURE", label: "Capture", icon: Camera },
-      { key: "PENDING_ANALYSIS", label: "AI Analysis", icon: Brain },
-      { key: "PENDING_REVIEW", label: "Review", icon: ClipboardList },
-      { key: "COMPLETED", label: "Completed", icon: CheckCircle2 },
+      { key: "PENDING_CAPTURE", label: locale === "pt-BR" ? "Captura" : "Capture", icon: Camera },
+      { key: "PENDING_ANALYSIS", label: locale === "pt-BR" ? "Análise IA" : "AI Analysis", icon: Brain },
+      { key: "PENDING_REVIEW", label: locale === "pt-BR" ? "Revisão" : "Review", icon: ClipboardList },
+      { key: "COMPLETED", label: locale === "pt-BR" ? "Concluído" : "Completed", icon: CheckCircle2 },
     ];
     const statusOrder = ["PENDING_CAPTURE", "CAPTURING", "PENDING_ANALYSIS", "ANALYZING", "PENDING_REVIEW", "REVIEWED", "COMPLETED"];
     const currentIdx = statusOrder.indexOf(a.status);
@@ -706,7 +706,7 @@ export default function AdminBodyAssessmentsPage() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold">Direct Capture — {a.assessmentNumber}</h1>
+              <h1 className="text-xl font-bold">{locale === "pt-BR" ? "Captura Direta" : "Direct Capture"} — {a.assessmentNumber}</h1>
               <p className="text-sm text-muted-foreground">{a.patient.firstName} {a.patient.lastName}</p>
             </div>
             {isCaptureUploading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
@@ -720,13 +720,13 @@ export default function AdminBodyAssessmentsPage() {
     }
 
     const TAB_CONFIG = [
-      { id: "overview" as const, label: "Overview", icon: LayoutGrid },
-      { id: "metrics" as const, label: "Body Metrics", icon: Heart },
-      { id: "images" as const, label: "Images", icon: ImageIcon },
-      { id: "videos" as const, label: "Videos", icon: Video },
-      { id: "annotate" as const, label: "Tools", icon: Pencil },
-      { id: "analysis" as const, label: "AI Analysis", icon: Brain },
-      { id: "notes" as const, label: "Notes", icon: StickyNote },
+      { id: "overview" as const, label: locale === "pt-BR" ? "Visão Geral" : "Overview", icon: LayoutGrid },
+      { id: "metrics" as const, label: locale === "pt-BR" ? "Medidas" : "Body Metrics", icon: Heart },
+      { id: "images" as const, label: locale === "pt-BR" ? "Imagens" : "Images", icon: ImageIcon },
+      { id: "videos" as const, label: locale === "pt-BR" ? "Vídeos" : "Videos", icon: Video },
+      { id: "annotate" as const, label: locale === "pt-BR" ? "Ferramentas" : "Tools", icon: Pencil },
+      { id: "analysis" as const, label: locale === "pt-BR" ? "Análise IA" : "AI Analysis", icon: Brain },
+      { id: "notes" as const, label: locale === "pt-BR" ? "Notas" : "Notes", icon: StickyNote },
       ...(a.segmentScores ? [{ id: "3dmodel" as const, label: locale === "pt-BR" ? "Modelo 3D" : "3D Model", icon: Eye }] : []),
     ];
 
@@ -771,18 +771,18 @@ export default function AdminBodyAssessmentsPage() {
               {(a.status === "PENDING_ANALYSIS" || a.status === "PENDING_REVIEW") && (
                 <Button size="sm" className="bg-white text-indigo-700 hover:bg-blue-50 font-semibold" onClick={() => runAiAnalysis(a)} disabled={isAnalyzing}>
                   {isAnalyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                  {isAnalyzing ? "Analyzing..." : "AI Analysis"}
+                  {isAnalyzing ? (locale === "pt-BR" ? "Analisando..." : "Analyzing...") : (locale === "pt-BR" ? "Análise IA" : "AI Analysis")}
                 </Button>
               )}
               {a.correctiveExercises && a.correctiveExercises.length > 0 && (
                 <>
                   <Button size="sm" className="bg-white/20 text-white hover:bg-white/30 font-semibold" onClick={() => generateHomeProtocol(a)} disabled={isGeneratingProtocol}>
                     {isGeneratingProtocol ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Home className="h-4 w-4 mr-2" />}
-                    {isGeneratingProtocol ? "Generating..." : "Home Protocol"}
+                    {isGeneratingProtocol ? (locale === "pt-BR" ? "Gerando..." : "Generating...") : (locale === "pt-BR" ? "Protocolo Casa" : "Home Protocol")}
                   </Button>
                   <Button size="sm" className="bg-white/20 text-white hover:bg-white/30 font-semibold" onClick={() => exportExercises(a)} disabled={isExportingExercises}>
                     {isExportingExercises ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ClipboardCheck className="h-4 w-4 mr-2" />}
-                    {isExportingExercises ? "Exporting..." : "Export Exercises"}
+                    {isExportingExercises ? (locale === "pt-BR" ? "Exportando..." : "Exporting...") : (locale === "pt-BR" ? "Exportar Exercícios" : "Export Exercises")}
                   </Button>
                 </>
               )}
@@ -848,14 +848,14 @@ export default function AdminBodyAssessmentsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Photos</p>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{locale === "pt-BR" ? "Fotos" : "Photos"}</p>
                       <p className="text-2xl font-bold mt-1">{capturedViews}<span className="text-sm text-muted-foreground font-normal">/4</span></p>
                     </div>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${capturedViews === 4 ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${capturedViews === 4 ? "bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400" : "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"}`}>
                       <Camera className="h-5 w-5" />
                     </div>
                   </div>
-                  {capturedViews < 4 && <p className="text-xs text-muted-foreground mt-2">{4 - capturedViews} views remaining</p>}
+                  {capturedViews < 4 && <p className="text-xs text-muted-foreground mt-2">{locale === "pt-BR" ? `${4 - capturedViews} vistas faltando` : `${4 - capturedViews} views remaining`}</p>}
                 </CardContent>
               </Card>
 
@@ -863,14 +863,14 @@ export default function AdminBodyAssessmentsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Videos</p>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{locale === "pt-BR" ? "Vídeos" : "Videos"}</p>
                       <p className="text-2xl font-bold mt-1">{videoCount}</p>
                     </div>
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${videoCount > 0 ? "bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400" : "bg-muted text-muted-foreground"}`}>
                       <Video className="h-5 w-5" />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">{videoCount > 0 ? "Functional tests" : "None recorded"}</p>
+                  <p className="text-xs text-muted-foreground mt-2">{videoCount > 0 ? (locale === "pt-BR" ? "Testes funcionais" : "Functional tests") : (locale === "pt-BR" ? "Nenhum gravado" : "None recorded")}</p>
                 </CardContent>
               </Card>
 
@@ -878,14 +878,14 @@ export default function AdminBodyAssessmentsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">AI Analysis</p>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{locale === "pt-BR" ? "Análise IA" : "AI Analysis"}</p>
                       <p className="text-2xl font-bold mt-1">{a.aiProcessedAt ? "✓" : "—"}</p>
                     </div>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${a.aiProcessedAt ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-600"}`}>
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${a.aiProcessedAt ? "bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400" : "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400"}`}>
                       <Brain className="h-5 w-5" />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">{a.aiProcessedAt ? new Date(a.aiProcessedAt).toLocaleDateString() : "Pending"}</p>
+                  <p className="text-xs text-muted-foreground mt-2">{a.aiProcessedAt ? new Date(a.aiProcessedAt).toLocaleDateString() : (locale === "pt-BR" ? "Pendente" : "Pending")}</p>
                 </CardContent>
               </Card>
 
@@ -1018,11 +1018,11 @@ export default function AdminBodyAssessmentsPage() {
                           <Camera className="h-6 w-6 text-primary" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-sm">Image Capture</h3>
-                          <p className="text-xs text-muted-foreground mt-1">Use your device camera to capture postural photos and record functional tests.</p>
+                          <h3 className="font-semibold text-sm">{locale === "pt-BR" ? "Captura de Imagens" : "Image Capture"}</h3>
+                          <p className="text-xs text-muted-foreground mt-1">{locale === "pt-BR" ? "Use a câmera do seu dispositivo para capturar fotos posturais e gravar testes funcionais." : "Use your device camera to capture postural photos and record functional tests."}</p>
                           <div className="flex flex-wrap gap-2 mt-3">
                             <Button size="sm" onClick={() => setShowCameraCapture(true)}>
-                              <Camera className="h-4 w-4 mr-1.5" /> Open Camera
+                              <Camera className="h-4 w-4 mr-1.5" /> {locale === "pt-BR" ? "Abrir Câmera" : "Open Camera"}
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => {
                               const inp = document.createElement("input");
@@ -1047,16 +1047,16 @@ export default function AdminBodyAssessmentsPage() {
                               };
                               inp.click();
                             }}>
-                              <Upload className="h-4 w-4 mr-1.5" /> Upload Photos
+                              <Upload className="h-4 w-4 mr-1.5" /> {locale === "pt-BR" ? "Enviar Fotos" : "Upload Photos"}
                             </Button>
                             {a.captureToken && (
                               <Button size="sm" variant="default" className="bg-purple-600 hover:bg-purple-700" onClick={() => setShowRemoteCapture(true)}>
-                                <Smartphone className="h-4 w-4 mr-1.5" /> {locale === "pt-BR" ? "📱 Captura Remota" : "📱 Remote Capture"}
+                                <Smartphone className="h-4 w-4 mr-1.5" /> {locale === "pt-BR" ? "Captura Remota" : "Remote Capture"}
                               </Button>
                             )}
                             {a.captureToken && (
                               <Button variant="outline" size="sm" onClick={() => copyCaptureLink(a.captureToken!)}>
-                                <Copy className="h-4 w-4 mr-1.5" /> Copy Link
+                                <Copy className="h-4 w-4 mr-1.5" /> {locale === "pt-BR" ? "Copiar Link" : "Copy Link"}
                               </Button>
                             )}
                           </div>
@@ -1071,7 +1071,7 @@ export default function AdminBodyAssessmentsPage() {
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4 text-primary" /> Captured Images
+                        <ImageIcon className="h-4 w-4 text-primary" /> {locale === "pt-BR" ? "Imagens Capturadas" : "Captured Images"}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1098,7 +1098,7 @@ export default function AdminBodyAssessmentsPage() {
                         })}
                       </div>
                       <Button variant="ghost" size="sm" className="w-full mt-2 text-xs" onClick={() => setDetailTab("images")}>
-                        View all images <ArrowRight className="h-3 w-3 ml-1" />
+                        {locale === "pt-BR" ? "Ver todas as imagens" : "View all images"} <ArrowRight className="h-3 w-3 ml-1" />
                       </Button>
                     </CardContent>
                   </Card>
@@ -1210,10 +1210,10 @@ export default function AdminBodyAssessmentsPage() {
                       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
                         <Camera className="h-7 w-7 text-muted-foreground" />
                       </div>
-                      <h3 className="font-semibold">Awaiting Capture</h3>
-                      <p className="text-sm text-muted-foreground mt-1">Capture postural photos to start the biomechanical assessment.</p>
+                      <h3 className="font-semibold">{locale === "pt-BR" ? "Aguardando Captura" : "Awaiting Capture"}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{locale === "pt-BR" ? "Capture fotos posturais para iniciar a avaliação biomecânica." : "Capture postural photos to start the biomechanical assessment."}</p>
                       <Button className="mt-4" onClick={() => setShowCameraCapture(true)}>
-                        <Camera className="h-4 w-4 mr-2" /> Start Capture
+                        <Camera className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Iniciar Captura" : "Start Capture"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -1275,10 +1275,10 @@ export default function AdminBodyAssessmentsPage() {
             {/* Image Cards Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: "Front", view: "front", url: a.frontImageUrl, annotated: a.frontAnnotatedUrl },
-              { label: "Back", view: "back", url: a.backImageUrl, annotated: a.backAnnotatedUrl },
-              { label: "Left", view: "left", url: a.leftImageUrl, annotated: a.leftAnnotatedUrl },
-              { label: "Right", view: "right", url: a.rightImageUrl, annotated: a.rightAnnotatedUrl },
+              { label: locale === "pt-BR" ? "Frontal" : "Front", view: "front", url: a.frontImageUrl, annotated: a.frontAnnotatedUrl },
+              { label: locale === "pt-BR" ? "Posterior" : "Back", view: "back", url: a.backImageUrl, annotated: a.backAnnotatedUrl },
+              { label: locale === "pt-BR" ? "Esquerda" : "Left", view: "left", url: a.leftImageUrl, annotated: a.leftAnnotatedUrl },
+              { label: locale === "pt-BR" ? "Direita" : "Right", view: "right", url: a.rightImageUrl, annotated: a.rightAnnotatedUrl },
             ].map((img) => (
               <Card key={img.label}>
                 <CardHeader className="p-3">
@@ -1361,8 +1361,8 @@ export default function AdminBodyAssessmentsPage() {
                       onClick={() => fileInputRefs.current?.[img.view]?.click()}
                     >
                       <Upload className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground mt-2">Click to upload</p>
-                      <p className="text-[10px] text-muted-foreground">{img.label} view</p>
+                      <p className="text-xs text-muted-foreground mt-2">{locale === "pt-BR" ? "Clique para enviar" : "Click to upload"}</p>
+                      <p className="text-[10px] text-muted-foreground">{img.label}</p>
                     </div>
                   )}
                 </CardContent>
@@ -1385,16 +1385,16 @@ export default function AdminBodyAssessmentsPage() {
                     label: v.label || v.testType,
                     duration: v.duration,
                   }))}
-                  title="Movement Analysis — Skeleton Overlay"
+                  title={locale === "pt-BR" ? "Análise de Movimento — Esqueleto" : "Movement Analysis — Skeleton Overlay"}
                 />
               </>
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No movement videos recorded yet.</p>
+                  <p className="text-muted-foreground">{locale === "pt-BR" ? "Nenhum vídeo de movimento gravado ainda." : "No movement videos recorded yet."}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Videos are captured during the assessment: squat, gait, lunge, balance tests.
+                    {locale === "pt-BR" ? "Vídeos são capturados durante a avaliação: agachamento, marcha, afundo, equilíbrio." : "Videos are captured during the assessment: squat, gait, lunge, balance tests."}
                   </p>
                 </CardContent>
               </Card>
@@ -1404,7 +1404,7 @@ export default function AdminBodyAssessmentsPage() {
             {a.movementPatterns && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Movement Pattern Analysis</CardTitle>
+                  <CardTitle className="text-base">{locale === "pt-BR" ? "Análise de Padrões de Movimento" : "Movement Pattern Analysis"}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">
@@ -1422,7 +1422,9 @@ export default function AdminBodyAssessmentsPage() {
             {/* Sub-mode tabs */}
             <div className="flex items-center gap-2 border-b pb-2">
               {(["draw", "plumb", "compare"] as const).map((mode) => {
-                const labels = { draw: "Annotate / Angles", plumb: "Plumb Line", compare: "Comparison" };
+                const labels = locale === "pt-BR"
+                  ? { draw: "Anotar / Ângulos", plumb: "Linha de Prumo", compare: "Comparação" }
+                  : { draw: "Annotate / Angles", plumb: "Plumb Line", compare: "Comparison" };
                 return (
                   <Button key={mode} variant={annotateMode === mode ? "default" : "outline"} size="sm" onClick={() => setAnnotateMode(mode)}>
                     {labels[mode]}
@@ -1674,7 +1676,7 @@ export default function AdminBodyAssessmentsPage() {
                 {(a.frontImageUrl || a.backImageUrl || a.leftImageUrl || a.rightImageUrl) && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold">Skeleton Analysis</h3>
+                      <h3 className="text-sm font-semibold">{locale === "pt-BR" ? "Análise do Esqueleto" : "Skeleton Analysis"}</h3>
                       <div className="flex gap-1.5 ml-auto">
                         {(["front", "back", "left", "right"] as const).map((v) => {
                           const imgUrl = v === "front" ? a.frontImageUrl : v === "back" ? a.backImageUrl : v === "left" ? a.leftImageUrl : a.rightImageUrl;
@@ -2060,18 +2062,18 @@ export default function AdminBodyAssessmentsPage() {
                 {/* Raw Data (collapsible) */}
                 <details className="group">
                   <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 py-2">
-                    <FileText className="h-4 w-4" /> Raw Analysis Data
+                    <FileText className="h-4 w-4" /> {locale === "pt-BR" ? "Dados Brutos da Análise" : "Raw Analysis Data"}
                   </summary>
                   <div className="space-y-4 mt-3">
                     <Card>
-                      <CardHeader className="pb-2"><CardTitle className="text-sm">Posture Analysis</CardTitle></CardHeader>
+                      <CardHeader className="pb-2"><CardTitle className="text-sm">{locale === "pt-BR" ? "Análise Postural" : "Posture Analysis"}</CardTitle></CardHeader>
                       <CardContent>
                         <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.postureAnalysis, null, 2)}</pre>
                       </CardContent>
                     </Card>
                     {a.jointAngles && (
                       <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-sm">Joint Angles</CardTitle></CardHeader>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">{locale === "pt-BR" ? "Ângulos Articulares" : "Joint Angles"}</CardTitle></CardHeader>
                         <CardContent>
                           <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.jointAngles, null, 2)}</pre>
                         </CardContent>
@@ -2079,7 +2081,7 @@ export default function AdminBodyAssessmentsPage() {
                     )}
                     {a.kineticChain && (
                       <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-sm">Kinetic Chain</CardTitle></CardHeader>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">{locale === "pt-BR" ? "Cadeia Cinética" : "Kinetic Chain"}</CardTitle></CardHeader>
                         <CardContent>
                           <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.kineticChain, null, 2)}</pre>
                         </CardContent>
@@ -2087,7 +2089,7 @@ export default function AdminBodyAssessmentsPage() {
                     )}
                     {a.segmentScores && (
                       <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-sm">Segment Scores</CardTitle></CardHeader>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">{locale === "pt-BR" ? "Scores Segmentares" : "Segment Scores"}</CardTitle></CardHeader>
                         <CardContent>
                           <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.segmentScores, null, 2)}</pre>
                         </CardContent>
@@ -2095,7 +2097,7 @@ export default function AdminBodyAssessmentsPage() {
                     )}
                     {a.gaitMetrics && (
                       <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-sm">Gait Metrics</CardTitle></CardHeader>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">{locale === "pt-BR" ? "Métricas de Marcha" : "Gait Metrics"}</CardTitle></CardHeader>
                         <CardContent>
                           <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto max-h-[300px]">{JSON.stringify(a.gaitMetrics, null, 2)}</pre>
                         </CardContent>
@@ -2439,17 +2441,17 @@ export default function AdminBodyAssessmentsPage() {
         </div>
         <Button onClick={() => setShowNewDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          New Assessment
+          {locale === "pt-BR" ? "Nova Avaliação" : "New Assessment"}
         </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">Total</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-orange-600">{stats.pending}</p><p className="text-xs text-muted-foreground">Pending Capture</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-yellow-600">{stats.analysis}</p><p className="text-xs text-muted-foreground">Awaiting Analysis</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-indigo-600">{stats.review}</p><p className="text-xs text-muted-foreground">Pending Review</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-green-600">{stats.completed}</p><p className="text-xs text-muted-foreground">Completed</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.pending}</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Aguardando Captura" : "Pending Capture"}</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.analysis}</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Aguardando Análise" : "Awaiting Analysis"}</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats.review}</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Aguardando Revisão" : "Pending Review"}</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completed}</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Concluídos" : "Completed"}</p></CardContent></Card>
       </div>
 
       {/* Search & Filter */}
@@ -2457,7 +2459,7 @@ export default function AdminBodyAssessmentsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by number, patient name or email..."
+            placeholder={locale === "pt-BR" ? "Buscar por número, nome ou email..." : "Search by number, patient name or email..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -2465,12 +2467,12 @@ export default function AdminBodyAssessmentsPage() {
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Statuses" />
+            <SelectValue placeholder={locale === "pt-BR" ? "Todos os Status" : "All Statuses"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="all">{locale === "pt-BR" ? "Todos os Status" : "All Statuses"}</SelectItem>
             {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-              <SelectItem key={key} value={key}>{config.label}</SelectItem>
+              <SelectItem key={key} value={key}>{locale === "pt-BR" ? config.labelPt : config.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -2485,11 +2487,11 @@ export default function AdminBodyAssessmentsPage() {
         <Card>
           <CardContent className="p-12 text-center">
             <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-semibold text-lg">No assessments found</h3>
-            <p className="text-muted-foreground mt-1">Create a new body assessment to get started.</p>
+            <h3 className="font-semibold text-lg">{locale === "pt-BR" ? "Nenhuma avaliação encontrada" : "No assessments found"}</h3>
+            <p className="text-muted-foreground mt-1">{locale === "pt-BR" ? "Crie uma nova avaliação corporal para começar." : "Create a new body assessment to get started."}</p>
             <Button className="mt-4" onClick={() => setShowNewDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              New Assessment
+              {locale === "pt-BR" ? "Nova Avaliação" : "New Assessment"}
             </Button>
           </CardContent>
         </Card>
@@ -2510,7 +2512,7 @@ export default function AdminBodyAssessmentsPage() {
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold">{a.assessmentNumber}</span>
-                          <Badge className={sc.color + " text-xs"}>{sc.label}</Badge>
+                          <Badge className={sc.color + " text-xs"}>{locale === "pt-BR" ? sc.labelPt : sc.label}</Badge>
                           {a.sentToPatientAt ? (
                             <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-[10px] gap-1">
                               <Send className="h-2.5 w-2.5" /> {locale === "pt-BR" ? "Enviado" : "Sent"}
@@ -2525,16 +2527,16 @@ export default function AdminBodyAssessmentsPage() {
                           {a.patient.firstName} {a.patient.lastName} · {a.patient.email}
                         </p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span>📅 {new Date(a.createdAt).toLocaleDateString()}</span>
-                          <span>📷 {capturedViews}/4 views</span>
-                          {a.overallScore != null && <span>⭐ {Math.round(a.overallScore)}/100</span>}
+                          <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {new Date(a.createdAt).toLocaleDateString()}</span>
+                          <span className="flex items-center gap-1"><Camera className="h-3 w-3" /> {capturedViews}/4 {locale === "pt-BR" ? "vistas" : "views"}</span>
+                          {a.overallScore != null && <span className="flex items-center gap-1"><Target className="h-3 w-3" /> {Math.round(a.overallScore)}/100</span>}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => viewDetail(a)}>
                         <Eye className="h-4 w-4 mr-1" />
-                        View
+                        {locale === "pt-BR" ? "Ver" : "View"}
                       </Button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -2544,16 +2546,16 @@ export default function AdminBodyAssessmentsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => viewDetail(a)}>
-                            <Eye className="h-4 w-4 mr-2" /> View Details
+                            <Eye className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Ver Detalhes" : "View Details"}
                           </DropdownMenuItem>
                           {a.captureToken && (
                             <DropdownMenuItem onClick={() => copyCaptureLink(a.captureToken!)}>
-                              <Copy className="h-4 w-4 mr-2" /> Copy Capture Link
+                              <Copy className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Copiar Link" : "Copy Capture Link"}
                             </DropdownMenuItem>
                           )}
                           {(a.status === "PENDING_ANALYSIS" || a.status === "PENDING_REVIEW") && (
                             <DropdownMenuItem onClick={() => runAiAnalysis(a)}>
-                              <Brain className="h-4 w-4 mr-2" /> Run AI Analysis
+                              <Brain className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Executar Análise IA" : "Run AI Analysis"}
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
@@ -2568,7 +2570,7 @@ export default function AdminBodyAssessmentsPage() {
                           )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-red-600" onClick={() => deleteAssessment(a.id)}>
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            <Trash2 className="h-4 w-4 mr-2" /> {locale === "pt-BR" ? "Excluir" : "Delete"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -2700,15 +2702,15 @@ export default function AdminBodyAssessmentsPage() {
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Body Assessment</DialogTitle>
-            <DialogDescription>Create a new biomechanical body assessment for a patient.</DialogDescription>
+            <DialogTitle>{locale === "pt-BR" ? "Nova Avaliação Corporal" : "New Body Assessment"}</DialogTitle>
+            <DialogDescription>{locale === "pt-BR" ? "Crie uma nova avaliação biomecânica corporal para um paciente." : "Create a new biomechanical body assessment for a patient."}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Select Patient</Label>
+              <Label>{locale === "pt-BR" ? "Selecionar Paciente" : "Select Patient"}</Label>
               <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a patient..." />
+                  <SelectValue placeholder={locale === "pt-BR" ? "Escolha um paciente..." : "Choose a patient..."} />
                 </SelectTrigger>
                 <SelectContent>
                   {patients.map((p) => (
@@ -2720,14 +2722,14 @@ export default function AdminBodyAssessmentsPage() {
               </Select>
             </div>
             <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
-              <p>A capture link will be generated that can be shared with the patient or used in-clinic.</p>
+              <p>{locale === "pt-BR" ? "Um link de captura será gerado que pode ser compartilhado com o paciente ou usado na clínica." : "A capture link will be generated that can be shared with the patient or used in-clinic."}</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowNewDialog(false)}>{locale === "pt-BR" ? "Cancelar" : "Cancel"}</Button>
             <Button onClick={createAssessment} disabled={isSubmitting || !selectedPatientId}>
               {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-              Create Assessment
+              {locale === "pt-BR" ? "Criar Avaliação" : "Create Assessment"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -39,6 +39,10 @@ export default function NewArticlePage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   // Voice recording (Web Speech API — free, no rate limits)
   const [recording, setRecording] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("ai_voice_lang") || "pt-BR";
+    return "pt-BR";
+  });
   const recognitionRef = useRef<any>(null);
   const fullTranscriptRef = useRef("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -146,7 +150,7 @@ export default function NewArticlePage() {
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.lang = "pt-BR";
+    recognition.lang = voiceLang;
     fullTranscriptRef.current = "";
 
     recognition.onresult = (event: any) => {
@@ -321,12 +325,25 @@ export default function NewArticlePage() {
                 size="icon"
                 onClick={recording ? stopRecording : startRecording}
                 disabled={chatLoading}
-                title={recording ? "Stop recording" : "Voice input"}
+                title={recording ? `Stop recording (${voiceLang})` : `Voice input (${voiceLang})`}
               >
                 {recording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
             </div>
-            {recording && <p className="text-xs text-red-600 animate-pulse">Recording... speak your message, then click Stop</p>}
+            {/* Voice language selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">Voice lang:</span>
+              {(["pt-BR", "pt-PT", "en-GB", "en-US"] as const).map(lang => (
+                <button key={lang} type="button"
+                  onClick={() => { setVoiceLang(lang); if (typeof window !== "undefined") localStorage.setItem("ai_voice_lang", lang); }}
+                  className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                    voiceLang === lang ? "bg-blue-600 text-white border-blue-600" : "bg-muted text-muted-foreground border-border hover:border-blue-400"
+                  }`}>
+                  {lang}
+                </button>
+              ))}
+              {recording && <span className="ml-2 text-xs text-red-600 animate-pulse">● Recording... click Stop when done</span>}
+            </div>
           </CardContent>
         )}
       </Card>

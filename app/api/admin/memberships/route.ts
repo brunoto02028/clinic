@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     if (!clinicId) return NextResponse.json({ error: "No clinic found" }, { status: 400 });
 
     const body = await request.json();
-    const { name, description, price, interval, isFree, features, patientId, patientScope } = body;
+    const { name, description, price, interval, isFree, features, patientId, patientScope, sessionDiscount } = body;
 
     if (!name) return NextResponse.json({ error: "Plan name is required" }, { status: 400 });
     if (patientScope === "specific" && !patientId) {
@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
         isFree: isFree || false,
         features: features || [],
         patientScope: patientScope || "none",
+        sessionDiscount: sessionDiscount || 0,
         status: "ACTIVE",
         stripeProductId: stripeProductId || null,
         stripePriceId: stripePriceId || null,
