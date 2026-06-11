@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { callAI } from "@/lib/ai-provider";
+import { callAIClinical } from "@/lib/ai-provider";
 
 // Comprehensive physiotherapy & biomechanics knowledge base for the system prompt
 const CLINICAL_KNOWLEDGE_BASE = `
@@ -251,7 +251,7 @@ ${assessmentDataBlock}
 Return ONLY the improved/generated text with relevant references cited [Author, Year]. No markdown headers, no explanations. Just the clinical text.`;
     }
 
-    const result = await callAI(prompt, { maxTokens: 1500 });
+    const result = await callAIClinical(prompt, { maxTokens: 1500 });
 
     return NextResponse.json({ text: result.trim() });
   } catch (error) {

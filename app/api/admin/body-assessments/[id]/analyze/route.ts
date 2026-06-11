@@ -656,14 +656,14 @@ export async function POST(
       }
     }
 
-    // ─── ENSEMBLE ANALYSIS: Run Groq + Minimax in parallel ───
+    // ─── ENSEMBLE ANALYSIS: Run Groq + Claude Opus in parallel (GDPR-safe) ───
     const systemPrompt = buildSystemPrompt(language);
     const userPrompt = buildUserPrompt(patientContext);
     
-    let ensembleResults: { groq: any; minimax: any } | null = null;
+    let ensembleResults: { groq: any; claude: any } | null = null;
     
     try {
-      console.log('[Biomechanics] Running ensemble analysis (Groq + Minimax)...');
+      console.log('[Biomechanics] Running ensemble analysis (Groq + Claude Opus)...');
       ensembleResults = await runEnsembleAnalysis({
         systemPrompt,
         userPrompt,
@@ -709,7 +709,7 @@ export async function POST(
       fullPrompt += `\n--- MOVEMENT TESTS RECORDED ---\n${videoInfo}`;
     }
 
-    // Use unified AI provider: Minimax M3 vision (primary) → Gemini (fallback)
+    // Use unified AI provider: Claude Opus Vision (primary) → Gemini (fallback)
     const { analyzeMultipleImages } = await import("@/lib/ai-provider");
     const responseText = await analyzeMultipleImages(
       visionImages,
@@ -736,16 +736,16 @@ export async function POST(
       try {
         const combined = combineEnsembleResults({
           groq: ensembleResults.groq,
-          minimax: ensembleResults.minimax,
+          claude: ensembleResults.claude,
           gemini: analysisData,
-          weights: { groq: 0.25, minimax: 0.25, gemini: 0.50 },
+          weights: { groq: 0.25, claude: 0.25, gemini: 0.50 },
         });
         
         // Use combined result as the final analysis
         analysisData = combined.combined;
         
         // Add ensemble metadata to technical notes
-        const ensembleNote = `\n\n[ENSEMBLE ANALYSIS]\nThis analysis combines results from 3 AI models:\n- Groq Llama 3.3 70B (landmark analysis)\n- MiniMax-M3 (cross-validation + clinical reasoning)\n- MiniMax-M3 Vision (primary visual analysis)\n\nModel Agreement: ${combined.modelAgreement}%\nEnsemble Confidence: ${combined.confidence}%\nConsensus Findings: ${combined.consensusFindings.length}`;
+        const ensembleNote = `\n\n[ENSEMBLE ANALYSIS]\nThis analysis combines results from 3 AI models:\n- Groq Llama 3.3 70B (landmark analysis)\n- Claude Opus 4.8 (cross-validation + clinical reasoning)\n- Claude Opus 4.8 Vision (primary visual analysis)\n\nModel Agreement: ${combined.modelAgreement}%\nEnsemble Confidence: ${combined.confidence}%\nConsensus Findings: ${combined.consensusFindings.length}`;
         
         if (analysisData.postureAnalysis?.technicalNotes) {
           analysisData.postureAnalysis.technicalNotes += ensembleNote;

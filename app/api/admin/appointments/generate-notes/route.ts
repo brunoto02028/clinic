@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { callAI } from "@/lib/ai-provider";
+import { callAIClinical } from "@/lib/ai-provider";
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +30,7 @@ Write 3-5 sentences covering:
 Write in English. Return ONLY the notes text, no markdown, no formatting, no JSON.`;
 
   try {
-    const text = await callAI(prompt, { temperature: 0.7, maxTokens: 512 });
+    const text = await callAIClinical(prompt, { temperature: 0.7, maxTokens: 512 });
     return NextResponse.json({ notes: text.trim() });
   } catch (e: any) {
     console.error("AI notes generation error:", e);
