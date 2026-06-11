@@ -50,11 +50,33 @@ export default function NewArticlePage() {
     if (typeof window !== "undefined") return localStorage.getItem("ai_article_lang") || "en-GB";
     return "en-GB";
   });
+  // ── Bilingual editing ──
+  // title/excerpt/content above hold the CURRENTLY-edited language. `stash` keeps the inactive one.
+  const [editLang, setEditLang] = useState<"en" | "pt">("en");
+  const [publishLanguage, setPublishLanguage] = useState<"en" | "pt">("en");
+  const [stash, setStash] = useState<{ en?: { title: string; excerpt: string; content: string }; pt?: { title: string; excerpt: string; content: string } }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { toast } = useToast();
 
+  // Switch the editor between EN and PT, preserving each language's content.
+  const switchLang = (newLang: "en" | "pt") => {
+    if (newLang === editLang) return;
+    setStash((s) => ({ ...s, [editLang]: { title, excerpt, content } }));
+    const other = stash[newLang] || { title: "", excerpt: "", content: "" };
+    setTitle(other.title);
+    setExcerpt(other.excerpt);
+    setContent(other.content);
+    setShowPreview(false);
+    setEditLang(newLang);
+  };
+
+  // Translate the currently-edited content into the OTHER language, store it, and switch to it.
   const handleTranslate = async (targetLang: "en" | "pt") => {
+    if (targetLang === editLang) {
+      toast({ title: "Already editing this language", description: `Switch to the other language first, then translate.` });
+      return;
+    }
     if (!title && !content) return;
     setTranslating(true);
     try {
@@ -67,10 +89,14 @@ export default function NewArticlePage() {
       if (!ct.includes("json")) throw new Error(`Server error (${res.status})`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Translation failed");
+      // Stash the current language, load the translated target language into the editor
+      setStash((s) => ({ ...s, [editLang]: { title, excerpt, content } }));
       setTitle(data.title);
       setExcerpt(data.excerpt);
       setContent(data.content);
-      toast({ title: targetLang === "pt" ? "Traduzido para Português!" : "Translated to English!" });
+      setShowPreview(false);
+      setEditLang(targetLang);
+      toast({ title: targetLang === "pt" ? "Traduzido para Português!" : "Translated to English!", description: "Review and correct the translation as needed." });
     } catch (err: any) {
       toast({ title: "Translation failed", description: err.message, variant: "destructive" });
     } finally {
@@ -205,12 +231,27 @@ export default function NewArticlePage() {
       toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
+    // Gather both language slots (current editing slot + stash)
+    const current = { title, excerpt, content };
+    const en = editLang === "en" ? current : (stash.en || { title: "", excerpt: "", content: "" });
+    const pt = editLang === "pt" ? current : (stash.pt || { title: "", excerpt: "", content: "" });
+    const primary = publishLanguage === "pt" ? pt : en;
+    if (!primary.title || !primary.content) {
+      toast({ title: `Missing ${publishLanguage === "pt" ? "Portuguese" : "English"} content`, description: `You chose to publish in ${publishLanguage === "pt" ? "Portuguese" : "English"} but that version is empty. Fill it in or change the publish language.`, variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, excerpt, content, imageUrl, published, authorName: authorName || undefined }),
+        body: JSON.stringify({
+          title: primary.title, excerpt: primary.excerpt, content: primary.content,
+          titleEn: en.title || null, excerptEn: en.excerpt || null, contentEn: en.content || null,
+          titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
+          publishLanguage,
+          imageUrl, published, authorName: authorName || undefined,
+        }),
       });
       if (res.ok) {
         toast({ title: "Article created", description: published ? "Your article has been published." : "Your article has been saved as a draft." });
@@ -375,7 +416,25 @@ export default function NewArticlePage() {
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
-            <CardTitle>Article Details</CardTitle>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle>Article Details</CardTitle>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Editing language:</span>
+                <div className="flex border border-border rounded-md overflow-hidden">
+                  <button type="button" onClick={() => switchLang("en")}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${editLang === "en" ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                    🇬🇧 English
+                  </button>
+                  <button type="button" onClick={() => switchLang("pt")}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${editLang === "pt" ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                    🇧🇷 Português
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              You are editing the <strong>{editLang === "en" ? "English" : "Portuguese"}</strong> version. Use the <Languages className="h-3 w-3 inline" /> buttons above to auto-translate into the other language, then correct it.
+            </p>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -503,6 +562,20 @@ export default function NewArticlePage() {
               ) : (
                 <RichTextEditor value={content} onChange={setContent} placeholder="Write your article content here..." />
               )}
+            </div>
+
+            {/* Primary publish language */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+              <Label className="text-sm font-semibold">Primary publish language</Label>
+              <p className="text-xs text-muted-foreground">The default language shown on the public site. Visitors can switch using the site's language toggle if the other version exists.</p>
+              <div className="flex gap-2 pt-1">
+                {(["en", "pt"] as const).map((lang) => (
+                  <button key={lang} type="button" onClick={() => setPublishLanguage(lang)}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-md border transition-colors ${publishLanguage === lang ? "bg-teal-600 text-white border-teal-600" : "bg-background text-muted-foreground border-border hover:border-teal-400"}`}>
+                    {lang === "en" ? "🇬🇧 English" : "🇧🇷 Português"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-center space-x-2">

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Calendar, User, ChevronLeft, ChevronRight, BookOpen, ArrowLeft, Clock, Share2 } from "lucide-react";
 import type { Metadata } from "next";
+import { LocalizedText, LocalizedHtml } from "./localized";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ export default async function ArticlePage({ params }: PageProps) {
             <span>/</span>
             <Link href="/articles" className="hover:text-foreground transition-colors">Articles</Link>
             <span>/</span>
-            <span className="text-foreground truncate max-w-[300px]">{article.title}</span>
+            <LocalizedText as="span" className="text-foreground truncate max-w-[300px]" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
           </nav>
         </div>
       </div>
@@ -100,9 +101,7 @@ export default async function ArticlePage({ params }: PageProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 lg:p-12">
             <div className="max-w-7xl mx-auto">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight max-w-4xl">
-                {article.title}
-              </h1>
+              <LocalizedText as="h1" className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight max-w-4xl" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
             </div>
           </div>
         </div>
@@ -115,9 +114,7 @@ export default async function ArticlePage({ params }: PageProps) {
           <article className="min-w-0 overflow-hidden">
             {/* Title (if no cover image) */}
             {!article.imageUrl && (
-              <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-6 leading-tight">
-                {article.title}
-              </h1>
+              <LocalizedText as="h1" className="text-3xl sm:text-4xl font-bold text-foreground mb-6 leading-tight" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
             )}
 
             {/* Meta bar */}
@@ -142,15 +139,15 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {/* Excerpt */}
             {article.excerpt && (
-              <p className="text-lg text-muted-foreground mb-8 leading-relaxed italic border-l-4 border-primary/30 pl-4">
-                {article.excerpt}
-              </p>
+              <LocalizedText as="p" className="text-lg text-muted-foreground mb-8 leading-relaxed italic border-l-4 border-primary/30 pl-4 block" en={article.excerptEn} pt={article.excerptPt} fallback={article.excerpt} />
             )}
 
             {/* Content */}
-            <div
+            <LocalizedHtml
               className="article-content prose prose-lg max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary hover:prose-a:text-primary/80 prose-img:rounded-xl prose-img:shadow-md prose-strong:text-foreground prose-blockquote:border-l-primary/30 prose-blockquote:text-muted-foreground"
-              dangerouslySetInnerHTML={{ __html: sanitizeContent(article.content) }}
+              en={article.contentEn}
+              pt={article.contentPt}
+              fallback={article.content}
             />
 
             {/* Prev/Next Navigation */}

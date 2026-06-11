@@ -52,19 +52,45 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { title, excerpt, content, imageUrl, published, authorName } = body;
-    
-    const slug = title
+    const {
+      title, excerpt, content, imageUrl, published, authorName,
+      titleEn, excerptEn, contentEn, titlePt, excerptPt, contentPt, publishLanguage,
+    } = body;
+
+    const pubLang = publishLanguage === "pt" ? "pt" : "en";
+
+    // Resolve per-language versions, falling back to the primary fields for the published language
+    const finalTitleEn   = titleEn   ?? (pubLang === "en" ? title   : null);
+    const finalExcerptEn = excerptEn ?? (pubLang === "en" ? excerpt : null);
+    const finalContentEn = contentEn ?? (pubLang === "en" ? content : null);
+    const finalTitlePt   = titlePt   ?? (pubLang === "pt" ? title   : null);
+    const finalExcerptPt = excerptPt ?? (pubLang === "pt" ? excerpt : null);
+    const finalContentPt = contentPt ?? (pubLang === "pt" ? content : null);
+
+    // Primary (public-facing) fields mirror the published language
+    const primaryTitle   = (pubLang === "pt" ? finalTitlePt   : finalTitleEn)   || title;
+    const primaryExcerpt = (pubLang === "pt" ? finalExcerptPt : finalExcerptEn) || excerpt;
+    const primaryContent = (pubLang === "pt" ? finalContentPt : finalContentEn) || content;
+
+    const slug = primaryTitle
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
-    
+
     const article = await prisma.article.create({
       data: {
-        title,
+        title: primaryTitle,
         slug,
-        excerpt,
-        content,
+        excerpt: primaryExcerpt,
+        content: primaryContent,
+        titleEn: finalTitleEn,
+        excerptEn: finalExcerptEn,
+        contentEn: finalContentEn,
+        titlePt: finalTitlePt,
+        excerptPt: finalExcerptPt,
+        contentPt: finalContentPt,
+        publishLanguage: pubLang,
+        language: pubLang,
         imageUrl,
         published: published || false,
         authorId: (session.user as { id: string }).id,

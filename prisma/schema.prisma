@@ -944,6 +944,15 @@ model Article {
   slug        String   @unique
   excerpt     String
   content     String   @db.Text
+  // Bilingual versions (English + Portuguese). The primary `title/excerpt/content`
+  // above mirror the publishLanguage version for backward-compat (slug, SEO, newsletter, list cards).
+  titleEn     String?
+  excerptEn   String?
+  contentEn   String?  @db.Text
+  titlePt     String?
+  excerptPt   String?
+  contentPt   String?  @db.Text
+  publishLanguage String? @default("en") // primary/default language shown publicly ("en" | "pt")
   imageUrl    String?
   published   Boolean  @default(false)
   authorId    String
