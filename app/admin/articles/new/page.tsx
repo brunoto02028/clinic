@@ -37,6 +37,7 @@ export default function NewArticlePage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   // Voice recording (Web Speech API — free, no rate limits)
   const [recording, setRecording] = useState(false);
   const [voiceLang, setVoiceLang] = useState<string>(() => {
@@ -104,9 +105,10 @@ export default function NewArticlePage() {
     }
   };
 
-  // Auto-scroll chat to bottom
+  // Auto-scroll chat to bottom — scroll ONLY the chat container, never the page
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [chatMessages, chatLoading]);
 
   const sendChatMessage = async (msg?: string) => {
@@ -307,7 +309,7 @@ export default function NewArticlePage() {
         {chatOpen && (
           <CardContent className="space-y-3">
             {/* Chat Messages */}
-            <div className="border border-teal-500/20 rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
+            <div ref={chatScrollRef} className="border border-teal-500/20 rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
               {chatMessages.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-6">
                   Start a conversation with the AI. Describe the article topic, ask questions, request changes — the AI will help you craft the perfect article.

@@ -50,6 +50,7 @@ export default function EditArticlePage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [pendingArticle, setPendingArticle] = useState<{title?: string; excerpt?: string; content?: string} | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   // Voice
   const [recording, setRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -63,7 +64,8 @@ export default function EditArticlePage() {
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [chatMessages, chatLoading]);
 
   const fetchArticle = async () => {
@@ -328,7 +330,7 @@ export default function EditArticlePage() {
         </CardHeader>
         {chatOpen && (
           <CardContent className="space-y-3">
-            <div className="border rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
+            <div ref={chatScrollRef} className="border rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
               {chatMessages.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-6">Chat with AI to regenerate or refine the article content.</p>
               )}
