@@ -1,11 +1,16 @@
-// Unified AI Provider — Minimax M3 (primary), Groq (secondary), Gemini (fallback)
+// Unified AI Provider
+// Text (general):   Claude (primary) → Minimax M3 (non-clinical fallback) → Groq → Gemini
+// Text (clinical):  Claude → Groq → Gemini  [NEVER Minimax — GDPR/UK data sovereignty]
+// Vision (clinical): Claude Vision → Gemini  [NEVER Minimax]
+// Image generation: Gemini (Claude cannot generate images)
+// Audio STT:        Minimax speech-01-hd → Groq Whisper → Gemini multimodal
 // All AI calls in the system should go through this layer.
 
 import { getConfigValue } from "@/lib/system-config";
 
 // ─── Types ───
 
-export type AIProvider = "groq" | "minimax" | "gemini" | "openai";
+export type AIProvider = "groq" | "minimax" | "gemini" | "openai" | "claude";
 
 export interface AICallOptions {
   provider?: AIProvider;
@@ -56,6 +61,14 @@ async function getGroqKey(): Promise<string | null> {
 async function getOpenAIKey(): Promise<string | null> {
   return getConfigValue("OPENAI_API_KEY");
 }
+
+async function getClaudeKey(): Promise<string | null> {
+  return (await getConfigValue("ANTHROPIC_API_KEY")) || process.env.ANTHROPIC_API_KEY || null;
+}
+
+const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
+const CLAUDE_DEFAULT_MODEL = "claude-haiku-4-5-20251001"; // fast + cost-effective for general use
+const CLAUDE_CLINICAL_MODEL = "claude-sonnet-4-6";         // clinical analysis + vision
 
 async function getGeminiModel(): Promise<string> {
   return (await getConfigValue("GEMINI_MODEL")) || "gemini-2.0-flash";
@@ -448,13 +461,167 @@ async function analyzeImageGemini(
   return text.trim();
 }
 
+// ─── Claude (Anthropic) AI calls ───
+
+async function callClaudeDirect(
+  prompt: string,
+  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string; model?: string }
+): Promise<string> {
+  const apiKey = await getClaudeKey();
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
+
+  const body: any = {
+    model: opts.model || CLAUDE_DEFAULT_MODEL,
+    max_tokens: opts.maxTokens ?? 4096,
+    messages: [{ role: "user", content: prompt }],
+  };
+  if (opts.systemPrompt) body.system = opts.systemPrompt;
+  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+
+  const res = await fetch(CLAUDE_API_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Claude API error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  const text = data.content?.[0]?.text;
+  if (!text) throw new Error("No response from Claude");
+  return text.trim();
+}
+
+async function callClaudeChat(
+  messages: Array<{ role: string; content: string }>,
+  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string; model?: string }
+): Promise<string> {
+  const apiKey = await getClaudeKey();
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
+
+  const apiMessages = messages
+    .filter((m) => m.role !== "system")
+    .map((m) => ({
+      role: m.role === "model" ? "assistant" : m.role,
+      content: m.content,
+    }));
+
+  const body: any = {
+    model: opts.model || CLAUDE_DEFAULT_MODEL,
+    max_tokens: opts.maxTokens ?? 4096,
+    messages: apiMessages,
+  };
+
+  const systemMsg = messages.find((m) => m.role === "system");
+  const systemText = opts.systemPrompt || systemMsg?.content;
+  if (systemText) body.system = systemText;
+  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+
+  const res = await fetch(CLAUDE_API_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Claude chat error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return data.content?.[0]?.text?.trim() || "";
+}
+
+async function callClaudeVision(
+  images: Array<{ url: string; base64?: string; mimeType?: string }>,
+  prompt: string,
+  opts: { temperature?: number; maxTokens?: number; systemPrompt?: string }
+): Promise<string> {
+  const apiKey = await getClaudeKey();
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
+
+  const contentParts: any[] = [];
+
+  for (const img of images) {
+    if (img.base64) {
+      contentParts.push({
+        type: "image",
+        source: { type: "base64", media_type: img.mimeType || "image/jpeg", data: img.base64 },
+      });
+    } else if (img.url.startsWith("data:image")) {
+      const match = img.url.match(/^data:(image\/[\w+]+);base64,(.+)$/);
+      if (match) {
+        contentParts.push({
+          type: "image",
+          source: { type: "base64", media_type: match[1], data: match[2] },
+        });
+      }
+    } else if (img.url.startsWith("http")) {
+      try {
+        const imgRes = await fetch(img.url, { signal: AbortSignal.timeout(10000) });
+        if (imgRes.ok) {
+          const buf = await imgRes.arrayBuffer();
+          const mime = imgRes.headers.get("content-type") || "image/jpeg";
+          contentParts.push({
+            type: "image",
+            source: { type: "base64", media_type: mime, data: Buffer.from(buf).toString("base64") },
+          });
+        }
+      } catch {
+        // Skip image if unreachable
+      }
+    }
+  }
+
+  contentParts.push({ type: "text", text: prompt });
+
+  const body: any = {
+    model: CLAUDE_CLINICAL_MODEL,
+    max_tokens: opts.maxTokens ?? 8192,
+    messages: [{ role: "user", content: contentParts }],
+  };
+  if (opts.systemPrompt) body.system = opts.systemPrompt;
+  if (opts.temperature !== undefined) body.temperature = opts.temperature;
+
+  const res = await fetch(CLAUDE_API_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Claude vision error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  const text = data.content?.[0]?.text;
+  if (!text) throw new Error("No response from Claude vision");
+  return text.trim();
+}
+
 // ═══════════════════════════════════════════════════════════════
 // PUBLIC API — Use these functions throughout the system
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Generate text using AI.
- * Priority chain: Minimax M3 (primary) → Groq (secondary) → Gemini (fallback)
+ * Generate text using AI (general use — non-clinical).
+ * Priority chain: Claude (primary) → Minimax M3 → Groq → Gemini
  */
 export async function callAI(prompt: string, opts?: AICallOptions): Promise<string> {
   const callOpts = {
@@ -463,7 +630,17 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
     systemPrompt: opts?.systemPrompt,
   };
 
-  // 1. Try Minimax M3 first (primary)
+  // 1. Claude (primary)
+  const claudeKey = await getClaudeKey();
+  if (claudeKey) {
+    try {
+      return await callClaudeDirect(prompt, callOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Claude failed, trying Minimax:", err.message);
+    }
+  }
+
+  // 2. Minimax M3 (non-clinical fallback)
   const minimaxKey = await getMinimaxKey();
   if (minimaxKey) {
     try {
@@ -473,7 +650,7 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
     }
   }
 
-  // 2. Try Groq (fast fallback)
+  // 3. Groq
   const groqKey = await getGroqKey();
   if (groqKey) {
     try {
@@ -482,8 +659,43 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
       console.warn("[ai-provider] Groq failed, falling back to Gemini:", err.message);
     }
   }
-  
-  // 3. Fallback to Gemini
+
+  // 4. Gemini (last resort)
+  return callGeminiDirect(prompt, callOpts);
+}
+
+/**
+ * Generate text using AI — CLINICAL DATA ONLY.
+ * Chain: Claude → Groq → Gemini. Minimax is NEVER used (GDPR/UK data sovereignty).
+ */
+export async function callAIClinical(prompt: string, opts?: AICallOptions): Promise<string> {
+  const callOpts = {
+    temperature: opts?.temperature,
+    maxTokens: opts?.maxTokens,
+    systemPrompt: opts?.systemPrompt,
+  };
+
+  // 1. Claude (required for clinical data)
+  const claudeKey = await getClaudeKey();
+  if (claudeKey) {
+    try {
+      return await callClaudeDirect(prompt, { ...callOpts, model: CLAUDE_CLINICAL_MODEL });
+    } catch (err: any) {
+      console.warn("[ai-provider] Claude clinical failed, trying Groq:", err.message);
+    }
+  }
+
+  // 2. Groq (GDPR-compliant EU)
+  const groqKey = await getGroqKey();
+  if (groqKey) {
+    try {
+      return await callGroqDirect(prompt, callOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Groq clinical failed, falling back to Gemini:", err.message);
+    }
+  }
+
+  // 3. Gemini
   return callGeminiDirect(prompt, callOpts);
 }
 
@@ -499,8 +711,8 @@ export async function generateImage(prompt: string, opts?: AIImageOptions): Prom
 }
 
 /**
- * Analyze an image using AI vision capabilities.
- * Priority chain: Minimax M3 (primary) → Gemini (fallback)
+ * Analyze an image using AI vision (clinical — GDPR safe).
+ * Priority chain: Claude Vision (primary) → Gemini (fallback). Minimax never used.
  */
 export async function analyzeImage(
   imageUrl: string,
@@ -513,27 +725,23 @@ export async function analyzeImage(
     systemPrompt: opts?.systemPrompt,
   };
 
-  // 1. Try Minimax M3 vision first
-  const minimaxKey = await getMinimaxKey();
-  if (minimaxKey) {
+  // 1. Claude Vision (primary — GDPR compliant)
+  const claudeKey = await getClaudeKey();
+  if (claudeKey) {
     try {
-      return await callMinimaxVision(
-        [{ url: imageUrl }],
-        prompt,
-        callOpts
-      );
+      return await callClaudeVision([{ url: imageUrl }], prompt, callOpts);
     } catch (err: any) {
-      console.warn("[ai-provider] Minimax M3 vision failed, falling back to Gemini:", err.message);
+      console.warn("[ai-provider] Claude vision failed, falling back to Gemini:", err.message);
     }
   }
 
-  // 2. Fallback to Gemini
+  // 2. Gemini (fallback)
   return analyzeImageGemini(imageUrl, prompt, callOpts);
 }
 
 /**
- * Analyze multiple images using AI vision capabilities.
- * Priority chain: Minimax M3 (primary) → Gemini (fallback, first image only)
+ * Analyze multiple images using AI vision (clinical — GDPR safe).
+ * Priority chain: Claude Vision (primary) → Gemini (fallback). Minimax never used.
  */
 export async function analyzeMultipleImages(
   images: Array<{ url: string; base64?: string; mimeType?: string }>,
@@ -546,17 +754,17 @@ export async function analyzeMultipleImages(
     systemPrompt: opts?.systemPrompt,
   };
 
-  // 1. Try Minimax M3 — supports multiple images natively
-  const minimaxKey = await getMinimaxKey();
-  if (minimaxKey) {
+  // 1. Claude Vision (primary — supports multiple images, GDPR compliant)
+  const claudeKey = await getClaudeKey();
+  if (claudeKey) {
     try {
-      return await callMinimaxVision(images, prompt, callOpts);
+      return await callClaudeVision(images, prompt, callOpts);
     } catch (err: any) {
-      console.warn("[ai-provider] Minimax M3 multi-vision failed, falling back to Gemini:", err.message);
+      console.warn("[ai-provider] Claude multi-vision failed, falling back to Gemini:", err.message);
     }
   }
 
-  // 2. Fallback to Gemini (use first image)
+  // 2. Gemini fallback (first image only)
   const firstImage = images[0];
   const imgUrl = firstImage?.base64
     ? `data:${firstImage.mimeType || "image/jpeg"};base64,${firstImage.base64}`
@@ -582,9 +790,8 @@ export async function streamAI(prompt: string, opts?: AIStreamOptions): Promise<
 }
 
 /**
- * Multi-turn chat using AI.
- * Priority chain: Minimax M3 (primary) → Groq → Gemini
- * messages: array of { role: "user"|"assistant"|"system", content: string }
+ * Multi-turn chat using AI (general use).
+ * Priority chain: Claude → Minimax M3 → Groq → Gemini
  */
 export async function callAIChat(
   messages: Array<{ role: string; content: string }>,
@@ -596,7 +803,17 @@ export async function callAIChat(
     systemPrompt: opts?.systemPrompt,
   };
 
-  // 1. Try Minimax M3 first (primary)
+  // 1. Claude (primary)
+  const claudeKey = await getClaudeKey();
+  if (claudeKey) {
+    try {
+      return await callClaudeChat(messages, chatOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Claude chat failed, trying Minimax:", err.message);
+    }
+  }
+
+  // 2. Minimax M3 (non-clinical fallback)
   const minimaxKey = await getMinimaxKey();
   if (minimaxKey) {
     try {
@@ -606,7 +823,7 @@ export async function callAIChat(
     }
   }
 
-  // 2. Try Groq (fast fallback)
+  // 3. Groq
   const groqKey = await getGroqKey();
   if (groqKey) {
     try {
@@ -616,7 +833,46 @@ export async function callAIChat(
     }
   }
 
-  // 3. Fallback to Gemini
+  // 4. Gemini
+  return callGeminiChat(messages, opts);
+}
+
+/**
+ * Multi-turn chat — CLINICAL DATA ONLY.
+ * Chain: Claude → Groq → Gemini. Minimax is NEVER used.
+ */
+export async function callAIChatClinical(
+  messages: Array<{ role: string; content: string }>,
+  opts?: { provider?: AIProvider; model?: string; temperature?: number; maxTokens?: number; systemPrompt?: string }
+): Promise<string> {
+  const chatOpts = {
+    temperature: opts?.temperature,
+    maxTokens: opts?.maxTokens,
+    systemPrompt: opts?.systemPrompt,
+    model: CLAUDE_CLINICAL_MODEL,
+  };
+
+  // 1. Claude
+  const claudeKey = await getClaudeKey();
+  if (claudeKey) {
+    try {
+      return await callClaudeChat(messages, chatOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Claude clinical chat failed, trying Groq:", err.message);
+    }
+  }
+
+  // 2. Groq
+  const groqKey = await getGroqKey();
+  if (groqKey) {
+    try {
+      return await callGroqChat(messages, chatOpts);
+    } catch (err: any) {
+      console.warn("[ai-provider] Groq clinical chat failed, falling back to Gemini:", err.message);
+    }
+  }
+
+  // 3. Gemini
   return callGeminiChat(messages, opts);
 }
 
@@ -789,37 +1045,49 @@ export function parseAIJson<T = any>(raw: string): T {
  */
 export async function getActiveProviderInfo(): Promise<{
   provider: string;
+  hasClaude: boolean;
   hasGroq: boolean;
   hasMinimax: boolean;
   hasGemini: boolean;
   hasOpenAI: boolean;
   defaultProvider: string;
   fallbackChain: string[];
+  clinicalChain: string[];
 }> {
+  const claudeKey = await getClaudeKey();
   const groqKey = await getGroqKey();
   const minimaxKey = await getMinimaxKey();
   const geminiKey = await getGeminiKey();
   const openaiKey = await getOpenAIKey();
-  
+
   let provider = "none";
-  if (minimaxKey) provider = "minimax";
+  if (claudeKey) provider = "claude";
+  else if (minimaxKey) provider = "minimax";
   else if (groqKey) provider = "groq";
   else if (geminiKey) provider = "gemini";
   else if (openaiKey) provider = "openai";
 
   const chain: string[] = [];
+  if (claudeKey) chain.push("claude (Haiku 4.5)");
   if (minimaxKey) chain.push("minimax (MiniMax-M3)");
   if (groqKey) chain.push("groq");
   if (geminiKey) chain.push("gemini");
-  
+
+  const clinicalChain: string[] = [];
+  if (claudeKey) clinicalChain.push("claude (Sonnet 4.6)");
+  if (groqKey) clinicalChain.push("groq");
+  if (geminiKey) clinicalChain.push("gemini");
+
   return {
     provider,
+    hasClaude: !!claudeKey,
     hasGroq: !!groqKey,
     hasMinimax: !!minimaxKey,
     hasGemini: !!geminiKey,
     hasOpenAI: !!openaiKey,
-    defaultProvider: "minimax",
+    defaultProvider: "claude",
     fallbackChain: chain,
+    clinicalChain,
   };
 }
 
