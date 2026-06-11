@@ -70,6 +70,14 @@ export default function NewArticlePage() {
     setContent(other.content);
     setShowPreview(false);
     setEditLang(newLang);
+    // Keep the AI generation language aligned with the language being edited
+    if (newLang === "en" && articleLang.startsWith("pt")) {
+      setArticleLang("en-GB");
+      if (typeof window !== "undefined") localStorage.setItem("ai_article_lang", "en-GB");
+    } else if (newLang === "pt" && articleLang.startsWith("en")) {
+      setArticleLang("pt-BR");
+      if (typeof window !== "undefined") localStorage.setItem("ai_article_lang", "pt-BR");
+    }
   };
 
   // Translate the currently-edited content into the OTHER language, store it, and switch to it.
@@ -142,11 +150,19 @@ export default function NewArticlePage() {
   const [pendingArticle, setPendingArticle] = useState<{title?: string; excerpt?: string; content?: string} | null>(null);
 
   const applyArticle = (article: {title?: string; excerpt?: string; content?: string}) => {
-    if (article.title) setTitle(article.title);
-    if (article.excerpt) setExcerpt(article.excerpt);
-    if (article.content) setContent(article.content);
+    // The article was generated in `articleLang` — place it in that language's slot.
+    const genLang: "en" | "pt" = articleLang.startsWith("pt") ? "pt" : "en";
+    if (genLang !== editLang) {
+      // Stash whatever is in the current slot, then switch to the generated language
+      setStash((s) => ({ ...s, [editLang]: { title, excerpt, content } }));
+      setEditLang(genLang);
+    }
+    setTitle(article.title || "");
+    setExcerpt(article.excerpt || "");
+    setContent(article.content || "");
+    setPublishLanguage(genLang);
     setPendingArticle(null);
-    toast({ title: "Article applied!", description: "Content has been filled in. Review and edit as needed." });
+    toast({ title: "Article applied!", description: `Filled the ${genLang === "pt" ? "Portuguese" : "English"} version. Review it, then use the translate button to create the other language.` });
   };
 
   // --- Image Upload ---

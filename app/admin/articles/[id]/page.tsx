@@ -185,7 +185,7 @@ export default function EditArticlePage() {
       const res = await fetch("/api/admin/articles/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, language: editLang === "pt" ? "pt-BR" : "en-GB" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -199,11 +199,12 @@ export default function EditArticlePage() {
   };
 
   const applyArticle = (article: {title?: string; excerpt?: string; content?: string}) => {
+    // The AI generated in the currently-edited language, so fill the active slot.
     if (article.title) setTitle(article.title);
     if (article.excerpt) setExcerpt(article.excerpt);
     if (article.content) setContent(article.content);
     setPendingArticle(null);
-    toast({ title: "Article applied!", description: "Content updated. Review and save." });
+    toast({ title: "Article applied!", description: `Updated the ${editLang === "pt" ? "Portuguese" : "English"} version. Review and save.` });
   };
 
   const formatChatReply = (text: string) => text.replace(/```json\s*[\s\S]*?```/g, "").trim();
