@@ -2,8 +2,10 @@
 set -e
 
 # Run migrations on startup
+# Pin Prisma CLI to the project version — npx must NOT fetch Prisma 7.x
+# (Prisma 7 dropped the `url` datasource property and breaks our schema)
 echo "[start.sh] Running database migrations..."
-npx prisma migrate deploy || echo "[start.sh] Migration failed or already up to date"
+npx prisma@6.7.0 migrate deploy || echo "[start.sh] Migration failed or already up to date"
 
 # Create upload directories if UPLOADS_DIR is set
 if [ -n "$UPLOADS_DIR" ]; then
