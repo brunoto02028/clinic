@@ -6,7 +6,13 @@ export interface PatientProfile {
   lastName: string;
   email: string;
   phone: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
   preferredLocale?: string | null;
+  communicationPreference?: string | null;
 }
 
 export async function fetchProfile(): Promise<PatientProfile> {
@@ -14,8 +20,7 @@ export async function fetchProfile(): Promise<PatientProfile> {
   return res.user;
 }
 
-/** Updates editable profile fields (phone in this phase). */
-export async function updateProfile(patch: { phone?: string }): Promise<PatientProfile> {
+export async function updateProfile(patch: Partial<Omit<PatientProfile, "id" | "email" | "firstName" | "lastName">>): Promise<PatientProfile> {
   const res = await apiFetch<{ success: boolean; user: PatientProfile }>(
     "/api/patient/profile",
     { method: "PATCH", body: JSON.stringify(patch) }

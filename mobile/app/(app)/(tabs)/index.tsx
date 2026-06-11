@@ -1,4 +1,4 @@
-import { View, Pressable, ScrollView, Platform } from "react-native";
+import { View, Pressable, ScrollView } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -6,17 +6,27 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchMe } from "@/api/patient";
 import { fetchAppointments, nextUpcoming } from "@/api/appointments";
+import { fetchAICoachTip } from "@/api/notifications";
 import { formatDateTime } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
 
+// ── Quick actions grid ──
 const QUICK_ACTIONS = [
-  { icon: "calendar-outline" as const, label: "Agenda", path: "/appointments", color: "#5dc9c0" },
-  { icon: "fitness-outline" as const, label: "Exercícios", path: "/exercises", color: "#4a7c8a" },
-  { icon: "foot-outline" as const, label: "Scans 3D", path: "/foot-scans", color: "#6ba3b0" },
-  { icon: "document-text-outline" as const, label: "Docs", path: "/documents", color: "#7dd4cd" },
-  { icon: "school-outline" as const, label: "Educação", path: "/education", color: "#4ab3ab" },
-  { icon: "pulse-outline" as const, label: "Pressão", path: "/blood-pressure", color: "#10b981" },
-];
+  { icon: "calendar-outline" as const, label: "Agendar", path: "/appointments", color: "#5dc9c0" },
+  { icon: "clipboard-outline" as const, label: "Registros", path: "/clinical-notes", color: "#60a5fa" },
+  { icon: "trophy-outline" as const, label: "Plano", path: "/membership", color: "#f59e0b" },
+  { icon: "body-outline" as const, label: "Avaliação", path: "/screening", color: "#8b5cf6" },
+] as const;
+
+// ── Health shortcuts ──
+const HEALTH_LINKS = [
+  { icon: "fitness-outline" as const, label: "Exercícios", path: "/exercises", color: "#5dc9c0" },
+  { icon: "footsteps-outline" as const, label: "Scans 3D", path: "/foot-scans", color: "#6ba3b0" },
+  { icon: "pulse-outline" as const, label: "Pressão", path: "/blood-pressure", color: "#ef4444" },
+  { icon: "document-text-outline" as const, label: "Documentos", path: "/documents", color: "#60a5fa" },
+  { icon: "school-outline" as const, label: "Educação", path: "/education", color: "#8b5cf6" },
+  { icon: "checkbox-outline" as const, label: "Tarefas", path: "/tasks", color: "#f59e0b" },
+] as const;
 
 function Avatar({ name }: { name?: string }) {
   const initials = name
@@ -24,20 +34,21 @@ function Avatar({ name }: { name?: string }) {
     : "?";
   return (
     <View style={{
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 48, height: 48, borderRadius: 24,
       backgroundColor: "rgba(74, 124, 138, 0.2)",
-      borderWidth: 1.5,
-      borderColor: "rgba(93, 201, 192, 0.3)",
-      alignItems: "center",
-      justifyContent: "center",
+      borderWidth: 1.5, borderColor: "rgba(93, 201, 192, 0.3)",
+      alignItems: "center", justifyContent: "center",
     }}>
-      <Text variant="label" color="#5dc9c0" style={{ fontWeight: "700", fontSize: 16 }}>
-        {initials}
-      </Text>
+      <Text variant="label" color="#5dc9c0" style={{ fontWeight: "700", fontSize: 16 }}>{initials}</Text>
     </View>
   );
+}
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
 }
 
 export default function Home() {
@@ -45,82 +56,95 @@ export default function Home() {
   const me = useQuery({ queryKey: ["me"], queryFn: fetchMe });
   const appts = useQuery({ queryKey: ["appointments"], queryFn: fetchAppointments });
 
+  const aiCoach = useQuery({ queryKey: ["ai-coach"], queryFn: fetchAICoachTip });
   const next = appts.data ? nextUpcoming(appts.data) : null;
   const firstName = me.data?.user?.firstName;
-  const greeting = getGreeting();
 
   return (
     <Screen scroll testID="home-screen">
       <View style={{ gap: 24 }}>
-        {/* Header */}
+
+        {/* ── Header ── */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <Avatar name={firstName} />
             <View>
-              <Text variant="body" color={t.colors.textSecondary}>{greeting}</Text>
-              <Text variant="subtitle" style={{ marginTop: 2 }}>
-                {firstName ?? "Paciente"}
-              </Text>
+              <Text variant="caption" color={t.colors.textSecondary}>{getGreeting()}</Text>
+              <Text variant="subtitle">{firstName ?? "Paciente"}</Text>
             </View>
           </View>
           <Pressable
             onPress={() => router.push("/notifications")}
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
+              width: 44, height: 44, borderRadius: 22,
               backgroundColor: "rgba(74, 124, 138, 0.1)",
-              borderWidth: 1,
-              borderColor: "rgba(74, 124, 138, 0.15)",
-              alignItems: "center",
-              justifyContent: "center",
+              borderWidth: 1, borderColor: "rgba(74, 124, 138, 0.15)",
+              alignItems: "center", justifyContent: "center",
             }}
           >
             <Ionicons name="notifications-outline" size={22} color={t.colors.textSecondary} />
           </Pressable>
         </View>
 
-        {/* Banner */}
-        <Pressable onPress={() => router.push("/exercises")} style={{ borderRadius: t.radius.lg, overflow: "hidden" }}>
+        {/* ── Assessment banner ── */}
+        <Pressable onPress={() => router.push("/screening")} style={{ borderRadius: t.radius.lg, overflow: "hidden" }}>
           <LinearGradient
             colors={["#1a3a45", "#2c5f6e", "#4a7c8a"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
-              padding: 24,
-              borderRadius: t.radius.lg,
-              borderWidth: 1,
-              borderColor: "rgba(93, 201, 192, 0.15)",
+              padding: 20, borderRadius: t.radius.lg,
+              borderWidth: 1, borderColor: "rgba(93, 201, 192, 0.15)",
             }}
           >
-            <Text variant="subtitle" color="#e2e8f0" style={{ marginBottom: 4 }}>
-              Cuide da sua saúde,
-            </Text>
-            <Text variant="title" color="#ffffff" style={{ fontSize: 22, marginBottom: 8 }}>
-              Viva melhor todos os dias
-            </Text>
-            <Text variant="caption" color="rgba(255,255,255,0.7)" style={{ marginBottom: 16, lineHeight: 18 }}>
-              Acompanhe seus exercícios e mantenha{"\n"}seu corpo em equilíbrio
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <Ionicons name="checkmark-circle-outline" size={20} color="#5dc9c0" />
+              <Text variant="label" color="#5dc9c0" style={{ fontWeight: "600" }}>Avaliação Biomecânica</Text>
+            </View>
+            <Text variant="body" color="rgba(255,255,255,0.8)" style={{ lineHeight: 20, marginBottom: 14 }}>
+              Complete sua avaliação para que seu terapeuta crie um plano personalizado.
             </Text>
             <View style={{
-              alignSelf: "flex-start",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
+              alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6,
               backgroundColor: "rgba(93, 201, 192, 0.2)",
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: "rgba(93, 201, 192, 0.3)",
+              paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+              borderWidth: 1, borderColor: "rgba(93, 201, 192, 0.3)",
             }}>
-              <Text variant="label" color="#5dc9c0">Ver exercícios</Text>
+              <Text variant="label" color="#5dc9c0">Iniciar avaliação</Text>
               <Ionicons name="arrow-forward" size={14} color="#5dc9c0" />
             </View>
           </LinearGradient>
         </Pressable>
 
-        {/* Upcoming Appointment */}
+        {/* ── Quick actions (4 cards like web) ── */}
+        <View style={{ gap: 12 }}>
+          <Text variant="subtitle">Ações rápidas</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {QUICK_ACTIONS.map((a) => (
+              <Pressable
+                key={a.path}
+                onPress={() => router.push(a.path)}
+                style={({ pressed }) => ({
+                  flex: 1, alignItems: "center", gap: 8, paddingVertical: 16,
+                  backgroundColor: pressed ? "rgba(74, 124, 138, 0.12)" : "rgba(74, 124, 138, 0.06)",
+                  borderRadius: t.radius.md, borderWidth: 1, borderColor: "rgba(74, 124, 138, 0.1)",
+                })}
+              >
+                <View style={{
+                  width: 40, height: 40, borderRadius: 12,
+                  backgroundColor: `${a.color}15`, alignItems: "center", justifyContent: "center",
+                }}>
+                  <Ionicons name={a.icon} size={20} color={a.color} />
+                </View>
+                <Text variant="caption" color={t.colors.textSecondary} style={{ fontWeight: "500", fontSize: 11 }}>
+                  {a.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* ── Upcoming Appointment ── */}
         <View style={{ gap: 12 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text variant="subtitle">Próximo agendamento</Text>
@@ -128,41 +152,29 @@ export default function Home() {
               <Text variant="caption" color={t.colors.secondary}>Ver todos</Text>
             </Pressable>
           </View>
-
           {appts.isLoading ? (
             <Spinner />
-          ) : appts.isError ? (
-            <Card>
-              <Text color={t.colors.danger}>Não foi possível carregar.</Text>
-            </Card>
           ) : next ? (
             <Pressable onPress={() => router.push(`/appointment/${next.id}`)}>
               <Card variant="elevated">
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                   <View style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
+                    width: 48, height: 48, borderRadius: 14,
                     backgroundColor: "rgba(74, 124, 138, 0.15)",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    alignItems: "center", justifyContent: "center",
                   }}>
                     <Ionicons name="medical-outline" size={24} color="#5dc9c0" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text variant="label" testID="next-appt-type" style={{ fontWeight: "600" }}>
-                      {next.treatmentType}
-                    </Text>
-                    {next.therapist ? (
+                    <Text variant="label" style={{ fontWeight: "600" }}>{next.treatmentType}</Text>
+                    {next.therapist && (
                       <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
                         {next.therapist.firstName} {next.therapist.lastName}
                       </Text>
-                    ) : null}
+                    )}
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
-                    <Text variant="caption" color={t.colors.secondary} testID="next-appt-date">
-                      {formatDateTime(next.dateTime)}
-                    </Text>
+                    <Text variant="caption" color={t.colors.secondary}>{formatDateTime(next.dateTime)}</Text>
                   </View>
                 </View>
               </Card>
@@ -171,57 +183,117 @@ export default function Home() {
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Ionicons name="calendar-outline" size={20} color={t.colors.textMuted} />
-                <Text muted testID="next-appt-empty">Nenhum agendamento futuro.</Text>
+                <Text muted>Nenhum agendamento futuro.</Text>
               </View>
             </Card>
           )}
         </View>
 
-        {/* Quick Actions */}
-        <View style={{ gap: 12 }}>
-          <Text variant="subtitle">Acesso rápido</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-            {QUICK_ACTIONS.map((action) => (
+        {/* ── Daily check-in ── */}
+        <Card variant="highlight">
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <Ionicons name="happy-outline" size={20} color="#5dc9c0" />
+            <Text variant="label" style={{ fontWeight: "600" }}>Como você está hoje?</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+            {[
+              { emoji: "😊", label: "Ótimo" },
+              { emoji: "🙂", label: "Bem" },
+              { emoji: "😐", label: "Normal" },
+              { emoji: "😔", label: "Mal" },
+              { emoji: "😣", label: "Péssimo" },
+            ].map((m) => (
               <Pressable
-                key={action.path}
-                onPress={() => router.push(action.path)}
+                key={m.label}
                 style={({ pressed }) => ({
-                  width: "30%",
-                  flexGrow: 1,
-                  alignItems: "center",
-                  gap: 8,
-                  paddingVertical: 16,
+                  alignItems: "center", gap: 4, paddingVertical: 8, paddingHorizontal: 14,
+                  backgroundColor: pressed ? "rgba(74, 124, 138, 0.15)" : "rgba(74, 124, 138, 0.06)",
+                  borderRadius: 12, borderWidth: 1, borderColor: "rgba(74, 124, 138, 0.1)",
+                })}
+              >
+                <Text style={{ fontSize: 24 }}>{m.emoji}</Text>
+                <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{m.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Card>
+
+        {/* ── Today's missions ── */}
+        <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name="flag-outline" size={18} color={t.colors.secondary} />
+            <Text variant="subtitle">Missões de hoje</Text>
+          </View>
+          {[
+            { icon: "fitness-outline" as const, text: "Complete 2 exercícios do plano", done: false },
+            { icon: "checkbox-outline" as const, text: "Faça o check-in diário", done: false },
+            { icon: "book-outline" as const, text: "Leia 1 artigo educativo", done: false },
+          ].map((mission, i) => (
+            <View
+              key={i}
+              style={{
+                flexDirection: "row", alignItems: "center", gap: 12,
+                paddingVertical: 10, paddingHorizontal: 4,
+                borderBottomWidth: i < 2 ? 1 : 0,
+                borderBottomColor: "rgba(255,255,255,0.04)",
+              }}
+            >
+              <View style={{
+                width: 28, height: 28, borderRadius: 8,
+                borderWidth: 1.5, borderColor: "rgba(74, 124, 138, 0.3)",
+                alignItems: "center", justifyContent: "center",
+              }}>
+                {mission.done && <Ionicons name="checkmark" size={16} color="#5dc9c0" />}
+              </View>
+              <Ionicons name={mission.icon} size={18} color={t.colors.textMuted} />
+              <Text variant="body" color={t.colors.textSecondary} style={{ flex: 1 }}>{mission.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── AI Coach ── */}
+        {aiCoach.data?.tip ? (
+          <Card variant="elevated">
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <Ionicons name="sparkles-outline" size={18} color="#f59e0b" />
+              <Text variant="label" style={{ fontWeight: "600" }}>AI Coach</Text>
+              <Text variant="caption" color={t.colors.textMuted}>· Dica do dia</Text>
+            </View>
+            <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
+              {aiCoach.data.tip}
+            </Text>
+          </Card>
+        ) : null}
+
+        {/* ── Health & data shortcuts ── */}
+        <View style={{ gap: 12 }}>
+          <Text variant="subtitle">Saúde & Dados</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            {HEALTH_LINKS.map((link) => (
+              <Pressable
+                key={link.path}
+                onPress={() => router.push(link.path)}
+                style={({ pressed }) => ({
+                  width: "31%", flexGrow: 1, alignItems: "center", gap: 8, paddingVertical: 14,
                   backgroundColor: pressed ? "rgba(74, 124, 138, 0.12)" : "rgba(74, 124, 138, 0.06)",
-                  borderRadius: t.radius.lg,
-                  borderWidth: 1,
-                  borderColor: "rgba(74, 124, 138, 0.1)",
+                  borderRadius: t.radius.md, borderWidth: 1, borderColor: "rgba(74, 124, 138, 0.1)",
                 })}
               >
                 <View style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  backgroundColor: `${action.color}15`,
-                  alignItems: "center",
-                  justifyContent: "center",
+                  width: 40, height: 40, borderRadius: 12,
+                  backgroundColor: `${link.color}15`, alignItems: "center", justifyContent: "center",
                 }}>
-                  <Ionicons name={action.icon} size={22} color={action.color} />
+                  <Ionicons name={link.icon} size={20} color={link.color} />
                 </View>
-                <Text variant="caption" color={t.colors.textSecondary} style={{ fontWeight: "500" }}>
-                  {action.label}
+                <Text variant="caption" color={t.colors.textSecondary} style={{ fontWeight: "500", fontSize: 11 }}>
+                  {link.label}
                 </Text>
               </Pressable>
             ))}
           </View>
         </View>
+
       </View>
     </Screen>
   );
-}
-
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Bom dia,";
-  if (h < 18) return "Boa tarde,";
-  return "Boa noite,";
 }
