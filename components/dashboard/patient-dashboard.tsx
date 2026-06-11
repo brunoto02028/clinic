@@ -31,6 +31,7 @@ import DailyMission from "@/components/dashboard/daily-mission";
 import RecoveryRing from "@/components/dashboard/recovery-ring";
 import OnboardingWizard from "@/components/dashboard/onboarding-wizard";
 import AICoachCard from "@/components/dashboard/ai-coach-card";
+import DailyCheckInCard from "@/components/dashboard/daily-checkin-card";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
@@ -239,6 +240,9 @@ export default function PatientDashboard() {
 
       {/* Membership Offer */}
       {!isPreview && <MembershipOfferBanner />}
+
+      {/* Daily Check-in */}
+      {!isPreview && <DailyCheckInCard />}
 
       {/* AI Coach */}
       {!isPreview && <AICoachCard />}

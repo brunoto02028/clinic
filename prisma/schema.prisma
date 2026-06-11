@@ -610,6 +610,7 @@ model User {
   processedCancellations    CancellationRequest[]   @relation("AdminCancellations")
   patientSubscriptions      PatientSubscription[]   @relation("PatientSubscriptions")
   whatsappMessages          WhatsAppMessage[]       @relation("PatientWhatsApp")
+  dailyCheckIns             DailyCheckIn[]          @relation("PatientDailyCheckIns")
   
   // BPR Journey
   patientProgress           PatientProgress?         @relation("PatientProgress")
@@ -1703,9 +1704,10 @@ model MembershipPlan {
   status      MembershipStatus   @default(DRAFT)
   patientScope String            @default("none") // "specific" | "all" | "none"
 
-  price       Float              @default(0)
-  interval    MembershipInterval @default(MONTHLY)
-  isFree      Boolean            @default(false)
+  price           Float              @default(0)
+  interval        MembershipInterval @default(MONTHLY)
+  isFree          Boolean            @default(false)
+  sessionDiscount Int                @default(0) // % discount applied to session bookings (0, 10, 20, 30)
 
   features    String[]           // list of module + permission keys included
   modulePermissions Json?         // Granular per-module permissions {"appointments": {"canBookOnline": true, "canBookInPerson": false}}
@@ -3090,6 +3092,30 @@ model EmailAccount {
 enum BloodPressureMethod {
   MANUAL
   CAMERA_PPG
+}
+
+// ============================================
+// DAILY CHECK-IN
+// ============================================
+
+model DailyCheckIn {
+  id           String   @id @default(cuid())
+  clinicId     String?
+  patientId    String
+  patient      User     @relation("PatientDailyCheckIns", fields: [patientId], references: [id], onDelete: Cascade)
+
+  checkinDate  String   // "YYYY-MM-DD" — one per patient per day
+  painLevel    Int      // 0-10 (0=no pain, 10=severe)
+  moodLevel    Int      // 1-5 (1=terrible, 5=excellent)
+  exercisesDone Boolean @default(false)
+  notes        String?  @db.Text
+
+  createdAt    DateTime @default(now())
+
+  @@unique([patientId, checkinDate])
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([checkinDate])
 }
 
 model BloodPressureReading {

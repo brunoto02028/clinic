@@ -272,11 +272,11 @@ export const DEFAULT_CONFIGS = [
     category: "integration",
     isSecret: false,
   },
-  // ─── Meshy AI (3D Model Generation) ───
+  // ─── Tripo3D (3D Model Generation) ───
   {
-    key: "MESHY_API_KEY",
-    label: "Meshy AI API Key",
-    description: "API key from meshy.ai for AI-powered 3D model generation (avatars, body models). Free tier: 200 credits/month.",
+    key: "TRIPO_API_KEY",
+    label: "Tripo3D API Key",
+    description: "API key from tripo3d.ai for AI-powered 3D model generation (avatars, body models). Free tier available.",
     category: "integration",
     isSecret: true,
   },
