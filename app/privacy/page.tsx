@@ -52,8 +52,8 @@ export default function PrivacyPolicyPage() {
           {/* 1. Data Controller */}
           <Section icon={UserCheck} title={isPt ? "1. Controlador de Dados" : "1. Data Controller"}>
             <p>{isPt
-              ? "O controlador de dados é: Bruno Physical Rehabilitation Ltd, com sede em Richmond, Londres, Reino Unido."
-              : "The data controller is: Bruno Physical Rehabilitation Ltd, based in Richmond, London, United Kingdom."}</p>
+              ? "O controlador de dados é: Bruno Physical Rehabilitation Ltd, com sede em Ipswich, Suffolk, Reino Unido."
+              : "The data controller is: Bruno Physical Rehabilitation Ltd, based in Ipswich, Suffolk, United Kingdom."}</p>
             <p>{isPt
               ? "Para perguntas sobre proteção de dados, entre em contato: admin@bpr.rehab"
               : "For data protection enquiries, contact: admin@bpr.rehab"}</p>
@@ -265,7 +265,7 @@ export default function PrivacyPolicyPage() {
               <p className="text-muted-foreground mt-1">
                 Bruno Physical Rehabilitation Ltd<br />
                 Email: <a href="mailto:admin@bpr.rehab" className="text-primary hover:underline">admin@bpr.rehab</a><br />
-                {isPt ? "Endereço" : "Address"}: Richmond, London, TW10, United Kingdom
+                {isPt ? "Endereço" : "Address"}: Ipswich, Suffolk, United Kingdom
               </p>
             </div>
           </div>

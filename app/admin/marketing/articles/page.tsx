@@ -169,7 +169,7 @@ export default function ArticlesPage() {
                   type="text"
                   value={keyword}
                   onChange={e => setKeyword(e.target.value)}
-                  placeholder="e.g. physiotherapy Richmond Surrey"
+                  placeholder="e.g. physiotherapy Ipswich Suffolk"
                   className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary placeholder-muted-foreground/50"
                 />
               </div>
