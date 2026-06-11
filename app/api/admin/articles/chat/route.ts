@@ -11,11 +11,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { messages, action } = await req.json();
+  const { messages, action, language } = await req.json();
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: 'messages array is required' }, { status: 400 });
   }
+
+  // Output language for the ARTICLE itself (independent of the conversation language)
+  const langMap: Record<string, string> = {
+    "en-GB": "British English",
+    "en-US": "American English",
+    "pt-BR": "Brazilian Portuguese",
+    "pt-PT": "European Portuguese",
+  };
+  const articleLanguage = langMap[language] || "British English";
 
   const systemInstruction = `You are a specialist physiotherapy and physical rehabilitation content writer for "BPR — Bruno Physical Rehabilitation", a clinic based in Ipswich, Suffolk, UK.
 
@@ -37,7 +46,11 @@ CONVERSATION RULES:
 - The content field MUST be valid HTML — NOT markdown
 - If the admin asks for corrections or changes, apply them and return the updated JSON block
 - If the admin is just chatting/discussing, respond conversationally WITHOUT JSON
-- Language: match the admin's language (English or PT-BR). Default is British English.
+
+ARTICLE OUTPUT LANGUAGE — CRITICAL:
+- The ARTICLE content (title, excerpt, content) MUST ALWAYS be written in ${articleLanguage}, regardless of the language the admin uses in the conversation.
+- Even if the admin talks to you in Portuguese, the generated article (the JSON block) MUST be in ${articleLanguage}.
+- You may reply to the conversation/chat in the admin's language, but the article JSON content is always ${articleLanguage}.
 
 ARTICLE QUALITY STANDARDS:
 - Length: 700-1400 words
