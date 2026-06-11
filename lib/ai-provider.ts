@@ -66,6 +66,14 @@ async function getClaudeKey(): Promise<string | null> {
   return (await getConfigValue("ANTHROPIC_API_KEY")) || process.env.ANTHROPIC_API_KEY || null;
 }
 
+async function getHuggingFaceKey(): Promise<string | null> {
+  return (await getConfigValue("HUGGINGFACE_API_KEY")) || process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || null;
+}
+
+async function getHuggingFaceImageModel(): Promise<string> {
+  return (await getConfigValue("HF_IMAGE_MODEL")) || "black-forest-labs/FLUX.1-schnell";
+}
+
 const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
 
 // 3-tier model routing
@@ -341,6 +349,69 @@ async function callGeminiDirect(
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("No response from Gemini");
   return text.trim();
+}
+
+// ─── Hugging Face image generation (free FLUX.1-schnell) ───
+
+/** Map an aspect ratio string to width/height suitable for FLUX. */
+function aspectToDimensions(aspectRatio?: string): { width: number; height: number } {
+  switch (aspectRatio) {
+    case "1:1": return { width: 1024, height: 1024 };
+    case "4:3": return { width: 1024, height: 768 };
+    case "3:4": return { width: 768, height: 1024 };
+    case "9:16": return { width: 576, height: 1024 };
+    case "16:9":
+    default: return { width: 1024, height: 576 };
+  }
+}
+
+async function generateImageHuggingFace(
+  prompt: string,
+  opts: { model?: string; aspectRatio?: string }
+): Promise<string[]> {
+  const apiKey = await getHuggingFaceKey();
+  if (!apiKey) throw new Error("HUGGINGFACE_API_KEY is not configured for image generation.");
+
+  const model = opts.model || (await getHuggingFaceImageModel());
+  const { width, height } = aspectToDimensions(opts.aspectRatio);
+  const url = `https://router.huggingface.co/hf-inference/models/${model}`;
+
+  const MAX_RETRIES = 2;
+  let lastError = "";
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ inputs: prompt, parameters: { width, height } }),
+    });
+
+    if (res.ok) {
+      const contentType = res.headers.get("content-type") || "";
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (contentType.startsWith("image/")) {
+        const mime = contentType.split(";")[0];
+        return [`data:${mime};base64,${buffer.toString("base64")}`];
+      }
+      lastError = `Unexpected content-type: ${contentType}`;
+      break;
+    }
+
+    // 503 = model loading/cold start; retry after the estimated time
+    if (res.status === 503 && attempt < MAX_RETRIES) {
+      const body = await res.json().catch(() => ({}));
+      const waitMs = Math.min(((body as any)?.estimated_time || 20) * 1000, 30000);
+      console.log(`[ai-provider] HF model loading (503), retrying in ${waitMs / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+
+    lastError = await res.text().catch(() => `HTTP ${res.status}`);
+    console.error(`[ai-provider] HF image error (${res.status}):`, lastError.slice(0, 300));
+    break;
+  }
+
+  throw new Error(`Hugging Face image generation failed: ${lastError}`);
 }
 
 // ─── Gemini image generation ───
@@ -1128,11 +1199,25 @@ export async function generateImageSmart(prompt: string, opts?: AIImageOptions):
         return data.data?.map((img: any) => img.url) || [];
       }
     } catch (err: any) {
-      console.warn("[ai-provider] DALL-E 3 failed, falling back to Gemini:", err.message);
+      console.warn("[ai-provider] DALL-E 3 failed, falling back to Hugging Face:", err.message);
     }
   }
-  
-  // Fallback to Gemini
+
+  // Try Hugging Face FLUX.1-schnell (free tier — reliable, no billing required)
+  const hfKey = await getHuggingFaceKey();
+  if (hfKey) {
+    try {
+      const imgs = await generateImageHuggingFace(prompt, {
+        model: opts?.model,
+        aspectRatio: opts?.aspectRatio,
+      });
+      if (imgs.length > 0) return imgs;
+    } catch (err: any) {
+      console.warn("[ai-provider] Hugging Face failed, falling back to Gemini:", err.message);
+    }
+  }
+
+  // Last resort: Gemini (requires billing-enabled project)
   return generateImageGemini(prompt, {
     model: opts?.model,
     aspectRatio: opts?.aspectRatio,
