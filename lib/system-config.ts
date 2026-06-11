@@ -97,7 +97,14 @@ export const DEFAULT_CONFIGS = [
   {
     key: "OPENAI_API_KEY",
     label: "OpenAI API Key",
-    description: "Used for body assessment AI analysis (GPT-4 Vision). Get your key at platform.openai.com/api-keys",
+    description: "Used for body assessment AI analysis (GPT-4 Vision) and DALL-E 3 image generation. Get your key at platform.openai.com/api-keys",
+    category: "ai",
+    isSecret: true,
+  },
+  {
+    key: "HUGGINGFACE_API_KEY",
+    label: "Hugging Face API Token",
+    description: "Free image generation via FLUX.1-schnell (no billing required). Get a free Read token at huggingface.co/settings/tokens",
     category: "ai",
     isSecret: true,
   },
