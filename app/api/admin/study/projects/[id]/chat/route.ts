@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getStudyUserId } from "@/lib/study-auth";
 import { callAIChat, CLAUDE_SONNET_MODEL } from "@/lib/ai-provider";
 import { buildDocContext, missingDocsNote } from "@/lib/study-docs";
-import { createTasksFromItems, parseTaskItems } from "@/lib/study-tasks";
+import { createTasksFromItems, parseTaskItems, applyTaskUpdates, parseTaskUpdates } from "@/lib/study-tasks";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +42,7 @@ function memoryBlock(memory: string): string {
   return `\n\nLONG-TERM MEMORY (everything important agreed/discussed earlier in this project — treat as fully known, never ask Bruno to repeat it):\n${memory.trim()}`;
 }
 
-function tutorPrompt(project: { title: string; course: string; provider: string; level: string | null }, docContext: string, memory: string, missing: string[]): string {
+function tutorPrompt(project: { title: string; course: string; provider: string; level: string | null }, docContext: string, memory: string, missing: string[], tasksList: string): string {
   return `You are an expert academic TUTOR and subject-matter specialist in sports therapy, physical rehabilitation, anatomy, biomechanics, and exercise science. You are helping Bruno Azenha Tonheta complete his **${project.level || "Level 5"} ${project.course}** with **${project.provider}** (UK). The current study project is: "${project.title}".${memoryBlock(memory)}
 
 WHO BRUNO IS:
@@ -84,7 +84,18 @@ CREATING ACTIVITIES IN HIS PLAN — POWERFUL (use this to help him get organised
 ]
 \`\`\`
 - After the block, write a SHORT plain-text note (e.g. "I've added 8 activities to your Plan — start with the two due this week."). Do NOT also paste the full list as a markdown table; the activities live in the Plan, not the chat.
-- Infer realistic priorities and dueDates from deadlines in his documents/messages. Keep each activity self-contained. You may create activities proactively when it clearly helps him organise.`;
+- Infer realistic priorities and dueDates from deadlines in his documents/messages. Keep each activity self-contained. You may create activities proactively when it clearly helps him organise.
+
+UPDATING EXISTING ACTIVITIES — use this when Bruno asks to mark something done, reprioritise, reschedule, rename or refine an activity:
+- Output a fenced block tagged \`task-updates\` containing a JSON array. Match each activity by its "id" (preferred — see the list below) or by "title". Include ONLY the fields you want to change.
+\`\`\`task-updates
+[
+  { "id": "<task id>", "status": "done" },
+  { "title": "Practical Skills Revision", "priority": "high", "dueDate": "2026-07-20" }
+]
+\`\`\`
+- status must be one of: todo | in_progress | to_deliver | done. Use "newTitle" to rename. Then add a SHORT plain-text note (e.g. "Marked the essay as done and moved the case study to this week.").
+${tasksList ? `\nBRUNO'S CURRENT ACTIVITIES (use these ids when updating):\n${tasksList}\n` : ""}`;
 }
 
 function englishPrompt(project: { title: string; provider: string }, docContext: string, memory: string): string {
@@ -110,7 +121,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const project = await prisma.studyProject.findFirst({
     where: { id: params.id, ownerId: userId },
-    include: { documents: { select: { originalName: true, kind: true, extractedText: true } } },
+    include: {
+      documents: { select: { originalName: true, kind: true, extractedText: true } },
+      tasks: { select: { id: true, title: true, status: true, priority: true, dueDate: true }, orderBy: { order: "asc" } },
+    },
   });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -160,9 +174,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
 
   const { context: docContext, missing } = buildDocContext(project.documents, DOC_CONTEXT_LIMIT);
+  const tasksList = project.tasks
+    .map((t) => `- id:${t.id} | "${t.title}" | status:${t.status} | priority:${t.priority}${t.dueDate ? ` | due:${t.dueDate.toISOString().slice(0, 10)}` : ""}`)
+    .join("\n");
   const systemPrompt = mode === "english"
     ? englishPrompt(project, docContext, summary)
-    : tutorPrompt(project, docContext, summary, missing);
+    : tutorPrompt(project, docContext, summary, missing, tasksList);
 
   const chatMessages = [
     ...recent.map((m) => ({ role: m.role, content: m.content })),
@@ -184,15 +201,29 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   // Detect an optional "tasks" action block — the tutor can create real
   // activities in Bruno's Plan straight from the conversation.
   let createdTasks: any[] = [];
-  const tasksMatch = reply.match(/```tasks\s*([\s\S]*?)```/);
+  const tasksMatch = reply.match(/```tasks(?!-)\s*([\s\S]*?)```/);
   if (tasksMatch && mode !== "english") {
     const items = parseTaskItems(tasksMatch[1]);
     if (items.length > 0) {
       try { createdTasks = await createTasksFromItems(params.id, items); } catch { /* ignore */ }
     }
   }
-  // Remove the raw tasks block from what we store/show (activities live in the Plan).
-  const storedReply = reply.replace(/```tasks\s*[\s\S]*?```/g, "").trim() || reply;
+  // Detect an optional "task-updates" action block — the tutor can mark
+  // activities done, reprioritise, reschedule or rename them from the chat.
+  let updatedTasks: any[] = [];
+  const updatesMatch = reply.match(/```task-updates\s*([\s\S]*?)```/);
+  if (updatesMatch && mode !== "english") {
+    const updates = parseTaskUpdates(updatesMatch[1]);
+    if (updates.length > 0) {
+      try { updatedTasks = await applyTaskUpdates(params.id, updates); } catch { /* ignore */ }
+    }
+  }
+
+  // Remove the raw action blocks from what we store/show (activities live in the Plan).
+  const storedReply = reply
+    .replace(/```task-updates\s*[\s\S]*?```/g, "")
+    .replace(/```tasks(?!-)\s*[\s\S]*?```/g, "")
+    .trim() || reply;
 
   // Persist both turns
   await prisma.studyMessage.create({ data: { projectId: params.id, mode, role: "user", content: message } });
@@ -209,5 +240,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     } catch { /* ignore */ }
   }
 
-  return NextResponse.json({ reply: storedReply, draft, tasks: createdTasks });
+  return NextResponse.json({ reply: storedReply, draft, tasks: createdTasks, taskUpdates: updatedTasks });
 }

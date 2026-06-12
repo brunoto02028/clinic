@@ -213,6 +213,17 @@ export default function StudyAssistantPage() {
           description: "Open the Plan tab to see and tick them off.",
         });
       }
+      if (Array.isArray(data.taskUpdates) && data.taskUpdates.length > 0) {
+        setActive((p) => {
+          if (!p) return p;
+          const map = new Map(data.taskUpdates.map((t: Task) => [t.id, t]));
+          return { ...p, tasks: p.tasks.map((t) => (map.get(t.id) as Task) || t) };
+        });
+        toast({
+          title: `${data.taskUpdates.length} ${data.taskUpdates.length > 1 ? "activities" : "activity"} updated`,
+          description: "Your Plan has been updated.",
+        });
+      }
     } catch (err: any) {
       toast({ title: "AI error", description: err.message, variant: "destructive" });
     } finally { setSending(false); }
@@ -567,7 +578,7 @@ export default function StudyAssistantPage() {
     toast({ title: "Copied as plain text" });
   };
 
-  const formatReply = (text: string) => text.replace(/```json\s*[\s\S]*?```/g, "").replace(/```tasks\s*[\s\S]*?```/g, "").trim();
+  const formatReply = (text: string) => text.replace(/```json\s*[\s\S]*?```/g, "").replace(/```task-updates\s*[\s\S]*?```/g, "").replace(/```tasks(?!-)\s*[\s\S]*?```/g, "").trim();
   const fmtSize = (b: number) => b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)}MB` : `${(b / 1024).toFixed(0)}KB`;
   const fmtDue = (iso: string | null) => {
     if (!iso) return null;
