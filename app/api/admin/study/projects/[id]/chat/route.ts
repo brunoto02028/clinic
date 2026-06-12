@@ -6,6 +6,34 @@ import { callAIChat, CLAUDE_SONNET_MODEL } from "@/lib/ai-provider";
 export const dynamic = "force-dynamic";
 
 const DOC_CONTEXT_LIMIT = 14000; // chars of document text injected into the prompt
+const RECENT_KEEP = 24;          // most recent messages always sent verbatim
+const SUMMARY_TRIGGER = 12;      // start summarising once this many messages pile up beyond RECENT_KEEP
+
+// Fold older messages into a rolling summary so the tutor never loses earlier context.
+async function summariseOlder(
+  previousSummary: string,
+  olderMessages: { role: string; content: string }[]
+): Promise<string> {
+  const transcript = olderMessages
+    .map((m) => `${m.role === "user" ? "Bruno" : "Tutor"}: ${m.content}`)
+    .join("\n\n")
+    .slice(0, 16000);
+  const prompt = `You maintain the LONG-TERM MEMORY of an ongoing tutoring conversation. Update the running memory so NOTHING important is forgotten.
+
+${previousSummary ? `EXISTING MEMORY:\n${previousSummary}\n\n` : ""}NEW MESSAGES TO FOLD IN:\n${transcript}
+
+Produce an updated, well-structured memory (bullet points) capturing: key facts about Bruno's course/assignments, decisions made, the structure/plans agreed, drafts produced, feedback given, the student's preferences and writing voice, deadlines, and any open tasks. Be concise but complete. Output ONLY the updated memory.`;
+  try {
+    return await callAIChat([{ role: "user", content: prompt }], {
+      model: CLAUDE_SONNET_MODEL,
+      temperature: 0.3,
+      maxTokens: 1500,
+    });
+  } catch {
+    // If summarisation fails, keep the previous memory rather than losing it.
+    return previousSummary;
+  }
+}
 
 function buildDocContext(documents: { originalName: string; kind: string; extractedText: string | null }[]): string {
   const withText = documents.filter((d) => d.extractedText && d.extractedText.trim());
@@ -21,8 +49,13 @@ function buildDocContext(documents: { originalName: string; kind: string; extrac
   return parts.join("\n\n");
 }
 
-function tutorPrompt(project: { title: string; course: string; provider: string; level: string | null }, docContext: string): string {
-  return `You are an expert academic TUTOR and subject-matter specialist in sports therapy, physical rehabilitation, anatomy, biomechanics, and exercise science. You are helping Bruno Azenha Tonheta complete his **${project.level || "Level 5"} ${project.course}** with **${project.provider}** (UK). The current study project is: "${project.title}".
+function memoryBlock(memory: string): string {
+  if (!memory || !memory.trim()) return "";
+  return `\n\nLONG-TERM MEMORY (everything important agreed/discussed earlier in this project — treat as fully known, never ask Bruno to repeat it):\n${memory.trim()}`;
+}
+
+function tutorPrompt(project: { title: string; course: string; provider: string; level: string | null }, docContext: string, memory: string): string {
+  return `You are an expert academic TUTOR and subject-matter specialist in sports therapy, physical rehabilitation, anatomy, biomechanics, and exercise science. You are helping Bruno Azenha Tonheta complete his **${project.level || "Level 5"} ${project.course}** with **${project.provider}** (UK). The current study project is: "${project.title}".${memoryBlock(memory)}
 
 WHO BRUNO IS:
 - An experienced practising sports/physical rehabilitation therapist (clinic owner at BPR — Bruno Physical Rehabilitation, Ipswich, UK).
@@ -52,8 +85,8 @@ PRODUCING DRAFTS — IMPORTANT:
 - After a JSON draft, add a short plain-text note explaining how it meets the criteria and what he should personalise.`;
 }
 
-function englishPrompt(project: { title: string; provider: string }, docContext: string): string {
-  return `You are a friendly, expert ENGLISH LANGUAGE COACH preparing Bruno for the PRACTICAL (spoken) English requirement and written English of his Level 5 course with ${project.provider}. Bruno is a Brazilian sports therapist; English is his second language.
+function englishPrompt(project: { title: string; provider: string }, docContext: string, memory: string): string {
+  return `You are a friendly, expert ENGLISH LANGUAGE COACH preparing Bruno for the PRACTICAL (spoken) English requirement and written English of his Level 5 course with ${project.provider}. Bruno is a Brazilian sports therapist; English is his second language.${memoryBlock(memory)}
 
 YOUR JOB:
 - Improve his spoken and written English for a clinical/academic context.
@@ -83,20 +116,53 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const mode = body.mode === "english" ? "english" : "tutor";
   if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
-  // Load recent history for this mode (last 20 messages)
-  const history = await prisma.studyMessage.findMany({
+  // ── Long-term memory + recent window ──
+  // Load (or lazily create) the rolling memory for this project + mode.
+  const memoryRow = await prisma.studyMemory.upsert({
+    where: { projectId_mode: { projectId: params.id, mode } },
+    create: { projectId: params.id, mode, summary: "", summarizedCount: 0 },
+    update: {},
+  });
+
+  const totalCount = await prisma.studyMessage.count({ where: { projectId: params.id, mode } });
+  let summary = memoryRow.summary || "";
+  let summarizedCount = memoryRow.summarizedCount || 0;
+
+  // If too many messages have accrued beyond the recent window, fold the
+  // oldest un-summarised ones into the rolling memory so nothing is lost.
+  const unsummarised = totalCount - summarizedCount;
+  if (unsummarised > RECENT_KEEP + SUMMARY_TRIGGER) {
+    const toFoldCount = unsummarised - RECENT_KEEP; // keep RECENT_KEEP verbatim
+    const older = await prisma.studyMessage.findMany({
+      where: { projectId: params.id, mode },
+      orderBy: { createdAt: "asc" },
+      skip: summarizedCount,
+      take: toFoldCount,
+    });
+    if (older.length > 0) {
+      summary = await summariseOlder(summary, older.map((m) => ({ role: m.role, content: m.content })));
+      summarizedCount += older.length;
+      await prisma.studyMemory.update({
+        where: { id: memoryRow.id },
+        data: { summary, summarizedCount },
+      });
+    }
+  }
+
+  // Load the most recent messages verbatim (those not folded into the summary).
+  const recent = await prisma.studyMessage.findMany({
     where: { projectId: params.id, mode },
     orderBy: { createdAt: "asc" },
-    take: 40,
+    skip: summarizedCount,
   });
 
   const docContext = buildDocContext(project.documents);
   const systemPrompt = mode === "english"
-    ? englishPrompt(project, docContext)
-    : tutorPrompt(project, docContext);
+    ? englishPrompt(project, docContext, summary)
+    : tutorPrompt(project, docContext, summary);
 
   const chatMessages = [
-    ...history.map((m) => ({ role: m.role, content: m.content })),
+    ...recent.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: message },
   ];
 
