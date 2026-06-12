@@ -505,11 +505,11 @@ export default function StudyAssistantPage() {
 
         <div className="flex-1 flex flex-col lg:flex-row min-h-0">
           {/* Left: tutor chat */}
-          <div className="flex flex-col w-full lg:w-[38%] lg:max-w-[460px] border-b lg:border-b-0 lg:border-r border-border min-h-0 h-[40vh] lg:h-auto">
-            <div className="px-4 py-2 border-b border-border flex items-center gap-2 shrink-0">
-              <Bot className="h-4 w-4 text-indigo-500" />
-              <span className="text-sm font-medium">Tutor</span>
-              <span className="text-xs text-muted-foreground">— edits the document on the right</span>
+          <div className="flex flex-col w-full lg:w-[42%] lg:max-w-[480px] border-b lg:border-b-0 lg:border-r border-border min-h-0 h-[42vh] lg:h-auto bg-indigo-50/40 dark:bg-indigo-950/20">
+            <div className="px-4 py-2.5 border-b border-indigo-200 dark:border-indigo-500/30 bg-indigo-100 dark:bg-indigo-900/40 flex items-center gap-2 shrink-0">
+              <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-300 shrink-0" />
+              <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Talk to your tutor here</span>
+              <span className="text-xs text-indigo-700/80 dark:text-indigo-300/80 hidden sm:inline">— it edits the document live →</span>
             </div>
             <div ref={canvasChatRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
               {canvasMsgs.length === 0 && (
@@ -519,7 +519,7 @@ export default function StudyAssistantPage() {
                   <p className="text-xs mt-1">Ask me to improve the introduction, add a reference, expand a section, fix the English, add the references list — I'll edit the document directly.</p>
                   <div className="flex flex-wrap gap-1.5 justify-center mt-3">
                     {["Review this against the brief & criteria", "Improve the introduction", "Add a References list (Harvard)", "Check the academic English"].map((s) => (
-                      <Button key={s} variant="outline" size="sm" className="text-xs h-auto py-1 px-2 whitespace-normal" onClick={() => sendCanvasMessage(s)} disabled={canvasSending}>{s}</Button>
+                      <Button key={s} variant="outline" size="sm" className="text-xs h-auto py-1 px-2 whitespace-normal bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-600 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700" onClick={() => sendCanvasMessage(s)} disabled={canvasSending}>{s}</Button>
                     ))}
                   </div>
                 </div>
