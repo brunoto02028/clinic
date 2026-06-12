@@ -7,6 +7,7 @@ import {
   GraduationCap, Plus, Loader2, Send, Bot, Trash2, FileText, Upload, BookOpen,
   Languages, Sparkles, ChevronLeft, Save, Download, Copy, Printer, Mic, MicOff,
   FileCheck, MessageSquare, Pencil, X, FileType, ListChecks, Wand2, CalendarClock,
+  CheckCircle2, Circle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -450,6 +451,9 @@ export default function StudyAssistantPage() {
     });
   };
 
+  // Quick tick: mark an activity done (or send it back to "to do")
+  const toggleDone = (t: Task) => updateTask(t.id, { status: t.status === "done" ? "todo" : "done" });
+
   const deleteTask = async (id: string) => {
     if (!confirm("Delete this activity? Drafts linked to it are kept (just unlinked).")) return;
     await fetch(`/api/admin/study/tasks/${id}`, { method: "DELETE" });
@@ -840,10 +844,17 @@ export default function StudyAssistantPage() {
                       const due = fmtDue(t.dueDate);
                       const prio = PRIORITY_META[t.priority] || PRIORITY_META.medium;
                       return (
-                        <Card key={t.id} className="cursor-pointer hover:border-indigo-400 transition-colors" onClick={() => setOpenTask(t)}>
+                        <Card key={t.id} className={`cursor-pointer hover:border-indigo-400 transition-colors ${t.status === "done" ? "opacity-70" : ""}`} onClick={() => setOpenTask(t)}>
                           <CardContent className="p-4">
-                            <div className="flex items-start justify-between gap-2">
-                              <h3 className="font-semibold text-foreground leading-snug">{t.title}</h3>
+                            <div className="flex items-start gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleDone(t); }}
+                                title={t.status === "done" ? "Mark as not done" : "Mark as done"}
+                                className={`shrink-0 mt-0.5 transition-colors ${t.status === "done" ? "text-green-600 dark:text-green-400" : "text-muted-foreground hover:text-green-600"}`}
+                              >
+                                {t.status === "done" ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
+                              </button>
+                              <h3 className={`font-semibold leading-snug flex-1 ${t.status === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>{t.title}</h3>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive shrink-0" onClick={(e) => { e.stopPropagation(); deleteTask(t.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                             </div>
                             <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1120,6 +1131,9 @@ export default function StudyAssistantPage() {
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button onClick={() => startTaskDraft(openTask)} className="gap-2"><Sparkles className="h-4 w-4" /> Start writing this (Canvas)</Button>
                   <Button variant="outline" onClick={() => discussTask(openTask)} className="gap-2"><Bot className="h-4 w-4" /> Discuss with tutor</Button>
+                  <Button variant={openTask.status === "done" ? "secondary" : "outline"} onClick={() => toggleDone(openTask)} className="gap-2">
+                    {openTask.status === "done" ? <><Circle className="h-4 w-4" /> Reopen</> : <><CheckCircle2 className="h-4 w-4 text-green-600" /> Mark done</>}
+                  </Button>
                   <Button variant="ghost" className="text-destructive gap-1 ml-auto" onClick={() => deleteTask(openTask.id)}><Trash2 className="h-4 w-4" /> Delete</Button>
                 </div>
               </div>
