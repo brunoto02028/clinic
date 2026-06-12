@@ -4780,12 +4780,30 @@ model StudyProject {
   documents   StudyDocument[]
   messages    StudyMessage[]
   drafts      StudyDraft[]
+  memories    StudyMemory[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([ownerId])
   @@map("study_projects")
+}
+
+// Rolling long-term memory per project + mode so the tutor never "forgets"
+// older parts of a long conversation (older messages are summarised here).
+model StudyMemory {
+  id              String       @id @default(cuid())
+  projectId       String
+  project         StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  mode            String       // tutor | english
+  summary         String       @db.Text @default("")
+  summarizedCount Int          @default(0) // how many oldest messages are folded into summary
+
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([projectId, mode])
+  @@map("study_memories")
 }
 
 model StudyDocument {
