@@ -8,6 +8,15 @@ import { fetchProfile, updateProfile } from "@/api/profile";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/theme/useTheme";
 
+function convertDobToISO(dob: string): string | null {
+  if (!dob) return null;
+  // dd/mm/aaaa → aaaa-mm-dd
+  const match = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (match) return `${match[3]}-${match[2]}-${match[1]}`;
+  // Already ISO or other format — return as-is
+  return dob;
+}
+
 const MENU_ITEMS = [
   { icon: "lock-closed-outline" as const, label: "Alterar Senha", path: "/change-password", color: "#f59e0b" },
   { icon: "trophy-outline" as const, label: "Conquistas", path: "/achievements", color: "#34d399" },
@@ -41,7 +50,10 @@ export default function Profile() {
     if (data && !initialized.current) {
       setPhone(data.phone ?? "");
       setAddress(data.address ?? "");
-      setDob(data.dateOfBirth ?? "");
+      // Convert ISO (aaaa-mm-dd) to Brazilian (dd/mm/aaaa) for display
+      const rawDob = data.dateOfBirth ?? "";
+      const isoMatch = rawDob.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      setDob(isoMatch ? `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}` : rawDob);
       setEmergName(data.emergencyContactName ?? "");
       setEmergPhone(data.emergencyContactPhone ?? "");
       setEmergRelation(data.emergencyContactRelation ?? "");
@@ -53,7 +65,7 @@ export default function Profile() {
     mutationFn: () => updateProfile({
       phone: phone.trim() || null,
       address: address.trim() || null,
-      dateOfBirth: dob.trim() || null,
+      dateOfBirth: convertDobToISO(dob.trim()) || null,
       emergencyContactName: emergName.trim() || null,
       emergencyContactPhone: emergPhone.trim() || null,
       emergencyContactRelation: emergRelation.trim() || null,
