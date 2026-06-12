@@ -810,7 +810,7 @@ export default function StudyAssistantPage() {
                 value={braindump}
                 onChange={(e) => setBraindump(e.target.value)}
                 placeholder={"e.g. Unit 3 assignment on injury assessment due 30 June (2500 words); revise for practical exam in July; read chapters 4-6; reflective journal weekly..."}
-                className="bg-white dark:bg-slate-900"
+                className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border-slate-300 dark:border-slate-600"
               />
               <div className="flex flex-wrap gap-2">
                 <Button onClick={runBreakdown} disabled={breakingDown} className="gap-2">
