@@ -50,9 +50,43 @@ export default function RichTextEditor({ value, onChange, placeholder }: RichTex
           border-top-left-radius: 0.5rem;
           border-top-right-radius: 0.5rem;
           background: hsl(var(--muted));
+          border-color: hsl(var(--border));
+        }
+        .rich-text-editor .ql-container {
+          border-color: hsl(var(--border));
+        }
+        /* Toolbar icon & label contrast (adapts to light/dark theme) */
+        .rich-text-editor .ql-toolbar .ql-stroke {
+          stroke: hsl(var(--foreground) / 0.8);
+        }
+        .rich-text-editor .ql-toolbar .ql-fill {
+          fill: hsl(var(--foreground) / 0.8);
+        }
+        .rich-text-editor .ql-toolbar .ql-picker {
+          color: hsl(var(--foreground) / 0.85);
+        }
+        .rich-text-editor .ql-toolbar .ql-picker-label {
+          color: hsl(var(--foreground) / 0.85);
+        }
+        .rich-text-editor .ql-toolbar button:hover .ql-stroke,
+        .rich-text-editor .ql-toolbar button.ql-active .ql-stroke,
+        .rich-text-editor .ql-toolbar .ql-picker-label:hover {
+          stroke: hsl(var(--primary));
+          color: hsl(var(--primary));
+        }
+        .rich-text-editor .ql-toolbar button:hover .ql-fill,
+        .rich-text-editor .ql-toolbar button.ql-active .ql-fill {
+          fill: hsl(var(--primary));
+        }
+        /* Dropdown menu (header picker) */
+        .rich-text-editor .ql-picker-options {
+          background: hsl(var(--popover));
+          border-color: hsl(var(--border));
+          color: hsl(var(--popover-foreground));
         }
         .rich-text-editor .ql-editor {
           min-height: 300px;
+          color: hsl(var(--foreground));
         }
         .rich-text-editor .ql-editor p {
           margin-bottom: 0.75em;

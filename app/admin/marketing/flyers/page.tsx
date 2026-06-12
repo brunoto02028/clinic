@@ -145,7 +145,7 @@ const DEFAULT_FLYER: FlyerData = {
   phone: '+44 20 XXXX XXXX',
   email: 'info@bpr.rehab',
   website: 'bpr.rehab',
-  address: 'Richmond TW10 6AQ & Ipswich, Suffolk',
+  address: 'Ipswich, Suffolk',
   hours: 'Open 7 days a week',
   tagline: 'Your recovery starts here.',
   promoText: '',

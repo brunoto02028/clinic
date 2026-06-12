@@ -390,7 +390,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>Richmond TW10 6AQ</span>
+                  <span>Ipswich, Suffolk</span>
                 </div>
               </div>
             </div>

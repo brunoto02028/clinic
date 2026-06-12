@@ -48,18 +48,63 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, excerpt, content, imageUrl, published, authorName, metaDescription, tags, keyword } = body;
+    const {
+      title, excerpt, content, imageUrl, published, authorName, metaDescription, tags, keyword,
+      titleEn, excerptEn, contentEn, titlePt, excerptPt, contentPt, publishLanguage,
+    } = body;
 
     const updateData: Record<string, unknown> = {};
-    if (title !== undefined) {
-      updateData.title = title;
-      updateData.slug = title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
+
+    // ── Bilingual handling ──
+    const isBilingual =
+      publishLanguage !== undefined ||
+      titleEn !== undefined || excerptEn !== undefined || contentEn !== undefined ||
+      titlePt !== undefined || excerptPt !== undefined || contentPt !== undefined;
+
+    if (isBilingual) {
+      const pubLang = publishLanguage === "pt" ? "pt" : "en";
+      const enT = titleEn   ?? (pubLang === "en" ? title   : null);
+      const enE = excerptEn ?? (pubLang === "en" ? excerpt : null);
+      const enC = contentEn ?? (pubLang === "en" ? content : null);
+      const ptT = titlePt   ?? (pubLang === "pt" ? title   : null);
+      const ptE = excerptPt ?? (pubLang === "pt" ? excerpt : null);
+      const ptC = contentPt ?? (pubLang === "pt" ? content : null);
+
+      updateData.titleEn = enT;
+      updateData.excerptEn = enE;
+      updateData.contentEn = enC;
+      updateData.titlePt = ptT;
+      updateData.excerptPt = ptE;
+      updateData.contentPt = ptC;
+      updateData.publishLanguage = pubLang;
+      updateData.language = pubLang;
+
+      // Primary (public-facing) fields mirror the published language
+      const primaryTitle   = (pubLang === "pt" ? ptT : enT) || title;
+      const primaryExcerpt = (pubLang === "pt" ? ptE : enE) || excerpt;
+      const primaryContent = (pubLang === "pt" ? ptC : enC) || content;
+      if (primaryTitle !== undefined && primaryTitle !== null) {
+        updateData.title = primaryTitle;
+        updateData.slug = String(primaryTitle)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+      }
+      if (primaryExcerpt !== undefined) updateData.excerpt = primaryExcerpt;
+      if (primaryContent !== undefined) updateData.content = primaryContent;
+    } else {
+      // Legacy single-language update
+      if (title !== undefined) {
+        updateData.title = title;
+        updateData.slug = title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+      }
+      if (excerpt !== undefined) updateData.excerpt = excerpt;
+      if (content !== undefined) updateData.content = content;
     }
-    if (excerpt !== undefined) updateData.excerpt = excerpt;
-    if (content !== undefined) updateData.content = content;
+
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     if (published !== undefined) updateData.published = published;
     if (authorName !== undefined) updateData.authorName = authorName || null;

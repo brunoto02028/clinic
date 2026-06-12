@@ -191,6 +191,7 @@ const navigationGroups: NavGroup[] = [
     icon: GraduationCap,
     items: [
       { name: "My Education", href: "/admin/my-education", icon: GraduationCap },
+      { name: "Study Assistant", href: "/admin/study", icon: Bot },
       { name: "Courses & Licences", href: "/admin/cpd-courses", icon: Award },
       { name: "Content Library", i18nKey: "nav.contentLibrary", href: "/admin/education", icon: GraduationCap },
       { name: "Create Content", i18nKey: "nav.createContent", href: "/admin/education/create", icon: PenSquare },

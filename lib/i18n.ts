@@ -393,7 +393,7 @@ const translations: Record<string, Record<Locale, string>> = {
   // ─── Homepage / Landing Page ───
   "home.heroTitle": { "en-GB": "Adjust Your Body", "pt-BR": "Ajuste o Seu Corpo" },
   "home.heroTitle2": { "en-GB": "Get A Perfect Balance", "pt-BR": "Conquiste o Equilíbrio Perfeito" },
-  "home.heroSubtitle": { "en-GB": "Expert physical rehabilitation and sports therapy in Richmond, UK. Helping you move better, feel stronger, and live pain-free through evidence-based treatments and personalised care.", "pt-BR": "Reabilitação física especializada e terapia esportiva em Richmond, UK. Ajudamos você a se mover melhor, sentir-se mais forte e viver sem dor através de tratamentos baseados em evidências e cuidados personalizados." },
+  "home.heroSubtitle": { "en-GB": "Expert physical rehabilitation and sports therapy in Ipswich, Suffolk. Helping you move better, feel stronger, and live pain-free through evidence-based treatments and personalised care.", "pt-BR": "Reabilitação física especializada e terapia esportiva em Ipswich, Suffolk. Ajudamos você a se mover melhor, sentir-se mais forte e viver sem dor através de tratamentos baseados em evidências e cuidados personalizados." },
   "home.bookAppointment": { "en-GB": "Book Appointment", "pt-BR": "Agendar Consulta" },
   "home.clientPortal": { "en-GB": "Client Portal", "pt-BR": "Portal do Cliente" },
   "home.fullyInsured": { "en-GB": "Fully Insured", "pt-BR": "Totalmente Segurado" },

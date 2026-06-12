@@ -37,15 +37,55 @@ export default function NewArticlePage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   // Voice recording (Web Speech API — free, no rate limits)
   const [recording, setRecording] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("ai_voice_lang") || "pt-BR";
+    return "pt-BR";
+  });
   const recognitionRef = useRef<any>(null);
   const fullTranscriptRef = useRef("");
+  // Output language for the generated article (independent of voice/chat language)
+  const [articleLang, setArticleLang] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("ai_article_lang") || "en-GB";
+    return "en-GB";
+  });
+  // ── Bilingual editing ──
+  // title/excerpt/content above hold the CURRENTLY-edited language. `stash` keeps the inactive one.
+  const [editLang, setEditLang] = useState<"en" | "pt">("en");
+  const [publishLanguage, setPublishLanguage] = useState<"en" | "pt">("en");
+  const [stash, setStash] = useState<{ en?: { title: string; excerpt: string; content: string }; pt?: { title: string; excerpt: string; content: string } }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { toast } = useToast();
 
+  // Switch the editor between EN and PT, preserving each language's content.
+  const switchLang = (newLang: "en" | "pt") => {
+    if (newLang === editLang) return;
+    setStash((s) => ({ ...s, [editLang]: { title, excerpt, content } }));
+    const other = stash[newLang] || { title: "", excerpt: "", content: "" };
+    setTitle(other.title);
+    setExcerpt(other.excerpt);
+    setContent(other.content);
+    setShowPreview(false);
+    setEditLang(newLang);
+    // Keep the AI generation language aligned with the language being edited
+    if (newLang === "en" && articleLang.startsWith("pt")) {
+      setArticleLang("en-GB");
+      if (typeof window !== "undefined") localStorage.setItem("ai_article_lang", "en-GB");
+    } else if (newLang === "pt" && articleLang.startsWith("en")) {
+      setArticleLang("pt-BR");
+      if (typeof window !== "undefined") localStorage.setItem("ai_article_lang", "pt-BR");
+    }
+  };
+
+  // Translate the currently-edited content into the OTHER language, store it, and switch to it.
   const handleTranslate = async (targetLang: "en" | "pt") => {
+    if (targetLang === editLang) {
+      toast({ title: "Already editing this language", description: `Switch to the other language first, then translate.` });
+      return;
+    }
     if (!title && !content) return;
     setTranslating(true);
     try {
@@ -58,10 +98,14 @@ export default function NewArticlePage() {
       if (!ct.includes("json")) throw new Error(`Server error (${res.status})`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Translation failed");
+      // Stash the current language, load the translated target language into the editor
+      setStash((s) => ({ ...s, [editLang]: { title, excerpt, content } }));
       setTitle(data.title);
       setExcerpt(data.excerpt);
       setContent(data.content);
-      toast({ title: targetLang === "pt" ? "Traduzido para Português!" : "Translated to English!" });
+      setShowPreview(false);
+      setEditLang(targetLang);
+      toast({ title: targetLang === "pt" ? "Traduzido para Português!" : "Translated to English!", description: "Review and correct the translation as needed." });
     } catch (err: any) {
       toast({ title: "Translation failed", description: err.message, variant: "destructive" });
     } finally {
@@ -69,9 +113,10 @@ export default function NewArticlePage() {
     }
   };
 
-  // Auto-scroll chat to bottom
+  // Auto-scroll chat to bottom — scroll ONLY the chat container, never the page
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [chatMessages, chatLoading]);
 
   const sendChatMessage = async (msg?: string) => {
@@ -85,7 +130,7 @@ export default function NewArticlePage() {
       const res = await fetch("/api/admin/articles/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, language: articleLang }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -105,11 +150,19 @@ export default function NewArticlePage() {
   const [pendingArticle, setPendingArticle] = useState<{title?: string; excerpt?: string; content?: string} | null>(null);
 
   const applyArticle = (article: {title?: string; excerpt?: string; content?: string}) => {
-    if (article.title) setTitle(article.title);
-    if (article.excerpt) setExcerpt(article.excerpt);
-    if (article.content) setContent(article.content);
+    // The article was generated in `articleLang` — place it in that language's slot.
+    const genLang: "en" | "pt" = articleLang.startsWith("pt") ? "pt" : "en";
+    if (genLang !== editLang) {
+      // Stash whatever is in the current slot, then switch to the generated language
+      setStash((s) => ({ ...s, [editLang]: { title, excerpt, content } }));
+      setEditLang(genLang);
+    }
+    setTitle(article.title || "");
+    setExcerpt(article.excerpt || "");
+    setContent(article.content || "");
+    setPublishLanguage(genLang);
     setPendingArticle(null);
-    toast({ title: "Article applied!", description: "Content has been filled in. Review and edit as needed." });
+    toast({ title: "Article applied!", description: `Filled the ${genLang === "pt" ? "Portuguese" : "English"} version. Review it, then use the translate button to create the other language.` });
   };
 
   // --- Image Upload ---
@@ -146,7 +199,7 @@ export default function NewArticlePage() {
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.lang = "pt-BR";
+    recognition.lang = voiceLang;
     fullTranscriptRef.current = "";
 
     recognition.onresult = (event: any) => {
@@ -196,12 +249,27 @@ export default function NewArticlePage() {
       toast({ title: "Missing fields", description: "Please fill in all required fields.", variant: "destructive" });
       return;
     }
+    // Gather both language slots (current editing slot + stash)
+    const current = { title, excerpt, content };
+    const en = editLang === "en" ? current : (stash.en || { title: "", excerpt: "", content: "" });
+    const pt = editLang === "pt" ? current : (stash.pt || { title: "", excerpt: "", content: "" });
+    const primary = publishLanguage === "pt" ? pt : en;
+    if (!primary.title || !primary.content) {
+      toast({ title: `Missing ${publishLanguage === "pt" ? "Portuguese" : "English"} content`, description: `You chose to publish in ${publishLanguage === "pt" ? "Portuguese" : "English"} but that version is empty. Fill it in or change the publish language.`, variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/articles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, excerpt, content, imageUrl, published, authorName: authorName || undefined }),
+        body: JSON.stringify({
+          title: primary.title, excerpt: primary.excerpt, content: primary.content,
+          titleEn: en.title || null, excerptEn: en.excerpt || null, contentEn: en.content || null,
+          titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
+          publishLanguage,
+          imageUrl, published, authorName: authorName || undefined,
+        }),
       });
       if (res.ok) {
         toast({ title: "Article created", description: published ? "Your article has been published." : "Your article has been saved as a draft." });
@@ -257,7 +325,7 @@ export default function NewArticlePage() {
         {chatOpen && (
           <CardContent className="space-y-3">
             {/* Chat Messages */}
-            <div className="border border-teal-500/20 rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
+            <div ref={chatScrollRef} className="border border-teal-500/20 rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
               {chatMessages.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-6">
                   Start a conversation with the AI. Describe the article topic, ask questions, request changes — the AI will help you craft the perfect article.
@@ -302,6 +370,25 @@ export default function NewArticlePage() {
               </div>
             )}
 
+            {/* Article output language selector */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-foreground">Write article in:</span>
+              {([
+                { code: "en-GB", label: "English (UK)" },
+                { code: "en-US", label: "English (US)" },
+                { code: "pt-BR", label: "Português (BR)" },
+                { code: "pt-PT", label: "Português (PT)" },
+              ] as const).map(({ code, label }) => (
+                <button key={code} type="button"
+                  onClick={() => { setArticleLang(code); if (typeof window !== "undefined") localStorage.setItem("ai_article_lang", code); }}
+                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                    articleLang === code ? "bg-teal-600 text-white border-teal-600" : "bg-muted text-muted-foreground border-border hover:border-teal-400"
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {/* Chat Input */}
             <div className="flex gap-2">
               <Input
@@ -321,12 +408,25 @@ export default function NewArticlePage() {
                 size="icon"
                 onClick={recording ? stopRecording : startRecording}
                 disabled={chatLoading}
-                title={recording ? "Stop recording" : "Voice input"}
+                title={recording ? `Stop recording (${voiceLang})` : `Voice input (${voiceLang})`}
               >
                 {recording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </Button>
             </div>
-            {recording && <p className="text-xs text-red-600 animate-pulse">Recording... speak your message, then click Stop</p>}
+            {/* Voice language selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">Voice lang:</span>
+              {(["pt-BR", "pt-PT", "en-GB", "en-US"] as const).map(lang => (
+                <button key={lang} type="button"
+                  onClick={() => { setVoiceLang(lang); if (typeof window !== "undefined") localStorage.setItem("ai_voice_lang", lang); }}
+                  className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                    voiceLang === lang ? "bg-blue-600 text-white border-blue-600" : "bg-muted text-muted-foreground border-border hover:border-blue-400"
+                  }`}>
+                  {lang}
+                </button>
+              ))}
+              {recording && <span className="ml-2 text-xs text-red-600 animate-pulse">● Recording... click Stop when done</span>}
+            </div>
           </CardContent>
         )}
       </Card>
@@ -334,7 +434,25 @@ export default function NewArticlePage() {
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
-            <CardTitle>Article Details</CardTitle>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle>Article Details</CardTitle>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Editing language:</span>
+                <div className="flex border border-border rounded-md overflow-hidden">
+                  <button type="button" onClick={() => switchLang("en")}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${editLang === "en" ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                    🇬🇧 English
+                  </button>
+                  <button type="button" onClick={() => switchLang("pt")}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${editLang === "pt" ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                    🇧🇷 Português
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              You are editing the <strong>{editLang === "en" ? "English" : "Portuguese"}</strong> version. Use the <Languages className="h-3 w-3 inline" /> buttons above to auto-translate into the other language, then correct it.
+            </p>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -435,13 +553,47 @@ export default function NewArticlePage() {
               {showPreview ? (
                 <div className="border rounded-lg p-6 min-h-[350px] bg-white">
                   <div
-                    className="article-content prose prose-lg max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-blockquote:border-l-primary/30 prose-blockquote:text-muted-foreground prose-img:rounded-xl prose-img:shadow-md"
-                    dangerouslySetInnerHTML={{ __html: content || "<p class='text-muted-foreground italic'>No content yet. Switch to Edit mode to start writing.</p>" }}
+                    className="article-preview max-w-none"
+                    dangerouslySetInnerHTML={{ __html: content || "<p style='color:#9ca3af;font-style:italic'>No content yet. Switch to Edit mode to start writing.</p>" }}
                   />
+                  <style jsx global>{`
+                    /* Match the Quill editor spacing exactly so preview == edit */
+                    .article-preview { color: #1f2937; font-size: 0.95rem; line-height: 1.6; }
+                    .article-preview p { margin: 0 0 0.75em; }
+                    .article-preview h1, .article-preview h2, .article-preview h3 { color: #111827; font-weight: 700; margin: 1em 0 0.5em; line-height: 1.3; }
+                    .article-preview h1 { font-size: 1.6em; }
+                    .article-preview h2 { font-size: 1.35em; }
+                    .article-preview h3 { font-size: 1.15em; }
+                    .article-preview ul, .article-preview ol { margin: 0 0 0.75em; padding-left: 1.5em; }
+                    .article-preview ul { list-style: disc; }
+                    .article-preview ol { list-style: decimal; }
+                    .article-preview li { margin-bottom: 0.25em; }
+                    .article-preview a { color: #0d9488; text-decoration: underline; }
+                    .article-preview strong { font-weight: 700; color: #111827; }
+                    .article-preview em { font-style: italic; }
+                    .article-preview blockquote { border-left: 3px solid #14b8a6; padding-left: 1em; margin: 0 0 0.75em; color: #4b5563; font-style: italic; }
+                    .article-preview img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 1em 0; }
+                    /* Collapse Quill's empty paragraphs so they don't create big white gaps */
+                    .article-preview p:empty { display: none; margin: 0; }
+                  `}</style>
                 </div>
               ) : (
                 <RichTextEditor value={content} onChange={setContent} placeholder="Write your article content here..." />
               )}
+            </div>
+
+            {/* Primary publish language */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+              <Label className="text-sm font-semibold">Primary publish language</Label>
+              <p className="text-xs text-muted-foreground">The default language shown on the public site. Visitors can switch using the site's language toggle if the other version exists.</p>
+              <div className="flex gap-2 pt-1">
+                {(["en", "pt"] as const).map((lang) => (
+                  <button key={lang} type="button" onClick={() => setPublishLanguage(lang)}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-md border transition-colors ${publishLanguage === lang ? "bg-teal-600 text-white border-teal-600" : "bg-background text-muted-foreground border-border hover:border-teal-400"}`}>
+                    {lang === "en" ? "🇬🇧 English" : "🇧🇷 Português"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-center space-x-2">
