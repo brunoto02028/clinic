@@ -56,11 +56,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
   history.reverse();
 
+  // Shared project context: the same tutor knows what was discussed in the main Tutor chat.
+  const tutorMemory = await prisma.studyMemory.findUnique({
+    where: { projectId_mode: { projectId, mode: "tutor" } },
+  }).catch(() => null);
+  const recentTutor = await prisma.studyMessage.findMany({
+    where: { projectId, mode: "tutor" }, orderBy: { createdAt: "desc" }, take: 8,
+  });
+  recentTutor.reverse();
+  const sharedParts: string[] = [];
+  if (tutorMemory?.summary?.trim()) sharedParts.push(`Summary of earlier tutoring on this project:\n${tutorMemory.summary.trim()}`);
+  if (recentTutor.length > 0) {
+    sharedParts.push("Most recent main-chat exchange:\n" + recentTutor.map((m) => `${m.role === "user" ? "Bruno" : "Tutor"}: ${m.content.slice(0, 600)}`).join("\n"));
+  }
+  const sharedContext = sharedParts.length > 0
+    ? `\nSHARED PROJECT CONTEXT (you are the SAME tutor across the whole project — use this so your work here is consistent with everything else):\n${sharedParts.join("\n\n")}\n`
+    : "";
+
   const docContext = buildDocContext(draft.project.documents);
   const p = draft.project;
   const systemPrompt = `You are Bruno's expert academic TUTOR (UK ${p.level || "Level 5"} ${p.course}, ${p.provider}) working in a DOCUMENT CANVAS. You are co-writing/editing ONE document with him. British English, academic, evidence-based with Harvard citations (Author, Year) and a References list, distinction standard. Connect to his real clinical practice at BPR when useful.
 
-${docContext ? `The text below is the FULL TEXT of files Bruno uploaded. You CAN read them; ground the document in them. NEVER say you cannot read PDFs.\n\n${docContext}\n\n` : ""}CURRENT DOCUMENT TITLE: ${draft.title}
+${sharedContext}${docContext ? `The text below is the FULL TEXT of files Bruno uploaded. You CAN read them; ground the document in them. NEVER say you cannot read PDFs.\n\n${docContext}\n\n` : ""}CURRENT DOCUMENT TITLE: ${draft.title}
 CURRENT DOCUMENT (HTML):
 ${draft.content}
 
