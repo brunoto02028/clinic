@@ -4,7 +4,7 @@
 
 import AdmZip from "adm-zip";
 
-const MAX_CHARS = 60000; // cap stored text to keep prompts manageable
+const MAX_CHARS = 200000; // cap stored text (generous; Claude has a large context window)
 
 export function isImageMime(mime: string): boolean {
   return mime.startsWith("image/");
