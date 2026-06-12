@@ -15,6 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       documents: { orderBy: { createdAt: "desc" } },
       drafts: { orderBy: { updatedAt: "desc" } },
       messages: { orderBy: { createdAt: "asc" } },
+      tasks: { orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
     },
   });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
