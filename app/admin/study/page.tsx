@@ -206,6 +206,13 @@ export default function StudyAssistantPage() {
       if (!res.ok) throw new Error(data.error);
       setActive((p) => p ? { ...p, messages: [...p.messages, { role: "assistant", content: data.reply, mode }] } : p);
       if (data.draft?.content) setPendingDraft({ title: data.draft.title || "Draft", content: data.draft.content });
+      if (Array.isArray(data.tasks) && data.tasks.length > 0) {
+        setActive((p) => p ? { ...p, tasks: [...p.tasks, ...data.tasks] } : p);
+        toast({
+          title: `${data.tasks.length} ${data.tasks.length > 1 ? "activities" : "activity"} added to your Plan`,
+          description: "Open the Plan tab to see and tick them off.",
+        });
+      }
     } catch (err: any) {
       toast({ title: "AI error", description: err.message, variant: "destructive" });
     } finally { setSending(false); }
@@ -560,7 +567,7 @@ export default function StudyAssistantPage() {
     toast({ title: "Copied as plain text" });
   };
 
-  const formatReply = (text: string) => text.replace(/```json\s*[\s\S]*?```/g, "").trim();
+  const formatReply = (text: string) => text.replace(/```json\s*[\s\S]*?```/g, "").replace(/```tasks\s*[\s\S]*?```/g, "").trim();
   const fmtSize = (b: number) => b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)}MB` : `${(b / 1024).toFixed(0)}KB`;
   const fmtDue = (iso: string | null) => {
     if (!iso) return null;
@@ -740,7 +747,7 @@ export default function StudyAssistantPage() {
   const isChat = tab === "tutor" || tab === "english";
   const suggestions = tab === "english"
     ? ["Ask me a mock practical exam question", "Correct this: ...", "Teach me clinical vocabulary for knee assessment", "How do I explain my treatment rationale in English?"]
-    : ["Summarise the assignment brief and criteria", "Help me plan the structure", "Draft the introduction", "What does the assessor want for a distinction?"];
+    : ["Organise my whole diploma into activities in my Plan", "Summarise the assignment brief and criteria", "Help me plan the structure", "What does the assessor want for a distinction?"];
 
   return (
     <div className="space-y-4">
