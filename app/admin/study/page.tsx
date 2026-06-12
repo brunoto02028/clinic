@@ -647,18 +647,18 @@ export default function StudyAssistantPage() {
 
         <div className="flex-1 flex flex-col md:flex-row min-h-0">
           {/* Left: tutor chat */}
-          <div className="flex flex-col w-full md:w-[42%] md:max-w-[480px] border-b md:border-b-0 md:border-r border-border min-h-0 h-[42vh] md:h-auto bg-indigo-50/40 dark:bg-indigo-950/20">
-            <div className="px-4 py-2.5 border-b border-indigo-200 dark:border-indigo-500/30 bg-indigo-100 dark:bg-indigo-900/40 flex items-center gap-2 shrink-0">
-              <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-300 shrink-0" />
-              <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Talk to your tutor here</span>
-              <span className="text-xs text-indigo-700/80 dark:text-indigo-300/80 hidden sm:inline">— it edits the document live →</span>
+          <div className="flex flex-col w-full md:w-[42%] md:max-w-[480px] border-b md:border-b-0 md:border-r border-border min-h-0 h-[42vh] md:h-auto bg-slate-50 dark:bg-slate-900">
+            <div className="px-4 py-2.5 border-b border-indigo-300 dark:border-indigo-500/40 bg-indigo-600 dark:bg-indigo-700 flex items-center gap-2 shrink-0">
+              <Bot className="h-4 w-4 text-white shrink-0" />
+              <span className="text-sm font-semibold text-white">Talk to your tutor here</span>
+              <span className="text-xs text-indigo-100 hidden sm:inline">— it edits the document live →</span>
             </div>
             <div ref={canvasChatRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
               {canvasMsgs.length === 0 && (
                 <div className="text-center py-8 px-3">
                   <Sparkles className="h-8 w-8 mx-auto mb-2 text-indigo-500" />
                   <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Co-write & review here</p>
-                  <p className="text-xs mt-1.5 text-slate-600 dark:text-slate-300 leading-relaxed">Ask me to improve the introduction, add a reference, expand a section, fix the English, add the references list — I'll edit the document directly.</p>
+                  <p className="text-xs mt-1.5 text-slate-600 dark:text-slate-300 leading-relaxed max-w-xs mx-auto">Ask me to improve the introduction, add a reference, expand a section, fix the English, add the references list — I'll edit the document directly.</p>
                   <div className="flex flex-wrap gap-1.5 justify-center mt-3">
                     {["Review this against the brief & criteria", "Improve the introduction", "Add a References list (Harvard)", "Check the academic English"].map((s) => (
                       <Button key={s} variant="outline" size="sm" className="text-xs h-auto py-1 px-2 whitespace-normal bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-600 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700" onClick={() => sendCanvasMessage(s)} disabled={canvasSending}>{s}</Button>
@@ -692,8 +692,8 @@ export default function StudyAssistantPage() {
           </div>
 
           {/* Right: live document */}
-          <div className="flex-1 flex flex-col min-h-0 min-w-0">
-            <div className="px-4 py-2 border-b border-border shrink-0">
+          <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-slate-100 dark:bg-slate-950">
+            <div className="px-4 py-2 border-b border-border shrink-0 bg-background">
               <Input
                 value={canvasTitle}
                 onChange={(e) => { setCanvasTitle(e.target.value); setCanvasDirty(true); }}
@@ -701,8 +701,10 @@ export default function StudyAssistantPage() {
                 placeholder="Document title"
               />
             </div>
-            <div className="flex-1 overflow-y-auto p-4 min-h-0">
-              <RichTextEditor value={canvasContent} onChange={(v) => { setCanvasContent(v); setCanvasDirty(true); }} />
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
+              <div className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-lg border border-border shadow-sm p-5 sm:p-8 min-h-full">
+                <RichTextEditor value={canvasContent} onChange={(v) => { setCanvasContent(v); setCanvasDirty(true); }} />
+              </div>
             </div>
           </div>
         </div>
