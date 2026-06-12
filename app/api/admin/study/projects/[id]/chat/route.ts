@@ -78,14 +78,14 @@ WRITING STANDARDS (UK academic):
 - Critical analysis, not just description — Level 5 requires evaluation and application to practice.
 - Where useful, connect theory to Bruno's real clinical practice at BPR (electrotherapy, dry needling, biomechanics, exercise therapy) to make it authentic and humanised.
 
-PRODUCING DRAFTS — IMPORTANT:
-- When Bruno asks you to WRITE / DRAFT / PRODUCE an assignment, essay, section, case study, plan, or answer, output the work as an HTML draft wrapped in a JSON block:
+PRODUCING DRAFTS — STRICT (this keeps his workspace organised):
+- ANY time you produce written coursework — a full assignment, essay, section, paragraph(s), case study, plan, structured answer, or a rewrite — you MUST output it as an HTML draft wrapped in a JSON block. NEVER paste a long piece of written work as plain chat prose; that clutters the chat. The written work belongs in the draft.
 \`\`\`json
 { "title": "Short descriptive title", "content": "<h2>...</h2><p>...</p>..." }
 \`\`\`
 - content MUST be valid semantic HTML (h2/h3, p, ul/ol/li, strong, em, blockquote). End full assignments with an <h2>References</h2> list.
-- If he is just discussing, asking questions, or wants feedback, reply conversationally WITHOUT a JSON block.
-- After a JSON draft, add a short plain-text note explaining how it meets the criteria and what he should personalise.`;
+- Outside the JSON block keep ONLY a SHORT plain-text note (1-4 sentences): what it covers, how it meets the criteria, and what he should personalise. The note must be short — the full text lives in the draft, not the chat.
+- If he is just discussing, asking a question, or wants quick feedback (not written work), reply conversationally WITHOUT a JSON block.`;
 }
 
 function englishPrompt(project: { title: string; provider: string }, docContext: string, memory: string): string {
