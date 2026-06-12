@@ -652,6 +652,9 @@ model User {
   // Agent API Keys
   agentApiKeys              AgentApiKey[]            @relation("AgentApiKeyCreator")
 
+  // Study Assistant (AI tutor for coursework)
+  studyProjects             StudyProject[]           @relation("StudyProjectOwner")
+
   @@index([clinicId])
   @@index([email])
   @@index([role])
@@ -4756,4 +4759,84 @@ model VapiCall {
   @@index([phoneNumber])
   @@index([status])
   @@map("vapi_calls")
+}
+
+// ============================================
+// STUDY ASSISTANT (AI tutor for coursework / exams)
+// ============================================
+
+model StudyProject {
+  id          String   @id @default(cuid())
+  ownerId     String
+  owner       User     @relation("StudyProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  title       String
+  course      String   @default("Level 5 Diploma")
+  provider    String   @default("Core Elements")
+  level       String?  @default("Level 5")
+  description String?  @db.Text
+  status      String   @default("active") // active | completed | archived
+
+  documents   StudyDocument[]
+  messages    StudyMessage[]
+  drafts      StudyDraft[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+  @@map("study_projects")
+}
+
+model StudyDocument {
+  id            String       @id @default(cuid())
+  projectId     String
+  project       StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  fileName      String
+  originalName  String
+  mimeType      String
+  fileSize      Int
+  fileUrl       String?      // storage path/URL
+  kind          String       @default("brief") // brief | criteria | reference | notes | other
+  extractedText String?      @db.Text
+  extractStatus String       @default("pending") // pending | done | failed
+  extractError  String?
+
+  createdAt     DateTime     @default(now())
+
+  @@index([projectId])
+  @@map("study_documents")
+}
+
+model StudyMessage {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  mode       String       @default("tutor") // tutor | english
+  role       String       // user | assistant
+  content    String       @db.Text
+
+  createdAt  DateTime     @default(now())
+
+  @@index([projectId])
+  @@index([mode])
+  @@map("study_messages")
+}
+
+model StudyDraft {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  title      String
+  content    String       @db.Text // HTML
+  wordCount  Int          @default(0)
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([projectId])
+  @@map("study_drafts")
 }
