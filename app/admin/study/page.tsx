@@ -84,6 +84,17 @@ export default function StudyAssistantPage() {
   const [draftContent, setDraftContent] = useState("");
   const [savingDraft, setSavingDraft] = useState(false);
 
+  // Canvas (split-view: chat + live document)
+  const [canvas, setCanvas] = useState<Draft | null>(null);
+  const [canvasMsgs, setCanvasMsgs] = useState<Msg[]>([]);
+  const [canvasInput, setCanvasInput] = useState("");
+  const [canvasSending, setCanvasSending] = useState(false);
+  const [canvasTitle, setCanvasTitle] = useState("");
+  const [canvasContent, setCanvasContent] = useState("");
+  const [canvasDirty, setCanvasDirty] = useState(false);
+  const [canvasSaving, setCanvasSaving] = useState(false);
+  const canvasChatRef = useRef<HTMLDivElement>(null);
+
   // Voice
   const [recording, setRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -113,6 +124,11 @@ export default function StudyAssistantPage() {
     const el = chatScrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [active?.messages, sending, tab]);
+
+  useEffect(() => {
+    const el = canvasChatRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [canvasMsgs, canvasSending]);
 
   // ── Project CRUD ──
   const createProject = async () => {
@@ -234,8 +250,8 @@ export default function StudyAssistantPage() {
   };
 
   // ── Drafts ──
-  const savePendingDraft = async () => {
-    if (!active || !pendingDraft) return;
+  const savePendingDraft = async (): Promise<Draft | null> => {
+    if (!active || !pendingDraft) return null;
     const res = await fetch(`/api/admin/study/projects/${active.id}/drafts`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pendingDraft),
     });
@@ -243,8 +259,79 @@ export default function StudyAssistantPage() {
     if (res.ok) {
       setActive((p) => p ? { ...p, drafts: [data.draft, ...p.drafts] } : p);
       setPendingDraft(null);
-      toast({ title: "Saved to Drafts", description: "Open the Drafts tab to edit and export." });
+      toast({ title: "Saved to Drafts" });
+      return data.draft as Draft;
     }
+    return null;
+  };
+
+  // Save the pending draft AND open it in the Canvas for editing/review
+  const openPendingInCanvas = async () => {
+    const d = await savePendingDraft();
+    if (d) openCanvas(d);
+  };
+
+  // ── Canvas (split-view document + chat) ──
+  const openCanvas = async (d: Draft) => {
+    setCanvas(d);
+    setCanvasTitle(d.title);
+    setCanvasContent(d.content);
+    setCanvasDirty(false);
+    setCanvasMsgs([]);
+    try {
+      const res = await fetch(`/api/admin/study/drafts/${d.id}/canvas`);
+      const data = await res.json();
+      if (res.ok) setCanvasMsgs(data.messages || []);
+    } catch { /* ignore */ }
+  };
+
+  const closeCanvas = async () => {
+    if (canvasDirty) await saveCanvasEdits();
+    setCanvas(null);
+    setCanvasMsgs([]);
+    setCanvasInput("");
+  };
+
+  const sendCanvasMessage = async (preset?: string) => {
+    if (!canvas) return;
+    const text = (preset || canvasInput).trim();
+    if (!text || canvasSending) return;
+    setCanvasInput("");
+    setCanvasMsgs((m) => [...m, { role: "user", content: text, mode: "canvas" }]);
+    setCanvasSending(true);
+    try {
+      const res = await fetch(`/api/admin/study/drafts/${canvas.id}/canvas`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setCanvasMsgs((m) => [...m, { role: "assistant", content: data.reply, mode: "canvas" }]);
+      if (data.draft) {
+        setCanvasTitle(data.draft.title);
+        setCanvasContent(data.draft.content);
+        setCanvasDirty(false);
+        setActive((p) => p ? { ...p, drafts: p.drafts.map((d) => d.id === data.draft.id ? data.draft : d) } : p);
+        setCanvas(data.draft);
+      }
+    } catch (err: any) {
+      toast({ title: "AI error", description: err.message, variant: "destructive" });
+    } finally { setCanvasSending(false); }
+  };
+
+  const saveCanvasEdits = async () => {
+    if (!canvas) return;
+    setCanvasSaving(true);
+    try {
+      const res = await fetch(`/api/admin/study/drafts/${canvas.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: canvasTitle, content: canvasContent }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActive((p) => p ? { ...p, drafts: p.drafts.map((d) => d.id === data.draft.id ? data.draft : d) } : p);
+        setCanvasDirty(false);
+        toast({ title: "Document saved" });
+      }
+    } finally { setCanvasSaving(false); }
   };
 
   const openDraftEditor = (d: Draft) => { setEditingDraft(d); setDraftTitle(d.title); setDraftContent(d.content); };
@@ -277,13 +364,10 @@ export default function StudyAssistantPage() {
     });
   };
 
-  // Send a draft to the tutor for a collaborative review
+  // Open the draft in the Canvas to review & edit it side-by-side with the tutor
   const reviewDraft = (d: Draft) => {
-    const tmp = document.createElement("div"); tmp.innerHTML = d.content;
-    const plain = (tmp.innerText || "").slice(0, 9000);
-    setTab("tutor");
     updateDraftStatus(d.id, "reviewing");
-    sendMessage(`Please review my draft titled "${d.title}" against the assignment brief and marking criteria. Point out what's strong, what's missing, and exactly how to improve it to a distinction standard. Here is the draft:\n\n${plain}`);
+    openCanvas(d);
   };
 
   // ── Export helpers ──
@@ -397,6 +481,88 @@ export default function StudyAssistantPage() {
     );
   }
 
+  // CANVAS (split-view: tutor chat + live document)
+  if (canvas) {
+    return (
+      <div className="fixed inset-0 z-40 bg-background flex flex-col">
+        {/* Canvas header */}
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button variant="ghost" size="sm" onClick={closeCanvas} className="gap-1 shrink-0"><ChevronLeft className="h-4 w-4" /> Back</Button>
+            <span className="h-5 w-px bg-border" />
+            <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" />
+            <span className="font-semibold truncate">Canvas</span>
+            <span className="text-xs text-muted-foreground truncate hidden sm:inline">· {active.title}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {canvasDirty && <span className="text-xs text-amber-600 dark:text-amber-400">Unsaved changes</span>}
+            <Button size="sm" onClick={saveCanvasEdits} disabled={canvasSaving || !canvasDirty} className="gap-1">{canvasSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Save</Button>
+            <Button size="sm" variant="outline" onClick={() => exportWord(canvasTitle, canvasContent)} className="gap-1"><Download className="h-3.5 w-3.5" /> Word</Button>
+            <Button size="sm" variant="outline" onClick={() => printPdf(canvasTitle, canvasContent)} className="gap-1"><Printer className="h-3.5 w-3.5" /> PDF</Button>
+            <Button size="sm" variant="outline" onClick={() => copyText(canvasContent)} className="gap-1"><Copy className="h-3.5 w-3.5" /> Copy</Button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+          {/* Left: tutor chat */}
+          <div className="flex flex-col w-full lg:w-[38%] lg:max-w-[460px] border-b lg:border-b-0 lg:border-r border-border min-h-0 h-[40vh] lg:h-auto">
+            <div className="px-4 py-2 border-b border-border flex items-center gap-2 shrink-0">
+              <Bot className="h-4 w-4 text-indigo-500" />
+              <span className="text-sm font-medium">Tutor</span>
+              <span className="text-xs text-muted-foreground">— edits the document on the right</span>
+            </div>
+            <div ref={canvasChatRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+              {canvasMsgs.length === 0 && (
+                <div className="text-center text-muted-foreground py-8 px-3">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-indigo-400" />
+                  <p className="text-sm font-medium text-foreground">Co-write & review here</p>
+                  <p className="text-xs mt-1">Ask me to improve the introduction, add a reference, expand a section, fix the English, add the references list — I'll edit the document directly.</p>
+                  <div className="flex flex-wrap gap-1.5 justify-center mt-3">
+                    {["Review this against the brief & criteria", "Improve the introduction", "Add a References list (Harvard)", "Check the academic English"].map((s) => (
+                      <Button key={s} variant="outline" size="sm" className="text-xs h-auto py-1 px-2 whitespace-normal" onClick={() => sendCanvasMessage(s)} disabled={canvasSending}>{s}</Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {canvasMsgs.map((m, i) => (
+                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[88%] rounded-lg p-2.5 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-muted text-foreground"}`}>{m.content}</div>
+                </div>
+              ))}
+              {canvasSending && <div className="flex justify-start"><div className="bg-muted rounded-lg p-2.5"><Loader2 className="h-4 w-4 animate-spin text-indigo-500" /></div></div>}
+            </div>
+            <div className="border-t border-border p-2.5 flex gap-2 shrink-0">
+              <Input
+                value={canvasInput}
+                onChange={(e) => setCanvasInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendCanvasMessage(); } }}
+                placeholder="Tell the tutor what to change..."
+                disabled={canvasSending}
+                className="flex-1"
+              />
+              <Button onClick={() => sendCanvasMessage()} disabled={canvasSending || !canvasInput.trim()} size="sm"><Send className="h-4 w-4" /></Button>
+            </div>
+          </div>
+
+          {/* Right: live document */}
+          <div className="flex-1 flex flex-col min-h-0 min-w-0">
+            <div className="px-4 py-2 border-b border-border shrink-0">
+              <Input
+                value={canvasTitle}
+                onChange={(e) => { setCanvasTitle(e.target.value); setCanvasDirty(true); }}
+                className="font-semibold border-0 px-0 text-base focus-visible:ring-0 shadow-none h-auto"
+                placeholder="Document title"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 min-h-0">
+              <RichTextEditor value={canvasContent} onChange={(v) => { setCanvasContent(v); setCanvasDirty(true); }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // WORKSPACE
   const modeMessages = active.messages.filter((m) => m.mode === (tab === "english" ? "english" : "tutor"));
   const isChat = tab === "tutor" || tab === "english";
@@ -487,7 +653,8 @@ export default function StudyAssistantPage() {
               <div className="border-t border-green-300 bg-green-50 dark:bg-green-900/20 p-3 flex items-center justify-between gap-2">
                 <div className="text-sm min-w-0"><strong className="text-green-800 dark:text-green-300">Draft ready:</strong> <span className="text-green-700 dark:text-green-400 truncate">{pendingDraft.title}</span></div>
                 <div className="flex gap-2 shrink-0">
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700 gap-1" onClick={savePendingDraft}><Save className="h-3.5 w-3.5" /> Save to Drafts</Button>
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 gap-1" onClick={openPendingInCanvas}><Sparkles className="h-3.5 w-3.5" /> Open in Canvas</Button>
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => savePendingDraft()}><Save className="h-3.5 w-3.5" /> Save</Button>
                   <Button size="sm" variant="ghost" onClick={() => setPendingDraft(null)}>Dismiss</Button>
                 </div>
               </div>
@@ -599,7 +766,7 @@ export default function StudyAssistantPage() {
                           <p className="text-xs text-muted-foreground">{d.wordCount} words · updated {new Date(d.updatedAt).toLocaleDateString("en-GB")}</p>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button variant="outline" size="sm" className="gap-1" onClick={() => openDraftEditor(d)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                          <Button size="sm" className="gap-1" onClick={() => openCanvas(d)}><Sparkles className="h-3.5 w-3.5" /> Open in Canvas</Button>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => deleteDraft(d.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </div>
