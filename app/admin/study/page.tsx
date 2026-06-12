@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import {
   GraduationCap, Plus, Loader2, Send, Bot, Trash2, FileText, Upload, BookOpen,
@@ -94,6 +95,8 @@ export default function StudyAssistantPage() {
   const [canvasDirty, setCanvasDirty] = useState(false);
   const [canvasSaving, setCanvasSaving] = useState(false);
   const canvasChatRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // Voice
   const [recording, setRecording] = useState(false);
@@ -481,10 +484,10 @@ export default function StudyAssistantPage() {
     );
   }
 
-  // CANVAS (split-view: tutor chat + live document)
-  if (canvas) {
-    return (
-      <div className="fixed inset-0 z-40 bg-background flex flex-col">
+  // CANVAS (split-view: tutor chat + live document) — portalled to body for a true full-screen overlay
+  if (canvas && mounted) {
+    return createPortal(
+      <div className="fixed inset-0 z-[100] bg-background flex flex-col">
         {/* Canvas header */}
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -503,9 +506,9 @@ export default function StudyAssistantPage() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        <div className="flex-1 flex flex-col md:flex-row min-h-0">
           {/* Left: tutor chat */}
-          <div className="flex flex-col w-full lg:w-[42%] lg:max-w-[480px] border-b lg:border-b-0 lg:border-r border-border min-h-0 h-[42vh] lg:h-auto bg-indigo-50/40 dark:bg-indigo-950/20">
+          <div className="flex flex-col w-full md:w-[42%] md:max-w-[480px] border-b md:border-b-0 md:border-r border-border min-h-0 h-[42vh] md:h-auto bg-indigo-50/40 dark:bg-indigo-950/20">
             <div className="px-4 py-2.5 border-b border-indigo-200 dark:border-indigo-500/30 bg-indigo-100 dark:bg-indigo-900/40 flex items-center gap-2 shrink-0">
               <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-300 shrink-0" />
               <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Talk to your tutor here</span>
@@ -559,7 +562,8 @@ export default function StudyAssistantPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
