@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       if (!imageBase64) {
         const refPrompt = `Professional photograph for a physiotherapy clinic website, incorporating elements from a provided reference photo: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
         try {
-          const urls = await generateImageSmart(refPrompt, { numImages: 1 });
+          const urls = await generateImageSmart(refPrompt, { numImages: 1, aspectRatio });
           if (urls.length > 0) {
             const url = urls[0];
             if (url.startsWith('data:image')) {
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       try {
         console.log('[generate-image] Calling generateImageSmart...');
         const genStart = Date.now();
-        const urls = await generateImageSmart(fullPrompt, { numImages: 1 });
+        const urls = await generateImageSmart(fullPrompt, { numImages: 1, aspectRatio });
         console.log(`[generate-image] generateImageSmart completed in ${Date.now() - genStart}ms`);
         
         if (urls.length > 0) {

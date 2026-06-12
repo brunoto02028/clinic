@@ -610,6 +610,7 @@ model User {
   processedCancellations    CancellationRequest[]   @relation("AdminCancellations")
   patientSubscriptions      PatientSubscription[]   @relation("PatientSubscriptions")
   whatsappMessages          WhatsAppMessage[]       @relation("PatientWhatsApp")
+  dailyCheckIns             DailyCheckIn[]          @relation("PatientDailyCheckIns")
   
   // BPR Journey
   patientProgress           PatientProgress?         @relation("PatientProgress")
@@ -650,6 +651,9 @@ model User {
 
   // Agent API Keys
   agentApiKeys              AgentApiKey[]            @relation("AgentApiKeyCreator")
+
+  // Study Assistant (AI tutor for coursework)
+  studyProjects             StudyProject[]           @relation("StudyProjectOwner")
 
   @@index([clinicId])
   @@index([email])
@@ -943,6 +947,15 @@ model Article {
   slug        String   @unique
   excerpt     String
   content     String   @db.Text
+  // Bilingual versions (English + Portuguese). The primary `title/excerpt/content`
+  // above mirror the publishLanguage version for backward-compat (slug, SEO, newsletter, list cards).
+  titleEn     String?
+  excerptEn   String?
+  contentEn   String?  @db.Text
+  titlePt     String?
+  excerptPt   String?
+  contentPt   String?  @db.Text
+  publishLanguage String? @default("en") // primary/default language shown publicly ("en" | "pt")
   imageUrl    String?
   published   Boolean  @default(false)
   authorId    String
@@ -1703,9 +1716,10 @@ model MembershipPlan {
   status      MembershipStatus   @default(DRAFT)
   patientScope String            @default("none") // "specific" | "all" | "none"
 
-  price       Float              @default(0)
-  interval    MembershipInterval @default(MONTHLY)
-  isFree      Boolean            @default(false)
+  price           Float              @default(0)
+  interval        MembershipInterval @default(MONTHLY)
+  isFree          Boolean            @default(false)
+  sessionDiscount Int                @default(0) // % discount applied to session bookings (0, 10, 20, 30)
 
   features    String[]           // list of module + permission keys included
   modulePermissions Json?         // Granular per-module permissions {"appointments": {"canBookOnline": true, "canBookInPerson": false}}
@@ -3090,6 +3104,30 @@ model EmailAccount {
 enum BloodPressureMethod {
   MANUAL
   CAMERA_PPG
+}
+
+// ============================================
+// DAILY CHECK-IN
+// ============================================
+
+model DailyCheckIn {
+  id           String   @id @default(cuid())
+  clinicId     String?
+  patientId    String
+  patient      User     @relation("PatientDailyCheckIns", fields: [patientId], references: [id], onDelete: Cascade)
+
+  checkinDate  String   // "YYYY-MM-DD" — one per patient per day
+  painLevel    Int      // 0-10 (0=no pain, 10=severe)
+  moodLevel    Int      // 1-5 (1=terrible, 5=excellent)
+  exercisesDone Boolean @default(false)
+  notes        String?  @db.Text
+
+  createdAt    DateTime @default(now())
+
+  @@unique([patientId, checkinDate])
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([checkinDate])
 }
 
 model BloodPressureReading {
@@ -4721,4 +4759,133 @@ model VapiCall {
   @@index([phoneNumber])
   @@index([status])
   @@map("vapi_calls")
+}
+
+// ============================================
+// STUDY ASSISTANT (AI tutor for coursework / exams)
+// ============================================
+
+model StudyProject {
+  id          String   @id @default(cuid())
+  ownerId     String
+  owner       User     @relation("StudyProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  title       String
+  course      String   @default("Level 5 Diploma")
+  provider    String   @default("Core Elements")
+  level       String?  @default("Level 5")
+  description String?  @db.Text
+  status      String   @default("active") // active | completed | archived
+
+  documents   StudyDocument[]
+  messages    StudyMessage[]
+  drafts      StudyDraft[]
+  memories    StudyMemory[]
+  tasks       StudyTask[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+  @@map("study_projects")
+}
+
+// An individual activity/assignment to complete within a project. The tutor can
+// auto-generate these from a brain-dump or uploaded syllabus so Bruno works on
+// one focused task at a time.
+model StudyTask {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  title      String
+  brief      String?      @db.Text // what's required / summary of criteria
+  steps      String?      @db.Text // suggested steps (HTML)
+  type       String       @default("essay")  // essay | study | exam | reading | other
+  priority   String       @default("medium") // low | medium | high
+  status     String       @default("todo")   // todo | in_progress | to_deliver | done
+  dueDate    DateTime?
+  order      Int          @default(0)
+
+  drafts     StudyDraft[]
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([projectId])
+  @@map("study_tasks")
+}
+
+// Rolling long-term memory per project + mode so the tutor never "forgets"
+// older parts of a long conversation (older messages are summarised here).
+model StudyMemory {
+  id              String       @id @default(cuid())
+  projectId       String
+  project         StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  mode            String       // tutor | english
+  summary         String       @db.Text @default("")
+  summarizedCount Int          @default(0) // how many oldest messages are folded into summary
+
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([projectId, mode])
+  @@map("study_memories")
+}
+
+model StudyDocument {
+  id            String       @id @default(cuid())
+  projectId     String
+  project       StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  fileName      String
+  originalName  String
+  mimeType      String
+  fileSize      Int
+  fileUrl       String?      // storage path/URL
+  kind          String       @default("brief") // brief | criteria | reference | notes | other
+  extractedText String?      @db.Text
+  extractStatus String       @default("pending") // pending | done | failed
+  extractError  String?
+
+  createdAt     DateTime     @default(now())
+
+  @@index([projectId])
+  @@map("study_documents")
+}
+
+model StudyMessage {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  mode       String       @default("tutor") // tutor | english
+  role       String       // user | assistant
+  content    String       @db.Text
+
+  createdAt  DateTime     @default(now())
+
+  @@index([projectId])
+  @@index([mode])
+  @@map("study_messages")
+}
+
+model StudyDraft {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskId     String?
+  task       StudyTask?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  title      String
+  content    String       @db.Text // HTML
+  wordCount  Int          @default(0)
+  status     String       @default("writing") // writing | reviewing | to_deliver | delivered
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([projectId])
+  @@index([taskId])
+  @@map("study_drafts")
 }

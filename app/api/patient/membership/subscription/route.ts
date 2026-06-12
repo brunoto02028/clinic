@@ -35,6 +35,7 @@ export async function GET() {
             isFree: true,
             features: true,
             status: true,
+            sessionDiscount: true,
           },
         },
       },
