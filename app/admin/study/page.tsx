@@ -74,6 +74,8 @@ export default function StudyAssistantPage() {
   // Documents
   const [uploadKind, setUploadKind] = useState("brief");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Draft editor
@@ -186,25 +188,44 @@ export default function StudyAssistantPage() {
   };
 
   // ── Documents ──
-  const uploadDoc = async (file: File) => {
+  const uploadOne = async (file: File): Promise<boolean> => {
+    if (!active) return false;
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("kind", uploadKind);
+    const res = await fetch(`/api/admin/study/projects/${active.id}/documents`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Upload failed");
+    setActive((p) => p ? { ...p, documents: [data.document, ...p.documents] } : p);
+    return data.document.extractStatus !== "failed";
+  };
+
+  const uploadDocs = async (files: FileList | File[]) => {
     if (!active) return;
+    const list = Array.from(files);
+    if (list.length === 0) return;
     setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("kind", uploadKind);
-      const res = await fetch(`/api/admin/study/projects/${active.id}/documents`, { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setActive((p) => p ? { ...p, documents: [data.document, ...p.documents] } : p);
-      if (data.document.extractStatus === "failed") {
-        toast({ title: "Uploaded, but text extraction failed", description: data.document.extractError || "", variant: "destructive" });
-      } else {
-        toast({ title: "Document uploaded", description: "Text extracted — the tutor can now use it." });
+    setUploadProgress({ done: 0, total: list.length });
+    let ok = 0, failedExtract = 0, errored = 0;
+    for (let i = 0; i < list.length; i++) {
+      try {
+        const extracted = await uploadOne(list[i]);
+        ok++; if (!extracted) failedExtract++;
+      } catch {
+        errored++;
       }
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
-    } finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+      setUploadProgress({ done: i + 1, total: list.length });
+    }
+    setUploading(false);
+    setUploadProgress(null);
+    if (fileRef.current) fileRef.current.value = "";
+    if (errored > 0) {
+      toast({ title: `${ok} uploaded, ${errored} failed`, description: failedExtract ? `${failedExtract} uploaded but text couldn't be read.` : "", variant: "destructive" });
+    } else if (failedExtract > 0) {
+      toast({ title: `${ok} uploaded`, description: `${failedExtract} couldn't be read as text (e.g. scanned/empty). The rest are ready for the tutor.`, variant: "destructive" });
+    } else {
+      toast({ title: `${ok} document${ok > 1 ? "s" : ""} uploaded`, description: "Text extracted — the tutor can now use them." });
+    }
   };
 
   const deleteDoc = async (id: string) => {
@@ -493,19 +514,39 @@ export default function StudyAssistantPage() {
       {/* DOCUMENTS */}
       {tab === "documents" && (
         <div className="space-y-4">
-          <Card><CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-              <div className="space-y-1 flex-1">
-                <Label className="text-xs">Document type</Label>
-                <Select value={uploadKind} onValueChange={setUploadKind}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{DOC_KINDS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <input ref={fileRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.txt,.md,.csv,.rtf,image/*" onChange={(e) => { if (e.target.files?.[0]) uploadDoc(e.target.files[0]); }} />
-              <Button onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">{uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload (PDF, Word, image...)</Button>
+          <Card><CardContent className="p-4 space-y-3">
+            <div className="space-y-1 max-w-xs">
+              <Label className="text-xs">Document type (applied to all files you add now)</Label>
+              <Select value={uploadKind} onValueChange={setUploadKind}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{DOC_KINDS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">The tutor reads these to ground its help in your exact brief & criteria. PDFs, Word docs, text and photos of documents are supported.</p>
+
+            <input ref={fileRef} type="file" multiple className="hidden" accept=".pdf,.doc,.docx,.txt,.md,.csv,.rtf,image/*" onChange={(e) => { if (e.target.files?.length) uploadDocs(e.target.files); }} />
+
+            <div
+              onClick={() => !uploading && fileRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); if (!uploading && e.dataTransfer.files?.length) uploadDocs(e.dataTransfer.files); }}
+              className={`rounded-lg border-2 border-dashed p-6 text-center cursor-pointer transition-colors ${dragOver ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40" : "border-border hover:border-indigo-400 hover:bg-muted/50"} ${uploading ? "pointer-events-none opacity-70" : ""}`}
+            >
+              {uploading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                  <p className="text-sm font-medium">Uploading {uploadProgress ? `${uploadProgress.done}/${uploadProgress.total}` : ""}...</p>
+                  <p className="text-xs text-muted-foreground">Reading text from your files</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-1.5">
+                  <Upload className="h-6 w-6 text-indigo-500" />
+                  <p className="text-sm font-medium text-foreground">Drag &amp; drop files here, or click to choose</p>
+                  <p className="text-xs text-muted-foreground">Select <strong>multiple</strong> files at once · PDF, Word, text, and photos/images</p>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">The tutor reads these to ground its help in your exact brief &amp; criteria. For scanned/photo documents the text is read with AI vision. Max 20MB per file.</p>
           </CardContent></Card>
 
           {active.documents.length === 0 ? (
