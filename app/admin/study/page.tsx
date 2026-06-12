@@ -32,7 +32,7 @@ interface StudyDoc {
   extractStatus: string; extractError: string | null; createdAt: string;
 }
 interface Draft { id: string; title: string; content: string; wordCount: number; status: string; updatedAt: string; }
-interface Msg { id?: string; role: string; content: string; mode: string; }
+interface Msg { id?: string; role: string; content: string; mode: string; edited?: boolean; }
 interface FullProject extends ProjectSummary {
   documents: StudyDoc[]; drafts: Draft[]; messages: Msg[];
 }
@@ -308,7 +308,7 @@ export default function StudyAssistantPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setCanvasMsgs((m) => [...m, { role: "assistant", content: data.reply, mode: "canvas" }]);
+      setCanvasMsgs((m) => [...m, { role: "assistant", content: data.reply, mode: "canvas", edited: !!data.draft }]);
       if (data.draft) {
         setCanvasTitle(data.draft.title);
         setCanvasContent(data.draft.content);
@@ -319,6 +319,11 @@ export default function StudyAssistantPage() {
     } catch (err: any) {
       toast({ title: "AI error", description: err.message, variant: "destructive" });
     } finally { setCanvasSending(false); }
+  };
+
+  // Tell the tutor to apply the suggestions discussed in chat directly to the document
+  const applySuggestions = () => {
+    sendCanvasMessage("Apply the changes and suggestions from our discussion above directly to the document now. Return the COMPLETE updated document with those improvements incorporated.");
   };
 
   const saveCanvasEdits = async () => {
@@ -528,8 +533,13 @@ export default function StudyAssistantPage() {
                 </div>
               )}
               {canvasMsgs.map((m, i) => (
-                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
                   <div className={`max-w-[88%] rounded-lg p-2.5 text-sm whitespace-pre-wrap shadow-sm ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700"}`}>{m.content}</div>
+                  {m.role === "assistant" && !m.edited && i === canvasMsgs.length - 1 && !canvasSending && (
+                    <Button size="sm" variant="outline" className="mt-1.5 h-7 gap-1 text-xs bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 hover:text-white" onClick={applySuggestions} disabled={canvasSending}>
+                      <Sparkles className="h-3 w-3" /> Apply to document
+                    </Button>
+                  )}
                 </div>
               ))}
               {canvasSending && <div className="flex justify-start"><div className="bg-muted rounded-lg p-2.5"><Loader2 className="h-4 w-4 animate-spin text-indigo-500" /></div></div>}
