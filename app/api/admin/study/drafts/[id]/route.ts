@@ -28,6 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const data: any = {};
   if (typeof body.title === "string") data.title = body.title;
   if (typeof body.content === "string") { data.content = body.content; data.wordCount = countWords(body.content); }
+  if (typeof body.status === "string" && ["writing", "reviewing", "to_deliver", "delivered"].includes(body.status)) data.status = body.status;
 
   const draft = await prisma.studyDraft.update({ where: { id: params.id }, data });
   return NextResponse.json({ draft });

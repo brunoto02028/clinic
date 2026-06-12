@@ -4833,6 +4833,7 @@ model StudyDraft {
   title      String
   content    String       @db.Text // HTML
   wordCount  Int          @default(0)
+  status     String       @default("writing") // writing | reviewing | to_deliver | delivered
 
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt

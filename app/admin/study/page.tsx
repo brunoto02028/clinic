@@ -30,7 +30,7 @@ interface StudyDoc {
   id: string; originalName: string; mimeType: string; fileSize: number; kind: string;
   extractStatus: string; extractError: string | null; createdAt: string;
 }
-interface Draft { id: string; title: string; content: string; wordCount: number; updatedAt: string; }
+interface Draft { id: string; title: string; content: string; wordCount: number; status: string; updatedAt: string; }
 interface Msg { id?: string; role: string; content: string; mode: string; }
 interface FullProject extends ProjectSummary {
   documents: StudyDoc[]; drafts: Draft[]; messages: Msg[];
@@ -43,6 +43,14 @@ const DOC_KINDS = [
   { value: "notes", label: "My notes" },
   { value: "other", label: "Other" },
 ];
+
+const DRAFT_STATUSES = [
+  { value: "writing", label: "Being written", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
+  { value: "reviewing", label: "To review", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
+  { value: "to_deliver", label: "Ready to deliver", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
+  { value: "delivered", label: "Delivered", color: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
+];
+const statusMeta = (s: string) => DRAFT_STATUSES.find((x) => x.value === s) || DRAFT_STATUSES[0];
 
 export default function StudyAssistantPage() {
   const { toast } = useToast();
@@ -241,6 +249,22 @@ export default function StudyAssistantPage() {
     setActive((p) => p ? { ...p, drafts: p.drafts.filter((d) => d.id !== id) } : p);
   };
 
+  const updateDraftStatus = async (id: string, status: string) => {
+    setActive((p) => p ? { ...p, drafts: p.drafts.map((d) => d.id === id ? { ...d, status } : d) } : p);
+    await fetch(`/api/admin/study/drafts/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
+    });
+  };
+
+  // Send a draft to the tutor for a collaborative review
+  const reviewDraft = (d: Draft) => {
+    const tmp = document.createElement("div"); tmp.innerHTML = d.content;
+    const plain = (tmp.innerText || "").slice(0, 9000);
+    setTab("tutor");
+    updateDraftStatus(d.id, "reviewing");
+    sendMessage(`Please review my draft titled "${d.title}" against the assignment brief and marking criteria. Point out what's strong, what's missing, and exactly how to improve it to a distinction standard. Here is the draft:\n\n${plain}`);
+  };
+
   // ── Export helpers ──
   const exportWord = (title: string, html: string) => {
     const doc = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>${title}</title></head><body><h1>${title}</h1>${html}</body></html>`;
@@ -252,8 +276,24 @@ export default function StudyAssistantPage() {
   const printPdf = (title: string, html: string) => {
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(`<html><head><title>${title}</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;line-height:1.6;padding:0 20px}h1,h2,h3{font-family:Arial,sans-serif}</style></head><body><h1>${title}</h1>${html}</body></html>`);
-    w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
+    const styles = `
+      @page { size: A4; margin: 25mm 20mm; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Times New Roman', Georgia, serif; color: #1a1a1a; line-height: 1.7; font-size: 12pt; max-width: 800px; margin: 0 auto; padding: 24px; }
+      h1 { font-family: Arial, Helvetica, sans-serif; font-size: 20pt; margin: 0 0 4px; }
+      h2 { font-family: Arial, Helvetica, sans-serif; font-size: 14pt; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
+      h3 { font-family: Arial, Helvetica, sans-serif; font-size: 12.5pt; margin: 16px 0 6px; }
+      p { margin: 0 0 10px; text-align: justify; }
+      ul, ol { margin: 0 0 12px; padding-left: 24px; }
+      li { margin-bottom: 4px; }
+      blockquote { margin: 12px 0; padding: 8px 16px; border-left: 3px solid #6366f1; background: #f5f5fb; font-style: italic; }
+      strong { color: #111; }
+      .doc-meta { font-family: Arial, sans-serif; color: #666; font-size: 9pt; margin-bottom: 20px; border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; }
+      a { color: #4338ca; }
+      h2, h3 { page-break-after: avoid; }
+    `;
+    w.document.write(`<html><head><meta charset="utf-8"><title>${title}</title><style>${styles}</style></head><body><h1>${title}</h1><div class="doc-meta">Bruno Azenha Tonheta · Generated ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>${html}</body></html>`);
+    w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
   };
   const copyText = (html: string) => {
     const tmp = document.createElement("div"); tmp.innerHTML = html;
@@ -371,23 +411,32 @@ export default function StudyAssistantPage() {
       {/* CHAT (tutor / english) */}
       {isChat && (
         <div className="space-y-3">
-          <Card className={tab === "english" ? "border-emerald-400/30 bg-emerald-50/50 dark:bg-emerald-900/20" : "border-indigo-400/30 bg-indigo-50/50 dark:bg-indigo-900/20"}>
+          <Card className={tab === "english" ? "border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40" : "border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-950/40"}>
             <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                {tab === "english" ? <Languages className="h-5 w-5 text-emerald-600" /> : <Bot className="h-5 w-5 text-indigo-600" />}
-                <h2 className="font-semibold">{tab === "english" ? "English Exam Coach" : "Academic Tutor"}</h2>
+              <div className="flex items-center gap-2 mb-1.5">
+                {tab === "english" ? <Languages className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> : <Bot className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
+                <h2 className="font-semibold text-slate-900 dark:text-white">{tab === "english" ? "English Exam Coach" : "Academic Tutor"}</h2>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
                 {tab === "english"
                   ? "Practise spoken & written English for your practical exam. I correct you, teach clinical vocabulary and run mock questions."
                   : "I help you understand and write your coursework to a distinction standard, grounded in your uploaded brief & criteria."}
               </p>
               {active.documents.length === 0 && (
-                <p className="text-xs mt-2 text-amber-600 dark:text-amber-400">Tip: upload your assignment brief & marking criteria in the Documents tab so I can tailor everything to them.</p>
+                <p className="text-xs mt-2 font-medium text-amber-700 dark:text-amber-300">Tip: upload your assignment brief & marking criteria in the Documents tab so I can tailor everything to them.</p>
               )}
               <div className="flex flex-wrap gap-2 mt-3">
                 {suggestions.map((s) => (
-                  <Button key={s} variant="outline" size="sm" className="text-xs h-7" onClick={() => sendMessage(s)} disabled={sending}>{s}</Button>
+                  <Button
+                    key={s}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-auto py-1.5 px-3 whitespace-normal text-left bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700"
+                    onClick={() => sendMessage(s)}
+                    disabled={sending}
+                  >
+                    {s}
+                  </Button>
                 ))}
               </div>
             </CardContent>
@@ -488,30 +537,48 @@ export default function StudyAssistantPage() {
 
       {/* DRAFTS */}
       {tab === "drafts" && (
-        <div className="space-y-3">
+        <div className="space-y-5">
           {active.drafts.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No drafts yet. In the Tutor tab, ask the AI to draft a section — then click "Save to Drafts".</p>
+            <p className="text-sm text-muted-foreground text-center py-8">No work yet. In the Tutor tab, ask the AI to draft a section — then click "Save to Drafts". Your saved work appears here, organised by stage.</p>
           ) : (
-            active.drafts.map((d) => (
-              <Card key={d.id}><CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold">{d.title}</h3>
-                    <p className="text-xs text-muted-foreground">{d.wordCount} words · updated {new Date(d.updatedAt).toLocaleDateString("en-GB")}</p>
+            DRAFT_STATUSES.map((st) => {
+              const group = active.drafts.filter((d) => (d.status || "writing") === st.value);
+              if (group.length === 0) return null;
+              return (
+                <div key={st.value} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.color}`}>{st.label}</span>
+                    <span className="text-xs text-muted-foreground">{group.length}</span>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="outline" size="sm" className="gap-1" onClick={() => openDraftEditor(d)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => deleteDraft(d.id)}><Trash2 className="h-4 w-4" /></Button>
-                  </div>
+                  {group.map((d) => (
+                    <Card key={d.id}><CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-foreground">{d.title}</h3>
+                          <p className="text-xs text-muted-foreground">{d.wordCount} words · updated {new Date(d.updatedAt).toLocaleDateString("en-GB")}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button variant="outline" size="sm" className="gap-1" onClick={() => openDraftEditor(d)}><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => deleteDraft(d.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                      <div className="prose prose-sm dark:prose-invert max-w-none mt-2 line-clamp-3 text-muted-foreground" dangerouslySetInnerHTML={{ __html: d.content }} />
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <Select value={d.status || "writing"} onValueChange={(v) => updateDraftStatus(d.id, v)}>
+                          <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>{DRAFT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Button variant="outline" size="sm" className="gap-1" onClick={() => reviewDraft(d)}><Bot className="h-3.5 w-3.5" /> Review with tutor</Button>
+                        <span className="mx-1 h-5 w-px bg-border" />
+                        <Button variant="outline" size="sm" className="gap-1" onClick={() => exportWord(d.title, d.content)}><Download className="h-3.5 w-3.5" /> Word</Button>
+                        <Button variant="outline" size="sm" className="gap-1" onClick={() => printPdf(d.title, d.content)}><Printer className="h-3.5 w-3.5" /> PDF</Button>
+                        <Button variant="outline" size="sm" className="gap-1" onClick={() => copyText(d.content)}><Copy className="h-3.5 w-3.5" /> Copy</Button>
+                      </div>
+                    </CardContent></Card>
+                  ))}
                 </div>
-                <div className="prose prose-sm dark:prose-invert max-w-none mt-2 line-clamp-3 text-muted-foreground" dangerouslySetInnerHTML={{ __html: d.content }} />
-                <div className="flex gap-2 mt-3">
-                  <Button variant="outline" size="sm" className="gap-1" onClick={() => exportWord(d.title, d.content)}><Download className="h-3.5 w-3.5" /> Word</Button>
-                  <Button variant="outline" size="sm" className="gap-1" onClick={() => printPdf(d.title, d.content)}><Printer className="h-3.5 w-3.5" /> PDF</Button>
-                  <Button variant="outline" size="sm" className="gap-1" onClick={() => copyText(d.content)}><Copy className="h-3.5 w-3.5" /> Copy</Button>
-                </div>
-              </CardContent></Card>
-            ))
+              );
+            })
           )}
         </div>
       )}
