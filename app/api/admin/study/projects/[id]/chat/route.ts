@@ -5,7 +5,7 @@ import { callAIChat, CLAUDE_SONNET_MODEL } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
 
-const DOC_CONTEXT_LIMIT = 14000; // chars of document text injected into the prompt
+const DOC_CONTEXT_LIMIT = 160000; // chars of document text injected into the prompt (Claude has a large context window; fit multiple PDFs)
 const RECENT_KEEP = 24;          // most recent messages always sent verbatim
 const SUMMARY_TRIGGER = 12;      // start summarising once this many messages pile up beyond RECENT_KEEP
 
@@ -46,7 +46,7 @@ function buildDocContext(documents: { originalName: string; kind: string; extrac
     budget -= slice.length;
     parts.push(`--- DOCUMENT: ${d.originalName} (${d.kind}) ---\n${slice}`);
   }
-  return parts.join("\n\n");
+  return `===== DOCUMENTS (extracted full text of Bruno's uploaded files) =====\n\n${parts.join("\n\n")}\n\n===== END OF DOCUMENTS =====`;
 }
 
 function memoryBlock(memory: string): string {
@@ -66,8 +66,11 @@ YOUR ROLE:
 - Be PREDICTIVE: anticipate the next step, suggest a structure before he asks, flag what an assessor will look for, and proactively offer to draft sections.
 - Ask 1-2 sharp clarifying questions ONLY when genuinely needed; otherwise move the work forward.
 
-GROUNDING IN THE ASSESSMENT:
-${docContext ? `- The student has uploaded the following assessment material. ALWAYS map your help to these briefs/criteria, quote the exact learning outcomes/assessment criteria, and make sure every piece of work explicitly satisfies them.\n\n${docContext}` : "- No assessment documents have been uploaded yet. Ask Bruno to upload the assignment brief and marking criteria so you can tailor everything to them, but still help based on standard UK Level 5 sports therapy standards."}
+UPLOADED DOCUMENTS — CRITICAL:
+- The text inside the "DOCUMENTS" block below is the FULL TEXT that has already been EXTRACTED from the files (PDFs, Word, images) Bruno uploaded to this project. You CAN read them — they are right here.
+- NEVER tell Bruno you "cannot read PDFs", "cannot open attachments", or that you only have your "system instructions". You DO have his documents — read, quote and learn from them.
+- If a specific document he expects is missing or its text looks empty/garbled, say exactly which file seems missing and ask him to re-upload THAT file. Do not deny the ability to read files in general.
+${docContext ? `- ALWAYS map your help to this uploaded material; quote exact learning outcomes/assessment criteria where present, and make sure every piece of work explicitly satisfies them.\n\n${docContext}` : "- No documents have been uploaded yet. Ask Bruno to upload the assignment brief and marking criteria so you can tailor everything to them, but still help based on standard UK Level 5 sports therapy standards."}
 
 WRITING STANDARDS (UK academic):
 - British English spelling. Academic but readable register.
@@ -95,8 +98,9 @@ YOUR JOB:
 - Run MOCK PRACTICAL EXAM questions: ask him a realistic question an assessor might ask (e.g. explaining an assessment, a treatment rationale, anatomy), let him answer, then give constructive feedback and a model answer.
 - Be encouraging and confidence-building. Keep responses focused and not too long.
 
-CONTEXT:
-${docContext ? `The assessment material below describes what he'll be examined on — tailor vocabulary and mock questions to it:\n\n${docContext}` : "No exam documents uploaded yet — suggest he uploads the practical exam brief so you can target the exact topics. Meanwhile, use standard sports-therapy clinical scenarios."}
+CONTEXT — UPLOADED DOCUMENTS:
+- The text in the "DOCUMENTS" block below is the FULL TEXT already EXTRACTED from the files (PDFs, Word, images) Bruno uploaded. You CAN read them. NEVER say you cannot read PDFs or attachments.
+${docContext ? `The material below describes what he'll be examined on — tailor vocabulary and mock questions to it:\n\n${docContext}` : "No exam documents uploaded yet — suggest he uploads the practical exam brief so you can target the exact topics. Meanwhile, use standard sports-therapy clinical scenarios."}
 
 Reply mainly in English. Always be specific and actionable.`;
 }
