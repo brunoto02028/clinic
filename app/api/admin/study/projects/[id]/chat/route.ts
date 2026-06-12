@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getStudyUserId } from "@/lib/study-auth";
 import { callAIChat, CLAUDE_SONNET_MODEL } from "@/lib/ai-provider";
 import { buildDocContext, missingDocsNote } from "@/lib/study-docs";
+import { createTasksFromItems, parseTaskItems } from "@/lib/study-tasks";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,18 @@ PRODUCING DRAFTS — STRICT (this keeps his workspace organised):
 \`\`\`
 - content MUST be valid semantic HTML (h2/h3, p, ul/ol/li, strong, em, blockquote). End full assignments with an <h2>References</h2> list.
 - Outside the JSON block keep ONLY a SHORT plain-text note (1-4 sentences): what it covers, how it meets the criteria, and what he should personalise. The note must be short — the full text lives in the draft, not the chat.
-- If he is just discussing, asking a question, or wants quick feedback (not written work), reply conversationally WITHOUT a JSON block.`;
+- If he is just discussing, asking a question, or wants quick feedback (not written work), reply conversationally WITHOUT a JSON block.
+
+CREATING ACTIVITIES IN HIS PLAN — POWERFUL (use this to help him get organised):
+- You can create real ACTIVITIES (tasks) directly in Bruno's "Plan" board. Whenever he asks you to organise his work, plan his diploma, "create tasks", break something down, or whenever it would genuinely help him stop feeling overwhelmed, DO IT — don't just print a table in chat.
+- To create activities, output a fenced block tagged \`tasks\` containing a JSON array. The system will create them automatically in his Plan; they do NOT appear in the chat.
+\`\`\`tasks
+[
+  { "title": "Short specific activity", "brief": "1-3 sentences: what's required & what success looks like", "steps": "<ul><li>step</li><li>step</li></ul>", "type": "essay | study | exam | reading | other", "priority": "low | medium | high", "dueDate": "YYYY-MM-DD or null" }
+]
+\`\`\`
+- After the block, write a SHORT plain-text note (e.g. "I've added 8 activities to your Plan — start with the two due this week."). Do NOT also paste the full list as a markdown table; the activities live in the Plan, not the chat.
+- Infer realistic priorities and dueDates from deadlines in his documents/messages. Keep each activity self-contained. You may create activities proactively when it clearly helps him organise.`;
 }
 
 function englishPrompt(project: { title: string; provider: string }, docContext: string, memory: string): string {
@@ -169,14 +181,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: err.message || "AI error" }, { status: 500 });
   }
 
+  // Detect an optional "tasks" action block — the tutor can create real
+  // activities in Bruno's Plan straight from the conversation.
+  let createdTasks: any[] = [];
+  const tasksMatch = reply.match(/```tasks\s*([\s\S]*?)```/);
+  if (tasksMatch && mode !== "english") {
+    const items = parseTaskItems(tasksMatch[1]);
+    if (items.length > 0) {
+      try { createdTasks = await createTasksFromItems(params.id, items); } catch { /* ignore */ }
+    }
+  }
+  // Remove the raw tasks block from what we store/show (activities live in the Plan).
+  const storedReply = reply.replace(/```tasks\s*[\s\S]*?```/g, "").trim() || reply;
+
   // Persist both turns
   await prisma.studyMessage.create({ data: { projectId: params.id, mode, role: "user", content: message } });
-  await prisma.studyMessage.create({ data: { projectId: params.id, mode, role: "assistant", content: reply } });
+  await prisma.studyMessage.create({ data: { projectId: params.id, mode, role: "assistant", content: storedReply } });
   await prisma.studyProject.update({ where: { id: params.id }, data: { updatedAt: new Date() } });
 
   // Detect an optional draft JSON block (tutor mode)
   let draft: { title?: string; content?: string } | null = null;
-  const jsonMatch = reply.match(/```json\s*([\s\S]*?)```/);
+  const jsonMatch = storedReply.match(/```json\s*([\s\S]*?)```/);
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[1].trim());
@@ -184,5 +209,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     } catch { /* ignore */ }
   }
 
-  return NextResponse.json({ reply, draft });
+  return NextResponse.json({ reply: storedReply, draft, tasks: createdTasks });
 }

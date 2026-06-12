@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getStudyUserId } from "@/lib/study-auth";
 import { callAIChat, CLAUDE_SONNET_MODEL } from "@/lib/ai-provider";
 import { buildDocContext } from "@/lib/study-docs";
+import { createTasksFromItems } from "@/lib/study-tasks";
 
 export const dynamic = "force-dynamic";
 
@@ -74,33 +75,6 @@ ${docContext ? `COURSE DOCUMENTS (full extracted text):\n${docContext}\n\n` : ""
     return NextResponse.json({ error: "No activities were found. Add more detail and try again." }, { status: 422 });
   }
 
-  const baseOrder = await prisma.studyTask.count({ where: { projectId: params.id } });
-  const created = [];
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i] || {};
-    const title = (it.title || "").toString().trim();
-    if (!title) continue;
-    let due: Date | null = null;
-    if (it.dueDate && it.dueDate !== "null") {
-      const d = new Date(it.dueDate);
-      if (!isNaN(d.getTime())) due = d;
-    }
-    const task = await prisma.studyTask.create({
-      data: {
-        projectId: params.id,
-        title: title.slice(0, 200),
-        brief: it.brief ? it.brief.toString() : null,
-        steps: it.steps ? it.steps.toString() : null,
-        type: ["essay", "study", "exam", "reading", "other"].includes(it.type) ? it.type : "essay",
-        priority: ["low", "medium", "high"].includes(it.priority) ? it.priority : "medium",
-        status: "todo",
-        dueDate: due,
-        order: baseOrder + i,
-      },
-      include: { drafts: { select: { id: true, title: true, status: true, wordCount: true, updatedAt: true } } },
-    });
-    created.push(task);
-  }
-
+  const created = await createTasksFromItems(params.id, items);
   return NextResponse.json({ tasks: created });
 }
