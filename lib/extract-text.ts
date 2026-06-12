@@ -48,16 +48,14 @@ function extractDocx(buffer: Buffer): string {
   return text;
 }
 
-/** Extract text from a PDF buffer using pdf-parse v2 (lazy import). */
+/** Extract text from a PDF buffer using pdf-parse v1 (lazy import).
+ * Imports the internal lib file directly to skip pdf-parse's index.js debug
+ * block (which tries to read a sample PDF and breaks in bundled/server runtimes). */
 async function extractPdf(buffer: Buffer): Promise<string> {
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: new Uint8Array(buffer) });
-  try {
-    const result = await parser.getText();
-    return result.text || "";
-  } finally {
-    await parser.destroy().catch(() => {});
-  }
+  const mod: any = await import("pdf-parse/lib/pdf-parse.js");
+  const pdf = (mod.default || mod) as (b: Buffer) => Promise<{ text: string }>;
+  const data = await pdf(buffer);
+  return data.text || "";
 }
 
 function clean(text: string): string {
