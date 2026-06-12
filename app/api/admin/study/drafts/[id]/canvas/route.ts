@@ -2,29 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getStudyUserId } from "@/lib/study-auth";
 import { callAIChat, CLAUDE_SONNET_MODEL } from "@/lib/ai-provider";
+import { buildDocContext, missingDocsNote } from "@/lib/study-docs";
 
 export const dynamic = "force-dynamic";
 
-const DOC_CONTEXT_LIMIT = 120000;
 const RECENT_KEEP = 16;
 
 function countWords(html: string): number {
   const text = html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " ");
   return text.trim().split(/\s+/).filter(Boolean).length;
-}
-
-function buildDocContext(documents: { originalName: string; kind: string; extractedText: string | null }[]): string {
-  const withText = documents.filter((d) => d.extractedText && d.extractedText.trim());
-  if (withText.length === 0) return "";
-  let budget = DOC_CONTEXT_LIMIT;
-  const parts: string[] = [];
-  for (const d of withText) {
-    if (budget <= 0) break;
-    const slice = (d.extractedText || "").slice(0, budget);
-    budget -= slice.length;
-    parts.push(`--- DOCUMENT: ${d.originalName} (${d.kind}) ---\n${slice}`);
-  }
-  return `===== DOCUMENTS (extracted full text of Bruno's uploaded files) =====\n\n${parts.join("\n\n")}\n\n===== END OF DOCUMENTS =====`;
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -73,11 +59,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     ? `\nSHARED PROJECT CONTEXT (you are the SAME tutor across the whole project — use this so your work here is consistent with everything else):\n${sharedParts.join("\n\n")}\n`
     : "";
 
-  const docContext = buildDocContext(draft.project.documents);
+  const { context: docContext, missing: missingDocs } = buildDocContext(draft.project.documents);
   const p = draft.project;
   const systemPrompt = `You are Bruno's expert academic TUTOR (UK ${p.level || "Level 5"} ${p.course}, ${p.provider}) working in a DOCUMENT CANVAS. You are co-writing/editing ONE document with him. British English, academic, evidence-based with Harvard citations (Author, Year) and a References list, distinction standard. Connect to his real clinical practice at BPR when useful.
 
-${sharedContext}${docContext ? `The text below is the FULL TEXT of files Bruno uploaded. You CAN read them; ground the document in them. NEVER say you cannot read PDFs.\n\n${docContext}\n\n` : ""}CURRENT DOCUMENT TITLE: ${draft.title}
+${sharedContext}${docContext ? `The text below is the FULL TEXT of files Bruno uploaded. You CAN read them; ground the document in them. NEVER say you cannot read PDFs.${missingDocsNote(missingDocs)}\n${docContext}\n\n` : ""}CURRENT DOCUMENT TITLE: ${draft.title}
 CURRENT DOCUMENT (HTML):
 ${draft.content}
 

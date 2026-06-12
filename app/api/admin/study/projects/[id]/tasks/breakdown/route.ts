@@ -2,24 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getStudyUserId } from "@/lib/study-auth";
 import { callAIChat, CLAUDE_SONNET_MODEL } from "@/lib/ai-provider";
+import { buildDocContext } from "@/lib/study-docs";
 
 export const dynamic = "force-dynamic";
-
-const DOC_LIMIT = 100000;
-
-function buildDocContext(documents: { originalName: string; kind: string; extractedText: string | null }[]): string {
-  const withText = documents.filter((d) => d.extractedText && d.extractedText.trim());
-  if (withText.length === 0) return "";
-  let budget = DOC_LIMIT;
-  const parts: string[] = [];
-  for (const d of withText) {
-    if (budget <= 0) break;
-    const slice = (d.extractedText || "").slice(0, budget);
-    budget -= slice.length;
-    parts.push(`--- ${d.originalName} (${d.kind}) ---\n${slice}`);
-  }
-  return parts.join("\n\n");
-}
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const userId = await getStudyUserId();
@@ -33,7 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const body = await req.json().catch(() => ({}));
   const braindump = (body.text || "").trim();
-  const docContext = buildDocContext(project.documents);
+  const { context: docContext } = buildDocContext(project.documents);
   if (!braindump && !docContext) {
     return NextResponse.json({ error: "Add some text describing your activities, or upload your syllabus/brief first." }, { status: 400 });
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getStudyUserId } from "@/lib/study-auth";
 import { callAIChat, CLAUDE_SONNET_MODEL } from "@/lib/ai-provider";
+import { buildDocContext, missingDocsNote } from "@/lib/study-docs";
 
 export const dynamic = "force-dynamic";
 
@@ -35,26 +36,12 @@ Produce an updated, well-structured memory (bullet points) capturing: key facts 
   }
 }
 
-function buildDocContext(documents: { originalName: string; kind: string; extractedText: string | null }[]): string {
-  const withText = documents.filter((d) => d.extractedText && d.extractedText.trim());
-  if (withText.length === 0) return "";
-  let budget = DOC_CONTEXT_LIMIT;
-  const parts: string[] = [];
-  for (const d of withText) {
-    if (budget <= 0) break;
-    const slice = (d.extractedText || "").slice(0, budget);
-    budget -= slice.length;
-    parts.push(`--- DOCUMENT: ${d.originalName} (${d.kind}) ---\n${slice}`);
-  }
-  return `===== DOCUMENTS (extracted full text of Bruno's uploaded files) =====\n\n${parts.join("\n\n")}\n\n===== END OF DOCUMENTS =====`;
-}
-
 function memoryBlock(memory: string): string {
   if (!memory || !memory.trim()) return "";
   return `\n\nLONG-TERM MEMORY (everything important agreed/discussed earlier in this project — treat as fully known, never ask Bruno to repeat it):\n${memory.trim()}`;
 }
 
-function tutorPrompt(project: { title: string; course: string; provider: string; level: string | null }, docContext: string, memory: string): string {
+function tutorPrompt(project: { title: string; course: string; provider: string; level: string | null }, docContext: string, memory: string, missing: string[]): string {
   return `You are an expert academic TUTOR and subject-matter specialist in sports therapy, physical rehabilitation, anatomy, biomechanics, and exercise science. You are helping Bruno Azenha Tonheta complete his **${project.level || "Level 5"} ${project.course}** with **${project.provider}** (UK). The current study project is: "${project.title}".${memoryBlock(memory)}
 
 WHO BRUNO IS:
@@ -70,7 +57,7 @@ UPLOADED DOCUMENTS — CRITICAL:
 - The text inside the "DOCUMENTS" block below is the FULL TEXT that has already been EXTRACTED from the files (PDFs, Word, images) Bruno uploaded to this project. You CAN read them — they are right here.
 - NEVER tell Bruno you "cannot read PDFs", "cannot open attachments", or that you only have your "system instructions". You DO have his documents — read, quote and learn from them.
 - If a specific document he expects is missing or its text looks empty/garbled, say exactly which file seems missing and ask him to re-upload THAT file. Do not deny the ability to read files in general.
-${docContext ? `- ALWAYS map your help to this uploaded material; quote exact learning outcomes/assessment criteria where present, and make sure every piece of work explicitly satisfies them.\n\n${docContext}` : "- No documents have been uploaded yet. Ask Bruno to upload the assignment brief and marking criteria so you can tailor everything to them, but still help based on standard UK Level 5 sports therapy standards."}
+${docContext ? `- ALWAYS map your help to this uploaded material; quote exact learning outcomes/assessment criteria where present, and make sure every piece of work explicitly satisfies them.${missingDocsNote(missing)}\n\n${docContext}` : "- No documents have been uploaded yet. Ask Bruno to upload the assignment brief and marking criteria so you can tailor everything to them, but still help based on standard UK Level 5 sports therapy standards."}
 
 WRITING STANDARDS (UK academic):
 - British English spelling. Academic but readable register.
@@ -160,10 +147,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     skip: summarizedCount,
   });
 
-  const docContext = buildDocContext(project.documents);
+  const { context: docContext, missing } = buildDocContext(project.documents, DOC_CONTEXT_LIMIT);
   const systemPrompt = mode === "english"
     ? englishPrompt(project, docContext, summary)
-    : tutorPrompt(project, docContext, summary);
+    : tutorPrompt(project, docContext, summary, missing);
 
   const chatMessages = [
     ...recent.map((m) => ({ role: m.role, content: m.content })),

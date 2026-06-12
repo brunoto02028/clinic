@@ -7,7 +7,7 @@ import {
   GraduationCap, Plus, Loader2, Send, Bot, Trash2, FileText, Upload, BookOpen,
   Languages, Sparkles, ChevronLeft, Save, Download, Copy, Printer, Mic, MicOff,
   FileCheck, MessageSquare, Pencil, X, FileType, ListChecks, Wand2, CalendarClock,
-  CheckCircle2, Circle,
+  CheckCircle2, Circle, RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -279,6 +279,24 @@ export default function StudyAssistantPage() {
   const deleteDoc = async (id: string) => {
     await fetch(`/api/admin/study/documents/${id}`, { method: "DELETE" });
     setActive((p) => p ? { ...p, documents: p.documents.filter((d) => d.id !== id) } : p);
+  };
+
+  const [reExtracting, setReExtracting] = useState<string | null>(null);
+  const reExtractDoc = async (id: string) => {
+    setReExtracting(id);
+    try {
+      const res = await fetch(`/api/admin/study/documents/${id}`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setActive((p) => p ? { ...p, documents: p.documents.map((d) => d.id === id ? data.document : d) } : p);
+      toast({
+        title: data.document.extractStatus === "done" ? "Text extracted" : "Still couldn't read it",
+        description: data.document.extractStatus === "done" ? "The tutor can now use this file." : (data.document.extractError || "Try re-uploading as PDF or .docx."),
+        variant: data.document.extractStatus === "done" ? undefined : "destructive",
+      });
+    } catch (err: any) {
+      toast({ title: "Retry failed", description: err.message, variant: "destructive" });
+    } finally { setReExtracting(null); }
   };
 
   // ── Drafts ──
@@ -1013,10 +1031,20 @@ export default function StudyAssistantPage() {
                         {d.extractStatus === "done" && <span className="text-green-600">Text extracted</span>}
                         {d.extractStatus === "failed" && <span className="text-red-500" title={d.extractError || ""}>Extraction failed</span>}
                         {d.extractStatus === "pending" && <span className="text-amber-500">Processing...</span>}
+                        {d.extractStatus === "failed" && (
+                          <button onClick={() => reExtractDoc(d.id)} disabled={reExtracting === d.id} className="inline-flex items-center gap-1 text-indigo-500 hover:text-indigo-600 font-medium">
+                            {reExtracting === d.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCw className="h-3 w-3" />} Retry
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive shrink-0" onClick={() => deleteDoc(d.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" title="Re-read this file" onClick={() => reExtractDoc(d.id)} disabled={reExtracting === d.id}>
+                      {reExtracting === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={() => deleteDoc(d.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
                 </CardContent></Card>
               ))}
             </div>
