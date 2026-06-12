@@ -93,6 +93,8 @@ export default function StudyAssistantPage() {
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", brief: "", type: "essay", priority: "medium", dueDate: "" });
   const [openTask, setOpenTask] = useState<Task | null>(null);
+  const [focusText, setFocusText] = useState<string | null>(null);
+  const [focusLoading, setFocusLoading] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [sending, setSending] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -478,6 +480,21 @@ export default function StudyAssistantPage() {
     if (full) openCanvas(full);
   };
 
+  // Ask the tutor where to begin today, based on all open activities
+  const askFocus = async () => {
+    if (!active) return;
+    setFocusLoading(true);
+    setFocusText(null);
+    try {
+      const res = await fetch(`/api/admin/study/projects/${active.id}/tasks/focus`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setFocusText(data.reply);
+    } catch (err: any) {
+      toast({ title: "Couldn't get a suggestion", description: err.message, variant: "destructive" });
+    } finally { setFocusLoading(false); }
+  };
+
   // Discuss an activity with the main tutor
   const discussTask = (task: Task) => {
     setOpenTask(null);
@@ -730,6 +747,55 @@ export default function StudyAssistantPage() {
       {/* PLAN / TASKS */}
       {tab === "plan" && (
         <div className="space-y-5">
+          {active.tasks.length > 0 && (() => {
+            const total = active.tasks.length;
+            const done = active.tasks.filter((t) => t.status === "done").length;
+            const pct = Math.round((done / total) * 100);
+            const upcoming = active.tasks
+              .filter((t) => t.status !== "done" && t.dueDate)
+              .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+              .slice(0, 3);
+            return (
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">Progress</p>
+                      <p className="text-xs text-muted-foreground">{done} of {total} activities done</p>
+                    </div>
+                    <Button size="sm" onClick={askFocus} disabled={focusLoading} className="gap-2">
+                      {focusLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} What should I start today?
+                    </Button>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div className="h-full bg-indigo-600 transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                  {upcoming.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <span className="text-xs text-muted-foreground">Next deadlines:</span>
+                      {upcoming.map((t) => {
+                        const due = fmtDue(t.dueDate);
+                        return (
+                          <button key={t.id} onClick={() => setOpenTask(t)} className={`text-[11px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 hover:opacity-80 ${due?.urgent ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}>
+                            <CalendarClock className="h-3 w-3" />{due?.label} · {t.title.length > 24 ? t.title.slice(0, 24) + "…" : t.title}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {focusText && (
+                    <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-950/30 p-3 relative">
+                      <div className="flex items-center gap-1.5 mb-1"><Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-300" /><span className="text-xs font-semibold text-indigo-900 dark:text-indigo-100">Today's focus</span>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 ml-auto" onClick={() => setFocusText(null)}><X className="h-3.5 w-3.5" /></Button>
+                      </div>
+                      <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{focusText}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           <Card className="border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-950/30">
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2">
