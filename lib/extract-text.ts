@@ -27,6 +27,34 @@ export function isPdfMime(mime: string, name: string): boolean {
   return mime === "application/pdf" || /\.pdf$/i.test(name);
 }
 
+export function isLegacyDocMime(mime: string, name: string): boolean {
+  // Old binary Word format (.doc) — NOT the modern .docx (handled separately).
+  return (
+    (mime === "application/msword" || /\.doc$/i.test(name)) &&
+    !/\.docx$/i.test(name)
+  );
+}
+
+/**
+ * Best-effort text recovery from a legacy binary .doc (OLE compound) file.
+ * We cannot fully parse the format without a heavy dependency, so we pull out
+ * runs of readable characters. For mostly-text documents (briefs, marking
+ * sheets) this recovers the bulk of the visible content. Tries both UTF-16LE
+ * and Latin1 and keeps whichever yields more readable text.
+ */
+function extractLegacyDoc(buffer: Buffer): string {
+  const printableRuns = (s: string): string => {
+    const matches = s.match(/[\x20-\x7E\u00A0-\u024F\n\r\t]{4,}/g) || [];
+    return matches
+      .map((r) => r.replace(/[ \t]{2,}/g, " ").trim())
+      .filter((r) => /[A-Za-z]{2,}/.test(r)) // keep runs with actual words
+      .join("\n");
+  };
+  const utf16 = printableRuns(buffer.toString("utf16le"));
+  const latin1 = printableRuns(buffer.toString("latin1"));
+  return (utf16.length >= latin1.length ? utf16 : latin1);
+}
+
 /** Extract readable text from a DOCX buffer without external services. */
 function extractDocx(buffer: Buffer): string {
   const zip = new AdmZip(buffer);
@@ -84,6 +112,9 @@ export async function extractDocumentText(
   }
   if (isPdfMime(mimeType, fileName)) {
     return clean(await extractPdf(buffer));
+  }
+  if (isLegacyDocMime(mimeType, fileName)) {
+    return clean(extractLegacyDoc(buffer));
   }
   return null;
 }
