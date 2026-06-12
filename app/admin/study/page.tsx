@@ -516,10 +516,10 @@ export default function StudyAssistantPage() {
             </div>
             <div ref={canvasChatRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
               {canvasMsgs.length === 0 && (
-                <div className="text-center text-muted-foreground py-8 px-3">
-                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-indigo-400" />
-                  <p className="text-sm font-medium text-foreground">Co-write & review here</p>
-                  <p className="text-xs mt-1">Ask me to improve the introduction, add a reference, expand a section, fix the English, add the references list — I'll edit the document directly.</p>
+                <div className="text-center py-8 px-3">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 text-indigo-500" />
+                  <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">Co-write & review here</p>
+                  <p className="text-xs mt-1.5 text-slate-600 dark:text-slate-300 leading-relaxed">Ask me to improve the introduction, add a reference, expand a section, fix the English, add the references list — I'll edit the document directly.</p>
                   <div className="flex flex-wrap gap-1.5 justify-center mt-3">
                     {["Review this against the brief & criteria", "Improve the introduction", "Add a References list (Harvard)", "Check the academic English"].map((s) => (
                       <Button key={s} variant="outline" size="sm" className="text-xs h-auto py-1 px-2 whitespace-normal bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-600 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700" onClick={() => sendCanvasMessage(s)} disabled={canvasSending}>{s}</Button>
@@ -529,19 +529,19 @@ export default function StudyAssistantPage() {
               )}
               {canvasMsgs.map((m, i) => (
                 <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[88%] rounded-lg p-2.5 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-muted text-foreground"}`}>{m.content}</div>
+                  <div className={`max-w-[88%] rounded-lg p-2.5 text-sm whitespace-pre-wrap shadow-sm ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700"}`}>{m.content}</div>
                 </div>
               ))}
               {canvasSending && <div className="flex justify-start"><div className="bg-muted rounded-lg p-2.5"><Loader2 className="h-4 w-4 animate-spin text-indigo-500" /></div></div>}
             </div>
-            <div className="border-t border-border p-2.5 flex gap-2 shrink-0">
+            <div className="border-t border-indigo-200 dark:border-indigo-500/30 bg-white dark:bg-slate-900 p-2.5 flex gap-2 shrink-0">
               <Input
                 value={canvasInput}
                 onChange={(e) => setCanvasInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendCanvasMessage(); } }}
                 placeholder="Tell the tutor what to change..."
                 disabled={canvasSending}
-                className="flex-1"
+                className="flex-1 bg-background"
               />
               <Button onClick={() => sendCanvasMessage()} disabled={canvasSending || !canvasInput.trim()} size="sm"><Send className="h-4 w-4" /></Button>
             </div>
