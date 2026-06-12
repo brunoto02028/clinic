@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import {
   GraduationCap, Plus, Loader2, Send, Bot, Trash2, FileText, Upload, BookOpen,
   Languages, Sparkles, ChevronLeft, Save, Download, Copy, Printer, Mic, MicOff,
-  FileCheck, MessageSquare, Pencil, X, FileType,
+  FileCheck, MessageSquare, Pencil, X, FileType, ListChecks, Wand2, CalendarClock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,10 +31,16 @@ interface StudyDoc {
   id: string; originalName: string; mimeType: string; fileSize: number; kind: string;
   extractStatus: string; extractError: string | null; createdAt: string;
 }
-interface Draft { id: string; title: string; content: string; wordCount: number; status: string; updatedAt: string; }
+interface Draft { id: string; title: string; content: string; wordCount: number; status: string; updatedAt: string; taskId?: string | null; }
 interface Msg { id?: string; role: string; content: string; mode: string; edited?: boolean; }
+interface TaskDraftRef { id: string; title: string; status: string; wordCount: number; updatedAt: string; }
+interface Task {
+  id: string; title: string; brief: string | null; steps: string | null;
+  type: string; priority: string; status: string; dueDate: string | null; order: number;
+  drafts?: TaskDraftRef[];
+}
 interface FullProject extends ProjectSummary {
-  documents: StudyDoc[]; drafts: Draft[]; messages: Msg[];
+  documents: StudyDoc[]; drafts: Draft[]; messages: Msg[]; tasks: Task[];
 }
 
 const DOC_KINDS = [
@@ -53,6 +59,19 @@ const DRAFT_STATUSES = [
 ];
 const statusMeta = (s: string) => DRAFT_STATUSES.find((x) => x.value === s) || DRAFT_STATUSES[0];
 
+const TASK_STATUSES = [
+  { value: "todo", label: "To do", color: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200" },
+  { value: "in_progress", label: "In progress", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
+  { value: "to_deliver", label: "Ready to deliver", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300" },
+  { value: "done", label: "Done", color: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
+];
+const TASK_TYPES: Record<string, string> = { essay: "Essay", study: "Study", exam: "Exam", reading: "Reading", other: "Other" };
+const PRIORITY_META: Record<string, { label: string; color: string }> = {
+  high: { label: "High", color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+  medium: { label: "Medium", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+  low: { label: "Low", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" },
+};
+
 export default function StudyAssistantPage() {
   const { toast } = useToast();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -66,7 +85,14 @@ export default function StudyAssistantPage() {
   const [creating, setCreating] = useState(false);
 
   // Workspace
-  const [tab, setTab] = useState<"tutor" | "english" | "documents" | "drafts">("tutor");
+  const [tab, setTab] = useState<"plan" | "tutor" | "english" | "documents" | "drafts">("tutor");
+
+  // Plan / tasks
+  const [braindump, setBraindump] = useState("");
+  const [breakingDown, setBreakingDown] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [newTask, setNewTask] = useState({ title: "", brief: "", type: "essay", priority: "medium", dueDate: "" });
+  const [openTask, setOpenTask] = useState<Task | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [sending, setSending] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -378,6 +404,87 @@ export default function StudyAssistantPage() {
     openCanvas(d);
   };
 
+  // ── Plan / Tasks ──
+  const runBreakdown = async () => {
+    if (!active) return;
+    if (!braindump.trim() && active.documents.length === 0) {
+      toast({ title: "Add your activities", description: "Type what you need to do, or upload your syllabus in Documents first.", variant: "destructive" });
+      return;
+    }
+    setBreakingDown(true);
+    try {
+      const res = await fetch(`/api/admin/study/projects/${active.id}/tasks/breakdown`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: braindump }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setActive((p) => p ? { ...p, tasks: [...p.tasks, ...data.tasks] } : p);
+      setBraindump("");
+      toast({ title: `${data.tasks.length} activit${data.tasks.length === 1 ? "y" : "ies"} created`, description: "Work through them one at a time." });
+    } catch (err: any) {
+      toast({ title: "Couldn't organise", description: err.message, variant: "destructive" });
+    } finally { setBreakingDown(false); }
+  };
+
+  const addTask = async () => {
+    if (!active || !newTask.title.trim()) { toast({ title: "Title is required", variant: "destructive" }); return; }
+    const res = await fetch(`/api/admin/study/projects/${active.id}/tasks`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...newTask, dueDate: newTask.dueDate || null }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setActive((p) => p ? { ...p, tasks: [...p.tasks, data.task] } : p);
+      setShowAddTask(false);
+      setNewTask({ title: "", brief: "", type: "essay", priority: "medium", dueDate: "" });
+    }
+  };
+
+  const updateTask = async (id: string, patch: Partial<Task>) => {
+    setActive((p) => p ? { ...p, tasks: p.tasks.map((t) => t.id === id ? { ...t, ...patch } : t) } : p);
+    setOpenTask((t) => t && t.id === id ? { ...t, ...patch } : t);
+    await fetch(`/api/admin/study/tasks/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch),
+    });
+  };
+
+  const deleteTask = async (id: string) => {
+    if (!confirm("Delete this activity? Drafts linked to it are kept (just unlinked).")) return;
+    await fetch(`/api/admin/study/tasks/${id}`, { method: "DELETE" });
+    setActive((p) => p ? { ...p, tasks: p.tasks.filter((t) => t.id !== id) } : p);
+    setOpenTask(null);
+  };
+
+  // Create a draft for this activity and open it in the Canvas
+  const startTaskDraft = async (task: Task) => {
+    if (!active) return;
+    const seed = `<h2>${task.title}</h2>${task.brief ? `<p><em>${task.brief}</em></p>` : ""}<p></p>`;
+    const res = await fetch(`/api/admin/study/projects/${active.id}/drafts`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: task.title, content: seed, taskId: task.id }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setActive((p) => p ? { ...p, drafts: [data.draft, ...p.drafts] } : p);
+      if (task.status === "todo") updateTask(task.id, { status: "in_progress" });
+      setOpenTask(null);
+      openCanvas(data.draft);
+    }
+  };
+
+  const openTaskDraftInCanvas = (ref: TaskDraftRef) => {
+    const full = active?.drafts.find((d) => d.id === ref.id);
+    setOpenTask(null);
+    if (full) openCanvas(full);
+  };
+
+  // Discuss an activity with the main tutor
+  const discussTask = (task: Task) => {
+    setOpenTask(null);
+    setTab("tutor");
+    sendMessage(`Let's work on this activity: "${task.title}".${task.brief ? ` Requirement: ${task.brief}` : ""} Help me understand exactly what's expected and the best plan to complete it to a distinction standard.`);
+  };
+
   // ── Export helpers ──
   const exportWord = (title: string, html: string) => {
     const doc = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>${title}</title></head><body><h1>${title}</h1>${html}</body></html>`;
@@ -416,6 +523,16 @@ export default function StudyAssistantPage() {
 
   const formatReply = (text: string) => text.replace(/```json\s*[\s\S]*?```/g, "").trim();
   const fmtSize = (b: number) => b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)}MB` : `${(b / 1024).toFixed(0)}KB`;
+  const fmtDue = (iso: string | null) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    const days = Math.ceil((d.getTime() - Date.now()) / 86400000);
+    const label = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    if (days < 0) return { label: `${label} (overdue)`, urgent: true };
+    if (days <= 3) return { label: `${label} (${days}d)`, urgent: true };
+    return { label, urgent: false };
+  };
 
   // ════════════════════════ RENDER ════════════════════════
 
@@ -600,14 +717,85 @@ export default function StudyAssistantPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit flex-wrap">
-        {([["tutor", "Tutor", Bot], ["english", "English", Languages], ["documents", "Documents", FileText], ["drafts", "Drafts", FileCheck]] as const).map(([key, label, Icon]) => (
+        {([["plan", "Plan", ListChecks], ["tutor", "Tutor", Bot], ["english", "English", Languages], ["documents", "Documents", FileText], ["drafts", "Drafts", FileCheck]] as const).map(([key, label, Icon]) => (
           <Button key={key} variant={tab === key ? "default" : "ghost"} size="sm" onClick={() => setTab(key)} className="gap-2">
             <Icon className="h-4 w-4" /> {label}
+            {key === "plan" && active.tasks.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5">{active.tasks.length}</Badge>}
             {key === "documents" && active.documents.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5">{active.documents.length}</Badge>}
             {key === "drafts" && active.drafts.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5">{active.drafts.length}</Badge>}
           </Button>
         ))}
       </div>
+
+      {/* PLAN / TASKS */}
+      {tab === "plan" && (
+        <div className="space-y-5">
+          <Card className="border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-950/30">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                <h2 className="font-semibold text-slate-900 dark:text-white">Organise your work into activities</h2>
+              </div>
+              <p className="text-sm text-slate-700 dark:text-slate-200">
+                Brain-dump everything you have to do — assignments, studies, exams, readings, deadlines — and I'll split it into clear activities so you can tackle one at a time. {active.documents.length > 0 ? "I'll also read your uploaded documents." : "Tip: upload your syllabus in Documents and I'll use it too."}
+              </p>
+              <Textarea
+                rows={4}
+                value={braindump}
+                onChange={(e) => setBraindump(e.target.value)}
+                placeholder={"e.g. Unit 3 assignment on injury assessment due 30 June (2500 words); revise for practical exam in July; read chapters 4-6; reflective journal weekly..."}
+                className="bg-white dark:bg-slate-900"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={runBreakdown} disabled={breakingDown} className="gap-2">
+                  {breakingDown ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Organise into activities
+                </Button>
+                <Button variant="outline" onClick={() => setShowAddTask(true)} className="gap-2"><Plus className="h-4 w-4" /> Add activity manually</Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {active.tasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No activities yet. Brain-dump above and let the tutor break it down for you.</p>
+          ) : (
+            TASK_STATUSES.map((st) => {
+              const group = active.tasks.filter((t) => (t.status || "todo") === st.value);
+              if (group.length === 0) return null;
+              return (
+                <div key={st.value} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.color}`}>{st.label}</span>
+                    <span className="text-xs text-muted-foreground">{group.length}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {group.map((t) => {
+                      const due = fmtDue(t.dueDate);
+                      const prio = PRIORITY_META[t.priority] || PRIORITY_META.medium;
+                      return (
+                        <Card key={t.id} className="cursor-pointer hover:border-indigo-400 transition-colors" onClick={() => setOpenTask(t)}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="font-semibold text-foreground leading-snug">{t.title}</h3>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive shrink-0" onClick={(e) => { e.stopPropagation(); deleteTask(t.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              <Badge variant="outline" className="text-[10px]">{TASK_TYPES[t.type] || t.type}</Badge>
+                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${prio.color}`}>{prio.label}</span>
+                              {due && <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${due.urgent ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}><CalendarClock className="h-2.5 w-2.5" />{due.label}</span>}
+                              {t.drafts && t.drafts.length > 0 && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1"><FileCheck className="h-3 w-3" />{t.drafts.length}</span>}
+                            </div>
+                            {t.brief && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{t.brief}</p>}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* CHAT (tutor / english) */}
       {isChat && (
@@ -817,6 +1005,86 @@ export default function StudyAssistantPage() {
               <Button variant="outline" onClick={() => exportWord(draftTitle, draftContent)} className="gap-1"><Download className="h-3.5 w-3.5" /> Word</Button>
               <Button variant="outline" onClick={() => printPdf(draftTitle, draftContent)} className="gap-1"><Printer className="h-3.5 w-3.5" /> PDF</Button>
               <Button variant="ghost" onClick={() => setEditingDraft(null)} className="gap-1"><X className="h-4 w-4" /> Close</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task detail dialog */}
+      <Dialog open={!!openTask} onOpenChange={(o) => { if (!o) setOpenTask(null); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          {openTask && (
+            <>
+              <DialogHeader><DialogTitle className="flex items-center gap-2 pr-6"><ListChecks className="h-5 w-5 text-indigo-600 shrink-0" /> {openTask.title}</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={openTask.status} onValueChange={(v) => updateTask(openTask.id, { status: v })}>
+                    <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{TASK_STATUSES.map((s) => <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Select value={openTask.priority} onValueChange={(v) => updateTask(openTask.id, { priority: v })}>
+                    <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{Object.entries(PRIORITY_META).map(([k, v]) => <SelectItem key={k} value={k} className="text-xs">{v.label} priority</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Input type="date" value={openTask.dueDate ? openTask.dueDate.slice(0, 10) : ""} onChange={(e) => updateTask(openTask.id, { dueDate: e.target.value || null })} className="h-8 w-[150px] text-xs" />
+                </div>
+
+                {openTask.brief && <div><Label className="text-xs text-muted-foreground">What's required</Label><p className="text-sm mt-1">{openTask.brief}</p></div>}
+                {openTask.steps && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Suggested steps</Label>
+                    <div className="prose prose-sm dark:prose-invert max-w-none mt-1" dangerouslySetInnerHTML={{ __html: openTask.steps }} />
+                  </div>
+                )}
+
+                {openTask.drafts && openTask.drafts.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Work for this activity</Label>
+                    {openTask.drafts.map((d) => (
+                      <div key={d.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2">
+                        <span className="text-sm truncate">{d.title} <span className="text-xs text-muted-foreground">· {d.wordCount} words</span></span>
+                        <Button size="sm" variant="outline" className="gap-1 shrink-0" onClick={() => openTaskDraftInCanvas(d)}><Sparkles className="h-3.5 w-3.5" /> Open in Canvas</Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button onClick={() => startTaskDraft(openTask)} className="gap-2"><Sparkles className="h-4 w-4" /> Start writing this (Canvas)</Button>
+                  <Button variant="outline" onClick={() => discussTask(openTask)} className="gap-2"><Bot className="h-4 w-4" /> Discuss with tutor</Button>
+                  <Button variant="ghost" className="text-destructive gap-1 ml-auto" onClick={() => deleteTask(openTask.id)}><Trash2 className="h-4 w-4" /> Delete</Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add activity dialog */}
+      <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-indigo-600" /> Add activity</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label className="text-xs">Title *</Label><Input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="e.g. Unit 3 — Injury assessment essay" /></div>
+            <div className="space-y-1"><Label className="text-xs">What's required (optional)</Label><Textarea rows={2} value={newTask.brief} onChange={(e) => setNewTask({ ...newTask, brief: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Type</Label>
+                <Select value={newTask.type} onValueChange={(v) => setNewTask({ ...newTask, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{Object.entries(TASK_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Priority</Label>
+                <Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{Object.entries(PRIORITY_META).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1"><Label className="text-xs">Due date (optional)</Label><Input type="date" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} /></div>
+            <div className="flex gap-2 pt-1">
+              <Button onClick={addTask} className="flex-1 gap-2"><Plus className="h-4 w-4" /> Add</Button>
+              <Button variant="outline" onClick={() => setShowAddTask(false)}>Cancel</Button>
             </div>
           </div>
         </DialogContent>

@@ -4781,12 +4781,39 @@ model StudyProject {
   messages    StudyMessage[]
   drafts      StudyDraft[]
   memories    StudyMemory[]
+  tasks       StudyTask[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([ownerId])
   @@map("study_projects")
+}
+
+// An individual activity/assignment to complete within a project. The tutor can
+// auto-generate these from a brain-dump or uploaded syllabus so Bruno works on
+// one focused task at a time.
+model StudyTask {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  title      String
+  brief      String?      @db.Text // what's required / summary of criteria
+  steps      String?      @db.Text // suggested steps (HTML)
+  type       String       @default("essay")  // essay | study | exam | reading | other
+  priority   String       @default("medium") // low | medium | high
+  status     String       @default("todo")   // todo | in_progress | to_deliver | done
+  dueDate    DateTime?
+  order      Int          @default(0)
+
+  drafts     StudyDraft[]
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([projectId])
+  @@map("study_tasks")
 }
 
 // Rolling long-term memory per project + mode so the tutor never "forgets"
@@ -4847,6 +4874,8 @@ model StudyDraft {
   id         String       @id @default(cuid())
   projectId  String
   project    StudyProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskId     String?
+  task       StudyTask?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
 
   title      String
   content    String       @db.Text // HTML
@@ -4857,5 +4886,6 @@ model StudyDraft {
   updatedAt  DateTime     @updatedAt
 
   @@index([projectId])
+  @@index([taskId])
   @@map("study_drafts")
 }

@@ -31,8 +31,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const body = await req.json().catch(() => ({}));
   const title = (body.title || "Untitled draft").trim();
   const content = body.content || "";
+  const taskId = typeof body.taskId === "string" && body.taskId ? body.taskId : null;
   const draft = await prisma.studyDraft.create({
-    data: { projectId: params.id, title, content, wordCount: countWords(content) },
+    data: { projectId: params.id, title, content, wordCount: countWords(content), taskId },
   });
   await prisma.studyProject.update({ where: { id: params.id }, data: { updatedAt: new Date() } });
   return NextResponse.json({ draft });
