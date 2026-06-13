@@ -243,7 +243,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {settings ? (
-              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="md" priority />
+              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="md" priority siteName={settings.siteName || "BPR"} />
             ) : (
               <div style={{ height: 40, width: 40 }} />
             )}
@@ -1363,7 +1363,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-3">
                   {fHasLogo && settings && (
                     <div className="flex items-center gap-3">
-                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" />
+                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" siteName={settings.siteName || "BPR"} />
                       {settings.tagline && <p className="text-xs text-muted-foreground">{settings.tagline}</p>}
                     </div>
                   )}

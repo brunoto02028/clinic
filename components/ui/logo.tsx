@@ -14,6 +14,7 @@ interface LogoProps {
   darkLogoUrl?: string | null;
   variant?: "light" | "dark" | "auto";
   priority?: boolean;
+  siteName?: string;
 }
 
 // Fixed pixel heights for each size — no ambiguity
@@ -29,6 +30,7 @@ export function Logo({
   darkLogoUrl,
   variant = "auto",
   priority = false,
+  siteName = "BPR",
 }: LogoProps) {
   const h = SIZE_PX[size] || 40;
   const [imgError, setImgError] = useState(false);
@@ -111,7 +113,12 @@ export function Logo({
           ) : null}
         </>
       ) : (
-        <div style={{ height: h, width: h * 2.5 }} />
+        <span
+          className="font-bold tracking-tight text-foreground whitespace-nowrap"
+          style={{ fontSize: h * 0.55, lineHeight: 1 }}
+        >
+          {siteName}
+        </span>
       )}
     </div>
   );
