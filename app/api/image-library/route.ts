@@ -41,9 +41,9 @@ export async function GET(request: NextRequest) {
 
     // Generate public URLs for ImageLibrary records
     const imagesWithUrls = images.map((img) => {
-      // Base64 inline images - return as-is
-      if (img.cloud_storage_path === "base64:inline" || img.imageUrl.startsWith("data:")) {
-        return img;
+      // Base64 inline images — return short serve URL instead of raw base64
+      if (img.cloud_storage_path === "dataurl:inline" || img.cloud_storage_path === "base64:inline" || img.imageUrl.startsWith("data:")) {
+        return { ...img, imageUrl: `/api/image-serve/${img.id}` };
       }
       // Local filesystem images
       if (img.cloud_storage_path.startsWith("local:")) {
