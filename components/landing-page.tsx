@@ -381,7 +381,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-primary flex-shrink-0" />
-                  <span className="font-semibold text-foreground">15+</span>
+                  <span className="font-semibold text-foreground">20+</span>
                   <span>{T("home.yearsExperience")}</span>
                 </div>
                 <div className="flex items-center gap-2">
