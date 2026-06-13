@@ -447,7 +447,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-400">
                 <Brain className="h-3.5 w-3.5 flex-shrink-0" />
                 {T("home.trustBiohacking")}
-                <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ml-0.5">New</span>
               </div>
           </div>
         </div>
@@ -1023,7 +1022,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
               <Brain className="h-3.5 w-3.5" />
               {T("home.bioHackLabel")}
-              <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">NEW</span>
             </span>
             <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight max-w-3xl">
               {T("home.bioHackTitle")}{" "}
