@@ -393,7 +393,7 @@ const translations: Record<string, Record<Locale, string>> = {
   // ─── Homepage / Landing Page ───
   "home.heroTitle": { "en-GB": "Adjust Your Body", "pt-BR": "Ajuste o Seu Corpo" },
   "home.heroTitle2": { "en-GB": "Get A Perfect Balance", "pt-BR": "Conquiste o Equilíbrio Perfeito" },
-  "home.heroSubtitle": { "en-GB": "Expert physical rehabilitation and sports therapy in Ipswich, Suffolk. Helping you move better, feel stronger, and live pain-free through evidence-based treatments and personalised care.", "pt-BR": "Reabilitação física especializada e terapia esportiva em Ipswich, Suffolk. Ajudamos você a se mover melhor, sentir-se mais forte e viver sem dor através de tratamentos baseados em evidências e cuidados personalizados." },
+  "home.heroSubtitle": { "en-GB": "Sports therapy, physical rehabilitation and biohacking coaching in Ipswich, Suffolk. Evidence-based protocols to heal injuries, optimise performance and extend your healthspan.", "pt-BR": "Terapia esportiva, reabilitação física e coaching de biohacking em Ipswich, Suffolk. Protocolos baseados em evidências para curar lesões, otimizar a performance e prolongar a sua saúde." },
   "home.bookAppointment": { "en-GB": "Book Appointment", "pt-BR": "Agendar Consulta" },
   "home.clientPortal": { "en-GB": "Client Portal", "pt-BR": "Portal do Cliente" },
   "home.fullyInsured": { "en-GB": "Fully Insured", "pt-BR": "Totalmente Segurado" },
@@ -404,6 +404,11 @@ const translations: Record<string, Record<Locale, string>> = {
   // Homepage — Accreditation / Trust Bar
   "home.accreditedMember": { "en-GB": "Accredited Member", "pt-BR": "Membro Credenciado" },
   "home.stoTagline": { "en-GB": "Leading the way in Sports Therapy since 1999", "pt-BR": "Liderando a Terapia Esportiva desde 1999" },
+  "home.navBiohacking": { "en-GB": "Biohacking", "pt-BR": "Biohacking" },
+  "home.trustSTO": { "en-GB": "Sports Therapy Organisation", "pt-BR": "Organização de Terapia Esportiva" },
+  "home.trustIPHM": { "en-GB": "IPHM Certified Practitioner", "pt-BR": "Praticante Certificado IPHM" },
+  "home.trustCPD": { "en-GB": "CPD Accredited", "pt-BR": "Acreditado pela CPD" },
+  "home.trustBiohacking": { "en-GB": "Certified Biohacking Coach", "pt-BR": "Coach de Biohacking Certificado" },
 
   // Homepage — MLS® Laser Therapy featured section
   "home.mlsLabel": { "en-GB": "Advanced Laser Therapy", "pt-BR": "Laserterapia Avançada" },
@@ -493,6 +498,12 @@ const translations: Record<string, Record<Locale, string>> = {
   "svc.kinesiotherapyDesc": { "en-GB": "Therapeutic movement techniques to restore natural movement patterns, improve postural balance, and enhance functional performance.", "pt-BR": "Técnicas de movimento terapêutico para restaurar padrões naturais de movimento, melhorar o equilíbrio postural e aprimorar o desempenho funcional." },
   "svc.microcurrent": { "en-GB": "Microcurrent Therapy (MENS)", "pt-BR": "Terapia por Microcorrente (MENS)" },
   "svc.microcurrentDesc": { "en-GB": "Sub-sensory electrical stimulation to promote cellular regeneration, reduce inflammation, and accelerate tissue healing at the cellular level.", "pt-BR": "Estimulação elétrica sub-sensorial para promover regeneração celular, reduzir inflamação e acelerar a cicatrização de tecidos a nível celular." },
+  "svc.biohacking": { "en-GB": "Biohacking & Performance Coaching", "pt-BR": "Biohacking e Coaching de Performance" },
+  "svc.biohackingDesc": { "en-GB": "Personalised biohacking protocols using HRV data, sleep analysis and lifestyle design to boost energy, focus and long-term recovery.", "pt-BR": "Protocolos de biohacking personalizados usando dados de VFC, análise do sono e design de estilo de vida para aumentar energia, foco e recuperação a longo prazo." },
+  "svc.hrv": { "en-GB": "HRV & Recovery Monitoring", "pt-BR": "Monitoramento de VFC e Recuperação" },
+  "svc.hrvDesc": { "en-GB": "Heart rate variability analysis to calibrate training load, stress levels and nervous system resilience for peak performance.", "pt-BR": "Análise da variabilidade da frequência cardíaca para calibrar carga de treino, estresse e resiliência do sistema nervoso para performance máxima." },
+  "svc.sleepLongevity": { "en-GB": "Sleep & Longevity Optimisation", "pt-BR": "Otimização do Sono e Longevidade" },
+  "svc.sleepLongevityDesc": { "en-GB": "Circadian rhythm, light exposure and sleep architecture protocols to accelerate tissue repair and extend your healthspan.", "pt-BR": "Protocolos de ritmo circadiano, exposição à luz e arquitetura do sono para acelerar a reparação tecidual e prolongar a sua saúde." },
 
   // Homepage — Custom Insoles / Foot Scan Block
   "home.insolesLabel": { "en-GB": "Custom Insoles & Foot Analysis", "pt-BR": "Palmilhas Personalizadas e Análise do Pé" },
@@ -564,11 +575,46 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.thermoLearnMore": { "en-GB": "Learn More", "pt-BR": "Saiba Mais" },
   "home.navThermography": { "en-GB": "Thermography", "pt-BR": "Termografia" },
 
+  // Homepage — Biohacking & Performance section
+  "home.bioHackLabel": { "en-GB": "Certified Biohacking Coach", "pt-BR": "Coach de Biohacking Certificado" },
+  "home.bioHackTitle": { "en-GB": "Beyond Recovery.", "pt-BR": "Além da Recuperação." },
+  "home.bioHackTitle2": { "en-GB": "Optimise Your Human Performance.", "pt-BR": "Optimize a Sua Performance Humana." },
+  "home.bioHackDesc": { "en-GB": "Biohacking is the systematic use of science, data and lifestyle design to make your body perform at its absolute best — not just heal. Using HRV monitoring, sleep science, gut health protocols and recovery technology, we create a personalised optimisation plan that upgrades every system in your body.", "pt-BR": "Biohacking é o uso sistemático de ciência, dados e design de estilo de vida para fazer seu corpo performar no absoluto melhor — não apenas curar. Usando monitoramento de VFC, ciência do sono, protocolos de saúde intestinal e tecnologia de recuperação, criamos um plano de otimização personalizado que aprimora cada sistema do seu corpo." },
+  "home.bioHackDesc2": { "en-GB": "Whether you're an athlete chasing peak performance, a professional fighting chronic fatigue, or a patient who wants to heal faster and stay healthier longer — this is your next level.", "pt-BR": "Seja você um atleta buscando performance máxima, um profissional lutando contra fadiga crônica, ou um paciente que quer se curar mais rápido e manter-se mais saudável — este é o seu próximo nível." },
+  "home.bioHackBadge": { "en-GB": "IPHM & CPD Accredited · Evidence-based · 40-hour programme", "pt-BR": "Acreditado IPHM & CPD · Baseado em evidências · Programa de 40 horas" },
+  "home.bioHackBenefitsTitle": { "en-GB": "What Your Body Gains", "pt-BR": "O Que Seu Corpo Ganha" },
+  "home.bioHackBenefit1": { "en-GB": "Faster tissue repair via circadian optimisation", "pt-BR": "Reparação tecidual mais rápida via otimização circadiana" },
+  "home.bioHackBenefit2": { "en-GB": "HRV-guided training & recovery load management", "pt-BR": "Gestão de carga de treino e recuperação guiada por VFC" },
+  "home.bioHackBenefit3": { "en-GB": "Gut-joint axis inflammation reduction", "pt-BR": "Redução de inflamação no eixo intestino-articulação" },
+  "home.bioHackBenefit4": { "en-GB": "Stress & cortisol regulation with breathwork", "pt-BR": "Regulação de estresse e cortisol com respiração guiada" },
+  "home.bioHackBenefit5": { "en-GB": "Photobiomodulation & cold exposure recovery protocols", "pt-BR": "Protocolos de fotobiomodulação e exposição ao frio" },
+  "home.bioHackBenefit6": { "en-GB": "Evidence-based supplementation & nutrition support", "pt-BR": "Suporte nutricional e de suplementação baseado em evidências" },
+  "home.bioHackConditionsTitle": { "en-GB": "Who benefits most", "pt-BR": "Quem mais se beneficia" },
+  "home.bioHackCond1": { "en-GB": "Athletes & Sportspeople", "pt-BR": "Atletas e Praticantes de Esporte" },
+  "home.bioHackCond2": { "en-GB": "Chronic Pain & Fatigue", "pt-BR": "Dor Crônica e Fadiga" },
+  "home.bioHackCond3": { "en-GB": "Post-Surgery Recovery", "pt-BR": "Recuperação Pós-Cirúrgica" },
+  "home.bioHackCond4": { "en-GB": "Executives & High Performers", "pt-BR": "Executivos e Alta Performance" },
+  "home.bioHackCond5": { "en-GB": "Longevity Seekers", "pt-BR": "Buscadores de Longevidade" },
+  "home.bioHackCond6": { "en-GB": "Wearable Data Users", "pt-BR": "Usuários de Dados de Wearables" },
+  "home.bioHackPillar1": { "en-GB": "Personalised Protocols", "pt-BR": "Protocolos Personalizados" },
+  "home.bioHackPillar1Desc": { "en-GB": "HRV, genetics & lifestyle data drive your unique plan", "pt-BR": "Dados de VFC, genética e estilo de vida guiam seu plano único" },
+  "home.bioHackPillar2": { "en-GB": "Wearable Integration", "pt-BR": "Integração com Wearables" },
+  "home.bioHackPillar2Desc": { "en-GB": "Apple Watch, Oura, Garmin & CGM data analysis", "pt-BR": "Análise de dados de Apple Watch, Oura, Garmin e MCG" },
+  "home.bioHackPillar3": { "en-GB": "Sleep Architecture", "pt-BR": "Arquitetura do Sono" },
+  "home.bioHackPillar3Desc": { "en-GB": "Circadian alignment for accelerated healing & longevity", "pt-BR": "Alinhamento circadiano para cura acelerada e longevidade" },
+  "home.bioHackCta": { "en-GB": "Book a Biohacking Consultation", "pt-BR": "Agendar Consulta de Biohacking" },
+  "home.bioHackLearnMore": { "en-GB": "Learn More", "pt-BR": "Saiba Mais" },
+  "home.bioHackStat1": { "en-GB": "Evidence-based protocols", "pt-BR": "Protocolos baseados em evidências" },
+  "home.bioHackStat2": { "en-GB": "IPHM & CPD accredited", "pt-BR": "Acreditado IPHM & CPD" },
+  "home.bioHackStat3": { "en-GB": "Comprehensive programme", "pt-BR": "Programa completo" },
+  "home.bioHackStat4": { "en-GB": "HRV-guided personalisation", "pt-BR": "Personalização guiada por VFC" },
+
   // Homepage — About
   "home.aboutTitle": { "en-GB": "Bruno Physical Rehabilitation", "pt-BR": "Bruno Physical Rehabilitation" },
   "home.aboutText1": { "en-GB": "My name is Bruno, and I'm a therapist based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.", "pt-BR": "Meu nome é Bruno, sou terapeuta baseado no UK com uma sólida formação em reabilitação física, recuperação esportiva e performance humana." },
   "home.aboutText2": { "en-GB": "Before becoming a therapist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.", "pt-BR": "Antes de me tornar terapeuta, vivi a jornada que muitos dos meus clientes enfrentam agora. Fui jogador de futebol profissional por mais de uma década, jogando no Brasil, Alemanha e Suécia. Após três grandes cirurgias no joelho, entendo em primeira mão os desafios físicos e emocionais da reabilitação." },
   "home.aboutText3": { "en-GB": "This personal experience drives my passion for helping others recover, rebuild, and return to their best selves.", "pt-BR": "Essa experiência pessoal impulsiona minha paixão por ajudar outros a se recuperar, reconstruir e retornar ao seu melhor." },
+  "home.aboutText4": { "en-GB": "As a Certified Biohacking Coach (IPHM & CPD accredited), Bruno integrates cutting-edge science — from HRV monitoring and sleep optimisation to gut health and photobiomodulation — into every rehabilitation plan. This holistic approach goes beyond treating the injury: it upgrades the entire biological system so patients recover faster and perform at a higher level for longer.", "pt-BR": "Como Certified Biohacking Coach (acreditado pela IPHM & CPD), Bruno integra ciência de ponta — desde monitoramento de VFC e otimização do sono até saúde intestinal e fotobiomodulação — em cada plano de reabilitação. Esta abordagem holística vai além do tratamento da lesão: ela aprimora todo o sistema biológico para que os pacientes se recuperem mais rapidamente e performem em um nível superior por mais tempo." },
   "home.bookConsultation": { "en-GB": "Book a Consultation", "pt-BR": "Agendar uma Consulta" },
 
   // Homepage — Articles
