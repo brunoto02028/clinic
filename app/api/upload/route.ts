@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -38,31 +36,11 @@ export async function POST(request: NextRequest) {
 
     console.log('[upload] Processing file:', file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
 
-    // Save file to persistent storage (Railway Volume or local)
+    // Convert to base64 dataURL — works without S3 or filesystem
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Determine upload directory (Railway Volume or local)
-    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads');
-    const categoryDir = path.join(uploadsBase, 'library', category);
-    
-    // Ensure directory exists
-    await mkdir(categoryDir, { recursive: true });
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const uniqueName = `${timestamp}-${sanitizedName}`;
-    const filePath = path.join(categoryDir, uniqueName);
-
-    // Write file to disk
-    await writeFile(filePath, buffer);
-
-    console.log('[upload] File saved to:', filePath);
-
-    // Generate URL (relative to public or absolute for Railway Volume)
-    const imageUrl = `/uploads/library/${category}/${uniqueName}`;
-    const cloud_storage_path = `local:${filePath}`;
+    const base64 = Buffer.from(bytes).toString("base64");
+    const imageUrl = `data:${file.type};base64,${base64}`;
+    const cloud_storage_path = "dataurl:inline";
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;

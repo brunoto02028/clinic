@@ -51,15 +51,36 @@ export async function POST(req: NextRequest) {
     } catch {}
   }
 
-  // Apply updates
-  await prisma.siteSettings.update({
-    where: { id: current.id },
-    data: updates,
+  // Apply settings updates
+  if (Object.keys(updates).length > 0) {
+    await prisma.siteSettings.update({
+      where: { id: current.id },
+      data: updates,
+    });
+  }
+
+  // Delete broken ImageLibrary entries (empty URL or /uploads/ Railway paths)
+  const brokenLibrary = await prisma.imageLibrary.findMany({
+    where: {
+      OR: [
+        { imageUrl: "" },
+        { imageUrl: { startsWith: "/uploads/" } },
+        { imageUrl: { contains: "unsplash.com" } },
+      ],
+    },
+    select: { id: true, imageUrl: true, originalName: true },
   });
+
+  const deletedLibrary: string[] = [];
+  for (const img of brokenLibrary) {
+    await prisma.imageLibrary.delete({ where: { id: img.id } });
+    deletedLibrary.push(`[${img.id.slice(0,8)}] ${img.originalName}: ${img.imageUrl.slice(0,60)}`);
+  }
 
   return NextResponse.json({
     success: true,
     cleared,
-    message: `Cleared ${cleared.length} broken/placeholder image(s)`,
+    deletedLibraryEntries: deletedLibrary,
+    message: `Cleared ${cleared.length} settings image(s), deleted ${deletedLibrary.length} broken library entry(ies)`,
   });
 }
