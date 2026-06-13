@@ -55,58 +55,23 @@ export function ImageUpload({
     setUploading(true);
 
     try {
-      // Step 1: Get presigned URL
-      const presignedResponse = await fetch("/api/upload/presigned", {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("category", "general");
+
+      const uploadResponse = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-          isPublic
-        })
-      });
-
-      if (!presignedResponse.ok) {
-        throw new Error("Failed to get upload URL");
-      }
-
-      const { uploadUrl, cloud_storage_path } = await presignedResponse.json();
-
-      // Step 2: Upload file to S3
-      const uploadHeaders: HeadersInit = {
-        "Content-Type": file.type
-      };
-
-      // Check if Content-Disposition is required
-      if (uploadUrl.includes("content-disposition") && isPublic) {
-        uploadHeaders["Content-Disposition"] = "attachment";
-      }
-
-      const uploadResponse = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: uploadHeaders,
-        body: file
+        body: formData,
       });
 
       if (!uploadResponse.ok) {
-        throw new Error("Failed to upload file");
+        const err = await uploadResponse.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to upload");
       }
 
-      // Step 3: Complete upload and get file URL
-      const completeResponse = await fetch("/api/upload/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cloud_storage_path,
-          isPublic
-        })
-      });
-
-      if (!completeResponse.ok) {
-        throw new Error("Failed to complete upload");
-      }
-
-      const { fileUrl } = await completeResponse.json();
+      const { image } = await uploadResponse.json();
+      const fileUrl = image.imageUrl;
+      const cloud_storage_path = image.cloud_storage_path;
 
       // Update preview and notify parent
       setPreviewUrl(fileUrl);
