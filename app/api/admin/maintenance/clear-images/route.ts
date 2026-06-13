@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/db";
 
 // One-time maintenance endpoint to clear broken/placeholder image URLs
 // DELETE after use
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Get current settings to inspect
-  const current = await prisma.settings.findFirst();
+  const current = await prisma.siteSettings.findFirst();
   if (!current) {
     return NextResponse.json({ error: "No settings found" }, { status: 404 });
   }
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Apply updates
-  await prisma.settings.update({
+  await prisma.siteSettings.update({
     where: { id: current.id },
     data: updates,
   });

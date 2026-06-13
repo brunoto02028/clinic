@@ -549,8 +549,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           { value: "2000 Hz", labelKey: "home.mlsStat4" },
         ];
 
-        const treatmentImg = mls.treatmentImageUrl || "/uploads/mls-laser-treatment.jpg";
-        const deviceImg = mls.deviceImageUrl || "/uploads/mls-laser-device.jpg";
+        const treatmentImg = mls.treatmentImageUrl || "";
+        const deviceImg = mls.deviceImageUrl || "";
         const ctaLink = mls.ctaLink || "/signup";
         const learnMoreLink = mls.learnMoreLink || "/services/laser-shockwave";
 
