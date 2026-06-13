@@ -452,45 +452,50 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         </div>
       </section>
 
-      {/* Portal Features Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
+      {/* About Section */}
+      <section id="about" className="py-12 sm:py-16 lg:py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-              {(() => {
-                const raw = S("portalTitle", "home.portalTitle");
-                if (raw.includes("|")) {
-                  const [main, highlight] = raw.split("|").map(s => s.trim());
-                  return <>{main}{" "}<span className="text-primary">{highlight}</span></>;
-                }
-                // Legacy: try to highlight "Rehabilitation" / "Reabilitação"
-                const keyword = locale === "pt-BR" ? "Reabilitação" : "Rehabilitation";
-                if (raw.includes(keyword)) {
-                  const parts = raw.split(keyword);
-                  return <>{parts[0]}<span className="text-primary">{keyword}</span>{parts[1] || ""}</>;
-                }
-                return raw;
-              })()}
-            </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("portalSubtitle", "home.portalSubtitle")}</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {features.map((feature, index) => (
-              <div key={feature.titleKey}>
-                <Card className="h-full card-hover border-0 bg-muted/50">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
-                      <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-base sm:text-lg text-foreground mb-2">{T(feature.titleKey)}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{T(feature.descKey)}</p>
-                  </CardContent>
-                </Card>
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4 sm:mb-6">
+                {(() => {
+                  const raw = S("aboutTitle", "home.aboutTitle");
+                  if (raw.includes("|")) {
+                    const [main, highlight] = raw.split("|").map(s => s.trim());
+                    return <><span className="text-secondary">{main}</span>{" "}{highlight}</>;
+                  }
+                  return <><span className="text-secondary">Bruno Physical</span>{" "}Rehabilitation</>;
+                })()}
+              </h2>
+              <div className="space-y-4 text-muted-foreground leading-relaxed">
+                {locale === "en-GB" && settings?.aboutText ? (
+                  settings.aboutText.split("\n\n").filter(Boolean).map((p, i) => <p key={i}>{p}</p>)
+                ) : (
+                  <>
+                    <p>{T("home.aboutText1")}</p>
+                    <p>{T("home.aboutText2")}</p>
+                    <p>{T("home.aboutText3")}</p>
+                  </>
+                )}
+                <p className="text-sm text-foreground/90 border-l-2 border-emerald-500/60 pl-3 italic">{T("home.aboutText4")}</p>
               </div>
-            ))}
-          </div>
-          <div className="mt-8 sm:mt-10 text-center">
-            <Link href="/signup"><Button size="lg" className="gap-2">{T("home.getStarted")} <ArrowRight className="h-5 w-5" /></Button></Link>
+              <div className="mt-6 sm:mt-8">
+                <Link href="/signup">
+                  <Button className="gap-2">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
+                </Link>
+              </div>
+            </div>
+            <div>
+              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
+                {settings?.aboutImageUrl && (
+                  settings.aboutImageUrl.startsWith('data:') ? (
+                    <img src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" className="object-cover absolute inset-0 w-full h-full" />
+                  ) : (
+                    <Image src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                  )
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -1170,50 +1175,45 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="py-12 sm:py-16 lg:py-20 bg-background">
+      {/* Portal Features Section */}
+      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4 sm:mb-6">
-                {(() => {
-                  const raw = S("aboutTitle", "home.aboutTitle");
-                  if (raw.includes("|")) {
-                    const [main, highlight] = raw.split("|").map(s => s.trim());
-                    return <><span className="text-secondary">{main}</span>{" "}{highlight}</>;
-                  }
-                  return <><span className="text-secondary">Bruno Physical</span>{" "}Rehabilitation</>;
-                })()}
-              </h2>
-              <div className="space-y-4 text-muted-foreground leading-relaxed">
-                {locale === "en-GB" && settings?.aboutText ? (
-                  settings.aboutText.split("\n\n").filter(Boolean).map((p, i) => <p key={i}>{p}</p>)
-                ) : (
-                  <>
-                    <p>{T("home.aboutText1")}</p>
-                    <p>{T("home.aboutText2")}</p>
-                    <p>{T("home.aboutText3")}</p>
-                  </>
-                )}
-                <p className="text-sm text-foreground/90 border-l-2 border-emerald-500/60 pl-3 italic">{T("home.aboutText4")}</p>
+          <div className="mb-8 sm:mb-10">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+              {(() => {
+                const raw = S("portalTitle", "home.portalTitle");
+                if (raw.includes("|")) {
+                  const [main, highlight] = raw.split("|").map(s => s.trim());
+                  return <>{main}{" "}<span className="text-primary">{highlight}</span></>;
+                }
+                // Legacy: try to highlight "Rehabilitation" / "Reabilitação"
+                const keyword = locale === "pt-BR" ? "Reabilitação" : "Rehabilitation";
+                if (raw.includes(keyword)) {
+                  const parts = raw.split(keyword);
+                  return <>{parts[0]}<span className="text-primary">{keyword}</span>{parts[1] || ""}</>;
+                }
+                return raw;
+              })()}
+            </h2>
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("portalSubtitle", "home.portalSubtitle")}</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {features.map((feature, index) => (
+              <div key={feature.titleKey}>
+                <Card className="h-full card-hover border-0 bg-muted/50">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
+                      <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-base sm:text-lg text-foreground mb-2">{T(feature.titleKey)}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{T(feature.descKey)}</p>
+                  </CardContent>
+                </Card>
               </div>
-              <div className="mt-6 sm:mt-8">
-                <Link href="/signup">
-                  <Button className="gap-2">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
-                </Link>
-              </div>
-            </div>
-            <div>
-              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
-                {settings?.aboutImageUrl && (
-                  settings.aboutImageUrl.startsWith('data:') ? (
-                    <img src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" className="object-cover absolute inset-0 w-full h-full" />
-                  ) : (
-                    <Image src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                  )
-                )}
-              </div>
-            </div>
+            ))}
+          </div>
+          <div className="mt-8 sm:mt-10 text-center">
+            <Link href="/signup"><Button size="lg" className="gap-2">{T("home.getStarted")} <ArrowRight className="h-5 w-5" /></Button></Link>
           </div>
         </div>
       </section>
