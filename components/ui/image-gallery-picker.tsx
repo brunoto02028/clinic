@@ -143,9 +143,10 @@ export function ImageGalleryPicker({
       await fetchImages();
     } catch (error) {
       console.error("Upload error:", error);
+      const errMsg = error instanceof Error ? error.message : "Unknown error";
       toast({
         title: "Upload failed",
-        description: "Failed to upload image. Please try again.",
+        description: errMsg,
         variant: "destructive",
       });
     } finally {

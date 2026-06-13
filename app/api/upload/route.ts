@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import sharp from "sharp";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +50,7 @@ export async function POST(request: NextRequest) {
     let optimisedBuffer: Buffer;
     let finalMimeType = "image/webp";
     try {
+      const sharp = (await import("sharp")).default;
       optimisedBuffer = await sharp(inputBuffer)
         .rotate()                          // auto-orient from EXIF
         .resize({ width: maxWidth, withoutEnlargement: true })
@@ -131,7 +131,11 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Upload error:", error);
     return NextResponse.json(
-      { error: "Failed to upload file: " + (error.message || "Unknown error") },
+      {
+        error: "Failed to upload file",
+        detail: error.message || String(error),
+        code: error.code,
+      },
       { status: 500 }
     );
   }
