@@ -444,10 +444,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <ShieldCheck className="h-3.5 w-3.5 text-secondary flex-shrink-0" />
                 {T("home.trustIPHM")}
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
-                {T("home.trustCPD")}
-              </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-400">
                 <Brain className="h-3.5 w-3.5 flex-shrink-0" />
                 {T("home.trustBiohacking")}
