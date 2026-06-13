@@ -45,6 +45,7 @@ import {
   Thermometer,
   Eye,
   Flame,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1160,6 +1161,34 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <p className="text-muted-foreground text-sm leading-relaxed">{T(step.descKey)}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* App Pre-Launch Strip */}
+      <section className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-y border-slate-700/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                <Smartphone className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-bold text-white">{locale === "pt-BR" ? "BPR Clinic App — Em Breve" : "BPR Clinic App — Coming Soon"}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase tracking-wide">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    {locale === "pt-BR" ? "Em Breve" : "Coming Soon"}
+                  </span>
+                </div>
+                <p className="text-slate-400 text-xs sm:text-sm">{locale === "pt-BR" ? "A lançar para iOS e Android — marque consultas, siga o seu tratamento e muito mais." : "Launching on iOS & Android — book appointments, follow your treatment and more."}</p>
+              </div>
+            </div>
+            <Link href="/get-the-app" className="shrink-0">
+              <Button size="sm" variant="outline" className="gap-1.5 border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white whitespace-nowrap">
+                {locale === "pt-BR" ? "Saber Mais" : "Learn More"} <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
