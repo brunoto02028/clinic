@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
@@ -182,6 +182,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
     { id: "insoles", label: T("home.navInsoles") },
     { id: "biomechanics", label: T("home.navBiomechanics") },
     { id: "thermography", label: T("home.navThermography") },
+    { id: "biohacking", label: T("home.navBiohacking") },
     { id: "about", label: T("home.about") },
     { id: "contact", label: T("home.contact") },
   ];
@@ -229,6 +230,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
     { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-500/15 text-teal-400" },
     { slug: "kinesiotherapy", icon: Users, titleKey: "svc.kinesiotherapy", descKey: "svc.kinesiotherapyDesc", color: "bg-indigo-500/15 text-indigo-400" },
     { slug: "microcurrent", icon: Zap, titleKey: "svc.microcurrent", descKey: "svc.microcurrentDesc", color: "bg-yellow-500/15 text-yellow-400" },
+    { slug: "biohacking", icon: Brain, titleKey: "svc.biohacking", descKey: "svc.biohackingDesc", color: "bg-teal-500/15 text-teal-400" },
+    { slug: "hrv", icon: Activity, titleKey: "svc.hrv", descKey: "svc.hrvDesc", color: "bg-green-500/15 text-green-400" },
+    { slug: "sleep-longevity", icon: Timer, titleKey: "svc.sleepLongevity", descKey: "svc.sleepLongevityDesc", color: "bg-violet-500/15 text-violet-400" },
   ];
 
   const steps = [
@@ -432,16 +436,23 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       <section className="py-5 sm:py-6 border-y border-border/40 bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
-            {/* Temporariamente comentado - adicionar imagem sto-member-badge.png */}
-            {/* <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0 bg-white p-1">
-                <Image src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" width={56} height={56} className="object-contain w-full h-full" loading="lazy" quality={75} unoptimized />
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                {T("home.trustSTO")}
               </div>
-              <div className="text-left">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
-                <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Sports Therapy Organisation</p>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-secondary flex-shrink-0" />
+                {T("home.trustIPHM")}
               </div>
-            </a> */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
+                {T("home.trustCPD")}
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-400">
+                <Brain className="h-3.5 w-3.5 flex-shrink-0" />
+                {T("home.trustBiohacking")}
+                <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ml-0.5">New</span>
+              </div>
           </div>
         </div>
       </section>
@@ -1004,6 +1015,147 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         );
       })()}
 
+      {/* ═══ BIOHACKING & HUMAN PERFORMANCE BLOCK ═══ */}
+      <section id="biohacking" className="relative py-16 sm:py-20 lg:py-28 bg-card/50 overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-emerald-500/[0.04] to-transparent" />
+          <div className="absolute bottom-0 right-0 w-1/3 h-1/2 bg-gradient-to-tl from-teal-500/[0.03] to-transparent" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-10 sm:mb-14">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
+              <Brain className="h-3.5 w-3.5" />
+              {T("home.bioHackLabel")}
+              <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">NEW</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight max-w-3xl">
+              {T("home.bioHackTitle")}{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">
+                {T("home.bioHackTitle2")}
+              </span>
+            </h2>
+            <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
+              {T("home.bioHackDesc")}
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start mb-14 sm:mb-20">
+            {/* Left: Visual card with 3 pillars */}
+            <div className="space-y-4">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-emerald-900/20 to-teal-900/20 border border-emerald-500/20 p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                    <Brain className="h-5 w-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground">{locale === "pt-BR" ? "Biohacking Coaching" : "Biohacking Coaching"}</p>
+                    <p className="text-xs text-muted-foreground">IPHM &amp; CPD Accredited</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
+                    <div className="w-9 h-9 rounded-lg bg-teal-500/20 flex items-center justify-center shrink-0">
+                      <Brain className="h-4 w-4 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar1")}</p>
+                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar1Desc")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                      <Activity className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar2")}</p>
+                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar2Desc")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
+                    <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
+                      <Eye className="h-4 w-4 text-violet-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar3")}</p>
+                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar3Desc")}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
+                <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                <span className="text-sm font-medium text-foreground">{T("home.bioHackBadge")}</span>
+              </div>
+            </div>
+
+            {/* Right: Benefits + conditions + CTA */}
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-6">{T("home.bioHackBenefitsTitle")}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                {([
+                  { icon: Zap, color: "text-emerald-400 bg-emerald-500/15", key: "home.bioHackBenefit1" },
+                  { icon: Activity, color: "text-blue-400 bg-blue-500/15", key: "home.bioHackBenefit2" },
+                  { icon: Brain, color: "text-teal-400 bg-teal-500/15", key: "home.bioHackBenefit3" },
+                  { icon: Shield, color: "text-violet-400 bg-violet-500/15", key: "home.bioHackBenefit4" },
+                  { icon: Flame, color: "text-orange-400 bg-orange-500/15", key: "home.bioHackBenefit5" },
+                  { icon: Sparkles, color: "text-amber-400 bg-amber-500/15", key: "home.bioHackBenefit6" },
+                ] as { icon: React.ElementType; color: string; key: string }[]).map(({ icon: BIcon, color, key }, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center shrink-0`}>
+                      <BIcon className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm text-foreground leading-relaxed pt-1.5">{T(key)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl bg-card border border-border p-5 mb-6">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-emerald-400" />
+                  {T("home.bioHackConditionsTitle")}
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {(["home.bioHackCond1","home.bioHackCond2","home.bioHackCond3","home.bioHackCond4","home.bioHackCond5","home.bioHackCond6"] as const).map((key, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/60 text-xs font-medium text-foreground">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                      {T(key)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{T("home.bioHackDesc2")}</p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/signup">
+                  <Button size="lg" className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white">
+                    {T("home.bioHackCta")} <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <button onClick={() => scrollTo("services")}>
+                  <Button size="lg" variant="outline">{T("home.bioHackLearnMore")}</Button>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+            {([
+              { value: "40h", key: "home.bioHackStat3" },
+              { value: "IPHM", key: "home.bioHackStat2" },
+              { value: "CPD", key: "home.bioHackStat1" },
+              { value: "HRV", key: "home.bioHackStat4" },
+            ] as { value: string; key: string }[]).map((stat, i) => (
+              <div key={i} className="text-center rounded-xl bg-card border border-border p-4 sm:p-5">
+                <p className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">{stat.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{T(stat.key)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1051,6 +1203,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     <p>{T("home.aboutText3")}</p>
                   </>
                 )}
+                <p className="text-sm text-foreground/90 border-l-2 border-emerald-500/60 pl-3 italic">{T("home.aboutText4")}</p>
               </div>
               <div className="mt-6 sm:mt-8">
                 <Link href="/signup">
