@@ -398,7 +398,7 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.clientPortal": { "en-GB": "Client Portal", "pt-BR": "Portal do Cliente" },
   "home.fullyInsured": { "en-GB": "Fully Insured", "pt-BR": "Totalmente Segurado" },
   "home.openEveryDay": { "en-GB": "Open Every Day", "pt-BR": "Aberto Todos os Dias" },
-  "home.yearsExperience": { "en-GB": "15+ Years Experience", "pt-BR": "15+ Anos de Experiência" },
+  "home.yearsExperience": { "en-GB": "Years of Clinical Experience", "pt-BR": "Anos de Experiência Clínica" },
   "home.experience": { "en-GB": "Experience", "pt-BR": "Experiência" },
 
   // Homepage — Accreditation / Trust Bar
@@ -458,10 +458,10 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.featureBookingDesc": { "en-GB": "Book your appointment online at a time that suits you. View available slots and secure your session instantly.", "pt-BR": "Agende sua consulta online no horário que melhor lhe convém. Veja os horários disponíveis e garanta sua sessão." },
   "home.featureRecords": { "en-GB": "Digital Records", "pt-BR": "Registros Digitais" },
   "home.featureRecordsDesc": { "en-GB": "Access your treatment history and clinical notes securely. Track your rehabilitation progress over time.", "pt-BR": "Acesse seu histórico de tratamento e notas clínicas com segurança. Acompanhe o progresso da sua reabilitação." },
-  "home.featureScreening": { "en-GB": "Screening", "pt-BR": "Triagem" },
-  "home.featureScreeningDesc": { "en-GB": "Complete your screening online before your first appointment for a more efficient consultation.", "pt-BR": "Preencha sua triagem online antes da primeira consulta para um atendimento mais eficiente." },
-  "home.featureAdvanced": { "en-GB": "Advanced Treatments", "pt-BR": "Tratamentos Avançados" },
-  "home.featureAdvancedDesc": { "en-GB": "Access cutting-edge therapies including electrotherapy, shockwave therapy, and personalised rehabilitation.", "pt-BR": "Acesse terapias de ponta incluindo eletroterapia, terapia por ondas de choque e reabilitação personalizada." },
+  "home.featureScreening": { "en-GB": "Biometric Screening", "pt-BR": "Triagem Biométrica" },
+  "home.featureScreeningDesc": { "en-GB": "Your pre-appointment questionnaire covers clinical history, pain patterns, sleep quality, stress markers and lifestyle habits — so your very first session is already personalised.", "pt-BR": "Seu questionário pré-consulta abrange histórico clínico, padrões de dor, qualidade do sono, marcadores de estresse e hábitos de vida — para que a sua primeira sessão já seja personalizada." },
+  "home.featureAdvanced": { "en-GB": "Advanced & Biohacking", "pt-BR": "Avançado & Biohacking" },
+  "home.featureAdvancedDesc": { "en-GB": "MLS® Laser, electrotherapy, shockwave and biohacking protocols — all selected around your clinical data, HRV trends and performance goals.", "pt-BR": "Laser MLS®, eletroterapia, ondas de choque e protocolos de biohacking — todos selecionados com base nos seus dados clínicos, tendências de VFC e objetivos de performance." },
 
   // Homepage — How it works
   "home.howItWorksTitle": { "en-GB": "How It Works", "pt-BR": "Como Funciona" },
