@@ -1045,8 +1045,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     <Brain className="h-5 w-5 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="font-bold text-foreground">{locale === "pt-BR" ? "Biohacking Coaching" : "Biohacking Coaching"}</p>
-                    <p className="text-xs text-muted-foreground">IPHM &amp; CPD Accredited</p>
+                    <p className="font-bold text-foreground">Biohacking Coaching</p>
+                    <p className="text-xs text-muted-foreground">20+ Years Clinical Experience · IPHM Certified</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -1136,10 +1136,10 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           {/* Stats bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
             {([
-              { value: "40h", key: "home.bioHackStat3" },
+              { value: "20+", key: "home.bioHackStat1" },
               { value: "IPHM", key: "home.bioHackStat2" },
-              { value: "CPD", key: "home.bioHackStat1" },
               { value: "HRV", key: "home.bioHackStat4" },
+              { value: "1:1", key: "home.bioHackStat3" },
             ] as { value: string; key: string }[]).map((stat, i) => (
               <div key={i} className="text-center rounded-xl bg-card border border-border p-4 sm:p-5">
                 <p className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">{stat.value}</p>

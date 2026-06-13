@@ -604,17 +604,17 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.bioHackPillar3Desc": { "en-GB": "Circadian alignment for accelerated healing & longevity", "pt-BR": "Alinhamento circadiano para cura acelerada e longevidade" },
   "home.bioHackCta": { "en-GB": "Book a Biohacking Consultation", "pt-BR": "Agendar Consulta de Biohacking" },
   "home.bioHackLearnMore": { "en-GB": "Learn More", "pt-BR": "Saiba Mais" },
-  "home.bioHackStat1": { "en-GB": "Evidence-based protocols", "pt-BR": "Protocolos baseados em evidências" },
-  "home.bioHackStat2": { "en-GB": "IPHM & CPD accredited", "pt-BR": "Acreditado IPHM & CPD" },
-  "home.bioHackStat3": { "en-GB": "Comprehensive programme", "pt-BR": "Programa completo" },
-  "home.bioHackStat4": { "en-GB": "HRV-guided personalisation", "pt-BR": "Personalização guiada por VFC" },
+  "home.bioHackStat1": { "en-GB": "Years Clinical Experience", "pt-BR": "Anos de Experiência Clínica" },
+  "home.bioHackStat2": { "en-GB": "IPHM Certified Coach", "pt-BR": "Coach Certificado IPHM" },
+  "home.bioHackStat3": { "en-GB": "Personalised Coaching", "pt-BR": "Coaching Personalizado" },
+  "home.bioHackStat4": { "en-GB": "Data-Guided Protocols", "pt-BR": "Protocolos Guiados por Dados" },
 
   // Homepage — About
   "home.aboutTitle": { "en-GB": "Bruno Physical Rehabilitation", "pt-BR": "Bruno Physical Rehabilitation" },
   "home.aboutText1": { "en-GB": "My name is Bruno, and I'm a therapist based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.", "pt-BR": "Meu nome é Bruno, sou terapeuta baseado no UK com uma sólida formação em reabilitação física, recuperação esportiva e performance humana." },
   "home.aboutText2": { "en-GB": "Before becoming a therapist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.", "pt-BR": "Antes de me tornar terapeuta, vivi a jornada que muitos dos meus clientes enfrentam agora. Fui jogador de futebol profissional por mais de uma década, jogando no Brasil, Alemanha e Suécia. Após três grandes cirurgias no joelho, entendo em primeira mão os desafios físicos e emocionais da reabilitação." },
   "home.aboutText3": { "en-GB": "This personal experience drives my passion for helping others recover, rebuild, and return to their best selves.", "pt-BR": "Essa experiência pessoal impulsiona minha paixão por ajudar outros a se recuperar, reconstruir e retornar ao seu melhor." },
-  "home.aboutText4": { "en-GB": "As a Certified Biohacking Coach (IPHM & CPD accredited), Bruno integrates cutting-edge science — from HRV monitoring and sleep optimisation to gut health and photobiomodulation — into every rehabilitation plan. This holistic approach goes beyond treating the injury: it upgrades the entire biological system so patients recover faster and perform at a higher level for longer.", "pt-BR": "Como Certified Biohacking Coach (acreditado pela IPHM & CPD), Bruno integra ciência de ponta — desde monitoramento de VFC e otimização do sono até saúde intestinal e fotobiomodulação — em cada plano de reabilitação. Esta abordagem holística vai além do tratamento da lesão: ela aprimora todo o sistema biológico para que os pacientes se recuperem mais rapidamente e performem em um nível superior por mais tempo." },
+  "home.aboutText4": { "en-GB": "As an IPHM Certified Biohacking Coach with 20+ years of clinical practice, Bruno integrates cutting-edge science — from HRV monitoring and sleep optimisation to gut health and photobiomodulation — into every rehabilitation plan. This approach goes beyond treating the injury: it upgrades the entire biological system so patients recover faster and perform at a higher level for longer.", "pt-BR": "Como Coach de Biohacking Certificado pela IPHM e com 20+ anos de prática clínica, Bruno integra ciência de ponta — desde monitoramento de VFC e otimização do sono até saúde intestinal e fotobiomodulação — em cada plano de reabilitação. Esta abordagem vai além do tratamento da lesão: ela aprimora todo o sistema biológico para que os pacientes se recuperem mais rapidamente e performem em um nível superior por mais tempo." },
   "home.bookConsultation": { "en-GB": "Book a Consultation", "pt-BR": "Agendar uma Consulta" },
 
   // Homepage — Articles
