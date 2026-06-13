@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import sharp from "sharp";
 
 export const dynamic = "force-dynamic";
 
@@ -36,13 +37,40 @@ export async function POST(request: NextRequest) {
 
     console.log('[upload] Processing file:', file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
 
-    // Convert to base64 dataURL — works without S3 or filesystem
     const bytes = await file.arrayBuffer();
-    const base64 = Buffer.from(bytes).toString("base64");
-    const imageUrl = `data:${file.type};base64,${base64}`;
+    const inputBuffer = Buffer.from(bytes);
+
+    // Max width per category (px) — hero/logo larger, thumbnails smaller
+    const MAX_WIDTHS: Record<string, number> = {
+      hero: 1920, logo: 800, about: 1200, services: 1200,
+      general: 1200, article: 1200, og: 1200,
+    };
+    const maxWidth = MAX_WIDTHS[category] ?? 1200;
+
+    // Optimise: convert to WebP, resize (max width), quality 80, strip EXIF
+    let optimisedBuffer: Buffer;
+    let finalMimeType = "image/webp";
+    try {
+      optimisedBuffer = await sharp(inputBuffer)
+        .rotate()                          // auto-orient from EXIF
+        .resize({ width: maxWidth, withoutEnlargement: true })
+        .webp({ quality: 80, effort: 4 })
+        .toBuffer();
+    } catch (sharpErr) {
+      console.warn('[upload] sharp optimisation failed, storing original:', sharpErr);
+      optimisedBuffer = inputBuffer;
+      finalMimeType = file.type;
+    }
+
+    const sizeBefore = Math.round(file.size / 1024);
+    const sizeAfter  = Math.round(optimisedBuffer.length / 1024);
+    console.log(`[upload] Optimised ${sizeBefore}KB → ${sizeAfter}KB WebP (max ${maxWidth}px)`);
+
+    const base64 = optimisedBuffer.toString("base64");
+    const imageUrl = `data:${finalMimeType};base64,${base64}`;
     const cloud_storage_path = "dataurl:inline";
 
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(/\.[^.]+$/, ".webp");
     const uniqueName = `${Date.now()}-${sanitizedName}`;
 
     // Resolve user ID - session ID may not match DB if JWT is stale
@@ -73,8 +101,8 @@ export async function POST(request: NextRequest) {
       data: {
         fileName: uniqueName,
         originalName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
+        fileSize: optimisedBuffer.length,
+        mimeType: finalMimeType,
         imageUrl,                  // base64 stored in DB
         cloud_storage_path,
         altText: null,
