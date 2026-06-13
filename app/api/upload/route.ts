@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
     const imageUrl = `data:${file.type};base64,${base64}`;
     const cloud_storage_path = "dataurl:inline";
 
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const uniqueName = `${Date.now()}-${sanitizedName}`;
+
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
     const userEmail = session.user?.email;
