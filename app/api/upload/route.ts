@@ -75,13 +75,16 @@ export async function POST(request: NextRequest) {
         originalName: file.name,
         fileSize: file.size,
         mimeType: file.type,
-        imageUrl,
+        imageUrl,                  // base64 stored in DB
         cloud_storage_path,
         altText: null,
         category,
         uploadedById: userId,
       },
     });
+
+    // Return a short serve URL instead of the full base64 — keeps settings payload small
+    const serveUrl = `/api/image-serve/${image.id}`;
 
     return NextResponse.json({
       success: true,
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
         originalName: image.originalName,
         fileSize: image.fileSize,
         mimeType: image.mimeType,
-        imageUrl,
+        imageUrl: serveUrl,
         cloud_storage_path,
         category: image.category,
         createdAt: image.createdAt,
