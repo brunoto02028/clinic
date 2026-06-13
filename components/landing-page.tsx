@@ -1132,9 +1132,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     {T("home.bioHackCta")} <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <button onClick={() => scrollTo("services")}>
-                  <Button size="lg" variant="outline">{T("home.bioHackLearnMore")}</Button>
-                </button>
+                <Button size="lg" variant="outline" onClick={() => scrollTo("services")}>{T("home.bioHackLearnMore")}</Button>
               </div>
             </div>
           </div>
