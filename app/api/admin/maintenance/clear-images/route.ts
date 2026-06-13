@@ -1,6 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+// Report article image URLs
+export async function GET(req: NextRequest) {
+  const secret = req.headers.get("x-maintenance-secret");
+  if (secret !== "bpr-clear-2026") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const articles = await prisma.article.findMany({
+    select: { id: true, title: true, imageUrl: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const report = articles.map((a) => ({
+    id: a.id,
+    title: a.title?.slice(0, 50),
+    imageUrl: a.imageUrl || null,
+    type: !a.imageUrl ? "none"
+      : a.imageUrl.startsWith("data:") ? "base64"
+      : a.imageUrl.startsWith("/uploads/") ? "broken_local"
+      : a.imageUrl.includes("unsplash.com") ? "unsplash"
+      : a.imageUrl.includes("s3.amazonaws.com") ? "s3"
+      : "external_url",
+  }));
+
+  const summary = report.reduce((acc: Record<string, number>, r) => {
+    acc[r.type] = (acc[r.type] || 0) + 1;
+    return acc;
+  }, {});
+
+  return NextResponse.json({ summary, articles: report });
+}
+
 // One-time maintenance endpoint to clear broken/placeholder image URLs
 // DELETE after use
 export async function POST(req: NextRequest) {
