@@ -55,13 +55,6 @@ import type { Locale } from "@/lib/i18n";
 import { VapiVoiceWidget } from "@/components/vapi-voice-widget";
 
 // Code splitting - lazy load heavy components
-const ThermographyIllustration = dynamic(
-  () => import("@/components/thermography-illustration").then(mod => ({ default: mod.ThermographyIllustration })),
-  { 
-    ssr: false,
-    loading: () => <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 animate-pulse rounded-2xl" />
-  }
-);
 
 interface ScreenLogoEntry { logoUrl?: string | null; darkLogoUrl?: string | null; }
 interface FooterModules { logo?: boolean; links?: boolean; social?: boolean; contact?: boolean; copyright?: boolean; newsletter?: boolean; }
@@ -929,11 +922,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   ) : (
                     <Image src={settings.thermoImageUrl as string} alt="Infrared thermography scan showing heat patterns on body" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
                   )
-                ) : (
-                  <div className="absolute inset-0">
-                    <ThermographyIllustration className="w-full h-full" />
-                  </div>
-                )}
+                ) : null}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
