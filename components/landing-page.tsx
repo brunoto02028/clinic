@@ -222,7 +222,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
     { slug: "sports-injury", icon: Activity, titleKey: "svc.sportsInjury", descKey: "svc.sportsInjuryDesc", color: "bg-orange-500/15 text-orange-400" },
     { slug: "chronic-pain", icon: Heart, titleKey: "svc.chronicPain", descKey: "svc.chronicPainDesc", color: "bg-red-500/15 text-red-400" },
     { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-500/15 text-teal-400" },
-    { slug: "microcurrent", icon: Zap, titleKey: "svc.microcurrent", descKey: "svc.microcurrentDesc", color: "bg-yellow-500/15 text-yellow-400" },
     { slug: "biohacking", icon: Brain, titleKey: "svc.biohacking", descKey: "svc.biohackingDesc", color: "bg-teal-500/15 text-teal-400" },
     { slug: "hrv", icon: Activity, titleKey: "svc.hrv", descKey: "svc.hrvDesc", color: "bg-green-500/15 text-green-400" },
     { slug: "sleep-longevity", icon: Timer, titleKey: "svc.sleepLongevity", descKey: "svc.sleepLongevityDesc", color: "bg-violet-500/15 text-violet-400" },

@@ -315,33 +315,6 @@ const SERVICE_DATA: Record<string, ServiceData> = {
       pt: "Pré-op: 2-4 semanas, 2x/semana | Pós-op: 6-12 semanas, 2-3x/semana",
     },
   },
-  microcurrent: {
-    slug: "microcurrent",
-    icon: Zap,
-    color: "bg-yellow-100 text-yellow-700",
-    titleKey: "svc.microcurrent",
-    descKey: "svc.microcurrentDesc",
-    benefits: [
-      { en: "Promotes cellular regeneration (ATP production)", pt: "Promove regeneração celular (produção de ATP)" },
-      { en: "Accelerates wound and tissue healing", pt: "Acelera a cicatrização de feridas e tecidos" },
-      { en: "Sub-sensory – completely painless", pt: "Sub-sensorial – completamente indolor" },
-      { en: "Reduces acute and chronic inflammation", pt: "Reduz inflamação aguda e crônica" },
-      { en: "Effective for fracture healing support", pt: "Eficaz para suporte de cicatrização de fraturas" },
-      { en: "Can be combined with other modalities", pt: "Pode ser combinado com outras modalidades" },
-    ],
-    whoIsItFor: {
-      en: "Microcurrent therapy is ideal for patients with slow-healing injuries, post-surgical tissue repair needs, chronic inflammation, and those seeking a gentle, painless modality to complement their rehabilitation. It works at the cellular level to boost the body's natural repair mechanisms.",
-      pt: "A terapia por microcorrente é ideal para pacientes com lesões de cicatrização lenta, necessidades de reparo tecidual pós-cirúrgico, inflamação crônica e aqueles que buscam uma modalidade suave e indolor para complementar sua reabilitação. Atua a nível celular para impulsionar os mecanismos naturais de reparo do corpo.",
-    },
-    howItWorks: {
-      en: "Microcurrent devices deliver extremely low-level electrical currents (millionths of an amp) that mirror the body's own bioelectrical signals. These currents are below the threshold of sensation, making the treatment completely painless. The enhanced cellular activity promotes faster healing and reduced inflammation.",
-      pt: "Dispositivos de microcorrente emitem correntes elétricas de nível extremamente baixo (milionésimos de ampere) que espelham os sinais bioelétricos do próprio corpo. Essas correntes estão abaixo do limiar de sensação, tornando o tratamento completamente indolor. A atividade celular aprimorada promove cicatrização mais rápida e redução de inflamação.",
-    },
-    sessionInfo: {
-      en: "Sessions: 20-30 minutes | 2-3 times per week | In-clinic only",
-      pt: "Sessões: 20-30 minutos | 2-3 vezes por semana | Somente na clínica",
-    },
-  },
 };
 
 export default function ServiceDetailPage() {
