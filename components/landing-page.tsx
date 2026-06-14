@@ -218,7 +218,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
     { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-500/15 text-blue-400" },
     { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-500/15 text-purple-400" },
     { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-500/15 text-cyan-400" },
-    { slug: "laser-shockwave", icon: CircleDot, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-rose-500/15 text-rose-400" },
+    { slug: "mls-laser", icon: Zap, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-orange-500/15 text-orange-400" },
     { slug: "sports-injury", icon: Activity, titleKey: "svc.sportsInjury", descKey: "svc.sportsInjuryDesc", color: "bg-orange-500/15 text-orange-400" },
     { slug: "chronic-pain", icon: Heart, titleKey: "svc.chronicPain", descKey: "svc.chronicPainDesc", color: "bg-red-500/15 text-red-400" },
     { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-500/15 text-teal-400" },
@@ -552,7 +552,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         const treatmentImg = mls.treatmentImageUrl || "";
         const deviceImg = mls.deviceImageUrl || "";
         const ctaLink = mls.ctaLink || "/signup";
-        const learnMoreLink = mls.learnMoreLink || "/services/laser-shockwave";
+        const learnMoreLink = mls.learnMoreLink || "/services/mls-laser";
 
         const benefitIcons = [
           { icon: Zap, color: "text-orange-400 bg-orange-500/15" },
