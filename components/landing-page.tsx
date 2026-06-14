@@ -585,12 +585,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div className="space-y-4">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800">
-                {treatmentImg.startsWith('data:') ? (
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800" style={{minHeight: 240}}>
+                {treatmentImg && (treatmentImg.startsWith('data:') ? (
                   <img src={treatmentImg} alt="MLS Laser Therapy treatment in action" className="w-full h-auto max-h-[420px] object-cover" />
                 ) : (
                   <Image src={treatmentImg} alt="MLS Laser Therapy treatment in action" width={800} height={600} className="w-full h-auto max-h-[420px] object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                )}
+                ))}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
@@ -600,12 +600,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-white flex items-center justify-center p-4">
-                  {deviceImg.startsWith('data:') ? (
+                <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
+                  {deviceImg && (deviceImg.startsWith('data:') ? (
                     <img src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" className="object-contain p-4 absolute inset-0 w-full h-full" />
                   ) : (
                     <Image src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" fill className="object-contain p-4" loading="lazy" quality={60} sizes="(max-width: 768px) 50vw, 25vw" />
-                  )}
+                  ))}
                 </div>
                 <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-blue-600/10 border border-orange-500/20 p-5 flex flex-col justify-center">
                   <div className="space-y-3">
