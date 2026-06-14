@@ -1313,7 +1313,7 @@ export default function AdminSettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-5">
                   {[
-                    { key: "biohackingImageUrl", label: "Biohacking Coaching", url: "/services/biohacking", prompt: "A biohacking coach reviewing wearable health data on a tablet with a patient in a modern wellness clinic. Professional setting, no text in the image." },
+                    { key: "biohackingImageUrl", label: "Biohacking & Performance", url: "/services/biohacking", prompt: "A biohacking coach reviewing wearable health data on a tablet with a patient in a modern wellness clinic. Professional setting, no text in the image." },
                     { key: "sleepImageUrl", label: "Sleep & Longevity", url: "/services/sleep-longevity", prompt: "A serene sleep clinic environment showing advanced sleep monitoring equipment, calm lighting, and a peaceful clinical bedroom setting. No text." },
                     { key: "hrvImageUrl", label: "HRV Monitoring", url: "/services/hrv", prompt: "A patient wearing a heart rate monitor wristband while a physiotherapist reviews HRV data charts on a screen. Clinical setting, professional, no text." },
                   ].map(({ key, label, url, prompt }) => (
