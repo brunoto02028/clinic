@@ -12,7 +12,7 @@ services:
     branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /
+    healthCheckPath: /api/health
     autoDeploy: true
 
     envVars:
