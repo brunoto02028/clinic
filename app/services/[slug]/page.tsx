@@ -315,33 +315,6 @@ const SERVICE_DATA: Record<string, ServiceData> = {
       pt: "Pré-op: 2-4 semanas, 2x/semana | Pós-op: 6-12 semanas, 2-3x/semana",
     },
   },
-  kinesiotherapy: {
-    slug: "kinesiotherapy",
-    icon: Users,
-    color: "bg-indigo-100 text-indigo-700",
-    titleKey: "svc.kinesiotherapy",
-    descKey: "svc.kinesiotherapyDesc",
-    benefits: [
-      { en: "Restore natural movement patterns", pt: "Restaurar padrões naturais de movimento" },
-      { en: "Improve postural balance and alignment", pt: "Melhorar equilíbrio postural e alinhamento" },
-      { en: "Enhance neuromuscular coordination", pt: "Aprimorar coordenação neuromuscular" },
-      { en: "Functional movement training", pt: "Treinamento de movimento funcional" },
-      { en: "Preventive approach to musculoskeletal health", pt: "Abordagem preventiva para saúde musculoesquelética" },
-      { en: "Tailored to your daily activities and goals", pt: "Adaptado às suas atividades diárias e objetivos" },
-    ],
-    whoIsItFor: {
-      en: "Kinesiotherapy is beneficial for patients with movement disorders, postural imbalances, neurological conditions, age-related mobility decline, and anyone seeking to improve their functional movement quality for daily life or sport.",
-      pt: "A cinesioterapia é benéfica para pacientes com distúrbios de movimento, desequilíbrios posturais, condições neurológicas, declínio de mobilidade relacionado à idade e qualquer pessoa que busque melhorar a qualidade do movimento funcional para a vida diária ou esporte.",
-    },
-    howItWorks: {
-      en: "Through careful movement analysis, your therapist identifies dysfunctional patterns and designs corrective exercises. Sessions combine hands-on guidance with active movement practice. The focus is on re-educating your body to move efficiently and safely, building long-term movement health.",
-      pt: "Através de análise cuidadosa do movimento, seu terapeuta identifica padrões disfuncionais e projeta exercícios corretivos. As sessões combinam orientação prática com prática ativa de movimento. O foco é reeducar seu corpo para se mover de forma eficiente e segura, construindo saúde de movimento a longo prazo.",
-    },
-    sessionInfo: {
-      en: "Sessions: 45-60 minutes | 1-2 times per week | In-clinic + home exercises",
-      pt: "Sessões: 45-60 minutos | 1-2 vezes por semana | Na clínica + exercícios em casa",
-    },
-  },
   microcurrent: {
     slug: "microcurrent",
     icon: Zap,
