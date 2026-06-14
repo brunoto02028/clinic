@@ -132,17 +132,35 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [locale, setCurrentLocale] = useState<Locale>("en-GB");
   const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>("");
 
   useEffect(() => {
     setMounted(true);
     setCurrentLocale(getLocale());
-    // Only fetch if not provided by SSR
-    if (!initialSettings) {
-      fetchSettings();
-    }
-    if (!initialArticles || initialArticles.length === 0) {
-      fetchArticles();
-    }
+    if (!initialSettings) fetchSettings();
+    if (!initialArticles || initialArticles.length === 0) fetchArticles();
+
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    const sectionIds = ["services", "insoles", "biomechanics", "thermography", "biohacking", "about", "contact"];
+    const observers: IntersectionObserver[] = [];
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
+        { rootMargin: "-30% 0px -60% 0px", threshold: 0 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      observers.forEach((o) => o.disconnect());
+    };
   }, [initialSettings, initialArticles]);
 
   const toggleLocale = () => {
@@ -180,6 +198,13 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
     { id: "about", label: T("home.about") },
     { id: "contact", label: T("home.contact") },
   ];
+
+  const navLinkClass = (id: string) =>
+    `text-sm font-medium transition-colors whitespace-nowrap ${
+      activeSection === id
+        ? "text-primary"
+        : "text-muted-foreground hover:text-primary"
+    }`;
 
   const fetchSettings = async () => {
     try {
@@ -237,7 +262,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   return (
     <div className="min-h-screen bg-background bg-grid-pattern">
       {/* Header */}
-      <header className="sticky top-0 z-50 header-futuristic">
+      <header className={`sticky top-0 z-50 header-futuristic transition-all duration-300 ${scrolled ? "shadow-lg shadow-black/20 border-b border-border/60" : "border-b border-transparent"}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {settings ? (
@@ -247,12 +272,19 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             )}
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-5 xl:gap-7">
+            <nav className="hidden lg:flex items-center gap-5 xl:gap-6">
               {navAnchors.map((a) => (
-                <button key={a.id} onClick={() => scrollTo(a.id)} className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{a.label}</button>
+                <button
+                  key={a.id}
+                  onClick={() => scrollTo(a.id)}
+                  className={navLinkClass(a.id)}
+                >
+                  {a.label}
+                  {activeSection === a.id && (
+                    <span className="block h-0.5 mt-0.5 rounded-full bg-primary w-full" />
+                  )}
+                </button>
               ))}
-              <Link href="/articles" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{T("home.articlesLabel") || "Articles"}</Link>
-              <Link href="/help" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
             </nav>
 
             {/* WhatsApp button in header */}
@@ -315,13 +347,21 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <div>
-              <nav className="flex flex-col gap-1">
+            <div className="border-t border-border/50 pt-2 pb-4">
+              <nav className="flex flex-col gap-0.5">
                 {navAnchors.map((a) => (
-                  <button key={a.id} onClick={() => { scrollTo(a.id); setMobileMenuOpen(false); }} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{a.label}</button>
+                  <button
+                    key={a.id}
+                    onClick={() => { scrollTo(a.id); setMobileMenuOpen(false); }}
+                    className={`text-left rounded-lg px-3 py-2.5 font-medium transition-colors hover:bg-muted/50 ${
+                      activeSection === a.id
+                        ? "text-primary bg-primary/5"
+                        : "text-muted-foreground hover:text-primary"
+                    }`}
+                  >
+                    {a.label}
+                  </button>
                 ))}
-                <Link href="/articles" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{T("home.articlesLabel") || "Articles"}</Link>
-                <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
                   <Link href="/login"><Button variant="outline" className="w-full">{T("home.patientLogin")}</Button></Link>
                   <Link href="/signup"><Button className="w-full">{T("home.getStarted")}</Button></Link>
