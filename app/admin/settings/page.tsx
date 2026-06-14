@@ -264,6 +264,9 @@ export default function AdminSettingsPage() {
     lpTherapiesJson: "",
     lpInsolesJson: "",
     lpBiomechanicsJson: "",
+    biohackingImageUrl: "",
+    sleepImageUrl: "",
+    hrvImageUrl: "",
 
     // SEO
     metaTitle: "",
@@ -412,6 +415,9 @@ export default function AdminSettingsPage() {
           lpTherapiesJson: data.lpTherapiesJson || "",
           lpInsolesJson: data.lpInsolesJson || "",
           lpBiomechanicsJson: data.lpBiomechanicsJson || "",
+          biohackingImageUrl: data.biohackingImageUrl || "",
+          sleepImageUrl: data.sleepImageUrl || "",
+          hrvImageUrl: data.hrvImageUrl || "",
           canonicalUrl: data.canonicalUrl || "",
           robotsMeta: data.robotsMeta || "",
           googleVerification: data.googleVerification || "",
@@ -1069,7 +1075,7 @@ export default function AdminSettingsPage() {
                 ) : (
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => openImagePicker("heroImageUrl")}><Upload className="h-4 w-4 mr-2" />Upload Image</Button>
-                    <AIImageGenerator section="Hero" defaultPrompt="Professional physiotherapy clinic hero image showing a modern treatment room or therapist helping a patient" onApply={(url) => setSettings({ ...settings, heroImageUrl: url })} />
+                    <AIImageGenerator section="Hero" defaultPrompt="A physiotherapist treating a patient in a modern, well-lit rehabilitation clinic. The therapist is working on the patient's shoulder or knee. Clean clinical environment, professional equipment visible." onApply={(url) => setSettings({ ...settings, heroImageUrl: url })} />
                   </div>
                 )}
               </div>
@@ -1299,6 +1305,45 @@ export default function AdminSettingsPage() {
                 </Button>
               </div>
 
+              {/* Static Service Page Hero Images */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Specialist Service Pages — Hero Images</CardTitle>
+                  <CardDescription>Banner images for the advanced service pages (Biohacking, Sleep & Longevity, HRV)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  {[
+                    { key: "biohackingImageUrl", label: "Biohacking Coaching", url: "/services/biohacking", prompt: "A biohacking coach reviewing wearable health data on a tablet with a patient in a modern wellness clinic. Professional setting, no text in the image." },
+                    { key: "sleepImageUrl", label: "Sleep & Longevity", url: "/services/sleep-longevity", prompt: "A serene sleep clinic environment showing advanced sleep monitoring equipment, calm lighting, and a peaceful clinical bedroom setting. No text." },
+                    { key: "hrvImageUrl", label: "HRV Monitoring", url: "/services/hrv", prompt: "A patient wearing a heart rate monitor wristband while a physiotherapist reviews HRV data charts on a screen. Clinical setting, professional, no text." },
+                  ].map(({ key, label, url, prompt }) => (
+                    <div key={key} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          {label}
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                            <ExternalLink className="h-3 w-3" /> view page
+                          </a>
+                        </Label>
+                      </div>
+                      {(settings as any)[key] ? (
+                        <div className="relative inline-block">
+                          <img src={(settings as any)[key]} alt={label} style={{ width: 320, height: 160 }} className="object-cover border rounded" />
+                          <Button size="sm" variant="destructive" className="absolute top-2 right-2" onClick={() => setSettings({ ...settings, [key]: "" })}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={() => openImagePicker(key)}><Upload className="h-4 w-4 mr-2" />Upload</Button>
+                          <AIImageGenerator section={label} defaultPrompt={prompt} aspectRatio="16:9" onApply={(imgUrl) => setSettings({ ...settings, [key]: imgUrl })} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
               <div className="space-y-3 pt-4">
                 <div className="flex items-center justify-between">
                   <Label>Services List</Label>
@@ -1370,7 +1415,7 @@ export default function AdminSettingsPage() {
                 ) : (
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => openImagePicker("insolesImageUrl")}><Upload className="h-4 w-4 mr-2" />Upload Image</Button>
-                    <AIImageGenerator section="Insoles" defaultPrompt="Custom orthotic insoles, foot scanning technology, podiatry clinic" aspectRatio="16:9" onApply={(url) => setSettings({ ...settings, insolesImageUrl: url })} />
+                    <AIImageGenerator section="Insoles" defaultPrompt="Close-up photograph of custom orthotic insoles on a white surface next to a digital foot pressure scanner. Clean clinical background, professional product photography." aspectRatio="16:9" onApply={(url) => setSettings({ ...settings, insolesImageUrl: url })} />
                   </div>
                 )}
               </div>
@@ -1420,7 +1465,7 @@ export default function AdminSettingsPage() {
                 ) : (
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => openImagePicker("bioImageUrl")}><Upload className="h-4 w-4 mr-2" />Upload Image</Button>
-                    <AIImageGenerator section="Biomechanics" defaultPrompt="Biomechanical assessment, posture analysis technology, body scanning in clinic" aspectRatio="16:9" onApply={(url) => setSettings({ ...settings, bioImageUrl: url })} />
+                    <AIImageGenerator section="Biomechanics" defaultPrompt="A patient standing on a biomechanical assessment platform while a physiotherapist analyses their posture. Clinical setting, modern equipment, professional environment." aspectRatio="16:9" onApply={(url) => setSettings({ ...settings, bioImageUrl: url })} />
                   </div>
                 )}
               </div>
@@ -1471,7 +1516,7 @@ export default function AdminSettingsPage() {
                       ) : (
                         <div className="flex gap-2">
                           <Button variant="outline" onClick={() => openImagePicker("thermoImageUrl")}><Upload className="h-4 w-4 mr-2" />Upload Image</Button>
-                          <AIImageGenerator section="Thermography" defaultPrompt="Infrared thermography scan of human body showing heat map patterns, red orange yellow blue thermal imaging, clinical assessment" aspectRatio="4:3" onApply={(url) => setSettings({ ...settings, thermoImageUrl: url })} />
+                          <AIImageGenerator section="Thermography" defaultPrompt="Infrared thermography thermal image of a human body showing heat distribution patterns in red, orange, yellow and blue colours. Clinical assessment photograph, no people visible — just the thermal scan result." aspectRatio="4:3" onApply={(url) => setSettings({ ...settings, thermoImageUrl: url })} />
                         </div>
                       )}
                       <p className="text-xs text-muted-foreground">Upload a real thermography image. When empty, an SVG illustration is shown.</p>
@@ -1794,7 +1839,7 @@ export default function AdminSettingsPage() {
                 ) : (
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => openImagePicker("aboutImageUrl")}><Upload className="h-4 w-4 mr-2" />Upload Image</Button>
-                    <AIImageGenerator section="About" defaultPrompt="Professional portrait of a physiotherapist in a modern clinic setting" aspectRatio="1:1" onApply={(url) => setSettings({ ...settings, aboutImageUrl: url })} />
+                    <AIImageGenerator section="About" defaultPrompt="Portrait of a male physiotherapist in his 40s with a friendly professional expression, wearing blue scrubs, standing in a modern clinic treatment room. Warm, approachable, confident." aspectRatio="1:1" onApply={(url) => setSettings({ ...settings, aboutImageUrl: url })} />
                   </div>
                 )}
               </div>
@@ -2656,7 +2701,7 @@ export default function AdminSettingsPage() {
                 ) : (
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => openImagePicker("ogImageUrl")}><Upload className="h-4 w-4 mr-2" />Upload OG Image</Button>
-                    <AIImageGenerator section="OG Image" defaultPrompt="Professional banner image for a physiotherapy clinic website, 1200x630 social media preview" aspectRatio="16:9" onApply={(url) => setSettings({ ...settings, ogImageUrl: url })} />
+                    <AIImageGenerator section="OG Image" defaultPrompt="Professional exterior or interior photograph of a physiotherapy rehabilitation clinic building with clean modern architecture and a welcoming entrance." aspectRatio="16:9" onApply={(url) => setSettings({ ...settings, ogImageUrl: url })} />
                   </div>
                 )}
               </div>

@@ -13,10 +13,16 @@ import { useLocale } from "@/hooks/use-locale";
 export default function HrvPage() {
   const [mounted, setMounted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    fetch('/api/settings').then(r => r.json()).then(d => {
+      if (d.hrvImageUrl) setHeroImageUrl(d.hrvImageUrl);
+    }).catch(() => {});
+  }, []);
   if (!mounted) return null;
 
   const L = (en: string, pt: string) => isPt ? pt : en;
@@ -84,8 +90,9 @@ export default function HrvPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        {/* Image placeholder */}
+        {/* Hero Banner */}
         <div className="relative w-full h-56 sm:h-72 lg:h-96 bg-gradient-to-br from-green-950 via-emerald-900 to-slate-900 flex items-center justify-center overflow-hidden">
+          {heroImageUrl && <img src={heroImageUrl} alt="HRV Monitoring" className="absolute inset-0 w-full h-full object-cover" />}
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 30% 50%, #22c55e 0%, transparent 50%), radial-gradient(circle at 70% 30%, #10b981 0%, transparent 50%)" }} />
           <div className="relative z-10 text-center">
             <Activity className="h-16 w-16 text-green-400 mx-auto mb-3 opacity-60" />

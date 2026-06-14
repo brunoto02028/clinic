@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
             contents: [{
               parts: [
                 { inlineData: { mimeType: refMime, data: referenceImageBase64 } },
-                { text: `I'm providing you a reference photo. Use this reference photo as inspiration to create a NEW professional image for a physiotherapy clinic website. Instructions: ${prompt}. The generated image should incorporate elements from the reference photo (equipment, person, setting) into a polished, professional healthcare context. Make it realistic, high-quality, suitable for a medical website. No text overlay in the image.` },
+                { text: `CRITICAL: Generate a REAL PHOTOGRAPH — absolutely NO text, NO website screenshots, NO UI elements, NO navigation bars, NO buttons, NO logos, NO graphic design. ZERO text of any kind in the image.
+
+Use the provided reference photo to create a NEW professional healthcare photograph. Incorporate elements from the reference (equipment, person, clinical setting) into a polished realistic scene. Instructions: ${prompt}. Professional commercial photography style. No text anywhere in the image.` },
               ],
             }],
             generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
@@ -67,7 +69,7 @@ export async function POST(req: NextRequest) {
 
       // Fallback: generate without reference image
       if (!imageBase64) {
-        const refPrompt = `Professional photograph for a physiotherapy clinic website, incorporating elements from a provided reference photo: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
+        const refPrompt = `REAL PHOTOGRAPH ONLY — NO text, NO UI, NO website screenshots, NO graphic design: ${prompt}. Professional healthcare photography incorporating reference photo elements. Zero text of any kind.`;
         try {
           const urls = await generateImageSmart(refPrompt, { numImages: 1, aspectRatio });
           if (urls.length > 0) {
@@ -84,7 +86,13 @@ export async function POST(req: NextRequest) {
     } else {
       // ─── Standard generation (no reference image) ───
       console.log('[generate-image] Using standard generation (no reference image)');
-      const fullPrompt = `Professional photograph for a physiotherapy clinic website: ${prompt}. Realistic, medical/healthcare setting, no text overlay.`;
+      const fullPrompt = `CRITICAL REQUIREMENTS — READ CAREFULLY:
+This must be a REAL PHOTOGRAPH of an actual scene. Absolutely FORBIDDEN: website screenshots, UI mockups, navigation bars, buttons, text overlays, watermarks, logos, graphic design elements, website designs, app interfaces, or any kind of text in the image.
+
+SUBJECT TO PHOTOGRAPH: ${prompt}
+
+STYLE: Professional healthcare photography. Realistic. Shot as if by a commercial photographer. People, equipment, or clinical environments should look like real photographs — not illustrations, not digital art, not website designs. The image must contain ZERO text of any kind.`;
+
       try {
         console.log('[generate-image] Calling generateImageSmart...');
         const genStart = Date.now();

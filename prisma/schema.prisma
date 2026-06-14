@@ -1083,6 +1083,11 @@ model SiteSettings {
   lpTherapiesJson    String?  @db.Text  // Full therapies landing page content
   lpInsolesJson      String?  @db.Text  // Full insoles landing page content
   lpBiomechanicsJson String?  @db.Text  // Full biomechanics landing page content
+
+  // Static service page hero images
+  biohackingImageUrl   String?  // Hero banner for /services/biohacking
+  sleepImageUrl        String?  // Hero banner for /services/sleep-longevity
+  hrvImageUrl          String?  // Hero banner for /services/hrv
   
   // Assessment Screening Form Configuration
   screeningConfigJson String? @db.Text  // JSON: editable screening form questions, labels, sections
