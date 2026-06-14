@@ -142,6 +142,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Body Assessment", i18nKey: "nav.bodyAssessment", href: "/admin/body-assessments", icon: Activity },
       { name: "3D Body Models", href: "/admin/body-models", icon: Box },
       { name: "Blood Pressure", href: "/admin/blood-pressure", icon: HeartPulse },
+      { name: "Biohacking & Performance", href: "/admin/biohacking", icon: Brain },
       { name: "Email", i18nKey: "nav.email", href: "/admin/email", icon: Mail },
       { name: "Email Templates", i18nKey: "nav.emailTemplates", href: "/admin/email-templates", icon: MailOpen },
       { name: "Email Marketing", href: "/admin/email-marketing", icon: Send },
@@ -364,8 +365,10 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
     fetch("/api/settings")
       .then(res => res.json())
       .then(data => {
-        setLogoUrl(data.logoUrl || null);
-        setDarkLogoUrl(data.darkLogoUrl || null);
+        const sl = data.screenLogos;
+        const screen = sl?.adminLogin || sl?.landingHeader || null;
+        setLogoUrl(screen?.logoUrl || data.logoUrl || null);
+        setDarkLogoUrl(screen?.darkLogoUrl || data.darkLogoUrl || null);
         setLogoReady(true);
       })
       .catch(err => {

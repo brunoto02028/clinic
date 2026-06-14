@@ -34,6 +34,7 @@ import {
   ShoppingCart,
   Mic,
   Bell,
+  Brain,
   type LucideIcon,
 } from "lucide-react";
 
@@ -264,6 +265,18 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     icon: Trophy,
     href: "/dashboard/achievements",
     category: "content",
+    defaultEnabled: true,
+  },
+
+  // ── BIOHACKING & PERFORMANCE ──
+  {
+    key: "mod_biohacking",
+    label: "Biohacking & Performance",
+    labelPt: "Biohacking & Performance",
+    description: "Daily biological check-in, active protocol, and 7-day trends",
+    icon: Brain,
+    href: "/dashboard/biohacking",
+    category: "wellness",
     defaultEnabled: true,
   },
 

@@ -52,13 +52,20 @@ export async function POST(req: NextRequest) {
     const clinicId = _u?.clinicId || null;
 
     const body = await req.json();
-    const { painLevel, moodLevel, exercisesDone, notes } = body;
+    const { painLevel, moodLevel, exercisesDone, notes, energyLevel, sleepQuality, stressLevel, hrv } = body;
 
     if (painLevel === undefined || moodLevel === undefined) {
       return NextResponse.json({ error: "painLevel and moodLevel are required" }, { status: 400 });
     }
 
     const today = todayStr();
+
+    const bioFields = {
+      energyLevel:  energyLevel  != null ? Math.min(10, Math.max(1, energyLevel))  : null,
+      sleepQuality: sleepQuality != null ? Math.min(10, Math.max(1, sleepQuality)) : null,
+      stressLevel:  stressLevel  != null ? Math.min(10, Math.max(1, stressLevel))  : null,
+      hrv:          hrv          != null ? Number(hrv)                              : null,
+    };
 
     const checkIn = await (prisma as any).dailyCheckIn.upsert({
       where: { patientId_checkinDate: { patientId: userId, checkinDate: today } },
@@ -70,12 +77,14 @@ export async function POST(req: NextRequest) {
         moodLevel: Math.min(5, Math.max(1, moodLevel)),
         exercisesDone: exercisesDone ?? false,
         notes: notes || null,
+        ...bioFields,
       },
       update: {
         painLevel: Math.min(10, Math.max(0, painLevel)),
         moodLevel: Math.min(5, Math.max(1, moodLevel)),
         exercisesDone: exercisesDone ?? false,
         notes: notes || null,
+        ...bioFields,
       },
     });
 

@@ -35,6 +35,7 @@ import {
   ShoppingCart,
   BookOpen,
   Mic,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +84,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const ICON_LOOKUP: Record<string, any> = {
     LayoutDashboard, Calendar, Footprints, FileText, Shield, Users, ClipboardList, GraduationCap, Dumbbell,
     Heart, FileUp, HeartPulse, Activity, CreditCard, Lock, Crown, Scale, User, Map, Trophy, ShoppingCart, BookOpen,
+    Brain,
   };
 
   // Map module href → i18n key for translated labels
@@ -110,6 +112,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
     "/dashboard/journey": "patient.journey",
     "/dashboard/community": "patient.community",
     "/dashboard/marketplace": "patient.marketplace",
+    "/dashboard/biohacking": "patient.biohacking",
   };
 
   // Map href → MODULE_REGISTRY alwaysVisible flag

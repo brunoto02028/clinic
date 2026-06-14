@@ -1044,7 +1044,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     <Brain className="h-5 w-5 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="font-bold text-foreground">Biohacking Coaching</p>
+                    <p className="font-bold text-foreground">Biohacking & Performance</p>
                     <p className="text-xs text-muted-foreground">20+ Years Clinical Experience · IPHM Certified</p>
                   </div>
                 </div>

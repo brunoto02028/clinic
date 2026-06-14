@@ -27,6 +27,10 @@ description: Project vault with all access credentials and infrastructure info f
 | **Email** | admin@bpr.rehab |
 | **Password** | Bruno@Admin2026! |
 | **Role** | SUPERADMIN |
+| **Login URL (local)** | http://localhost:3000/staff-login |
+| **Login URL (prod)** | https://bpr.rehab/staff-login |
+
+> ⚠️ **DB local**: usa PostgreSQL nativo Windows (porta 5432), NÃO o Docker. O Docker container `bpr-clinic-db-local` está activo mas não é usado pelo app. A senha `Bruno@Admin2026!` foi confirmada/resetada na DB local em Jun 2026.
 
 ---
 
@@ -64,6 +68,8 @@ description: Project vault with all access credentials and infrastructure info f
 
 | Serviço | Variável | Onde ver |
 |---|---|---|
+| **Terra API** | `TERRA_API_KEY` | https://dashboard.tryterra.co → API Keys |
+| **Terra Dev ID** | `TERRA_DEV_ID` | https://dashboard.tryterra.co → Dev ID |
 | **Anthropic** | `ANTHROPIC_API_KEY` | `.env` / Render env vars |
 | **MiniMax** | `MINIMAX_API_KEY` | `.env` / Render env vars |
 | **Groq** | `GROQ_API_KEY` | `.env` / Render env vars |
