@@ -14,7 +14,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN npx prisma generate
+RUN npx prisma@6.7.0 generate
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG DATABASE_URL
