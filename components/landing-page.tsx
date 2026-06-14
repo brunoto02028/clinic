@@ -725,7 +725,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 </div>
               </div>
               {/* floating stat */}
-              <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
+              <div className="absolute -top-4 right-2 sm:-top-6 sm:-right-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-primary">100%</p>
                   <p className="text-xs text-muted-foreground">Custom</p>
@@ -839,7 +839,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   <p className="text-xs text-muted-foreground">Landmarks</p>
                 </div>
               </div>
-              <div className="absolute -bottom-3 -right-3 sm:-bottom-5 sm:-right-5 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
+              <div className="absolute -bottom-3 right-2 sm:-bottom-5 sm:-right-5 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-primary">100%</p>
                   <p className="text-xs text-muted-foreground">Precision</p>
