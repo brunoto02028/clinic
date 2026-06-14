@@ -212,6 +212,11 @@ export async function PUT(request: NextRequest) {
       lpTherapiesJson: body.lpTherapiesJson || null,
       lpInsolesJson: body.lpInsolesJson || null,
       lpBiomechanicsJson: body.lpBiomechanicsJson || null,
+
+      // Static service page hero images
+      biohackingImageUrl: body.biohackingImageUrl || null,
+      sleepImageUrl: body.sleepImageUrl || null,
+      hrvImageUrl: body.hrvImageUrl || null,
       
       // SEO - Basic
       metaTitle: body.metaTitle || null,

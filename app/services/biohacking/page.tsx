@@ -14,10 +14,16 @@ import { useLocale } from "@/hooks/use-locale";
 export default function BiohackingCoachingPage() {
   const [mounted, setMounted] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    fetch('/api/settings').then(r => r.json()).then(d => {
+      if (d.biohackingImageUrl) setHeroImageUrl(d.biohackingImageUrl);
+    }).catch(() => {});
+  }, []);
   if (!mounted) return null;
 
   const L = (en: string, pt: string) => isPt ? pt : en;
@@ -96,13 +102,19 @@ export default function BiohackingCoachingPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        {/* Image placeholder — replace with real image via admin */}
         <div className="relative w-full h-56 sm:h-72 lg:h-96 bg-gradient-to-br from-emerald-950 via-teal-900 to-slate-900 flex items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 30% 50%, #10b981 0%, transparent 50%), radial-gradient(circle at 70% 30%, #0d9488 0%, transparent 50%)" }} />
-          <div className="relative z-10 text-center">
-            <Brain className="h-16 w-16 text-emerald-400 mx-auto mb-3 opacity-60" />
-            <p className="text-emerald-400/60 text-sm font-medium uppercase tracking-widest">{L("Hero image — upload via Admin › Settings", "Imagem hero — carregar via Admin › Definições")}</p>
-          </div>
+          {heroImageUrl ? (
+            <img src={heroImageUrl} alt="Biohacking Coaching" className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <>
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 30% 50%, #10b981 0%, transparent 50%), radial-gradient(circle at 70% 30%, #0d9488 0%, transparent 50%)" }} />
+              <div className="relative z-10 text-center">
+                <Brain className="h-16 w-16 text-emerald-400 mx-auto mb-3 opacity-60" />
+                <p className="text-emerald-400/60 text-sm font-medium uppercase tracking-widest">{L("Upload hero image via Admin › Settings", "Carregar imagem hero via Admin › Definições")}</p>
+              </div>
+            </>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
