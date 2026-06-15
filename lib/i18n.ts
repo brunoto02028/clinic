@@ -409,7 +409,7 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.trustSTO": { "en-GB": "Sports Therapy Organisation", "pt-BR": "Organização de Terapia Esportiva" },
   "home.trustIPHM": { "en-GB": "IPHM Certified Practitioner", "pt-BR": "Praticante Certificado IPHM" },
   "home.trustCPD": { "en-GB": "CPD Accredited", "pt-BR": "Acreditado pela CPD" },
-  "home.trustBiohacking": { "en-GB": "IPHM Certified Practitioner", "pt-BR": "Praticante Certificado IPHM" },
+  "home.trustBiohacking": { "en-GB": "Biohacking & Performance", "pt-BR": "Biohacking & Performance" },
 
   // Homepage — MLS® Laser Therapy featured section
   "home.mlsLabel": { "en-GB": "Advanced Laser Therapy", "pt-BR": "Laserterapia Avançada" },
