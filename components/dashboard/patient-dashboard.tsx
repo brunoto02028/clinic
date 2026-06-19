@@ -18,20 +18,12 @@ import {
   Activity,
   Dumbbell,
   FileUp,
-  Stethoscope,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
-import MembershipOfferBanner from "@/components/dashboard/membership-offer-banner";
-import BPRJourneyBar from "@/components/dashboard/bpr-journey-bar";
-import DailyMission from "@/components/dashboard/daily-mission";
-import RecoveryRing from "@/components/dashboard/recovery-ring";
 import OnboardingWizard from "@/components/dashboard/onboarding-wizard";
-import AICoachCard from "@/components/dashboard/ai-coach-card";
-import DailyCheckInCard from "@/components/dashboard/daily-checkin-card";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
@@ -66,17 +58,6 @@ interface DashboardStats {
   [key: string]: any;
 }
 
-interface EvolutionData {
-  change: number;
-  trend: "up" | "stagnant" | "down";
-}
-
-interface RingData {
-  exercise: number;
-  consistency: number;
-  wellbeing: number;
-}
-
 interface PortalConfig {
   welcomeTitle: string;
   welcomeSubtitle: string;
@@ -97,12 +78,8 @@ export default function PatientDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [config, setConfig] = useState<PortalConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
-  const [evolution, setEvolution] = useState<EvolutionData | null>(null);
-  const [ring, setRing] = useState<RingData>({ exercise: 0, consistency: 0, wellbeing: 0 });
 
   useEffect(() => {
-    setMounted(true);
     Promise.all([
       fetch("/api/dashboard/stats").then((r) => r.json()).catch(() => null),
       fetch("/api/patient-portal-config").then((r) => r.json()).catch(() => null),
@@ -111,16 +88,6 @@ export default function PatientDashboard() {
       setConfig(configData);
       setLoading(false);
     });
-
-    // Fetch journey data for evolution card and recovery ring
-    fetch("/api/patient/journey").then((r) => r.json()).then((d) => {
-      if (d.ring) setRing(d.ring);
-    }).catch(() => {});
-
-    // Fetch evolution data from body assessment comparison
-    fetch("/api/dashboard/evolution").then((r) => r.json()).then((d) => {
-      if (d.change !== undefined) setEvolution(d);
-    }).catch(() => {});
   }, []);
 
   if (loading) {
@@ -131,99 +98,55 @@ export default function PatientDashboard() {
     );
   }
 
-  // i18n mappings for stats and quick actions by ID
+  // i18n mappings for stats by ID
   const STAT_I18N: Record<string, { label: string; sublabel: string }> = {
     upcoming: { label: T("patient.stat.upcoming"), sublabel: T("patient.stat.appointments") },
     completed: { label: T("patient.stat.completed"), sublabel: T("patient.stat.sessions") },
     notes: { label: T("patient.stat.clinical"), sublabel: T("patient.stat.notes") },
   };
-  const ACTION_I18N: Record<string, { title: string; description: string; buttonText: string }> = {
-    book: { title: T("patient.action.bookTitle"), description: T("patient.action.bookDesc"), buttonText: T("patient.action.bookBtn") },
-    records: { title: T("patient.action.recordsTitle"), description: T("patient.action.recordsDesc"), buttonText: T("patient.action.recordsBtn") },
-    treatment: { title: T("patient.action.treatmentTitle"), description: T("patient.action.treatmentDesc"), buttonText: T("patient.action.treatmentBtn") },
-    "body-assessment": { title: T("patient.action.assessmentTitle"), description: T("patient.action.assessmentDesc"), buttonText: T("patient.action.assessmentBtn") },
-  };
 
   const welcomeTitle = T("patient.welcomeTitle");
   const welcomeSubtitle = T("patient.welcomeSubtitle");
   const showScreening = config?.showScreeningAlert ?? true;
-  const screeningTitle = T("patient.screeningAlertTitle");
-  const screeningText = T("patient.screeningAlertText");
   const enabledStats = (config?.statsCards || []).filter((s) => s.enabled);
-  const enabledActions = (config?.quickActions || []).filter((a) => a.enabled);
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Section */}
+    <div className="space-y-6">
+      {/* Welcome */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-foreground">{welcomeTitle}</h1>
         <p className="text-muted-foreground mt-1">{welcomeSubtitle}</p>
       </div>
 
-      {/* Screening CTA — shown when screening not yet completed */}
-      {showScreening && !stats?.screeningComplete && (
-        <div>
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/15">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-foreground">
-                    {locale === "pt-BR" ? "Complete sua Triagem Médica" : "Complete Your Medical Screening"}
-                  </h3>
-                  <p className="text-sm mt-1 text-muted-foreground">
-                    {locale === "pt-BR"
-                      ? "Preencha o questionário para que possamos personalizar seu atendimento. Leva apenas alguns minutos."
-                      : "Fill out the questionnaire so we can personalize your care. It only takes a few minutes."}
-                  </p>
-                  <div className="flex items-center gap-3 mt-3 flex-wrap">
-                    <Button asChild size="sm">
-                      <Link href={isPreview ? `/patient-preview/screening${previewQuery}` : "/dashboard/screening"}>
-                        {locale === "pt-BR" ? "Iniciar Triagem" : "Start Screening"}
-                        <ArrowRight className="h-4 w-4 ml-1" />
-                      </Link>
-                    </Button>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {locale === "pt-BR" ? "~5 min" : "~5 min"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Onboarding Checklist */}
+      {!isPreview && <OnboardingWizard />}
 
-      {/* Full Assessment Flow CTA */}
-      {stats?.screeningComplete && (
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
+      {/* Screening CTA - only when not done */}
+      {showScreening && !stats?.screeningComplete && (
+        <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4 sm:p-5">
             <div className="flex items-start gap-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-emerald-500/15">
-                <Stethoscope className="h-5 w-5 text-emerald-500" />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/15">
+                <FileText className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-foreground">
-                  {locale === "pt-BR" ? "Avaliação Biomecânica Completa" : "Complete Biomechanical Assessment"}
+                  {locale === "pt-BR" ? "Complete sua Triagem Médica" : "Complete Your Medical Screening"}
                 </h3>
                 <p className="text-sm mt-1 text-muted-foreground">
                   {locale === "pt-BR"
-                    ? "Fotos posturais + scan dos pés + análise IA. Siga o passo a passo para a sua avaliação completa."
-                    : "Posture photos + foot scan + AI analysis. Follow the step-by-step guide for your complete assessment."}
+                    ? "Preencha o questionário para que possamos personalizar seu atendimento."
+                    : "Fill out the questionnaire so we can personalize your care."}
                 </p>
-                <div className="flex items-center gap-3 mt-3 flex-wrap">
-                  <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700">
-                    <Link href="/dashboard/assessment-flow">
-                      {locale === "pt-BR" ? "Iniciar Avaliação" : "Start Assessment"}
+                <div className="flex items-center gap-3 mt-3">
+                  <Button asChild size="sm">
+                    <Link href={isPreview ? `/patient-preview/screening${previewQuery}` : "/dashboard/screening"}>
+                      {locale === "pt-BR" ? "Iniciar Triagem" : "Start Screening"}
                       <ArrowRight className="h-4 w-4 ml-1" />
                     </Link>
                   </Button>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {locale === "pt-BR" ? "~10 min" : "~10 min"}
+                    <Clock className="h-3 w-3" /> ~5 min
                   </span>
                 </div>
               </div>
@@ -232,92 +155,55 @@ export default function PatientDashboard() {
         </Card>
       )}
 
-      {/* Onboarding Wizard */}
-      {!isPreview && <OnboardingWizard />}
+      {/* Quick Access - shown after screening is complete */}
+      {stats?.screeningComplete && (
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-3">
+            {locale === "pt-BR" ? "Acesso rápido" : "Quick access"}
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            {[
+              { icon: Calendar, label: locale === "pt-BR" ? "Consultas" : "Appointments", href: "/dashboard/appointments" },
+              { icon: Dumbbell, label: locale === "pt-BR" ? "Exercícios" : "Exercises", href: "/dashboard/exercises" },
+              { icon: FileText, label: locale === "pt-BR" ? "Documentos" : "Documents", href: "/dashboard/documents" },
+              { icon: Activity, label: locale === "pt-BR" ? "Pressão" : "Blood Pressure", href: "/dashboard/blood-pressure" },
+            ].map((item) => (
+              <Link key={item.href} href={isPreview ? item.href.replace("/dashboard", `/patient-preview`) + previewQuery : item.href}>
+                <Card className="card-hover text-center p-4">
+                  <item.icon className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* BPR Journey Bar */}
-      {!isPreview && <BPRJourneyBar />}
-
-      {/* Membership Offer */}
-      {!isPreview && <MembershipOfferBanner />}
-
-      {/* Daily Check-in */}
-      {!isPreview && <DailyCheckInCard />}
-
-      {/* AI Coach */}
-      {!isPreview && <AICoachCard />}
-
-      {/* Stats Grid + Recovery Ring */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_auto]">
-      <div>
-      <div className={`grid gap-6 ${enabledStats.length >= 3 ? 'sm:grid-cols-2 lg:grid-cols-3' : enabledStats.length === 2 ? 'sm:grid-cols-2' : ''}`}>
-        {enabledStats.map((stat, index) => {
-          const Icon = ICON_MAP[stat.icon] || Clock;
-          const colors = COLOR_MAP[stat.color] || COLOR_MAP.primary;
-          const value = stats?.[stat.field] ?? 0;
-          return (
-            <div>
-              <Card className="card-hover">
-                <CardContent className="p-6">
+      {/* Stats - only when patient has appointment data */}
+      {enabledStats.length > 0 && (stats?.completedAppointments ?? 0) > 0 && (
+        <div className={`grid gap-4 ${enabledStats.length >= 3 ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2'}`}>
+          {enabledStats.map((stat) => {
+            const Icon = ICON_MAP[stat.icon] || Clock;
+            const colors = COLOR_MAP[stat.color] || COLOR_MAP.primary;
+            const value = stats?.[stat.field] ?? 0;
+            return (
+              <Card key={stat.id} className="card-hover">
+                <CardContent className="p-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground font-medium">{STAT_I18N[stat.id]?.label || stat.label}</p>
-                      <p className="text-3xl font-bold text-foreground mt-1">{value}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{STAT_I18N[stat.id]?.sublabel || stat.sublabel}</p>
+                      <p className="text-sm text-muted-foreground">{STAT_I18N[stat.id]?.label || stat.label}</p>
+                      <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
                     </div>
-                    <div className={`w-12 h-12 rounded-xl ${colors.bg} flex items-center justify-center`}>
-                      <Icon className={`h-6 w-6 ${colors.text}`} />
+                    <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center`}>
+                      <Icon className={`h-5 w-5 ${colors.text}`} />
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          );
-        })}
-      </div>
-
-      </div>
-      {/* Recovery Ring */}
-      {!isPreview && (
-        <div className="flex justify-center lg:justify-start">
-          <div className="bg-card rounded-xl border border-white/10 p-4 flex flex-col items-center justify-center">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">{T("ring.title")}</p>
-            <RecoveryRing exercise={ring.exercise} consistency={ring.consistency} wellbeing={ring.wellbeing} />
-          </div>
+            );
+          })}
         </div>
       )}
-      </div>
-
-      {/* Daily Mission */}
-      {!isPreview && <DailyMission />}
-
-      {/* Quick Actions */}
-      <div className={`grid gap-6 ${enabledActions.length >= 2 ? 'sm:grid-cols-2' : ''}`}>
-        {enabledActions.map((action, index) => {
-          const Icon = ICON_MAP[action.icon] || Calendar;
-          return (
-            <div>
-              <Card className="card-hover h-full">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Icon className="h-5 w-5 text-primary" />
-                    {ACTION_I18N[action.id]?.title || action.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm mb-4">{ACTION_I18N[action.id]?.description || action.description}</p>
-                  <Button asChild className="w-full gap-2" variant="default">
-                    <Link href={isPreview ? `/patient-preview${action.buttonLink.replace("/dashboard", "")}${previewQuery}` : action.buttonLink}>
-                      {ACTION_I18N[action.id]?.buttonText || action.buttonText}
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
