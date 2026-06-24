@@ -10,6 +10,7 @@ import {
   PATIENT_PROFILE_SECTION,
   getActivePatientSection,
 } from "@/lib/patient-sections";
+import { Logo } from "@/components/ui/logo";
 
 interface PatientSidebarProps {
   notifications?: number;
@@ -20,6 +21,8 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
+  const [logoReady, setLogoReady] = useState(false);
 
   const activeSection = getActivePatientSection(pathname);
 
@@ -31,10 +34,15 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
     fetch("/api/settings")
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
-        if (data?.darkLogoUrl) setLogoUrl(data.darkLogoUrl);
-        else if (data?.logoUrl) setLogoUrl(data.logoUrl);
+        if (data) {
+          const sl = data.screenLogos;
+          const screen = sl?.patientDashboard || sl?.adminLogin;
+          setLogoUrl(screen?.logoUrl || data.logoUrl || null);
+          setDarkLogoUrl(screen?.darkLogoUrl || data.darkLogoUrl || null);
+        }
+        setLogoReady(true);
       })
-      .catch(() => {});
+      .catch(() => setLogoReady(true));
   }, []);
 
   useEffect(() => {
@@ -79,15 +87,10 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
       >
         {/* Logo + user name */}
         <div className="px-3 mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-6 h-6 object-contain" />
-            ) : (
-              <span className="text-primary font-bold text-sm">🏥</span>
-            )}
-            <span className="text-primary font-bold text-sm">CLINICA</span>
+          <div className={`transition-opacity duration-200 ${logoReady ? "opacity-100" : "opacity-0"}`}>
+            <Logo logoUrl={logoUrl} darkLogoUrl={darkLogoUrl} size="sm" showText={true} linkTo="/dashboard" />
           </div>
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-xs text-muted-foreground truncate mt-1">
             {firstName} {lastName}
           </p>
         </div>
