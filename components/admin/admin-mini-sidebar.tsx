@@ -3,8 +3,12 @@
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, Menu, X, Bell } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { ADMIN_SECTIONS, getActiveAdminNav, type AdminSection } from "@/lib/admin-sections";
+import { Logo } from "@/components/ui/logo";
+import { ClinicSelector } from "./clinic-selector";
+import { LocaleToggle } from "@/components/locale-toggle";
+import { useLocale } from "@/hooks/use-locale";
 
 interface AdminMiniSidebarProps {
   user: {
@@ -23,6 +27,9 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
+  const [logoReady, setLogoReady] = useState(false);
+  const { locale } = useLocale();
 
   const activeNav = getActiveAdminNav(pathname);
   const isSuperAdmin = user.role === "SUPERADMIN";
@@ -31,10 +38,15 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
     fetch("/api/settings")
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
-        if (data?.screenLogos?.adminLogin) setLogoUrl(data.screenLogos.adminLogin);
-        else if (data?.logoUrl) setLogoUrl(data.logoUrl);
+        if (data) {
+          const sl = data.screenLogos;
+          const screen = sl?.adminSidebar || sl?.adminLogin;
+          setLogoUrl(screen?.logoUrl || data.logoUrl || null);
+          setDarkLogoUrl(screen?.darkLogoUrl || data.darkLogoUrl || null);
+        }
+        setLogoReady(true);
       })
-      .catch(() => {});
+      .catch(() => setLogoReady(true));
   }, []);
 
   const initials = [user.firstName?.[0], user.lastName?.[0]]
@@ -80,14 +92,8 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
         aria-label="Admin navigation"
       >
         {/* Logo */}
-        <div className="mb-6 flex-shrink-0">
-          {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain" />
-          ) : (
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary text-xs font-bold">
-              {user.clinicName?.[0] || "C"}
-            </div>
-          )}
+        <div className={`mb-6 flex-shrink-0 transition-opacity duration-200 ${logoReady ? "opacity-100" : "opacity-0"}`}>
+          <Logo logoUrl={logoUrl} darkLogoUrl={darkLogoUrl} size="sm" showText={true} linkTo="/admin" />
         </div>
 
         {/* Main sections */}
@@ -130,6 +136,18 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
               </span>
             </button>
           )}
+
+          {/* Clinic selector (SUPERADMIN only) */}
+          {isSuperAdmin && (
+            <div className="nav-label w-full">
+              <ClinicSelector />
+            </div>
+          )}
+
+          {/* Locale toggle */}
+          <div className="nav-label">
+            <LocaleToggle />
+          </div>
 
           {/* User avatar + sign out */}
           <div className="nav-icon-btn" title={user.email || ""}>
