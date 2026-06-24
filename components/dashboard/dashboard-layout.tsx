@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, ReactNode } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { PullToRefresh } from "@/components/dashboard/pull-to-refresh";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,13 +12,7 @@ import {
   Users,
   ClipboardList,
   FileText,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  ChevronDown,
   User,
-  Bell,
   Shield,
   Footprints,
   GraduationCap,
@@ -34,19 +28,16 @@ import {
   Trophy,
   ShoppingCart,
   BookOpen,
-  Mic,
   Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Logo } from "@/components/ui/logo";
-import { LocaleToggle } from "@/components/locale-toggle";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 import { usePatientAccess } from "@/hooks/use-patient-access";
 import { MODULE_REGISTRY, HREF_MODULE_MAP } from "@/lib/module-registry";
 import ModuleGate from "@/components/dashboard/module-gate";
 import MobilePageHeader from "@/components/dashboard/mobile-page-header";
+import PatientSidebar from "@/components/dashboard/patient-sidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -78,7 +69,6 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifCount, setNotifCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
-  const notifRef = useRef<HTMLDivElement>(null);
   const { access, loading: accessLoading, canAccessHref, isModuleHidden } = usePatientAccess();
 
   const ICON_LOOKUP: Record<string, any> = {
@@ -194,14 +184,6 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
         if (data.unreadCount !== undefined) setNotifCount(data.unreadCount);
       })
       .catch(() => {});
-    // Close notification dropdown on outside click
-    const handleClickOutside = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setNotifOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const userRole = (session?.user as any)?.role || "PATIENT";
@@ -275,10 +257,6 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const mainPatientNav = resolvedPatientNav.filter((item: any) => !item.group);
   const navItems = isTherapist ? therapistNavItems : mainPatientNav;
 
-  const handleSignOut = async () => {
-    await signOut({ callbackUrl: "/login" });
-  };
-
   if (!mounted || status === "loading") {
     return (
       <div className="min-h-screen bg-background bg-grid-pattern flex items-center justify-center">
@@ -291,254 +269,13 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
   return (
     <div className="min-h-screen bg-background bg-grid-pattern">
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      
-
       {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 sidebar-futuristic transform transition-transform duration-300 lg:translate-x-0 pt-[env(safe-area-inset-top)] ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-4 border-b border-white/5">
-            <div className={`transition-opacity duration-200 ${logoReady ? 'opacity-100' : 'opacity-0'}`}>
-              <Logo logoUrl={logoUrl} darkLogoUrl={darkLogoUrl} size="sm" linkTo="/dashboard" />
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item: any) => {
-              const isLocked = item.locked === true;
-              // In preview mode, map /dashboard → /patient-preview, /dashboard/X → /patient-preview/X
-              const previewHref = item.href === "/dashboard"
-                ? `/patient-preview${previewQuery}`
-                : `/patient-preview${item.href.replace("/dashboard", "")}${previewQuery}`;
-              const linkHref = isPatientPreview ? previewHref : item.href;
-
-              const isActive = isPatientPreview
-                ? (item.href === "/dashboard" && (pathname === "/patient-preview" || pathname === "/patient-preview/"))
-                  || (item.href !== "/dashboard" && pathname?.startsWith(`/patient-preview${item.href.replace("/dashboard", "")}`))
-                : pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
-
-              return (
-                <Link key={item.href} href={linkHref} onClick={() => setSidebarOpen(false)}>
-                  <div
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg sidebar-nav-item ${
-                      isActive
-                        ? "sidebar-nav-item-active text-primary"
-                        : isLocked
-                          ? "text-muted-foreground/50"
-                          : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <item.icon className={`h-5 w-5 ${isActive ? "neon-text-cyan" : ""} ${isLocked ? "opacity-50" : ""}`} />
-                    <span className={`font-medium flex-1 ${isLocked ? "opacity-50" : ""}`}>{item.label}</span>
-                    {isLocked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
-                  </div>
-                </Link>
-              );
-            })}
-
-            {/* BPR Journey Section (Patient only, driven by portal config) */}
-            {!isTherapist && journeyNavItems.length > 0 && (
-              <>
-                <div className="my-2 px-3">
-                  <div className="neon-divider" />
-                  <p className="text-[10px] font-semibold text-primary/60 uppercase tracking-wider mt-2">BPR Journey</p>
-                </div>
-                {journeyNavItems.map((item: any) => {
-                  const isLocked = item.locked === true;
-                  const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
-                  return (
-                    <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}>
-                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg sidebar-nav-item ${
-                        isActive
-                          ? "sidebar-nav-item-active text-primary"
-                          : isLocked
-                            ? "text-muted-foreground/50"
-                            : "text-muted-foreground hover:text-foreground"
-                      }`}>
-                        <item.icon className={`h-5 w-5 ${isActive ? "neon-text-cyan" : ""} ${isLocked ? "opacity-50" : ""}`} />
-                        <span className={`font-medium flex-1 ${isLocked ? "opacity-50" : ""}`}>{item.label}</span>
-                        {isLocked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </>
-            )}
-          </nav>
-
-          {/* User section */}
-          <div className="p-4 border-t border-white/5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center animate-neon-pulse">
-                <User className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground truncate">
-                  {isImpersonating ? impersonatedName : `${(session?.user as any)?.firstName ?? ""} ${(session?.user as any)?.lastName ?? ""}`}
-                </p>
-                <Badge
-                  variant={isTherapist ? "default" : "secondary"}
-                  className="text-xs"
-                >
-                  {isTherapist ? T("patient.therapist") : T("patient.patient")}
-                </Badge>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {isImpersonating ? (
-                <Button
-                  variant="outline"
-                  className="flex-1 justify-start gap-2 text-blue-400 border-blue-500/20 hover:bg-blue-500/10"
-                  onClick={async () => {
-                    await fetch("/api/admin/impersonate", { method: "DELETE" });
-                    document.cookie = "impersonate-patient-name=; path=/; max-age=0";
-                    document.cookie = "impersonate-patient-id=; path=/; max-age=0";
-                    document.cookie = "impersonate-admin-id=; path=/; max-age=0";
-                    window.location.href = "/admin";
-                  }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  {isPt ? "Voltar ao Admin" : "Back to Admin"}
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="flex-1 justify-start gap-2 text-muted-foreground"
-                  onClick={isPatientPreview ? undefined : handleSignOut}
-                  disabled={isPatientPreview}
-                >
-                  <LogOut className="h-4 w-4" />
-                  {T("nav.signOut")}
-                </Button>
-              )}
-              <LocaleToggle />
-            </div>
-          </div>
-        </div>
-      </aside>
+      <PatientSidebar notifications={notifCount} />
 
       {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 header-futuristic pt-[env(safe-area-inset-top)]">
-          <div className="flex items-center justify-between h-16 px-4 lg:px-8">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-
-            <div className="hidden lg:block">
-              <h1 className="text-lg font-semibold text-foreground">
-                {isTherapist ? (isPt ? "Portal do Terapeuta" : "Therapist Portal") : (isPt ? "Portal do Paciente" : "Patient Portal")}
-              </h1>
-            </div>
-
-            {/* Mobile: show current page context */}
-            <div className="lg:hidden flex-1 text-center">
-              <span className="text-sm font-semibold text-foreground">
-                {isTherapist ? (isPt ? "Portal do Terapeuta" : "Therapist Portal") : (isPt ? "Portal do Paciente" : "Patient Portal")}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 lg:gap-4">
-              <div className="relative" ref={notifRef}>
-                <Button variant="ghost" size="icon" className="relative" onClick={() => setNotifOpen(o => !o)}>
-                  <Bell className="h-5 w-5" />
-                  {notifCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1 shadow-lg animate-pulse">
-                      {notifCount > 9 ? "9+" : notifCount}
-                    </span>
-                  )}
-                </Button>
-                {notifOpen && (
-                  <div className="absolute right-0 top-12 w-80 sm:w-96 bg-card border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-foreground">{isPt ? "Notificações" : "Notifications"}</h3>
-                      {notifCount > 0 && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{notifCount}</Badge>}
-                    </div>
-                    <div className="max-h-80 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-muted-foreground text-sm">
-                          {isPt ? "Nenhuma notificação" : "No notifications"}
-                        </div>
-                      ) : (
-                        notifications.map(n => {
-                          const NOTIF_ICONS: Record<string, any> = { Calendar, Shield, User, CreditCard };
-                          const NIcon = NOTIF_ICONS[n.icon] || Bell;
-                          const colorMap: Record<string, string> = {
-                            red: "bg-red-500/15 text-red-400",
-                            amber: "bg-amber-500/15 text-amber-400",
-                            blue: "bg-blue-500/15 text-blue-400",
-                            green: "bg-emerald-500/15 text-emerald-400",
-                          };
-                          const dotColor: Record<string, string> = { red: "bg-red-500", amber: "bg-amber-500", blue: "bg-blue-500", green: "bg-emerald-500" };
-                          return (
-                            <Link key={n.id} href={n.link} onClick={() => setNotifOpen(false)}>
-                              <div className={`px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 flex items-start gap-3 ${n.isUrgent ? "bg-red-500/5" : ""}`}>
-                                <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${colorMap[n.color] || colorMap.blue}`}>
-                                  <NIcon className="h-4 w-4" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-semibold text-foreground truncate">{isPt ? n.titlePt : n.title}</p>
-                                    {n.isUrgent && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor[n.color] || dotColor.red} animate-pulse`} />}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{isPt ? n.messagePt : n.message}</p>
-                                </div>
-                              </div>
-                            </Link>
-                          );
-                        })
-                      )}
-                    </div>
-                    {notifications.length > 0 && (
-                      <div className="px-4 py-2.5 border-t border-white/5 text-center">
-                        <Link href="/dashboard/appointments" onClick={() => setNotifOpen(false)} className="text-xs text-primary hover:underline font-medium">
-                          {isPt ? "Ver todas as consultas →" : "View all appointments →"}
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="hidden sm:flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-foreground">
-                  {isImpersonating ? impersonatedName : ((session?.user as any)?.firstName ?? "")}
-                </span>
-              </div>
-            </div>
-          </div>
-        </header>
-
+      <div className="patient-content-area">
         {/* Page content */}
-        <main className="p-4 lg:p-8 pb-24 lg:pb-8">
+        <main className="p-4 lg:p-8">
           <PullToRefresh disabled={pathname === "/dashboard/screening" || pathname === "/dashboard/profile"}>
           <MobilePageHeader />
           {/* Consent gate: block everything except the consent page itself — skip during impersonation so admin can navigate */}
@@ -567,42 +304,6 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
         </main>
       </div>
 
-      {/* Mobile bottom navigation bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 mobile-nav-futuristic safe-area-pb">
-        <div className="flex items-stretch h-16">
-          {(() => {
-            const bottomItems = isTherapist
-              ? [
-                  { href: "/dashboard", icon: LayoutDashboard, label: "Home" },
-                  { href: "/dashboard/appointments", icon: Calendar, label: "Appts" },
-                  { href: "/dashboard/patients", icon: Users, label: "Patients" },
-                  { href: "/dashboard/scans", icon: Footprints, label: "Scans" },
-                  { href: "/dashboard/clinical-notes", icon: ClipboardList, label: "Notes" },
-                ]
-              : [
-                  { href: "/dashboard", icon: LayoutDashboard, label: isPt ? "Início" : "Home" },
-                  { href: "/dashboard/appointments", icon: Calendar, label: isPt ? "Agenda" : "Appts" },
-                  { href: "/dashboard/membership", icon: Crown, label: isPt ? "Plano" : "Plan" },
-                  { href: "/dashboard/treatment", icon: Heart, label: isPt ? "Trat." : "Treat" },
-                  { href: "/dashboard/profile", icon: User, label: isPt ? "Perfil" : "Profile" },
-                ];
-            return bottomItems.map((item) => {
-              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname?.startsWith(item.href));
-              return (
-                <Link key={item.href} href={item.href} className="flex-1">
-                  <div className={`relative flex flex-col items-center justify-center h-full gap-0.5 transition-colors ${
-                    isActive ? "mobile-nav-item-active" : "text-muted-foreground"
-                  }`}>
-                    <item.icon className={`h-5 w-5`} />
-                    <span className="text-[10px] font-medium">{item.label}</span>
-                    {isActive && <div className="absolute bottom-0 w-8 h-0.5 bg-primary rounded-t-full shadow-[0_0_8px_rgba(74,124,138,0.5)]" />}
-                  </div>
-                </Link>
-              );
-            });
-          })()}
-        </div>
-      </nav>
     </div>
   );
 }
