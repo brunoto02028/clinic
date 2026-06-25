@@ -33,7 +33,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-background bg-grid-pattern">
       <AdminMiniSidebar user={user} />
-      <main className="admin-content-area py-6 px-4 sm:px-6 lg:px-8 pb-8">
+      <main className="admin-content-area py-6 pr-4 sm:pr-6 lg:pr-8 pb-8">
         {/* Mobile spacer for hamburger button */}
         <div className="h-14 lg:hidden" />
         <SectionTabs />
