@@ -358,25 +358,39 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   },
 ];
 
+/**
+ * Matches a route against a pattern.
+ * "/admin" only matches exactly "/admin" (not "/admin/patients").
+ * All other routes match as prefix (e.g. "/admin/patients" matches "/admin/patients/123").
+ */
+function routeMatches(pathname: string, route: string): boolean {
+  // Exact "/admin" should only match the root dashboard, not all admin routes
+  if (route === "/admin") {
+    return pathname === "/admin";
+  }
+  const routePath = route.split("?")[0];
+  return pathname === routePath || pathname.startsWith(routePath + "/");
+}
+
 export function getActiveAdminNav(pathname: string): {
   section: AdminSection;
   tab: AdminTab | null;
 } | null {
   const clean = pathname.replace(/\/$/, "") || "/admin";
 
-  for (const section of ADMIN_SECTIONS) {
-    const sectionMatch = section.matchRoutes?.some(
-      (r) => clean === r || clean.startsWith(r + "/")
-    );
+  // Try to find a matching section (skip agenda first, check specific sections)
+  // Iterate in reverse so more specific sections are checked before generic ones
+  for (const section of [...ADMIN_SECTIONS].reverse()) {
+    // Skip agenda (fallback) on first pass
+    if (section.key === "agenda" && clean !== "/admin") continue;
+
+    const sectionMatch = section.matchRoutes?.some((r) => routeMatches(clean, r));
     if (!sectionMatch) continue;
 
     let matchedTab: AdminTab | null = null;
     for (const tab of section.tabs) {
       const tabRoutes = [tab.href, ...(tab.matchRoutes || [])];
-      const tabMatch = tabRoutes.some((r) => {
-        const routePath = r.split("?")[0];
-        return clean === routePath || clean.startsWith(routePath + "/");
-      });
+      const tabMatch = tabRoutes.some((r) => routeMatches(clean, r));
       if (tabMatch) {
         matchedTab = tab;
         break;
@@ -386,5 +400,6 @@ export function getActiveAdminNav(pathname: string): {
     return { section, tab: matchedTab || section.tabs[0] };
   }
 
+  // Fallback: agenda (dashboard)
   return { section: ADMIN_SECTIONS[0], tab: ADMIN_SECTIONS[0].tabs[0] };
 }
