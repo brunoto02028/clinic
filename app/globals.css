@@ -633,8 +633,7 @@ html.native-app .site-footer-web-only {
    REDESIGN: Admin Mini-Sidebar
    ======================================== */
 .admin-mini-sidebar {
-  max-width: 60px;
-  width: 200px;
+  width: 60px;
   position: fixed;
   top: 0;
   left: 0;
@@ -648,11 +647,11 @@ html.native-app .site-footer-web-only {
   background: linear-gradient(180deg, hsl(200 40% 6% / 0.97), hsl(200 35% 8% / 0.97));
   backdrop-filter: blur(20px);
   border-right: 1px solid hsl(195 30% 20% / 0.3);
-  transition: max-width 0.2s ease;
+  transition: width 0.2s ease;
 }
 
 .admin-mini-sidebar:hover {
-  max-width: 200px;
+  width: 200px;
 }
 
 .admin-mini-sidebar .nav-icon-btn {
@@ -796,8 +795,8 @@ html.native-app .site-footer-web-only {
 @media (max-width: 1023px) {
   .admin-mini-sidebar {
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    width: 200px;
+    transition: transform 0.3s ease, width 0.2s ease;
+    width: 200px !important;
   }
 
   .admin-mini-sidebar.mobile-open {
