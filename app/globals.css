@@ -707,6 +707,8 @@ html.native-app .site-footer-web-only {
   margin-bottom: 20px;
   overflow-x: auto;
   scrollbar-width: none;
+  width: 100%;
+  max-width: 100%;
 }
 
 .section-tabs::-webkit-scrollbar {
@@ -780,13 +782,17 @@ html.native-app .site-footer-web-only {
    REDESIGN: Content area offsets
    ======================================== */
 .admin-content-area {
-  padding-left: 76px;
+  margin-left: 60px;
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .patient-content-area {
-  padding-left: 200px;
+  margin-left: 200px;
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* ========================================
@@ -811,7 +817,7 @@ html.native-app .site-footer-web-only {
   }
 
   .admin-content-area {
-    padding-left: 0;
+    margin-left: 0;
   }
 
   .patient-sidebar {
@@ -824,7 +830,7 @@ html.native-app .site-footer-web-only {
   }
 
   .patient-content-area {
-    padding-left: 0;
+    margin-left: 0;
   }
 
   /* Section tabs: smooth horizontal scroll + touch targets */
