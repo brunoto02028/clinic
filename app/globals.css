@@ -786,6 +786,12 @@ html.native-app .site-footer-web-only {
   min-height: 100vh;
   box-sizing: border-box;
   overflow-x: hidden;
+  transition: margin-left 0.2s ease;
+}
+
+/* When sidebar expands on hover, push content */
+.admin-mini-sidebar:hover ~ .admin-content-area {
+  margin-left: 200px;
 }
 
 .patient-content-area {
