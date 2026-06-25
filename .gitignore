@@ -33,3 +33,4 @@ www/
 # Uploaded patient files (PII — never commit; runtime storage)
 public/uploads/
 mobile/.expo/
+.superpowers/
