@@ -76,6 +76,12 @@ export const authOptions: NextAuthOptions = {
           const firstName = (profile as any).given_name || nameParts[0] || "Patient";
           const lastName = (profile as any).family_name || nameParts.slice(1).join(" ") || "";
 
+          // Assign to default clinic
+          const defaultClinic = await prisma.clinic.findFirst({
+            where: { isActive: true },
+            select: { id: true },
+          });
+
           const newUser = await prisma.user.create({
             data: {
               email,
@@ -87,6 +93,7 @@ export const authOptions: NextAuthOptions = {
               profileImageUrl: (profile as any).picture || null,
               preferredLocale: "en-GB",
               consentAcceptedAt: new Date(),
+              clinicId: defaultClinic?.id || null,
             },
           });
 
