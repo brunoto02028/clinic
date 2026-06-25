@@ -792,6 +792,8 @@ html.native-app .site-footer-web-only {
 /* ========================================
    REDESIGN: Mobile responsive
    ======================================== */
+
+/* --- Tablet + Phone (max-width: 1023px) --- */
 @media (max-width: 1023px) {
   .admin-mini-sidebar {
     transform: translateX(-100%);
@@ -823,5 +825,63 @@ html.native-app .site-footer-web-only {
 
   .patient-content-area {
     padding-left: 0;
+  }
+
+  /* Section tabs: smooth horizontal scroll + touch targets */
+  .section-tabs {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .section-tab {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* --- Phone screens (max-width: 767px) --- */
+@media (max-width: 767px) {
+  /* Reduce section tab density */
+  .section-tab {
+    padding: 8px 14px;
+    font-size: 12px;
+    min-height: 44px;
+  }
+
+  /* Tables: horizontal scroll */
+  .table-wrapper,
+  [role="table"],
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Dialogs/modals: full-width on phones */
+  [role="dialog"],
+  .dialog-content {
+    width: calc(100% - 24px) !important;
+    max-width: 100% !important;
+    margin: 12px;
+  }
+
+  /* Slightly reduce heading sizes */
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1.1rem; }
+}
+
+/* --- Safe area insets for notch/home indicator --- */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .admin-content-area,
+  .patient-content-area {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .admin-mini-sidebar,
+  .patient-sidebar {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
