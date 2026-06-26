@@ -33,6 +33,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
 
   const activeNav = getActiveAdminNav(pathname);
   const isSuperAdmin = user.role === "SUPERADMIN";
+  const isPt = locale?.startsWith("pt");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -107,12 +108,12 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
                 key={section.key}
                 className={`nav-icon-btn ${isActive ? "active" : ""}`}
                 onClick={() => handleSectionClick(section)}
-                title={section.labelPt}
+                title={isPt ? section.labelPt : section.label}
                 aria-current={isActive ? "page" : undefined}
               >
                 <Icon size={20} className={isActive ? "text-primary" : "text-muted-foreground"} />
                 <span className={`nav-label ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                  {section.labelPt}
+                  {isPt ? section.labelPt : section.label}
                 </span>
               </button>
             );
