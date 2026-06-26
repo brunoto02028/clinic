@@ -630,10 +630,10 @@ html.native-app .site-footer-web-only {
 }
 
 /* ========================================
-   REDESIGN: Admin Mini-Sidebar
+   REDESIGN: Admin Sidebar (fixed, always shows labels)
    ======================================== */
 .admin-mini-sidebar {
-  width: 60px;
+  width: 220px;
   position: fixed;
   top: 0;
   left: 0;
@@ -641,60 +641,35 @@ html.native-app .site-footer-web-only {
   z-index: 40;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 16px 8px;
-  overflow: hidden;
+  padding: 16px 12px;
   background: linear-gradient(180deg, hsl(200 40% 6% / 0.97), hsl(200 35% 8% / 0.97));
   backdrop-filter: blur(20px);
   border-right: 1px solid hsl(195 30% 20% / 0.3);
-  transition: width 0.2s ease;
-}
-
-.admin-mini-sidebar:hover {
-  width: 200px;
 }
 
 .admin-mini-sidebar .nav-icon-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.admin-mini-sidebar:hover .nav-icon-btn {
-  width: 100%;
-  height: auto;
-  padding: 10px 14px;
-  justify-content: flex-start;
   gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  margin-bottom: 2px;
 }
 
 .admin-mini-sidebar .nav-icon-btn.active {
-  background: hsl(195 30% 42% / 0.15);
-  box-shadow: inset 0 0 12px hsl(195 30% 42% / 0.1);
+  background: hsl(174 56% 57% / 0.12);
 }
 
 .admin-mini-sidebar .nav-icon-btn:not(.active):hover {
-  background: hsl(195 20% 90% / 0.05);
+  background: hsl(195 20% 90% / 0.04);
 }
 
 .admin-mini-sidebar .nav-label {
-  display: none;
   font-size: 13px;
   white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.admin-mini-sidebar:hover .nav-label {
-  display: inline;
-  opacity: 1;
 }
 
 /* ========================================
@@ -707,6 +682,8 @@ html.native-app .site-footer-web-only {
   margin-bottom: 20px;
   overflow-x: auto;
   scrollbar-width: none;
+  width: 100%;
+  max-width: 100%;
 }
 
 .section-tabs::-webkit-scrollbar {
@@ -737,7 +714,7 @@ html.native-app .site-footer-web-only {
    REDESIGN: Patient Sidebar (fixed, always shows labels)
    ======================================== */
 .patient-sidebar {
-  width: 200px;
+  width: 220px;
   position: fixed;
   top: 0;
   left: 0;
@@ -780,13 +757,17 @@ html.native-app .site-footer-web-only {
    REDESIGN: Content area offsets
    ======================================== */
 .admin-content-area {
-  padding-left: 60px;
+  margin-left: 220px;
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .patient-content-area {
-  padding-left: 200px;
+  margin-left: 220px;
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* ========================================
@@ -797,21 +778,15 @@ html.native-app .site-footer-web-only {
 @media (max-width: 1023px) {
   .admin-mini-sidebar {
     transform: translateX(-100%);
-    transition: transform 0.3s ease, width 0.2s ease;
-    width: 200px !important;
+    transition: transform 0.3s ease;
   }
 
   .admin-mini-sidebar.mobile-open {
     transform: translateX(0);
   }
 
-  .admin-mini-sidebar .nav-label {
-    display: inline;
-    opacity: 1;
-  }
-
   .admin-content-area {
-    padding-left: 0;
+    margin-left: 0;
   }
 
   .patient-sidebar {
@@ -824,7 +799,7 @@ html.native-app .site-footer-web-only {
   }
 
   .patient-content-area {
-    padding-left: 0;
+    margin-left: 0;
   }
 
   /* Section tabs: smooth horizontal scroll + touch targets */
