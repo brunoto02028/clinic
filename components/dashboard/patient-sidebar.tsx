@@ -11,6 +11,7 @@ import {
   getActivePatientSection,
 } from "@/lib/patient-sections";
 import { Logo } from "@/components/ui/logo";
+import { useLocale } from "@/hooks/use-locale";
 
 interface PatientSidebarProps {
   notifications?: number;
@@ -24,7 +25,9 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
 
+  const { locale } = useLocale();
   const activeSection = getActivePatientSection(pathname);
+  const isPt = locale?.startsWith("pt");
 
   const user = session?.user as any;
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "";
@@ -109,7 +112,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
                 aria-current={isActive ? "page" : undefined}
               >
                 <Icon size={20} />
-                <span>{section.labelPt}</span>
+                <span>{isPt ? section.labelPt : section.label}</span>
               </Link>
             );
           })}
@@ -122,7 +125,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
             className={`patient-nav-item ${activeSection.key === "profile" ? "active" : ""}`}
           >
             <PATIENT_PROFILE_SECTION.icon size={20} />
-            <span>{PATIENT_PROFILE_SECTION.labelPt}</span>
+            <span>{isPt ? PATIENT_PROFILE_SECTION.labelPt : PATIENT_PROFILE_SECTION.label}</span>
           </Link>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}

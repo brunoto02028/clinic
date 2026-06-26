@@ -33,6 +33,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
 
   const activeNav = getActiveAdminNav(pathname);
   const isSuperAdmin = user.role === "SUPERADMIN";
+  const isPt = locale?.startsWith("pt");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -107,12 +108,12 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
                 key={section.key}
                 className={`nav-icon-btn ${isActive ? "active" : ""}`}
                 onClick={() => handleSectionClick(section)}
-                title={section.labelPt}
+                title={isPt ? section.labelPt : section.label}
                 aria-current={isActive ? "page" : undefined}
               >
                 <Icon size={20} className={isActive ? "text-primary" : "text-muted-foreground"} />
                 <span className={`nav-label ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                  {section.labelPt}
+                  {isPt ? section.labelPt : section.label}
                 </span>
               </button>
             );
@@ -139,22 +140,22 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
 
           {/* Clinic selector (SUPERADMIN only) */}
           {isSuperAdmin && (
-            <div className="nav-label w-full">
+            <div className="w-full px-2">
               <ClinicSelector />
             </div>
           )}
 
           {/* Locale toggle */}
-          <div className="nav-label">
+          <div className="px-2">
             <LocaleToggle />
           </div>
 
           {/* User avatar + sign out */}
-          <div className="nav-icon-btn" title={user.email || ""}>
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-semibold flex-shrink-0">
               {initials}
             </div>
-            <div className="nav-label flex flex-col overflow-hidden">
+            <div className="flex flex-col overflow-hidden">
               <span className="text-xs text-foreground truncate">
                 {user.firstName} {user.lastName}
               </span>
