@@ -128,8 +128,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     icon: Calendar,
     href: "/dashboard/appointments",
     category: "clinical",
-    alwaysVisible: true,
-    defaultEnabled: true,
+    defaultEnabled: false,
   },
   {
     key: "mod_treatment",
@@ -179,8 +178,7 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     icon: ClipboardList,
     href: "/dashboard/clinical-notes",
     category: "clinical",
-    alwaysVisible: true,
-    defaultEnabled: true,
+    defaultEnabled: false,
   },
   {
     key: "mod_documents",
@@ -202,7 +200,6 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     icon: Dumbbell,
     href: "/dashboard/exercises",
     category: "wellness",
-    alwaysVisible: true,
     defaultEnabled: true,
   },
   {
