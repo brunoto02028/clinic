@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import AdminMiniSidebar from "@/components/admin/admin-mini-sidebar";
+import AdminHeader from "@/components/admin/admin-header";
 import SectionTabs from "@/components/admin/section-tabs";
 
 export default async function AdminLayout({
@@ -33,11 +34,14 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-background bg-grid-pattern">
       <AdminMiniSidebar user={user} />
-      <main className="admin-content-area py-6 px-4 sm:px-6 lg:px-8 pb-8">
+      <main className="admin-content-area">
         {/* Mobile spacer for hamburger button */}
         <div className="h-14 lg:hidden" />
+        <AdminHeader user={user} />
         <SectionTabs />
-        {children}
+        <div className="admin-page-content">
+          {children}
+        </div>
       </main>
     </div>
   );
