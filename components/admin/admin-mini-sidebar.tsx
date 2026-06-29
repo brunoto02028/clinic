@@ -37,7 +37,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
 
   useEffect(() => {
     fetch("/api/settings")
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data) {
           const sl = data.screenLogos;
@@ -50,14 +50,14 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
       .catch(() => setLogoReady(true));
   }, []);
 
-  const initials = [user.firstName?.[0], user.lastName?.[0]]
-    .filter(Boolean)
-    .join("")
-    .toUpperCase() || "?";
+  const initials =
+    [user.firstName?.[0], user.lastName?.[0]]
+      .filter(Boolean)
+      .join("")
+      .toUpperCase() || "?";
 
   const handleSectionClick = (section: AdminSection) => {
-    const defaultHref = section.tabs[0]?.href || "/admin";
-    router.push(defaultHref);
+    router.push(section.tabs[0]?.href || "/admin");
     setMobileOpen(false);
   };
 
@@ -68,21 +68,32 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const mainSections = ADMIN_SECTIONS.filter((s) => s.key !== "settings");
   const settingsSection = ADMIN_SECTIONS.find((s) => s.key === "settings");
 
+  const navItemClass = (active: boolean) =>
+    `group relative flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors cursor-pointer w-full text-left ${
+      active
+        ? "bg-[hsl(195,30%,42%)]/10 text-[hsl(174,56%,57%)] font-medium"
+        : "text-[hsl(195,20%,65%)] hover:text-[hsl(195,20%,82%)] hover:bg-white/[0.03]"
+    }`;
+
+  const activeBar = (
+    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[hsl(174,56%,57%)] shadow-[0_0_8px_hsl(174,56%,57%,0.4)]" />
+  );
+
   return (
     <>
-      {/* Mobile hamburger button */}
+      {/* Mobile toggle */}
       <button
-        className="fixed top-3 left-3 z-50 lg:hidden p-2 rounded-lg bg-background/80 backdrop-blur-sm border border-border/30"
+        className="fixed top-3 left-3 z-50 lg:hidden p-2 rounded-lg bg-[hsl(200,40%,7%)]/90 backdrop-blur border border-white/10"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Toggle menu"
       >
-        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        {mobileOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/60 z-30 lg:hidden backdrop-blur-sm"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -90,15 +101,37 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
       {/* Sidebar */}
       <nav
         className={`admin-mini-sidebar ${mobileOpen ? "mobile-open" : ""}`}
+        style={{
+          width: 220,
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 40,
+          display: "flex",
+          flexDirection: "column",
+          background: "hsl(200 40% 5%)",
+          borderRight: "1px solid hsl(195 20% 12%)",
+        }}
         aria-label="Admin navigation"
       >
         {/* Logo */}
-        <div className={`mb-6 flex-shrink-0 transition-opacity duration-200 ${logoReady ? "opacity-100" : "opacity-0"}`}>
-          <Logo logoUrl={logoUrl} darkLogoUrl={darkLogoUrl} size="sm" showText={true} linkTo="/admin" />
+        <div
+          className={`px-4 pt-5 pb-4 border-b border-white/[0.06] transition-opacity duration-200 ${
+            logoReady ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <Logo
+            logoUrl={logoUrl}
+            darkLogoUrl={darkLogoUrl}
+            size="sm"
+            showText={true}
+            linkTo="/admin"
+          />
         </div>
 
-        {/* Main sections */}
-        <div className="flex flex-col gap-1 flex-1">
+        {/* Nav items */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
           {mainSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeNav?.section.key === section.key;
@@ -106,64 +139,60 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
             return (
               <button
                 key={section.key}
-                className={`nav-icon-btn ${isActive ? "active" : ""}`}
+                className={navItemClass(isActive)}
                 onClick={() => handleSectionClick(section)}
-                title={isPt ? section.labelPt : section.label}
                 aria-current={isActive ? "page" : undefined}
               >
-                <Icon size={20} className={isActive ? "text-primary" : "text-muted-foreground"} />
-                <span className={`nav-label ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                  {isPt ? section.labelPt : section.label}
-                </span>
+                {isActive && activeBar}
+                <Icon size={18} className="flex-shrink-0" />
+                <span>{isPt ? section.labelPt : section.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Bottom area: settings + user */}
-        <div className="flex flex-col gap-1 mt-auto pt-4 border-t border-border/10">
+        {/* Footer */}
+        <div className="px-2 py-3 border-t border-white/[0.06] space-y-1">
+          {/* Settings */}
           {settingsSection && (
             <button
-              className={`nav-icon-btn ${activeNav?.section.key === "settings" ? "active" : ""}`}
+              className={navItemClass(activeNav?.section.key === "settings")}
               onClick={() => handleSectionClick(settingsSection)}
-              title={settingsSection.labelPt}
             >
-              <settingsSection.icon
-                size={20}
-                className={activeNav?.section.key === "settings" ? "text-primary" : "text-muted-foreground"}
-              />
-              <span className={`nav-label ${activeNav?.section.key === "settings" ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                {settingsSection.labelPt}
+              {activeNav?.section.key === "settings" && activeBar}
+              <settingsSection.icon size={18} className="flex-shrink-0" />
+              <span>
+                {isPt ? settingsSection.labelPt : settingsSection.label}
               </span>
             </button>
           )}
 
-          {/* Clinic selector (SUPERADMIN only) */}
+          {/* Clinic selector */}
           {isSuperAdmin && (
-            <div className="w-full px-2">
+            <div className="px-1 py-1">
               <ClinicSelector />
             </div>
           )}
 
-          {/* Locale toggle */}
-          <div className="px-2">
+          {/* Locale */}
+          <div className="px-1 py-1">
             <LocaleToggle />
           </div>
 
-          {/* User avatar + sign out */}
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-semibold flex-shrink-0">
+          {/* User */}
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-md">
+            <div className="w-7 h-7 rounded-md bg-[hsl(195,30%,42%)]/20 text-[hsl(174,56%,57%)] text-[11px] font-semibold flex items-center justify-center flex-shrink-0">
               {initials}
             </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-xs text-foreground truncate">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[12px] text-[hsl(195,20%,80%)] truncate leading-tight">
                 {user.firstName} {user.lastName}
               </span>
               <button
                 onClick={() => signOut({ callbackUrl: "/login" })}
-                className="text-xs text-muted-foreground hover:text-destructive text-left"
+                className="text-[11px] text-[hsl(195,20%,50%)] hover:text-red-400 text-left leading-tight transition-colors"
               >
-                Sair
+                {isPt ? "Sair" : "Sign out"}
               </button>
             </div>
           </div>
