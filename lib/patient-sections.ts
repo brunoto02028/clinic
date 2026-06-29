@@ -47,12 +47,8 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     href: "/dashboard/clinical-notes",
     matchRoutes: [
       "/dashboard/clinical-notes",
-      "/dashboard/scans",
-      "/dashboard/body-assessments",
       "/dashboard/treatment",
       "/dashboard/plans",
-      "/dashboard/blood-pressure",
-      "/dashboard/biohacking",
       "/dashboard/documents",
       "/dashboard/records",
       "/dashboard/outcome-measures",
