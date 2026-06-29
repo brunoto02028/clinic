@@ -166,7 +166,6 @@ export default function PatientDashboard() {
               { icon: Calendar, label: locale === "pt-BR" ? "Consultas" : "Appointments", href: "/dashboard/appointments" },
               { icon: Dumbbell, label: locale === "pt-BR" ? "Exercícios" : "Exercises", href: "/dashboard/exercises" },
               { icon: FileText, label: locale === "pt-BR" ? "Documentos" : "Documents", href: "/dashboard/documents" },
-              { icon: Activity, label: locale === "pt-BR" ? "Pressão" : "Blood Pressure", href: "/dashboard/blood-pressure" },
             ].map((item) => (
               <Link key={item.href} href={isPreview ? item.href.replace("/dashboard", `/patient-preview`) + previewQuery : item.href}>
                 <Card className="card-hover text-center p-4">

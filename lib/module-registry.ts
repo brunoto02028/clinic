@@ -8,15 +8,12 @@
 import {
   LayoutDashboard,
   Calendar,
-  Footprints,
-  Activity,
   FileText,
   Shield,
   GraduationCap,
   Dumbbell,
   Heart,
   FileUp,
-  HeartPulse,
   CreditCard,
   Scale,
   User,
@@ -29,12 +26,10 @@ import {
   ClipboardList,
   BookOpen,
   Trophy,
-  Award,
   Map,
   ShoppingCart,
   Mic,
   Bell,
-  Brain,
   type LucideIcon,
 } from "lucide-react";
 
@@ -186,26 +181,6 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultEnabled: false,
   },
   {
-    key: "mod_foot_scans",
-    label: "Foot Scans",
-    labelPt: "Escaneamento dos Pés",
-    description: "View foot scan results and reports",
-    icon: Footprints,
-    href: "/dashboard/scans",
-    category: "clinical",
-    defaultEnabled: false,
-  },
-  {
-    key: "mod_body_assessments",
-    label: "Body Assessment",
-    labelPt: "Avaliação Corporal",
-    description: "View biomechanical assessment results",
-    icon: Activity,
-    href: "/dashboard/body-assessments",
-    category: "clinical",
-    defaultEnabled: false,
-  },
-  {
     key: "mod_documents",
     label: "My Documents",
     labelPt: "Meus Documentos",
@@ -224,16 +199,6 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: "View prescribed exercises with video guidance",
     icon: Dumbbell,
     href: "/dashboard/exercises",
-    category: "wellness",
-    defaultEnabled: true,
-  },
-  {
-    key: "mod_blood_pressure",
-    label: "Blood Pressure",
-    labelPt: "Pressão Arterial",
-    description: "Track blood pressure readings",
-    icon: HeartPulse,
-    href: "/dashboard/blood-pressure",
     category: "wellness",
     defaultEnabled: true,
   },
@@ -268,17 +233,6 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultEnabled: true,
   },
 
-  // ── BIOHACKING & PERFORMANCE ──
-  {
-    key: "mod_biohacking",
-    label: "Biohacking & Performance",
-    labelPt: "Biohacking & Performance",
-    description: "Daily biological check-in, active protocol, and 7-day trends",
-    icon: Brain,
-    href: "/dashboard/biohacking",
-    category: "wellness",
-    defaultEnabled: true,
-  },
 
   // ── JOURNEY (BPR Journey section) ──
   {
@@ -412,16 +366,6 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
 
   // ── CLINICAL ──
   {
-    key: "perm_foot_scan_capture",
-    label: "Foot Scan Self-Capture",
-    labelPt: "Auto-captura de Escaneamento",
-    description: "Self-capture foot scans from phone",
-    icon: Footprints,
-    category: "clinical",
-    relatedModule: "mod_foot_scans",
-    defaultEnabled: false,
-  },
-  {
     key: "perm_request_cancellation",
     label: "Request Cancellation",
     labelPt: "Solicitar Cancelamento",
@@ -439,16 +383,6 @@ export const PERMISSION_REGISTRY: PermissionDefinition[] = [
     description: "AI-powered health recommendations",
     icon: Zap,
     category: "advanced",
-    defaultEnabled: false,
-  },
-  {
-    key: "perm_3d_viewer",
-    label: "3D Model Viewer",
-    labelPt: "Visualizador 3D",
-    description: "View 3D body and foot models",
-    icon: BarChart3,
-    category: "advanced",
-    relatedModule: "mod_foot_scans",
     defaultEnabled: false,
   },
   {
@@ -506,7 +440,6 @@ export const DEFAULT_FREE_FEATURES = [
   "mod_screening",
   "mod_education",
   "mod_exercises",
-  "mod_blood_pressure",
   "perm_view_exercise_videos",
   "perm_view_education",
   "perm_email_notifications",
