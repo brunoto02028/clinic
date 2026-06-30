@@ -24,3 +24,11 @@ export async function fetchPrescriptions(): Promise<PrescribedExercise[]> {
   const res = await apiFetch<{ prescriptions: PrescribedExercise[] }>("/api/exercises");
   return res.prescriptions ?? [];
 }
+
+export async function completeExercise(prescriptionId: string): Promise<PrescribedExercise> {
+  const res = await apiFetch<{ prescription: PrescribedExercise }>("/api/exercises", {
+    method: "PATCH",
+    body: JSON.stringify({ prescriptionId }),
+  });
+  return res.prescription;
+}

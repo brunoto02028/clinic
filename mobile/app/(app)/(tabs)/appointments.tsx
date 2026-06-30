@@ -28,20 +28,15 @@ export default function Appointments() {
 
   return (
     <Screen testID="appointments-screen">
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <Text variant="title">Agenda</Text>
-        <View style={{
-          backgroundColor: "rgba(74, 124, 138, 0.1)",
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          borderRadius: 20,
-          borderWidth: 1,
-          borderColor: "rgba(74, 124, 138, 0.15)",
-        }}>
-          <Text variant="caption" color={t.colors.secondary}>
-            {sorted.length} consulta{sorted.length !== 1 ? "s" : ""}
-          </Text>
-        </View>
+        <Pressable
+          onPress={() => router.push("/book-appointment")}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(93,201,192,0.15)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: "rgba(93,201,192,0.25)" }}
+        >
+          <Ionicons name="add" size={16} color="#5dc9c0" />
+          <Text variant="caption" color="#5dc9c0" style={{ fontWeight: "600" }}>Agendar</Text>
+        </Pressable>
       </View>
 
       {isLoading ? (
