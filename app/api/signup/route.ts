@@ -77,6 +77,12 @@ export async function POST(request: NextRequest) {
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+    // Assign to default clinic (first active clinic in the system)
+    const defaultClinic = await prisma.clinic.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    });
+
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
@@ -86,6 +92,7 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
         role: userRole,
         preferredLocale: preferredLocale || "en-GB",
+        clinicId: defaultClinic?.id || null,
         // Account disabled until verified
         isActive: false,
       },

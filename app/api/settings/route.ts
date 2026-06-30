@@ -37,7 +37,7 @@ export async function GET() {
           // Hero Section
           heroTitle: "Adjust Your Body Get A Perfect Balance",
           heroSubtitle: "Expert physical rehabilitation and sports therapy in Richmond, UK. Helping you move better, feel stronger, and live pain-free through evidence-based treatments and personalised care.",
-          heroImageUrl: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80",
+          heroImageUrl: null,
           heroCTA: "Book Appointment",
           heroCTALink: "/signup",
           
@@ -53,7 +53,7 @@ export async function GET() {
           
           // About Section
           aboutTitle: "Bruno Physical Rehabilitation",
-          aboutImageUrl: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80",
+          aboutImageUrl: null,
           aboutText: DEFAULT_ABOUT_TEXT,
           
           // Articles Section
@@ -212,6 +212,11 @@ export async function PUT(request: NextRequest) {
       lpTherapiesJson: body.lpTherapiesJson || null,
       lpInsolesJson: body.lpInsolesJson || null,
       lpBiomechanicsJson: body.lpBiomechanicsJson || null,
+
+      // Static service page hero images
+      biohackingImageUrl: body.biohackingImageUrl || null,
+      sleepImageUrl: body.sleepImageUrl || null,
+      hrvImageUrl: body.hrvImageUrl || null,
       
       // SEO - Basic
       metaTitle: body.metaTitle || null,

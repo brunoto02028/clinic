@@ -130,12 +130,6 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
                 className={`text-[10px] font-medium px-2 py-1 rounded transition-colors ${locale === "pt-BR" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >PT</button>
             </div>
-            <Link href="/staff-login">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                <Shield className="h-4 w-4 mr-1" />
-                {T("home.staff")}
-              </Button>
-            </Link>
             <Link href="/login"><Button variant="outline" className="text-foreground">{T("home.patientLogin")}</Button></Link>
             <Link href="/signup"><Button className="bg-primary hover:bg-primary/90">{T("home.getStarted")}</Button></Link>
           </div>
@@ -207,11 +201,6 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 <Link href="/login"><Button variant="outline" className="w-full">{T("home.patientLogin")}</Button></Link>
                 <Link href="/signup"><Button className="w-full">{T("home.getStarted")}</Button></Link>
-                <div className="space-y-1 pt-2 border-t border-border">
-                  <Link href="/staff-login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground"><Shield className="h-4 w-4 mr-2" />{T("home.staff")}</Button>
-                  </Link>
-                </div>
               </div>
             </nav>
           </div>

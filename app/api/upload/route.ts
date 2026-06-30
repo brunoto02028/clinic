@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -38,31 +36,42 @@ export async function POST(request: NextRequest) {
 
     console.log('[upload] Processing file:', file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
 
-    // Save file to persistent storage (Railway Volume or local)
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const inputBuffer = Buffer.from(bytes);
 
-    // Determine upload directory (Railway Volume or local)
-    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), 'public', 'uploads');
-    const categoryDir = path.join(uploadsBase, 'library', category);
-    
-    // Ensure directory exists
-    await mkdir(categoryDir, { recursive: true });
+    // Max width per category (px) — hero/logo larger, thumbnails smaller
+    const MAX_WIDTHS: Record<string, number> = {
+      hero: 1920, logo: 800, about: 1200, services: 1200,
+      general: 1200, article: 1200, og: 1200,
+    };
+    const maxWidth = MAX_WIDTHS[category] ?? 1200;
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const uniqueName = `${timestamp}-${sanitizedName}`;
-    const filePath = path.join(categoryDir, uniqueName);
+    // Optimise: convert to WebP, resize (max width), quality 80, strip EXIF
+    let optimisedBuffer: Buffer;
+    let finalMimeType = "image/webp";
+    try {
+      const sharp = (await import("sharp")).default;
+      optimisedBuffer = await sharp(inputBuffer)
+        .rotate()                          // auto-orient from EXIF
+        .resize({ width: maxWidth, withoutEnlargement: true })
+        .webp({ quality: 80, effort: 4 })
+        .toBuffer();
+    } catch (sharpErr) {
+      console.warn('[upload] sharp optimisation failed, storing original:', sharpErr);
+      optimisedBuffer = inputBuffer;
+      finalMimeType = file.type;
+    }
 
-    // Write file to disk
-    await writeFile(filePath, buffer);
+    const sizeBefore = Math.round(file.size / 1024);
+    const sizeAfter  = Math.round(optimisedBuffer.length / 1024);
+    console.log(`[upload] Optimised ${sizeBefore}KB → ${sizeAfter}KB WebP (max ${maxWidth}px)`);
 
-    console.log('[upload] File saved to:', filePath);
+    const base64 = optimisedBuffer.toString("base64");
+    const imageUrl = `data:${finalMimeType};base64,${base64}`;
+    const cloud_storage_path = "dataurl:inline";
 
-    // Generate URL (relative to public or absolute for Railway Volume)
-    const imageUrl = `/uploads/library/${category}/${uniqueName}`;
-    const cloud_storage_path = `local:${filePath}`;
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(/\.[^.]+$/, ".webp");
+    const uniqueName = `${Date.now()}-${sanitizedName}`;
 
     // Resolve user ID - session ID may not match DB if JWT is stale
     let userId = (session.user as any).id;
@@ -92,15 +101,18 @@ export async function POST(request: NextRequest) {
       data: {
         fileName: uniqueName,
         originalName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        imageUrl,
+        fileSize: optimisedBuffer.length,
+        mimeType: finalMimeType,
+        imageUrl,                  // base64 stored in DB
         cloud_storage_path,
         altText: null,
         category,
         uploadedById: userId,
       },
     });
+
+    // Return a short serve URL instead of the full base64 — keeps settings payload small
+    const serveUrl = `/api/image-serve/${image.id}`;
 
     return NextResponse.json({
       success: true,
@@ -110,7 +122,7 @@ export async function POST(request: NextRequest) {
         originalName: image.originalName,
         fileSize: image.fileSize,
         mimeType: image.mimeType,
-        imageUrl,
+        imageUrl: serveUrl,
         cloud_storage_path,
         category: image.category,
         createdAt: image.createdAt,
@@ -119,7 +131,11 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Upload error:", error);
     return NextResponse.json(
-      { error: "Failed to upload file: " + (error.message || "Unknown error") },
+      {
+        error: "Failed to upload file",
+        detail: error.message || String(error),
+        code: error.code,
+      },
       { status: 500 }
     );
   }

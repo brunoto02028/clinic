@@ -27,6 +27,7 @@ interface Patient { id: string; firstName: string; lastName: string; email: stri
 interface MembershipPlan {
   id: string; name: string; description: string | null; status: string;
   price: number; interval: string; isFree: boolean; features: string[];
+  sessionDiscount: number;
   patientScope: string; patient: Patient | null;
   stripeProductId?: string | null; stripePriceId?: string | null;
 }
@@ -57,6 +58,7 @@ export default function MembershipsPage() {
   const [form, setForm] = useState({
     name: "", description: "", price: 9.90, interval: "MONTHLY",
     isFree: false, features: [] as string[], patientId: "", patientScope: "all" as PatientScope,
+    sessionDiscount: 0,
   });
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -88,7 +90,7 @@ export default function MembershipsPage() {
     } catch {}
   };
 
-  const resetForm = () => setForm({ name: "", description: "", price: 9.90, interval: "MONTHLY", isFree: false, features: [], patientId: "", patientScope: "all" });
+  const resetForm = () => setForm({ name: "", description: "", price: 9.90, interval: "MONTHLY", isFree: false, features: [], patientId: "", patientScope: "all", sessionDiscount: 0 });
   const openCreate = () => { setEditing(null); resetForm(); setShowDialog(true); };
   const openEdit = (p: MembershipPlan) => {
     setEditing(p);
@@ -97,6 +99,7 @@ export default function MembershipsPage() {
       interval: p.interval, isFree: p.isFree, features: p.features || [],
       patientId: p.patient?.id || "",
       patientScope: (p.patientScope as PatientScope) || (p.patient ? "specific" : "all"),
+      sessionDiscount: p.sessionDiscount || 0,
     });
     setShowDialog(true);
   };
@@ -344,6 +347,24 @@ export default function MembershipsPage() {
                   <CreditCard className="h-3 w-3" /> Stripe recurring: £{form.price.toFixed(2)}/{INTERVAL_LABELS[form.interval] || "month"}
                 </p>
               )}
+            </div>
+            {/* Session Discount */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Session Booking Discount</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {[0, 10, 20, 30].map(pct => (
+                  <button key={pct} type="button"
+                    onClick={() => setForm(f => ({ ...f, sessionDiscount: pct }))}
+                    className={`py-2 rounded-lg border-2 text-sm font-bold transition-all ${
+                      form.sessionDiscount === pct
+                        ? "border-emerald-500 bg-emerald-500/15 text-emerald-400"
+                        : "border-border text-muted-foreground hover:border-border/80"
+                    }`}>
+                    {pct === 0 ? "None" : `${pct}% off`}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Discount applied automatically when subscriber books a session.</p>
             </div>
             {/* Assign To */}
             <div className="space-y-2">

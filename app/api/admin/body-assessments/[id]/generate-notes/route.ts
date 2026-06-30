@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { callAI } from "@/lib/ai-provider";
+import { callAIClinical } from "@/lib/ai-provider";
 
 export async function POST(
   request: NextRequest,
@@ -130,7 +130,7 @@ ${screening?.chiefComplaint ? `\nIMPORTANT: Always correlate findings with the p
 
 Write in a professional but clear clinical style. Be specific and evidence-based. Use proper anatomical terminology. The notes should be thorough enough to serve as a complete clinical record.`;
 
-    const result = await callAI(prompt, { maxTokens: 4000 });
+    const result = await callAIClinical(prompt, { maxTokens: 4000 });
 
     return NextResponse.json({ notes: result, language });
   } catch (error: any) {

@@ -654,7 +654,7 @@ export default function ServicePageEditorPage() {
                       </Button>
                       <AIImageGenerator
                         section={data.titleEn || "Service"}
-                        defaultPrompt={`Professional photograph for ${data.titleEn || "physiotherapy service"} page. Modern clinic, patient-focused, warm lighting.`}
+                        defaultPrompt={`A physiotherapist performing ${data.titleEn || "physiotherapy treatment"} on a patient in a modern rehabilitation clinic. Close-up realistic photograph, professional clinical setting, warm lighting, no text.`}
                         aspectRatio="16:9"
                         onApply={(url) => set("heroImageUrl", url)}
                       />

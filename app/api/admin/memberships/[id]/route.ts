@@ -13,7 +13,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json();
-    const { name, description, price, interval, isFree, features, patientId, patientScope, status } = body;
+    const { name, description, price, interval, isFree, features, patientId, patientScope, status, sessionDiscount } = body;
 
     // Resolve patientId
     let resolvedPatientId: string | null | undefined = undefined;
@@ -51,6 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(patientScope !== undefined && { patientScope }),
         ...(status !== undefined && { status }),
         ...(resolvedPatientId !== undefined && { patientId: resolvedPatientId }),
+        ...(sessionDiscount !== undefined && { sessionDiscount }),
       },
       include: { patient: { select: { id: true, firstName: true, lastName: true, email: true } } },
     });

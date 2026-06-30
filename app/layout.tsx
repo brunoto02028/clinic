@@ -124,7 +124,9 @@ export default async function RootLayout({
               line-height: 1.5;
               -webkit-font-smoothing: antialiased;
               -moz-osx-font-smoothing: grayscale;
+              overflow-x: hidden;
             }
+            html { overflow-x: hidden; }
             .hero { min-height: 100vh; }
             img { max-width: 100%; height: auto; }
           `

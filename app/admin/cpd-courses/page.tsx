@@ -120,7 +120,7 @@ export default function CPDCoursesPage() {
   const [notesText, setNotesText] = useState("");
 
   // Search form
-  const [postcode, setPostcode] = useState("TW9 1DN");
+  const [postcode, setPostcode] = useState("IP1 1DN");
   const [radius, setRadius] = useState("50");
   const [searchType, setSearchType] = useState("all");
   const [searchMode, setSearchMode] = useState("all");
@@ -266,7 +266,7 @@ export default function CPDCoursesPage() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-gray-800 dark:text-white">Your Postcode</Label>
               <Input
-                placeholder="e.g. TW9 1DN"
+                placeholder="e.g. IP1 1DN"
                 value={postcode}
                 onChange={(e) => setPostcode(e.target.value)}
               />
