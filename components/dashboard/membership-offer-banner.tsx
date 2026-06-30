@@ -68,8 +68,8 @@ export default function MembershipOfferBanner({ treatmentCompleted }: Membership
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   {isPt
-                    ? "Tenha acesso completo a exercícios, conteúdo educativo, monitoramento de pressão arterial e ferramentas personalizadas de saúde com um plano de membro."
-                    : "Get full access to exercises, educational content, blood pressure monitoring and personalised health tools with a membership plan."}
+                    ? "Tenha acesso completo a exercícios, conteúdo educativo e ferramentas personalizadas de saúde com um plano de membro."
+                    : "Get full access to exercises, educational content and personalised health tools with a membership plan."}
                 </p>
               </>
             )}

@@ -26,6 +26,7 @@ import {
   Stethoscope,
   HeartPulse,
   Bone,
+  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,7 +34,7 @@ import { useLocale } from "@/hooks/use-locale";
 
 const ICON_MAP: Record<string, any> = {
   Zap, Dumbbell, Footprints, ScanLine, Waves, CircleDot, Activity, Heart,
-  Syringe, Users, Brain, Flame, Shield, Target, Stethoscope, HeartPulse, Bone,
+  Syringe, Users, Brain, Flame, Shield, Target, Stethoscope, HeartPulse, Bone, Moon,
 };
 
 // DB-sourced page shape
@@ -207,31 +208,31 @@ const SERVICE_DATA: Record<string, ServiceData> = {
       pt: "Sessões: 5-10 minutos por área | 2-3 vezes por semana | Somente na clínica",
     },
   },
-  "laser-shockwave": {
-    slug: "laser-shockwave",
-    icon: CircleDot,
-    color: "bg-rose-100 text-rose-700",
+  "mls-laser": {
+    slug: "mls-laser",
+    icon: Zap,
+    color: "bg-orange-100 text-orange-700",
     titleKey: "svc.laserShockwave",
     descKey: "svc.laserShockwaveDesc",
     benefits: [
-      { en: "Effective for chronic tendon problems", pt: "Eficaz para problemas crônicos de tendão" },
-      { en: "Breaks down calcifications and scar tissue", pt: "Quebra calcificações e tecido cicatricial" },
-      { en: "Stimulates natural healing response", pt: "Estimula a resposta natural de cicatrização" },
-      { en: "Reduces chronic pain", pt: "Reduz a dor crônica" },
-      { en: "Non-surgical treatment option", pt: "Opção de tratamento não cirúrgica" },
-      { en: "Proven results for plantar fasciitis and tennis elbow", pt: "Resultados comprovados para fascite plantar e epicondilite" },
+      { en: "Significant pain relief from the 1st session", pt: "Alívio significativo da dor desde a 1ª sessão" },
+      { en: "Anti-inflammatory via 808 nm continuous wavelength", pt: "Anti-inflamatório via comprimento de onda contínuo de 808 nm" },
+      { en: "Analgesic via 905 nm pulsed wavelength", pt: "Analgésico via comprimento de onda pulsado de 905 nm" },
+      { en: "Tissue healing 2–3× faster than natural recovery", pt: "Cicatrização tecidual 2–3× mais rápida do que a recuperação natural" },
+      { en: "Completely painless — no heat, no needles", pt: "Completamente indolor — sem calor, sem agulhas" },
+      { en: "CE-marked Class IV medical device — EU MDR approved", pt: "Dispositivo médico Classe IV com marcação CE — aprovado EU MDR" },
     ],
     whoIsItFor: {
-      en: "Laser and shockwave therapy is particularly effective for plantar fasciitis, tennis elbow, Achilles tendinopathy, calcific tendinitis, trigger points, and conditions that have not responded to conventional treatment. It is a powerful non-surgical alternative.",
-      pt: "A terapia a laser e ondas de choque é particularmente eficaz para fascite plantar, epicondilite lateral, tendinopatia de Aquiles, tendinite calcificada, pontos-gatilho e condições que não responderam ao tratamento convencional. É uma poderosa alternativa não cirúrgica.",
+      en: "MLS® laser therapy is ideal for patients with tendinopathy, osteoarthritis, muscle strains, ligament sprains, plantar fasciitis, nerve pain, post-surgical recovery, and chronic conditions that have not responded to conventional treatment.",
+      pt: "A terapia laser MLS® é ideal para pacientes com tendinopatia, osteoartrite, distensões musculares, entorses ligamentares, fasceíte plantar, dor nervosa, recuperação pós-cirúrgica e condições crónicas que não responderam ao tratamento convencional.",
     },
     howItWorks: {
-      en: "Shockwave therapy delivers acoustic waves to the affected area, stimulating the body's natural healing process. Laser therapy uses focused light energy to reduce inflammation and promote cellular repair. Both treatments are performed in-clinic and are well-tolerated by patients, though some mild discomfort may be felt during shockwave treatment.",
-      pt: "A terapia por ondas de choque emite ondas acústicas na área afetada, estimulando o processo natural de cicatrização do corpo. A terapia a laser usa energia luminosa focada para reduzir a inflamação e promover o reparo celular. Ambos os tratamentos são realizados na clínica e são bem tolerados pelos pacientes, embora algum desconforto leve possa ser sentido durante o tratamento por ondas de choque.",
+      en: "The MLS® Mphi 75 emits two synchronised wavelengths simultaneously: 808 nm (continuous, anti-inflammatory) and 905 nm (pulsed, analgesic). Photons are absorbed by mitochondria, boosting ATP production and triggering cellular repair cascades. Sessions last 10–25 minutes. Protective eyewear is worn as standard.",
+      pt: "O MLS® Mphi 75 emite dois comprimentos de onda sincronizados simultaneamente: 808 nm (contínuo, anti-inflamatório) e 905 nm (pulsado, analgésico). Os fotões são absorvidos pelas mitocôndrias, aumentando a produção de ATP e desencadeando cascatas de reparação celular. As sessões duram 10–25 minutos. Os óculos de proteção são usados como padrão.",
     },
     sessionInfo: {
-      en: "Sessions: 10-15 minutes | Weekly for 3-6 weeks | In-clinic only",
-      pt: "Sessões: 10-15 minutos | Semanalmente por 3-6 semanas | Somente na clínica",
+      en: "Sessions: 10–25 min | 2–3×/week (acute) · 1–2×/week (chronic) | In-clinic only",
+      pt: "Sessões: 10–25 min | 2–3×/semana (agudo) · 1–2×/semana (crónico) | Apenas na clínica",
     },
   },
   "sports-injury": {
@@ -288,6 +289,118 @@ const SERVICE_DATA: Record<string, ServiceData> = {
       pt: "Sessões: 45-60 minutos | 1-2 vezes por semana | Na clínica + programa domiciliar",
     },
   },
+  biohacking: {
+    slug: "biohacking",
+    icon: Brain,
+    color: "bg-emerald-100 text-emerald-700",
+    titleKey: "svc.biohacking",
+    descKey: "svc.biohackingDesc",
+    benefits: [
+      { en: "Personalised protocols built from your HRV baseline, lifestyle data, and clinical history", pt: "Protocolos personalizados criados a partir do seu HRV basal, dados de estilo de vida e histórico clínico" },
+      { en: "Faster tissue repair through circadian rhythm optimisation and targeted light exposure", pt: "Reparação tecidual mais rápida através da optimização do ritmo circadiano e exposição à luz dirigida" },
+      { en: "Gut-joint axis inflammation reduction via evidence-based dietary and microbiome protocols", pt: "Redução da inflamação eixo intestino-articulação através de protocolos dietéticos e de microbioma baseados em evidências" },
+      { en: "Stress and cortisol regulation using breathwork, cold exposure, and nervous system retraining", pt: "Regulação do stress e cortisol usando respiração guiada, exposição ao frio e retreino do sistema nervoso" },
+      { en: "Photobiomodulation (MLS Laser) integrated into your biological recovery plan", pt: "Fotobiomodulação (Laser MLS) integrada no seu plano de recuperação biológica" },
+      { en: "Evidence-based supplementation and nutrition guidance tailored to your specific markers", pt: "Suplementação baseada em evidências e orientação nutricional adaptada aos seus marcadores específicos" },
+      { en: "Sleep architecture optimisation to maximise deep sleep, REM cycles, and overnight tissue repair", pt: "Optimização da arquitectura do sono para maximizar sono profundo, ciclos REM e reparação tecidual nocturna" },
+      { en: "Wearable data integration (Apple Watch, Oura Ring, Garmin, CGM) with clinical interpretation", pt: "Integração de dados de wearables (Apple Watch, Oura Ring, Garmin, MCG) com interpretação clínica" },
+    ],
+    whoIsItFor: {
+      en: "Biohacking & Performance is ideal for patients who want to go beyond injury treatment — high performers, athletes, and anyone seeking to optimise their biology for faster recovery, better sleep, and enhanced longevity. Particularly suited to those experiencing slow recovery, chronic fatigue, poor sleep quality, or wanting a data-driven approach to rehabilitation.",
+      pt: "Biohacking & Performance é ideal para pacientes que querem ir além do tratamento de lesões — profissionais de alto desempenho, atletas e qualquer pessoa que procura optimizar a sua biologia para recuperação mais rápida, melhor sono e longevidade melhorada. Particularmente adequado para quem experimenta recuperação lenta, fadiga crónica, qualidade de sono deficiente ou que quer uma abordagem orientada por dados à reabilitação.",
+    },
+    howItWorks: {
+      en: "Your programme begins with a comprehensive biological baseline: HRV assessment, lifestyle audit, sleep quality analysis, and nutritional markers review. Bruno then builds a personalised protocol integrating photobiomodulation (MLS Laser), circadian rhythm optimisation, sleep science, breathwork, gut health, and targeted supplementation. Progress is tracked through objective data and regular reassessment.",
+      pt: "O seu programa começa com uma avaliação biológica basal abrangente: avaliação de HRV, auditoria do estilo de vida, análise da qualidade do sono e revisão de marcadores nutricionais. Bruno constrói então um protocolo personalizado integrando fotobiomodulação (Laser MLS), optimização do ritmo circadiano, ciência do sono, respiração guiada, saúde intestinal e suplementação dirigida. O progresso é acompanhado através de dados objectivos e reavaliação regular.",
+    },
+    sessionInfo: {
+      en: "Initial assessment: 60 min | Protocol sessions: 45-60 min | Weekly monitoring included",
+      pt: "Avaliação inicial: 60 min | Sessões de protocolo: 45-60 min | Monitorização semanal incluída",
+    },
+  },
+  "sleep-longevity": {
+    slug: "sleep-longevity",
+    icon: Moon,
+    color: "bg-indigo-100 text-indigo-700",
+    titleKey: "svc.sleepLongevity",
+    descKey: "svc.sleepLongevityDesc",
+    benefits: [
+      { en: "Optimised deep sleep and REM architecture to maximise overnight tissue repair and memory consolidation", pt: "Sono profundo e arquitectura REM optimizados para maximizar a reparação tecidual nocturna e consolidação da memória" },
+      { en: "Circadian rhythm alignment through strategic light exposure, meal timing, and temperature protocols", pt: "Alinhamento do ritmo circadiano através de exposição estratégica à luz, timing das refeições e protocolos de temperatura" },
+      { en: "Enhanced cellular autophagy through targeted fasting windows and sleep quality improvement", pt: "Autofagia celular aumentada através de janelas de jejum dirigidas e melhoria da qualidade do sono" },
+      { en: "Reduced systemic inflammation through sleep quality — a critical factor in chronic pain recovery", pt: "Redução da inflamação sistémica através da qualidade do sono — um factor crítico na recuperação de dor crónica" },
+      { en: "Hormonal optimisation: natural growth hormone peaks, cortisol normalisation, and melatonin rhythm restoration", pt: "Optimização hormonal: picos naturais de hormona de crescimento, normalização do cortisol e restauração do ritmo da melatonina" },
+      { en: "Strengthened immune function — 70% of immune cell production occurs during deep sleep stages", pt: "Função imunológica fortalecida — 70% da produção de células imunitárias ocorre durante as fases de sono profundo" },
+      { en: "Personalised evening wind-down routine based on your chronotype, stress profile, and lifestyle constraints", pt: "Rotina de relaxamento nocturno personalizada com base no seu cronotipo, perfil de stress e constrangimentos de estilo de vida" },
+      { en: "Wearable sleep tracking integration with clinical interpretation of sleep stages and recovery scores", pt: "Integração de rastreamento de sono por wearables com interpretação clínica de fases do sono e pontuações de recuperação" },
+    ],
+    whoIsItFor: {
+      en: "Sleep & Longevity protocols are designed for anyone experiencing poor sleep quality, difficulty recovering from training or injury, chronic fatigue, hormonal imbalances, or those proactively seeking to extend their healthspan. Both athletes optimising performance and patients managing chronic conditions benefit significantly.",
+      pt: "Os protocolos de Sono & Longevidade são concebidos para qualquer pessoa com qualidade de sono deficiente, dificuldade em recuperar de treino ou lesão, fadiga crónica, desequilíbrios hormonais, ou que procura proactivamente alargar o seu healthspan. Tanto atletas a optimizar o desempenho como pacientes a gerir condições crónicas beneficiam significativamente.",
+    },
+    howItWorks: {
+      en: "Starting with a comprehensive sleep assessment covering chronotype, sleep architecture, light exposure habits, and lifestyle factors, Bruno maps your circadian misalignments. A personalised protocol follows: light therapy timing, caffeine strategy, evening wind-down routines, temperature management, and evidence-based supplementation. For longevity goals, cellular autophagy windows and anti-inflammatory nutrition are integrated.",
+      pt: "Começando com uma avaliação abrangente do sono cobrindo cronotipo, arquitectura do sono, hábitos de exposição à luz e factores de estilo de vida, Bruno mapeia os seus desalinhamentos circadianos. Segue-se um protocolo personalizado: timing de terapia de luz, estratégia de cafeína, rotinas de relaxamento nocturno, gestão de temperatura e suplementação baseada em evidências. Para objectivos de longevidade, janelas de autofagia celular e nutrição anti-inflamatória são integradas.",
+    },
+    sessionInfo: {
+      en: "Initial assessment: 60 min | Follow-up sessions: 45 min | Home protocol + monthly reviews",
+      pt: "Avaliação inicial: 60 min | Sessões de seguimento: 45 min | Protocolo domiciliar + revisões mensais",
+    },
+  },
+  hrv: {
+    slug: "hrv",
+    icon: Activity,
+    color: "bg-green-100 text-green-700",
+    titleKey: "svc.hrv",
+    descKey: "svc.hrvDesc",
+    benefits: [
+      { en: "Daily objective readiness score to take the guesswork out of training and recovery decisions", pt: "Pontuação diária objectiva de prontidão para eliminar suposições das decisões de treino e recuperação" },
+      { en: "Early detection of overtraining, illness onset, and injury risk before symptoms appear", pt: "Detecção precoce de sobretreino, início de doença e risco de lesão antes dos sintomas aparecerem" },
+      { en: "Evidence-based periodisation of training load aligned to your actual biological recovery state", pt: "Periodização baseada em evidências da carga de treino alinhada com o seu estado de recuperação biológica real" },
+      { en: "Autonomic nervous system health assessment — your body's stress-recovery balance", pt: "Avaliação da saúde do sistema nervoso autónomo — o equilíbrio stress-recuperação do seu corpo" },
+      { en: "Integration with Garmin, Oura, Whoop, and Apple Watch for continuous HRV tracking", pt: "Integração com Garmin, Oura, Whoop e Apple Watch para rastreamento contínuo de HRV" },
+      { en: "Identification of stressors — sleep, nutrition, travel, emotional load — affecting recovery", pt: "Identificação de factores de stress — sono, nutrição, viagens, carga emocional — que afectam a recuperação" },
+    ],
+    whoIsItFor: {
+      en: "HRV monitoring is suited for athletes at any level wanting data-driven training decisions, patients recovering from injury or illness, anyone with chronic stress or burnout, and individuals seeking objective measurement of their recovery state. Particularly valuable for those who train regularly but feel chronically fatigued or underperforming.",
+      pt: "A monitorização de HRV é adequada para atletas de qualquer nível que pretendem decisões de treino orientadas por dados, pacientes em recuperação de lesão ou doença, qualquer pessoa com stress crónico ou esgotamento, e indivíduos que buscam medição objectiva do seu estado de recuperação. Particularmente valiosa para quem treina regularmente mas se sente cronicamente fatigado ou com desempenho abaixo do esperado.",
+    },
+    howItWorks: {
+      en: "Your HRV baseline is established over the first 2-3 weeks of daily morning measurements. Bruno analyses trends alongside your training load, sleep quality, nutrition, and lifestyle data to create a personalised readiness framework. Specific HRV thresholds are set for green (train hard), amber (moderate), and red (rest) days. Ongoing coaching adjusts the protocol as your fitness and recovery capacity evolve.",
+      pt: "O seu HRV basal é estabelecido ao longo das primeiras 2-3 semanas de medições matinais diárias. Bruno analisa as tendências juntamente com a sua carga de treino, qualidade de sono, nutrição e dados de estilo de vida para criar um framework de prontidão personalizado. Limiares específicos de HRV são definidos para dias verdes (treinar intensamente), âmbar (moderado) e vermelho (descanso). O acompanhamento contínuo ajusta o protocolo à medida que a sua capacidade de fitness e recuperação evolui.",
+    },
+    sessionInfo: {
+      en: "Baseline period: 2-3 weeks | Monthly review sessions: 30-45 min | Daily self-monitoring (5 min/day)",
+      pt: "Período basal: 2-3 semanas | Sessões de revisão mensais: 30-45 min | Automonitorização diária (5 min/dia)",
+    },
+  },
+  "custom-insoles": {
+    slug: "custom-insoles",
+    icon: Footprints,
+    color: "bg-blue-100 text-blue-700",
+    titleKey: "svc.customInsoles",
+    descKey: "svc.customInsolesDesc",
+    benefits: [
+      { en: "Addresses biomechanical root cause — not just local foot symptoms", pt: "Aborda a causa raiz biomecânica — não apenas sintomas locais do pé" },
+      { en: "Reduces pain throughout the kinetic chain — knee, hip, and back", pt: "Reduz a dor em toda a cadeia cinética — joelho, anca e costas" },
+      { en: "Custom-manufactured for your unique foot anatomy — not a generic mould", pt: "Fabricada sob medida para a sua anatomia única do pé — não um molde genérico" },
+      { en: "Digital pressure map confirms biomechanical correction at follow-up", pt: "Mapa de pressão digital confirma a correção biomecânica no seguimento" },
+      { en: "Suitable for sport, dress, and everyday shoes", pt: "Adequado para calçado desportivo, formal e uso diário" },
+      { en: "6-8 week rescan confirms measurable pressure redistribution", pt: "Rescan às 6-8 semanas confirma redistribuição de pressão mensurável" },
+    ],
+    whoIsItFor: {
+      en: "Custom insoles are indicated for patients with plantar fasciitis, Achilles tendinopathy, patellofemoral pain, IT band syndrome, chronic knee or hip pain, lower back pain with a biomechanical component, flat feet or high arches, and runners or athletes with overuse injuries. If your foot mechanics are contributing to pain anywhere in the kinetic chain, custom orthotics address the problem at its source.",
+      pt: "As palmilhas personalizadas são indicadas para pacientes com fasceíte plantar, tendinopatia de Aquiles, dor patelofemoral, síndrome da banda iliotibial, dor crónica no joelho ou anca, dor lombar com componente biomecânico, pé plano ou arco alto, e corredores ou atletas com lesões por sobrecarga. Se a mecânica do seu pé está a contribuir para dor em qualquer parte da cadeia cinética, as palmilhas personalizadas abordam o problema na sua origem.",
+    },
+    howItWorks: {
+      en: "You stand barefoot on our digital pressure plate for a high-resolution scan (under 2 minutes). Scan data is interpreted alongside a full lower-limb biomechanical assessment covering ankle range of motion, subtalar mobility, calf flexibility, patellar tracking, and gait analysis. Your therapist prescribes custom orthotics with precise specifications. A fitting session and a follow-up rescan at 6-8 weeks confirm correction is achieved.",
+      pt: "Fica de pé descalço na nossa placa de pressão digital para um escaneamento de alta resolução (menos de 2 minutos). Os dados do escaneamento são interpretados juntamente com uma avaliação biomecânica completa do membro inferior cobrindo amplitude de movimento do tornozelo, mobilidade subtalar, flexibilidade do complexo posterior, tracking rotuliano e análise de marcha. O seu terapeuta prescreve palmilhas personalizadas com especificações precisas. Uma sessão de ajuste e um rescan às 6-8 semanas confirmam que a correção foi alcançada.",
+    },
+    sessionInfo: {
+      en: "Initial scan + assessment: 45-60 min | Fitting session: 20-30 min | Rescan: 6-8 weeks post-fitting",
+      pt: "Escaneamento inicial + avaliação: 45-60 min | Sessão de ajuste: 20-30 min | Rescan: 6-8 semanas após ajuste",
+    },
+  },
   "pre-post-surgery": {
     slug: "pre-post-surgery",
     icon: Syringe,
@@ -313,60 +426,6 @@ const SERVICE_DATA: Record<string, ServiceData> = {
     sessionInfo: {
       en: "Pre-op: 2-4 weeks, 2x/week | Post-op: 6-12 weeks, 2-3x/week",
       pt: "Pré-op: 2-4 semanas, 2x/semana | Pós-op: 6-12 semanas, 2-3x/semana",
-    },
-  },
-  kinesiotherapy: {
-    slug: "kinesiotherapy",
-    icon: Users,
-    color: "bg-indigo-100 text-indigo-700",
-    titleKey: "svc.kinesiotherapy",
-    descKey: "svc.kinesiotherapyDesc",
-    benefits: [
-      { en: "Restore natural movement patterns", pt: "Restaurar padrões naturais de movimento" },
-      { en: "Improve postural balance and alignment", pt: "Melhorar equilíbrio postural e alinhamento" },
-      { en: "Enhance neuromuscular coordination", pt: "Aprimorar coordenação neuromuscular" },
-      { en: "Functional movement training", pt: "Treinamento de movimento funcional" },
-      { en: "Preventive approach to musculoskeletal health", pt: "Abordagem preventiva para saúde musculoesquelética" },
-      { en: "Tailored to your daily activities and goals", pt: "Adaptado às suas atividades diárias e objetivos" },
-    ],
-    whoIsItFor: {
-      en: "Kinesiotherapy is beneficial for patients with movement disorders, postural imbalances, neurological conditions, age-related mobility decline, and anyone seeking to improve their functional movement quality for daily life or sport.",
-      pt: "A cinesioterapia é benéfica para pacientes com distúrbios de movimento, desequilíbrios posturais, condições neurológicas, declínio de mobilidade relacionado à idade e qualquer pessoa que busque melhorar a qualidade do movimento funcional para a vida diária ou esporte.",
-    },
-    howItWorks: {
-      en: "Through careful movement analysis, your therapist identifies dysfunctional patterns and designs corrective exercises. Sessions combine hands-on guidance with active movement practice. The focus is on re-educating your body to move efficiently and safely, building long-term movement health.",
-      pt: "Através de análise cuidadosa do movimento, seu terapeuta identifica padrões disfuncionais e projeta exercícios corretivos. As sessões combinam orientação prática com prática ativa de movimento. O foco é reeducar seu corpo para se mover de forma eficiente e segura, construindo saúde de movimento a longo prazo.",
-    },
-    sessionInfo: {
-      en: "Sessions: 45-60 minutes | 1-2 times per week | In-clinic + home exercises",
-      pt: "Sessões: 45-60 minutos | 1-2 vezes por semana | Na clínica + exercícios em casa",
-    },
-  },
-  microcurrent: {
-    slug: "microcurrent",
-    icon: Zap,
-    color: "bg-yellow-100 text-yellow-700",
-    titleKey: "svc.microcurrent",
-    descKey: "svc.microcurrentDesc",
-    benefits: [
-      { en: "Promotes cellular regeneration (ATP production)", pt: "Promove regeneração celular (produção de ATP)" },
-      { en: "Accelerates wound and tissue healing", pt: "Acelera a cicatrização de feridas e tecidos" },
-      { en: "Sub-sensory – completely painless", pt: "Sub-sensorial – completamente indolor" },
-      { en: "Reduces acute and chronic inflammation", pt: "Reduz inflamação aguda e crônica" },
-      { en: "Effective for fracture healing support", pt: "Eficaz para suporte de cicatrização de fraturas" },
-      { en: "Can be combined with other modalities", pt: "Pode ser combinado com outras modalidades" },
-    ],
-    whoIsItFor: {
-      en: "Microcurrent therapy is ideal for patients with slow-healing injuries, post-surgical tissue repair needs, chronic inflammation, and those seeking a gentle, painless modality to complement their rehabilitation. It works at the cellular level to boost the body's natural repair mechanisms.",
-      pt: "A terapia por microcorrente é ideal para pacientes com lesões de cicatrização lenta, necessidades de reparo tecidual pós-cirúrgico, inflamação crônica e aqueles que buscam uma modalidade suave e indolor para complementar sua reabilitação. Atua a nível celular para impulsionar os mecanismos naturais de reparo do corpo.",
-    },
-    howItWorks: {
-      en: "Microcurrent devices deliver extremely low-level electrical currents (millionths of an amp) that mirror the body's own bioelectrical signals. These currents are below the threshold of sensation, making the treatment completely painless. The enhanced cellular activity promotes faster healing and reduced inflammation.",
-      pt: "Dispositivos de microcorrente emitem correntes elétricas de nível extremamente baixo (milionésimos de ampere) que espelham os sinais bioelétricos do próprio corpo. Essas correntes estão abaixo do limiar de sensação, tornando o tratamento completamente indolor. A atividade celular aprimorada promove cicatrização mais rápida e redução de inflamação.",
-    },
-    sessionInfo: {
-      en: "Sessions: 20-30 minutes | 2-3 times per week | In-clinic only",
-      pt: "Sessões: 20-30 minutos | 2-3 vezes por semana | Somente na clínica",
     },
   },
 };
@@ -413,9 +472,8 @@ export default function ServiceDetailPage() {
 
   // Resolve fields: DB takes priority
   const title = dbPage ? (isPt ? dbPage.titlePt : dbPage.titleEn) : T(hardcoded!.titleKey);
-  const description = dbPage
-    ? (isPt ? dbPage.descriptionPt : dbPage.descriptionEn) || ""
-    : T(hardcoded!.descKey);
+  const description = (dbPage ? (isPt ? dbPage.descriptionPt : dbPage.descriptionEn) : null)
+    || (hardcoded ? T(hardcoded.descKey) : "");
   const iconName = dbPage?.icon || "";
   const Icon = ICON_MAP[iconName] || (hardcoded ? hardcoded.icon : Zap);
   const color = dbPage?.color || hardcoded?.color || "bg-primary/10 text-primary";
@@ -431,15 +489,12 @@ export default function ServiceDetailPage() {
     benefits = hardcoded.benefits.map((b) => L(b));
   }
 
-  const whoIsItFor = dbPage
-    ? (isPt ? dbPage.whoIsItForPt : dbPage.whoIsItForEn) || ""
-    : hardcoded ? L(hardcoded.whoIsItFor) : "";
-  const howItWorks = dbPage
-    ? (isPt ? dbPage.howItWorksPt : dbPage.howItWorksEn) || ""
-    : hardcoded ? L(hardcoded.howItWorks) : "";
-  const sessionInfo = dbPage
-    ? (isPt ? dbPage.sessionInfoPt : dbPage.sessionInfoEn) || ""
-    : hardcoded ? L(hardcoded.sessionInfo) : "";
+  const whoIsItFor = (dbPage ? (isPt ? dbPage.whoIsItForPt : dbPage.whoIsItForEn) : null)
+    || (hardcoded ? L(hardcoded.whoIsItFor) : "");
+  const howItWorks = (dbPage ? (isPt ? dbPage.howItWorksPt : dbPage.howItWorksEn) : null)
+    || (hardcoded ? L(hardcoded.howItWorks) : "");
+  const sessionInfo = (dbPage ? (isPt ? dbPage.sessionInfoPt : dbPage.sessionInfoEn) : null)
+    || (hardcoded ? L(hardcoded.sessionInfo) : "");
   const extraContent = dbPage
     ? (isPt ? dbPage.extraContentPt : dbPage.extraContentEn) || ""
     : "";

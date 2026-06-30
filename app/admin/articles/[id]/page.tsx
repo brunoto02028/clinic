@@ -34,6 +34,10 @@ export default function EditArticlePage() {
   const [tags, setTags] = useState<string[]>([]);
   const [keyword, setKeyword] = useState("");
   const [generatedBy, setGeneratedBy] = useState<string | null>(null);
+  // ── Bilingual editing ──
+  const [editLang, setEditLang] = useState<"en" | "pt">("en");
+  const [publishLanguage, setPublishLanguage] = useState<"en" | "pt">("en");
+  const [stash, setStash] = useState<{ en?: { title: string; excerpt: string; content: string }; pt?: { title: string; excerpt: string; content: string } }>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -46,6 +50,7 @@ export default function EditArticlePage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [pendingArticle, setPendingArticle] = useState<{title?: string; excerpt?: string; content?: string} | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   // Voice
   const [recording, setRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -59,7 +64,8 @@ export default function EditArticlePage() {
   }, []);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [chatMessages, chatLoading]);
 
   const fetchArticle = async () => {
@@ -67,9 +73,26 @@ export default function EditArticlePage() {
       const res = await fetch(`/api/articles/${params.id}`);
       if (res.ok) {
         const data = await res.json();
-        setTitle(data.title);
-        setExcerpt(data.excerpt);
-        setContent(data.content);
+        const pubLang: "en" | "pt" = (data.publishLanguage === "pt" || (!data.publishLanguage && data.language?.startsWith?.("pt"))) ? "pt" : "en";
+        // Resolve each language slot, falling back to the legacy primary fields for the article's language
+        const isPtPrimary = data.language?.startsWith?.("pt") || pubLang === "pt";
+        const enSlot = {
+          title: data.titleEn ?? (isPtPrimary ? "" : data.title ?? ""),
+          excerpt: data.excerptEn ?? (isPtPrimary ? "" : data.excerpt ?? ""),
+          content: data.contentEn ?? (isPtPrimary ? "" : data.content ?? ""),
+        };
+        const ptSlot = {
+          title: data.titlePt ?? (isPtPrimary ? data.title ?? "" : ""),
+          excerpt: data.excerptPt ?? (isPtPrimary ? data.excerpt ?? "" : ""),
+          content: data.contentPt ?? (isPtPrimary ? data.content ?? "" : ""),
+        };
+        setStash({ en: enSlot, pt: ptSlot });
+        setPublishLanguage(pubLang);
+        setEditLang(pubLang);
+        const active = pubLang === "pt" ? ptSlot : enSlot;
+        setTitle(active.title);
+        setExcerpt(active.excerpt);
+        setContent(active.content);
         setImageUrl(data.imageUrl || "");
         setPublished(data.published);
         setAuthorName(data.authorName || "");
@@ -85,7 +108,23 @@ export default function EditArticlePage() {
     }
   };
 
+  // Switch the editor between EN and PT, preserving each language's content.
+  const switchLang = (newLang: "en" | "pt") => {
+    if (newLang === editLang) return;
+    setStash((s) => ({ ...s, [editLang]: { title, excerpt, content } }));
+    const other = stash[newLang] || { title: "", excerpt: "", content: "" };
+    setTitle(other.title);
+    setExcerpt(other.excerpt);
+    setContent(other.content);
+    setShowPreview(false);
+    setEditLang(newLang);
+  };
+
   const handleTranslate = async (targetLang: "en" | "pt") => {
+    if (targetLang === editLang) {
+      toast({ title: "Already editing this language", description: "Switch to the other language first, then translate." });
+      return;
+    }
     setTranslating(true);
     try {
       const res = await fetch("/api/admin/articles/translate", {
@@ -97,10 +136,13 @@ export default function EditArticlePage() {
       if (!ct.includes("json")) throw new Error(`Server error (${res.status})`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Translation failed");
+      setStash((s) => ({ ...s, [editLang]: { title, excerpt, content } }));
       setTitle(data.title);
       setExcerpt(data.excerpt);
       setContent(data.content);
-      toast({ title: targetLang === "pt" ? "Traduzido para Português!" : "Translated to English!" });
+      setShowPreview(false);
+      setEditLang(targetLang);
+      toast({ title: targetLang === "pt" ? "Traduzido para Português!" : "Translated to English!", description: "Review and correct the translation as needed." });
     } catch (err: any) {
       toast({ title: "Translation failed", description: err.message, variant: "destructive" });
     } finally {
@@ -143,7 +185,7 @@ export default function EditArticlePage() {
       const res = await fetch("/api/admin/articles/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, language: editLang === "pt" ? "pt-BR" : "en-GB" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -157,11 +199,12 @@ export default function EditArticlePage() {
   };
 
   const applyArticle = (article: {title?: string; excerpt?: string; content?: string}) => {
+    // The AI generated in the currently-edited language, so fill the active slot.
     if (article.title) setTitle(article.title);
     if (article.excerpt) setExcerpt(article.excerpt);
     if (article.content) setContent(article.content);
     setPendingArticle(null);
-    toast({ title: "Article applied!", description: "Content updated. Review and save." });
+    toast({ title: "Article applied!", description: `Updated the ${editLang === "pt" ? "Portuguese" : "English"} version. Review and save.` });
   };
 
   const formatChatReply = (text: string) => text.replace(/```json\s*[\s\S]*?```/g, "").trim();
@@ -208,12 +251,27 @@ export default function EditArticlePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Gather both language slots (current editing slot + stash)
+    const current = { title, excerpt, content };
+    const en = editLang === "en" ? current : (stash.en || { title: "", excerpt: "", content: "" });
+    const pt = editLang === "pt" ? current : (stash.pt || { title: "", excerpt: "", content: "" });
+    const primary = publishLanguage === "pt" ? pt : en;
+    if (!primary.title || !primary.content) {
+      toast({ title: `Missing ${publishLanguage === "pt" ? "Portuguese" : "English"} content`, description: `You chose to publish in ${publishLanguage === "pt" ? "Portuguese" : "English"} but that version is empty. Fill it in or change the publish language.`, variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/articles/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, excerpt, content, imageUrl, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, tags, keyword: keyword || undefined }),
+        body: JSON.stringify({
+          title: primary.title, excerpt: primary.excerpt, content: primary.content,
+          titleEn: en.title || null, excerptEn: en.excerpt || null, contentEn: en.content || null,
+          titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
+          publishLanguage,
+          imageUrl, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, tags, keyword: keyword || undefined,
+        }),
       });
       if (res.ok) {
         toast({ title: "Article updated", description: "Your changes have been saved." });
@@ -273,7 +331,7 @@ export default function EditArticlePage() {
         </CardHeader>
         {chatOpen && (
           <CardContent className="space-y-3">
-            <div className="border rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
+            <div ref={chatScrollRef} className="border rounded-lg bg-background max-h-[350px] overflow-y-auto p-3 space-y-3">
               {chatMessages.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-6">Chat with AI to regenerate or refine the article content.</p>
               )}
@@ -310,7 +368,27 @@ export default function EditArticlePage() {
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <CardHeader><CardTitle>Article Details</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle>Article Details</CardTitle>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Editing language:</span>
+                <div className="flex border border-border rounded-md overflow-hidden">
+                  <button type="button" onClick={() => switchLang("en")}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${editLang === "en" ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                    🇬🇧 English
+                  </button>
+                  <button type="button" onClick={() => switchLang("pt")}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${editLang === "pt" ? "bg-teal-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                    🇧🇷 Português
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Editing the <strong>{editLang === "en" ? "English" : "Portuguese"}</strong> version. Use the <Languages className="h-3 w-3 inline" /> buttons above to auto-translate into the other language, then correct it.
+            </p>
+          </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -422,7 +500,7 @@ export default function EditArticlePage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Target Keyword</Label>
-                    <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. physiotherapy Richmond" className="text-sm" />
+                    <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. physiotherapy Ipswich" className="text-sm" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Tags (comma-separated)</Label>
@@ -431,6 +509,20 @@ export default function EditArticlePage() {
                 </div>
               </div>
             )}
+
+            {/* Primary publish language */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+              <Label className="text-sm font-semibold">Primary publish language</Label>
+              <p className="text-xs text-muted-foreground">The default language shown on the public site. Visitors can switch using the site's language toggle if the other version exists.</p>
+              <div className="flex gap-2 pt-1">
+                {(["en", "pt"] as const).map((lang) => (
+                  <button key={lang} type="button" onClick={() => setPublishLanguage(lang)}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-md border transition-colors ${publishLanguage === lang ? "bg-teal-600 text-white border-teal-600" : "bg-background text-muted-foreground border-border hover:border-teal-400"}`}>
+                    {lang === "en" ? "🇬🇧 English" : "🇧🇷 Português"}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="flex items-center space-x-2">
               <Checkbox id="published" checked={published} onCheckedChange={(checked) => setPublished(checked as boolean)} />

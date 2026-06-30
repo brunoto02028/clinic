@@ -229,6 +229,7 @@ export default function ShopPage() {
               logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
               darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
               size="md"
+              linkTo=""
             />
           </a>
 

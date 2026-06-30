@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
@@ -45,6 +45,7 @@ import {
   Thermometer,
   Eye,
   Flame,
+  Smartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,13 +56,6 @@ import type { Locale } from "@/lib/i18n";
 import { VapiVoiceWidget } from "@/components/vapi-voice-widget";
 
 // Code splitting - lazy load heavy components
-const ThermographyIllustration = dynamic(
-  () => import("@/components/thermography-illustration").then(mod => ({ default: mod.ThermographyIllustration })),
-  { 
-    ssr: false,
-    loading: () => <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 animate-pulse rounded-2xl" />
-  }
-);
 
 interface ScreenLogoEntry { logoUrl?: string | null; darkLogoUrl?: string | null; }
 interface FooterModules { logo?: boolean; links?: boolean; social?: boolean; contact?: boolean; copyright?: boolean; newsletter?: boolean; }
@@ -138,17 +132,37 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [locale, setCurrentLocale] = useState<Locale>("en-GB");
   const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>("");
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
+  const onImgError = (key: string) => setImgErrors(p => ({ ...p, [key]: true }));
 
   useEffect(() => {
     setMounted(true);
     setCurrentLocale(getLocale());
-    // Only fetch if not provided by SSR
-    if (!initialSettings) {
-      fetchSettings();
-    }
-    if (!initialArticles || initialArticles.length === 0) {
-      fetchArticles();
-    }
+    if (!initialSettings) fetchSettings();
+    if (!initialArticles || initialArticles.length === 0) fetchArticles();
+
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    const sectionIds = ["services", "insoles", "biomechanics", "thermography", "biohacking", "about", "contact"];
+    const observers: IntersectionObserver[] = [];
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
+        { rootMargin: "-30% 0px -60% 0px", threshold: 0 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      observers.forEach((o) => o.disconnect());
+    };
   }, [initialSettings, initialArticles]);
 
   const toggleLocale = () => {
@@ -182,9 +196,17 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
     { id: "insoles", label: T("home.navInsoles") },
     { id: "biomechanics", label: T("home.navBiomechanics") },
     { id: "thermography", label: T("home.navThermography") },
+    { id: "biohacking", label: T("home.navBiohacking") },
     { id: "about", label: T("home.about") },
     { id: "contact", label: T("home.contact") },
   ];
+
+  const navLinkClass = (id: string) =>
+    `text-sm font-medium transition-colors whitespace-nowrap ${
+      activeSection === id
+        ? "text-primary"
+        : "text-muted-foreground hover:text-primary"
+    }`;
 
   const fetchSettings = async () => {
     try {
@@ -223,12 +245,13 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
     { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-500/15 text-blue-400" },
     { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-500/15 text-purple-400" },
     { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-500/15 text-cyan-400" },
-    { slug: "laser-shockwave", icon: CircleDot, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-rose-500/15 text-rose-400" },
+    { slug: "mls-laser", icon: Zap, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-orange-500/15 text-orange-400" },
     { slug: "sports-injury", icon: Activity, titleKey: "svc.sportsInjury", descKey: "svc.sportsInjuryDesc", color: "bg-orange-500/15 text-orange-400" },
     { slug: "chronic-pain", icon: Heart, titleKey: "svc.chronicPain", descKey: "svc.chronicPainDesc", color: "bg-red-500/15 text-red-400" },
     { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-500/15 text-teal-400" },
-    { slug: "kinesiotherapy", icon: Users, titleKey: "svc.kinesiotherapy", descKey: "svc.kinesiotherapyDesc", color: "bg-indigo-500/15 text-indigo-400" },
-    { slug: "microcurrent", icon: Zap, titleKey: "svc.microcurrent", descKey: "svc.microcurrentDesc", color: "bg-yellow-500/15 text-yellow-400" },
+    { slug: "biohacking", icon: Brain, titleKey: "svc.biohacking", descKey: "svc.biohackingDesc", color: "bg-teal-500/15 text-teal-400" },
+    { slug: "hrv", icon: Activity, titleKey: "svc.hrv", descKey: "svc.hrvDesc", color: "bg-green-500/15 text-green-400" },
+    { slug: "sleep-longevity", icon: Timer, titleKey: "svc.sleepLongevity", descKey: "svc.sleepLongevityDesc", color: "bg-violet-500/15 text-violet-400" },
   ];
 
   const steps = [
@@ -241,22 +264,29 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   return (
     <div className="min-h-screen bg-background bg-grid-pattern">
       {/* Header */}
-      <header className="sticky top-0 z-50 header-futuristic">
+      <header className={`sticky top-0 z-50 header-futuristic transition-all duration-300 ${scrolled ? "shadow-lg shadow-black/20 border-b border-border/60" : "border-b border-transparent"}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {settings ? (
-              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="md" priority />
+              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="md" priority siteName={settings.siteName || "BPR"} />
             ) : (
               <div style={{ height: 40, width: 40 }} />
             )}
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-5 xl:gap-7">
+            <nav className="hidden lg:flex items-center gap-5 xl:gap-6">
               {navAnchors.map((a) => (
-                <button key={a.id} onClick={() => scrollTo(a.id)} className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{a.label}</button>
+                <button
+                  key={a.id}
+                  onClick={() => scrollTo(a.id)}
+                  className={navLinkClass(a.id)}
+                >
+                  {a.label}
+                  {activeSection === a.id && (
+                    <span className="block h-0.5 mt-0.5 rounded-full bg-primary w-full" />
+                  )}
+                </button>
               ))}
-              <Link href="/articles" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{T("home.articlesLabel") || "Articles"}</Link>
-              <Link href="/help" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
             </nav>
 
             {/* WhatsApp button in header */}
@@ -319,13 +349,21 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <div>
-              <nav className="flex flex-col gap-1">
+            <div className="border-t border-border/50 pt-2 pb-4">
+              <nav className="flex flex-col gap-0.5">
                 {navAnchors.map((a) => (
-                  <button key={a.id} onClick={() => { scrollTo(a.id); setMobileMenuOpen(false); }} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{a.label}</button>
+                  <button
+                    key={a.id}
+                    onClick={() => { scrollTo(a.id); setMobileMenuOpen(false); }}
+                    className={`text-left rounded-lg px-3 py-2.5 font-medium transition-colors hover:bg-muted/50 ${
+                      activeSection === a.id
+                        ? "text-primary bg-primary/5"
+                        : "text-muted-foreground hover:text-primary"
+                    }`}
+                  >
+                    {a.label}
+                  </button>
                 ))}
-                <Link href="/articles" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{T("home.articlesLabel") || "Articles"}</Link>
-                <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
                   <Link href="/login"><Button variant="outline" className="w-full">{T("home.patientLogin")}</Button></Link>
                   <Link href="/signup"><Button className="w-full">{T("home.getStarted")}</Button></Link>
@@ -377,7 +415,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-primary flex-shrink-0" />
-                  <span className="font-semibold text-foreground">15+</span>
+                  <span className="font-semibold text-foreground">20+</span>
                   <span>{T("home.yearsExperience")}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -390,32 +428,20 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>Richmond TW10 6AQ</span>
+                  <span>Ipswich, Suffolk</span>
                 </div>
               </div>
             </div>
             <div>
               <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-gradient-to-br from-teal-900/20 to-cyan-900/20">
-                {settings?.heroImageUrl && (
-                  settings.heroImageUrl.startsWith('data:') ? (
-                    <img
-                      src={settings.heroImageUrl}
-                      alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
-                      className="object-cover absolute inset-0 w-full h-full"
-                    />
-                  ) : (
-                    <Image
-                      src={settings.heroImageUrl}
-                      alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
-                      fill
-                      className="object-cover"
-                      priority
-                      quality={75}
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
-                  )
-                )}
-                {!settings?.heroImageUrl && (
+                {settings?.heroImageUrl && !imgErrors.hero ? (
+                  <img
+                    src={settings.heroImageUrl}
+                    onError={() => onImgError('hero')}
+                    alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
+                    className="object-cover absolute inset-0 w-full h-full"
+                  />
+                ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center text-muted-foreground/30">
                       <p className="text-sm font-medium">Hero Image</p>
@@ -432,59 +458,62 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       <section className="py-5 sm:py-6 border-y border-border/40 bg-muted/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
-            {/* Temporariamente comentado - adicionar imagem sto-member-badge.png */}
-            {/* <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0 bg-white p-1">
-                <Image src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" width={56} height={56} className="object-contain w-full h-full" loading="lazy" quality={75} unoptimized />
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                {T("home.trustSTO")}
               </div>
-              <div className="text-left">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
-                <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Sports Therapy Organisation</p>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-secondary flex-shrink-0" />
+                {T("home.trustIPHM")}
               </div>
-            </a> */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-400">
+                <Brain className="h-3.5 w-3.5 flex-shrink-0" />
+                {T("home.trustBiohacking")}
+              </div>
           </div>
         </div>
       </section>
 
-      {/* Portal Features Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
+      {/* About Section */}
+      <section id="about" className="py-12 sm:py-16 lg:py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-              {(() => {
-                const raw = S("portalTitle", "home.portalTitle");
-                if (raw.includes("|")) {
-                  const [main, highlight] = raw.split("|").map(s => s.trim());
-                  return <>{main}{" "}<span className="text-primary">{highlight}</span></>;
-                }
-                // Legacy: try to highlight "Rehabilitation" / "Reabilitação"
-                const keyword = locale === "pt-BR" ? "Reabilitação" : "Rehabilitation";
-                if (raw.includes(keyword)) {
-                  const parts = raw.split(keyword);
-                  return <>{parts[0]}<span className="text-primary">{keyword}</span>{parts[1] || ""}</>;
-                }
-                return raw;
-              })()}
-            </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("portalSubtitle", "home.portalSubtitle")}</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {features.map((feature, index) => (
-              <div key={feature.titleKey}>
-                <Card className="h-full card-hover border-0 bg-muted/50">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
-                      <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-base sm:text-lg text-foreground mb-2">{T(feature.titleKey)}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{T(feature.descKey)}</p>
-                  </CardContent>
-                </Card>
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4 sm:mb-6">
+                {(() => {
+                  const raw = S("aboutTitle", "home.aboutTitle");
+                  if (raw.includes("|")) {
+                    const [main, highlight] = raw.split("|").map(s => s.trim());
+                    return <><span className="text-secondary">{main}</span>{" "}{highlight}</>;
+                  }
+                  return <><span className="text-secondary">Bruno Physical</span>{" "}Rehabilitation</>;
+                })()}
+              </h2>
+              <div className="space-y-4 text-muted-foreground leading-relaxed">
+                {locale === "en-GB" && settings?.aboutText ? (
+                  settings.aboutText.split("\n\n").filter(Boolean).map((p, i) => <p key={i}>{p}</p>)
+                ) : (
+                  <>
+                    <p>{T("home.aboutText1")}</p>
+                    <p>{T("home.aboutText2")}</p>
+                    <p>{T("home.aboutText3")}</p>
+                  </>
+                )}
+                <p className="text-sm text-foreground/90 border-l-2 border-emerald-500/60 pl-3 italic">{T("home.aboutText4")}</p>
               </div>
-            ))}
-          </div>
-          <div className="mt-8 sm:mt-10 text-center">
-            <Link href="/signup"><Button size="lg" className="gap-2">{T("home.getStarted")} <ArrowRight className="h-5 w-5" /></Button></Link>
+              <div className="mt-6 sm:mt-8">
+                <Link href="/signup">
+                  <Button className="gap-2">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
+                </Link>
+              </div>
+            </div>
+            <div>
+              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
+                {settings?.aboutImageUrl && !imgErrors.about && (
+                  <img src={settings.aboutImageUrl} onError={() => onImgError('about')} alt="Professional physiotherapy treatment session" className="object-cover absolute inset-0 w-full h-full" />
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -544,10 +573,10 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           { value: "2000 Hz", labelKey: "home.mlsStat4" },
         ];
 
-        const treatmentImg = mls.treatmentImageUrl || "/uploads/mls-laser-treatment.jpg";
-        const deviceImg = mls.deviceImageUrl || "/uploads/mls-laser-device.jpg";
+        const treatmentImg = mls.treatmentImageUrl || "";
+        const deviceImg = mls.deviceImageUrl || "";
         const ctaLink = mls.ctaLink || "/signup";
-        const learnMoreLink = mls.learnMoreLink || "/services/laser-shockwave";
+        const learnMoreLink = mls.learnMoreLink || "/services/mls-laser";
 
         const benefitIcons = [
           { icon: Zap, color: "text-orange-400 bg-orange-500/15" },
@@ -580,11 +609,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div className="space-y-4">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800">
-                {treatmentImg.startsWith('data:') ? (
-                  <img src={treatmentImg} alt="MLS Laser Therapy treatment in action" className="w-full h-auto max-h-[420px] object-cover" />
-                ) : (
-                  <Image src={treatmentImg} alt="MLS Laser Therapy treatment in action" width={800} height={600} className="w-full h-auto max-h-[420px] object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800" style={{minHeight: 240}}>
+                {treatmentImg && !imgErrors.mlsTreatment && (
+                  <img src={treatmentImg} onError={() => onImgError('mlsTreatment')} alt="MLS Laser Therapy treatment in action" className="w-full h-auto max-h-[420px] object-cover" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
@@ -595,11 +622,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-white flex items-center justify-center p-4">
-                  {deviceImg.startsWith('data:') ? (
-                    <img src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" className="object-contain p-4 absolute inset-0 w-full h-full" />
-                  ) : (
-                    <Image src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" fill className="object-contain p-4" loading="lazy" quality={60} sizes="(max-width: 768px) 50vw, 25vw" />
+                <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
+                  {deviceImg && !imgErrors.mlsDevice && (
+                    <img src={deviceImg} onError={() => onImgError('mlsDevice')} alt="MLS Mphi 75 Multiwave Locked System laser device" className="object-contain p-4 absolute inset-0 w-full h-full" />
                   )}
                 </div>
                 <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-blue-600/10 border border-orange-500/20 p-5 flex flex-col justify-center">
@@ -694,17 +719,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-blue-900/20 to-cyan-900/20">
-                {settings?.insolesImageUrl && (
+                {settings?.insolesImageUrl && !imgErrors.insoles ? (
                   <>
-                    {settings.insolesImageUrl.startsWith('data:') ? (
-                      <img src={settings.insolesImageUrl} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
-                    ) : (
-                      <Image src={settings.insolesImageUrl} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                    )}
+                    <img src={settings.insolesImageUrl} onError={() => onImgError('insoles')} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </>
-                )}
-                {!settings?.insolesImageUrl && (
+                ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center text-muted-foreground/30">
                       <p className="text-sm font-medium">Insoles Image</p>
@@ -720,7 +740,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 </div>
               </div>
               {/* floating stat */}
-              <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
+              <div className="absolute -top-4 right-2 sm:-top-6 sm:-right-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-primary">100%</p>
                   <p className="text-xs text-muted-foreground">Custom</p>
@@ -802,17 +822,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-purple-900/20 to-blue-900/20">
-                {settings?.bioImageUrl && (
+                {settings?.bioImageUrl && !imgErrors.bio ? (
                   <>
-                    {settings.bioImageUrl.startsWith('data:') ? (
-                      <img src={settings.bioImageUrl} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
-                    ) : (
-                      <Image src={settings.bioImageUrl} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                    )}
+                    <img src={settings.bioImageUrl} onError={() => onImgError('bio')} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </>
-                )}
-                {!settings?.bioImageUrl && (
+                ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center text-muted-foreground/30">
                       <p className="text-sm font-medium">Biomechanics Image</p>
@@ -834,7 +849,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   <p className="text-xs text-muted-foreground">Landmarks</p>
                 </div>
               </div>
-              <div className="absolute -bottom-3 -right-3 sm:-bottom-5 sm:-right-5 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
+              <div className="absolute -bottom-3 right-2 sm:-bottom-5 sm:-right-5 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-primary">100%</p>
                   <p className="text-xs text-muted-foreground">Precision</p>
@@ -912,16 +927,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             {/* Left: Image + badge */}
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800 aspect-[4/3]">
-                {settings?.thermoImageUrl ? (
-                  (settings.thermoImageUrl as string).startsWith('data:') ? (
-                    <img src={settings.thermoImageUrl as string} alt="Infrared thermography scan showing heat patterns on body" className="object-cover absolute inset-0 w-full h-full" />
-                  ) : (
-                    <Image src={settings.thermoImageUrl as string} alt="Infrared thermography scan showing heat patterns on body" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                  )
-                ) : (
-                  <div className="absolute inset-0">
-                    <ThermographyIllustration className="w-full h-full" />
-                  </div>
+                {settings?.thermoImageUrl && !imgErrors.thermo && (
+                  <img src={settings.thermoImageUrl as string} onError={() => onImgError('thermo')} alt="Infrared thermography scan showing heat patterns on body" className="object-cover absolute inset-0 w-full h-full" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
@@ -1004,6 +1011,144 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         );
       })()}
 
+      {/* ═══ BIOHACKING & HUMAN PERFORMANCE BLOCK ═══ */}
+      <section id="biohacking" className="relative py-16 sm:py-20 lg:py-28 bg-card/50 overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-emerald-500/[0.04] to-transparent" />
+          <div className="absolute bottom-0 right-0 w-1/3 h-1/2 bg-gradient-to-tl from-teal-500/[0.03] to-transparent" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-10 sm:mb-14">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
+              <Brain className="h-3.5 w-3.5" />
+              {T("home.bioHackLabel")}
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight max-w-3xl">
+              {T("home.bioHackTitle")}{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">
+                {T("home.bioHackTitle2")}
+              </span>
+            </h2>
+            <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
+              {T("home.bioHackDesc")}
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start mb-14 sm:mb-20">
+            {/* Left: Visual card with 3 pillars */}
+            <div className="space-y-4">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-emerald-900/20 to-teal-900/20 border border-emerald-500/20 p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                    <Brain className="h-5 w-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground">Biohacking & Performance</p>
+                    <p className="text-xs text-muted-foreground">20+ Years Clinical Experience · IPHM Certified</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
+                    <div className="w-9 h-9 rounded-lg bg-teal-500/20 flex items-center justify-center shrink-0">
+                      <Brain className="h-4 w-4 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar1")}</p>
+                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar1Desc")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                      <Activity className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar2")}</p>
+                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar2Desc")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
+                    <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
+                      <Eye className="h-4 w-4 text-violet-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar3")}</p>
+                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar3Desc")}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
+                <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                <span className="text-sm font-medium text-foreground">{T("home.bioHackBadge")}</span>
+              </div>
+            </div>
+
+            {/* Right: Benefits + conditions + CTA */}
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-6">{T("home.bioHackBenefitsTitle")}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                {([
+                  { icon: Zap, color: "text-emerald-400 bg-emerald-500/15", key: "home.bioHackBenefit1" },
+                  { icon: Activity, color: "text-blue-400 bg-blue-500/15", key: "home.bioHackBenefit2" },
+                  { icon: Brain, color: "text-teal-400 bg-teal-500/15", key: "home.bioHackBenefit3" },
+                  { icon: Shield, color: "text-violet-400 bg-violet-500/15", key: "home.bioHackBenefit4" },
+                  { icon: Flame, color: "text-orange-400 bg-orange-500/15", key: "home.bioHackBenefit5" },
+                  { icon: Sparkles, color: "text-amber-400 bg-amber-500/15", key: "home.bioHackBenefit6" },
+                ] as { icon: React.ElementType; color: string; key: string }[]).map(({ icon: BIcon, color, key }, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center shrink-0`}>
+                      <BIcon className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm text-foreground leading-relaxed pt-1.5">{T(key)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl bg-card border border-border p-5 mb-6">
+                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-emerald-400" />
+                  {T("home.bioHackConditionsTitle")}
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {(["home.bioHackCond1","home.bioHackCond2","home.bioHackCond3","home.bioHackCond4","home.bioHackCond5","home.bioHackCond6"] as const).map((key, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/60 text-xs font-medium text-foreground">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                      {T(key)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{T("home.bioHackDesc2")}</p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/signup">
+                  <Button size="lg" className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white">
+                    {T("home.bioHackCta")} <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Button size="lg" variant="outline" onClick={() => scrollTo("services")}>{T("home.bioHackLearnMore")}</Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+            {([
+              { value: "20+", key: "home.bioHackStat1" },
+              { value: "IPHM", key: "home.bioHackStat2" },
+              { value: "HRV", key: "home.bioHackStat4" },
+              { value: "1:1", key: "home.bioHackStat3" },
+            ] as { value: string; key: string }[]).map((stat, i) => (
+              <div key={i} className="text-center rounded-xl bg-card border border-border p-4 sm:p-5">
+                <p className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">{stat.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{T(stat.key)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1026,49 +1171,73 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="py-12 sm:py-16 lg:py-20 bg-background">
+      {/* App Pre-Launch Strip */}
+      <section className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-y border-slate-700/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                <Smartphone className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-bold text-white">{locale === "pt-BR" ? "BPR Clinic App — Em Breve" : "BPR Clinic App — Coming Soon"}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase tracking-wide">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    {locale === "pt-BR" ? "Em Breve" : "Coming Soon"}
+                  </span>
+                </div>
+                <p className="text-slate-400 text-xs sm:text-sm">{locale === "pt-BR" ? "A lançar para iOS e Android — marque consultas, siga o seu tratamento e muito mais." : "Launching on iOS & Android — book appointments, follow your treatment and more."}</p>
+              </div>
+            </div>
+            <Link href="/get-the-app" className="shrink-0">
+              <Button size="sm" variant="outline" className="gap-1.5 border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white whitespace-nowrap">
+                {locale === "pt-BR" ? "Saber Mais" : "Learn More"} <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Portal Features Section */}
+      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4 sm:mb-6">
-                {(() => {
-                  const raw = S("aboutTitle", "home.aboutTitle");
-                  if (raw.includes("|")) {
-                    const [main, highlight] = raw.split("|").map(s => s.trim());
-                    return <><span className="text-secondary">{main}</span>{" "}{highlight}</>;
-                  }
-                  return <><span className="text-secondary">Bruno Physical</span>{" "}Rehabilitation</>;
-                })()}
-              </h2>
-              <div className="space-y-4 text-muted-foreground leading-relaxed">
-                {locale === "en-GB" && settings?.aboutText ? (
-                  settings.aboutText.split("\n\n").filter(Boolean).map((p, i) => <p key={i}>{p}</p>)
-                ) : (
-                  <>
-                    <p>{T("home.aboutText1")}</p>
-                    <p>{T("home.aboutText2")}</p>
-                    <p>{T("home.aboutText3")}</p>
-                  </>
-                )}
+          <div className="mb-8 sm:mb-10">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+              {(() => {
+                const raw = S("portalTitle", "home.portalTitle");
+                if (raw.includes("|")) {
+                  const [main, highlight] = raw.split("|").map(s => s.trim());
+                  return <>{main}{" "}<span className="text-primary">{highlight}</span></>;
+                }
+                // Legacy: try to highlight "Rehabilitation" / "Reabilitação"
+                const keyword = locale === "pt-BR" ? "Reabilitação" : "Rehabilitation";
+                if (raw.includes(keyword)) {
+                  const parts = raw.split(keyword);
+                  return <>{parts[0]}<span className="text-primary">{keyword}</span>{parts[1] || ""}</>;
+                }
+                return raw;
+              })()}
+            </h2>
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("portalSubtitle", "home.portalSubtitle")}</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {features.map((feature, index) => (
+              <div key={feature.titleKey}>
+                <Card className="h-full card-hover border-0 bg-muted/50">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
+                      <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-base sm:text-lg text-foreground mb-2">{T(feature.titleKey)}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{T(feature.descKey)}</p>
+                  </CardContent>
+                </Card>
               </div>
-              <div className="mt-6 sm:mt-8">
-                <Link href="/signup">
-                  <Button className="gap-2">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
-                </Link>
-              </div>
-            </div>
-            <div>
-              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
-                {settings?.aboutImageUrl && (
-                  settings.aboutImageUrl.startsWith('data:') ? (
-                    <img src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" className="object-cover absolute inset-0 w-full h-full" />
-                  ) : (
-                    <Image src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                  )
-                )}
-              </div>
-            </div>
+            ))}
+          </div>
+          <div className="mt-8 sm:mt-10 text-center">
+            <Link href="/signup"><Button size="lg" className="gap-2">{T("home.getStarted")} <ArrowRight className="h-5 w-5" /></Button></Link>
           </div>
         </div>
       </section>
@@ -1200,7 +1369,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-3">
                   {fHasLogo && settings && (
                     <div className="flex items-center gap-3">
-                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" />
+                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" siteName={settings.siteName || "BPR"} />
                       {settings.tagline && <p className="text-xs text-muted-foreground">{settings.tagline}</p>}
                     </div>
                   )}

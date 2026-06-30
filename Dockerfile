@@ -5,8 +5,8 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
-RUN npm install --legacy-peer-deps sharp
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps
 
 FROM base AS builder
 RUN apk add --no-cache openssl
@@ -23,7 +23,8 @@ ARG NEXT_OUTPUT_MODE=standalone
 ENV DATABASE_URL=${DATABASE_URL}
 ENV STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
 ENV NEXT_OUTPUT_MODE=${NEXT_OUTPUT_MODE}
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 FROM base AS runner
 RUN apk add --no-cache openssl su-exec

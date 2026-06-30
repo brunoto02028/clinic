@@ -275,7 +275,7 @@ export async function generateSuperAutomacao(params: {
 
 CLINIC CONTEXT:
 - Owner: Bruno, ex-professional footballer (played in Brazil, Germany, Sweden), had 3 major knee surgeries, now a physiotherapist in the UK
-- Locations: Richmond (London) & Ipswich (Suffolk), home visits available, open every day including weekends
+- Location: Ipswich (Suffolk), home visits available, open every day including weekends
 - Website: bpr.rehab
 - Bilingual: Portuguese and English
 - Services: Electrotherapy, Exercise Therapy, Foot Scan Analysis, Biomechanical Assessment (AI-powered with 33 landmarks), Therapeutic Ultrasound, MLS® Laser Therapy (Mphi 75 — £30k machine), Shockwave Therapy, Sports Injury Treatment, Chronic Pain Management, Pre & Post-Surgery Rehabilitation, Kinesiotherapy, Microcurrent Therapy (MENS), Infrared Thermography, Custom-Made Insoles (3D foot scanning)

@@ -105,7 +105,7 @@ export default function CustomInsolesPage() {
           </div>
           <div>
             <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3]">
-              <img src={settings?.insolesImageUrl || "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80"} alt="Custom insoles foot scan" className="absolute inset-0 w-full h-full object-cover" />
+              {settings?.insolesImageUrl && <img src={settings.insolesImageUrl} alt="Custom insoles foot scan" className="absolute inset-0 w-full h-full object-cover" />}
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
             </div>
             <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
@@ -213,7 +213,7 @@ export default function CustomInsolesPage() {
             </div>
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-muted">
-                <img src="https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=800&q=80" alt="Home foot scanning" className="w-full h-full object-cover" />
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-900/20 to-cyan-900/20"><p className="text-muted-foreground/30 text-sm">Image</p></div>
               </div>
             </div>
           </div>

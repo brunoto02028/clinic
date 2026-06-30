@@ -179,6 +179,7 @@ export default function LoginForm() {
                   id="remember"
                   checked={rememberMe}
                   onCheckedChange={(checked) => setRememberMe(checked === true)}
+                  required={false}
                 />
                 <Label htmlFor="remember" className="text-sm font-normal text-slate-600 cursor-pointer">
                   {isPt ? "Lembrar-me" : "Remember me"}

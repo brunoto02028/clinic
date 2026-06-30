@@ -7,9 +7,9 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
-const MESHY_BASE = "https://api.meshy.ai/openapi/v2";
+const TRIPO_BASE = "https://api.tripo3d.ai/v2/openapi";
 
-// POST — Create a text-to-3D task via Meshy AI
+// POST — Create a text-to-3D task via Tripo3D
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,47 +17,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const apiKey = await getConfigValue("MESHY_API_KEY");
+    const apiKey = await getConfigValue("TRIPO_API_KEY");
     if (!apiKey) {
       return NextResponse.json({
-        error: "Meshy AI API key not configured. Go to Settings → API Keys and add your MESHY_API_KEY (free at meshy.ai).",
+        error: "Tripo3D API key not configured. Go to Settings → API Keys and add your TRIPO_API_KEY (free at tripo3d.ai).",
       }, { status: 400 });
     }
 
     const body = await req.json();
-    const { prompt, gender, artStyle } = body;
+    const { prompt, gender } = body;
 
     if (!prompt) {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
     }
 
-    // Create text-to-3D preview task
-    const createRes = await fetch(`${MESHY_BASE}/text-to-3d`, {
+    // Create text-to-3D task via Tripo3D
+    const createRes = await fetch(`${TRIPO_BASE}/task`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        mode: "preview",
+        type: "text_to_model",
         prompt,
-        art_style: artStyle || "realistic",
-        ai_model: "meshy-6",
-        topology: "triangle",
-        target_polycount: 30000,
-        should_remesh: false,
-        symmetry_mode: "on",
-        pose_mode: "a-pose",
+        model_version: "v2.5",
+        face_limit: 30000,
       }),
     });
 
     if (!createRes.ok) {
       const errText = await createRes.text();
-      console.error("[meshy] Create task failed:", createRes.status, errText);
-      return NextResponse.json({ error: `Meshy API error: ${createRes.status} - ${errText}` }, { status: 500 });
+      console.error("[tripo3d] Create task failed:", createRes.status, errText);
+      return NextResponse.json({ error: `Tripo3D API error: ${createRes.status} - ${errText}` }, { status: 500 });
     }
 
-    const { result: taskId } = await createRes.json();
+    const resData = await createRes.json();
+    const taskId = resData.data?.task_id;
+
+    if (!taskId) {
+      console.error("[tripo3d] No task_id in response:", resData);
+      return NextResponse.json({ error: "Tripo3D did not return a task_id" }, { status: 500 });
+    }
 
     return NextResponse.json({
       taskId,
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
       message: "3D model generation started. Poll status with GET /api/admin/body-models/generate?taskId=...",
     });
   } catch (err: any) {
-    console.error("[meshy] Error:", err);
+    console.error("[tripo3d] Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
@@ -78,9 +79,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const apiKey = await getConfigValue("MESHY_API_KEY");
+    const apiKey = await getConfigValue("TRIPO_API_KEY");
     if (!apiKey) {
-      return NextResponse.json({ error: "Meshy API key not configured" }, { status: 400 });
+      return NextResponse.json({ error: "Tripo3D API key not configured" }, { status: 400 });
     }
 
     const taskId = req.nextUrl.searchParams.get("taskId");
@@ -91,30 +92,44 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "taskId required" }, { status: 400 });
     }
 
-    // Fetch task status from Meshy
-    const statusRes = await fetch(`${MESHY_BASE}/text-to-3d/${taskId}`, {
+    // Fetch task status from Tripo3D
+    const statusRes = await fetch(`${TRIPO_BASE}/task/${taskId}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
 
     if (!statusRes.ok) {
       const errText = await statusRes.text();
-      return NextResponse.json({ error: `Meshy status check failed: ${errText}` }, { status: 500 });
+      return NextResponse.json({ error: `Tripo3D status check failed: ${errText}` }, { status: 500 });
     }
 
-    const task = await statusRes.json();
+    const resData = await statusRes.json();
+    const task = resData.data || {};
+
+    // Normalize status: Tripo uses "success"/"running"/"queued"/"failed"
+    // We map to the same statuses the frontend expects
+    const statusMap: Record<string, string> = {
+      success: "SUCCEEDED",
+      running: "RUNNING",
+      queued: "PENDING",
+      failed: "FAILED",
+    };
+    const normalizedStatus = statusMap[task.status] || task.status?.toUpperCase() || "UNKNOWN";
+
+    const glbUrl = task.output?.model || task.output?.pbr_model || null;
+    const thumbnailUrl = task.output?.rendered_image || null;
 
     // If task is complete and download requested, save the GLB file
-    if (download && task.status === "SUCCEEDED" && task.model_urls?.glb) {
+    if (download && normalizedStatus === "SUCCEEDED" && glbUrl) {
       const modelsDir = path.join(process.cwd(), "public", "models");
       await fs.mkdir(modelsDir, { recursive: true });
 
       const fileName = `human-${gender}.glb`;
       const filePath = path.join(modelsDir, fileName);
 
-      // Download the GLB file from Meshy
-      const glbRes = await fetch(task.model_urls.glb);
+      // Download the GLB file from Tripo3D
+      const glbRes = await fetch(glbUrl);
       if (!glbRes.ok) {
-        return NextResponse.json({ error: "Failed to download GLB from Meshy" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to download GLB from Tripo3D" }, { status: 500 });
       }
 
       const arrayBuffer = await glbRes.arrayBuffer();
@@ -130,17 +145,16 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      taskId: task.id,
-      status: task.status,
-      progress: task.progress || 0,
-      modelUrls: task.model_urls || null,
-      thumbnailUrl: task.thumbnail_url || null,
-      textureUrls: task.texture_urls || null,
-      createdAt: task.created_at,
-      finishedAt: task.finished_at,
+      taskId: task.task_id || taskId,
+      status: normalizedStatus,
+      progress: task.progress || (normalizedStatus === "SUCCEEDED" ? 100 : normalizedStatus === "RUNNING" ? 50 : 0),
+      modelUrls: glbUrl ? { glb: glbUrl } : null,
+      thumbnailUrl,
+      createdAt: task.create_time,
+      finishedAt: normalizedStatus === "SUCCEEDED" ? task.create_time : null,
     });
   } catch (err: any) {
-    console.error("[meshy] Status error:", err);
+    console.error("[tripo3d] Status error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

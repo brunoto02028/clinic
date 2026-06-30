@@ -244,10 +244,10 @@ export default function AdminBodyModelsPage() {
       <Card className="border-primary/30 bg-primary/5">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Wand2 className="h-4 w-4 text-primary" /> AI Model Generation (Meshy AI)
+            <Wand2 className="h-4 w-4 text-primary" /> AI Model Generation (Tripo3D)
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            Generate a realistic 3D body model using AI. Requires a Meshy AI API key (free at meshy.ai — 200 credits/month).
+            Generate a realistic 3D body model using AI. Requires a Tripo3D API key (free tier at tripo3d.ai).
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -367,7 +367,7 @@ export default function AdminBodyModelsPage() {
           <CardTitle className="text-sm font-semibold">Where to find 3D body models</CardTitle>
         </CardHeader>
         <CardContent className="text-xs text-muted-foreground space-y-1.5">
-          <p>- <strong>Meshy AI</strong> (meshy.ai) — AI-generated from text prompt (integrated above)</p>
+          <p>- <strong>Tripo3D</strong> (tripo3d.ai) — AI-generated from text prompt (integrated above)</p>
           <p>- <strong>ReadyPlayerMe</strong> (readyplayer.me) — Free avatar creation, export as GLB</p>
           <p>- <strong>Sketchfab</strong> (sketchfab.com) — Browse and download free CC0 human models</p>
           <p>- <strong>MakeHuman</strong> (makehumancommunity.org) — Open source tool, fully customizable anatomy</p>

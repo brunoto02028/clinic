@@ -40,7 +40,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 // Patient-facing API prefixes reachable by the mobile app (bearer-authenticated).
-const MOBILE_API_PREFIXES = ['/api/appointments', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile'];
+const MOBILE_API_PREFIXES = ['/api/appointments', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config'];
 // CORS for the Expo Web / PWA browser target. Native apps don't enforce CORS;
 // bearer (not cookie) auth means "*" doesn't expose any ambient session.
 const MOBILE_CORS_ORIGIN = process.env.MOBILE_CORS_ORIGIN || '*';
@@ -98,6 +98,9 @@ const publicRoutes = [
   '/api/shop',
   '/api/amazon-image',
   '/api/agent', // OpenClaw Agent API - uses Bearer token authentication
+  '/api/admin/maintenance', // protected by x-maintenance-secret header, not session
+  '/api/image-serve', // public image serving from DB (no auth needed to display images)
+  '/api/health', // Render health check — must be public or deploy zero-downtime breaks
 ];
 
 // Routes that require SUPERADMIN access
