@@ -9,16 +9,12 @@ import { useTheme } from "@/theme/useTheme";
 const STEP_ICONS: Record<string, string> = {
   screening: "clipboard-outline",
   outcome_measures: "pulse-outline",
-  body_assessment: "body-outline",
-  foot_scan: "footsteps-outline",
   results: "analytics-outline",
 };
 
 const STEP_PATHS: Record<string, string> = {
   screening: "/screening",
   outcome_measures: "/outcome-measures",
-  body_assessment: "/body-assessments",
-  foot_scan: "/foot-scans",
   results: "/",
 };
 

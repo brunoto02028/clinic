@@ -6,10 +6,7 @@ import { useTheme } from "@/theme/useTheme";
 
 const SECTIONS = [
   { icon: "analytics-outline" as const, label: "Progresso da Avaliação", desc: "Acompanhe suas etapas", path: "/assessment-progress", color: "#5dc9c0" },
-  { icon: "pulse-outline" as const, label: "Pressão arterial", desc: "Acompanhar medições", path: "/blood-pressure", color: "#ef4444" },
   { icon: "speedometer-outline" as const, label: "Outcome Measures", desc: "Escala de dor e funcionalidade", path: "/outcome-measures", color: "#f59e0b" },
-  { icon: "footsteps-outline" as const, label: "Scans 3D", desc: "Análise biomecânica", path: "/foot-scans", color: "#6ba3b0" },
-  { icon: "body-outline" as const, label: "Body Assessment", desc: "Avaliações corporais", path: "/body-assessments", color: "#8b5cf6" },
   { icon: "list-outline" as const, label: "Protocolo de Tratamento", desc: "Plano do terapeuta", path: "/treatment-protocol", color: "#34d399" },
   { icon: "checkbox-outline" as const, label: "Tarefas", desc: "Atividades pendentes", path: "/tasks", color: "#fbbf24" },
   { icon: "document-text-outline" as const, label: "Documentos", desc: "Laudos e exames", path: "/documents", color: "#3b82f6" },

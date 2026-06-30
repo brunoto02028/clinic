@@ -21,8 +21,6 @@ const QUICK_ACTIONS = [
 // ── Health shortcuts ──
 const HEALTH_LINKS = [
   { icon: "fitness-outline" as const, label: "Exercícios", path: "/exercises", color: "#5dc9c0" },
-  { icon: "footsteps-outline" as const, label: "Scans 3D", path: "/foot-scans", color: "#6ba3b0" },
-  { icon: "pulse-outline" as const, label: "Pressão", path: "/blood-pressure", color: "#ef4444" },
   { icon: "document-text-outline" as const, label: "Documentos", path: "/documents", color: "#60a5fa" },
   { icon: "school-outline" as const, label: "Educação", path: "/education", color: "#8b5cf6" },
   { icon: "checkbox-outline" as const, label: "Tarefas", path: "/tasks", color: "#f59e0b" },
