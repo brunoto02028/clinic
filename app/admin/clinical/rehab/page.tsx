@@ -1,49 +1,50 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
 import {
-  Bot, Plus, ArrowLeft, Loader2, AlertCircle, CheckCircle2, Send, Brain,
+  Plus, ArrowLeft, Loader2, AlertCircle, CheckCircle2, Send, Brain,
   BookOpen, TriangleAlert, ClipboardList, ChevronDown, ChevronRight,
-  Activity, Search, User, Calendar,
+  Activity, Search, User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
+const ATLAS_AVATAR = "https://randomuser.me/api/portraits/men/52.jpg";
+const ATLAS_NAME   = "Atlas";
+const ATLAS_TITLE  = "Clinical Rehabilitation Specialist";
+
+function AtlasAvatar({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
+  const sz = size === "lg" ? "w-16 h-16" : size === "md" ? "w-10 h-10" : "w-7 h-7";
+  return (
+    <img src={ATLAS_AVATAR} alt={ATLAS_NAME}
+      className={`${sz} rounded-full object-cover ring-2 ring-emerald-500/30 shrink-0`}
+      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+  );
+}
+
 export default function RehabAgentPage() {
-  const [view, setView] = useState<"list" | "new" | "plan">("list");
+  const [view, setView]             = useState<"list" | "assess" | "plan">("list");
   const [recentPlans, setRecentPlans] = useState<any[]>([]);
-  const [patients, setPatients] = useState<any[]>([]);
+  const [patients, setPatients]     = useState<any[]>([]);
   const [patientSearch, setPatientSearch] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [activePlan, setActivePlan] = useState<any>(null);
-  const [generating, setGenerating] = useState(false);
-  const [chatMsg, setChatMsg] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
-  const [error, setError] = useState("");
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const [form, setForm] = useState({
-    chiefComplaint: "",
-    bodyPart: "",
-    severity: "moderate",
-    phase: "subacute",
-    age: "",
-    sex: "",
-    occupation: "",
-    activityLevel: "",
-    duration: "",
-    mechanism: "",
-    aggravatingFactors: "",
-    relievingFactors: "",
-    previousTreatment: "",
-    relevantHistory: "",
-    assessmentFindings: "",
-    additionalNotes: "",
-  });
+  // Pre-assessment
+  const [preChat, setPreChat]       = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [preInput, setPreInput]     = useState("");
+  const [preLoading, setPreLoading] = useState(false);
+  const [preStarted, setPreStarted] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // Plan chat
+  const [chatMsg, setChatMsg]       = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [error, setError]           = useState("");
+
+  const preEndRef  = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Load recent plans across all patients
   const loadRecent = useCallback(async () => {
@@ -52,46 +53,70 @@ export default function RehabAgentPage() {
   }, []);
 
   useEffect(() => { loadRecent(); }, [loadRecent]);
+  useEffect(() => { preEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [preChat]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activePlan?.messages]);
 
-  // Search patients
   useEffect(() => {
     if (patientSearch.length < 2) { setPatients([]); return; }
     const t = setTimeout(async () => {
       const r = await fetch(`/api/admin/patients?search=${encodeURIComponent(patientSearch)}&limit=8`);
-      if (r.ok) {
-        const d = await r.json();
-        setPatients(d.patients || d || []);
-      }
+      if (r.ok) { const d = await r.json(); setPatients(d.patients || d || []); }
     }, 300);
     return () => clearTimeout(t);
   }, [patientSearch]);
 
-  const handleGenerate = async () => {
+  const startAssessment = async () => {
     if (!selectedPatient) { setError("Select a patient first."); return; }
-    if (!form.chiefComplaint || !form.bodyPart) { setError("Chief complaint and body part are required."); return; }
+    setError(""); setView("assess");
+    if (preStarted) return;
+    setPreStarted(true); setPreLoading(true);
+    try {
+      const r = await fetch(`/api/admin/patients/${selectedPatient.id}/rehab-plan/pre-assess`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientContext: {}, messages: [] }),
+      });
+      const d = await r.json();
+      setPreChat([{ role: "assistant", content: d.reply }]);
+    } catch { setPreChat([{ role: "assistant", content: "Connection error. Please retry." }]); }
+    finally { setPreLoading(false); }
+  };
+
+  const sendPreMessage = async () => {
+    if (!preInput.trim() || preLoading || !selectedPatient) return;
+    const msg = preInput.trim(); setPreInput("");
+    const next = [...preChat, { role: "user" as const, content: msg }];
+    setPreChat(next); setPreLoading(true);
+    try {
+      const r = await fetch(`/api/admin/patients/${selectedPatient.id}/rehab-plan/pre-assess`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientContext: {}, messages: next }),
+      });
+      const d = await r.json();
+      setPreChat(prev => [...prev, { role: "assistant", content: d.reply }]);
+    } catch { setPreChat(prev => [...prev, { role: "assistant", content: "Error — please retry." }]); }
+    finally { setPreLoading(false); }
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedPatient) return;
     setGenerating(true); setError("");
     try {
       const r = await fetch(`/api/admin/patients/${selectedPatient.id}/rehab-plan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, age: form.age ? Number(form.age) : undefined }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chiefComplaint: "See pre-assessment chat", bodyPart: "See pre-assessment chat", preAssessChat: preChat }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
       const pr = await fetch(`/api/admin/patients/${selectedPatient.id}/rehab-plan/${d.plan.id}`);
       setActivePlan({ ...(await pr.json()), patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}` });
-      setView("plan");
-      loadRecent();
+      setView("plan"); loadRecent();
     } catch (e: any) { setError(e.message); }
     finally { setGenerating(false); }
   };
 
   const loadPlan = async (patientId: string, planId: string, patientName?: string) => {
     const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/${planId}`);
-    const d = await r.json();
-    setActivePlan({ ...d, patientName });
-    setView("plan");
+    setActivePlan({ ...(await r.json()), patientName }); setView("plan");
   };
 
   const handleChat = async () => {
@@ -100,8 +125,7 @@ export default function RehabAgentPage() {
     setActivePlan((p: any) => ({ ...p, messages: [...(p.messages || []), { role: "user", content: msg }] }));
     try {
       const r = await fetch(`/api/admin/patients/${activePlan.patientId}/rehab-plan/${activePlan.id}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg }),
       });
       const d = await r.json();
@@ -116,32 +140,73 @@ export default function RehabAgentPage() {
   // ── List View ──
   if (view === "list") return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-emerald-400" />
-            <h1 className="text-lg font-semibold">Clinical Rehab Agent</h1>
-            <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400">Claude Sonnet 5</Badge>
+      {/* Atlas hero */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <AtlasAvatar size="lg" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold">{ATLAS_NAME}</h1>
+              <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400">Claude Sonnet 5</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{ATLAS_TITLE} · BPR Internal</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Knee · Ankle · Hip · Shoulder · Spine · Muscle</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">Evidence-based rehabilitation planning · PubMed · NICE · Cochrane</p>
         </div>
-        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setView("new")}>
-          <Plus className="h-4 w-4 mr-1.5" />New Analysis
-        </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Specialties */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {[
-          { label: "50 Conditions covered", sub: "Shoulder to foot, acute to chronic" },
-          { label: "Evidence-only references", sub: "PubMed · NICE · Cochrane · BJSM" },
-          { label: "BPR-specific plans", sub: "MLS Laser, MENS, dry needling & more" },
+          { label: "Knee Specialist", sub: "ACL · Meniscus · PFPS · Tendinopathy · OA" },
+          { label: "Ankle & Foot", sub: "Sprain · Achilles · Plantar Fascia · PTTD" },
+          { label: "Hip Specialist", sub: "FAI · Labral · GTPS · Hamstring Origin" },
+          { label: "Shoulder Specialist", sub: "Rotator Cuff · SLAP · Frozen · Instability" },
+          { label: "Spine Specialist", sub: "Lumbar · Cervical · Thoracic · SIJ · WAD" },
+          { label: "Muscle Injuries", sub: "Grade I–III · Hamstring · Gastrocnemius · Adductor" },
         ].map((s, i) => (
-          <div key={i} className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
-            <p className="text-xs font-semibold text-emerald-400">{s.label}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{s.sub}</p>
+          <div key={i} className="p-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+            <p className="text-[10px] font-semibold text-emerald-400">{s.label}</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">{s.sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* Patient selector + start */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase">Start New Pre-Assessment</p>
+        {selectedPatient ? (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <div className="flex items-center gap-2 p-2.5 bg-emerald-500/5 border border-emerald-500/30 rounded-lg flex-1 min-w-0">
+              <User className="h-4 w-4 text-emerald-400 shrink-0" />
+              <span className="text-sm font-medium truncate">{selectedPatient.firstName} {selectedPatient.lastName}</span>
+              <span className="text-xs text-muted-foreground truncate hidden sm:block">{selectedPatient.email}</span>
+              <Button variant="ghost" size="sm" className="h-6 text-xs ml-auto shrink-0" onClick={() => { setSelectedPatient(null); setPreChat([]); setPreStarted(false); }}>Change</Button>
+            </div>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 shrink-0 w-full sm:w-auto" onClick={startAssessment}>
+              <Plus className="h-4 w-4 mr-1.5" />Start with {ATLAS_NAME}
+            </Button>
+          </div>
+        ) : (
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input className="pl-8 text-xs h-9" placeholder="Search patient by name or email…"
+              value={patientSearch} onChange={e => setPatientSearch(e.target.value)} />
+            {patients.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                {patients.map((p: any) => (
+                  <button key={p.id} className="w-full text-left flex items-center gap-2 px-3 py-2.5 hover:bg-muted/30 text-xs"
+                    onClick={() => { setSelectedPatient(p); setPatientSearch(""); setPatients([]); }}>
+                    <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="font-medium">{p.firstName} {p.lastName}</span>
+                    <span className="text-muted-foreground truncate">{p.email}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {error && <div className="flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400"><AlertCircle className="h-3.5 w-3.5" />{error}</div>}
       </div>
 
       {/* Recent plans */}
@@ -149,20 +214,20 @@ export default function RehabAgentPage() {
         <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Recent Plans</p>
         {recentPlans.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
-            <Bot className="h-8 w-8 mx-auto mb-2 opacity-20" />
-            <p className="text-xs">No plans generated yet.</p>
+            <AtlasAvatar size="md" />
+            <p className="text-xs mt-2">No plans generated yet.</p>
           </div>
         ) : (
           <div className="space-y-2">
             {recentPlans.map((p: any) => (
-              <div key={p.id} className="flex items-center justify-between p-3 bg-muted/20 border rounded-lg hover:bg-muted/30 cursor-pointer"
+              <div key={p.id} className="flex items-center justify-between p-3 bg-muted/20 border rounded-lg hover:bg-muted/30 cursor-pointer active:opacity-70 transition-opacity"
                 onClick={() => loadPlan(p.patientId, p.id, p.patient?.name)}>
                 <div className="flex items-center gap-3 min-w-0">
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs font-medium truncate">{p.patient?.name || "Patient"} — {p.bodyPart}</p>
                     <p className="text-[10px] text-muted-foreground truncate">{p.chiefComplaint}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                       <Badge variant="outline" className="text-[8px] h-3.5">{p.severity}</Badge>
                       <Badge variant="outline" className="text-[8px] h-3.5">{p.phase}</Badge>
                       <span className="text-[9px] text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("en-GB")}</span>
@@ -178,87 +243,60 @@ export default function RehabAgentPage() {
     </div>
   );
 
-  // ── New Plan Form ──
-  if (view === "new") return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setView("list")}><ArrowLeft className="h-4 w-4" /></Button>
-        <h1 className="text-base font-semibold">New Rehab Analysis</h1>
+  // ── Pre-Assessment Chat ──
+  if (view === "assess") return (
+    <div className="p-4 md:p-6 max-w-3xl mx-auto flex flex-col" style={{ minHeight: "calc(100vh - 120px)" }}>
+      <div className="flex items-center gap-2 pb-3 mb-3 border-b shrink-0">
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={() => setView("list")}><ArrowLeft className="h-4 w-4" /></Button>
+        <AtlasAvatar size="md" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">{ATLAS_NAME} — Pre-Assessment</p>
+          <p className="text-[10px] text-muted-foreground">
+            {selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : ""} · Answer Atlas's questions, then generate the full plan
+          </p>
+        </div>
       </div>
 
-      {error && <div className="flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400"><AlertCircle className="h-3.5 w-3.5" />{error}</div>}
+      {error && <div className="flex items-center gap-2 p-2 mb-3 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400 shrink-0"><AlertCircle className="h-3.5 w-3.5 shrink-0" />{error}</div>}
 
-      {/* Patient selector */}
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold">Patient *</Label>
-        {selectedPatient ? (
-          <div className="flex items-center justify-between p-2.5 bg-emerald-500/5 border border-emerald-500/30 rounded-lg">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-emerald-400" />
-              <span className="text-sm font-medium">{selectedPatient.firstName} {selectedPatient.lastName}</span>
-              <span className="text-xs text-muted-foreground">{selectedPatient.email}</span>
-            </div>
-            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setSelectedPatient(null)}>Change</Button>
-          </div>
-        ) : (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input className="pl-8 text-xs h-9" placeholder="Search patient by name or email…"
-              value={patientSearch} onChange={e => setPatientSearch(e.target.value)} />
-            {patients.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
-                {patients.map((p: any) => (
-                  <button key={p.id} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-muted/30 text-xs"
-                    onClick={() => { setSelectedPatient(p); setPatientSearch(""); setPatients([]);
-                      if (p.profile?.dateOfBirth) setForm(f => ({ ...f, age: String(new Date().getFullYear() - new Date(p.profile.dateOfBirth).getFullYear()) }));
-                      if (p.profile?.gender) setForm(f => ({ ...f, sex: p.profile.gender }));
-                    }}>
-                    <User className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-medium">{p.firstName} {p.lastName}</span>
-                    <span className="text-muted-foreground">{p.email}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+      <div className="flex-1 overflow-y-auto space-y-3 pb-3" style={{ maxHeight: "calc(100vh - 320px)", minHeight: "300px" }}>
+        {preLoading && preChat.length === 0 && (
+          <div className="flex items-start gap-2">
+            <AtlasAvatar size="sm" />
+            <div className="bg-muted/40 rounded-xl rounded-tl-none px-3 py-2"><Loader2 className="h-4 w-4 animate-spin text-emerald-400" /></div>
           </div>
         )}
+        {preChat.map((m, i) => (
+          <div key={i} className={`flex items-start gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+            {m.role === "assistant" && <AtlasAvatar size="sm" />}
+            <div className={`max-w-[88%] rounded-xl text-xs px-3 py-2.5 leading-relaxed whitespace-pre-wrap ${
+              m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 text-foreground rounded-tl-none"
+            }`}>{m.content}</div>
+          </div>
+        ))}
+        {preLoading && preChat.length > 0 && (
+          <div className="flex items-start gap-2"><AtlasAvatar size="sm" />
+            <div className="bg-muted/40 rounded-xl rounded-tl-none px-3 py-2"><Loader2 className="h-4 w-4 animate-spin text-emerald-400" /></div>
+          </div>
+        )}
+        <div ref={preEndRef} />
       </div>
 
-      {/* Clinical form */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Chief Complaint *</Label>
-          <Textarea rows={2} className="text-xs" placeholder="e.g. Sharp knee pain on running, started 3 weeks ago after twisting…" value={form.chiefComplaint} onChange={e => setForm(f => ({ ...f, chiefComplaint: e.target.value }))} /></div>
-        <div className="space-y-1"><Label className="text-xs">Body Part *</Label>
-          <Input className="text-xs h-8" placeholder="e.g. Left knee, Right shoulder" value={form.bodyPart} onChange={e => setForm(f => ({ ...f, bodyPart: e.target.value }))} /></div>
-        <div className="space-y-1"><Label className="text-xs">Duration</Label>
-          <Input className="text-xs h-8" placeholder="e.g. 3 weeks, 6 months" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} /></div>
-        <div className="space-y-1"><Label className="text-xs">Severity</Label>
-          <select className="w-full h-8 text-xs border rounded-md bg-background px-2" value={form.severity} onChange={e => setForm(f => ({ ...f, severity: e.target.value }))}>
-            <option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option></select></div>
-        <div className="space-y-1"><Label className="text-xs">Phase</Label>
-          <select className="w-full h-8 text-xs border rounded-md bg-background px-2" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}>
-            <option value="acute">Acute (0–2 weeks)</option><option value="subacute">Subacute (2–12 weeks)</option><option value="chronic">Chronic (12+ weeks)</option></select></div>
-        <div className="space-y-1"><Label className="text-xs">Mechanism of Injury</Label>
-          <Input className="text-xs h-8" placeholder="e.g. Twisting, fall, overuse" value={form.mechanism} onChange={e => setForm(f => ({ ...f, mechanism: e.target.value }))} /></div>
-        <div className="space-y-1"><Label className="text-xs">Activity Level</Label>
-          <select className="w-full h-8 text-xs border rounded-md bg-background px-2" value={form.activityLevel} onChange={e => setForm(f => ({ ...f, activityLevel: e.target.value }))}>
-            <option value="">Select…</option><option value="sedentary">Sedentary</option><option value="light">Light active</option>
-            <option value="moderate">Moderately active</option><option value="active">Active</option><option value="athlete">Athlete</option></select></div>
-        <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Aggravating Factors</Label>
-          <Input className="text-xs h-8" placeholder="e.g. Stairs, prolonged sitting, overhead activity" value={form.aggravatingFactors} onChange={e => setForm(f => ({ ...f, aggravatingFactors: e.target.value }))} /></div>
-        <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Relieving Factors</Label>
-          <Input className="text-xs h-8" placeholder="e.g. Rest, ice, elevation" value={form.relievingFactors} onChange={e => setForm(f => ({ ...f, relievingFactors: e.target.value }))} /></div>
-        <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Relevant History / Comorbidities</Label>
-          <Textarea rows={2} className="text-xs" placeholder="Previous injuries, surgeries, diabetes, medications…" value={form.relevantHistory} onChange={e => setForm(f => ({ ...f, relevantHistory: e.target.value }))} /></div>
-        <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Assessment Findings</Label>
-          <Textarea rows={2} className="text-xs" placeholder="ROM, strength tests, special tests, body assessment results…" value={form.assessmentFindings} onChange={e => setForm(f => ({ ...f, assessmentFindings: e.target.value }))} /></div>
-        <div className="sm:col-span-2 space-y-1"><Label className="text-xs">Additional Notes</Label>
-          <Textarea rows={2} className="text-xs" placeholder="Anything else relevant…" value={form.additionalNotes} onChange={e => setForm(f => ({ ...f, additionalNotes: e.target.value }))} /></div>
+      <div className="flex gap-2 pt-3 border-t shrink-0">
+        <Input className="text-xs h-10 flex-1" placeholder="Reply to Atlas…"
+          value={preInput} onChange={e => setPreInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendPreMessage(); } }}
+          disabled={preLoading} />
+        <Button size="sm" className="h-10 w-10 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={sendPreMessage} disabled={preLoading || !preInput.trim()}>
+          <Send className="h-4 w-4" />
+        </Button>
       </div>
-      <Button className="w-full bg-emerald-600 hover:bg-emerald-700" size="lg" onClick={handleGenerate} disabled={generating}>
-        {generating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analysing with Claude Sonnet 5…</> : <><Bot className="h-4 w-4 mr-2" />Generate Evidence-Based Rehab Plan</>}
-      </Button>
-      <p className="text-[10px] text-muted-foreground text-center">References from PubMed · NICE Guidelines · Cochrane Reviews · BJSM · JOSPT</p>
+
+      {preChat.length >= 2 && (
+        <Button className="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={handleGenerate} disabled={generating}>
+          {generating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating plan…</> : <><Brain className="h-4 w-4 mr-2" />Generate Full Rehab Plan from this discussion</>}
+        </Button>
+      )}
     </div>
   );
 
@@ -266,19 +304,20 @@ export default function RehabAgentPage() {
   if (view === "plan" && plan) return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setActivePlan(null); setView("list"); loadRecent(); }}><ArrowLeft className="h-4 w-4" /></Button>
-        <div>
-          <h1 className="text-base font-semibold">{activePlan.bodyPart} — {activePlan.chiefComplaint}</h1>
-          {activePlan.patientName && <p className="text-xs text-muted-foreground">{activePlan.patientName}</p>}
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={() => { setActivePlan(null); setView("list"); loadRecent(); }}><ArrowLeft className="h-4 w-4" /></Button>
+        <AtlasAvatar size="sm" />
+        <div className="flex-1 min-w-0">
+          <h1 className="text-sm font-semibold truncate">{activePlan.bodyPart} — {activePlan.chiefComplaint}</h1>
+          <p className="text-[10px] text-muted-foreground">{activePlan.patientName || ""} · {ATLAS_NAME} · {new Date(activePlan.createdAt).toLocaleDateString("en-GB")}</p>
         </div>
-        <Badge variant="outline" className="ml-auto text-[9px] border-emerald-500/30 text-emerald-400">{activePlan.status}</Badge>
+        <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400 shrink-0">{activePlan.status}</Badge>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {[{l:"Diagnosis",v:plan.diagnosisHypothesis,c:"sm:col-span-2"},{l:"Severity",v:plan.severity},{l:"Phase",v:plan.phase},{l:"Prognosis",v:plan.prognosis,c:"sm:col-span-2"},{l:"Return to Activity",v:plan.returnToActivityTimeline,c:"sm:col-span-2"}].map((item,i)=>(
+      <div className="grid grid-cols-2 gap-2">
+        {[{l:"Diagnosis Hypothesis",v:plan.diagnosisHypothesis,c:"col-span-2"},{l:"Severity",v:plan.severity},{l:"Phase",v:plan.phase},{l:"Prognosis",v:plan.prognosis,c:"col-span-2"},{l:"Return to Activity",v:plan.returnToActivityTimeline,c:"col-span-2"}].map((item,i)=>(
           <div key={i} className={`${item.c||""} p-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-lg`}>
             <p className="text-[9px] font-semibold text-emerald-400 uppercase mb-0.5">{item.l}</p>
-            <p className="text-xs">{item.v}</p>
+            <p className="text-xs leading-snug">{item.v}</p>
           </div>
         ))}
       </div>
@@ -293,24 +332,24 @@ export default function RehabAgentPage() {
       {plan.redFlags?.length > 0 && (
         <div className="p-2.5 bg-red-500/5 border border-red-500/30 rounded-lg">
           <div className="flex items-center gap-1 mb-1"><TriangleAlert className="h-3 w-3 text-red-400" /><p className="text-[9px] font-semibold text-red-400 uppercase">Red Flags</p></div>
-          <ul className="space-y-0.5">{plan.redFlags.map((f:string,i:number)=><li key={i} className="text-[10px] text-red-300 flex gap-1"><span>•</span>{f}</li>)}</ul>
+          <ul className="space-y-0.5">{plan.redFlags.map((f:string,i:number)=><li key={i} className="text-[10px] text-red-300 flex gap-1"><span>•</span><span>{f}</span></li>)}</ul>
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <p className="text-xs font-semibold flex items-center gap-1"><ClipboardList className="h-3.5 w-3.5" />Rehabilitation Phases</p>
         {plan.phases?.map((phase:any,i:number)=>(
           <details key={i} className="border rounded-lg" open={i===0}>
             <summary className="p-3 text-xs font-medium cursor-pointer flex items-center justify-between list-none">
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-2 min-w-0">
                 <span className="w-5 h-5 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0">{i+1}</span>
-                {phase.phase} <span className="text-muted-foreground text-[10px]">({phase.duration})</span>
+                <span className="truncate">{phase.phase}</span><span className="text-muted-foreground text-[10px] shrink-0">({phase.duration})</span>
               </span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-2" />
             </summary>
             <div className="px-3 pb-3 space-y-2.5">
               <div><p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">Goals</p>
-                <ul className="space-y-0.5">{phase.goals?.map((g:string,j:number)=><li key={j} className="text-[10px] flex gap-1"><CheckCircle2 className="h-2.5 w-2.5 text-emerald-400 shrink-0 mt-0.5"/>{g}</li>)}</ul></div>
+                <ul className="space-y-0.5">{phase.goals?.map((g:string,j:number)=><li key={j} className="text-[10px] flex gap-1"><CheckCircle2 className="h-2.5 w-2.5 text-emerald-400 shrink-0 mt-0.5"/><span>{g}</span></li>)}</ul></div>
               <div><p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">BPR Treatments</p>
                 <div className="flex flex-wrap gap-1">{phase.bprTreatments?.map((t:string,j:number)=><Badge key={j} variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400">{t}</Badge>)}</div></div>
               {phase.exercises?.length>0&&(<div><p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">Exercises</p>
@@ -321,7 +360,7 @@ export default function RehabAgentPage() {
                   </div>
                 ))}</div></div>)}
               {phase.precautions?.length>0&&(<div><p className="text-[9px] font-semibold text-amber-400 uppercase mb-1">Precautions</p>
-                <ul className="space-y-0.5">{phase.precautions.map((p:string,j:number)=><li key={j} className="text-[10px] text-amber-300 flex gap-1"><span>⚠</span>{p}</li>)}</ul></div>)}
+                <ul className="space-y-0.5">{phase.precautions.map((p:string,j:number)=><li key={j} className="text-[10px] text-amber-300 flex gap-1"><span>⚠</span><span>{p}</span></li>)}</ul></div>)}
             </div>
           </details>
         ))}
@@ -330,34 +369,35 @@ export default function RehabAgentPage() {
       {plan.references?.length>0&&(
         <details className="border rounded-lg">
           <summary className="p-3 text-xs font-medium cursor-pointer flex items-center gap-2 list-none">
-            <BookOpen className="h-3.5 w-3.5 text-blue-400"/>References ({plan.references.length})
+            <BookOpen className="h-3.5 w-3.5 text-blue-400 shrink-0"/>References ({plan.references.length})
           </summary>
-          <div className="px-3 pb-3">
-            <ol className="space-y-1 list-decimal list-inside">{plan.references.map((ref:string,i:number)=><li key={i} className="text-[10px] text-muted-foreground">{ref}</li>)}</ol>
-          </div>
+          <div className="px-3 pb-3"><ol className="space-y-1 list-decimal list-inside">{plan.references.map((ref:string,i:number)=><li key={i} className="text-[10px] text-muted-foreground">{ref}</li>)}</ol></div>
         </details>
       )}
 
       <div className="border rounded-lg">
-        <div className="p-3 border-b flex items-center gap-2">
-          <Brain className="h-3.5 w-3.5 text-emerald-400"/>
-          <p className="text-xs font-semibold">Ask the Rehab Agent</p>
-          <span className="text-[9px] text-muted-foreground">All answers backed by peer-reviewed evidence</span>
+        <div className="p-2.5 border-b flex items-center gap-2">
+          <AtlasAvatar size="sm" />
+          <div>
+            <p className="text-xs font-semibold leading-tight">{ATLAS_NAME}</p>
+            <p className="text-[9px] text-muted-foreground">Follow-up · Evidence-based answers</p>
+          </div>
         </div>
         <div className="max-h-72 overflow-y-auto p-3 space-y-2">
           {(activePlan?.messages||[]).map((m:any,i:number)=>(
-            <div key={i} className={`flex ${m.role==="user"?"justify-end":"justify-start"}`}>
-              <div className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${m.role==="user"?"bg-emerald-600 text-white":"bg-muted/40 text-foreground"}`}>{m.content}</div>
+            <div key={i} className={`flex items-start gap-2 ${m.role==="user"?"flex-row-reverse":""}`}>
+              {m.role==="assistant"&&<AtlasAvatar size="sm"/>}
+              <div className={`max-w-[88%] rounded-xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${m.role==="user"?"bg-emerald-600 text-white rounded-tr-none":"bg-muted/40 rounded-tl-none"}`}>{m.content}</div>
             </div>
           ))}
-          {chatLoading&&<div className="flex justify-start"><div className="bg-muted/40 rounded-lg px-3 py-2"><Loader2 className="h-3 w-3 animate-spin"/></div></div>}
+          {chatLoading&&<div className="flex items-start gap-2"><AtlasAvatar size="sm"/><div className="bg-muted/40 rounded-xl rounded-tl-none px-3 py-2"><Loader2 className="h-3 w-3 animate-spin"/></div></div>}
           <div ref={chatEndRef}/>
         </div>
         <div className="p-2 border-t flex gap-2">
-          <Input className="text-xs h-9 flex-1" placeholder="e.g. What exercises are safe in week 1? Can I use MLS Laser daily?" value={chatMsg}
+          <Input className="text-xs h-9 flex-1" placeholder="Ask Atlas about this plan…" value={chatMsg}
             onChange={e=>setChatMsg(e.target.value)}
             onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleChat();}}}/>
-          <Button size="sm" className="h-9 w-9 p-0 bg-emerald-600 hover:bg-emerald-700" onClick={handleChat} disabled={chatLoading||!chatMsg.trim()}>
+          <Button size="sm" className="h-9 w-9 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={handleChat} disabled={chatLoading||!chatMsg.trim()}>
             <Send className="h-4 w-4"/>
           </Button>
         </div>
