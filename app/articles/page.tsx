@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Calendar, User, BookOpen, ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
+import { LocalizedText } from "./[slug]/localized";
 
 export const dynamic = "force-dynamic";
 
@@ -59,13 +60,9 @@ export default async function ArticlesPage() {
                     <div className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
                       Featured Article
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors line-clamp-3">
-                      {featured.title}
-                    </h2>
+                    <LocalizedText as="h2" className="text-2xl sm:text-3xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors line-clamp-3 block" en={featured.titleEn} pt={featured.titlePt} fallback={featured.title} />
                     {featured.excerpt && (
-                      <p className="text-muted-foreground mb-4 line-clamp-3 leading-relaxed">
-                        {featured.excerpt}
-                      </p>
+                      <LocalizedText as="p" className="text-muted-foreground mb-4 line-clamp-3 leading-relaxed" en={featured.excerptEn} pt={featured.excerptPt} fallback={featured.excerpt} />
                     )}
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-5">
                       <span className="flex items-center gap-1.5">
@@ -107,11 +104,9 @@ export default async function ArticlesPage() {
                           )}
                         </div>
                         <div className="p-5 sm:p-6 flex-1 flex flex-col">
-                          <h3 className="font-semibold text-lg text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                            {article.title}
-                          </h3>
+                          <LocalizedText as="h3" className="font-semibold text-lg text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors block" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
                           <p className="text-muted-foreground text-sm line-clamp-3 mb-4 flex-1">
-                            {article.excerpt}
+                            <LocalizedText en={article.excerptEn} pt={article.excerptPt} fallback={article.excerpt} />
                           </p>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground pt-3 border-t border-border">
                             <span className="flex items-center gap-1">

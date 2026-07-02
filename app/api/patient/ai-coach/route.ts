@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
-import { callAI } from "@/lib/ai-provider";
+import { callAIClinical } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
 
@@ -145,7 +145,7 @@ RULES:
     let tip = isPt ? "Continue seguindo seu plano de tratamento!" : "Keep following your treatment plan!";
 
     try {
-      const response = await callAI(prompt, { temperature: 0.8, maxTokens: 300 });
+      const response = await callAIClinical(prompt, { temperature: 0.8, maxTokens: 300 });
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);

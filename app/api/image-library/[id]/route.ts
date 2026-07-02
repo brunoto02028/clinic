@@ -74,12 +74,35 @@ export async function DELETE(
 
     const { id } = params;
 
+    // Virtual "settings-*" images come from SiteSettings fields, not ImageLibrary table
+    if (id.startsWith("settings-")) {
+      const SETTINGS_FIELD_MAP: Record<string, string> = {
+        "settings-logo-":       "logoUrl",
+        "settings-logo-":       "darkLogoUrl",
+        "settings-hero-":       "heroImageUrl",
+        "settings-about-":      "aboutImageUrl",
+        "settings-services-":   "insolesImageUrl",
+        "settings-general-":    "ogImageUrl",
+      };
+      const fieldEntry = Object.entries(SETTINGS_FIELD_MAP).find(([prefix]) => id.startsWith(prefix));
+      if (fieldEntry) {
+        const settings = await prisma.siteSettings.findFirst();
+        if (settings) {
+          await prisma.siteSettings.update({
+            where: { id: settings.id },
+            data: { [fieldEntry[1]]: null },
+          });
+        }
+      }
+      return NextResponse.json({ success: true, message: "Image cleared from settings" });
+    }
+
     const image = await prisma.imageLibrary.findUnique({
       where: { id },
     });
 
     if (!image) {
-      return NextResponse.json({ error: "Image not found" }, { status: 404 });
+      return NextResponse.json({ success: true, message: "Image not found, skipping" });
     }
 
     // Delete file from storage

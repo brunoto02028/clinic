@@ -300,7 +300,7 @@ export function AIFieldHelper({
                 <p className="text-xs text-muted-foreground">Tell the AI what you want for <strong>{fieldLabel}</strong>:</p>
                 <textarea
                   className="w-full min-h-[80px] text-sm border rounded-md p-2 bg-background resize-none focus:outline-none focus:ring-2 focus:ring-purple-400"
-                  placeholder={`e.g. "Write a professional meta description about physiotherapy in Richmond, focusing on sports injuries"`}
+                  placeholder={`e.g. "Write a professional meta description about physiotherapy in Ipswich, focusing on sports injuries"`}
                   value={chatInstruction}
                   onChange={(e) => setChatInstruction(e.target.value)}
                   onKeyDown={(e) => {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { callAI } from "@/lib/ai-provider";
+import { callAIClinical } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
 
@@ -121,7 +121,7 @@ Return a JSON object:
 Return ONLY the JSON object, no markdown.`;
 
   try {
-    const rawResponse = await callAI(prompt, {
+    const rawResponse = await callAIClinical(prompt, {
       temperature: 0.3,
       maxTokens: 6144,
     });

@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DOC_TYPES = [
   { value: "MEDICAL_REFERRAL", label: "Medical Referral" },
@@ -576,25 +577,18 @@ export default function PatientProfilePage() {
       {error && <div className="bg-destructive/10 text-destructive text-xs p-2.5 rounded-lg flex items-center gap-2"><AlertCircle className="h-3.5 w-3.5" /> {error} <Button variant="ghost" size="sm" className="ml-auto h-5 w-5 p-0" onClick={() => setError("")}><X className="h-3 w-3" /></Button></div>}
       {success && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-2.5 rounded-lg flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5" /> {success}</div>}
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
-        {[
-          { icon: FileText, label: "Screening", ok: !!data.screening },
-          { icon: Footprints, label: "Foot Scan", ok: data.footScans?.length > 0, c: data.footScans?.length },
-          { icon: Activity, label: "Body Assess.", ok: data.bodyAssessments?.length > 0, c: data.bodyAssessments?.length },
-          { icon: Stethoscope, label: "SOAP Notes", ok: data.soapNotes?.length > 0, c: data.soapNotes?.length },
-          { icon: FileUp, label: "Documents", ok: data.documents?.length > 0, c: data.documents?.length },
-          { icon: Brain, label: "AI Assessment", ok: data.diagnoses?.length > 0, c: data.diagnoses?.length },
-          { icon: Heart, label: "Protocol", ok: data.protocols?.length > 0, c: data.protocols?.length },
-          { icon: HeartPulse, label: "BP Readings", ok: data.bpReadings?.length > 0, c: data.bpReadings?.length },
-        ].map((s) => (
-          <div key={s.label} className={`rounded-lg border p-2 text-center ${s.ok ? "bg-emerald-500/10 border-emerald-500/30" : "bg-muted/30"}`}>
-            <s.icon className={`h-3.5 w-3.5 mx-auto mb-0.5 ${s.ok ? "text-emerald-400" : "text-muted-foreground"}`} />
-            <p className="text-[9px] font-medium">{s.label}</p>
-            <p className={`text-[9px] ${s.ok ? "text-emerald-400" : "text-muted-foreground"}`}>{s.ok ? (s.c || "✓") : "—"}</p>
-          </div>
-        ))}
-      </div>
+      {/* ─── Tabs ─── */}
+      <Tabs defaultValue="resumo" className="mt-4">
+        <TabsList className="w-full justify-start bg-muted/30 p-1 h-auto flex-wrap">
+          <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Resumo</TabsTrigger>
+          <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Screening</TabsTrigger>
+          <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Avaliacoes</TabsTrigger>
+          <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clinicas</TabsTrigger>
+          <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documentos</TabsTrigger>
+        </TabsList>
+
+        {/* ── Tab: Resumo ── */}
+        <TabsContent value="resumo" className="space-y-4 mt-4">
 
       {/* Invite Link */}
       <div className="flex flex-wrap items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
@@ -765,9 +759,36 @@ export default function PatientProfilePage() {
         </Card>
       )}
 
-      {/* ─── Sections ─── */}
-      <div className="space-y-2.5">
+      {/* Red Flags Summary */}
+      {data.screening && (() => {
+        const activeFlags = RED_FLAGS.filter(f => data.screening[f.key]);
+        return activeFlags.length > 0 ? (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p className="text-[10px] font-semibold text-red-400 uppercase mb-1.5">Red Flags Identified</p>
+            <div className="flex flex-wrap gap-1">
+              {activeFlags.map(f => (
+                <Badge key={f.key} className="bg-red-500/15 text-red-400 border-red-500/30 text-[9px]">
+                  <AlertCircle className="h-2.5 w-2.5 mr-0.5" /> {f.label}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ) : null;
+      })()}
 
+      {/* Chief Complaint */}
+      {data.screening?.chiefComplaint && (
+        <div className="p-3 bg-muted/30 border rounded-lg">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Chief Complaint</p>
+          <p className="text-xs">{data.screening.chiefComplaint}</p>
+        </div>
+      )}
+
+        </TabsContent>
+
+        {/* ── Tab: Screening ── */}
+        <TabsContent value="screening" className="mt-4">
+        <div className="space-y-2.5">
         {/* ── Assessment Screening ── */}
         <Sec title="Assessment Screening" icon={FileText} badge={data.screening ? "Completed" : "Not filled"} open={!!data.screening}
           actions={data.screening && <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setScreeningForm({ ...data.screening }); setEditingScreening(true); }}><Pencil className="h-3 w-3" /></Button>}
@@ -808,7 +829,12 @@ export default function PatientProfilePage() {
             </div>
           ) : <p className="text-xs text-muted-foreground">Not completed.</p>}
         </Sec>
+        </div>
+        </TabsContent>
 
+        {/* ── Tab: Avaliacoes ── */}
+        <TabsContent value="avaliacoes" className="space-y-4 mt-4">
+        <div className="space-y-2.5">
         {/* ── Foot Scans ── */}
         <Sec title="Foot Scans" icon={Footprints} badge={data.footScans?.length ? `${data.footScans.length}` : "None"}>
           {data.footScans?.length > 0 ? data.footScans.map((s: any) => (
@@ -942,80 +968,7 @@ export default function PatientProfilePage() {
           );
         })()}
 
-        {/* ── SOAP Notes ── */}
-        <Sec title="Clinical Notes (SOAP)" icon={Stethoscope} badge={data.soapNotes?.length ? `${data.soapNotes.length}` : "None"} open={true}
-          actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowNewNote(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Add</Button>}
-        >
-          {data.soapNotes?.length > 0 ? data.soapNotes.map((n: any) => (
-            <div key={n.id} className="border rounded-lg p-2.5 mb-2 space-y-1">
-              <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                <span>{new Date(n.createdAt).toLocaleString()}</span>
-                <div className="flex items-center gap-1">
-                  {n.therapist && <span>by {n.therapist.firstName} {n.therapist.lastName}</span>}
-                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setNoteForm({ subjective: n.subjective || "", objective: n.objective || "", assessment: n.assessment || "", plan: n.plan || "" }); setEditingNoteId(n.id); }}><Pencil className="h-2.5 w-2.5" /></Button>
-                </div>
-              </div>
-              {editingNoteId === n.id ? (
-                <div className="space-y-1.5 bg-muted/30 p-2 rounded">
-                  <EF label="S — Subjective" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
-                  <EF label="O — Objective" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
-                  <EF label="A — Assessment" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
-                  <EF label="P — Plan" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
-                  <div className="flex gap-1"><Button size="sm" className="h-6 text-[10px]" onClick={saveEditNote} disabled={saving}><Save className="h-2.5 w-2.5 mr-0.5" /> Save</Button><Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setEditingNoteId(null)}>Cancel</Button></div>
-                </div>
-              ) : (
-                <>
-                  {n.subjective && <div><p className="text-[9px] font-bold text-blue-600">S — Subjective</p><p className="text-[10px]">{n.subjective}</p></div>}
-                  {n.objective && <div><p className="text-[9px] font-bold text-green-600">O — Objective</p><p className="text-[10px]">{n.objective}</p></div>}
-                  {n.assessment && <div><p className="text-[9px] font-bold text-amber-600">A — Assessment</p><p className="text-[10px]">{n.assessment}</p></div>}
-                  {n.plan && <div><p className="text-[9px] font-bold text-purple-600">P — Plan</p><p className="text-[10px]">{n.plan}</p></div>}
-                </>
-              )}
-            </div>
-          )) : <p className="text-xs text-muted-foreground">No notes yet.</p>}
-        </Sec>
-
-        {/* ── Documents ── */}
-        <Sec title="Documents & Files" icon={FileUp} badge={data.documents?.length ? `${data.documents.length}` : "None"}
-          actions={<>
-            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowUpload(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
-            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowManualDoc(true)}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write</Button>
-            <Link href={`/admin/patients/${patientId}/documents`}><Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]"><Eye className="h-2.5 w-2.5 mr-0.5" /> Full</Button></Link>
-          </>}
-        >
-          {data.documents?.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {data.documents.map((doc: any) => (
-                <div key={doc.id} className="border rounded-lg p-2 flex items-start gap-2">
-                  <div className="w-7 h-7 rounded bg-muted/50 flex items-center justify-center shrink-0">
-                    {doc.fileType?.startsWith("image/") && doc.fileUrl ? <img src={doc.fileUrl} alt="" className="w-7 h-7 rounded object-cover" /> : <FileText className="h-3.5 w-3.5 text-muted-foreground" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {editingDocId === doc.id ? (
-                      <div className="space-y-1">
-                        <EF label="Title" value={docForm.title || ""} onChange={(v) => setDocForm({ ...docForm, title: v })} rows={1} />
-                        <EF label="Description" value={docForm.description || ""} onChange={(v) => setDocForm({ ...docForm, description: v })} rows={2} />
-                        <EF label="Extracted Text" value={docForm.extractedText || ""} onChange={(v) => setDocForm({ ...docForm, extractedText: v })} rows={3} />
-                        <div className="flex gap-1"><Button size="sm" className="h-5 text-[9px]" onClick={saveDoc} disabled={saving}><Save className="h-2 w-2 mr-0.5" /> Save</Button><Button variant="outline" size="sm" className="h-5 text-[9px]" onClick={() => setEditingDocId(null)}>Cancel</Button></div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-1">
-                          <p className="text-[10px] font-medium truncate flex-1">{doc.title || doc.fileName}</p>
-                          <Button variant="ghost" size="sm" className="h-4 w-4 p-0 shrink-0" onClick={() => { setDocForm({ title: doc.title || "", description: doc.description || "", extractedText: doc.extractedText || "" }); setEditingDocId(doc.id); }}><Pencil className="h-2 w-2" /></Button>
-                        </div>
-                        <Badge variant="outline" className="text-[7px] h-3.5">{DOC_TYPES.find(t => t.value === doc.documentType)?.label || doc.documentType}</Badge>
-                        {doc.description && <p className="text-[9px] text-muted-foreground line-clamp-2 mt-0.5">{doc.description}</p>}
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : <p className="text-xs text-muted-foreground">No documents.</p>}
-        </Sec>
-
-        {/* ── AI Assessments ── */}
+        {/* ── AI Assessments (inside avaliacoes) ── */}
         <Sec title="AI Assessments" icon={Brain} badge={data.diagnoses?.length ? `${data.diagnoses.length}` : "None"}
           actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={generateDiagnosis} disabled={generating}>
             {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Plus className="h-2.5 w-2.5 mr-0.5" />} Generate
@@ -1048,7 +1001,7 @@ export default function PatientProfilePage() {
                 <>
                   <p className="text-[10px] whitespace-pre-wrap">{d.summary}</p>
                   {d.therapistComments && <p className="text-[10px] bg-amber-500/10 p-1.5 rounded text-amber-400">Therapist: {d.therapistComments}</p>}
-                  <Link href={`/admin/patients/${patientId}/diagnosis`} className="text-[10px] text-primary hover:underline">View full →</Link>
+                  <Link href={`/admin/patients/${patientId}/diagnosis`} className="text-[10px] text-primary hover:underline">View full &rarr;</Link>
                 </>
               )}
             </div>
@@ -1061,7 +1014,7 @@ export default function PatientProfilePage() {
           )}
         </Sec>
 
-        {/* ── Treatment Protocols ── */}
+        {/* ── Treatment Protocols (inside avaliacoes) ── */}
         <Sec title="Treatment Protocols" icon={Heart} badge={data.protocols?.length ? `${data.protocols.length}` : "None"}>
           {data.protocols?.length > 0 ? data.protocols.map((pr: any) => (
             <div key={pr.id} className="border rounded-lg p-2.5 mb-2 space-y-1.5">
@@ -1101,6 +1054,44 @@ export default function PatientProfilePage() {
               )}
             </div>
           )}
+        </Sec>
+        </div>
+        </TabsContent>
+
+        {/* ── Tab: Notas Clinicas ── */}
+        <TabsContent value="notas" className="space-y-4 mt-4">
+        <div className="space-y-2.5">
+        {/* ── SOAP Notes ── */}
+        <Sec title="Clinical Notes (SOAP)" icon={Stethoscope} badge={data.soapNotes?.length ? `${data.soapNotes.length}` : "None"} open={true}
+          actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowNewNote(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Add</Button>}
+        >
+          {data.soapNotes?.length > 0 ? data.soapNotes.map((n: any) => (
+            <div key={n.id} className="border rounded-lg p-2.5 mb-2 space-y-1">
+              <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+                <span>{new Date(n.createdAt).toLocaleString()}</span>
+                <div className="flex items-center gap-1">
+                  {n.therapist && <span>by {n.therapist.firstName} {n.therapist.lastName}</span>}
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setNoteForm({ subjective: n.subjective || "", objective: n.objective || "", assessment: n.assessment || "", plan: n.plan || "" }); setEditingNoteId(n.id); }}><Pencil className="h-2.5 w-2.5" /></Button>
+                </div>
+              </div>
+              {editingNoteId === n.id ? (
+                <div className="space-y-1.5 bg-muted/30 p-2 rounded">
+                  <EF label="S — Subjective" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
+                  <EF label="O — Objective" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
+                  <EF label="A — Assessment" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
+                  <EF label="P — Plan" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
+                  <div className="flex gap-1"><Button size="sm" className="h-6 text-[10px]" onClick={saveEditNote} disabled={saving}><Save className="h-2.5 w-2.5 mr-0.5" /> Save</Button><Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setEditingNoteId(null)}>Cancel</Button></div>
+                </div>
+              ) : (
+                <>
+                  {n.subjective && <div><p className="text-[9px] font-bold text-blue-600">S — Subjective</p><p className="text-[10px]">{n.subjective}</p></div>}
+                  {n.objective && <div><p className="text-[9px] font-bold text-green-600">O — Objective</p><p className="text-[10px]">{n.objective}</p></div>}
+                  {n.assessment && <div><p className="text-[9px] font-bold text-amber-600">A — Assessment</p><p className="text-[10px]">{n.assessment}</p></div>}
+                  {n.plan && <div><p className="text-[9px] font-bold text-purple-600">P — Plan</p><p className="text-[10px]">{n.plan}</p></div>}
+                </>
+              )}
+            </div>
+          )) : <p className="text-xs text-muted-foreground">No notes yet.</p>}
         </Sec>
 
         {/* ── Blood Pressure Readings ── */}
@@ -1180,8 +1171,55 @@ export default function PatientProfilePage() {
             </div>
           ) : <p className="text-xs text-muted-foreground">No blood pressure readings recorded.</p>}
         </Sec>
+        </div>
+        </TabsContent>
 
-      </div>
+        {/* ── Tab: Documentos ── */}
+        <TabsContent value="docs" className="mt-4">
+        <div className="space-y-2.5">
+        {/* ── Documents ── */}
+        <Sec title="Documents & Files" icon={FileUp} badge={data.documents?.length ? `${data.documents.length}` : "None"}
+          actions={<>
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowUpload(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowManualDoc(true)}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write</Button>
+            <Link href={`/admin/patients/${patientId}/documents`}><Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]"><Eye className="h-2.5 w-2.5 mr-0.5" /> Full</Button></Link>
+          </>}
+        >
+          {data.documents?.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {data.documents.map((doc: any) => (
+                <div key={doc.id} className="border rounded-lg p-2 flex items-start gap-2">
+                  <div className="w-7 h-7 rounded bg-muted/50 flex items-center justify-center shrink-0">
+                    {doc.fileType?.startsWith("image/") && doc.fileUrl ? <img src={doc.fileUrl} alt="" className="w-7 h-7 rounded object-cover" /> : <FileText className="h-3.5 w-3.5 text-muted-foreground" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {editingDocId === doc.id ? (
+                      <div className="space-y-1">
+                        <EF label="Title" value={docForm.title || ""} onChange={(v) => setDocForm({ ...docForm, title: v })} rows={1} />
+                        <EF label="Description" value={docForm.description || ""} onChange={(v) => setDocForm({ ...docForm, description: v })} rows={2} />
+                        <EF label="Extracted Text" value={docForm.extractedText || ""} onChange={(v) => setDocForm({ ...docForm, extractedText: v })} rows={3} />
+                        <div className="flex gap-1"><Button size="sm" className="h-5 text-[9px]" onClick={saveDoc} disabled={saving}><Save className="h-2 w-2 mr-0.5" /> Save</Button><Button variant="outline" size="sm" className="h-5 text-[9px]" onClick={() => setEditingDocId(null)}>Cancel</Button></div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-1">
+                          <p className="text-[10px] font-medium truncate flex-1">{doc.title || doc.fileName}</p>
+                          <Button variant="ghost" size="sm" className="h-4 w-4 p-0 shrink-0" onClick={() => { setDocForm({ title: doc.title || "", description: doc.description || "", extractedText: doc.extractedText || "" }); setEditingDocId(doc.id); }}><Pencil className="h-2 w-2" /></Button>
+                        </div>
+                        <Badge variant="outline" className="text-[7px] h-3.5">{DOC_TYPES.find(t => t.value === doc.documentType)?.label || doc.documentType}</Badge>
+                        {doc.description && <p className="text-[9px] text-muted-foreground line-clamp-2 mt-0.5">{doc.description}</p>}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-xs text-muted-foreground">No documents.</p>}
+        </Sec>
+        </div>
+        </TabsContent>
+
+      </Tabs>
     </div>
   );
 }

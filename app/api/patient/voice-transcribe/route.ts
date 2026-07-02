@@ -6,72 +6,77 @@ import { getEffectiveUser } from '@/lib/get-effective-user';
 
 export const dynamic = "force-dynamic";
 
-// Pricing estimates
-const MINIMAX_COST_PER_MINUTE_USD = 0.01;  // ~$0.01/min for speech-01-hd
-const GEMINI_COST_PER_MINUTE_USD = 0.075;  // ~$0.075/min for Gemini Flash
+// Pricing estimates (GDPR-safe providers only — no Minimax for patient audio)
+const GROQ_CLAUDE_COST_PER_MINUTE_USD = 0.005; // Groq Whisper (free tier) + Claude Haiku
+const GEMINI_COST_PER_MINUTE_USD = 0.075;       // Gemini Flash fallback
 const MARGIN_PERCENT = 20;
 
-// ─── Minimax transcription + extraction ──────────────────────────────────────
+// ─── Primary: Groq Whisper (STT) + Claude Haiku (extraction) ─────────────────
+// Patient audio never sent to Minimax (Chinese jurisdiction — UK GDPR risk)
 
-async function transcribeWithMinimax(
+async function transcribeWithGroqAndClaude(
   audioBuffer: ArrayBuffer,
   mimeType: string,
   systemPrompt: string,
   language: string
 ): Promise<string> {
-  const apiKey = process.env.MINIMAX_API_KEY;
-  if (!apiKey) throw new Error("MINIMAX_API_KEY not configured");
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) throw new Error("GROQ_API_KEY not configured");
 
-  // Step 1: STT — audio → raw transcript
+  // Step 1: Groq Whisper STT — audio → raw transcript
+  const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("mp3") ? "mp3" : mimeType.includes("wav") ? "wav" : "webm";
   const formData = new FormData();
   const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
-  formData.append("file", blob, `audio.${mimeType.split("/")[1] || "webm"}`);
-  formData.append("model", "speech-01-hd");
-  formData.append("language", language.split("-")[0]); // e.g. "pt" from "pt-BR"
+  formData.append("file", blob, `audio.${ext}`);
+  formData.append("model", "whisper-large-v3-turbo");
+  formData.append("response_format", "text");
+  const langCode = language.split("-")[0];
+  if (langCode) formData.append("language", langCode);
 
-  const sttRes = await fetch("https://api.minimaxi.chat/v1/audio/transcriptions", {
+  const sttRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
+    headers: { Authorization: `Bearer ${groqKey}` },
     body: formData,
   });
 
   if (!sttRes.ok) {
     const err = await sttRes.text();
-    throw new Error(`Minimax STT error (${sttRes.status}): ${err}`);
+    throw new Error(`Groq Whisper STT error (${sttRes.status}): ${err}`);
   }
 
-  const sttData = await sttRes.json();
-  const rawTranscript: string = sttData.text || "";
-  if (!rawTranscript) throw new Error("Empty transcript from Minimax STT");
+  const rawTranscript = (await sttRes.text()).trim();
+  if (!rawTranscript) throw new Error("Empty transcript from Groq Whisper");
 
-  // Step 2: LLM extraction — transcript → structured JSON
-  const llmRes = await fetch("https://api.minimaxi.chat/v1/chat/completions", {
+  // Step 2: Claude Haiku — raw transcript → structured JSON extraction
+  const claudeKey = process.env.ANTHROPIC_API_KEY;
+  if (!claudeKey) return rawTranscript; // return plain text if Claude unavailable
+
+  const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+      "content-type": "application/json",
+      "x-api-key": claudeKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "MiniMax-M3",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: rawTranscript },
-      ],
-      temperature: 0.1,
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: "user", content: rawTranscript }],
+      temperature: 0.1,
     }),
   });
 
-  if (!llmRes.ok) {
-    const err = await llmRes.text();
-    throw new Error(`Minimax LLM error (${llmRes.status}): ${err}`);
+  if (!claudeRes.ok) {
+    const err = await claudeRes.text();
+    throw new Error(`Claude extraction error (${claudeRes.status}): ${err}`);
   }
 
-  const llmData = await llmRes.json();
-  return llmData.choices?.[0]?.message?.content || rawTranscript;
+  const claudeData = await claudeRes.json();
+  return claudeData.content?.[0]?.text || rawTranscript;
 }
 
-// POST — Patient sends audio blob, we transcribe via Minimax M3 (fallback: Gemini)
+// POST — Patient sends audio blob, transcribed via Groq Whisper + Claude (fallback: Gemini)
 export async function POST(req: NextRequest) {
   try {
     const effectiveUser = await getEffectiveUser();
@@ -130,18 +135,18 @@ If the patient mentions medications, list them. If they mention allergies, list 
         systemPrompt = `Transcribe the following audio accurately. If there are form fields to fill (${fields.join(", ")}), extract the relevant information into a JSON object with those field names as keys. Otherwise return { "transcript": "..." }. Language: ${language}.`;
     }
 
-    // ── Try Minimax M3 first (STT + LLM extraction) ─────────────────────────
+    // ── Primary: Groq Whisper + Claude Haiku (GDPR-safe) ────────────────────
     let rawText = "";
     let usedProvider = "gemini";
     let costPerMin = GEMINI_COST_PER_MINUTE_USD;
 
     try {
-      rawText = await transcribeWithMinimax(audioBuffer, audioMimeType, systemPrompt, language);
-      usedProvider = "minimax";
-      costPerMin = MINIMAX_COST_PER_MINUTE_USD;
-      console.log("[voice-transcribe] Minimax M3 transcription OK");
-    } catch (minimaxErr: any) {
-      console.warn("[voice-transcribe] Minimax failed, falling back to Gemini:", minimaxErr.message);
+      rawText = await transcribeWithGroqAndClaude(audioBuffer, audioMimeType, systemPrompt, language);
+      usedProvider = "groq+claude";
+      costPerMin = GROQ_CLAUDE_COST_PER_MINUTE_USD;
+      console.log("[voice-transcribe] Groq Whisper + Claude transcription OK");
+    } catch (primaryErr: any) {
+      console.warn("[voice-transcribe] Groq+Claude failed, falling back to Gemini:", primaryErr.message);
 
       // ── Fallback: Gemini multimodal ─────────────────────────────────────────
       const geminiConfig = await (prisma as any).systemConfig.findUnique({ where: { key: "GEMINI_API_KEY" } });

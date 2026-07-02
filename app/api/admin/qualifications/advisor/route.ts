@@ -90,9 +90,9 @@ export async function POST(req: NextRequest) {
 
 YOUR CLIENT — BRUNO AZENHA TONHETA:
 - Brazilian-born, UK-based physiotherapist and clinic owner
-- Owns "Bruno Physical Rehabilitation" (BPR) with clinics in Richmond (London) and Ipswich (Suffolk)
+- Owns "Bruno Physical Rehabilitation" (BPR) clinic in Ipswich, Suffolk
 - Ex-professional footballer (played in Brazil, Germany, Sweden), had 3 major knee surgeries — this fuelled his passion for rehabilitation
-- Address: 20 Harlequin Close, Isleworth, TW7 7LA
+- Address: Ipswich, Suffolk (full address TBC)
 
 ACADEMIC BACKGROUND:
 - Incomplete Licenciatura e Bacharelado em Ciências Biológica - Modalidade Medica (Physiotherapy and Biological Sciences – Medical Modality)
