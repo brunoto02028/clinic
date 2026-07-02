@@ -3,6 +3,12 @@
 // All AI calls in the system should go through this layer.
 
 import { getConfigValue } from "@/lib/system-config";
+import { claudeGenerate } from "@/lib/claude";
+
+// ─── Claude sentinel — import this constant to route callAI/callAIChat through Claude Sonnet 5 ───
+// When OPENROUTER_API_KEY is set → uses claude-sonnet-5 via OpenRouter
+// Otherwise → uses claude-sonnet-4-20250514 via direct Anthropic API
+export const CLAUDE_SONNET_MODEL = 'claude-sonnet';
 
 // ─── Types ───
 
@@ -457,7 +463,8 @@ async function analyzeImageGemini(
 
 /**
  * Generate text using AI.
- * Priority chain: Minimax M3 (primary) → Groq (secondary) → Gemini (fallback)
+ * When model starts with 'claude' → routes to Claude Sonnet 5 (OpenRouter) or Sonnet 4 (direct Anthropic)
+ * Default chain: Minimax M3 (primary) → Groq (secondary) → Gemini (fallback)
  */
 export async function callAI(prompt: string, opts?: AICallOptions): Promise<string> {
   const callOpts = {
@@ -465,6 +472,14 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
     maxTokens: opts?.maxTokens,
     systemPrompt: opts?.systemPrompt,
   };
+
+  // 0. Route to Claude when explicitly requested
+  if (opts?.model?.startsWith('claude')) {
+    return claudeGenerate(
+      [{ role: 'user', content: prompt }],
+      { temperature: opts?.temperature, maxTokens: opts?.maxTokens, systemPrompt: opts?.systemPrompt }
+    );
+  }
 
   // 1. Try Minimax M3 first (primary)
   const minimaxKey = await getMinimaxKey();
@@ -586,7 +601,8 @@ export async function streamAI(prompt: string, opts?: AIStreamOptions): Promise<
 
 /**
  * Multi-turn chat using AI.
- * Priority chain: Minimax M3 (primary) → Groq → Gemini
+ * When model starts with 'claude' → routes to Claude Sonnet 5 (OpenRouter) or Sonnet 4 (direct Anthropic)
+ * Default chain: Minimax M3 (primary) → Groq → Gemini
  * messages: array of { role: "user"|"assistant"|"system", content: string }
  */
 export async function callAIChat(
@@ -598,6 +614,20 @@ export async function callAIChat(
     maxTokens: opts?.maxTokens,
     systemPrompt: opts?.systemPrompt,
   };
+
+  // 0. Route to Claude when explicitly requested
+  if (opts?.model?.startsWith('claude')) {
+    const claudeMessages = messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+    const systemMsg = opts?.systemPrompt
+      || messages.find(m => m.role === 'system')?.content;
+    return claudeGenerate(claudeMessages, {
+      temperature: opts?.temperature,
+      maxTokens: opts?.maxTokens,
+      systemPrompt: systemMsg,
+    });
+  }
 
   // 1. Try Minimax M3 first (primary)
   const minimaxKey = await getMinimaxKey();

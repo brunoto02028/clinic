@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     // ─── If reference image provided, use Gemini multimodal (image model) ───
     if (referenceImageBase64) {
       const apiKey = await getConfigValue('GEMINI_API_KEY');
-      const imageModel = (await getConfigValue('AI_IMAGE_MODEL')) || 'gemini-2.5-flash-image';
+      const imageModel = (await getConfigValue('AI_IMAGE_MODEL')) || 'gemini-2.5-flash-preview-image-generation';
       if (apiKey) {
         const refMime = referenceImageMime || 'image/jpeg';
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${apiKey}`;
