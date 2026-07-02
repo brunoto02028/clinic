@@ -5,7 +5,7 @@ description: Project vault with all access credentials and infrastructure info f
 # BPR Clinic — Project Vault & SPEC Completa
 
 > **⚠️ SENSITIVE — não partilhar publicamente**
-> Última actualização: 2 Julho 2026
+> Última actualização: 2 Julho 2026 — Atlas Rehab Agent
 
 ---
 
@@ -164,6 +164,7 @@ USE_OPENROUTER = Boolean(process.env.OPENROUTER_API_KEY)
 - **AI Co-Worker** — assistente contextual Admin (Claude Sonnet 5)
 - **Study Assistant** — tutor AI para diploma Level 5 Sports Therapy
 - **Biohacking Admin** — protocolos HRV/sono/performance + Terra API
+- **Clinical Rehab Agent «Atlas»** — `/admin/clinical/rehab` + tab em cada paciente — pré-avaliação interrogativa + plano multifásico + chat
 - **Settings** — system config, AI keys, geração de imagens
 
 ### Módulos paciente (dashboard)
@@ -215,6 +216,80 @@ USE_OPENROUTER = Boolean(process.env.OPENROUTER_API_KEY)
 - `publishLanguage` — idioma primário para SEO e slug
 - Toggle público EN/PT via `useLocale` (client-side, sem hydration mismatch)
 
+### Clinical Rehab Agent «Atlas» (2 Jul 2026)
+- Agente AI especialista em 6 áreas: **Joelho · Tornozelo · Anca · Ombro · Coluna · Músculo**
+- Persona humanizada: nome **Atlas**, foto humana, Clinical Rehabilitation Specialist
+- **Avatar:** `https://randomuser.me/api/portraits/men/52.jpg`
+- Modelo: `claude-sonnet-5` via OpenRouter (temperatura 0.3 para precisão clínica)
+- **Fluxo:** Pre-assessment chat (Atlas interroga primeiro) → geração de plano JSON → chat follow-up com referências
+- **Só para uso interno admin** — nunca exposto ao paciente
+
+#### Ficheiros
+| Ficheiro | Função |
+|---|---|
+| `lib/rehab-agent.ts` | System prompt Atlas, `generateRehabPlan()`, `streamRehabPlan()`, `rehabChat()`, `preAssess()` |
+| `app/api/admin/patients/[id]/rehab-plan/route.ts` | GET lista + POST gerar plano |
+| `app/api/admin/patients/[id]/rehab-plan/[planId]/route.ts` | GET plano individual + PATCH status |
+| `app/api/admin/patients/[id]/rehab-plan/[planId]/chat/route.ts` | POST chat follow-up com plano |
+| `app/api/admin/patients/[id]/rehab-plan/pre-assess/route.ts` | POST chat pré-avaliação stateless |
+| `app/api/admin/rehab-plans/recent/route.ts` | GET últimos 20 planos (página independente) |
+| `app/admin/clinical/rehab/page.tsx` | Página independente: Atlas hero + 6 especialidades + search + pre-assess + plano |
+| `app/admin/patients/[id]/page.tsx` | Tab «Rehab Agent» no perfil do paciente |
+
+#### Regras clínicas do Atlas
+- **NUNCA diagnostica** — apenas formula hipóteses
+- Referências obrigatórias: PubMed, NICE, Cochrane, BJSM, JOSPT, JBJS, PTJ, Clinical Rehabilitation, AJSM, European Spine Journal, KSSTA
+- Fontes proibidas: WebMD, NHS leaflets, Wikipedia, blogs, redes sociais
+- Incorpora equipamento BPR: MLS Laser, MENS, TENS, Ultrassom, Dry Needling, Ventosas
+- Interroga activamente — nunca lisonjeia
+- Levanta red flags e critérios de referenciação
+
+#### Output JSON (RehabPlanOutput)
+```typescript
+{
+  diagnosisHypothesis: string
+  differentialDiagnoses: string[]
+  severity: string
+  phase: string
+  prognosis: string
+  returnToActivityTimeline: string
+  redFlags: string[]
+  phases: Array<{
+    phase: string; duration: string; goals: string[]
+    bprTreatments: string[]
+    exercises: Array<{ name; sets; reps; frequency; notes }>
+    precautions: string[]
+  }>
+  references: string[]
+}
+```
+
+#### Prisma models
+```prisma
+model RehabPlan {
+  id              String         @id @default(cuid())
+  patientId       String
+  createdById     String
+  chiefComplaint  String
+  bodyPart        String
+  severity        String
+  phase           String
+  planJson        Json           // RehabPlanOutput
+  status          String         @default("active")
+  createdAt       DateTime       @default(now())
+  messages        RehabMessage[]
+  @@map("rehab_plans")
+}
+model RehabMessage {
+  id        String   @id @default(cuid())
+  planId    String
+  role      String   // "user" | "assistant"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  @@map("rehab_messages")
+}
+```
+
 ---
 
 ## 🗂️ Prisma DB — tabelas principais
@@ -231,6 +306,7 @@ system_configs
 vapi_calls
 study_projects, study_documents, study_messages, study_drafts
 biohacking_protocols, biohacking_assignments, terra_webhook_events
+rehab_plans, rehab_messages
 ```
 
 ---
