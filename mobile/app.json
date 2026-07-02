@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bpr.rehab"
+      "bundleIdentifier": "com.bpr.rehab",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.bpr.rehab",
@@ -24,7 +27,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -32,13 +36,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "O BPR Rehab usa a câmera para capturar fotos dos seus pés para o scan 3D."
-        }
-      ]
-    ]
+      "expo-secure-store"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2ac11231-fdb1-485a-adaf-8cf0209bf51d"
+      }
+    }
   }
 }
