@@ -463,8 +463,8 @@ async function analyzeImageGemini(
 
 /**
  * Generate text using AI.
- * When model starts with 'claude' → routes to Claude Sonnet 5 (OpenRouter) or Sonnet 4 (direct Anthropic)
- * Default chain: Minimax M3 (primary) → Groq (secondary) → Gemini (fallback)
+ * OpenRouter (Claude Sonnet 5) is first when OPENROUTER_API_KEY is configured.
+ * Fallback chain: Minimax M3 → Groq → Gemini
  */
 export async function callAI(prompt: string, opts?: AICallOptions): Promise<string> {
   const callOpts = {
@@ -473,8 +473,8 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
     systemPrompt: opts?.systemPrompt,
   };
 
-  // 0. Route to Claude when explicitly requested
-  if (opts?.model?.startsWith('claude')) {
+  // 0. OpenRouter / Claude Sonnet 5 — PRIMARY for all text when key is configured
+  if (process.env.OPENROUTER_API_KEY || opts?.model?.startsWith('claude')) {
     return claudeGenerate(
       [{ role: 'user', content: prompt }],
       { temperature: opts?.temperature, maxTokens: opts?.maxTokens, systemPrompt: opts?.systemPrompt }
@@ -601,9 +601,8 @@ export async function streamAI(prompt: string, opts?: AIStreamOptions): Promise<
 
 /**
  * Multi-turn chat using AI.
- * When model starts with 'claude' → routes to Claude Sonnet 5 (OpenRouter) or Sonnet 4 (direct Anthropic)
- * Default chain: Minimax M3 (primary) → Groq → Gemini
- * messages: array of { role: "user"|"assistant"|"system", content: string }
+ * OpenRouter (Claude Sonnet 5) is first when OPENROUTER_API_KEY is configured.
+ * Fallback chain: Minimax M3 → Groq → Gemini
  */
 export async function callAIChat(
   messages: Array<{ role: string; content: string }>,
@@ -615,8 +614,8 @@ export async function callAIChat(
     systemPrompt: opts?.systemPrompt,
   };
 
-  // 0. Route to Claude when explicitly requested
-  if (opts?.model?.startsWith('claude')) {
+  // 0. OpenRouter / Claude Sonnet 5 — PRIMARY for all text when key is configured
+  if (process.env.OPENROUTER_API_KEY || opts?.model?.startsWith('claude')) {
     const claudeMessages = messages
       .filter(m => m.role !== 'system')
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
