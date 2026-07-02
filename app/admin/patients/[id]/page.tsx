@@ -1270,6 +1270,12 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   const [sending, setSending]           = useState(false);
   const [sentPlanId, setSentPlanId]     = useState<string | null>(null);
 
+  // Quick free-form chat with Atlas (list view)
+  const [quickHistory, setQuickHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [quickInput, setQuickInput]     = useState("");
+  const [quickLoading, setQuickLoading] = useState(false);
+  const quickEndRef = useRef<HTMLDivElement>(null);
+
   const preEndRef  = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -1373,6 +1379,30 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
     finally { setChatLoading(false); }
   };
 
+  const handleQuickChat = async () => {
+    const msg = quickInput.trim();
+    if (!msg || quickLoading) return;
+    const newHistory = [...quickHistory, { role: "user" as const, content: msg }];
+    setQuickHistory(newHistory);
+    setQuickInput("");
+    setQuickLoading(true);
+    setTimeout(() => quickEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/atlas-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg, history: quickHistory }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setQuickHistory(h => [...h, { role: "assistant", content: d.reply }]);
+    } catch (e: any) { setError(e.message); }
+    finally {
+      setQuickLoading(false);
+      setTimeout(() => quickEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
+  };
+
   const handleSend = async () => {
     if (!activePlan || sending) return;
     setSending(true);
@@ -1416,10 +1446,8 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
         </Button>
       </div>
       {plans.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
-          <AtlasAvatar size="lg" />
-          <p className="text-xs mt-2 font-medium">{ATLAS_NAME} — {ATLAS_TITLE}</p>
-          <p className="text-[10px] mt-1 max-w-xs mx-auto">Start a pre-assessment chat. Atlas will question you about the patient before generating a structured rehab plan.</p>
+        <div className="text-center py-4 text-muted-foreground border border-dashed rounded-lg">
+          <p className="text-[10px] mt-1">Nenhum plano gerado. Usa "New Assessment" para criar um plano estruturado.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -1431,6 +1459,7 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
                   <Badge variant="outline" className="text-[9px] h-4">{p.severity}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4">{p.phase}</Badge>
                   <Badge variant="outline" className={`text-[9px] h-4 ${p.status === "active" ? "border-emerald-500/40 text-emerald-400" : ""}`}>{p.status}</Badge>
+                  {p.sentToPatient && <Badge variant="outline" className="text-[9px] h-4 border-emerald-500/40 text-emerald-400">Enviado ✓</Badge>}
                   <span className="text-[9px] text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("en-GB")}</span>
                 </div>
               </div>
@@ -1439,6 +1468,58 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
           ))}
         </div>
       )}
+
+      {/* ── Chat Livre com Atlas ── */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border-b">
+          <AtlasAvatar size="sm" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold leading-tight">Chat com Atlas</p>
+            <p className="text-[9px] text-muted-foreground leading-tight">Faz perguntas sobre este paciente — diagnóstico, exercícios, abordagem clínica…</p>
+          </div>
+          {quickHistory.length > 0 && (
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-muted-foreground" onClick={() => setQuickHistory([])}>
+              Limpar
+            </Button>
+          )}
+        </div>
+
+        {quickHistory.length > 0 && (
+          <div className="max-h-72 overflow-y-auto p-3 space-y-2.5">
+            {quickHistory.map((m, i) => (
+              <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                {m.role === "assistant" && <AtlasAvatar size="sm" />}
+                <div className={`max-w-[90%] text-[10px] rounded-xl px-2.5 py-2 leading-relaxed whitespace-pre-wrap ${
+                  m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 rounded-tl-none"
+                }`}>{m.content}</div>
+              </div>
+            ))}
+            {quickLoading && (
+              <div className="flex items-start gap-2">
+                <AtlasAvatar size="sm" />
+                <div className="bg-muted/40 rounded-xl rounded-tl-none px-2.5 py-2">
+                  <Loader2 className="h-3 w-3 animate-spin text-emerald-400" />
+                </div>
+              </div>
+            )}
+            <div ref={quickEndRef} />
+          </div>
+        )}
+
+        <div className="p-2 flex gap-2">
+          <Input
+            className="text-xs h-9 flex-1"
+            placeholder="Ex: 'Que exercícios sugeres para esta fase?' ou 'O que pode causar este padrão de dor?'"
+            value={quickInput}
+            onChange={e => setQuickInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleQuickChat(); } }}
+            disabled={quickLoading}
+          />
+          <Button size="sm" className="h-9 w-9 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={handleQuickChat} disabled={quickLoading || !quickInput.trim()}>
+            {quickLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 
