@@ -25,9 +25,9 @@ async function getClinicSettings(): Promise<{ logoUrl: string; phone: string; em
 export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB'): Promise<string> {
   const { logoUrl, phone, email } = await getClinicSettings();
   const pt = isPt(locale);
-  // Header: green gradient background. Logo rendered white via CSS filter (works in browser/webmail preview).
+  // Header: green gradient background. Logo shown on a white pill — CSS filter not used (stripped by Gmail).
   const logoHtml = logoUrl
-    ? `<img src="${logoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;filter:brightness(0) invert(1);" />`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="background:#ffffff;border-radius:12px;padding:10px 22px;"><img src="${logoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:60px;max-width:200px;display:block;" /></td></tr></table>`
     : `<span style="color:#ffffff;font-size:22px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:-0.5px;">Bruno Physical Rehabilitation</span>`;
   // Footer: normal colour logo, no filter
   const footerLogoHtml = logoUrl
@@ -594,8 +594,8 @@ export async function renderTemplate(
 export async function getPatientLocale(patientId: string): Promise<string> {
   try {
     const u = await (prisma as any).user.findUnique({ where: { id: patientId }, select: { preferredLocale: true } });
-    return u?.preferredLocale || 'en-GB';
-  } catch { return 'en-GB'; }
+    return u?.preferredLocale || 'pt-BR';
+  } catch { return 'pt-BR'; }
 }
 
 // ─── Send a templated email ───
