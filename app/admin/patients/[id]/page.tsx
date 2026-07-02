@@ -1453,9 +1453,15 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   const handleSendQuestions = async () => {
     const stripMd = (s: string) => s
       .replace(/\*\*/g, "").replace(/\*/g, "").replace(/_/g, "")
-      .replace(/^#+\s*/gm, "").replace(/^>\s*/gm, "").replace(/`/g, "")
-      .replace(/^[-•–]\s*/gm, "").replace(/^\d+[\.\)]\s*/, "").trim();
-    const lines = qText.split("\n").map(l => stripMd(l)).filter(Boolean);
+      .replace(/^#+\s*/gm, "").replace(/^>\s*/gm, "").replace(/`/g, "").trim();
+    let lines: string[];
+    if (qType === "report") {
+      // For reports, keep paragraphs (split by blank lines) — preserves structure
+      lines = qText.split(/\n\s*\n/).map(p => p.replace(/^[-•–]\s*/gm, "").trim()).filter(Boolean);
+    } else {
+      // For questions, one question per line, strip markdown list syntax
+      lines = qText.split("\n").map(l => stripMd(l.replace(/^[-•–]\s*/gm, "").replace(/^\d+[\.\)]\s*/, ""))).filter(Boolean);
+    }
     if (!lines.length) return;
     setSendingQ(true);
     try {
@@ -1555,16 +1561,13 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
                   .replace(/\*\*/g, "").replace(/\*/g, "").replace(/_/g, "")
                   .replace(/^#+\s*/gm, "").replace(/^>\s*/gm, "").replace(/`/g, "")
                   .replace(/^[-•–]\s*/gm, "").trim();
-                const numbered = lastAssistant.content.split("\n")
-                  .filter(l => /^\d+[\.\)]/.test(l.trim()))
-                  .map(l => stripMd(l.replace(/^\d+[\.\)]\s*/, "")))
-                  .filter(Boolean);
-                const questions = lastAssistant.content.split("\n")
-                  .filter(l => l.trim().endsWith("?"))
-                  .map(l => stripMd(l))
-                  .filter(Boolean);
-                const extracted = numbered.length > 0 ? numbered : questions.length > 0 ? questions : [];
-                setQText(extracted.length > 0 ? extracted.join("\n") : stripMd(lastAssistant.content).slice(0, 800));
+                const fullText = stripMd(lastAssistant.content).trim();
+                setQText(fullText);
+                // Auto-detect: if all lines are questions (end with ?), use questions mode.
+                // Otherwise (paragraphs, explanations, plans), default to report mode.
+                const lines = fullText.split("\n").map(l => l.trim()).filter(Boolean);
+                const allQuestions = lines.length > 0 && lines.every(l => l.endsWith("?"));
+                setQType(allQuestions ? "questions" : "report");
               }
               setShowQDialog(true);
             }}>
@@ -1732,27 +1735,39 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
               <p className="text-[10px] text-muted-foreground shrink-0">Língua:</p>
               <Button size="sm" variant={qLang === "pt" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("pt")}>🇧🇷 PT-BR</Button>
               <Button size="sm" variant={qLang === "en" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("en")}>🇬🇧 EN</Button>
-              <div className="flex-1" />
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-[10px] px-3 border-purple-500/40 text-purple-400 hover:bg-purple-500/10 gap-1"
-                onClick={handleReformatQuestions}
-                disabled={reformulating || !qText.trim()}
-              >
-                {reformulating ? <Loader2 className="h-3 w-3 animate-spin" /> : "✨"}
-                {reformulating ? "A reformular..." : "Reformular para pt-BR"}
-              </Button>
+              {qType === "questions" && (
+                <>
+                  <div className="flex-1" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[10px] px-3 border-purple-500/40 text-purple-400 hover:bg-purple-500/10 gap-1"
+                    onClick={handleReformatQuestions}
+                    disabled={reformulating || !qText.trim()}
+                  >
+                    {reformulating ? <Loader2 className="h-3 w-3 animate-spin" /> : "✨"}
+                    {reformulating ? "A reformular..." : "Reformular para pt-BR"}
+                  </Button>
+                </>
+              )}
             </div>
 
             <textarea
               className="w-full text-xs bg-muted/30 border rounded-lg p-2.5 resize-none h-52 placeholder:text-muted-foreground/50 font-mono leading-relaxed"
-              placeholder={qLang === "pt"
-                ? "Escreva uma pergunta por linha, ex:\nHá quanto tempo você sente essa dor?\nA dor irradia para o braço ou a mão?\nQue medicação você está tomando?"
-                : "One question per line, e.g.:\nHow long have you been experiencing this pain?\nDoes the pain radiate to your arm or hand?\nWhat medication are you currently taking?"}
+              placeholder={qType === "report"
+                ? (qLang === "pt"
+                  ? "Escreva o relatório ou feedback clínico aqui…\nEx: Após a avaliação, identificámos que a sua dor lombar está relacionada com…"
+                  : "Write the clinical report or feedback here…")
+                : (qLang === "pt"
+                  ? "Escreva uma pergunta por linha, ex:\nHá quanto tempo você sente essa dor?\nA dor irradia para o braço ou a mão?"
+                  : "One question per line, e.g.:\nHow long have you been experiencing this pain?")}
               value={qText} onChange={e => setQText(e.target.value)}
             />
-            <p className="text-[9px] text-muted-foreground">Cada linha = uma pergunta. O paciente responde no portal antes da consulta.</p>
+            <p className="text-[9px] text-muted-foreground">
+              {qType === "report"
+                ? "O paciente verá isto como uma mensagem informativa — sem campos de resposta."
+                : "Cada linha = uma pergunta. O paciente responde no portal antes da consulta."}
+            </p>
 
             {qSentOk ? (
               <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
