@@ -275,6 +275,10 @@ export async function middleware(request: NextRequest) {
         '/dashboard/consent': '/admin',
         '/dashboard/profile': '/admin',
         '/dashboard/guide': '/admin',
+        '/dashboard/questions': '/admin/patient-tasks',
+        '/dashboard/clinical-notes': '/admin/patients',
+        '/dashboard/exercises': '/admin/patients',
+        '/dashboard/education': '/admin/articles',
       };
       if (EXACT_MAP[pathname]) {
         return NextResponse.redirect(new URL(EXACT_MAP[pathname], request.url));

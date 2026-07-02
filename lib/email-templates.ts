@@ -6,28 +6,40 @@ const CONTACT_EMAIL = 'admin@bpr.rehab';
 const CONTACT_PHONE = '';
 
 // ─── Dynamic Clinic Settings ───
-async function getClinicSettings(): Promise<{ logoUrl: string; phone: string; email: string }> {
+async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: string; phone: string; email: string }> {
   try {
-    const s = await prisma.siteSettings.findFirst({ select: { logoUrl: true, phone: true, email: true } as any });
+    const s = await prisma.siteSettings.findFirst({ select: { logoUrl: true, phone: true, email: true, screenLogos: true } as any });
     const toAbs = (url: string | null | undefined) =>
       url ? (url.startsWith('http') ? url : `${BASE_URL}${url}`) : '';
+    // Try to get a real white logo (from screenLogos.landingHeader.darkLogoUrl or similar)
+    const sl = (s as any)?.screenLogos as Record<string, { logoUrl?: string; darkLogoUrl?: string }> | undefined;
+    const whiteLogoUrl = toAbs(
+      sl?.emailHeader?.logoUrl ||
+      sl?.landingHeader?.darkLogoUrl ||
+      sl?.dashboard?.darkLogoUrl ||
+      sl?.login?.darkLogoUrl ||
+      ''
+    );
     return {
       logoUrl: toAbs((s as any)?.logoUrl),
+      whiteLogoUrl,
       phone: (s as any)?.phone || CONTACT_PHONE,
       email: (s as any)?.email || CONTACT_EMAIL,
     };
   } catch {
-    return { logoUrl: '', phone: CONTACT_PHONE, email: CONTACT_EMAIL };
+    return { logoUrl: '', whiteLogoUrl: '', phone: CONTACT_PHONE, email: CONTACT_EMAIL };
   }
 }
 
 // ─── Base Layout Wrapper ───
 export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB'): Promise<string> {
-  const { logoUrl, phone, email } = await getClinicSettings();
+  const { logoUrl, whiteLogoUrl, phone, email } = await getClinicSettings();
   const pt = isPt(locale);
-  // Header: teal gradient background. CSS filter inverts logo to white — supported in Gmail (web, iOS, Android).
-  const logoHtml = logoUrl
-    ? `<img src="${logoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;filter:brightness(0) invert(1);" /><p style="margin:6px 0 0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;letter-spacing:0.3px;">Bruno Physical Rehabilitation</p>`
+  // Header: teal gradient — use dedicated white logo if available, CSS filter as fallback.
+  const headerLogoSrc = whiteLogoUrl || logoUrl;
+  const headerLogoFilter = whiteLogoUrl ? '' : 'filter:brightness(0) invert(1);';
+  const logoHtml = headerLogoSrc
+    ? `<img src="${headerLogoSrc}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;${headerLogoFilter}" /><p style="margin:6px 0 0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;letter-spacing:0.3px;">Bruno Physical Rehabilitation</p>`
     : `<span style="color:#ffffff;font-size:22px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:-0.5px;">Bruno Physical Rehabilitation</span>`;
   // Footer: normal colour logo, no filter
   const footerLogoHtml = logoUrl

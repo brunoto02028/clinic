@@ -320,6 +320,7 @@ export default function AdminSettingsPage() {
   });
 
   const SCREEN_KEYS = [
+    { key: 'emailHeader', label: '📧 Email Header (white logo for emails)', dark: true },
     { key: 'login', label: 'Patient Login', dark: false },
     { key: 'adminLogin', label: 'Admin Login', dark: true },
     { key: 'signup', label: 'Signup', dark: false },
