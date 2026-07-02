@@ -388,6 +388,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
         emailTemplateSlug: 'ASSESSMENT_COMPLETED',
         emailVars: {
           assessmentType: 'AI Clinical',
+          completedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
           portalUrl: `${BASE}/dashboard/treatment`,
         },
         plainMessage: 'Your clinical assessment has been completed. Your therapist will review it and prepare your treatment plan.',
