@@ -1225,7 +1225,7 @@ export default function PatientProfilePage() {
 
         {/* ── Tab: Rehab Agent ── */}
         <TabsContent value="rehab" className="mt-4">
-          <RehabAgentTab patientId={params.id as string} patientData={data} />
+          <RehabAgentTab patientId={patientId} patientData={data} />
         </TabsContent>
 
       </Tabs>
