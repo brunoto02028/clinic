@@ -1283,9 +1283,20 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   const [sendingQ, setSendingQ]         = useState(false);
   const [qSentOk, setQSentOk]           = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [sentQuestions, setSentQuestions] = useState<any[]>([]);
+  const [expandedQSet, setExpandedQSet] = useState<string | null>(null);
 
   const preEndRef  = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const fetchSentQuestions = () => {
+    fetch(`/api/admin/patients/${patientId}/questions`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: any[]) => setSentQuestions(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  };
+
+  useEffect(() => { fetchSentQuestions(); }, [patientId]);
 
   const screening = patientData?.screening;
   const initialContext = {
@@ -1438,6 +1449,7 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
       if (!r.ok) throw new Error("Failed");
       setQSentOk(true);
       setQText("");
+      fetchSentQuestions();
       setTimeout(() => { setShowQDialog(false); setQSentOk(false); }, 1500);
     } catch (e: any) { setError(e.message); }
     finally { setSendingQ(false); }
@@ -1578,6 +1590,69 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
           </Button>
         </div>
       </div>
+
+      {/* ── Questions History ── */}
+      {sentQuestions.length > 0 && (
+        <div className="border rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-blue-500/5 border-b">
+            <p className="text-xs font-semibold text-blue-400">Perguntas Enviadas ao Paciente ({sentQuestions.length})</p>
+            <button onClick={fetchSentQuestions} className="text-[10px] text-muted-foreground hover:text-foreground">↻ Refresh</button>
+          </div>
+          <div className="divide-y">
+            {sentQuestions.map((qs: any) => {
+              const isExpanded = expandedQSet === qs.id;
+              const statusColor = qs.status === "answered" ? "text-emerald-400" : qs.status === "reviewed" ? "text-blue-400" : "text-amber-400";
+              const statusLabel = qs.status === "answered" ? "✅ Respondido" : qs.status === "reviewed" ? "👁 Revisto" : "⏳ Pendente";
+              return (
+                <div key={qs.id}>
+                  <button
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20 text-left transition-colors"
+                    onClick={() => setExpandedQSet(isExpanded ? null : qs.id)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-semibold ${statusColor}`}>{statusLabel}</span>
+                        <span className="text-[10px] text-muted-foreground">·</span>
+                        <span className="text-[10px] text-muted-foreground">{(qs.questions as string[]).length} pergunta{(qs.questions as string[]).length !== 1 ? "s" : ""}</span>
+                        <span className="text-[10px] text-muted-foreground">·</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                      {qs.context && <p className="text-[9px] text-muted-foreground/60 mt-0.5 truncate">{qs.context}</p>}
+                    </div>
+                    <span className="text-muted-foreground text-xs">{isExpanded ? "▲" : "▼"}</span>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-3 pb-3 space-y-2 bg-muted/10">
+                      {(qs.questions as string[]).map((q: string, i: number) => {
+                        const answer = qs.answers?.find((a: any) => a.index === i);
+                        return (
+                          <div key={i} className="rounded-lg border border-border/40 overflow-hidden">
+                            <div className="px-2.5 py-1.5 bg-muted/30">
+                              <p className="text-[10px] font-medium">{i + 1}. {q}</p>
+                            </div>
+                            {answer ? (
+                              <div className="px-2.5 py-1.5 bg-emerald-500/5 border-t border-emerald-500/20">
+                                <p className="text-[10px] text-emerald-300 leading-relaxed">{answer.answer || <em className="text-muted-foreground">Sem resposta</em>}</p>
+                              </div>
+                            ) : (
+                              <div className="px-2.5 py-1.5 border-t border-amber-500/20 bg-amber-500/5">
+                                <p className="text-[10px] text-amber-400/70 italic">Ainda não respondido</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {qs.answeredAt && (
+                        <p className="text-[9px] text-muted-foreground">Respondido a {new Date(qs.answeredAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Dialog: Enviar Perguntas ao Paciente ── */}
       {showQDialog && (
