@@ -142,6 +142,12 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Exercicios",
         href: "/admin/exercises",
       },
+      {
+        key: "rehab-agent",
+        label: "Rehab Agent",
+        labelPt: "Agente Rehab",
+        href: "/admin/clinical/rehab",
+      },
     ],
     matchRoutes: [
       "/admin/clinical-notes",
@@ -149,6 +155,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/treatment-plans",
       "/admin/treatment-types",
       "/admin/exercises",
+      "/admin/clinical/rehab",
     ],
   },
   {

@@ -665,6 +665,10 @@ model User {
   // Study Assistant (AI tutor for coursework)
   studyProjects             StudyProject[]           @relation("StudyProjectOwner")
 
+  // Clinical Rehabilitation Agent
+  rehabPlansAsPatient       RehabPlan[]              @relation("PatientRehabPlans")
+  rehabPlansCreated         RehabPlan[]              @relation("StaffRehabPlans")
+
   @@index([clinicId])
   @@index([email])
   @@index([role])
@@ -5044,4 +5048,46 @@ model WearableDataPoint {
   @@index([userId])
   @@index([dataDate])
   @@index([connectionId])
+}
+
+// ─── Clinical Rehabilitation Agent ───────────────────────────────────────────
+
+model RehabPlan {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     User     @relation("PatientRehabPlans", fields: [patientId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation("StaffRehabPlans", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Clinical context at time of analysis
+  chiefComplaint  String   @db.Text
+  bodyPart        String
+  severity        String   @default("moderate") // mild | moderate | severe
+  phase           String   @default("subacute")  // acute | subacute | chronic
+  additionalNotes String?  @db.Text
+
+  // Generated plan (full JSON from agent)
+  planJson   Json
+
+  // Status
+  status     String @default("active") // active | completed | archived
+
+  messages   RehabMessage[]
+
+  @@index([patientId])
+  @@map("rehab_plans")
+}
+
+model RehabMessage {
+  id        String    @id @default(cuid())
+  planId    String
+  plan      RehabPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  role      String    // user | assistant
+  content   String    @db.Text
+  createdAt DateTime  @default(now())
+
+  @@index([planId])
+  @@map("rehab_messages")
 }
