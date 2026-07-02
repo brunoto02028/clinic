@@ -48,6 +48,11 @@ export async function POST(
     const uploaderId = (session.user as any).id;
     const clinicId = (session.user as any).clinicId;
 
+    // Resolve clinicId from patient to avoid FK constraint when session clinicId is null
+    const patientForClinic = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+    const effectiveClinicId = patientForClinic?.clinicId || clinicId || null;
+    if (!effectiveClinicId) return NextResponse.json({ error: "Clinic not found" }, { status: 400 });
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const title = (formData.get("title") as string) || null;
@@ -103,7 +108,7 @@ export async function POST(
     // Save to DB
     const document = await (prisma as any).patientDocument.create({
       data: {
-        clinicId: clinicId || "",
+        clinicId: effectiveClinicId,
         patientId,
         uploadedById: uploaderId,
         fileName: file.name,

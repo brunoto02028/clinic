@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -145,6 +145,8 @@ export default function PatientProfilePage() {
   const [activeTab, setActiveTab] = useState("resumo");
   const [showNewNote, setShowNewNote] = useState(false);
   const [newNote, setNewNote] = useState({ subjective: "", objective: "", assessment: "", plan: "" });
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [autoSavedNoteId, setAutoSavedNoteId] = useState<string | null>(null);
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
   const [scanForm, setScanForm] = useState<any>({});
   const [editingBAId, setEditingBAId] = useState<string | null>(null);
@@ -241,9 +243,49 @@ export default function PatientProfilePage() {
     if (r) { setEditingScreening(false); flash("Screening updated"); fetchData(); }
   };
 
+  // Auto-save SOAP note with 3s debounce
+  useEffect(() => {
+    if (!showNewNote) return;
+    const hasContent = Object.values(newNote).some(v => v.trim().length > 0);
+    if (!hasContent) return;
+    setAutoSaveStatus("idle");
+    const timer = setTimeout(async () => {
+      setAutoSaveStatus("saving");
+      try {
+        if (autoSavedNoteId) {
+          // Update existing auto-saved note
+          await fetch(`/api/admin/patients/${patientId}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "edit_soap_note", noteId: autoSavedNoteId, ...newNote }),
+          });
+        } else {
+          // Create new note and remember its id
+          const res = await fetch(`/api/admin/patients/${patientId}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "add_clinical_note", ...newNote }),
+          });
+          const d = await res.json();
+          if (d?.note?.id) setAutoSavedNoteId(d.note.id);
+        }
+        setAutoSaveStatus("saved");
+      } catch { setAutoSaveStatus("idle"); }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [newNote, showNewNote]);
+
   const saveNewNote = async () => {
-    const r = await apiPatch({ action: "add_clinical_note", ...newNote });
-    if (r) { setShowNewNote(false); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); flash("SOAP note added"); fetchData(); }
+    if (autoSavedNoteId) {
+      // Already auto-saved — just update and close
+      await apiPatch({ action: "edit_soap_note", noteId: autoSavedNoteId, ...newNote });
+    } else {
+      await apiPatch({ action: "add_clinical_note", ...newNote });
+    }
+    setShowNewNote(false);
+    setNewNote({ subjective: "", objective: "", assessment: "", plan: "" });
+    setAutoSavedNoteId(null);
+    setAutoSaveStatus("idle");
+    flash("SOAP note saved");
+    fetchData();
   };
 
   const deleteNote = async (noteId: string) => {
@@ -1116,6 +1158,14 @@ export default function PatientProfilePage() {
         {/* ── Tab: Notas Clinicas ── */}
         <TabsContent value="notas" className="space-y-4 mt-4">
         <div className="space-y-2.5">
+
+        {/* ── Clinical Scribe (Audio/Video → SOAP) ── */}
+        <ClinicalScribePanel patientId={patientId} onTranscript={(text: string) => {
+          setShowNewNote(true);
+          setNewNote(prev => ({ ...prev, subjective: prev.subjective ? prev.subjective + "\n\n" + text : text }));
+          setActiveTab("notas");
+        }} />
+
         {/* ── SOAP Notes ── */}
         {/* Header with PDF export */}
         <div className="flex items-center justify-between mb-3">
@@ -1129,7 +1179,11 @@ export default function PatientProfilePage() {
         {showNewNote && (
           <div className="border border-primary/40 rounded-xl p-3 mb-3 space-y-2 bg-primary/5">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-semibold text-primary">Nova Nota SOAP</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-semibold text-primary">Nova Nota SOAP</p>
+                {autoSaveStatus === "saving" && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> A guardar...</span>}
+                {autoSaveStatus === "saved" && <span className="text-[10px] text-emerald-400 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> Guardado automaticamente</span>}
+              </div>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowNewNote(false)}><X className="h-3 w-3" /></Button>
             </div>
             <EF label="S — Subjetivo (queixas do paciente)" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Queixas, sintomas relatados..." />
@@ -2093,4 +2147,85 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
   );
 
   return null;
+}
+
+// ─── Clinical Scribe Panel ─────────────────────────────────────────────────
+
+function ClinicalScribePanel({ patientId, onTranscript }: { patientId: string; onTranscript: (text: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [lang, setLang] = useState("pt");
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [error, setError] = useState("");
+  const [progress, setProgress] = useState("");
+
+  const handle = async () => {
+    if (!file) return;
+    setTranscribing(true); setError(""); setTranscript("");
+    setProgress(file.size > 20 * 1024 * 1024 ? "Ficheiro grande — a dividir em partes..." : "A transcrever...");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("lang", lang);
+      const res = await fetch("/api/admin/transcribe", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Falha na transcrição");
+      setTranscript(data.transcript);
+      setProgress("");
+    } catch (e: any) { setError(e.message); setProgress(""); }
+    finally { setTranscribing(false); }
+  };
+
+  return (
+    <div className="border border-dashed border-violet-500/30 rounded-xl bg-violet-500/5">
+      <button className="w-full flex items-center justify-between p-3 text-left"
+        onClick={() => setOpen(o => !o)}>
+        <div className="flex items-center gap-2">
+          <Mic className="h-4 w-4 text-violet-400" />
+          <span className="text-xs font-semibold text-violet-400">Clinical Scribe — Transcrever Áudio / Vídeo</span>
+        </div>
+        {open ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-3">
+          <p className="text-[11px] text-muted-foreground">Carrega um áudio ou vídeo da sessão (MP3, MP4, WAV, M4A, etc.). O Whisper AI transcreve o conteúdo e insere-o no campo Subjetivo do SOAP.</p>
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Ficheiro (máx 500MB)</label>
+              <input type="file" accept="audio/*,video/*"
+                className="text-[11px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-violet-500/20 file:text-violet-300"
+                onChange={e => { setFile(e.target.files?.[0] || null); setTranscript(""); setError(""); }} />
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Idioma</label>
+              <select className="h-8 rounded border border-input bg-background text-xs px-2" value={lang} onChange={e => setLang(e.target.value)}>
+                <option value="pt">Português</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <Button size="sm" className="h-8 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700" onClick={handle} disabled={!file || transcribing}>
+              {transcribing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress || "A transcrever..."}</> : <><Mic className="h-3.5 w-3.5" /> Transcrever</>}
+            </Button>
+          </div>
+          {error && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3.5 w-3.5" /> {error}</p>}
+          {transcript && (
+            <div className="space-y-2">
+              <div className="bg-muted/40 rounded-lg p-3 max-h-48 overflow-y-auto">
+                <p className="text-[11px] leading-relaxed whitespace-pre-wrap">{transcript}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="h-7 text-xs gap-1" onClick={() => { onTranscript(transcript); setTranscript(""); setFile(null); setOpen(false); }}>
+                  <Save className="h-3 w-3" /> Inserir no SOAP
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => navigator.clipboard.writeText(transcript)}>
+                  <Copy className="h-3 w-3" /> Copiar
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

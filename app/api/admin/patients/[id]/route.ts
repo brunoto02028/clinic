@@ -112,12 +112,17 @@ export async function PATCH(
     const clinicId = (session.user as any).clinicId;
     const body = await req.json();
 
+    // Resolve clinicId from patient record (avoids FK constraint when session clinicId is null)
+    const patientForClinic = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+    const effectiveClinicId = patientForClinic?.clinicId || clinicId || null;
+    if (!effectiveClinicId) return NextResponse.json({ error: "Clinic not found" }, { status: 400 });
+
     // If adding a manual clinical note / history
     if (body.action === "add_clinical_note") {
       const { subjective, objective, assessment, plan } = body;
       const note = await prisma.sOAPNote.create({
         data: {
-          clinicId: clinicId || "",
+          clinicId: effectiveClinicId,
           patientId,
           therapistId,
           subjective: subjective || null,
@@ -137,7 +142,7 @@ export async function PATCH(
       const { title, content, documentType } = body;
       const doc = await (prisma as any).patientDocument.create({
         data: {
-          clinicId: clinicId || "",
+          clinicId: effectiveClinicId,
           patientId,
           uploadedById: therapistId,
           fileName: `manual-note-${Date.now()}.txt`,
