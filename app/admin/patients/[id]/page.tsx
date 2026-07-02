@@ -1303,7 +1303,7 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
       const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/pre-assess`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientContext: initialContext, messages: [] }),
+        body: JSON.stringify({ messages: [] }),
       });
       const d = await r.json();
       setPreChat([{ role: "assistant", content: d.reply }]);
@@ -1321,7 +1321,7 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
       const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/pre-assess`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientContext: initialContext, messages: next }),
+        body: JSON.stringify({ messages: next }),
       });
       const d = await r.json();
       setPreChat(prev => [...prev, { role: "assistant", content: d.reply }]);

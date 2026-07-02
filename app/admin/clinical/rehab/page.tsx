@@ -73,7 +73,7 @@ export default function RehabAgentPage() {
     try {
       const r = await fetch(`/api/admin/patients/${selectedPatient.id}/rehab-plan/pre-assess`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientContext: {}, messages: [] }),
+        body: JSON.stringify({ messages: [] }),
       });
       const d = await r.json();
       setPreChat([{ role: "assistant", content: d.reply }]);
@@ -89,7 +89,7 @@ export default function RehabAgentPage() {
     try {
       const r = await fetch(`/api/admin/patients/${selectedPatient.id}/rehab-plan/pre-assess`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientContext: {}, messages: next }),
+        body: JSON.stringify({ messages: next }),
       });
       const d = await r.json();
       setPreChat(prev => [...prev, { role: "assistant", content: d.reply }]);

@@ -229,46 +229,45 @@ export async function streamRehabPlan(
 // ─── Pre-Assessment Chat ──────────────────────────────────────────────────────
 
 export async function preAssess(
-  patientContext: Partial<PatientContext>,
+  patientBrief: string,
   chatHistory: Array<{ role: "user" | "assistant"; content: string }>
 ): Promise<string> {
-  const contextBlock = [
-    "=== PATIENT TRIAGE DATA ===",
-    patientContext.chiefComplaint ? `Chief complaint: ${patientContext.chiefComplaint}` : "Chief complaint: Not provided",
-    patientContext.bodyPart       ? `Body part: ${patientContext.bodyPart}` : "Body part: Not specified",
-    patientContext.severity       ? `Severity: ${patientContext.severity}` : "",
-    patientContext.phase          ? `Phase: ${patientContext.phase}` : "",
-    patientContext.duration       ? `Duration: ${patientContext.duration}` : "",
-    patientContext.mechanism      ? `Mechanism: ${patientContext.mechanism}` : "",
-    patientContext.aggravatingFactors ? `Aggravating: ${patientContext.aggravatingFactors}` : "",
-    patientContext.relievingFactors   ? `Relieving: ${patientContext.relievingFactors}` : "",
-    patientContext.relevantHistory    ? `History: ${patientContext.relevantHistory}` : "",
-    patientContext.assessmentFindings ? `Assessment findings: ${patientContext.assessmentFindings}` : "",
-    patientContext.age            ? `Age: ${patientContext.age}` : "",
-    patientContext.sex            ? `Sex: ${patientContext.sex}` : "",
-    patientContext.occupation     ? `Occupation: ${patientContext.occupation}` : "",
-    patientContext.activityLevel  ? `Activity level: ${patientContext.activityLevel}` : "",
-  ].filter(Boolean).join("\n");
-
   const isFirstMessage = chatHistory.length === 0;
+  const hasData = patientBrief.trim().length > 30;
 
   const systemInstruction = isFirstMessage
-    ? `${contextBlock}\n\n=== TASK ===\nReview the triage data above. Identify the GAPS and INCONSISTENCIES. Start your pre-assessment by introducing yourself briefly as Atlas, then immediately ask your most critical clinical questions. Be direct and specific. Do not speculate yet.`
-    : `${contextBlock}\n\n=== TASK ===\nContinue the pre-assessment. Be direct. Challenge inconsistencies. Gather the information you need. When you have sufficient data, tell Bruno you are ready to generate the full plan.`;
+    ? [
+        hasData ? patientBrief : "=== PATIENT CLINICAL PROFILE ===\nNo clinical data available in the system for this patient.",
+        "",
+        "=== YOUR TASK ===",
+        "You have just been handed this patient's full clinical file.",
+        "Review ALL available data above carefully.",
+        "Identify what is PRESENT, what is MISSING, and what appears INCONSISTENT.",
+        "Begin the pre-assessment by briefly confirming what you know about the patient (summarise the key clinical picture in 2–3 lines), then immediately ask your most critical targeted questions — only what you genuinely cannot infer from the data already available.",
+        "Do NOT ask for information that is already in the file. Do NOT introduce yourself with pleasantries. Go straight to clinical work.",
+      ].join("\n")
+    : [
+        hasData ? patientBrief : "=== PATIENT CLINICAL PROFILE ===\nNo clinical data available.",
+        "",
+        "=== YOUR TASK ===",
+        "Continue the pre-assessment conversation below.",
+        "Be direct. Challenge inconsistencies. Push for clarity on anything that affects your clinical reasoning.",
+        "When you have gathered sufficient information to form a solid working hypothesis and a structured rehab plan, explicitly tell Bruno you are ready — and summarise your current clinical hypothesis in 2–3 lines.",
+      ].join("\n");
 
   const messages: Array<{ role: "user" | "assistant"; content: string }> =
     isFirstMessage
       ? [{ role: "user", content: systemInstruction }]
       : [
           { role: "user", content: systemInstruction },
-          { role: "assistant", content: "Understood. Pre-assessment in progress." },
+          { role: "assistant", content: "Understood. Continuing pre-assessment." },
           ...chatHistory,
         ];
 
   return claudeGenerate(messages, {
     systemPrompt: SYSTEM_PROMPT,
-    temperature: 0.4,
-    maxTokens: 1024,
+    temperature: 0.35,
+    maxTokens: 1200,
   });
 }
 
