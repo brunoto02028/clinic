@@ -108,7 +108,9 @@ export async function POST(
 Current patient context:
 ${patientBrief || "No clinical data available yet for this patient."}
 
-Respond in the same language the therapist uses (English or Portuguese). Keep responses focused and clinically relevant. You are a trusted colleague, not a formal assistant.`;
+Respond in the same language the therapist uses (English or Portuguese).
+IMPORTANT — when suggesting questions to send to the patient: always write them in the SECOND PERSON addressed directly to the patient ("você" in Brazilian Portuguese, "you" in English). Never use third person ("o paciente", "ele", "ela"). Use warm, simple, non-clinical language the patient will understand. If writing in Portuguese, always use Brazilian Portuguese (pt-BR).
+Keep responses focused and clinically relevant. You are a trusted colleague, not a formal assistant.`;
 
   const messages = [
     ...history.map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })),

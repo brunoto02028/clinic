@@ -1285,6 +1285,7 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [sentQuestions, setSentQuestions] = useState<any[]>([]);
   const [expandedQSet, setExpandedQSet] = useState<string | null>(null);
+  const [reformulating, setReformulating] = useState(false);
 
   const preEndRef  = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -1297,6 +1298,22 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   };
 
   useEffect(() => { fetchSentQuestions(); }, [patientId]);
+
+  const handleReformatQuestions = async () => {
+    const lines = qText.split("\n").map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    setReformulating(true);
+    try {
+      const r = await fetch("/api/admin/reformat-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questions: lines, lang: qLang }),
+      });
+      const d = await r.json();
+      if (d.questions?.length) setQText(d.questions.join("\n"));
+    } catch {}
+    finally { setReformulating(false); }
+  };
 
   const screening = patientData?.screening;
   const initialContext = {
@@ -1657,30 +1674,57 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
       {/* ── Dialog: Enviar Perguntas ao Paciente ── */}
       {showQDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowQDialog(false)}>
-          <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-5 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">Enviar Perguntas ao Paciente</p>
+              <div>
+                <p className="text-sm font-semibold">Rever e Enviar Perguntas</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Revê cada pergunta antes de enviar — use a 2ª pessoa (você) e tom directo.</p>
+              </div>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowQDialog(false)}><X className="h-3.5 w-3.5" /></Button>
             </div>
-            <p className="text-[10px] text-muted-foreground">Cada linha é uma pergunta separada. O paciente verá isto no app e poderá responder antes da consulta.</p>
+
+            {/* Warning banner */}
+            <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <span className="text-amber-400 text-xs mt-0.5">⚠️</span>
+              <p className="text-[10px] text-amber-300 leading-relaxed">
+                Verifique: perguntas devem ser dirigidas ao paciente em <strong>2ª pessoa ("você")</strong>, em <strong>Português do Brasil</strong>, sem linguagem clínica. Use o botão <strong>✨ Reformular</strong> para corrigir automaticamente.
+              </p>
+            </div>
+
+            {/* Language + Reformat row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[10px] text-muted-foreground shrink-0">Língua:</p>
+              <Button size="sm" variant={qLang === "pt" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("pt")}>🇧🇷 PT-BR</Button>
+              <Button size="sm" variant={qLang === "en" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("en")}>🇬🇧 EN</Button>
+              <div className="flex-1" />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[10px] px-3 border-purple-500/40 text-purple-400 hover:bg-purple-500/10 gap-1"
+                onClick={handleReformatQuestions}
+                disabled={reformulating || !qText.trim()}
+              >
+                {reformulating ? <Loader2 className="h-3 w-3 animate-spin" /> : "✨"}
+                {reformulating ? "A reformular..." : "Reformular para pt-BR"}
+              </Button>
+            </div>
+
             <textarea
-              className="w-full text-xs bg-muted/30 border rounded-lg p-2.5 resize-none h-44 placeholder:text-muted-foreground/50 font-mono leading-relaxed"
-              placeholder={"Escreve uma pergunta por linha, ex:\nHá quanto tempo tens este padrão de dor?\nA dor irradia para o braço ou mão?\nQue medicação estás a tomar?"}
+              className="w-full text-xs bg-muted/30 border rounded-lg p-2.5 resize-none h-52 placeholder:text-muted-foreground/50 font-mono leading-relaxed"
+              placeholder={qLang === "pt"
+                ? "Escreva uma pergunta por linha, ex:\nHá quanto tempo você sente essa dor?\nA dor irradia para o braço ou a mão?\nQue medicação você está tomando?"
+                : "One question per line, e.g.:\nHow long have you been experiencing this pain?\nDoes the pain radiate to your arm or hand?\nWhat medication are you currently taking?"}
               value={qText} onChange={e => setQText(e.target.value)}
             />
-            <div className="flex items-center gap-2">
-              <p className="text-[10px] text-muted-foreground shrink-0">Língua do paciente:</p>
-              <Button size="sm" variant={qLang === "pt" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("pt")}>PT</Button>
-              <Button size="sm" variant={qLang === "en" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("en")}>EN</Button>
-              <span className="text-[9px] text-muted-foreground">(backup EN sempre guardado)</span>
-            </div>
+            <p className="text-[9px] text-muted-foreground">Cada linha = uma pergunta. O paciente responde no portal antes da consulta.</p>
+
             {qSentOk ? (
               <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
-                <CheckCircle2 className="h-4 w-4" />Perguntas enviadas! O paciente será notificado.
+                <CheckCircle2 className="h-4 w-4" />Perguntas enviadas! O paciente será notificado por email.
               </div>
             ) : (
               <Button className="w-full bg-blue-600 hover:bg-blue-700 h-9 text-xs" onClick={handleSendQuestions} disabled={sendingQ || !qText.trim()}>
-                {sendingQ ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />A enviar…</> : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirmar e Enviar</>}
+                {sendingQ ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />A enviar…</> : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirmar e Enviar ao Paciente</>}
               </Button>
             )}
           </div>
