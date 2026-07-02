@@ -114,7 +114,7 @@ export async function POST(
     const [patient, screening, footScans, bodyAssessments, soapNotes, patientDocs, treatmentTypes, exercises] = await Promise.all([
       prisma.user.findUnique({
         where: { id: patientId },
-        select: { id: true, firstName: true, lastName: true, email: true, phone: true, createdAt: true },
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true, createdAt: true, clinicId: true },
       }),
       prisma.medicalScreening.findUnique({ where: { userId: patientId } }),
       prisma.footScan.findMany({
@@ -350,9 +350,12 @@ Respond in this exact JSON format (no markdown, no code blocks):
     }
 
     // ─── Save to DB ───
+    // Use patient's clinicId as primary source; fall back to session user's clinicId
+    const effectiveClinicId = (patient as any).clinicId || clinicId || null;
+    if (!effectiveClinicId) throw new Error("Clinic ID not found — cannot save diagnosis");
     const diagnosis = await (prisma as any).aIDiagnosis.create({
       data: {
-        clinicId: clinicId || "",
+        clinicId: effectiveClinicId,
         patientId,
         therapistId,
         hasScreening: !!screening,

@@ -142,6 +142,7 @@ export default function PatientProfilePage() {
   const [screeningForm, setScreeningForm] = useState<any>({});
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteForm, setNoteForm] = useState<any>({});
+  const [activeTab, setActiveTab] = useState("resumo");
   const [showNewNote, setShowNewNote] = useState(false);
   const [newNote, setNewNote] = useState({ subjective: "", objective: "", assessment: "", plan: "" });
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
@@ -585,7 +586,7 @@ export default function PatientProfilePage() {
       {success && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-2.5 rounded-lg flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5" /> {success}</div>}
 
       {/* ─── Tabs ─── */}
-      <Tabs defaultValue="resumo" className="mt-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
         <TabsList className="w-full justify-start bg-muted/30 p-1 h-auto flex-wrap">
           <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Resumo</TabsTrigger>
           <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Screening</TabsTrigger>
@@ -623,7 +624,7 @@ export default function PatientProfilePage() {
       {/* Quick Actions */}
       <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-muted/30 rounded-lg border">
         <span className="text-[10px] font-medium text-muted-foreground mr-1">Actions:</span>
-        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setShowNewNote(true); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
+        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("notas"); setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
         <Button variant="outline" size="sm" className={btnCls} onClick={() => setShowManualDoc(true)}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
         <Button variant="outline" size="sm" className={btnCls} onClick={() => setShowUpload(true)}><FileUp className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
         <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
