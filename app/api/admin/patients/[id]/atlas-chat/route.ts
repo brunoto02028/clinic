@@ -41,21 +41,20 @@ export async function POST(
   const patient = await prisma.user.findUnique({
     where: { id: params.id },
     select: {
-      firstName: true, lastName: true, dateOfBirth: true, gender: true,
-      medicalScreenings: {
-        orderBy: { createdAt: "desc" }, take: 1,
+      firstName: true, lastName: true, dateOfBirth: true,
+      medicalScreening: {
         select: {
           chiefComplaint: true, painScore: true, painLocation: true,
-          aggravatingFactors: true, relievingFactors: true,
-          relevantMedicalHistory: true, currentMedications: true,
-          occupation: true,
+          painAggravating: true, painRelieving: true,
+          currentMedications: true, occupation: true,
+          surgicalHistory: true, otherConditions: true,
         },
       },
-      bodyAssessments: {
+      bodyAssessmentsAsPatient: {
         orderBy: { createdAt: "desc" }, take: 1,
         select: { aiSummary: true, aiRecommendations: true, overallScore: true },
       },
-      rehabPlans: {
+      rehabPlansAsPatient: {
         orderBy: { createdAt: "desc" }, take: 3,
         select: { chiefComplaint: true, bodyPart: true, severity: true, phase: true, status: true, createdAt: true },
       },
@@ -67,23 +66,24 @@ export async function POST(
   const age = patient.dateOfBirth
     ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()
     : null;
-  const ms = patient.medicalScreenings[0];
-  const ba = patient.bodyAssessments[0];
+  const ms = patient.medicalScreening;
+  const ba = patient.bodyAssessmentsAsPatient[0];
 
   const patientBrief = [
-    `Patient: ${patient.firstName} ${patient.lastName}${age ? `, ${age}yo` : ""}${patient.gender ? `, ${patient.gender}` : ""}`,
+    `Patient: ${patient.firstName} ${patient.lastName}${age ? `, ${age}yo` : ""}`,
     ms?.occupation ? `Occupation: ${ms.occupation}` : "",
     ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
     ms?.painScore != null ? `Pain score: ${ms.painScore}/10` : "",
     ms?.painLocation ? `Pain location: ${ms.painLocation}` : "",
-    ms?.aggravatingFactors ? `Aggravating: ${ms.aggravatingFactors}` : "",
-    ms?.relievingFactors ? `Relieving: ${ms.relievingFactors}` : "",
-    ms?.relevantMedicalHistory ? `Medical history: ${ms.relevantMedicalHistory}` : "",
+    ms?.painAggravating ? `Aggravating: ${ms.painAggravating}` : "",
+    ms?.painRelieving ? `Relieving: ${ms.painRelieving}` : "",
+    ms?.surgicalHistory ? `Surgical history: ${ms.surgicalHistory}` : "",
+    ms?.otherConditions ? `Other conditions: ${ms.otherConditions}` : "",
     ms?.currentMedications ? `Medications: ${ms.currentMedications}` : "",
     ba?.aiSummary ? `Postural assessment: ${ba.aiSummary}` : "",
     ba?.aiRecommendations ? `Assessment recommendations: ${ba.aiRecommendations}` : "",
-    patient.rehabPlans.length > 0
-      ? `Existing rehab plans: ${patient.rehabPlans.map(p => `${p.bodyPart} (${p.status})`).join(", ")}`
+    patient.rehabPlansAsPatient.length > 0
+      ? `Existing rehab plans: ${patient.rehabPlansAsPatient.map(p => `${p.bodyPart} (${p.status})`).join(", ")}`
       : "",
   ].filter(Boolean).join("\n");
 

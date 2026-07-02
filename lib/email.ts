@@ -1,31 +1,12 @@
-import nodemailer from 'nodemailer';
-import { getConfigValue } from '@/lib/system-config';
+import { Resend } from 'resend';
 
-let _transporter: nodemailer.Transporter | null = null;
-let _transporterTimestamp = 0;
-const TRANSPORTER_TTL = 300_000; // 5 min
+const FROM_ADDRESS = 'Bruno Physical Rehabilitation <noreply@bpr.rehab>';
+const REPLY_TO     = 'admin@bpr.rehab';
 
-async function getSmtpTransporter(): Promise<nodemailer.Transporter | null> {
-    if (_transporter && Date.now() - _transporterTimestamp < TRANSPORTER_TTL) {
-        return _transporter;
-    }
-    const host = await getConfigValue('SMTP_HOST');
-    const port = await getConfigValue('SMTP_PORT');
-    const user = await getConfigValue('SMTP_USER');
-    const pass = await getConfigValue('SMTP_PASS');
-
-    if (!host || !user || !pass) return null;
-
-    const portNum = parseInt(port || '465', 10);
-    _transporter = nodemailer.createTransport({
-        host,
-        port: portNum,
-        secure: portNum === 465,
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false },
-    });
-    _transporterTimestamp = Date.now();
-    return _transporter;
+function getResend(): Resend {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error('[EMAIL] RESEND_API_KEY not set in environment variables.');
+    return new Resend(key);
 }
 
 export async function sendEmail({
@@ -36,44 +17,29 @@ export async function sendEmail({
     replyTo,
     bcc,
 }: {
-    to: string;
+    to: string | string[];
     subject: string;
     html: string;
     from?: string;
     replyTo?: string;
     bcc?: string | string[];
 }) {
-    const defaultFrom = (await getConfigValue('EMAIL_FROM')) || process.env.EMAIL_FROM || 'Bruno Physical Rehabilitation <support@bpr.rehab>';
-    const fromAddr = from || defaultFrom;
-
-    // Try SMTP (Hostinger) first
     try {
-        const transporter = await getSmtpTransporter();
-        if (transporter) {
-            const info = await transporter.sendMail({ from: fromAddr, to, subject, html, replyTo: replyTo || undefined, bcc: bcc || undefined });
-            console.log('[EMAIL] Sent via SMTP:', info.messageId);
-            return { success: true, data: { messageId: info.messageId } };
-        }
-    } catch (smtpErr) {
-        console.warn('[EMAIL] SMTP failed, trying Resend fallback:', smtpErr);
+        const resend = getResend();
+        const data = await resend.emails.send({
+            from:     from    || FROM_ADDRESS,
+            replyTo:  replyTo || REPLY_TO,
+            to:       Array.isArray(to) ? to : [to],
+            subject,
+            html,
+            ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
+        });
+        console.log('[EMAIL] Sent via Resend to', to);
+        return { success: true, data };
+    } catch (err) {
+        console.error('[EMAIL] Resend send failed:', err);
+        return { success: false, error: String(err) };
     }
-
-    // Fallback to Resend
-    try {
-        const resendKey = (await getConfigValue('RESEND_API_KEY')) || process.env.RESEND_API_KEY;
-        if (resendKey) {
-            const { Resend } = await import('resend');
-            const resend = new Resend(resendKey);
-            const data = await resend.emails.send({ from: fromAddr, to, subject, html, bcc: bcc || undefined });
-            console.log('[EMAIL] Sent via Resend');
-            return { success: true, data };
-        }
-    } catch (resendErr) {
-        console.error('[EMAIL] Resend fallback also failed:', resendErr);
-    }
-
-    console.error('[EMAIL] No email provider configured. Set SMTP or Resend in API Settings.');
-    return { success: false, error: 'No email provider configured' };
 }
 
 export const emailTemplates = {

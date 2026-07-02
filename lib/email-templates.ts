@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db';
 import { getEmailContent, isPt } from '@/lib/email-i18n';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
-const CONTACT_EMAIL = 'support@bpr.rehab';
+const CONTACT_EMAIL = 'admin@bpr.rehab';
 const CONTACT_PHONE = '';
 
 // ─── Dynamic Clinic Settings ───
@@ -56,7 +56,7 @@ ${preheader ? `<span style="display:none!important;visibility:hidden;mso-hide:al
     <tr><td style="text-align:center;">
       ${footerLogoHtml}
       <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">${locationText}</p>
-      <p style="margin:0 0 8px;font-size:11px;color:#6b7280;">&#128231; <a href="mailto:support@bpr.rehab" style="color:#5dc9c0;text-decoration:none;">support@bpr.rehab</a></p>
+      <p style="margin:0 0 8px;font-size:11px;color:#6b7280;">&#128231; <a href="mailto:admin@bpr.rehab" style="color:#5dc9c0;text-decoration:none;">admin@bpr.rehab</a></p>
       <p style="margin:10px 0 0;font-size:10px;color:#d1d5db;line-height:1.5;">${noReplyText}</p>
     </td></tr>
     </table>
@@ -321,7 +321,7 @@ export const DEFAULT_TEMPLATES = [
         <tr><td style="padding:6px 0;font-size:14px;color:#6b7280;">📋 Version</td><td style="padding:6px 0;font-size:15px;color:#111827;font-weight:600;">{{termsVersion}}</td></tr>
       </table>
     </div>
-    <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 20px;">You can withdraw your consent at any time by contacting us at <a href="mailto:support@bpr.rehab" style="color:#5dc9c0;">support@bpr.rehab</a> or through your patient portal.</p>
+    <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 20px;">You can withdraw your consent at any time by contacting us at <a href="mailto:admin@bpr.rehab" style="color:#5dc9c0;">admin@bpr.rehab</a> or through your patient portal.</p>
     <div style="text-align:center;margin:24px 0;">
       <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Portal →</a>
     </div>`,
