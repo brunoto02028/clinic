@@ -46,8 +46,28 @@ export async function GET(
       });
     }
 
-    // External URL — redirect
-    return NextResponse.redirect(image.imageUrl);
+    // External URL (S3, CDN, etc.) — proxy the content so Next.js <Image> works
+    // without needing the host in remotePatterns
+    if (image.imageUrl.startsWith('http')) {
+      try {
+        const upstream = await fetch(image.imageUrl, { cache: 'force-cache' });
+        if (!upstream.ok) return new NextResponse(null, { status: 404 });
+        const contentType = upstream.headers.get('content-type') || image.mimeType || 'image/jpeg';
+        const body = await upstream.arrayBuffer();
+        return new NextResponse(body, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+            'Content-Length': String(body.byteLength),
+          },
+        });
+      } catch {
+        return new NextResponse(null, { status: 502 });
+      }
+    }
+    // Relative path — redirect to same-origin
+    return NextResponse.redirect(new URL(image.imageUrl, request.url));
   } catch (error) {
     console.error("Error serving image:", error);
     return new NextResponse(null, { status: 500 });

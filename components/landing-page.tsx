@@ -222,7 +222,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
   const services = [
     { slug: "electrotherapy", icon: Zap, titleKey: "svc.electrotherapy", descKey: "svc.electrotherapyDesc", color: "bg-amber-50 text-amber-600" },
-    { slug: "exercise-therapy", icon: Dumbbell, titleKey: "svc.exerciseTherapy", descKey: "svc.exerciseTherapyDesc", color: "bg-emerald-50 text-emerald-600" },
     { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-50 text-blue-600" },
     { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-50 text-purple-600" },
     { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-50 text-cyan-600" },
@@ -595,7 +594,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 {treatmentImg.startsWith('data:') ? (
                   <img src={treatmentImg} alt="MLS Laser Therapy treatment in action" className="w-full h-auto max-h-[420px] object-cover" />
                 ) : (
-                  <Image src={treatmentImg} alt="MLS Laser Therapy treatment in action" width={800} height={600} className="w-full h-auto max-h-[420px] object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                  <Image src={treatmentImg} alt="MLS Laser Therapy treatment in action" width={800} height={600} className="w-full h-auto max-h-[420px] object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" onError={(e: any) => { e.currentTarget.src = '/uploads/mls-laser-treatment.jpg'; }} />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
@@ -610,7 +609,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   {deviceImg.startsWith('data:') ? (
                     <img src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" className="object-contain p-4 absolute inset-0 w-full h-full" />
                   ) : (
-                    <Image src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" fill className="object-contain p-4" loading="lazy" quality={60} sizes="(max-width: 768px) 50vw, 25vw" />
+                    <Image src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" fill className="object-contain p-4" loading="lazy" quality={60} sizes="(max-width: 768px) 50vw, 25vw" onError={(e: any) => { e.currentTarget.src = '/uploads/mls-laser-device.jpg'; }} />
                   )}
                 </div>
                 <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-blue-600/10 border border-orange-500/20 p-5 flex flex-col justify-center">
