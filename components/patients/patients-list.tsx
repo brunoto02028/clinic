@@ -24,6 +24,7 @@ import {
   Shield,
   Eye,
   EyeOff,
+  MessageCircle,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
@@ -68,6 +69,7 @@ interface Patient {
   createdAt: string;
   isActive?: boolean;
   clinicId?: string | null;
+  answeredQCount?: number;
   medicalScreening: {
     id: string;
     consentGiven: boolean;
@@ -221,6 +223,29 @@ export default function PatientsList() {
         {searchQuery && <span>· {filteredPatients.length} matching</span>}
       </div>
 
+      {/* Answered questions notification banner */}
+      {(() => {
+        const withAnswers = patients.filter(p => (p.answeredQCount ?? 0) > 0);
+        if (!withAnswers.length) return null;
+        return (
+          <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <MessageCircle className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-emerald-300">
+                {withAnswers.length === 1
+                  ? `${withAnswers[0].firstName} respondeu às perguntas`
+                  : `${withAnswers.length} pacientes responderam às perguntas`}
+              </p>
+              <p className="text-xs text-emerald-400/70 mt-0.5">
+                {withAnswers.map(p => `${p.firstName} ${p.lastName}`).join(", ")} — clique no paciente → Rehab Agent para ver
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Patients List */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -258,6 +283,12 @@ export default function PatientsList() {
                             {patient.firstName} {patient.lastName}
                           </h3>
                           {patient.isActive === false && <Badge variant="outline" className="text-[9px]">Inactive</Badge>}
+                          {(patient.answeredQCount ?? 0) > 0 && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[9px] font-semibold text-emerald-300">
+                              <MessageCircle className="h-2.5 w-2.5" />
+                              {patient.answeredQCount} nova{(patient.answeredQCount ?? 0) !== 1 ? "s" : ""}
+                            </span>
+                          )}
                           {patient.medicalScreening?.consentGiven ? (
                             <Badge variant="success" className="gap-0.5 text-[10px] hidden sm:flex">
                               <CheckCircle className="h-2.5 w-2.5" /> Screened

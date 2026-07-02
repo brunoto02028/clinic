@@ -1624,7 +1624,19 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
                 <div key={qs.id}>
                   <button
                     className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20 text-left transition-colors"
-                    onClick={() => setExpandedQSet(isExpanded ? null : qs.id)}
+                    onClick={() => {
+                      const newExpanded = isExpanded ? null : qs.id;
+                      setExpandedQSet(newExpanded);
+                      if (newExpanded && qs.status === "answered") {
+                        fetch(`/api/admin/patients/${patientId}/questions`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ questionSetId: qs.id }),
+                        }).then(() => {
+                          setSentQuestions(prev => prev.map(q => q.id === qs.id ? { ...q, status: "reviewed" } : q));
+                        }).catch(() => {});
+                      }
+                    }}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

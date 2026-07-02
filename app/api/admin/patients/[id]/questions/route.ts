@@ -76,3 +76,22 @@ export async function POST(
 
   return NextResponse.json(qset, { status: 201 });
 }
+
+// PATCH — mark a question set as reviewed (admin read the answers)
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { questionSetId } = await req.json();
+  if (!questionSetId) return NextResponse.json({ error: "questionSetId required" }, { status: 400 });
+
+  const updated = await (prisma as any).patientQuestion.updateMany({
+    where: { id: questionSetId, patientId: params.id, status: "answered" },
+    data: { status: "reviewed" },
+  });
+  return NextResponse.json({ updated: updated.count });
+}
