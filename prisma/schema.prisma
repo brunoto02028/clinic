@@ -668,6 +668,12 @@ model User {
   // Clinical Rehabilitation Agent
   rehabPlansAsPatient       RehabPlan[]              @relation("PatientRehabPlans")
   rehabPlansCreated         RehabPlan[]              @relation("StaffRehabPlans")
+  atlasChatMessages         AtlasChatMessage[]       @relation("AtlasChatMessages")
+  patientQuestionsReceived  PatientQuestion[]        @relation("PatientQuestions")
+  patientQuestionsCreated   PatientQuestion[]        @relation("QuestionCreator")
+
+  // Patient preferred language for reports
+  reportLanguage            String                   @default("en") // "en" | "pt"
 
   @@index([clinicId])
   @@index([email])
@@ -5095,4 +5101,38 @@ model RehabMessage {
 
   @@index([planId])
   @@map("rehab_messages")
+}
+
+// Persistent free-form chat between Bruno and Atlas about a patient
+model AtlasChatMessage {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   User     @relation("AtlasChatMessages", fields: [patientId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "assistant"
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([patientId])
+  @@map("atlas_chat_messages")
+}
+
+// Questions Atlas/clinician sends to patient for pre-visit answers
+model PatientQuestion {
+  id          String    @id @default(cuid())
+  patientId   String
+  patient     User      @relation("PatientQuestions", fields: [patientId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User      @relation("QuestionCreator", fields: [createdById], references: [id])
+  questions   Json      // String[]
+  context     String?   @db.Text  // brief context/reason
+  status      String    @default("pending") // pending | answered | reviewed
+  answers     Json?     // {index: number, question: string, answer: string}[]
+  language    String    @default("en")   // "en" | "pt"
+  answeredAt  DateTime?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([patientId])
+  @@map("patient_questions")
 }

@@ -1276,6 +1276,14 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   const [quickLoading, setQuickLoading] = useState(false);
   const quickEndRef = useRef<HTMLDivElement>(null);
 
+  // Send questions to patient
+  const [showQDialog, setShowQDialog]   = useState(false);
+  const [qText, setQText]               = useState("");
+  const [qLang, setQLang]               = useState<"en" | "pt">("en");
+  const [sendingQ, setSendingQ]         = useState(false);
+  const [qSentOk, setQSentOk]           = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
   const preEndRef  = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -1300,7 +1308,17 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
     if (r.ok) setPlans(await r.json());
   }, [patientId]);
 
-  useEffect(() => { loadPlans(); }, [loadPlans]);
+  const loadHistory = useCallback(async () => {
+    if (historyLoaded) return;
+    const r = await fetch(`/api/admin/patients/${patientId}/atlas-chat`);
+    if (r.ok) {
+      const data = await r.json();
+      setQuickHistory(data.map((m: any) => ({ role: m.role, content: m.content })));
+      setHistoryLoaded(true);
+    }
+  }, [patientId, historyLoaded]);
+
+  useEffect(() => { loadPlans(); loadHistory(); }, [loadPlans, loadHistory]);
   useEffect(() => { preEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [preChat]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activePlan?.messages]);
 
@@ -1403,6 +1421,24 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
     }
   };
 
+  const handleSendQuestions = async () => {
+    const lines = qText.split("\n").map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    setSendingQ(true);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questions: lines, context: "Pre-assessment questions", language: qLang }),
+      });
+      if (!r.ok) throw new Error("Failed");
+      setQSentOk(true);
+      setQText("");
+      setTimeout(() => { setShowQDialog(false); setQSentOk(false); }, 1500);
+    } catch (e: any) { setError(e.message); }
+    finally { setSendingQ(false); }
+  };
+
   const handleSend = async () => {
     if (!activePlan || sending) return;
     setSending(true);
@@ -1475,13 +1511,19 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
           <AtlasAvatar size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold leading-tight">Chat com Atlas</p>
-            <p className="text-[9px] text-muted-foreground leading-tight">Faz perguntas sobre este paciente — diagnóstico, exercícios, abordagem clínica…</p>
+            <p className="text-[9px] text-muted-foreground leading-tight">Chat persistente — o Atlas lembra-se de cada paciente</p>
           </div>
-          {quickHistory.length > 0 && (
-            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-muted-foreground" onClick={() => setQuickHistory([])}>
-              Limpar
-            </Button>
-          )}
+          <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-blue-500/30 text-blue-400 hover:bg-blue-500/10 shrink-0"
+            onClick={() => {
+              const lastAssistant = [...quickHistory].reverse().find(m => m.role === "assistant");
+              if (lastAssistant) {
+                const lines = lastAssistant.content.split("\n").filter(l => /^\d+\./.test(l.trim())).map(l => l.replace(/^\d+\.\s*/, "").replace(/\*\*/g, "").trim());
+                setQText(lines.length > 0 ? lines.join("\n") : lastAssistant.content.slice(0, 800));
+              }
+              setShowQDialog(true);
+            }}>
+            <Send className="h-2.5 w-2.5 mr-1" />Enviar ao Paciente
+          </Button>
         </div>
 
         {quickHistory.length > 0 && (
@@ -1520,6 +1562,39 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
           </Button>
         </div>
       </div>
+
+      {/* ── Dialog: Enviar Perguntas ao Paciente ── */}
+      {showQDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowQDialog(false)}>
+          <div className="bg-background border rounded-xl shadow-xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Enviar Perguntas ao Paciente</p>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowQDialog(false)}><X className="h-3.5 w-3.5" /></Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Cada linha é uma pergunta separada. O paciente verá isto no app e poderá responder antes da consulta.</p>
+            <textarea
+              className="w-full text-xs bg-muted/30 border rounded-lg p-2.5 resize-none h-44 placeholder:text-muted-foreground/50 font-mono leading-relaxed"
+              placeholder={"Escreve uma pergunta por linha, ex:\nHá quanto tempo tens este padrão de dor?\nA dor irradia para o braço ou mão?\nQue medicação estás a tomar?"}
+              value={qText} onChange={e => setQText(e.target.value)}
+            />
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] text-muted-foreground shrink-0">Língua do paciente:</p>
+              <Button size="sm" variant={qLang === "pt" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("pt")}>PT</Button>
+              <Button size="sm" variant={qLang === "en" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("en")}>EN</Button>
+              <span className="text-[9px] text-muted-foreground">(backup EN sempre guardado)</span>
+            </div>
+            {qSentOk ? (
+              <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
+                <CheckCircle2 className="h-4 w-4" />Perguntas enviadas! O paciente será notificado.
+              </div>
+            ) : (
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 h-9 text-xs" onClick={handleSendQuestions} disabled={sendingQ || !qText.trim()}>
+                {sendingQ ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />A enviar…</> : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirmar e Enviar</>}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 

@@ -8,6 +8,23 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
 
+// GET — load persistent chat history for this patient
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const messages = await (prisma as any).atlasChatMessage.findMany({
+    where: { patientId: params.id },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+  });
+  return NextResponse.json(messages);
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -83,5 +100,14 @@ Respond in the same language the therapist uses (English or Portuguese). Keep re
   ];
 
   const reply = await claudeGenerate(messages, { systemPrompt, maxTokens: 1024 });
+
+  // Persist both turns to DB
+  await (prisma as any).atlasChatMessage.createMany({
+    data: [
+      { patientId: params.id, role: "user", content: message },
+      { patientId: params.id, role: "assistant", content: reply },
+    ],
+  });
+
   return NextResponse.json({ reply });
 }
