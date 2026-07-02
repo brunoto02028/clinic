@@ -1,111 +1,70 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   Calendar,
   Clock,
-  CreditCard,
   ArrowLeft,
   ArrowRight,
   Check,
   Loader2,
-  Info,
-  Shield,
   AlertTriangle,
-  Stethoscope,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { TREATMENT_OPTIONS } from "@/lib/types";
 import Link from "next/link";
 import { useLocale } from "@/hooks/use-locale";
 
 export default function BookingForm() {
-  const router = useRouter();
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // 1=Date, 2=Time, 3=Done
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [screeningComplete, setScreeningComplete] = useState(true);
 
-  const [selectedTreatment, setSelectedTreatment] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [createdAppointmentId, setCreatedAppointmentId] = useState<string>("");
-  const [isCustomTreatment, setIsCustomTreatment] = useState(false);
-  const [customTreatment, setCustomTreatment] = useState({
-    name: "",
-    duration: 60,
-    price: 0,
-  });
-  const [initialAssessmentDone, setInitialAssessmentDone] = useState<boolean | null>(null);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [noAvailability, setNoAvailability] = useState(false);
-  const [sessionDiscount, setSessionDiscount] = useState(0);
+  const [consultationPrice, setConsultationPrice] = useState<number | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-    fetch("/api/patient/membership/subscription").then(r => r.json()).then(d => {
-      const discount = d?.subscription?.plan?.sessionDiscount || 0;
-      setSessionDiscount(discount);
-    }).catch(() => {});
-    fetch("/api/patient/status").then(r => r.json()).then(d => {
-      if (d.screeningComplete !== undefined) setScreeningComplete(d.screeningComplete);
-    }).catch(() => {});
-
-    // Check if patient has completed an initial assessment
-    fetch("/api/appointments")
-      .then(r => r.json())
-      .then(data => {
-        const appts = data?.appointments ?? [];
-        const hasInitial = appts.some((a: any) =>
-          (a.treatmentType === "Initial Assessment" || a.treatmentType === "Avaliação Inicial") &&
-          (a.status === "COMPLETED" || a.status === "CONFIRMED" || a.status === "PENDING")
-        );
-        setInitialAssessmentDone(hasInitial);
-      })
-      .catch(() => setInitialAssessmentDone(false));
-
-    // Fetch available dates (next 21 days, check each against therapist schedule)
     fetchAvailableDates();
+    fetch("/api/patient/service-prices")
+      .then(r => r.json())
+      .then((data: any[]) => {
+        const consultation = data?.find((p: any) => p.serviceType === "CONSULTATION");
+        if (consultation?.price) setConsultationPrice(consultation.price);
+      })
+      .catch(() => {});
   }, []);
 
   const fetchAvailableDates = async () => {
-    const dates: string[] = [];
     const today = new Date();
-    today.setDate(today.getDate() + 1); // Start from tomorrow
-
+    today.setDate(today.getDate() + 1);
     const checks: string[] = [];
-    for (let i = 0; i < 21; i++) {
+    for (let i = 0; i < 28; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().split("T")[0];
-      checks.push(dateStr);
+      checks.push(d.toISOString().split("T")[0]);
     }
-
-    // Check availability for each date in parallel
     try {
       const results = await Promise.all(
         checks.map(date =>
-          fetch(`/api/availability?date=${date}&duration=30`)
+          fetch(`/api/availability?date=${date}&duration=60`)
             .then(r => r.json())
             .catch(() => ({ available: false }))
         )
       );
-      results.forEach((res, idx) => {
-        if (res.available && res.slots && res.slots.length > 0) {
-          dates.push(checks[idx]);
-        }
-      });
-    } catch {}
-    setAvailableDates(dates);
-    if (dates.length === 0) setNoAvailability(true);
+      const dates = checks.filter((_, idx) => results[idx]?.available && results[idx]?.slots?.length > 0);
+      setAvailableDates(dates);
+      if (dates.length === 0) setNoAvailability(true);
+    } catch {
+      setNoAvailability(true);
+    }
   };
 
   const fetchSlotsForDate = async (date: string) => {
@@ -113,8 +72,7 @@ export default function BookingForm() {
     setAvailableSlots([]);
     setSelectedTime("");
     try {
-      const duration = treatment?.duration || 60;
-      const res = await fetch(`/api/availability?date=${date}&duration=${duration}`);
+      const res = await fetch(`/api/availability?date=${date}&duration=60`);
       const data = await res.json();
       setAvailableSlots(data?.slots ?? []);
     } catch {
@@ -124,92 +82,33 @@ export default function BookingForm() {
     }
   };
 
-  const treatment = isCustomTreatment
-    ? {
-        id: "custom",
-        name: customTreatment.name,
-        duration: customTreatment.duration,
-        price: customTreatment.price,
-        description: "Custom treatment",
-      }
-    : TREATMENT_OPTIONS.find((t) => t.id === selectedTreatment);
-
-  const discountedPrice = treatment
-    ? sessionDiscount > 0
-      ? parseFloat((treatment.price * (1 - sessionDiscount / 100)).toFixed(2))
-      : treatment.price
-    : 0;
-
-  // Available dates and slots now fetched from API (see fetchAvailableDates / fetchSlotsForDate)
-
-  const handleCreateAppointment = async () => {
+  const handleConfirmBooking = async () => {
     setLoading(true);
     try {
       const dateTime = new Date(`${selectedDate}T${selectedTime}:00`);
-
-      const response = await fetch("/api/appointments", {
+      const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dateTime: dateTime.toISOString(),
-          duration: treatment?.duration ?? 60,
-          treatmentType: treatment?.name ?? "Appointment",
-          price: discountedPrice ?? 60,
+          duration: 60,
+          treatmentType: "Consultation",
+          price: consultationPrice ?? 0,
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || (isPt ? "Falha ao criar consulta" : "Failed to create appointment"));
-      }
-
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed");
       setCreatedAppointmentId(data?.appointment?.id ?? "");
-      setStep(4);
-    } catch (error) {
-      console.error("Error creating appointment:", error);
-      alert(isPt ? "Falha ao criar consulta. Tente novamente." : "Failed to create appointment. Please try again.");
+      setStep(3);
+    } catch (err: any) {
+      alert(isPt ? "Falha ao criar consulta. Tente novamente." : "Failed to book appointment. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-
-  const handleProceedToPayment = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/payments/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appointmentId: createdAppointmentId,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || (isPt ? "Falha ao criar sessão de pagamento" : "Failed to create payment session"));
-      }
-
-      // Redirect to Stripe checkout
-      if (data?.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      }
-    } catch (error) {
-      console.error("Error creating payment session:", error);
-      alert(isPt ? "Falha ao iniciar pagamento. Tente novamente." : "Failed to initiate payment. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filter treatments based on initial assessment status
-  const availableTreatments = initialAssessmentDone === false
-    ? TREATMENT_OPTIONS.filter(t => t.id === "initial-assessment")
-    : TREATMENT_OPTIONS;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/dashboard/appointments">
@@ -217,410 +116,241 @@ export default function BookingForm() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">{isPt ? "Agendar Consulta" : "Book Appointment"}</h1>
-          <p className="text-sm text-muted-foreground">{isPt ? "Selecione seu tratamento e horário preferido" : "Select your treatment and preferred time"}</p>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+            {isPt ? "Agendar Consulta" : "Book an Appointment"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isPt ? "Escolha o dia e horário disponíveis" : "Choose an available date and time"}
+          </p>
         </div>
       </div>
 
-      {/* Progress Steps */}
-      <div className="flex items-center justify-between px-2">
-        {[1, 2, 3, 4].map((s) => (
-          <div key={s} className="flex items-center flex-1">
-            <div
-              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium transition-colors flex-shrink-0 ${
-                step >= s
-                  ? "bg-primary text-white"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {step > s ? <Check className="h-3 w-3 sm:h-4 sm:w-4" /> : s}
+      {/* Progress */}
+      <div className="flex items-center px-2">
+        {[1, 2, 3].map((s) => (
+          <div key={s} className="flex items-center flex-1 last:flex-none">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors flex-shrink-0 ${
+              step >= s ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+            }`}>
+              {step > s ? <Check className="h-4 w-4" /> : s}
             </div>
-            {s < 4 && (
-              <div
-                className={`flex-1 h-1 mx-1 sm:mx-2 transition-colors ${
-                  step > s ? "bg-primary" : "bg-muted"
-                }`}
-              />
-            )}
+            {s < 3 && <div className={`flex-1 h-1 mx-2 transition-colors ${step > s ? "bg-primary" : "bg-muted"}`} />}
           </div>
         ))}
       </div>
 
-      {/* Step 1: Select Treatment */}
+      {/* Step 1: Select Date */}
       {step === 1 && (
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-primary" />
-                {isPt ? "Selecionar Tratamento" : "Select Treatment"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Initial Assessment required banner */}
-              {initialAssessmentDone === false && (
-                <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/10 flex items-start gap-3">
-                  <Stethoscope className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-amber-300 text-sm">
-                      {isPt ? "Avaliação Inicial Obrigatória" : "Initial Assessment Required"}
-                    </p>
-                    <p className="text-xs text-amber-400/80 mt-1">
-                      {isPt
-                        ? "Antes de agendar qualquer tratamento, você precisa fazer uma Avaliação Inicial. Isso permite que seu terapeuta entenda suas necessidades e crie um plano personalizado."
-                        : "Before booking any treatment, you need to complete an Initial Assessment. This allows your therapist to understand your needs and create a personalised plan."}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {availableTreatments.map((t) => (
-                <div
-                  key={t.id}
-                  onClick={() => {
-                    setSelectedTreatment(t.id);
-                    setIsCustomTreatment(false);
-                  }}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedTreatment === t.id && !isCustomTreatment
-                      ? "border-primary bg-primary/5"
-                      : "border-white/10 hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground">{isPt && t.namePt ? t.namePt : t.name}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {isPt && t.descriptionPt ? t.descriptionPt : t.description}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {isPt ? "Duração" : "Duration"}: {t.duration} {isPt ? "minutos" : "minutes"}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      {sessionDiscount > 0 && <p className="text-xs line-through text-muted-foreground">£{t.price}</p>}
-                      <p className="font-bold text-lg text-primary">£{sessionDiscount > 0 ? parseFloat((t.price * (1 - sessionDiscount / 100)).toFixed(2)) : t.price}</p>
-                      {sessionDiscount > 0 && <p className="text-xs text-emerald-500">{sessionDiscount}% off</p>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Personalised Treatment CTA */}
-              <div className="p-4 rounded-lg border-2 border-dashed border-white/10 bg-muted/20">
-                <h3 className="font-semibold text-foreground mb-2">
-                  {isPt ? "Tratamento Personalizado" : "Personalised Treatment"}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              {isPt ? "Escolha uma Data" : "Choose a Date"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {availableDates.length === 0 && !noAvailability ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">
+                  {isPt ? "A verificar disponibilidade..." : "Checking availability..."}
+                </span>
+              </div>
+            ) : noAvailability ? (
+              <div className="text-center py-10">
+                <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">
                   {isPt
-                    ? "Precisa de um tratamento diferente? O seu terapeuta pode criar um plano personalizado para si."
-                    : "Need a different treatment? Your therapist can create a personalised plan for you."}
+                    ? "Sem datas disponíveis neste momento. Contacte a clínica."
+                    : "No available dates at the moment. Please contact the clinic."}
                 </p>
-                <a
-                  href={isPt ? "mailto:support@bpr.rehab?subject=Solicita%C3%A7%C3%A3o%20de%20Tratamento%20Personalizado" : "mailto:support@bpr.rehab?subject=Personalised%20Treatment%20Request"}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-                >
-                  {isPt ? "Contactar o Terapeuta →" : "Contact Your Therapist →"}
+                <a href="mailto:admin@bpr.rehab" className="text-primary text-sm hover:underline mt-2 inline-block">
+                  admin@bpr.rehab
                 </a>
               </div>
-
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                {availableDates.map((date) => {
+                  const d = new Date(date + "T12:00:00");
+                  return (
+                    <div
+                      key={date}
+                      onClick={() => { setSelectedDate(date); fetchSlotsForDate(date); }}
+                      className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all ${
+                        selectedDate === date
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <p className="text-xs text-muted-foreground">
+                        {d.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short" })}
+                      </p>
+                      <p className="font-bold text-lg text-foreground">{d.getDate()}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {d.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { month: "short" })}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div className="mt-6">
               <Button
-                className="w-full mt-4 gap-2"
-                disabled={
-                  isCustomTreatment
-                    ? !customTreatment.name.trim()
-                    : !selectedTreatment
-                }
+                className="w-full gap-2"
+                disabled={!selectedDate}
                 onClick={() => setStep(2)}
               >
                 {isPt ? "Continuar" : "Continue"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Step 2: Select Date */}
+      {/* Step 2: Select Time */}
       {step === 2 && (
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                {isPt ? "Selecionar Data" : "Select Date"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {availableDates.length === 0 && !noAvailability ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  <span className="ml-2 text-sm text-muted-foreground">{isPt ? "Carregando datas..." : "Loading dates..."}</span>
-                </div>
-              ) : noAvailability ? (
-                <div className="text-center py-8">
-                  <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                  <p className="text-muted-foreground text-sm">{isPt ? "Nenhuma data disponível no momento. Entre em contato com a clínica." : "No available dates at the moment. Please contact the clinic."}</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-3">
-                  {availableDates.map((date: string) => {
-                    const dateObj = new Date(date + "T12:00:00");
-                    return (
-                      <div
-                        key={date}
-                        onClick={() => { setSelectedDate(date); fetchSlotsForDate(date); }}
-                        className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all ${
-                          selectedDate === date
-                            ? "border-primary bg-primary/5"
-                            : "border-white/10 hover:border-primary/50"
-                        }`}
-                      >
-                        <p className="text-sm text-muted-foreground">
-                          {dateObj.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short" })}
-                        </p>
-                        <p className="font-semibold text-lg text-foreground">
-                          {dateObj.getDate()}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {dateObj.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { month: "short" })}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(1)}>
-                  {isPt ? "Voltar" : "Back"}
-                </Button>
-                <Button
-                  className="flex-1 gap-2"
-                  disabled={!selectedDate}
-                  onClick={() => setStep(3)}
-                >
-                  {isPt ? "Continuar" : "Continue"}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              {isPt ? "Escolha o Horário" : "Choose a Time"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              {new Date(selectedDate + "T12:00:00").toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
+                weekday: "long", day: "numeric", month: "long", year: "numeric",
+              })}
+            </p>
+            {slotsLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">
+                  {isPt ? "A carregar horários..." : "Loading times..."}
+                </span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Step 3: Select Time */}
-      {step === 3 && (
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-primary" />
-                {isPt ? "Selecionar Horário" : "Select Time"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {slotsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  <span className="ml-2 text-sm text-muted-foreground">{isPt ? "Carregando horários..." : "Loading slots..."}</span>
-                </div>
-              ) : availableSlots.length === 0 ? (
-                <div className="text-center py-8">
-                  <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                  <p className="text-muted-foreground text-sm">{isPt ? "Nenhum horário disponível nesta data." : "No available slots on this date."}</p>
-                </div>
-              ) : (
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 sm:gap-3">
-                {availableSlots.map((time: string) => (
+            ) : availableSlots.length === 0 ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">
+                  {isPt ? "Sem horários disponíveis nesta data." : "No slots available on this date."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                {availableSlots.map((time) => (
                   <div
                     key={time}
                     onClick={() => setSelectedTime(time)}
                     className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all ${
                       selectedTime === time
-                        ? "border-primary bg-primary/5"
-                        : "border-white/10 hover:border-primary/50"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
                     }`}
                   >
-                    <p className="font-semibold text-foreground">{time}</p>
+                    <p className="font-semibold text-sm text-foreground">{time}</p>
                   </div>
                 ))}
               </div>
-              )}
+            )}
 
-              {/* Summary */}
-              {selectedTime && (
-                <div className="mt-6 p-4 bg-muted/30 rounded-lg">
-                  <h3 className="font-semibold text-foreground mb-2">{isPt ? "Resumo do Agendamento" : "Booking Summary"}</h3>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>
-                      <span className="font-medium">{isPt ? "Tratamento:" : "Treatment:"}</span> {treatment?.name ?? ""}
-                    </p>
-                    <p>
-                      <span className="font-medium">{isPt ? "Data:" : "Date:"}</span>{" "}
-                      {new Date(selectedDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </p>
-                    <p>
-                      <span className="font-medium">{isPt ? "Horário:" : "Time:"}</span> {selectedTime}
-                    </p>
-                    <p>
-                      <span className="font-medium">{isPt ? "Duração:" : "Duration:"}</span> {treatment?.duration ?? 60} {isPt ? "minutos" : "minutes"}
-                    </p>
-                    <div className="mt-2">
-                      {sessionDiscount > 0 && <p className="text-sm line-through text-muted-foreground">£{treatment?.price ?? 60}</p>}
-                      <p className="text-lg font-bold text-primary">Total: £{discountedPrice}</p>
-                      {sessionDiscount > 0 && <p className="text-xs text-emerald-500 font-medium">{sessionDiscount}% membership discount applied</p>}
-                    </div>
-                  </div>
+            {/* Summary before confirm */}
+            {selectedTime && (
+              <div className="mt-5 p-4 bg-muted/30 rounded-lg text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{isPt ? "Data" : "Date"}</span>
+                  <span className="font-medium">
+                    {new Date(selectedDate + "T12:00:00").toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
+                      day: "numeric", month: "short", year: "numeric",
+                    })}
+                  </span>
                 </div>
-              )}
-
-              <div className="flex gap-3 mt-6">
-                <Button variant="outline" onClick={() => setStep(2)}>
-                  {isPt ? "Voltar" : "Back"}
-                </Button>
-                <Button
-                  className="flex-1 gap-2"
-                  disabled={!selectedTime || loading}
-                  onClick={handleCreateAppointment}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {isPt ? "Criando..." : "Creating..."}
-                    </>
-                  ) : (
-                    <>
-                      {isPt ? "Confirmar Agendamento" : "Confirm Booking"}
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{isPt ? "Horário" : "Time"}</span>
+                  <span className="font-medium">{selectedTime}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{isPt ? "Duração" : "Duration"}</span>
+                  <span className="font-medium">60 {isPt ? "minutos" : "min"}</span>
+                </div>
+                {consultationPrice != null && (
+                  <div className="flex justify-between pt-2 border-t mt-2">
+                    <span className="font-semibold">{isPt ? "Preço estimado" : "Estimated price"}</span>
+                    <span className="font-bold text-primary">£{consultationPrice}</span>
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+
+            <div className="flex gap-3 mt-5">
+              <Button variant="outline" onClick={() => setStep(1)}>
+                {isPt ? "Voltar" : "Back"}
+              </Button>
+              <Button
+                className="flex-1 gap-2"
+                disabled={!selectedTime || loading}
+                onClick={handleConfirmBooking}
+              >
+                {loading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> {isPt ? "A confirmar..." : "Confirming..."}</>
+                ) : (
+                  <>{isPt ? "Confirmar Pedido" : "Confirm Request"} <ArrowRight className="h-4 w-4" /></>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Step 4: Payment */}
-      {step === 4 && (
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {treatment?.price === 0 ? (
-                  <Check className="h-5 w-5 text-emerald-600" />
-                ) : (
-                  <CreditCard className="h-5 w-5 text-primary" />
-                )}
-                {treatment?.price === 0 ? (isPt ? "Agendamento Confirmado" : "Booking Confirmed") : (isPt ? "Completar Pagamento" : "Complete Payment")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-6">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-4">
-                  <Check className="h-8 w-8 text-emerald-600" />
+      {/* Step 3: Confirmed */}
+      {step === 3 && (
+        <Card>
+          <CardContent className="pt-8 pb-8">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-9 w-9 text-emerald-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                {isPt ? "Pedido Enviado!" : "Request Sent!"}
+              </h3>
+              <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
+                {isPt
+                  ? "Recebemos o seu pedido de consulta. Irá receber um email de confirmação com os detalhes e o link de pagamento."
+                  : "We've received your appointment request. You'll receive a confirmation email with details and a payment link shortly."}
+              </p>
+              <div className="bg-muted/30 rounded-lg p-4 mb-6 text-sm text-left space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{isPt ? "Data" : "Date"}</span>
+                  <span className="font-medium">
+                    {new Date(selectedDate + "T12:00:00").toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
+                      weekday: "long", day: "numeric", month: "long",
+                    })}
+                  </span>
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  {isPt ? (treatment?.price === 0 ? "Consulta Confirmada!" : "Consulta Criada!") : `Appointment ${treatment?.price === 0 ? "Confirmed" : "Created"}!`}
-                </h3>
-                <p className="text-muted-foreground mb-6">
-                  {treatment?.price === 0
-                    ? (isPt ? "Sua consulta gratuita foi agendada com sucesso." : "Your free appointment has been booked successfully.")
-                    : (isPt ? "Sua consulta foi reservada. Complete o pagamento para confirmar seu agendamento." : "Your appointment has been reserved. Complete payment to confirm your booking.")}
-                </p>
-
-                <div className="bg-muted/30 rounded-lg p-4 mb-6 text-left">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{isPt ? "Tratamento" : "Treatment"}</span>
-                      <span className="font-medium">{treatment?.name ?? ""}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{isPt ? "Data" : "Date"}</span>
-                      <span className="font-medium">
-                        {new Date(selectedDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{isPt ? "Horário" : "Time"}</span>
-                      <span className="font-medium">{selectedTime}</span>
-                    </div>
-                    <div className="border-t pt-2 mt-2">
-                      <div className="flex justify-between text-base">
-                        <span className="font-semibold">Total</span>
-                        <span className="font-bold text-primary">£{discountedPrice}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Screening reminder */}
-                {!screeningComplete && (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 flex items-start gap-3 text-left">
-                    <Shield className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-red-300 text-sm">{isPt ? "Triagem Médica Necessária" : "Medical Screening Required"}</p>
-                      <p className="text-xs text-red-400/80 mt-1">{isPt ? "Complete sua triagem médica pelo menos 24 horas antes da consulta para evitar reagendamento." : "Complete your medical screening at least 24 hours before your appointment to avoid rescheduling."}</p>
-                      <Link href="/dashboard/screening">
-                        <Button size="sm" variant="outline" className="mt-2 gap-1 border-red-500/20 text-red-400 hover:bg-red-500/10 text-xs">
-                          <Shield className="h-3 w-3" /> {isPt ? "Completar Triagem" : "Complete Screening"}
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  {treatment?.price === 0 ? (
-                    // Free appointment - just go to appointment details
-                    <Link href={`/dashboard/appointments/${createdAppointmentId}`} className="w-full">
-                      <Button className="w-full">
-                        {isPt ? "Ver Consulta" : "View Appointment"}
-                      </Button>
-                    </Link>
-                  ) : (
-                    // Paid appointment - show payment options
-                    <>
-                      <Link href={`/dashboard/appointments/${createdAppointmentId}`} className="flex-1">
-                        <Button variant="outline" className="w-full">
-                          {isPt ? "Pagar Depois" : "Pay Later"}
-                        </Button>
-                      </Link>
-                      <Button
-                        className="flex-1 gap-2"
-                        disabled={loading}
-                        onClick={handleProceedToPayment}
-                      >
-                        {loading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {isPt ? "Processando..." : "Processing..."}
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="h-4 w-4" />
-                            {isPt ? "Pagar Agora" : "Pay Now"}
-                          </>
-                        )}
-                      </Button>
-                    </>
-                  )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{isPt ? "Horário" : "Time"}</span>
+                  <span className="font-medium">{selectedTime}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/dashboard/appointments" className="flex-1">
+                  <Button variant="outline" className="w-full">
+                    {isPt ? "Ver Consultas" : "View Appointments"}
+                  </Button>
+                </Link>
+                {createdAppointmentId && (
+                  <Link href={`/dashboard/appointments/${createdAppointmentId}`} className="flex-1">
+                    <Button className="w-full">
+                      {isPt ? "Ver Detalhes" : "View Details"}
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

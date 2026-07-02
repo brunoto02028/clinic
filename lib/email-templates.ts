@@ -103,12 +103,12 @@ export const DEFAULT_TEMPLATES = [
   {
     slug: 'APPOINTMENT_CONFIRMATION' as const,
     name: 'Appointment Confirmation',
-    subject: 'Appointment Confirmed — {{appointmentDate}}',
-    description: 'Sent when an appointment is confirmed',
+    subject: 'Appointment Request Received — {{appointmentDate}}',
+    description: 'Sent when an appointment is booked by the patient',
     variables: ['patientName', 'appointmentDate', 'appointmentTime', 'therapistName', 'location', 'portalUrl'],
     htmlBody: `
-    <h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">Appointment Confirmed ✅</h2>
-    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, your appointment has been confirmed.</p>
+    <h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">Booking Request Received 📅</h2>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, we've received your consultation request. Click the button below to view the details and complete your payment when you're ready.</p>
     <div style="background:#f0fdf9;border:1px solid #d1fae5;border-radius:12px;padding:20px 24px;margin:0 0 24px;">
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
         <tr><td style="padding:6px 0;font-size:14px;color:#6b7280;width:100px;">📅 Date</td><td style="padding:6px 0;font-size:15px;color:#111827;font-weight:600;">{{appointmentDate}}</td></tr>
@@ -118,9 +118,9 @@ export const DEFAULT_TEMPLATES = [
       </table>
     </div>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View in Portal →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View & Pay →</a>
     </div>
-    <p style="color:#6b7280;font-size:13px;margin:0;">Need to reschedule? Log in to your portal or contact us directly.</p>`,
+    <p style="color:#6b7280;font-size:13px;margin:0;">Need to reschedule or have questions? Contact us at <a href="mailto:admin@bpr.rehab" style="color:#5dc9c0;">admin@bpr.rehab</a></p>`,
   },
   {
     slug: 'APPOINTMENT_REMINDER' as const,

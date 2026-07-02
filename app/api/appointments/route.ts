@@ -200,12 +200,12 @@ export async function POST(request: NextRequest) {
           appointmentDate: dateStr,
           appointmentTime: timeStr,
           therapistName: `${appointment.therapist.firstName} ${appointment.therapist.lastName}`,
-          treatmentType: treatmentType || '',
+          treatmentType: treatmentType || 'Consultation',
           duration: String(duration || 60),
-          portalUrl: `${appUrl}/dashboard/appointments`,
+          portalUrl: `${appUrl}/dashboard/appointments/${appointment.id}`,
         },
-        plainMessage: `Your appointment is confirmed: ${treatmentType} on ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Duration: ${duration || 60} min.`,
-        plainMessagePt: `Sua consulta está confirmada: ${treatmentType} em ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Duração: ${duration || 60} min.`,
+        plainMessage: `Your appointment request has been received: ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. View details and pay at: ${appUrl}/dashboard/appointments/${appointment.id}`,
+        plainMessagePt: `O seu pedido de consulta foi recebido: ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Veja os detalhes em: ${appUrl}/dashboard/appointments/${appointment.id}`,
       });
     } catch (emailError) {
       console.error('Failed to send patient notification:', emailError);
