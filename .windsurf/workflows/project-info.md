@@ -5,7 +5,7 @@ description: Project vault with all access credentials and infrastructure info f
 # BPR Clinic — Project Vault & SPEC Completa
 
 > **⚠️ SENSITIVE — não partilhar publicamente**
-> Última actualização: 2 Julho 2026 — Atlas Rehab Agent
+> Última actualização: 2 Julho 2026 — Mensagens Paciente + SOAP Notes + Q&A Screening
 
 ---
 
@@ -307,7 +307,94 @@ vapi_calls
 study_projects, study_documents, study_messages, study_drafts
 biohacking_protocols, biohacking_assignments, terra_webhook_events
 rehab_plans, rehab_messages
+patient_questions  (type: questions|report, status: pending|answered|reviewed)
+soap_notes
 ```
+
+---
+
+## 👤 Painel do Paciente (Admin) — Guia de Referência
+
+### Badges / Botões de estado (faixa colorida)
+
+| Badge / Botão | Significado | Acção |
+|---|---|---|
+| 🟡 **Perfil Pendente** | Paciente não completou `/dashboard/profile` (nome, tel, DOB) | Fica verde quando preenche |
+| 🔴 **Sem Senha** | Admin criou conta mas paciente não registou ainda | Enviar invite link → aceitar → fica "Senha Definida" |
+| 🟢 **Consentimento Aceito** | GDPR aceite em `/dashboard/consent` | Sem isto, dashboard está bloqueado |
+| 🟢 **Acesso Total Ativo** *(clicável)* | Override manual: acesso completo mesmo sem screening/pagamento | Clica para ligar/desligar |
+| 🟡 **Resetar Senha** *(clicável)* | Abre campo inline para admin definir nova password | Digitar + confirmar |
+| 🔵 **Ver como Paciente** *(clicável)* | Impersonation — vê exactamente o que o paciente vê | Barra azul no topo; "Voltar ao Admin" para sair |
+
+### Tabs do perfil de paciente (admin)
+
+| Tab | Conteúdo | Editável? |
+|---|---|---|
+| **Resumo** | Overview: red flags, queixa principal, invite link, acções rápidas | Parcialmente |
+| **Screening** | Triagem médica preenchida pelo paciente + perguntas/respostas Q&A | ✅ Admin pode editar; paciente preencheu inicialmente |
+| **Avaliações** | Foot scans, body assessments, termografia | ✅ |
+| **Notas Clínicas** | SOAP Notes (S/O/A/P) + Blood Pressure readings | ✅ Add/Edit/Delete |
+| **Documentos** | Upload de ficheiros + Write Clinical History | ✅ |
+| **Rehab Agent** | Atlas AI — chat clínico + enviar mensagens ao paciente | ✅ |
+
+### Sistema de Mensagens ao Paciente (2 Jul 2026)
+
+Localização no admin: **Rehab Agent tab → painel "Mensagens Enviadas ao Paciente"**
+
+**Dois tipos distintos:**
+- `type: "questions"` — Pré-atendimento: paciente responde pergunta por pergunta no portal
+- `type: "report"` — Relatório/Feedback clínico: leitura apenas, sem campos de resposta
+
+**Fluxo correcto:**
+1. Conversar com Atlas → clicar "Enviar ao Paciente"
+2. Dialog abre com texto completo do Atlas + auto-detecta tipo (relatório ou perguntas)
+3. Confirmar → paciente recebe email + aparece em `/dashboard/questions`
+
+**Admin pode:**
+- Expandir ▼ cada item para ver conteúdo + respostas
+- 🗑 Eliminar qualquer item (reflecte imediatamente no portal do paciente)
+- Ver Q&A também na tab Screening (integrado com triagem)
+
+**Paciente vê em `/dashboard/questions`:**
+- Inbox organizado por dia (separador de data)
+- 📋 Relatório = card verde, leitura
+- ❓ Pré-Atendimento = card azul, com textareas redimensionáveis + botão Enviar
+- Itens respondidos colapsados (clica para expandir)
+- Badge "⏳ X pendentes" no cabeçalho
+
+### Tarefas (Patient Action Requests) — `/admin/patient-tasks`
+
+Pedidos de acção enviados pelo admin a pacientes específicos.
+
+| Tipo | Descrição |
+|---|---|
+| Custom Message | Mensagem livre |
+| Upload Document | Pedir upload de documento |
+| Complete Screening | Lembrete para completar triagem |
+| Record Pre-Consultation | Gravação de voz pré-consulta |
+| Sign Consent | Assinar consentimento |
+| Update Profile | Completar perfil |
+| Confirm Appointment | Confirmar consulta |
+| Pay Invoice | Pagar fatura |
+
+Paciente recebe: email + notificação in-app → responde via `/dashboard/tasks`
+
+### Portal do paciente — Sidebar (PATIENT_SECTIONS)
+
+| Item sidebar | Rota | Conteúdo |
+|---|---|---|
+| 🏠 Início | `/dashboard` | Home page do paciente |
+| 📅 Consultas | `/dashboard/appointments` | Marcações + screening + consent |
+| 🩺 Minha Saúde | `/dashboard/clinical-notes` | Notas, tratamento, planos, documentos, registos |
+| 💪 Exercícios | `/dashboard/exercises` | Exercícios, tarefas, journey, achievements |
+| 📚 Aprender | `/dashboard/education` | Guias, insole guide, comunidade |
+| ❓ Perguntas | `/dashboard/questions` | Mensagens da Clínica (Q&A + relatórios) |
+| 👤 Meu Perfil | `/dashboard/profile` | Perfil, membership |
+
+### Notas Clínicas (SOAP) — Correcções 2 Jul 2026
+- Botão "+ Add" estava a renderizar no tab Resumo (invisível ao estar no tab Notas) → **corrigido**: form agora inline no tab Notas Clínicas
+- Adicionado botão 🗑 Delete em cada nota (API: `action: "delete_soap_note"`)
+- Botão "Exportar PDF" via `window.print()`
 
 ---
 
