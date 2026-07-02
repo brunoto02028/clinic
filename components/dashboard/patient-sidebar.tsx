@@ -25,6 +25,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
+  const [pendingQuestions, setPendingQuestions] = useState(0);
 
   const activeSection = getActivePatientSection(pathname);
   const isPt = locale?.startsWith("pt");
@@ -50,6 +51,17 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
 
   useEffect(() => {
     setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    fetch("/api/patient/questions")
+      .then(r => r.ok ? r.json() : [])
+      .then((data: any[]) => {
+        if (Array.isArray(data)) {
+          setPendingQuestions(data.filter(q => q.status === "pending").length);
+        }
+      })
+      .catch(() => {});
   }, [pathname]);
 
   const navItemClass = (active: boolean) =>
@@ -147,7 +159,12 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
               >
                 {isActive && activeBar}
                 <Icon size={18} className="flex-shrink-0" />
-                <span>{isPt ? section.labelPt : section.label}</span>
+                <span className="flex-1">{isPt ? section.labelPt : section.label}</span>
+                {section.key === "questions" && pendingQuestions > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-amber-400 text-black text-[10px] font-bold flex items-center justify-center px-1">
+                    {pendingQuestions > 9 ? "9+" : pendingQuestions}
+                  </span>
+                )}
               </Link>
             );
           })}

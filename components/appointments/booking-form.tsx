@@ -44,9 +44,8 @@ export default function BookingForm() {
 
   const fetchAvailableDates = async () => {
     const today = new Date();
-    today.setDate(today.getDate() + 1);
     const checks: string[] = [];
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 29; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
       checks.push(d.toISOString().split("T")[0]);
@@ -173,20 +172,29 @@ export default function BookingForm() {
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                 {availableDates.map((date) => {
                   const d = new Date(date + "T12:00:00");
+                  const todayStr = new Date().toISOString().split("T")[0];
+                  const isToday = date === todayStr;
                   return (
                     <div
                       key={date}
                       onClick={() => { setSelectedDate(date); fetchSlotsForDate(date); }}
-                      className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all ${
+                      className={`p-3 rounded-lg border-2 cursor-pointer text-center transition-all relative ${
                         selectedDate === date
                           ? "border-primary bg-primary/10"
+                          : isToday
+                          ? "border-primary/40 bg-primary/5 hover:border-primary/70"
                           : "border-border hover:border-primary/50"
                       }`}
                     >
+                      {isToday && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                          {isPt ? "Hoje" : "Today"}
+                        </span>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         {d.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short" })}
                       </p>
-                      <p className="font-bold text-lg text-foreground">{d.getDate()}</p>
+                      <p className={`font-bold text-lg ${isToday ? "text-primary" : "text-foreground"}`}>{d.getDate()}</p>
                       <p className="text-xs text-muted-foreground">
                         {d.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { month: "short" })}
                       </p>

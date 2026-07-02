@@ -505,6 +505,26 @@ export const DEFAULT_TEMPLATES = [
       <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Explore Your Dashboard →</a>
     </div>`,
   },
+  // ── PATIENT QUESTIONS ──
+  {
+    slug: 'PATIENT_QUESTIONS' as const,
+    name: 'Therapist Questions for Patient',
+    subject: 'Your therapist sent you {{questionCount}} question(s) to answer',
+    description: 'Sent when admin/therapist sends a question set to a patient via Atlas',
+    variables: ['patientName', 'questionCount', 'context', 'portalUrl'],
+    htmlBody: `
+    <h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">Questions from Your Therapist 📋</h2>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, your therapist has sent you <strong>{{questionCount}} question(s)</strong> to answer before your next appointment.</p>
+    <div style="background:#f0fdf9;border:1px solid #d1fae5;border-radius:12px;padding:20px 24px;margin:0 0 24px;">
+      <p style="margin:0;font-size:14px;color:#6b7280;">📌 Context</p>
+      <p style="margin:6px 0 0;font-size:15px;color:#111827;font-weight:600;">{{context}}</p>
+    </div>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Your answers will help the therapist personalise your treatment. Please take a few minutes to respond through your portal.</p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Answer Questions →</a>
+    </div>
+    <p style="color:#6b7280;font-size:13px;margin:0;">Questions? Contact us at <a href="mailto:admin@bpr.rehab" style="color:#5dc9c0;">admin@bpr.rehab</a></p>`,
+  },
   // ── EXERCISE REMINDER ──
   {
     slug: 'EXERCISE_REMINDER' as const,

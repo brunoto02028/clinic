@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
@@ -35,15 +36,43 @@ export async function POST(
   const { questions, context, language = "en" } = await req.json();
   if (!questions?.length) return NextResponse.json({ error: "No questions" }, { status: 400 });
 
-  const qset = await (prisma as any).patientQuestion.create({
-    data: {
-      patientId: params.id,
-      createdById: (session.user as any).id,
-      questions,
-      context,
-      language,
-      status: "pending",
-    },
-  });
+  const [qset, patient] = await Promise.all([
+    (prisma as any).patientQuestion.create({
+      data: {
+        patientId: params.id,
+        createdById: (session.user as any).id,
+        questions,
+        context,
+        language,
+        status: "pending",
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: params.id },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    }),
+  ]);
+
+  if (patient) {
+    const appUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+    const isPt = language === "pt";
+    try {
+      await notifyPatient({
+        patientId: patient.id,
+        emailTemplateSlug: "PATIENT_QUESTIONS",
+        emailVars: {
+          patientName: `${patient.firstName} ${patient.lastName}`,
+          questionCount: String(questions.length),
+          context: context || (isPt ? "Pré-consulta" : "Pre-consultation"),
+          portalUrl: `${appUrl}/dashboard/questions`,
+        },
+        plainMessage: `Your therapist sent you ${questions.length} question${questions.length > 1 ? "s" : ""} to answer before your appointment. Visit your portal: ${appUrl}/dashboard/questions`,
+        plainMessagePt: `O seu terapeuta enviou ${questions.length} pergunta${questions.length > 1 ? "s" : ""} para responder antes da consulta. Aceda ao portal: ${appUrl}/dashboard/questions`,
+      });
+    } catch (e) {
+      console.error("[questions] Failed to notify patient:", e);
+    }
+  }
+
   return NextResponse.json(qset, { status: 201 });
 }
