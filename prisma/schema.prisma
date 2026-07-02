@@ -3035,6 +3035,7 @@ enum EmailTemplateSlug {
   APPOINTMENT_FOLLOW_UP
   EXERCISE_REMINDER
   WHATSAPP_WELCOME
+  PATIENT_QUESTIONS
 }
 
 enum EmailDirection {
