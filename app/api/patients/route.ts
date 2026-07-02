@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
           },
           take: 5,
         },
-        patientQuestions: {
+        patientQuestionsReceived: {
           where: { status: "answered" },
           select: { id: true },
         },
@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
 
     const patientsWithCount = patients.map((p: any) => ({
       ...p,
-      answeredQCount: p.patientQuestions?.length ?? 0,
-      patientQuestions: undefined,
+      answeredQCount: p.patientQuestionsReceived?.length ?? 0,
+      patientQuestionsReceived: undefined,
     }));
 
     return NextResponse.json({ patients: patientsWithCount });

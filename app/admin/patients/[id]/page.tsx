@@ -1280,6 +1280,7 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   const [showQDialog, setShowQDialog]   = useState(false);
   const [qText, setQText]               = useState("");
   const [qLang, setQLang]               = useState<"en" | "pt">("en");
+  const [qType, setQType]               = useState<"questions" | "report">("questions");
   const [sendingQ, setSendingQ]         = useState(false);
   const [qSentOk, setQSentOk]           = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -1461,7 +1462,7 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
       const r = await fetch(`/api/admin/patients/${patientId}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questions: lines, context: "Pre-assessment questions", language: qLang }),
+        body: JSON.stringify({ questions: lines, context: qType === "report" ? "Relatório/Feedback" : "Pre-assessment questions", language: qLang, type: qType }),
       });
       if (!r.ok) throw new Error("Failed");
       setQSentOk(true);
@@ -1612,14 +1613,15 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
       {sentQuestions.length > 0 && (
         <div className="border rounded-lg overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 bg-blue-500/5 border-b">
-            <p className="text-xs font-semibold text-blue-400">Perguntas Enviadas ao Paciente ({sentQuestions.length})</p>
+            <p className="text-xs font-semibold text-blue-400">Mensagens Enviadas ao Paciente ({sentQuestions.length})</p>
             <button onClick={fetchSentQuestions} className="text-[10px] text-muted-foreground hover:text-foreground">↻ Refresh</button>
           </div>
           <div className="divide-y">
             {sentQuestions.map((qs: any) => {
               const isExpanded = expandedQSet === qs.id;
-              const statusColor = qs.status === "answered" ? "text-emerald-400" : qs.status === "reviewed" ? "text-blue-400" : "text-amber-400";
-              const statusLabel = qs.status === "answered" ? "✅ Respondido" : qs.status === "reviewed" ? "👁 Revisto" : "⏳ Pendente";
+              const isReport = qs.type === "report";
+              const statusColor = isReport ? "text-emerald-400" : qs.status === "answered" ? "text-emerald-400" : qs.status === "reviewed" ? "text-blue-400" : "text-amber-400";
+              const statusLabel = isReport ? "📋 Relatório" : qs.status === "answered" ? "✅ Respondido" : qs.status === "reviewed" ? "👁 Revisto" : "⏳ Pendente";
               return (
                 <div key={qs.id}>
                   <button
@@ -1689,19 +1691,41 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
           <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-5 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold">Rever e Enviar Perguntas</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Revê cada pergunta antes de enviar — use a 2ª pessoa (você) e tom directo.</p>
+                <p className="text-sm font-semibold">{qType === "report" ? "Enviar Relatório / Feedback" : "Rever e Enviar Perguntas"}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{qType === "report" ? "O paciente recebe como uma mensagem informativa (só de leitura)." : "Revê cada pergunta antes de enviar — use a 2ª pessoa (você) e tom directo."}</p>
               </div>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowQDialog(false)}><X className="h-3.5 w-3.5" /></Button>
             </div>
 
-            {/* Warning banner */}
-            <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-              <span className="text-amber-400 text-xs mt-0.5">⚠️</span>
-              <p className="text-[10px] text-amber-300 leading-relaxed">
-                Verifique: perguntas devem ser dirigidas ao paciente em <strong>2ª pessoa ("você")</strong>, em <strong>Português do Brasil</strong>, sem linguagem clínica. Use o botão <strong>✨ Reformular</strong> para corrigir automaticamente.
-              </p>
+            {/* Mode toggle */}
+            <div className="flex gap-1.5 p-1 bg-muted/30 rounded-lg">
+              <button
+                onClick={() => setQType("questions")}
+                className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${qType === "questions" ? "bg-blue-600 text-white" : "text-muted-foreground hover:text-foreground"}`}
+              >❓ Perguntas (paciente responde)</button>
+              <button
+                onClick={() => setQType("report")}
+                className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${qType === "report" ? "bg-emerald-600 text-white" : "text-muted-foreground hover:text-foreground"}`}
+              >📋 Relatório / Feedback</button>
             </div>
+
+            {/* Contextual warning */}
+            {qType === "questions" && (
+              <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <span className="text-amber-400 text-xs mt-0.5">⚠️</span>
+                <p className="text-[10px] text-amber-300 leading-relaxed">
+                  Verifique: perguntas devem ser dirigidas ao paciente em <strong>2ª pessoa ("você")</strong>, em <strong>Português do Brasil</strong>, sem linguagem clínica. Use o botão <strong>✨ Reformular</strong> para corrigir automaticamente.
+                </p>
+              </div>
+            )}
+            {qType === "report" && (
+              <div className="flex items-start gap-2 p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                <span className="text-emerald-400 text-xs mt-0.5">📋</span>
+                <p className="text-[10px] text-emerald-300 leading-relaxed">
+                  O paciente vai ver este texto como um <strong>relatório/mensagem informativa</strong> — sem campos de resposta. Ideal para feedback clínico, resultados ou instruções.
+                </p>
+              </div>
+            )}
 
             {/* Language + Reformat row */}
             <div className="flex items-center gap-2 flex-wrap">

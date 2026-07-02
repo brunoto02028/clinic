@@ -33,7 +33,7 @@ export async function POST(
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { questions, context, language = "en" } = await req.json();
+  const { questions, context, language = "en", type = "questions" } = await req.json();
   if (!questions?.length) return NextResponse.json({ error: "No questions" }, { status: 400 });
 
   const [qset, patient] = await Promise.all([
@@ -44,7 +44,8 @@ export async function POST(
         questions,
         context,
         language,
-        status: "pending",
+        type,
+        status: type === "report" ? "answered" : "pending",
       },
     }),
     prisma.user.findUnique({

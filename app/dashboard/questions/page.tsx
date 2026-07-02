@@ -8,6 +8,7 @@ import { useLocale } from "@/hooks/use-locale";
 
 interface QuestionSet {
   id: string;
+  type?: "questions" | "report";
   questions: string[];
   context: string | null;
   status: "pending" | "answered" | "reviewed";
@@ -129,8 +130,8 @@ export default function QuestionsPage() {
                   : "border-border text-muted-foreground"
               }`}
             >
-              {new Date(s.createdAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "numeric", month: "short" })}
-              {s.status === "pending" && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 inline-block align-middle" />}
+              {s.type === "report" ? "📋 " : ""}{new Date(s.createdAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "numeric", month: "short" })}
+              {s.status === "pending" && s.type !== "report" && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 inline-block align-middle" />}
             </button>
           ))}
         </div>
@@ -148,8 +149,36 @@ export default function QuestionsPage() {
       {/* Active conversation */}
       {current && (() => {
         initDraft(current);
+        const isReport = current.type === "report";
         const isPending = current.status === "pending";
         const isSubmitted = submitted[current.id];
+
+        // ── REPORT mode: show as read-only clinical message ──
+        if (isReport) return (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20">
+                <span className="text-xs font-semibold text-emerald-300">
+                  {isPt ? "📋 Mensagem do seu terapeuta" : "📋 Message from your therapist"}
+                </span>
+                <span className="text-[10px] text-emerald-400/60 ml-auto">
+                  {new Date(current.createdAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                </span>
+              </div>
+              <div className="px-4 py-4 space-y-3">
+                {(current.questions as string[]).map((line, i) => (
+                  <p key={i} className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{line}</p>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              {isPt ? "Recebido a" : "Received on"}{" "}
+              {new Date(current.createdAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}
+            </div>
+          </div>
+        );
+
         return (
           <div className="space-y-5">
             {/* Clinic greeting */}
