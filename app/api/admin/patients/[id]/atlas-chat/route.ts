@@ -61,6 +61,13 @@ export async function POST(
     },
   });
 
+  // Fetch answered question sets for context
+  const answeredQSets = await (prisma as any).patientQuestion.findMany({
+    where: { patientId: params.id, status: "answered" },
+    orderBy: { answeredAt: "desc" },
+    take: 3,
+  });
+
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
   const age = patient.dateOfBirth
@@ -84,6 +91,15 @@ export async function POST(
     ba?.aiRecommendations ? `Assessment recommendations: ${ba.aiRecommendations}` : "",
     patient.rehabPlansAsPatient.length > 0
       ? `Existing rehab plans: ${patient.rehabPlansAsPatient.map(p => `${p.bodyPart} (${p.status})`).join(", ")}`
+      : "",
+    answeredQSets.length > 0
+      ? `\nPre-consultation answers from patient:\n${answeredQSets.map((qs: any) => {
+          const qaText = (qs.questions as string[]).map((q: string, i: number) => {
+            const a = (qs.answers as any[])?.find((x: any) => x.index === i);
+            return `  Q: ${q}\n  A: ${a?.answer || "(no answer)"}`;
+          }).join("\n");
+          return `[${new Date(qs.answeredAt).toLocaleDateString("en-GB")}]\n${qaText}`;
+        }).join("\n\n")}`
       : "",
   ].filter(Boolean).join("\n");
 
