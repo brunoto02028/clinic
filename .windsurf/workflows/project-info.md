@@ -395,6 +395,33 @@ Paciente recebe: email + notificação in-app → responde via `/dashboard/tasks
 - Botão "+ Add" estava a renderizar no tab Resumo (invisível ao estar no tab Notas) → **corrigido**: form agora inline no tab Notas Clínicas
 - Adicionado botão 🗑 Delete em cada nota (API: `action: "delete_soap_note"`)
 - Botão "Exportar PDF" via `window.print()`
+- **SOAP Auto-Save (3s debounce):** ao escrever numa nota SOAP, a cada 3 segundos de pausa guarda automaticamente no DB. Primeiro save cria o registo; saves seguintes actualizam o mesmo (`autoSavedNoteId`). Indicador no cabeçalho do form: "A guardar..." / "Guardado automaticamente".
+- **Bugs clinicId FK corrigidos em TODOS os routes:** `PatientDocument_clinicId_fkey` e `SOAPNote_clinicId_fkey` resolvidos — cada route agora busca `patient.clinicId` como fonte primária (sessão pode ter null para admins).
+
+### Clinical Scribe — Agente de Transcrição Longa (2 Jul 2026)
+
+Localização: **Tab Notas Clínicas → painel violeta collapsível "Clinical Scribe"**
+
+**Capacidades:**
+- Aceita áudio ou vídeo até 500MB (MP3, MP4, WAV, M4A, WebM, OGG, FLAC, AAC, MOV...)
+- Ficheiros ≤ 20MB → transcrição directa via Groq Whisper `whisper-large-v3`
+- Ficheiros > 20MB → divide em chunks de 20MB, transcreve cada um, concatena (sem perder nada)
+- Selector de idioma: Português / English
+- Após transcrição: preview + "Inserir no SOAP" (preenche campo S + abre form) + "Copiar"
+
+**API:** `POST /api/admin/transcribe` (multipart/form-data: `file`, `lang`)
+
+### Email Templates (2 Jul 2026)
+- Botão **"Email Templates"** adicionado no cabeçalho de Marketing > Email
+- Navega para `/admin/email-templates` (antes só acessível via URL directa)
+
+### Bulk Import de Artigos (2 Jul 2026)
+- Botão **"Import All from Site"** (violeta) em Marketing > Artigos
+- Fluxo: Discover → Lista com checkboxes → Import todos em bulk
+- API: `POST /api/admin/articles/bulk-import` (mode: `discover` | `import`)
+- URL pré-preenchida: `https://brunophysicalrehabilitation.co.uk`
+- Tenta sitemap.xml → sitemap_index.xml → sub-sitemaps → scraping do /blog
+- Download de imagens para `/uploads/articles/bulk-*`
 
 ---
 
