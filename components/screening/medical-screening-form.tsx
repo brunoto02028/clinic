@@ -10,16 +10,12 @@ import {
   CheckCircle,
   Loader2,
   Info,
-  Lock,
-  MessageSquare,
   User,
   Activity,
   Heart,
   Target,
   Stethoscope,
-  MapPin,
   Clock,
-  Zap,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -30,7 +26,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { VoiceFormFill } from "@/components/voice-form-fill";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
 
 interface ScreeningData {
@@ -1078,24 +1073,6 @@ export default function AssessmentScreeningForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <VoiceFormFill
-              context="medical_screening"
-              fields={["currentMedications", "allergies", "surgicalHistory", "otherConditions"]}
-              language={isPt ? "pt-BR" : "en-GB"}
-              onFieldsFilled={(data) => {
-                setFormData((prev) => {
-                  const updated = { ...prev };
-                  if (data.currentMedications) updated.currentMedications = data.currentMedications;
-                  if (data.allergies) updated.allergies = data.allergies;
-                  if (data.surgicalHistory) updated.surgicalHistory = data.surgicalHistory;
-                  if (data.otherConditions) updated.otherConditions = data.otherConditions;
-                  isDirty.current = true;
-                  saveDraft(updated);
-                  triggerAutoSave();
-                  return updated;
-                });
-              }}
-            />
             <div>
               <Label htmlFor="currentMedications">{T("screening.currentMedications")}</Label>
               <Textarea
