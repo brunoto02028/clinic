@@ -87,6 +87,9 @@ export async function POST(req: NextRequest) {
         completedDate: '15 February 2026',
         resetUrl: '#',
         clinicPhone: '+44 7XXX XXXXXX',
+        questionCount: '3',
+        context: 'Pre-consultation',
+        locale: 'en-GB',
       });
       if (!rendered) return NextResponse.json({ error: 'Template not found or inactive' }, { status: 404 });
       return NextResponse.json({ subject: rendered.subject, html: rendered.html });
@@ -113,6 +116,9 @@ export async function POST(req: NextRequest) {
         completedDate: '15 February 2026',
         resetUrl: `${process.env.NEXTAUTH_URL || ''}/reset-password?token=test`,
         clinicPhone: '+44 7XXX XXXXXX',
+        questionCount: '3',
+        context: 'Pre-consultation',
+        locale: 'en-GB',
       });
       if (!rendered) return NextResponse.json({ error: 'Template not found or inactive' }, { status: 404 });
 
