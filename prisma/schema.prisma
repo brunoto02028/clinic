@@ -5074,6 +5074,11 @@ model RehabPlan {
   // Status
   status     String @default("active") // active | completed | archived
 
+  // Send to patient
+  sentToPatient  Boolean   @default(false)
+  sentAt         DateTime?
+  therapistNote  String?   @db.Text  // Bruno's note to the patient when sending
+
   messages   RehabMessage[]
 
   @@index([patientId])

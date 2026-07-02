@@ -1265,6 +1265,11 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   const [chatLoading, setChatLoading]   = useState(false);
   const [error, setError]               = useState("");
 
+  // Send to patient state
+  const [sendNote, setSendNote]         = useState("");
+  const [sending, setSending]           = useState(false);
+  const [sentPlanId, setSentPlanId]     = useState<string | null>(null);
+
   const preEndRef  = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -1366,6 +1371,29 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
       setActivePlan((p: any) => ({ ...p, messages: [...(p.messages || []), { role: "assistant", content: d.reply }] }));
     } catch (e: any) { setError(e.message); }
     finally { setChatLoading(false); }
+  };
+
+  const handleSend = async () => {
+    if (!activePlan || sending) return;
+    setSending(true);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/${activePlan.id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ therapistNote: sendNote }),
+      });
+      if (!r.ok) throw new Error("Failed to send");
+      setSentPlanId(activePlan.id);
+      setActivePlan((p: any) => ({ ...p, sentToPatient: true, sentAt: new Date().toISOString(), therapistNote: sendNote }));
+    } catch (e: any) { setError(e.message); }
+    finally { setSending(false); }
+  };
+
+  const handleRevoke = async () => {
+    if (!activePlan) return;
+    await fetch(`/api/admin/patients/${patientId}/rehab-plan/${activePlan.id}/send`, { method: "DELETE" });
+    setSentPlanId(null);
+    setActivePlan((p: any) => ({ ...p, sentToPatient: false, sentAt: null }));
   };
 
   const plan: any = activePlan?.planJson;
@@ -1557,6 +1585,42 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
           <div className="px-3 pb-3"><ol className="space-y-1 list-decimal list-inside">{plan.references.map((ref:string,i:number)=><li key={i} className="text-[10px] text-muted-foreground">{ref}</li>)}</ol></div>
         </details>
       )}
+
+      {/* ── Send to Patient ── */}
+      <div className={`p-3 rounded-lg border-2 ${activePlan?.sentToPatient ? "border-emerald-500/40 bg-emerald-500/5" : "border-dashed border-muted-foreground/30"}`}>
+        {activePlan?.sentToPatient ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <p className="text-xs font-semibold text-emerald-400">Plano enviado ao paciente</p>
+              </div>
+              <span className="text-[9px] text-muted-foreground">{activePlan.sentAt ? new Date(activePlan.sentAt).toLocaleDateString("en-GB") : ""}</span>
+            </div>
+            {activePlan.therapistNote && (
+              <p className="text-[10px] text-muted-foreground italic">Nota: {activePlan.therapistNote}</p>
+            )}
+            <Button variant="outline" size="sm" className="h-7 text-[10px] text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={handleRevoke}>
+              Retirar acesso ao paciente
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold flex items-center gap-1.5">
+              <Send className="h-3.5 w-3.5 text-emerald-400" />Enviar plano ao paciente
+            </p>
+            <p className="text-[10px] text-muted-foreground">O paciente verá o plano e os exercícios no app. Podes adicionar uma nota pessoal antes de enviar.</p>
+            <textarea
+              className="w-full text-[10px] bg-muted/30 border rounded-lg p-2 resize-none h-16 placeholder:text-muted-foreground/50"
+              placeholder="Nota para o paciente (opcional)… ex: 'Lembra-te de fazer os exercícios pela manhã. Próxima sessão na 4ª feira.'"
+              value={sendNote} onChange={e => setSendNote(e.target.value)}
+            />
+            <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={handleSend} disabled={sending}>
+              {sending ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />A enviar…</> : <><Send className="h-3 w-3 mr-1.5" />Confirmar e enviar ao paciente</>}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Atlas chat on plan */}
       <div className="border rounded-lg">
