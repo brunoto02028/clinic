@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,8 @@ import {
   CreditCard,
   Banknote,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
@@ -106,6 +109,18 @@ export default function AdminAppointmentsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const isCalendarView = searchParams.get("view") === "calendar";
+
+  // Calendar: current week start (Monday)
+  const [calendarWeekStart, setCalendarWeekStart] = useState<Date>(() => {
+    const d = new Date();
+    const day = d.getDay(); // 0=Sun
+    const diff = day === 0 ? -6 : 1 - day; // shift to Monday
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
 
   useEffect(() => {
     fetchAppointments();
@@ -375,6 +390,45 @@ export default function AdminAppointmentsPage() {
     CANCELLED: appointments.filter((a) => a.status === "CANCELLED").length,
   };
 
+  // ── Calendar helpers ──────────────────────────────────────────────────────
+  const calendarDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(calendarWeekStart);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  }, [calendarWeekStart]);
+
+  const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 08:00–19:00
+
+  const apptsByDay = useMemo(() => {
+    const map: Record<string, Appointment[]> = {};
+    appointments.forEach((a) => {
+      const key = new Date(a.dateTime).toDateString();
+      if (!map[key]) map[key] = [];
+      map[key].push(a);
+    });
+    return map;
+  }, [appointments]);
+
+  const STATUS_CAL: Record<string, string> = {
+    CONFIRMED: "bg-blue-500/20 border-blue-500/40 text-blue-300",
+    PENDING: "bg-amber-500/20 border-amber-500/40 text-amber-300",
+    COMPLETED: "bg-emerald-500/20 border-emerald-500/40 text-emerald-300",
+    CANCELLED: "bg-red-500/20 border-red-500/40 text-red-300 opacity-60",
+  };
+
+  const navWeek = (dir: 1 | -1) => {
+    setCalendarWeekStart((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + dir * 7);
+      return d;
+    });
+  };
+
+  const DAY_NAMES_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+  const DAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -389,7 +443,78 @@ export default function AdminAppointmentsPage() {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* ── Calendar View ── */}
+      {isCalendarView && (
+        <div className="space-y-3">
+          {/* Week navigation */}
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="sm" onClick={() => navWeek(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium">
+              {calendarDays[0].toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" })}
+              {" – "}
+              {calendarDays[6].toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => navWeek(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Grid */}
+          <div className="overflow-x-auto rounded-lg border">
+            <div className="min-w-[640px]">
+              {/* Day headers */}
+              <div className="grid grid-cols-8 border-b">
+                <div className="p-2 text-xs text-muted-foreground text-center" />
+                {calendarDays.map((day, i) => {
+                  const isToday = day.toDateString() === new Date().toDateString();
+                  return (
+                    <div key={i} className={`p-2 text-center border-l ${isToday ? "bg-emerald-500/10" : ""}`}>
+                      <p className="text-[10px] text-muted-foreground">{(isPt ? DAY_NAMES_PT : DAY_NAMES_EN)[i]}</p>
+                      <p className={`text-sm font-semibold ${isToday ? "text-emerald-400" : ""}`}>{day.getDate()}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Time rows */}
+              {HOURS.map((hour) => (
+                <div key={hour} className="grid grid-cols-8 border-b last:border-b-0" style={{ minHeight: 56 }}>
+                  <div className="p-1.5 text-[10px] text-muted-foreground text-right pr-2 border-r pt-1">
+                    {hour.toString().padStart(2, "0")}:00
+                  </div>
+                  {calendarDays.map((day, di) => {
+                    const dayAppts = (apptsByDay[day.toDateString()] || []).filter((a) => {
+                      const h = new Date(a.dateTime).getHours();
+                      return h === hour;
+                    });
+                    return (
+                      <div key={di} className="border-l p-0.5 space-y-0.5 relative">
+                        {dayAppts.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "" }); }}
+                            className={`w-full text-left text-[9px] leading-tight p-1 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
+                          >
+                            <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
+                            <p className="truncate opacity-80">{a.treatmentType}</p>
+                            <p className="opacity-60">{new Date(a.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters — only in list view */}
+      {!isCalendarView && (
+      <>{/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -538,6 +663,7 @@ export default function AdminAppointmentsPage() {
           })}
         </div>
       )}
+      </> )}
 
       {/* Create Appointment Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -815,3 +941,4 @@ export default function AdminAppointmentsPage() {
     </div>
   );
 }
+
