@@ -181,6 +181,16 @@ export default function PatientProfilePage() {
   const [editingThermoId, setEditingThermoId] = useState<string | null>(null);
   const [thermoEditNotes, setThermoEditNotes] = useState("");
 
+  // Sent questions/reports (shared between Screening tab and Rehab tab)
+  const [sentQuestions, setSentQuestions] = useState<any[]>([]);
+  const fetchSentQuestions = useCallback(() => {
+    fetch(`/api/admin/patients/${patientId}/questions`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: any[]) => setSentQuestions(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [patientId]);
+  useEffect(() => { fetchSentQuestions(); }, [fetchSentQuestions]);
+
   // AI Import
   const [showAIImport, setShowAIImport] = useState(false);
   const [aiImportText, setAiImportText] = useState("");
@@ -1293,7 +1303,7 @@ export default function PatientProfilePage() {
 
         {/* ── Tab: Rehab Agent ── */}
         <TabsContent value="rehab" className="mt-4">
-          <RehabAgentTab patientId={patientId} patientData={data} />
+          <RehabAgentTab patientId={patientId} patientData={data} sentQuestions={sentQuestions} setSentQuestions={setSentQuestions} fetchSentQuestions={fetchSentQuestions} />
         </TabsContent>
 
       </Tabs>
@@ -1316,7 +1326,7 @@ function AtlasAvatar({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
   );
 }
 
-function RehabAgentTab({ patientId, patientData }: { patientId: string; patientData: any }) {
+function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions, fetchSentQuestions }: { patientId: string; patientData: any; sentQuestions: any[]; setSentQuestions: React.Dispatch<React.SetStateAction<any[]>>; fetchSentQuestions: () => void }) {
   const [plans, setPlans]           = useState<any[]>([]);
   const [activePlan, setActivePlan] = useState<any>(null);
   const [view, setView]             = useState<"list" | "assess" | "plan">("list");
@@ -1352,21 +1362,11 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   const [sendingQ, setSendingQ]         = useState(false);
   const [qSentOk, setQSentOk]           = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [sentQuestions, setSentQuestions] = useState<any[]>([]);
   const [expandedQSet, setExpandedQSet] = useState<string | null>(null);
   const [reformulating, setReformulating] = useState(false);
 
   const preEndRef  = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  const fetchSentQuestions = () => {
-    fetch(`/api/admin/patients/${patientId}/questions`)
-      .then(r => r.ok ? r.json() : [])
-      .then((data: any[]) => setSentQuestions(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  };
-
-  useEffect(() => { fetchSentQuestions(); }, [patientId]);
 
   const handleReformatQuestions = async () => {
     const lines = qText.split("\n").map(l => l.trim()).filter(Boolean);
