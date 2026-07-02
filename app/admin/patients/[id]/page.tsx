@@ -1647,7 +1647,7 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-semibold ${statusColor}`}>{statusLabel}</span>
                         <span className="text-[10px] text-muted-foreground">·</span>
-                        <span className="text-[10px] text-muted-foreground">{(qs.questions as string[]).length} pergunta{(qs.questions as string[]).length !== 1 ? "s" : ""}</span>
+                          <span className="text-[10px] text-muted-foreground">{isReport ? "relatório" : `${(qs.questions as string[]).length} pergunta${(qs.questions as string[]).length !== 1 ? "s" : ""}`}</span>
                         <span className="text-[10px] text-muted-foreground">·</span>
                         <span className="text-[10px] text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
@@ -1657,28 +1657,55 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
                   </button>
                   {isExpanded && (
                     <div className="px-3 pb-3 space-y-2 bg-muted/10">
-                      {(qs.questions as string[]).map((q: string, i: number) => {
-                        const answer = qs.answers?.find((a: any) => a.index === i);
-                        return (
-                          <div key={i} className="rounded-lg border border-border/40 overflow-hidden">
-                            <div className="px-2.5 py-1.5 bg-muted/30">
-                              <p className="text-[10px] font-medium">{i + 1}. {q}</p>
+                      {isReport ? (
+                        /* Report: show paragraphs as read-only text */
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2 space-y-1.5">
+                          {(qs.questions as string[]).map((para: string, i: number) => (
+                            <p key={i} className="text-[10px] text-foreground leading-relaxed whitespace-pre-wrap">{para}</p>
+                          ))}
+                        </div>
+                      ) : (
+                        /* Questions: show each with answer */
+                        (qs.questions as string[]).map((q: string, i: number) => {
+                          const answer = qs.answers?.find((a: any) => a.index === i);
+                          return (
+                            <div key={i} className="rounded-lg border border-border/40 overflow-hidden">
+                              <div className="px-2.5 py-1.5 bg-muted/30">
+                                <p className="text-[10px] font-medium">{i + 1}. {q}</p>
+                              </div>
+                              {answer ? (
+                                <div className="px-2.5 py-1.5 bg-emerald-500/5 border-t border-emerald-500/20">
+                                  <p className="text-[10px] text-emerald-300 leading-relaxed">{answer.answer || <em className="text-muted-foreground">Sem resposta</em>}</p>
+                                </div>
+                              ) : (
+                                <div className="px-2.5 py-1.5 border-t border-amber-500/20 bg-amber-500/5">
+                                  <p className="text-[10px] text-amber-400/70 italic">Ainda não respondido</p>
+                                </div>
+                              )}
                             </div>
-                            {answer ? (
-                              <div className="px-2.5 py-1.5 bg-emerald-500/5 border-t border-emerald-500/20">
-                                <p className="text-[10px] text-emerald-300 leading-relaxed">{answer.answer || <em className="text-muted-foreground">Sem resposta</em>}</p>
-                              </div>
-                            ) : (
-                              <div className="px-2.5 py-1.5 border-t border-amber-500/20 bg-amber-500/5">
-                                <p className="text-[10px] text-amber-400/70 italic">Ainda não respondido</p>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {qs.answeredAt && (
+                          );
+                        })
+                      )}
+                      {qs.answeredAt && !isReport && (
                         <p className="text-[9px] text-muted-foreground">Respondido a {new Date(qs.answeredAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
                       )}
+                      {/* Delete button */}
+                      <button
+                        className="flex items-center gap-1 text-[9px] text-red-400/70 hover:text-red-400 transition-colors mt-1"
+                        onClick={() => {
+                          if (!confirm(isReport ? "Eliminar este relatório? O paciente deixará de o ver." : "Eliminar este conjunto de perguntas? O paciente deixará de as ver.")) return;
+                          fetch(`/api/admin/patients/${patientId}/questions`, {
+                            method: "DELETE",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ questionSetId: qs.id }),
+                          }).then(() => {
+                            setSentQuestions(prev => prev.filter(q => q.id !== qs.id));
+                            setExpandedQSet(null);
+                          }).catch(() => {});
+                        }}
+                      >
+                        🗑 Eliminar {isReport ? "relatório" : "perguntas"}
+                      </button>
                     </div>
                   )}
                 </div>

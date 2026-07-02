@@ -269,7 +269,7 @@ export default function QuestionsPage() {
                               {isPending && !isSubmitted && (
                                 <div className="ml-7">
                                   <Textarea
-                                    className="text-sm min-h-[72px] resize-none bg-background border-border/70 rounded-xl focus:border-primary/60 focus:ring-primary/20 placeholder:text-muted-foreground/40"
+                                    className="text-sm min-h-[72px] resize-y bg-background border-border/70 rounded-xl focus:border-primary/60 focus:ring-primary/20 placeholder:text-muted-foreground/40"
                                     placeholder={isPt ? "A sua resposta…" : "Your reply…"}
                                     value={draftAnswer}
                                     onChange={e => setDrafts(d => {

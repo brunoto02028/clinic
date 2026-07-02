@@ -78,6 +78,24 @@ export async function POST(
   return NextResponse.json(qset, { status: 201 });
 }
 
+// DELETE — remove a question/report set
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { questionSetId } = await req.json();
+  if (!questionSetId) return NextResponse.json({ error: "questionSetId required" }, { status: 400 });
+
+  await (prisma as any).patientQuestion.deleteMany({
+    where: { id: questionSetId, patientId: params.id },
+  });
+  return NextResponse.json({ deleted: true });
+}
+
 // PATCH — mark a question set as reviewed (admin read the answers)
 export async function PATCH(
   req: NextRequest,
