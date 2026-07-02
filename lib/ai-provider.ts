@@ -506,6 +506,12 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
 }
 
 /**
+ * Alias of callAI — used for clinical AI tasks (diagnosis, protocol, SOAP notes, etc.)
+ * Identical behaviour; exported separately for semantic clarity.
+ */
+export const callAIClinical = callAI;
+
+/**
  * Generate images using Gemini (gemini-2.5-flash-preview-image-generation by default).
  */
 export async function generateImage(prompt: string, opts?: AIImageOptions): Promise<string[]> {
