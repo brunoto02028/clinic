@@ -222,6 +222,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
   const services = [
     { slug: "electrotherapy", icon: Zap, titleKey: "svc.electrotherapy", descKey: "svc.electrotherapyDesc", color: "bg-amber-50 text-amber-600" },
+    { slug: "exercise-therapy", icon: Dumbbell, titleKey: "svc.exerciseTherapy", descKey: "svc.exerciseTherapyDesc", color: "bg-green-50 text-green-600" },
+    { slug: "mls-laser", icon: Zap, titleKey: "svc.mlsLaser", descKey: "svc.mlsLaserDesc", color: "bg-orange-50 text-orange-600" },
     { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-50 text-blue-600" },
     { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-50 text-purple-600" },
     { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-50 text-cyan-600" },
@@ -450,6 +452,76 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <p className="text-primary-foreground/80 text-sm mt-1">{stat.label}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+
+      {/* About Section */}
+      <section id="about" className="py-14 sm:py-16 lg:py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div>
+              <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-5">
+                {locale === "pt-BR" ? "Sobre Mim" : "About Me"}
+              </span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-5">
+                {(() => {
+                  const raw = S("aboutTitle", "home.aboutTitle");
+                  if (raw.includes("|")) {
+                    const [main, highlight] = raw.split("|").map(s => s.trim());
+                    return <><span className="text-primary">{main}</span>{" "}{highlight}</>;
+                  }
+                  return <><span className="text-primary">Bruno Physical</span>{" "}Rehabilitation</>;
+                })()}
+              </h2>
+              <div className="space-y-4 text-muted-foreground leading-relaxed">
+                {locale === "en-GB" && settings?.aboutText ? (
+                  settings.aboutText.split("\n\n").filter(Boolean).map((p, i) => <p key={i}>{p}</p>)
+                ) : (
+                  <>
+                    <p>{T("home.aboutText1")}</p>
+                    <p>{T("home.aboutText2")}</p>
+                    <p>{T("home.aboutText3")}</p>
+                  </>
+                )}
+              </div>
+              {/* Credentials */}
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { icon: ShieldCheck, label: "STO Registered", color: "text-primary bg-primary/10" },
+                  { icon: Sparkles, label: "IPHM Biohacking Coach", color: "text-emerald-600 bg-emerald-100" },
+                  { icon: Activity, label: "20+ Years Clinical Practice", color: "text-orange-600 bg-orange-100" },
+                  { icon: Users, label: "Ex-Professional Footballer", color: "text-blue-600 bg-blue-100" },
+                ].map((c) => (
+                  <div key={c.label} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${c.color}`}><c.icon className="h-4 w-4" /></div>
+                    <span className="text-sm font-medium text-foreground">{c.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-7">
+                <Link href="/signup">
+                  <Button className="gap-2 shadow-md shadow-primary/20">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
+                </Link>
+              </div>
+            </div>
+            <div>
+              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border border-slate-100">
+                {settings?.aboutImageUrl && (
+                  settings.aboutImageUrl.startsWith('data:') ? (
+                    <img src={settings.aboutImageUrl} alt="Bruno - Sports Therapist" className="object-cover absolute inset-0 w-full h-full" />
+                  ) : (
+                    <Image src={settings.aboutImageUrl} alt="Bruno - Sports Therapist" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                  )
+                )}
+                {!settings?.aboutImageUrl && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                    <UserCog className="h-24 w-24 text-primary/20" />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -1032,75 +1104,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <p className="text-muted-foreground text-sm leading-relaxed">{T(step.descKey)}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section id="about" className="py-14 sm:py-16 lg:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div>
-              <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-5">
-                {locale === "pt-BR" ? "Sobre Mim" : "About Me"}
-              </span>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-5">
-                {(() => {
-                  const raw = S("aboutTitle", "home.aboutTitle");
-                  if (raw.includes("|")) {
-                    const [main, highlight] = raw.split("|").map(s => s.trim());
-                    return <><span className="text-primary">{main}</span>{" "}{highlight}</>;
-                  }
-                  return <><span className="text-primary">Bruno Physical</span>{" "}Rehabilitation</>;
-                })()}
-              </h2>
-              <div className="space-y-4 text-muted-foreground leading-relaxed">
-                {locale === "en-GB" && settings?.aboutText ? (
-                  settings.aboutText.split("\n\n").filter(Boolean).map((p, i) => <p key={i}>{p}</p>)
-                ) : (
-                  <>
-                    <p>{T("home.aboutText1")}</p>
-                    <p>{T("home.aboutText2")}</p>
-                    <p>{T("home.aboutText3")}</p>
-                  </>
-                )}
-              </div>
-              {/* Credentials */}
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { icon: ShieldCheck, label: "STO Registered", color: "text-primary bg-primary/10" },
-                  { icon: Sparkles, label: "IPHM Biohacking Coach", color: "text-emerald-600 bg-emerald-100" },
-                  { icon: Activity, label: "20+ Years Clinical Practice", color: "text-orange-600 bg-orange-100" },
-                  { icon: Users, label: "Ex-Professional Footballer", color: "text-blue-600 bg-blue-100" },
-                ].map((c) => (
-                  <div key={c.label} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${c.color}`}><c.icon className="h-4 w-4" /></div>
-                    <span className="text-sm font-medium text-foreground">{c.label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-7">
-                <Link href="/signup">
-                  <Button className="gap-2 shadow-md shadow-primary/20">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
-                </Link>
-              </div>
-            </div>
-            <div>
-              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border border-slate-100">
-                {settings?.aboutImageUrl && (
-                  settings.aboutImageUrl.startsWith('data:') ? (
-                    <img src={settings.aboutImageUrl} alt="Bruno - Sports Therapist" className="object-cover absolute inset-0 w-full h-full" />
-                  ) : (
-                    <Image src={settings.aboutImageUrl} alt="Bruno - Sports Therapist" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                  )
-                )}
-                {!settings?.aboutImageUrl && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-                    <UserCog className="h-24 w-24 text-primary/20" />
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </section>
