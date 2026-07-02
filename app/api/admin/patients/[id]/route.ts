@@ -184,6 +184,13 @@ export async function PATCH(
       return NextResponse.json({ success: true, note: updated });
     }
 
+    // Delete SOAP note
+    if (body.action === "delete_soap_note") {
+      const { noteId } = body;
+      await prisma.sOAPNote.delete({ where: { id: noteId } });
+      return NextResponse.json({ success: true });
+    }
+
     // Edit foot scan
     if (body.action === "edit_foot_scan") {
       const { scanId, ...fields } = body;

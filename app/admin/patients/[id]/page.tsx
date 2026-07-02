@@ -8,7 +8,7 @@ import {
   RefreshCw, AlertCircle, CheckCircle2, X, Loader2, Mic, MicOff, Languages, Plus, Save,
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
-  BookOpen, TriangleAlert, ClipboardList, ChevronUp,
+  BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -233,6 +233,12 @@ export default function PatientProfilePage() {
   const saveNewNote = async () => {
     const r = await apiPatch({ action: "add_clinical_note", ...newNote });
     if (r) { setShowNewNote(false); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); flash("SOAP note added"); fetchData(); }
+  };
+
+  const deleteNote = async (noteId: string) => {
+    if (!confirm("Eliminar esta nota SOAP? Esta ação não pode ser desfeita.")) return;
+    await apiPatch({ action: "delete_soap_note", noteId });
+    flash("Nota eliminada"); fetchData();
   };
 
   const saveEditNote = async () => {
@@ -715,21 +721,7 @@ export default function PatientProfilePage() {
         </Card>
       )}
 
-      {/* ─── Inline Forms ─── */}
-      {showNewNote && (
-        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Stethoscope className="h-4 w-4" /> New SOAP Note <VB onText={() => {}} className="ml-auto" /></CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <EF label="S — Subjective" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Complaints, symptoms..." />
-            <EF label="O — Objective" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Clinical findings..." />
-            <EF label="A — Assessment" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Diagnosis, assessment..." />
-            <EF label="P — Plan" value={newNote.plan} onChange={(v) => setNewNote({ ...newNote, plan: v })} placeholder="Treatment plan..." />
-            <div className="flex gap-1.5">
-              <Button size="sm" className="h-7 text-xs" onClick={saveNewNote} disabled={saving}>{saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Save</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowNewNote(false)}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* ─── Inline Forms ─── (showNewNote moved into Notas tab) ─── */}
 
       {showManualDoc && (
         <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileText className="h-4 w-4 inline mr-1" /> Write Clinical History</CardTitle></CardHeader>
@@ -833,6 +825,54 @@ export default function PatientProfilePage() {
             </div>
           ) : <p className="text-xs text-muted-foreground">Not completed.</p>}
         </Sec>
+
+        {/* ── Perguntas / Respostas do Paciente ── */}
+        {sentQuestions.length > 0 && (
+          <Sec title="Perguntas & Respostas do Paciente" icon={MessageCircle} badge={`${sentQuestions.length}`} open={true}>
+            <div className="space-y-2">
+              {sentQuestions.map((qs: any) => {
+                const isReport = qs.type === "report";
+                return (
+                  <div key={qs.id} className={`rounded-lg border overflow-hidden ${isReport ? "border-emerald-500/20" : "border-border/50"}`}>
+                    <div className={`flex items-center gap-2 px-2.5 py-1.5 text-[9px] ${isReport ? "bg-emerald-500/10" : "bg-muted/30"}`}>
+                      <span className={`font-semibold ${isReport ? "text-emerald-400" : qs.status === "answered" || qs.status === "reviewed" ? "text-emerald-400" : "text-amber-400"}`}>
+                        {isReport ? "📋 Relatório" : qs.status === "answered" || qs.status === "reviewed" ? "✅ Respondido" : "⏳ Pendente"}
+                      </span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      <button className="ml-auto text-red-400/60 hover:text-red-400 transition-colors" onClick={() => {
+                        if (!confirm("Eliminar esta entrada?")) return;
+                        fetch(`/api/admin/patients/${patientId}/questions`, {
+                          method: "DELETE",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ questionSetId: qs.id }),
+                        }).then(() => setSentQuestions(prev => prev.filter(q => q.id !== qs.id))).catch(() => {});
+                      }}>🗑</button>
+                    </div>
+                    <div className="px-2.5 py-2 space-y-1.5">
+                      {isReport ? (
+                        (qs.questions as string[]).map((p: string, i: number) => (
+                          <p key={i} className="text-[10px] text-foreground leading-relaxed whitespace-pre-wrap">{p}</p>
+                        ))
+                      ) : (
+                        (qs.questions as string[]).map((q: string, i: number) => {
+                          const ans = qs.answers?.find((a: any) => a.index === i);
+                          return (
+                            <div key={i}>
+                              <p className="text-[9px] font-semibold text-muted-foreground">{i + 1}. {q}</p>
+                              {ans ? <p className="text-[10px] text-emerald-300 ml-3 mt-0.5">{ans.answer}</p> : <p className="text-[10px] text-amber-400/60 ml-3 mt-0.5 italic">Sem resposta</p>}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Sec>
+        )}
+
         </div>
         </TabsContent>
 
@@ -1066,8 +1106,34 @@ export default function PatientProfilePage() {
         <TabsContent value="notas" className="space-y-4 mt-4">
         <div className="space-y-2.5">
         {/* ── SOAP Notes ── */}
+        {/* Header with PDF export */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-muted-foreground">Notas SOAP &amp; Registos Clínicos</p>
+          <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={() => window.print()}>
+            <FileText className="h-3 w-3" /> Exportar PDF
+          </Button>
+        </div>
+
+        {/* ── New SOAP Note inline form ── */}
+        {showNewNote && (
+          <div className="border border-primary/40 rounded-xl p-3 mb-3 space-y-2 bg-primary/5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-semibold text-primary">Nova Nota SOAP</p>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowNewNote(false)}><X className="h-3 w-3" /></Button>
+            </div>
+            <EF label="S — Subjetivo (queixas do paciente)" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Queixas, sintomas relatados..." />
+            <EF label="O — Objetivo (achados clínicos)" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Avaliação física, testes..." />
+            <EF label="A — Avaliação / Diagnóstico" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Hipótese diagnóstica, raciocínio clínico..." />
+            <EF label="P — Plano de Tratamento" value={newNote.plan} onChange={(v) => setNewNote({ ...newNote, plan: v })} placeholder="Intervenções, exercícios, próximos passos..." />
+            <div className="flex gap-1.5">
+              <Button size="sm" className="h-7 text-xs" onClick={saveNewNote} disabled={saving}>{saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar Nota</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowNewNote(false)}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+
         <Sec title="Clinical Notes (SOAP)" icon={Stethoscope} badge={data.soapNotes?.length ? `${data.soapNotes.length}` : "None"} open={true}
-          actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowNewNote(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Add</Button>}
+          actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => { setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Plus className="h-2.5 w-2.5 mr-0.5" /> Add</Button>}
         >
           {data.soapNotes?.length > 0 ? data.soapNotes.map((n: any) => (
             <div key={n.id} className="border rounded-lg p-2.5 mb-2 space-y-1">
@@ -1076,22 +1142,23 @@ export default function PatientProfilePage() {
                 <div className="flex items-center gap-1">
                   {n.therapist && <span>by {n.therapist.firstName} {n.therapist.lastName}</span>}
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setNoteForm({ subjective: n.subjective || "", objective: n.objective || "", assessment: n.assessment || "", plan: n.plan || "" }); setEditingNoteId(n.id); }}><Pencil className="h-2.5 w-2.5" /></Button>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-red-400 hover:text-red-500" onClick={() => deleteNote(n.id)}><Trash2 className="h-2.5 w-2.5" /></Button>
                 </div>
               </div>
               {editingNoteId === n.id ? (
                 <div className="space-y-1.5 bg-muted/30 p-2 rounded">
-                  <EF label="S — Subjective" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
-                  <EF label="O — Objective" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
-                  <EF label="A — Assessment" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
-                  <EF label="P — Plan" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
+                  <EF label="S — Subjetivo" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
+                  <EF label="O — Objetivo" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
+                  <EF label="A — Avaliação" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
+                  <EF label="P — Plano" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
                   <div className="flex gap-1"><Button size="sm" className="h-6 text-[10px]" onClick={saveEditNote} disabled={saving}><Save className="h-2.5 w-2.5 mr-0.5" /> Save</Button><Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setEditingNoteId(null)}>Cancel</Button></div>
                 </div>
               ) : (
                 <>
-                  {n.subjective && <div><p className="text-[9px] font-bold text-blue-600">S — Subjective</p><p className="text-[10px]">{n.subjective}</p></div>}
-                  {n.objective && <div><p className="text-[9px] font-bold text-green-600">O — Objective</p><p className="text-[10px]">{n.objective}</p></div>}
-                  {n.assessment && <div><p className="text-[9px] font-bold text-amber-600">A — Assessment</p><p className="text-[10px]">{n.assessment}</p></div>}
-                  {n.plan && <div><p className="text-[9px] font-bold text-purple-600">P — Plan</p><p className="text-[10px]">{n.plan}</p></div>}
+                  {n.subjective && <div><p className="text-[9px] font-bold text-blue-400">S — Subjetivo</p><p className="text-[10px]">{n.subjective}</p></div>}
+                  {n.objective && <div><p className="text-[9px] font-bold text-green-400">O — Objetivo</p><p className="text-[10px]">{n.objective}</p></div>}
+                  {n.assessment && <div><p className="text-[9px] font-bold text-amber-400">A — Avaliação</p><p className="text-[10px]">{n.assessment}</p></div>}
+                  {n.plan && <div><p className="text-[9px] font-bold text-purple-400">P — Plano</p><p className="text-[10px]">{n.plan}</p></div>}
                 </>
               )}
             </div>
