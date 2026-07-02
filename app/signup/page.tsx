@@ -17,7 +17,7 @@ export default async function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background bg-grid-pattern flex flex-col">
+    <div className="public-site min-h-screen bg-background flex flex-col">
       <SiteHeader currentPage="other" initialSettings={settings} />
       <main className="flex-1 flex items-center justify-center p-4 py-8">
         <SimplifiedSignupForm />

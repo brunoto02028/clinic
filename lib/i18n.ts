@@ -493,6 +493,12 @@ const translations: Record<string, Record<Locale, string>> = {
   "svc.kinesiotherapyDesc": { "en-GB": "Therapeutic movement techniques to restore natural movement patterns, improve postural balance, and enhance functional performance.", "pt-BR": "Técnicas de movimento terapêutico para restaurar padrões naturais de movimento, melhorar o equilíbrio postural e aprimorar o desempenho funcional." },
   "svc.microcurrent": { "en-GB": "Microcurrent Therapy (MENS)", "pt-BR": "Terapia por Microcorrente (MENS)" },
   "svc.microcurrentDesc": { "en-GB": "Sub-sensory electrical stimulation to promote cellular regeneration, reduce inflammation, and accelerate tissue healing at the cellular level.", "pt-BR": "Estimulação elétrica sub-sensorial para promover regeneração celular, reduzir inflamação e acelerar a cicatrização de tecidos a nível celular." },
+  "svc.biohacking": { "en-GB": "Biohacking & Performance", "pt-BR": "Biohacking e Performance" },
+  "svc.biohackingDesc": { "en-GB": "IPHM-certified biohacking protocols using data, technology, and lifestyle optimisation to enhance recovery, energy, and long-term health performance.", "pt-BR": "Protocolos de biohacking certificados IPHM usando dados, tecnologia e otimização de estilo de vida para melhorar a recuperação, energia e performance de saúde a longo prazo." },
+  "svc.hrv": { "en-GB": "HRV & Recovery Monitoring", "pt-BR": "Monitoramento de HRV e Recuperação" },
+  "svc.hrvDesc": { "en-GB": "Heart Rate Variability tracking and analysis to measure your nervous system recovery, guide training loads, and optimise your rehabilitation progression.", "pt-BR": "Rastreamento e análise de Variabilidade da Frequência Cardíaca para medir a recuperação do sistema nervoso, guiar cargas de treino e otimizar a progressão da reabilitação." },
+  "svc.sleep": { "en-GB": "Sleep & Longevity Optimisation", "pt-BR": "Optimização do Sono e Longevidade" },
+  "svc.sleepDesc": { "en-GB": "Evidence-based sleep protocols, circadian rhythm coaching, and longevity strategies to maximise recovery, cognitive performance, and healthy ageing.", "pt-BR": "Protocolos de sono baseados em evidências, coaching do ritmo circadiano e estratégias de longevidade para maximizar a recuperação, desempenho cognitivo e envelhecimento saudável." },
 
   // Homepage — Custom Insoles / Foot Scan Block
   "home.insolesLabel": { "en-GB": "Custom Insoles & Foot Analysis", "pt-BR": "Palmilhas Personalizadas e Análise do Pé" },

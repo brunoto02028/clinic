@@ -70,7 +70,7 @@ export default function CustomInsolesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="public-site min-h-screen bg-background flex flex-col">
       <SiteHeader currentPage="other" />
 
       {/* Breadcrumb */}

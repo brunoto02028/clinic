@@ -43,7 +43,7 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
 
   const navLinks = [
     { href: "/#insoles", label: T("home.navInsoles") },
-    { href: "/#biomechanics", label: T("home.navBiomechanics") },
+    { href: "/biohacking", label: isPt ? "Biohacking" : "Biohacking" },
     { href: "/articles", label: T("home.articlesLabel") || "Articles", active: currentPage === "articles" || currentPage === "article" },
     { href: "/help", label: isPt ? "Ajuda" : "Help" },
     { href: "/#about", label: T("home.about") },

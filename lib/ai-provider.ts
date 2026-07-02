@@ -1,4 +1,5 @@
-// Unified AI Provider — Minimax M3 (primary), Groq (secondary), Gemini (fallback)
+// Unified AI Provider — Minimax M3 (primary), Groq llama-3.3-70b (secondary), Gemini 2.5-flash (fallback)
+// Claude Sonnet 5 via OpenRouter for high-quality clinical/study/marketing tasks (lib/claude.ts)
 // All AI calls in the system should go through this layer.
 
 import { getConfigValue } from "@/lib/system-config";
@@ -58,11 +59,13 @@ async function getOpenAIKey(): Promise<string | null> {
 }
 
 async function getGeminiModel(): Promise<string> {
-  return (await getConfigValue("GEMINI_MODEL")) || "gemini-2.0-flash";
+  return (await getConfigValue("GEMINI_MODEL")) || "gemini-2.5-flash";
 }
 
 async function getImageModel(): Promise<string> {
-  return (await getConfigValue("AI_IMAGE_MODEL")) || "gemini-2.5-flash-image";
+  // gemini-2.5-flash-preview-image-generation = Gemini native image gen
+  // For higher quality: gemini-3-pro-image-preview (via OpenRouter)
+  return (await getConfigValue("AI_IMAGE_MODEL")) || "gemini-2.5-flash-preview-image-generation";
 }
 
 // ─── Groq AI calls ───

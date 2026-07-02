@@ -60,7 +60,7 @@ export function SiteFooter() {
   const hasTopRow = hasLogo || hasLinks || hasContact || hasSocial;
 
   return (
-    <footer className="border-t border-white/5 py-4 mt-auto site-footer-web-only">
+    <footer className="border-t border-slate-200 bg-slate-900 py-8 mt-auto site-footer-web-only">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Top row — logo, links, contact, social */}
@@ -75,7 +75,7 @@ export function SiteFooter() {
                   size="sm"
                   linkTo="/"
                 />
-                {settings?.tagline && <p className="text-xs text-muted-foreground">{settings.tagline}</p>}
+                {settings?.tagline && <p className="text-xs text-slate-400">{settings.tagline}</p>}
               </div>
             )}
 
@@ -84,7 +84,7 @@ export function SiteFooter() {
               <div className="flex items-center gap-3 flex-wrap justify-center">
                 {footerLinks.map(l => (
                   <a key={l.id} href={l.url} target={l.url.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors">{l.title}</a>
+                    className="text-xs text-slate-400 hover:text-white transition-colors">{l.title}</a>
                 ))}
               </div>
             )}
@@ -92,12 +92,12 @@ export function SiteFooter() {
             {/* Right: Contact + Social */}
             <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
               {hasContact && settings?.email && (
-                <a href={`mailto:${settings.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                <a href={`mailto:${settings.email}`} className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1">
                   <Mail className="h-3 w-3" />{settings.email}
                 </a>
               )}
               {hasContact && settings?.phone && (
-                <a href={`tel:${settings.phone}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                <a href={`tel:${settings.phone}`} className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1">
                   <Phone className="h-3 w-3" />{settings.phone}
                 </a>
               )}
@@ -105,7 +105,7 @@ export function SiteFooter() {
                 const Icon = SOCIAL_ICONS[s.platform.toLowerCase()] || Globe;
                 return (
                   <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors" title={s.platform}>
+                    className="text-slate-400 hover:text-white transition-colors" title={s.platform}>
                     <Icon className="h-4 w-4" />
                   </a>
                 );
@@ -116,25 +116,25 @@ export function SiteFooter() {
 
         {/* Copyright bar */}
         {hasCopyright && (
-          <div className={`flex flex-col sm:flex-row items-center justify-between gap-2 ${hasTopRow ? "border-t border-white/5 pt-3" : ""}`}>
+          <div className={`flex flex-col sm:flex-row items-center justify-between gap-2 ${hasTopRow ? "border-t border-slate-700 pt-5" : ""}`}>
             <div className="flex items-center gap-3">
               {/* Show logo inline with copyright if no top row but logo module is off */}
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-slate-400">
                 {settings?.footerText || `© ${new Date().getFullYear()} BPR. ${T("home.allRightsReserved")}`}
               </p>
             </div>
             <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
-              <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/privacy" className="text-xs text-slate-400 hover:text-white transition-colors">
                 {isPt ? "Privacidade" : "Privacy"}
               </Link>
-              <Link href="/cookies" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/cookies" className="text-xs text-slate-400 hover:text-white transition-colors">
                 {isPt ? "Cookies" : "Cookies"}
               </Link>
-              <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/terms" className="text-xs text-slate-400 hover:text-white transition-colors">
                 {isPt ? "Termos" : "Terms"}
               </Link>
               <CookiePreferencesButton />
-              <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/staff-login" className="text-xs text-slate-400 hover:text-white transition-colors">
                 {T("home.staffPortal")}
               </Link>
             </div>
@@ -144,9 +144,9 @@ export function SiteFooter() {
         {/* If nothing is enabled at all, show absolute minimum */}
         {!hasAnyModule && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} BPR.</p>
+            <p className="text-xs text-slate-400">© {new Date().getFullYear()} BPR.</p>
             <div className="flex items-center gap-3">
-              <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/staff-login" className="text-xs text-slate-400 hover:text-white transition-colors">
                 {T("home.staffPortal")}
               </Link>
             </div>

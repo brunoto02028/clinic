@@ -26,6 +26,8 @@ import {
   Stethoscope,
   HeartPulse,
   Bone,
+  Cpu,
+  Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +36,7 @@ import { useLocale } from "@/hooks/use-locale";
 const ICON_MAP: Record<string, any> = {
   Zap, Dumbbell, Footprints, ScanLine, Waves, CircleDot, Activity, Heart,
   Syringe, Users, Brain, Flame, Shield, Target, Stethoscope, HeartPulse, Bone,
+  Cpu, Moon,
 };
 
 // DB-sourced page shape
@@ -340,6 +343,87 @@ const SERVICE_DATA: Record<string, ServiceData> = {
     sessionInfo: {
       en: "Sessions: 45-60 minutes | 1-2 times per week | In-clinic + home exercises",
       pt: "Sessões: 45-60 minutos | 1-2 vezes por semana | Na clínica + exercícios em casa",
+    },
+  },
+  "biohacking-performance": {
+    slug: "biohacking-performance",
+    icon: Cpu,
+    color: "bg-violet-100 text-violet-700",
+    titleKey: "svc.biohacking",
+    descKey: "svc.biohackingDesc",
+    benefits: [
+      { en: "IPHM-certified biohacking protocols", pt: "Protocolos de biohacking certificados IPHM" },
+      { en: "Data-driven personalised health optimisation", pt: "Otimização de saúde personalizada orientada por dados" },
+      { en: "Gut health, inflammation & metabolic analysis", pt: "Análise de saúde intestinal, inflamação e metabolismo" },
+      { en: "Wearable technology integration (HRV, sleep, activity)", pt: "Integração com tecnologia wearable (HRV, sono, atividade)" },
+      { en: "Stress & nervous system regulation strategies", pt: "Estratégias de regulação do stress e sistema nervoso" },
+      { en: "Longevity & preventive health coaching", pt: "Coaching de longevidade e saúde preventiva" },
+    ],
+    whoIsItFor: {
+      en: "Biohacking & Performance coaching is for anyone wanting to go beyond standard rehabilitation — optimising energy, recovery, mental clarity, and longevity. Ideal for busy professionals, athletes, and individuals seeking a scientific, personalised approach to peak health.",
+      pt: "O coaching de Biohacking & Performance é para quem quer ir além da reabilitação padrão — optimizando energia, recuperação, clareza mental e longevidade. Ideal para profissionais, atletas e pessoas que procuram uma abordagem científica e personalizada para a saúde.",
+    },
+    howItWorks: {
+      en: "We begin with a comprehensive health data review — blood markers, wearable metrics, lifestyle analysis, and goal setting. A personalised biohacking protocol is designed covering nutrition timing, light exposure, cold/heat therapy, breathwork, and HRV-guided training loads. Regular check-ins adjust your protocol as your biomarkers improve.",
+      pt: "Começamos com uma revisão abrangente de dados de saúde — marcadores sanguíneos, métricas wearable, análise de estilo de vida e definição de objetivos. Um protocolo de biohacking personalizado é criado abrangendo timing nutricional, exposição à luz, terapia de frio/calor, respiração e cargas de treino guiadas por HRV.",
+    },
+    sessionInfo: {
+      en: "Initial consultation: 90 min | Follow-ups: 45-60 min | Monthly review | Remote sessions available",
+      pt: "Consulta inicial: 90 min | Acompanhamentos: 45-60 min | Revisão mensal | Sessões remotas disponíveis",
+    },
+  },
+  "hrv-recovery-monitoring": {
+    slug: "hrv-recovery-monitoring",
+    icon: HeartPulse,
+    color: "bg-pink-100 text-pink-700",
+    titleKey: "svc.hrv",
+    descKey: "svc.hrvDesc",
+    benefits: [
+      { en: "Objective recovery measurement via HRV", pt: "Medição objetiva de recuperação via HRV" },
+      { en: "Guides training load and rehabilitation intensity", pt: "Guia a carga de treino e intensidade de reabilitação" },
+      { en: "Identifies nervous system overload early", pt: "Identifica sobrecarga do sistema nervoso precocemente" },
+      { en: "Personalised readiness scores each day", pt: "Pontuações de prontidão personalizadas diariamente" },
+      { en: "Integration with wearables (Garmin, WHOOP, Apple Watch)", pt: "Integração com wearables (Garmin, WHOOP, Apple Watch)" },
+      { en: "Trend analysis to prevent overtraining and injury", pt: "Análise de tendências para prevenir overtraining e lesões" },
+    ],
+    whoIsItFor: {
+      en: "HRV monitoring is for athletes, rehabilitation patients, and performance-focused individuals who want an objective daily measure of their recovery status to make smarter decisions about training, rest, and stress management.",
+      pt: "O monitoramento de HRV é para atletas, pacientes em reabilitação e indivíduos focados em performance que querem uma medida objetiva diária do seu estado de recuperação para tomar decisões mais inteligentes sobre treino, descanso e gestão do stress.",
+    },
+    howItWorks: {
+      en: "We integrate HRV data from your existing wearable or provide a monitoring protocol. Daily morning HRV readings are reviewed alongside training logs, sleep data, and subjective wellbeing scores. This data guides real-time adjustments to your rehabilitation or training programme, reducing injury risk and accelerating progress.",
+      pt: "Integramos dados de HRV do seu wearable existente ou fornecemos um protocolo de monitoramento. Leituras diárias de HRV pela manhã são revisadas juntamente com registros de treino, dados de sono e pontuações de bem-estar subjetivo. Esses dados guiam ajustes em tempo real ao seu programa.",
+    },
+    sessionInfo: {
+      en: "Daily monitoring | Weekly reviews: 30 min | Remote consultation available",
+      pt: "Monitoramento diário | Revisões semanais: 30 min | Consulta remota disponível",
+    },
+  },
+  "sleep-longevity-optimisation": {
+    slug: "sleep-longevity-optimisation",
+    icon: Moon,
+    color: "bg-sky-100 text-sky-700",
+    titleKey: "svc.sleep",
+    descKey: "svc.sleepDesc",
+    benefits: [
+      { en: "Personalised sleep protocol based on chronotype", pt: "Protocolo de sono personalizado baseado no cronotipo" },
+      { en: "Circadian rhythm optimisation strategies", pt: "Estratégias de otimização do ritmo circadiano" },
+      { en: "Sleep quality tracking and improvement", pt: "Rastreamento e melhoria da qualidade do sono" },
+      { en: "Evidence-based supplementation guidance", pt: "Orientação de suplementação baseada em evidências" },
+      { en: "Longevity biomarker coaching", pt: "Coaching de biomarcadores de longevidade" },
+      { en: "Stress-sleep connection: cortisol & recovery protocols", pt: "Conexão stress-sono: protocolos de cortisol e recuperação" },
+    ],
+    whoIsItFor: {
+      en: "Sleep & Longevity Optimisation is for anyone experiencing poor sleep, low energy, slow recovery from injury, or those proactively investing in healthy ageing. Particularly beneficial for patients whose rehabilitation progress is limited by poor sleep and recovery.",
+      pt: "A Optimização do Sono e Longevidade é para quem tem sono insatisfatório, baixa energia, recuperação lenta de lesões, ou para quem investe proativamente no envelhecimento saudável. Especialmente benéfico para pacientes cuja progressão na reabilitação é limitada por sono e recuperação inadequados.",
+    },
+    howItWorks: {
+      en: "A comprehensive sleep audit using validated questionnaires, sleep tracking data, and lifestyle analysis identifies your key sleep disruptors. A personalised protocol covering sleep hygiene, light management, temperature regulation, nutrition timing, and stress tools is implemented with weekly follow-up to track improvement.",
+      pt: "Uma auditoria abrangente do sono usando questionários validados, dados de rastreamento do sono e análise de estilo de vida identifica os principais disruptores do seu sono. Um protocolo personalizado cobrindo higiene do sono, gestão da luz, regulação de temperatura, timing nutricional e ferramentas de stress é implementado com acompanhamento semanal.",
+    },
+    sessionInfo: {
+      en: "Initial audit: 60 min | Follow-ups: 30 min weekly for 4 weeks | Remote sessions available",
+      pt: "Auditoria inicial: 60 min | Acompanhamentos: 30 min semanais por 4 semanas | Sessões remotas disponíveis",
     },
   },
   microcurrent: {

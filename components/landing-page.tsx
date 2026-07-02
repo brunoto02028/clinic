@@ -45,6 +45,9 @@ import {
   Thermometer,
   Eye,
   Flame,
+  Cpu,
+  Moon,
+  HeartPulse,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -218,17 +221,20 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   ];
 
   const services = [
-    { slug: "electrotherapy", icon: Zap, titleKey: "svc.electrotherapy", descKey: "svc.electrotherapyDesc", color: "bg-amber-500/15 text-amber-400" },
-    { slug: "exercise-therapy", icon: Dumbbell, titleKey: "svc.exerciseTherapy", descKey: "svc.exerciseTherapyDesc", color: "bg-emerald-500/15 text-emerald-400" },
-    { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-500/15 text-blue-400" },
-    { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-500/15 text-purple-400" },
-    { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-500/15 text-cyan-400" },
-    { slug: "laser-shockwave", icon: CircleDot, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-rose-500/15 text-rose-400" },
-    { slug: "sports-injury", icon: Activity, titleKey: "svc.sportsInjury", descKey: "svc.sportsInjuryDesc", color: "bg-orange-500/15 text-orange-400" },
-    { slug: "chronic-pain", icon: Heart, titleKey: "svc.chronicPain", descKey: "svc.chronicPainDesc", color: "bg-red-500/15 text-red-400" },
-    { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-500/15 text-teal-400" },
-    { slug: "kinesiotherapy", icon: Users, titleKey: "svc.kinesiotherapy", descKey: "svc.kinesiotherapyDesc", color: "bg-indigo-500/15 text-indigo-400" },
-    { slug: "microcurrent", icon: Zap, titleKey: "svc.microcurrent", descKey: "svc.microcurrentDesc", color: "bg-yellow-500/15 text-yellow-400" },
+    { slug: "electrotherapy", icon: Zap, titleKey: "svc.electrotherapy", descKey: "svc.electrotherapyDesc", color: "bg-amber-50 text-amber-600" },
+    { slug: "exercise-therapy", icon: Dumbbell, titleKey: "svc.exerciseTherapy", descKey: "svc.exerciseTherapyDesc", color: "bg-emerald-50 text-emerald-600" },
+    { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-50 text-blue-600" },
+    { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-50 text-purple-600" },
+    { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-50 text-cyan-600" },
+    { slug: "laser-shockwave", icon: CircleDot, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-rose-50 text-rose-600" },
+    { slug: "sports-injury", icon: Activity, titleKey: "svc.sportsInjury", descKey: "svc.sportsInjuryDesc", color: "bg-orange-50 text-orange-600" },
+    { slug: "chronic-pain", icon: Heart, titleKey: "svc.chronicPain", descKey: "svc.chronicPainDesc", color: "bg-red-50 text-red-600" },
+    { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-50 text-teal-600" },
+    { slug: "kinesiotherapy", icon: Users, titleKey: "svc.kinesiotherapy", descKey: "svc.kinesiotherapyDesc", color: "bg-indigo-50 text-indigo-600" },
+    { slug: "microcurrent", icon: Zap, titleKey: "svc.microcurrent", descKey: "svc.microcurrentDesc", color: "bg-yellow-50 text-yellow-600" },
+    { slug: "biohacking-performance", icon: Cpu, titleKey: "svc.biohacking", descKey: "svc.biohackingDesc", color: "bg-violet-50 text-violet-600" },
+    { slug: "hrv-recovery-monitoring", icon: HeartPulse, titleKey: "svc.hrv", descKey: "svc.hrvDesc", color: "bg-pink-50 text-pink-600" },
+    { slug: "sleep-longevity-optimisation", icon: Moon, titleKey: "svc.sleep", descKey: "svc.sleepDesc", color: "bg-sky-50 text-sky-600" },
   ];
 
   const steps = [
@@ -239,7 +245,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   ];
 
   return (
-    <div className="min-h-screen bg-background bg-grid-pattern">
+    <div className="public-site min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 header-futuristic">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -342,10 +348,14 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-12 sm:py-16 lg:py-24 bg-dot-pattern">
+      <section className="relative overflow-hidden py-14 sm:py-20 lg:py-28 bg-dot-pattern">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-5 uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
+                {locale === "pt-BR" ? "Fisioterapia & Reabilitação" : "Sports Therapy & Rehabilitation"}
+              </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight">
                 {(() => {
                   const hasSettingsValue = locale === "en-GB" && settings?.heroTitle;
@@ -354,102 +364,105 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     const [main, highlight] = raw.split("|").map(s => s.trim());
                     return <>{main}{" "}<span className="text-primary">{highlight}</span></>;
                   }
-                  // If value comes from settings (DB), render as-is — user controls the full title
                   if (hasSettingsValue) return <>{raw}</>;
-                  // Only append i18n part2 when using i18n fallback
                   return <>{raw}{" "}<span className="text-primary">{T("home.heroTitle2")}</span></>;
                 })()}
               </h1>
-              <p className="mt-4 sm:mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed">
+              <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg">
                 {S("heroSubtitle", "home.heroSubtitle")}
               </p>
-              <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
                 <Link href="/signup">
-                  <Button size="lg" className="w-full sm:w-auto gap-2">
+                  <Button size="lg" className="w-full sm:w-auto gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 transition-all">
                     {T("home.bookAppointment")}
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
                 <Link href="/login">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto">{T("home.clientPortal")}</Button>
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto border-slate-300 hover:border-primary hover:text-primary">{T("home.clientPortal")}</Button>
                 </Link>
               </div>
-              <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary flex-shrink-0" />
-                  <span className="font-semibold text-foreground">15+</span>
-                  <span>{T("home.yearsExperience")}</span>
+              {/* Trust badges */}
+              <div className="mt-10 flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-slate-700">{T("home.fullyInsured")}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>{T("home.fullyInsured")}</span>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-slate-700">{T("home.openEveryDay")}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>{T("home.openEveryDay")}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>Richmond TW10 6AQ</span>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-slate-700">Ipswich, Suffolk</span>
                 </div>
               </div>
             </div>
-            <div>
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-gradient-to-br from-teal-900/20 to-cyan-900/20">
+            {/* Hero image + floating stat card */}
+            <div className="relative">
+              <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-100">
                 {settings?.heroImageUrl && (
                   settings.heroImageUrl.startsWith('data:') ? (
-                    <img
-                      src={settings.heroImageUrl}
-                      alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
-                      className="object-cover absolute inset-0 w-full h-full"
-                    />
+                    <img src={settings.heroImageUrl} alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
                   ) : (
-                    <Image
-                      src={settings.heroImageUrl}
-                      alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
-                      fill
-                      className="object-cover"
-                      priority
-                      quality={75}
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
+                    <Image src={settings.heroImageUrl} alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation" fill className="object-cover" priority quality={75} sizes="(max-width: 768px) 100vw, 50vw" />
                   )
                 )}
                 {!settings?.heroImageUrl && (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-muted-foreground/30">
+                    <div className="text-center text-slate-300">
+                      <Activity className="h-16 w-16 mx-auto mb-2" />
                       <p className="text-sm font-medium">Hero Image</p>
                     </div>
                   </div>
                 )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+              </div>
+              {/* Floating stat cards */}
+              <div className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Users className="h-5 w-5 text-primary" /></div>
+                  <div><p className="text-xl font-bold text-foreground">500+</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Pacientes" : "Patients"}</p></div>
+                </div>
+              </div>
+              <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-emerald-600" /></div>
+                  <div><p className="text-xl font-bold text-foreground">15+</p><p className="text-xs text-muted-foreground">{T("home.yearsExperience")}</p></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Accreditation / Trust Bar */}
-      <section className="py-5 sm:py-6 border-y border-border/40 bg-muted/20">
+      {/* Stats Bar */}
+      <section className="py-8 bg-primary">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
-            {/* Temporariamente comentado - adicionar imagem sto-member-badge.png */}
-            {/* <a href="https://www.sportstherapyorganisation.net/" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-full overflow-hidden ring-2 ring-primary/30 flex-shrink-0 bg-white p-1">
-                <Image src="/uploads/sto-member-badge.png" alt="Sports Therapy Organisation - Registered Member" width={56} height={56} className="object-contain w-full h-full" loading="lazy" quality={75} unoptimized />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+            {[
+              { value: "500+", label: locale === "pt-BR" ? "Pacientes Tratados" : "Patients Treated" },
+              { value: "15+", label: locale === "pt-BR" ? "Anos de Experiência" : "Years Experience" },
+              { value: "10+", label: locale === "pt-BR" ? "Especialidades" : "Specialties" },
+              { value: "98%", label: locale === "pt-BR" ? "Taxa de Satisfação" : "Satisfaction Rate" },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p className="text-3xl sm:text-4xl font-bold text-white">{stat.value}</p>
+                <p className="text-primary-foreground/80 text-sm mt-1">{stat.label}</p>
               </div>
-              <div className="text-left">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{T("home.accreditedMember")}</p>
-                <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">Sports Therapy Organisation</p>
-              </div>
-            </a> */}
+            ))}
           </div>
         </div>
       </section>
 
+
       {/* Portal Features Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
+      <section className="py-14 sm:py-16 lg:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10">
+          <div className="mb-10 text-center">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
+              {locale === "pt-BR" ? "Portal do Paciente" : "Patient Portal"}
+            </span>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
               {(() => {
                 const raw = S("portalTitle", "home.portalTitle");
@@ -457,7 +470,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   const [main, highlight] = raw.split("|").map(s => s.trim());
                   return <>{main}{" "}<span className="text-primary">{highlight}</span></>;
                 }
-                // Legacy: try to highlight "Rehabilitation" / "Reabilitação"
                 const keyword = locale === "pt-BR" ? "Reabilitação" : "Rehabilitation";
                 if (raw.includes(keyword)) {
                   const parts = raw.split(keyword);
@@ -466,17 +478,17 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 return raw;
               })()}
             </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("portalSubtitle", "home.portalSubtitle")}</p>
+            <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">{S("portalSubtitle", "home.portalSubtitle")}</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {features.map((feature, index) => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {features.map((feature) => (
               <div key={feature.titleKey}>
-                <Card className="h-full card-hover border-0 bg-muted/50">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
-                      <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <Card className="h-full card-hover border border-slate-200 bg-white shadow-sm hover:shadow-md hover:border-primary/30 transition-all">
+                  <CardContent className="p-6">
+                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                      <feature.icon className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="font-semibold text-base sm:text-lg text-foreground mb-2">{T(feature.titleKey)}</h3>
+                    <h3 className="font-semibold text-lg text-foreground mb-2">{T(feature.titleKey)}</h3>
                     <p className="text-muted-foreground text-sm leading-relaxed">{T(feature.descKey)}</p>
                   </CardContent>
                 </Card>
@@ -489,31 +501,30 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         </div>
       </section>
 
-      {/* Services Section — restructured with individual service cards linking to detail pages */}
-      <section id="services" className="py-12 sm:py-16 lg:py-20 bg-background">
+      {/* Services Section */}
+      <section id="services" className="py-14 sm:py-16 lg:py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10">
+          <div className="mb-10">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
+              {locale === "pt-BR" ? "Especialidades" : "Our Services"}
+            </span>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{S("servicesTitle", "home.servicesTitle")}</h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("servicesSubtitle", "home.servicesSubtitle")}</p>
+            <p className="mt-3 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("servicesSubtitle", "home.servicesSubtitle")}</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {services.map((svc, index) => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {services.map((svc) => (
               <div key={svc.slug}>
                 <Link href={svc.slug === "custom-insoles" ? "/custom-insoles" : svc.slug === "biomechanical-assessment" ? "/biomechanical-assessment" : `/services/${svc.slug}`}>
-                  <Card className="h-full group hover:shadow-lg hover:border-primary/30 transition-all duration-300 cursor-pointer border border-border bg-card">
-                    <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-start gap-4">
-                        <div className={`w-11 h-11 rounded-xl ${svc.color} flex items-center justify-center shrink-0`}>
-                          <svc.icon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground mb-1.5 group-hover:text-primary transition-colors">{T(svc.titleKey)}</h3>
-                          <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">{T(svc.descKey)}</p>
-                          <span className="inline-flex items-center gap-1 text-xs text-primary font-medium mt-3 group-hover:gap-2 transition-all">
-                            {T("home.learnMore")} <ArrowRight className="h-3 w-3" />
-                          </span>
-                        </div>
+                  <Card className="h-full group hover:shadow-lg hover:border-primary/40 transition-all duration-300 cursor-pointer border border-slate-200 bg-white">
+                    <CardContent className="p-6">
+                      <div className={`w-12 h-12 rounded-2xl ${svc.color} flex items-center justify-center mb-4`}>
+                        <svc.icon className="h-6 w-6" />
                       </div>
+                      <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">{T(svc.titleKey)}</h3>
+                      <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">{T(svc.descKey)}</p>
+                      <span className="inline-flex items-center gap-1 text-xs text-primary font-semibold mt-4 group-hover:gap-2 transition-all">
+                        {T("home.learnMore")} <ArrowRight className="h-3 w-3" />
+                      </span>
                     </CardContent>
                   </Card>
                 </Link>
@@ -1005,7 +1016,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       })()}
 
       {/* How It Works */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
+      <section className="py-14 sm:py-16 lg:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{T("home.howItWorksTitle")}</h2>
@@ -1027,18 +1038,21 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       </section>
 
       {/* About Section */}
-      <section id="about" className="py-12 sm:py-16 lg:py-20 bg-background">
+      <section id="about" className="py-14 sm:py-16 lg:py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4 sm:mb-6">
+              <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-5">
+                {locale === "pt-BR" ? "Sobre Mim" : "About Me"}
+              </span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-5">
                 {(() => {
                   const raw = S("aboutTitle", "home.aboutTitle");
                   if (raw.includes("|")) {
                     const [main, highlight] = raw.split("|").map(s => s.trim());
-                    return <><span className="text-secondary">{main}</span>{" "}{highlight}</>;
+                    return <><span className="text-primary">{main}</span>{" "}{highlight}</>;
                   }
-                  return <><span className="text-secondary">Bruno Physical</span>{" "}Rehabilitation</>;
+                  return <><span className="text-primary">Bruno Physical</span>{" "}Rehabilitation</>;
                 })()}
               </h2>
               <div className="space-y-4 text-muted-foreground leading-relaxed">
@@ -1052,20 +1066,39 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   </>
                 )}
               </div>
-              <div className="mt-6 sm:mt-8">
+              {/* Credentials */}
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { icon: ShieldCheck, label: "STO Registered", color: "text-primary bg-primary/10" },
+                  { icon: Sparkles, label: "IPHM Biohacking Coach", color: "text-emerald-600 bg-emerald-100" },
+                  { icon: Activity, label: "20+ Years Clinical Practice", color: "text-orange-600 bg-orange-100" },
+                  { icon: Users, label: "Ex-Professional Footballer", color: "text-blue-600 bg-blue-100" },
+                ].map((c) => (
+                  <div key={c.label} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${c.color}`}><c.icon className="h-4 w-4" /></div>
+                    <span className="text-sm font-medium text-foreground">{c.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-7">
                 <Link href="/signup">
-                  <Button className="gap-2">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
+                  <Button className="gap-2 shadow-md shadow-primary/20">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
                 </Link>
               </div>
             </div>
             <div>
-              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
+              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border border-slate-100">
                 {settings?.aboutImageUrl && (
                   settings.aboutImageUrl.startsWith('data:') ? (
-                    <img src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" className="object-cover absolute inset-0 w-full h-full" />
+                    <img src={settings.aboutImageUrl} alt="Bruno - Sports Therapist" className="object-cover absolute inset-0 w-full h-full" />
                   ) : (
-                    <Image src={settings.aboutImageUrl} alt="Professional physiotherapy treatment session" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
+                    <Image src={settings.aboutImageUrl} alt="Bruno - Sports Therapist" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
                   )
+                )}
+                {!settings?.aboutImageUrl && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                    <UserCog className="h-24 w-24 text-primary/20" />
+                  </div>
                 )}
               </div>
             </div>
@@ -1074,7 +1107,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       </section>
 
       {/* Articles Section */}
-      <section id="articles" className="py-12 sm:py-16 lg:py-20 bg-card/50">
+      <section id="articles" className="py-14 sm:py-16 lg:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 sm:mb-10">
             <p className="text-secondary font-medium mb-2">{T("home.articlesLabel")}</p>
@@ -1140,7 +1173,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-12 sm:py-16 lg:py-20 bg-background">
+      <section id="contact" className="py-14 sm:py-16 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{S("contactTitle", "home.contactTitle")}</h2>
@@ -1194,7 +1227,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         const fHasTopRow = fHasLogo || fHasLinks || fHasContact || fHasSocial;
         const fHasAny = fHasTopRow || fHasCopyright;
         return (
-          <footer className="border-t border-white/5 py-4">
+          <footer className="border-t border-slate-200 bg-slate-900 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {fHasTopRow && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-3">
@@ -1210,24 +1243,24 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     </div>
                   )}
                   <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
-                    {fHasContact && settings?.email && <a href={`mailto:${settings.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Mail className="h-3 w-3" />{settings.email}</a>}
-                    {fHasContact && settings?.phone && <a href={`tel:${settings.phone}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Phone className="h-3 w-3" />{settings.phone}</a>}
-                    {fHasSocial && fSocial.map(s => <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" title={s.platform}><Globe className="h-4 w-4" /></a>)}
+                    {fHasContact && settings?.email && <a href={`mailto:${settings.email}`} className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1"><Mail className="h-3 w-3" />{settings.email}</a>}
+                    {fHasContact && settings?.phone && <a href={`tel:${settings.phone}`} className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1"><Phone className="h-3 w-3" />{settings.phone}</a>}
+                    {fHasSocial && fSocial.map(s => <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors" title={s.platform}><Globe className="h-4 w-4" /></a>)}
                   </div>
                 </div>
               )}
               {fHasCopyright && (
-                <div className={`flex flex-col sm:flex-row items-center justify-between gap-2 ${fHasTopRow ? "border-t border-white/5 pt-3" : ""}`}>
-                  <p className="text-xs text-muted-foreground">{settings?.footerText || `© ${new Date().getFullYear()} BPR. ${T("home.allRightsReserved")}`}</p>
+                <div className={`flex flex-col sm:flex-row items-center justify-between gap-2 ${fHasTopRow ? "border-t border-slate-700 pt-3" : ""}`}>
+                  <p className="text-xs text-slate-400">{settings?.footerText || `© ${new Date().getFullYear()} BPR. ${T("home.allRightsReserved")}`}</p>
                   <div className="flex items-center gap-4">
-                    <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{T("home.staffPortal")}</Link>
+                    <Link href="/staff-login" className="text-xs text-slate-400 hover:text-white transition-colors">{T("home.staffPortal")}</Link>
                   </div>
                 </div>
               )}
               {!fHasAny && (
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} BPR.</p>
-                  <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{T("home.staffPortal")}</Link>
+                  <p className="text-xs text-slate-400">© {new Date().getFullYear()} BPR.</p>
+                  <Link href="/staff-login" className="text-xs text-slate-400 hover:text-white transition-colors">{T("home.staffPortal")}</Link>
                 </div>
               )}
             </div>

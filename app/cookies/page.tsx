@@ -15,7 +15,7 @@ export default function CookiePolicyPage() {
   const lastUpdated = "26 February 2026";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="public-site min-h-screen bg-background flex flex-col">
       <SiteHeader currentPage="other" />
       <main className="flex-1 py-12 sm:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">

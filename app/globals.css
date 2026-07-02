@@ -300,6 +300,55 @@ body {
 }
 
 /* ============================================
+   PUBLIC SITE — LIGHT THEME
+   Scoped to .public-site — admin stays dark
+   ============================================ */
+
+.public-site {
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.public-site .glass {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(74, 124, 138, 0.15);
+}
+
+.public-site .header-futuristic {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid hsl(214, 32%, 91%);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.public-site .bg-dot-pattern {
+  background-color: hsl(0, 0%, 100%);
+  background-image: radial-gradient(rgba(74, 124, 138, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.public-site .bg-grid-pattern {
+  background-color: hsl(0, 0%, 100%);
+  background-image:
+    linear-gradient(rgba(74, 124, 138, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 124, 138, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ============================================
    CARD HOVER EFFECTS (FUTURISTIC)
    ============================================ */
 
