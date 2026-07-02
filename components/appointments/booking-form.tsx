@@ -10,11 +10,23 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle,
+  Sparkles,
+  RefreshCw,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { useLocale } from "@/hooks/use-locale";
+
+type PatientState = "loading" | "new" | "returning" | "active";
+
+interface PatientAppointment {
+  id: string;
+  dateTime: string;
+  status: string;
+  treatmentType: string;
+}
 
 export default function BookingForm() {
   const { locale } = useLocale();
@@ -30,6 +42,9 @@ export default function BookingForm() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [noAvailability, setNoAvailability] = useState(false);
   const [consultationPrice, setConsultationPrice] = useState<number | null>(null);
+  const [patientState, setPatientState] = useState<PatientState>("loading");
+  const [existingAppointments, setExistingAppointments] = useState<PatientAppointment[]>([]);
+  const [totalPastCount, setTotalPastCount] = useState(0);
 
   useEffect(() => {
     fetchAvailableDates();
@@ -40,6 +55,29 @@ export default function BookingForm() {
         if (consultation?.price) setConsultationPrice(consultation.price);
       })
       .catch(() => {});
+
+    // Determine patient state based on appointment history
+    fetch("/api/appointments")
+      .then(r => r.json())
+      .then((data: any) => {
+        const appts: PatientAppointment[] = Array.isArray(data) ? data : (data?.appointments ?? []);
+        const now = new Date();
+        const future = appts.filter(a =>
+          new Date(a.dateTime) > now &&
+          ["PENDING", "CONFIRMED"].includes(a.status)
+        );
+        const past = appts.filter(a => new Date(a.dateTime) <= now || a.status === "COMPLETED");
+        setExistingAppointments(future);
+        setTotalPastCount(past.length);
+        if (future.length > 0) {
+          setPatientState("active");
+        } else if (appts.length > 0) {
+          setPatientState("returning");
+        } else {
+          setPatientState("new");
+        }
+      })
+      .catch(() => setPatientState("new"));
   }, []);
 
   const fetchAvailableDates = async () => {
@@ -124,6 +162,69 @@ export default function BookingForm() {
           </p>
         </div>
       </div>
+
+      {/* Patient State Banner */}
+      {patientState === "new" && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+          <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {isPt ? "Bem-vindo! Esta é a tua primeira consulta." : "Welcome! This is your first consultation."}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {isPt
+                ? "Escolhe um dia e horário disponível. Após o agendamento receberás um email com os próximos passos."
+                : "Pick a date and time. After booking you'll receive an email with your next steps."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {patientState === "returning" && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+          <RefreshCw className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {isPt ? `Bem-vindo de volta! ${totalPastCount > 1 ? `Já fizeste ${totalPastCount} consultas connosco.` : "É a tua primeira vez de volta."}` : `Welcome back! ${totalPastCount > 1 ? `You've had ${totalPastCount} appointments with us.` : "Good to see you again."}`}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {isPt ? "Escolhe uma nova data e horário para a tua próxima consulta." : "Select a new date and time for your next appointment."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {patientState === "active" && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+          <Info className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">
+              {isPt ? "Já tens consultas agendadas." : "You already have upcoming appointments."}
+            </p>
+            <div className="mt-2 space-y-1">
+              {existingAppointments.slice(0, 3).map(a => (
+                <div key={a.id} className="flex items-center gap-2">
+                  <Calendar className="h-3.5 w-3.5 text-amber-400 flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(a.dateTime).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                    {" · "}
+                    {new Date(a.dateTime).toLocaleTimeString(isPt ? "pt-BR" : "en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${a.status === "CONFIRMED" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
+                      {a.status === "CONFIRMED" ? (isPt ? "Confirmada" : "Confirmed") : (isPt ? "Pendente" : "Pending")}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isPt ? "Podes continuar e agendar outra consulta se precisares." : "You can still book an additional appointment if needed."}
+            </p>
+            <Link href="/dashboard/appointments" className="text-xs text-primary hover:underline mt-1 inline-block">
+              {isPt ? "Ver as minhas consultas →" : "View my appointments →"}
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="flex items-center px-2">
