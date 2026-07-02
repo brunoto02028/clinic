@@ -23,6 +23,8 @@ import {
   Instagram,
   X,
   ExternalLink,
+  Download,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -60,6 +62,15 @@ export default function AdminArticlesPage() {
   const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
   // Instagram
   const [igArticle, setIgArticle] = useState<Article | null>(null);
+  // Bulk import
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSiteUrl, setBulkSiteUrl] = useState("https://brunophysicalrehabilitation.co.uk");
+  const [bulkDiscovering, setBulkDiscovering] = useState(false);
+  const [bulkUrls, setBulkUrls] = useState<string[]>([]);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkResults, setBulkResults] = useState<any[] | null>(null);
+  const [bulkSummary, setBulkSummary] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -161,6 +172,54 @@ export default function AdminArticlesPage() {
     }
   };
 
+  const handleBulkDiscover = async () => {
+    if (!bulkSiteUrl.trim()) return;
+    setBulkDiscovering(true);
+    setBulkUrls([]);
+    setBulkSelected(new Set());
+    setBulkResults(null);
+    try {
+      const res = await fetch("/api/admin/articles/bulk-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "discover", siteUrl: bulkSiteUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Discovery failed");
+      setBulkUrls(data.urls || []);
+      setBulkSelected(new Set(data.urls || []));
+      toast({ title: `${data.count} articles found`, description: "Select which ones to import." });
+    } catch (e: any) {
+      toast({ title: "Discovery failed", description: e.message, variant: "destructive" });
+    } finally {
+      setBulkDiscovering(false);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    const toImport = Array.from(bulkSelected);
+    if (!toImport.length) return;
+    setBulkImporting(true);
+    setBulkResults(null);
+    try {
+      const res = await fetch("/api/admin/articles/bulk-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "import", urls: toImport }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Import failed");
+      setBulkResults(data.results || []);
+      setBulkSummary(data.summary);
+      fetchArticles();
+      toast({ title: `${data.summary?.imported} articles imported!`, description: `${data.summary?.errors} errors.` });
+    } catch (e: any) {
+      toast({ title: "Import failed", description: e.message, variant: "destructive" });
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
   const filteredArticles = articles.filter(
     (a) =>
       a.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -234,6 +293,83 @@ export default function AdminArticlesPage() {
               </div>
             </DialogContent>
           </Dialog>
+          {/* Bulk Import Dialog */}
+          <Dialog open={bulkOpen} onOpenChange={(o) => { setBulkOpen(o); if (!o) { setBulkUrls([]); setBulkSelected(new Set()); setBulkResults(null); setBulkSummary(null); } }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2 border-violet-500/40 text-violet-400 hover:bg-violet-500/10">
+                <Download className="h-4 w-4" /> Import All from Site
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-violet-500" /> Bulk Import from Website
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Descobrir automaticamente todos os artigos de um site e importá-los como rascunhos.</p>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    placeholder="https://brunophysicalrehabilitation.co.uk"
+                    value={bulkSiteUrl}
+                    onChange={e => setBulkSiteUrl(e.target.value)}
+                    disabled={bulkDiscovering || bulkImporting}
+                  />
+                  <Button onClick={handleBulkDiscover} disabled={bulkDiscovering || bulkImporting || !bulkSiteUrl.trim()} variant="outline" className="gap-1.5">
+                    {bulkDiscovering ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Discover
+                  </Button>
+                </div>
+
+                {bulkUrls.length > 0 && !bulkResults && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{bulkUrls.length} artigos encontrados — {bulkSelected.size} selecionados</span>
+                      <div className="flex gap-2">
+                        <button className="text-xs text-primary hover:underline" onClick={() => setBulkSelected(new Set(bulkUrls))}>Todos</button>
+                        <button className="text-xs text-muted-foreground hover:underline" onClick={() => setBulkSelected(new Set())}>Nenhum</button>
+                      </div>
+                    </div>
+                    <div className="border rounded-lg divide-y max-h-64 overflow-y-auto text-xs">
+                      {bulkUrls.map(url => (
+                        <label key={url} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30 cursor-pointer">
+                          <input type="checkbox" className="rounded" checked={bulkSelected.has(url)}
+                            onChange={e => {
+                              const next = new Set(bulkSelected);
+                              e.target.checked ? next.add(url) : next.delete(url);
+                              setBulkSelected(next);
+                            }} />
+                          <span className="truncate text-muted-foreground">{url}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <Button onClick={handleBulkImport} disabled={bulkImporting || bulkSelected.size === 0} className="w-full gap-2">
+                      {bulkImporting ? <><Loader2 className="h-4 w-4 animate-spin" /> A importar... (pode demorar vários minutos)</> : <><Download className="h-4 w-4" /> Importar {bulkSelected.size} artigos selecionados</>}
+                    </Button>
+                  </div>
+                )}
+
+                {bulkResults && bulkSummary && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 text-sm font-medium">
+                      <span className="text-emerald-600">✅ {bulkSummary.imported} importados</span>
+                      {bulkSummary.errors > 0 && <span className="text-red-500">❌ {bulkSummary.errors} erros</span>}
+                    </div>
+                    <div className="border rounded-lg divide-y max-h-56 overflow-y-auto text-xs">
+                      {bulkResults.map((r, i) => (
+                        <div key={i} className={`flex items-center gap-2 px-3 py-1.5 ${r.status === 'error' ? 'bg-red-500/5' : ''}`}>
+                          <span>{r.status === 'ok' ? '✅' : '❌'}</span>
+                          <span className="truncate text-muted-foreground flex-1">{r.title || r.url}</span>
+                          {r.error && <span className="text-red-500 shrink-0">{r.error}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Link href="/admin/articles/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
