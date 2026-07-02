@@ -1422,7 +1422,11 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
   };
 
   const handleSendQuestions = async () => {
-    const lines = qText.split("\n").map(l => l.trim()).filter(Boolean);
+    const stripMd = (s: string) => s
+      .replace(/\*\*/g, "").replace(/\*/g, "").replace(/_/g, "")
+      .replace(/^#+\s*/gm, "").replace(/^>\s*/gm, "").replace(/`/g, "")
+      .replace(/^[-•–]\s*/gm, "").replace(/^\d+[\.\)]\s*/, "").trim();
+    const lines = qText.split("\n").map(l => stripMd(l)).filter(Boolean);
     if (!lines.length) return;
     setSendingQ(true);
     try {
@@ -1517,8 +1521,20 @@ function RehabAgentTab({ patientId, patientData }: { patientId: string; patientD
             onClick={() => {
               const lastAssistant = [...quickHistory].reverse().find(m => m.role === "assistant");
               if (lastAssistant) {
-                const lines = lastAssistant.content.split("\n").filter(l => /^\d+\./.test(l.trim())).map(l => l.replace(/^\d+\.\s*/, "").replace(/\*\*/g, "").trim());
-                setQText(lines.length > 0 ? lines.join("\n") : lastAssistant.content.slice(0, 800));
+                const stripMd = (s: string) => s
+                  .replace(/\*\*/g, "").replace(/\*/g, "").replace(/_/g, "")
+                  .replace(/^#+\s*/gm, "").replace(/^>\s*/gm, "").replace(/`/g, "")
+                  .replace(/^[-•–]\s*/gm, "").trim();
+                const numbered = lastAssistant.content.split("\n")
+                  .filter(l => /^\d+[\.\)]/.test(l.trim()))
+                  .map(l => stripMd(l.replace(/^\d+[\.\)]\s*/, "")))
+                  .filter(Boolean);
+                const questions = lastAssistant.content.split("\n")
+                  .filter(l => l.trim().endsWith("?"))
+                  .map(l => stripMd(l))
+                  .filter(Boolean);
+                const extracted = numbered.length > 0 ? numbered : questions.length > 0 ? questions : [];
+                setQText(extracted.length > 0 ? extracted.join("\n") : stripMd(lastAssistant.content).slice(0, 800));
               }
               setShowQDialog(true);
             }}>

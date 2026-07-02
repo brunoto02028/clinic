@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, MessageCircleQuestion, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, CheckCircle2, Send, MessageCircleQuestion } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocale } from "@/hooks/use-locale";
 
@@ -19,12 +17,36 @@ interface QuestionSet {
   answeredAt: string | null;
 }
 
+const CLINIC_AVATAR = "https://bpr.rehab/favicon.ico";
+
+function ClinicBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-primary text-xs font-bold">B</div>
+      <div className="flex-1 bg-muted/40 rounded-2xl rounded-tl-none px-4 py-3 text-sm text-foreground leading-relaxed">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function PatientBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 flex-row-reverse">
+      <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 text-emerald-400 text-xs font-bold">V</div>
+      <div className="flex-1 bg-emerald-600/15 border border-emerald-500/20 rounded-2xl rounded-tr-none px-4 py-3 text-sm text-foreground leading-relaxed">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function QuestionsPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
   const [sets, setSets] = useState<QuestionSet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openSet, setOpenSet] = useState<string | null>(null);
+  const [activeSet, setActiveSet] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
@@ -32,7 +54,12 @@ export default function QuestionsPage() {
   useEffect(() => {
     fetch("/api/patient/questions")
       .then(r => r.json())
-      .then(data => setSets(Array.isArray(data) ? data : []))
+      .then(data => {
+        const arr = Array.isArray(data) ? data : [];
+        setSets(arr);
+        const firstPending = arr.find((s: QuestionSet) => s.status === "pending");
+        if (firstPending) setActiveSet(firstPending.id);
+      })
       .catch(() => setSets([]))
       .finally(() => setLoading(false));
   }, []);
@@ -68,143 +95,153 @@ export default function QuestionsPage() {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center py-20">
+    <div className="flex items-center justify-center py-24">
       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
     </div>
   );
 
   const pending = sets.filter(s => s.status === "pending");
   const answered = sets.filter(s => s.status !== "pending");
+  const current = sets.find(s => s.id === activeSet);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-5 pb-24">
+    <div className="max-w-xl mx-auto px-4 py-6 pb-28 space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-xl font-bold">{isPt ? "Perguntas do Terapeuta" : "Therapist Questions"}</h1>
+        <h1 className="text-xl font-bold">{isPt ? "Mensagens da Clínica" : "Messages from the Clinic"}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isPt
-            ? "O teu terapeuta enviou perguntas para completares antes da consulta."
-            : "Your therapist sent questions for you to complete before your appointment."}
+          {isPt ? "O teu terapeuta enviou algumas perguntas. Responde quando puderes." : "Your therapist sent you a few questions. Reply when you can."}
         </p>
       </div>
 
+      {/* Selector if multiple sets */}
+      {sets.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {sets.map((s, i) => (
+            <button
+              key={s.id}
+              onClick={() => { setActiveSet(s.id); initDraft(s); }}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                activeSet === s.id
+                  ? "bg-primary text-white border-primary"
+                  : s.status === "pending"
+                  ? "border-amber-500/40 text-amber-400 bg-amber-500/5"
+                  : "border-border text-muted-foreground"
+              }`}
+            >
+              {new Date(s.createdAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "numeric", month: "short" })}
+              {s.status === "pending" && <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-amber-400 inline-block align-middle" />}
+            </button>
+          ))}
+        </div>
+      )}
+
       {sets.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center space-y-2">
-            <MessageCircleQuestion className="h-10 w-10 text-muted-foreground mx-auto" />
-            <p className="text-sm text-muted-foreground">
-              {isPt ? "Nenhuma pergunta pendente." : "No questions pending."}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="text-center py-20 space-y-3">
+          <MessageCircleQuestion className="h-12 w-12 text-muted-foreground/30 mx-auto" />
+          <p className="text-sm text-muted-foreground">
+            {isPt ? "Nenhuma mensagem por enquanto." : "No messages yet."}
+          </p>
+        </div>
       )}
 
-      {pending.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-amber-400 uppercase tracking-wide">
-            {isPt ? `${pending.length} Pendente${pending.length > 1 ? "s" : ""}` : `${pending.length} Pending`}
-          </p>
-          {pending.map(set => (
-            <Card key={set.id} className="border-amber-500/30">
-              <button
-                className="w-full p-4 flex items-center gap-3 text-left"
-                onClick={() => { setOpenSet(openSet === set.id ? null : set.id); initDraft(set); }}
-              >
-                <MessageCircleQuestion className="h-5 w-5 text-amber-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">
-                    {(set.questions as string[]).length} {isPt ? "perguntas" : "questions"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(set.createdAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB")}
-                    {set.context ? ` · ${set.context}` : ""}
-                  </p>
-                </div>
-                {openSet === set.id ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-              </button>
+      {/* Active conversation */}
+      {current && (() => {
+        initDraft(current);
+        const isPending = current.status === "pending";
+        const isSubmitted = submitted[current.id];
+        return (
+          <div className="space-y-5">
+            {/* Clinic greeting */}
+            <ClinicBubble>
+              {isPt
+                ? <>Olá! Antes da próxima consulta, gostaria de te fazer algumas perguntas para poder personalizar melhor o teu tratamento. Podes responder com calma.</>
+                : <>Hi! Before your next appointment, I have a few questions to help me personalise your treatment. Take your time to reply.</>}
+            </ClinicBubble>
 
-              {openSet === set.id && (
-                <CardContent className="px-4 pb-4 pt-0 space-y-4 border-t">
-                  {(set.questions as string[]).map((q, i) => (
-                    <div key={i} className="space-y-1.5">
-                      <p className="text-sm font-medium">
-                        <span className="text-muted-foreground mr-1.5">{i + 1}.</span>{q}
-                      </p>
-                      <Textarea
-                        className="text-sm min-h-[72px] resize-none"
-                        placeholder={isPt ? "A tua resposta…" : "Your answer…"}
-                        value={drafts[set.id]?.[i] || ""}
-                        onChange={e => setDrafts(d => {
-                          const arr = [...(d[set.id] || (set.questions as string[]).map(() => ""))];
-                          arr[i] = e.target.value;
-                          return { ...d, [set.id]: arr };
-                        })}
-                      />
-                    </div>
-                  ))}
-                  {submitted[set.id] ? (
-                    <div className="flex items-center gap-2 text-sm text-emerald-400 font-medium">
-                      <CheckCircle2 className="h-4 w-4" />
-                      {isPt ? "Respostas enviadas! Obrigado." : "Answers submitted! Thank you."}
-                    </div>
-                  ) : (
-                    <Button
-                      className="w-full bg-emerald-600 hover:bg-emerald-700"
-                      onClick={() => handleSubmit(set)}
-                      disabled={submitting === set.id || !(drafts[set.id] || []).some(a => a.trim())}
-                    >
-                      {submitting === set.id
-                        ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{isPt ? "A enviar…" : "Sending…"}</>
-                        : isPt ? "Enviar Respostas" : "Submit Answers"}
-                    </Button>
+            {/* Questions as conversation */}
+            {(current.questions as string[]).map((q, i) => {
+              const existingAnswer = current.answers?.find(a => a.index === i)?.answer;
+              const draftAnswer = drafts[current.id]?.[i] || "";
+              return (
+                <div key={i} className="space-y-3">
+                  <ClinicBubble>
+                    <span className="text-primary font-medium text-xs mr-1.5">{i + 1}.</span>
+                    {q}
+                  </ClinicBubble>
+
+                  {/* Answered: show patient reply bubble */}
+                  {!isPending && existingAnswer && (
+                    <PatientBubble>{existingAnswer}</PatientBubble>
                   )}
-                </CardContent>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
 
-      {answered.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            {isPt ? "Respondidas" : "Answered"}
-          </p>
-          {answered.map(set => (
-            <Card key={set.id} className="opacity-70">
-              <button
-                className="w-full p-4 flex items-center gap-3 text-left"
-                onClick={() => { setOpenSet(openSet === set.id ? null : set.id); initDraft(set); }}
-              >
-                <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">
-                    {(set.questions as string[]).length} {isPt ? "perguntas" : "questions"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {isPt ? "Respondido em" : "Answered on"}{" "}
-                    {set.answeredAt ? new Date(set.answeredAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB") : "—"}
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400 shrink-0">
-                  {isPt ? "Respondido" : "Answered"}
-                </Badge>
-                {openSet === set.id ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-              </button>
-
-              {openSet === set.id && set.answers && (
-                <CardContent className="px-4 pb-4 pt-0 space-y-3 border-t">
-                  {(set.answers as { index: number; question: string; answer: string }[]).map((a, i) => (
-                    <div key={i} className="space-y-0.5">
-                      <p className="text-xs font-medium text-muted-foreground">{i + 1}. {a.question}</p>
-                      <p className="text-sm bg-muted/30 rounded p-2">{a.answer || <em className="text-muted-foreground">—</em>}</p>
+                  {/* Pending: show textarea */}
+                  {isPending && !isSubmitted && (
+                    <div className="flex items-start gap-3 flex-row-reverse">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 text-emerald-400 text-xs font-bold">V</div>
+                      <div className="flex-1">
+                        <Textarea
+                          className="text-sm min-h-[80px] resize-none bg-muted/20 border-border/60 rounded-xl focus:border-primary/50"
+                          placeholder={isPt ? "A tua resposta…" : "Your reply…"}
+                          value={draftAnswer}
+                          onChange={e => setDrafts(d => {
+                            const arr = [...(d[current.id] || (current.questions as string[]).map(() => ""))];
+                            arr[i] = e.target.value;
+                            return { ...d, [current.id]: arr };
+                          })}
+                        />
+                      </div>
                     </div>
-                  ))}
-                </CardContent>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
+                  )}
+
+                  {/* Submitted: show what was answered */}
+                  {isPending && isSubmitted && (
+                    <PatientBubble>{draftAnswer || <em className="text-muted-foreground/60">—</em>}</PatientBubble>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Submit / Sent state */}
+            {isPending && (
+              isSubmitted ? (
+                <div className="flex items-center gap-2.5 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-400">
+                      {isPt ? "Respostas enviadas!" : "Replies sent!"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isPt ? "O teu terapeuta vai rever as tuas respostas antes da consulta." : "Your therapist will review your replies before the appointment."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  className="w-full gap-2 bg-primary hover:bg-primary/90"
+                  onClick={() => handleSubmit(current)}
+                  disabled={submitting === current.id || !(drafts[current.id] || []).some(a => a.trim())}
+                >
+                  {submitting === current.id
+                    ? <><Loader2 className="h-4 w-4 animate-spin" />{isPt ? "A enviar…" : "Sending…"}</>
+                    : <><Send className="h-4 w-4" />{isPt ? "Enviar Respostas" : "Send Replies"}</>}
+                </Button>
+              )
+            )}
+
+            {/* Already answered summary */}
+            {!isPending && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                {isPt ? "Respondido em" : "Replied on"}{" "}
+                {current.answeredAt
+                  ? new Date(current.answeredAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "numeric", month: "long", year: "numeric" })
+                  : "—"}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
