@@ -165,6 +165,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   const T = (key: string) => t(key, locale);
   // S() reads from settings field when locale is EN (settings are single-language English).
   // When PT is selected, always use the i18n translation to avoid mixed languages.
+  // Returns null for /uploads/ paths (ephemeral on Render) and empty values
+  const validImg = (url: string | null | undefined): string | null => {
+    if (!url || url.startsWith('/uploads/')) return null;
+    return url;
+  };
+
   const S = (settingsField: keyof SiteSettings | undefined, i18nKey: string) => {
     if (locale === "en-GB" && settingsField && settings && settings[settingsField]) return settings[settingsField] as string;
     return T(i18nKey);
@@ -402,14 +408,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             {/* Hero image + floating stat card */}
             <div className="relative">
               <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-100">
-                {settings?.heroImageUrl && (
-                  settings.heroImageUrl.startsWith('data:') ? (
-                    <img src={settings.heroImageUrl} alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
-                  ) : (
-                    <Image src={settings.heroImageUrl} alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation" fill className="object-cover" priority quality={75} sizes="(max-width: 768px) 100vw, 50vw" />
-                  )
-                )}
-                {!settings?.heroImageUrl && (
+                {validImg(settings?.heroImageUrl) ? (
+                  <img src={validImg(settings?.heroImageUrl)!} alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
+                ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center text-slate-300">
                       <Activity className="h-16 w-16 mx-auto mb-2" />
@@ -508,14 +509,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             </div>
             <div>
               <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border border-slate-100">
-                {settings?.aboutImageUrl && (
-                  settings.aboutImageUrl.startsWith('data:') ? (
-                    <img src={settings.aboutImageUrl} alt="Bruno - Sports Therapist" className="object-cover absolute inset-0 w-full h-full" />
-                  ) : (
-                    <Image src={settings.aboutImageUrl} alt="Bruno - Sports Therapist" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                  )
-                )}
-                {!settings?.aboutImageUrl && (
+                {validImg(settings?.aboutImageUrl) ? (
+                  <img src={validImg(settings?.aboutImageUrl)!} alt="Bruno - Sports Therapist" className="object-cover absolute inset-0 w-full h-full" />
+                ) : (
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
                     <UserCog className="h-24 w-24 text-primary/20" />
                   </div>
@@ -626,8 +622,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           { value: "2000 Hz", labelKey: "home.mlsStat4" },
         ];
 
-        const treatmentImg = mls.treatmentImageUrl || "/uploads/mls-laser-treatment.jpg";
-        const deviceImg = mls.deviceImageUrl || "/uploads/mls-laser-device.jpg";
+        const treatmentImg = validImg(mls.treatmentImageUrl);
+        const deviceImg = validImg(mls.deviceImageUrl);
         const ctaLink = mls.ctaLink || "/signup";
         const learnMoreLink = mls.learnMoreLink || "/services/laser-shockwave";
 
@@ -663,10 +659,15 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800">
-                {treatmentImg.startsWith('data:') ? (
+                {treatmentImg ? (
                   <img src={treatmentImg} alt="MLS Laser Therapy treatment in action" className="w-full h-auto max-h-[420px] object-cover" />
                 ) : (
-                  <Image src={treatmentImg} alt="MLS Laser Therapy treatment in action" width={800} height={600} className="w-full h-auto max-h-[420px] object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" onError={(e: any) => { e.currentTarget.src = '/uploads/mls-laser-treatment.jpg'; }} />
+                  <div className="flex items-center justify-center h-64 text-slate-500">
+                    <div className="text-center">
+                      <Zap className="h-12 w-12 mx-auto mb-2 text-orange-400/40" />
+                      <p className="text-xs text-slate-400">MLS Laser Treatment</p>
+                    </div>
+                  </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
@@ -678,10 +679,15 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-white flex items-center justify-center p-4">
-                  {deviceImg.startsWith('data:') ? (
+                  {deviceImg ? (
                     <img src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" className="object-contain p-4 absolute inset-0 w-full h-full" />
                   ) : (
-                    <Image src={deviceImg} alt="MLS Mphi 75 Multiwave Locked System laser device" fill className="object-contain p-4" loading="lazy" quality={60} sizes="(max-width: 768px) 50vw, 25vw" onError={(e: any) => { e.currentTarget.src = '/uploads/mls-laser-device.jpg'; }} />
+                    <div className="flex items-center justify-center w-full h-full text-slate-400">
+                      <div className="text-center">
+                        <Zap className="h-8 w-8 mx-auto mb-1 text-orange-400/40" />
+                        <p className="text-[10px]">MLS Device</p>
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-blue-600/10 border border-orange-500/20 p-5 flex flex-col justify-center">
@@ -776,13 +782,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-blue-900/20 to-cyan-900/20">
-                {settings?.insolesImageUrl && (
+                {validImg(settings?.insolesImageUrl) && (
                   <>
-                    {settings.insolesImageUrl.startsWith('data:') ? (
-                      <img src={settings.insolesImageUrl} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
-                    ) : (
-                      <Image src={settings.insolesImageUrl} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                    )}
+                    <img src={validImg(settings.insolesImageUrl)!} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </>
                 )}
@@ -884,13 +886,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-purple-900/20 to-blue-900/20">
-                {settings?.bioImageUrl && (
+                {validImg(settings?.bioImageUrl) && (
                   <>
-                    {settings.bioImageUrl.startsWith('data:') ? (
-                      <img src={settings.bioImageUrl} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
-                    ) : (
-                      <Image src={settings.bioImageUrl} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                    )}
+                    <img src={validImg(settings.bioImageUrl)!} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </>
                 )}
@@ -994,12 +992,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             {/* Left: Image + badge */}
             <div className="space-y-4">
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800 aspect-[4/3]">
-                {settings?.thermoImageUrl ? (
-                  (settings.thermoImageUrl as string).startsWith('data:') ? (
-                    <img src={settings.thermoImageUrl as string} alt="Infrared thermography scan showing heat patterns on body" className="object-cover absolute inset-0 w-full h-full" />
-                  ) : (
-                    <Image src={settings.thermoImageUrl as string} alt="Infrared thermography scan showing heat patterns on body" fill className="object-cover" loading="lazy" quality={60} sizes="(max-width: 768px) 100vw, 50vw" />
-                  )
+                {validImg(settings?.thermoImageUrl) ? (
+                  <img src={validImg(settings?.thermoImageUrl)!} alt="Infrared thermography scan showing heat patterns on body" className="object-cover absolute inset-0 w-full h-full" />
                 ) : (
                   <div className="absolute inset-0">
                     <ThermographyIllustration className="w-full h-full" />
