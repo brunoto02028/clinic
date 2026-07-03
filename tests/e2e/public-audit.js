@@ -23,7 +23,8 @@ const PAGES = [
   { url: "/services/biohacking-performance", name: "Service: Biohacking Perf" },
   { url: "/services/hrv-recovery-monitoring", name: "Service: HRV Monitoring" },
   { url: "/services/sleep-longevity-optimisation", name: "Service: Sleep" },
-  { url: "/services/exercise-therapy", name: "Service: Exercise Therapy (SHOULD BE GONE)" },
+  { url: "/services/exercise-therapy", name: "Service: Exercise Therapy" },
+  { url: "/services/mls-laser", name: "Service: MLS Laser" },
   { url: "/services/biomechanical-assessment", name: "Service: Biomechanical (slug)" },
   { url: "/services/custom-insoles", name: "Service: Custom Insoles (slug)" },
   { url: "/login", name: "Login" },
@@ -152,6 +153,45 @@ async function auditPage(page, entry) {
 
 (async () => {
   console.log("🔍 BPR Public Pages Audit");
+  console.log("=".repeat(60));
+
+  // ── DB / Settings API check ──────────────────────────────────────
+  console.log("\n🗄️  Checking DB (via /api/settings)...");
+  try {
+    const https = require("https");
+    await new Promise((resolve) => {
+      https.get(`${BASE}/api/settings`, (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          if (res.statusCode === 200) {
+            try {
+              const json = JSON.parse(data);
+              console.log("  ✅ DB reachable — settings loaded");
+              if (json.heroImageUrl)   console.log(`  ℹ heroImageUrl:   ${json.heroImageUrl.slice(0, 80)}`);
+              if (json.aboutImageUrl)  console.log(`  ℹ aboutImageUrl:  ${json.aboutImageUrl.slice(0, 80)}`);
+              if (json.insolesImageUrl)console.log(`  ℹ insolesImageUrl:${json.insolesImageUrl.slice(0, 80)}`);
+              if (json.bioImageUrl)    console.log(`  ℹ bioImageUrl:    ${json.bioImageUrl.slice(0, 80)}`);
+              if (json.thermoImageUrl) console.log(`  ℹ thermoImageUrl: ${json.thermoImageUrl.slice(0, 80)}`);
+              if (json.mlsLaserJson) {
+                try {
+                  const mls = JSON.parse(json.mlsLaserJson);
+                  if (mls.treatmentImageUrl) console.log(`  ℹ mls.treatmentImg: ${mls.treatmentImageUrl.slice(0, 80)}`);
+                  if (mls.deviceImageUrl)    console.log(`  ℹ mls.deviceImg:    ${mls.deviceImageUrl.slice(0, 80)}`);
+                } catch {}
+              }
+              const nullFields = ["heroImageUrl","aboutImageUrl","insolesImageUrl","bioImageUrl","thermoImageUrl"]
+                .filter((f) => !json[f]);
+              if (nullFields.length) console.log(`  ⚠️  No image set for: ${nullFields.join(", ")}`);
+            } catch { console.log("  ❌ Settings response not valid JSON"); }
+          } else {
+            console.log(`  ❌ /api/settings returned HTTP ${res.statusCode}`);
+          }
+          resolve();
+        });
+      }).on("error", (e) => { console.log(`  ❌ DB check failed: ${e.message}`); resolve(); });
+    });
+  } catch (e) { console.log(`  ❌ DB check error: ${e.message}`); }
   console.log("=".repeat(60));
 
   const browser = await puppeteer.launch({
