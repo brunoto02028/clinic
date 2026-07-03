@@ -2,17 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Shield, Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { useLocale } from "@/hooks/use-locale";
-
-interface ServiceLink {
-  slug: string;
-  titleEn: string;
-  titlePt: string;
-  showInMenu: boolean;
-}
 
 interface SiteHeaderProps {
   currentPage?: "articles" | "article" | "services" | "other";
@@ -21,11 +14,8 @@ interface SiteHeaderProps {
 
 export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [servicesOpen, setServicesOpen] = useState(false);
-  const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
   const [settings, setSettings] = useState<any>(initialSettings || null);
-  const [serviceLinks, setServiceLinks] = useState<ServiceLink[]>([]);
-  const { locale, toggleLocale, t: T } = useLocale();
+  const { locale, toggleLocale } = useLocale();
   const isPt = locale === "pt-BR";
 
   useEffect(() => {
@@ -35,19 +25,14 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
         .then((d) => d && setSettings(d))
         .catch(() => {});
     }
-    fetch("/api/service-pages")
-      .then((r) => r.ok ? r.json() : [])
-      .then((pages: ServiceLink[]) => setServiceLinks(pages.filter((p) => p.showInMenu)))
-      .catch(() => {});
   }, [initialSettings]);
 
   const navLinks = [
-    { href: "/#insoles", label: T("home.navInsoles") },
-    { href: "/biohacking", label: isPt ? "Biohacking" : "Biohacking" },
-    { href: "/articles", label: T("home.articlesLabel") || "Articles", active: currentPage === "articles" || currentPage === "article" },
-    { href: "/help", label: isPt ? "Ajuda" : "Help" },
-    { href: "/#about", label: T("home.about") },
-    { href: "/#contact", label: T("home.contact") },
+    { href: "/#method",    labelEn: "The Method",  labelPt: "O Método" },
+    { href: "/#equipment", labelEn: "Technology",  labelPt: "Tecnologia" },
+    { href: "/articles",   labelEn: "Articles",    labelPt: "Artigos",    active: currentPage === "articles" || currentPage === "article" },
+    { href: "/#about",     labelEn: "About",       labelPt: "Sobre" },
+    { href: "/#contact",   labelEn: "Contact",     labelPt: "Contacto" },
   ];
 
   return (
@@ -58,62 +43,20 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
             logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
             darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
             size="md"
+            linkTo="/"
           />
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-5 xl:gap-7">
-            {/* Services Dropdown */}
-            <div
-              className="relative"
-              onMouseEnter={() => setServicesOpen(true)}
-              onMouseLeave={() => setServicesOpen(false)}
-            >
-              <Link
-                href="/#services"
-                className={`text-sm font-medium transition-colors whitespace-nowrap inline-flex items-center gap-1 ${
-                  currentPage === "services" ? "text-primary" : "text-muted-foreground hover:text-primary"
-                }`}
-              >
-                {T("home.services")}
-                {serviceLinks.length > 0 && <ChevronDown className={`h-3 w-3 transition-transform ${servicesOpen ? "rotate-180" : ""}`} />}
-              </Link>
-              {servicesOpen && serviceLinks.length > 0 && (
-                <div className="absolute top-full left-0 pt-2 z-50">
-                  <div className="bg-card border border-border rounded-lg shadow-lg py-1 min-w-[220px] animate-in fade-in-0 zoom-in-95 duration-150">
-                    <Link
-                      href="/#services"
-                      className="block px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
-                      onClick={() => setServicesOpen(false)}
-                    >
-                      {isPt ? "Todos os Serviços" : "All Services"}
-                    </Link>
-                    <div className="border-t border-border my-1" />
-                    {serviceLinks.map((s) => (
-                      <Link
-                        key={s.slug}
-                        href={`/services/${s.slug}`}
-                        className="block px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                        onClick={() => setServicesOpen(false)}
-                      >
-                        {isPt ? s.titlePt : s.titleEn}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={`text-sm font-medium transition-colors whitespace-nowrap ${
-                  link.active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-primary"
+                  link.active ? "text-primary" : "text-muted-foreground hover:text-primary"
                 }`}
               >
-                {link.label}
+                {isPt ? link.labelPt : link.labelEn}
               </Link>
             ))}
           </nav>
@@ -130,8 +73,8 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
                 className={`text-[10px] font-medium px-2 py-1 rounded transition-colors ${locale === "pt-BR" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
               >PT</button>
             </div>
-            <Link href="/login"><Button variant="outline" className="text-foreground">{T("home.patientLogin")}</Button></Link>
-            <Link href="/signup"><Button className="bg-primary hover:bg-primary/90">{T("home.getStarted")}</Button></Link>
+            <Link href="/login"><Button variant="outline" className="text-foreground">{isPt ? "Login do Paciente" : "Patient Login"}</Button></Link>
+            <Link href="/signup"><Button className="bg-primary hover:bg-primary/90">{isPt ? "Começar" : "Get Started"}</Button></Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -154,38 +97,6 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 border-t border-border animate-in slide-in-from-top-2 duration-200">
             <nav className="flex flex-col gap-1">
-              {/* Services with expandable submenu */}
-              <div>
-                <button
-                  onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
-                  className="w-full text-left hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors text-muted-foreground hover:text-primary flex items-center justify-between"
-                >
-                  {T("home.services")}
-                  {serviceLinks.length > 0 && <ChevronDown className={`h-4 w-4 transition-transform ${mobileServicesOpen ? "rotate-180" : ""}`} />}
-                </button>
-                {mobileServicesOpen && serviceLinks.length > 0 && (
-                  <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-primary/20 pl-3">
-                    <Link
-                      href="/#services"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block text-sm text-muted-foreground hover:text-primary py-1.5 transition-colors"
-                    >
-                      {isPt ? "Todos os Serviços" : "All Services"}
-                    </Link>
-                    {serviceLinks.map((s) => (
-                      <Link
-                        key={s.slug}
-                        href={`/services/${s.slug}`}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="block text-sm text-muted-foreground hover:text-primary py-1.5 transition-colors"
-                      >
-                        {isPt ? s.titlePt : s.titleEn}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -195,12 +106,16 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
                     link.active ? "text-primary bg-primary/5" : "text-muted-foreground hover:text-primary"
                   }`}
                 >
-                  {link.label}
+                  {isPt ? link.labelPt : link.labelEn}
                 </Link>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <Link href="/login"><Button variant="outline" className="w-full">{T("home.patientLogin")}</Button></Link>
-                <Link href="/signup"><Button className="w-full">{T("home.getStarted")}</Button></Link>
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">{isPt ? "Login do Paciente" : "Patient Login"}</Button>
+                </Link>
+                <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
+                  <Button className="w-full">{isPt ? "Começar" : "Get Started"}</Button>
+                </Link>
               </div>
             </nav>
           </div>
