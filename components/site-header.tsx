@@ -36,7 +36,8 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
   ];
 
   return (
-    <header className="sticky top-0 z-50 header-futuristic site-header-web-only">
+    <>
+    <header className="fixed top-0 left-0 right-0 z-50 header-futuristic site-header-web-only">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           <Logo
@@ -122,5 +123,8 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
         )}
       </div>
     </header>
+    {/* Spacer for fixed header */}
+    <div className="h-16 md:h-20 site-header-web-only" aria-hidden="true" />
+    </>
   );
 }

@@ -227,7 +227,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   return (
     <div className="public-site min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 header-futuristic">
+      <header className="fixed top-0 left-0 right-0 z-50 header-futuristic">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {settings ? (
@@ -326,6 +326,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           )}
         </div>
       </header>
+      {/* Spacer for fixed header */}
+      <div className="h-16 md:h-20" aria-hidden="true" />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden py-14 sm:py-20 lg:py-28 bg-dot-pattern">
