@@ -6,6 +6,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.6.0] - 2026-07-03
+
+### Added
+- **Public Schedule API** — `/api/public/schedule` (no auth required)
+  - Reads live data directly from `TherapistAvailability` DB table
+  - Always returns all 7 days — missing days default to `closed: true`
+  - Cache-Control header: `s-maxage=300` (5 min CDN cache)
+  - Middleware updated: `/api/public` added to public routes list
+  - Any change saved in **Admin → Schedule → Availability** reflects on the public site within 5 minutes
+
+### Changed
+- **Homepage redesign** (`components/landing-page.tsx`)
+  - Terminology: all "physiotherapy / fisioterapia" references replaced with "physical rehabilitation / reabilitação física" throughout text, alt tags, and meta copy
+  - Removed old sections: Portal, Services grid, MLS feature block, Insoles, Bio, Thermo, How It Works
+  - Added **The Method** section — 4-phase patient journey (Assessment → Plan → Treatment → Performance)
+  - Added **Differentiators** section — narrative-driven "We don't sell sessions. We deliver results."
+  - Hero CTA updated to "Start Your Programme / Começar o Programa"
+  - Navigation anchors updated: `#method`, `#equipment`, `#about`, `#contact`
+  - `validImg()` guard added — filters out ephemeral `/uploads/` paths from Render's filesystem
+  - All settings-based images switched from Next.js `<Image>` to plain `<img>` to avoid optimization-layer failures with internal API URLs
+  - MLS fallback paths removed (no longer reference `/uploads/`)
+
+- **Contact Section** (live opening hours)
+  - Fetches from `/api/public/schedule` on mount — replaces static `businessHoursJson` parsing
+  - 7-day table: today highlighted with animated dot + "Today" label, closed days in red
+  - Fallback: Mon–Sat 09:00–18:00, Sunday closed (shown when no DB records exist)
+  - Hint text: "Set hours in Admin → Schedule → Availability"
+
+- **Footer** (4-column rich layout)
+  - Col 1: Brand logo, tagline, social links
+  - Col 2: Navigation links (The Method, Technology, About Bruno, Articles, Contact)
+  - Col 3: Contact details from settings (address, phone, email)
+  - Col 4: Opening hours — same live data as contact section, today highlighted in bold
+  - Bottom bar: copyright + Patient Portal / Staff Portal links
+
+- **Fixed navigation header**
+  - `landing-page.tsx`: changed from `sticky top-0` → `fixed top-0 left-0 right-0` + spacer `div.h-16.md:h-20` after header
+  - `components/site-header.tsx`: same `fixed` treatment + spacer wrapped in React fragment
+
+- **SiteHeader** (`components/site-header.tsx`) — used on `/login`, `/signup`, and all public sub-pages
+  - Old links removed: Services dropdown, Insoles (`/#insoles`), Biohacking (`/biohacking`), Help (`/help`)
+  - New links: The Method (`/#method`), Technology (`/#equipment`), Articles (`/articles`), About (`/#about`), Contact (`/#contact`)
+  - Bilingual labels inline (EN/PT) — no longer depends on `T()` translation function
+  - Removed unused imports: `ChevronDown`, `Shield`, `ServiceLink` interface, `serviceLinks` state, `/api/service-pages` fetch
+
+### Technical
+- Commits: `403b816`, `ba92801`, `442bf64`
+- Files changed: `components/landing-page.tsx`, `components/site-header.tsx`, `middleware.ts`, `app/api/public/schedule/route.ts` (new)
+
+---
+
 ## [2.5.0] - 2026-02-26
 
 ### Fixed
