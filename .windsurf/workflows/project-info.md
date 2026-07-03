@@ -5,7 +5,7 @@ description: Project vault with all access credentials and infrastructure info f
 # BPR Clinic — Project Vault & SPEC Completa
 
 > **⚠️ SENSITIVE — não partilhar publicamente**
-> Última actualização: 2 Julho 2026 — Mensagens Paciente + SOAP Notes + Q&A Screening
+> Última actualização: 3 Julho 2026 — Homepage Redesign + Horários ao Vivo + Menu Fixo
 
 ---
 
@@ -422,6 +422,129 @@ Localização: **Tab Notas Clínicas → painel violeta collapsível "Clinical S
 - URL pré-preenchida: `https://brunophysicalrehabilitation.co.uk`
 - Tenta sitemap.xml → sitemap_index.xml → sub-sitemaps → scraping do /blog
 - Download de imagens para `/uploads/articles/bulk-*`
+
+---
+
+## 🌐 Páginas Públicas — Service Pages (2 Jul 2026 — noite)
+
+### Service pages overhaul (`app/services/[slug]/page.tsx`)
+- Nova página `/services/mls-laser` (antes dava 404)
+- Layout rico para todas as páginas: hero escuro com gradiente + barra de stats + pills de condições + grelha de benefícios + processo numerado + "quem é para quem" + secção de ciência + chip de detalhes da sessão + FAQ accordion (state-driven) + grelha de serviços relacionados + CTA com localização
+- **Fallback DB corrigido** — campos vazios na DB fazem fallback para dados hardcoded (conteúdo biohacking/HRV/sleep já não desaparecia)
+- Serviços com dados ricos completos: `biohacking-performance`, `hrv-recovery-monitoring`, `sleep-longevity-optimisation`, `microcurrent`, `mls-laser`, `electrotherapy`, `therapeutic-ultrasound`, `laser-shockwave`
+
+### Audit público de imagens (2 Jul 2026)
+- `next.config.js` — adicionado `**.amazonaws.com` + `**.r2.cloudflarestorage.com` a `remotePatterns` para imagens S3 com `<Image>`
+- `app/api/image-serve/[id]/route.ts` — proxy de URLs externas (S3, CDN) directamente em vez de redirect — previne falhas de optimização Next.js quando o host não estava em `remotePatterns`
+- Imagens MLS Laser — `onError` fallback para `/uploads/mls-laser-*.jpg` para nunca mostrar caixa preta quebrada
+- `tests/e2e/public-audit.js` — script Puppeteer para auditoria de páginas públicas (imagens quebradas, 404s, erros de console)
+
+### Email logo branco (2 Jul 2026)
+- Suporte a versão branca do logo em emails — fundos teal/escuros
+- Fix `completedDate` variável indefinida em templates de email
+
+### Fix Answer Questions 404 (2 Jul 2026)
+- `/dashboard/questions` retornava 404 quando pacientes clicavam no link do email
+- Middleware corrigido para redireccionar `/dashboard/questions` → rota correcta para PATIENT role
+
+---
+
+## 🏠 Homepage Redesign (3 Jul 2026)
+
+### Ficheiro: `components/landing-page.tsx`
+
+#### Terminologia
+- Substituição global: "physiotherapy / fisioterapia" → "physical rehabilitation / reabilitação física"
+- Aplica-se a: textos, alt tags, meta copy, CTAs
+
+#### Secções removidas
+- Portal Features block, Services grid, MLS feature block destacado, Insoles, Bio, Thermo, How It Works
+
+#### Secções adicionadas
+- **The Method** (`id="method"`) — 4 fases da jornada do paciente: Assessment → Plan → Treatment → Performance
+- **Differentiators** — narrativa "We don't sell sessions. We deliver results."
+- **Patient Journey** (`id="equipment"`) — mesmo conteúdo visual mas com framing nos resultados do paciente, tecnologia como nota de apoio
+
+#### CTAs e navegação
+- Hero CTA: "Start Your Programme / Começar o Programa"
+- Nav anchors actualizados: `#method`, `#equipment`, `#about`, `#contact`
+- Nav no `landing-page.tsx`: O Método, Tecnologia, Artigos, Sobre, Contacto
+
+#### Imagens
+- `validImg()` guard — filtra paths `/uploads/` efémeros do Render
+- Todas as imagens das settings passaram de `<Image>` (Next.js) para `<img>` simples — evita falhas de optimização com URLs internas da API
+- Fallbacks MLS removidos (não referência mais `/uploads/`)
+
+### Contacto e Rodapé — Horários ao Vivo
+
+**Antes:** horários lidos de `businessHoursJson` (settings estáticas)
+**Agora:** lidos directamente da tabela `TherapistAvailability` via `/api/public/schedule`
+
+#### Contact Section
+- Tabela de 7 dias com horários ao vivo
+- Dia de hoje destacado com ponto animado + label "Today"
+- Dias fechados em vermelho
+- Fallback: Seg–Sáb 09:00–18:00, Dom fechado (quando DB vazia)
+- Hint: "Set hours in Admin → Schedule → Availability"
+
+#### Footer (4 colunas)
+- Col 1: Logo da marca + tagline + links sociais
+- Col 2: Links de navegação (O Método, Tecnologia, Sobre Bruno, Artigos, Contacto)
+- Col 3: Contactos das settings (morada, tel, email)
+- Col 4: Horários ao vivo (mesmos dados da secção Contacto, hoje em bold)
+- Barra inferior: copyright + links Portral do Paciente / Staff Portal
+
+---
+
+## 📡 API Pública (3 Jul 2026)
+
+### `GET /api/public/schedule` — sem autenticação
+
+**Ficheiro:** `app/api/public/schedule/route.ts`
+
+**O que faz:**
+- Lê `TherapistAvailability` do terapeuta principal (primeiro `SUPERADMIN/ADMIN/THERAPIST` por `createdAt`)
+- Devolve sempre **7 dias** — dias sem registo ficam `closed: true`
+- Headers: `Cache-Control: public, s-maxage=300, stale-while-revalidate=60` (5 min CDN)
+
+**Resposta:**
+```json
+{
+  "schedule": [
+    { "day": "Monday", "dayOfWeek": 1, "open": "09:00", "close": "17:00", "closed": false },
+    { "day": "Sunday",  "dayOfWeek": 0, "open": "09:00", "close": "17:00", "closed": true }
+  ]
+}
+```
+
+**Middleware:** `/api/public` adicionado à lista `publicRoutes` em `middleware.ts`
+
+**Actualização automática:** qualquer save em **Admin → Schedule → Availability** reflecte no site público em até 5 minutos.
+
+---
+
+## 🧭 SiteHeader (3 Jul 2026)
+
+**Ficheiro:** `components/site-header.tsx` — usado em `/login`, `/signup`, `/articles`, e todas as páginas públicas fora da homepage
+
+### Nav actualizada
+| Antes | Depois |
+|---|---|
+| Services (dropdown) | The Method (`/#method`) |
+| Insoles (`/#insoles`) | Technology (`/#equipment`) |
+| Biohacking (`/biohacking`) | Articles (`/articles`) |
+| Articles | About (`/#about`) |
+| Help (`/help`) | Contact (`/#contact`) |
+| About (`/#about`) | |
+| Contact (`/#contact`) | |
+
+- Labels bilingues inline (EN/PT) — sem dependência de `T()` / i18n
+- Removido: `ChevronDown`, `Shield`, interface `ServiceLink`, state `serviceLinks`, fetch `/api/service-pages`
+
+### Header fixo
+- **`landing-page.tsx`:** `sticky top-0` → `fixed top-0 left-0 right-0` + `<div class="h-16 md:h-20" aria-hidden>` como spacer após o header
+- **`site-header.tsx`:** mesma alteração, spacer dentro de React fragment (`<>`)
+- Motivo: `sticky` pode falhar se algum ancestral tiver `overflow` definido; `fixed` é incondicional
 
 ---
 
