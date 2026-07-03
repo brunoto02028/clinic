@@ -3,7 +3,7 @@ export function isPt(locale: string) { return locale === 'pt-BR' || locale.start
 
 // HTML helpers
 const B = (href: string, label: string) =>
-  `<div style="text-align:center;margin:28px 0;"><a href="${href}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${label}</a></div>`;
+  `<div style="text-align:center;margin:28px 0;"><a href="${href}" style="display:inline-block;background-color:#4db8b0;color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${label}</a></div>`;
 const C = (bg: string, bd: string, inner: string) =>
   `<div style="background:${bg};border:1px solid ${bd};border-radius:12px;padding:20px 24px;margin:0 0 24px;">${inner}</div>`;
 const R = (lbl: string, val: string) =>
@@ -68,7 +68,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px 24px;margin:0 0 24px;">' +
           '<p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 8px;">⚠️ Ação Necessária: Triagem Médica</p>' +
           '<p style="color:#7f1d1d;font-size:14px;line-height:1.6;margin:0 0 12px;">Para que o seu terapeuta possa preparar o melhor plano de tratamento, por favor <strong>complete a sua triagem médica antes da consulta</strong>. Demora apenas 5-10 minutos.</p>' +
-          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Preencher Triagem →</a></div>' +
+          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background-color:#dc2626;color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Preencher Triagem →</a></div>' +
           '</div>' +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Lista de verificação:</p>' +
           '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">✅ Triagem médica preenchida<br>✅ Perfil completo (data de nascimento, endereço)<br>✅ Roupa confortável<br>✅ Chegar 5 minutos mais cedo<br>✅ Documentos médicos<br>✅ Lista de medicamentos</p>' +
@@ -79,7 +79,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px 24px;margin:0 0 24px;">' +
           '<p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 8px;">⚠️ Action Required: Medical Screening</p>' +
           '<p style="color:#7f1d1d;font-size:14px;line-height:1.6;margin:0 0 12px;">To help your therapist prepare the best treatment plan, please <strong>complete your medical screening before your appointment</strong>. It only takes 5-10 minutes.</p>' +
-          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Complete Screening →</a></div>' +
+          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background-color:#dc2626;color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Complete Screening →</a></div>' +
           '</div>' +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Quick checklist:</p>' +
           '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">✅ Medical screening completed<br>✅ Profile complete (date of birth, address)<br>✅ Comfortable clothing<br>✅ Arrive 5 minutes early<br>✅ Medical documents<br>✅ List of medications</p>' +

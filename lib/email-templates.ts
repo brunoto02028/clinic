@@ -4,13 +4,18 @@ import { getEmailContent, isPt } from '@/lib/email-i18n';
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
 const CONTACT_EMAIL = 'admin@bpr.rehab';
 const CONTACT_PHONE = '';
+const EMAIL_LOGO_URL = `${BASE_URL}/uploads/email-logo.png`;
 
 // ─── Dynamic Clinic Settings ───
 async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: string; phone: string; email: string }> {
   try {
     const s = await prisma.siteSettings.findFirst({ select: { logoUrl: true, phone: true, email: true, screenLogos: true } as any });
-    const toAbs = (url: string | null | undefined) =>
-      url ? (url.startsWith('http') ? url : `${BASE_URL}${url}`) : '';
+    const toAbs = (url: string | null | undefined) => {
+      if (!url) return '';
+      if (url.startsWith('data:')) return '';
+      if (url.startsWith('http')) return url;
+      return `${BASE_URL}${url}`;
+    };
     // Try to get a real white logo (from screenLogos.landingHeader.darkLogoUrl or similar)
     const sl = (s as any)?.screenLogos as Record<string, { logoUrl?: string; darkLogoUrl?: string }> | undefined;
     const whiteLogoUrl = toAbs(
@@ -35,16 +40,12 @@ async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: str
 export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB'): Promise<string> {
   const { logoUrl, whiteLogoUrl, phone, email } = await getClinicSettings();
   const pt = isPt(locale);
-  // Header: teal gradient — use dedicated white logo if available, CSS filter as fallback.
-  const headerLogoSrc = whiteLogoUrl || logoUrl;
-  const headerLogoFilter = whiteLogoUrl ? '' : 'filter:brightness(0) invert(1);';
-  const logoHtml = headerLogoSrc
-    ? `<img src="${headerLogoSrc}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;${headerLogoFilter}" /><p style="margin:6px 0 0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;letter-spacing:0.3px;">Bruno Physical Rehabilitation</p>`
+  // Header: white text on teal (no logo image to avoid Gmail rendering issues)
+  const logoHtml = whiteLogoUrl
+    ? `<img src="${whiteLogoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;" /><p style="margin:6px 0 0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;letter-spacing:0.3px;">Bruno Physical Rehabilitation</p>`
     : `<span style="color:#ffffff;font-size:22px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:-0.5px;">Bruno Physical Rehabilitation</span>`;
-  // Footer: normal colour logo, no filter
-  const footerLogoHtml = logoUrl
-    ? `<img src="${logoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;" />`
-    : `<p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#607d7d;">Bruno Physical Rehabilitation</p>`;
+  // Footer: static PNG logo (Gmail-safe, not WebP, not data URI)
+  const footerLogoHtml = `<img src="${EMAIL_LOGO_URL}" alt="Bruno Physical Rehabilitation" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;" />`;
   const noReplyText = pt
     ? `Esta é uma mensagem automática &mdash; por favor não responda diretamente a este email.<br>Para nos contactar, utilize os dados acima ou aceda ao seu <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">portal do paciente</a>.`
     : `This is an automated message &mdash; please do not reply to this email.<br>To contact us, use the details above or log in to your <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">patient portal</a>.`;
@@ -61,7 +62,7 @@ ${preheader ? `<span style="display:none!important;visibility:hidden;mso-hide:al
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f7fa;">
 <tr><td align="center" style="padding:30px 15px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
-  <tr><td style="background:linear-gradient(135deg,#5dc9c0 0%,#1a6b6b 100%);padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
+  <tr><td style="background-color:#1a6b6b;padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
   <tr><td style="padding:36px 32px 24px;">${content}</td></tr>
   <tr><td style="padding:24px 32px 28px;border-top:1px solid #eef2f5;background:#f9fafb;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -108,7 +109,7 @@ export const DEFAULT_TEMPLATES = [
       <tr><td style="padding:6px 0;color:#374151;font-size:14px;">✅ View clinical notes and assessments</td></tr>
     </table>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Access Your Portal →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Access Your Portal →</a>
     </div>
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0;">If you have any questions, don't hesitate to reach out. We look forward to supporting your recovery journey.</p>`,
   },
@@ -130,7 +131,7 @@ export const DEFAULT_TEMPLATES = [
       </table>
     </div>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View & Pay →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View & Pay →</a>
     </div>
     <p style="color:#6b7280;font-size:13px;margin:0;">Need to reschedule or have questions? Contact us at <a href="mailto:admin@bpr.rehab" style="color:#5dc9c0;">admin@bpr.rehab</a></p>`,
   },
@@ -154,7 +155,7 @@ export const DEFAULT_TEMPLATES = [
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;">📋 <strong>Please remember to:</strong></p>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">• Wear comfortable clothing<br>• Arrive 5 minutes early<br>• Bring any relevant medical documents</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Appointment →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Appointment →</a>
     </div>`,
   },
   {
@@ -174,7 +175,7 @@ export const DEFAULT_TEMPLATES = [
       </table>
     </div>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Treatment Plan →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Treatment Plan →</a>
     </div>
     <p style="color:#6b7280;font-size:12px;margin:0;">A receipt has been sent to your email. For billing questions, contact us directly.</p>`,
   },
@@ -196,7 +197,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Your plan includes exercises, in-clinic sessions, and home care instructions. Log in to view the full details.</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Treatment Plan →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Treatment Plan →</a>
     </div>`,
   },
   {
@@ -216,7 +217,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Your therapist will review the results and discuss the findings with you at your next appointment.</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Results →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Results →</a>
     </div>`,
   },
   {
@@ -225,7 +226,7 @@ export const DEFAULT_TEMPLATES = [
     subject: 'Reset Your Password — Bruno Rehab',
     description: 'Sent when a patient requests a password reset',
     variables: ['patientName', 'resetUrl'],
-    htmlBody: `<h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">Password Reset Request 🔒</h2><p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, we received a request to reset your password.</p><div style="text-align:center;margin:28px 0;"><a href="{{resetUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;">Reset Password →</a></div><p style="color:#9ca3af;font-size:12px;margin:0;">This link will expire in 1 hour.</p>`,
+    htmlBody: `<h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">Password Reset Request 🔒</h2><p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, we received a request to reset your password.</p><div style="text-align:center;margin:28px 0;"><a href="{{resetUrl}}" style="display:inline-block;background-color:#4db8b0;color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;">Reset Password →</a></div><p style="color:#9ca3af;font-size:12px;margin:0;">This link will expire in 1 hour.</p>`,
   },
   {
     slug: 'APPOINTMENT_CANCELLED' as const,
@@ -245,7 +246,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Would you like to book a new appointment? You can do so through your portal or by contacting us.</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Book a New Appointment →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Book a New Appointment →</a>
     </div>`,
   },
   {
@@ -261,7 +262,7 @@ export const DEFAULT_TEMPLATES = [
       <p style="margin:0;font-size:14px;color:#374151;">✅ Your screening has been securely saved<br>📋 Your therapist will review it prior to your session<br>📞 We may contact you if we need any clarification</p>
     </div>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Portal →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Portal →</a>
     </div>`,
   },
   {
@@ -281,7 +282,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Your therapist will review this document and it will be added to your clinical record.</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Documents →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Documents →</a>
     </div>`,
   },
   {
@@ -298,7 +299,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">You will be notified when your assessment results are ready. This usually takes a few minutes.</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Assessment →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Assessment →</a>
     </div>`,
   },
   {
@@ -315,7 +316,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Your therapist will review the scan results and discuss findings at your next appointment.</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Foot Scan →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Foot Scan →</a>
     </div>`,
   },
   {
@@ -335,7 +336,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 20px;">You can withdraw your consent at any time by contacting us at <a href="mailto:admin@bpr.rehab" style="color:#5dc9c0;">admin@bpr.rehab</a> or through your patient portal.</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Portal →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Portal →</a>
     </div>`,
   },
   {
@@ -358,7 +359,7 @@ export const DEFAULT_TEMPLATES = [
       <p style="margin:0;font-size:14px;color:#374151;"><strong>Important:</strong> If you are experiencing symptoms such as severe headache, chest pain, or shortness of breath, please seek emergency medical attention immediately or call 999.</p>
     </div>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Health Records →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Health Records →</a>
     </div>`,
   },
   // ── MEMBERSHIP CREATED ──
@@ -380,7 +381,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;"><strong>Included features:</strong><br>{{planFeatures}}</p>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Access Your Portal →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Access Your Portal →</a>
     </div>`,
   },
   // ── TREATMENT PLAN READY ──
@@ -402,7 +403,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Please log in to review the details and confirm your acceptance to proceed with the treatment.</p>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Review Treatment Plan →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Review Treatment Plan →</a>
     </div>`,
   },
   // ── PACKAGE READY TO PAY ──
@@ -424,7 +425,7 @@ export const DEFAULT_TEMPLATES = [
       </table>
     </div>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Complete Payment →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Complete Payment →</a>
     </div>`,
   },
   // ── PACKAGE PAYMENT CONFIRMED ──
@@ -446,7 +447,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">You can now view your full treatment plan, track your exercises, and book your sessions through the portal.</p>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Treatment Plan →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Treatment Plan →</a>
     </div>`,
   },
   // ── TREATMENT COMPLETED ──
@@ -467,7 +468,7 @@ export const DEFAULT_TEMPLATES = [
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;"><strong>What's next?</strong></p>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Stay connected with a membership plan to continue accessing your exercises, educational content, health tracking, and more. Your progress doesn't have to stop here!</p>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Membership Plans →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#6d28d9;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Membership Plans →</a>
     </div>`,
   },
   // ── MEMBERSHIP OFFER (post-treatment upsell) ──
@@ -494,7 +495,7 @@ export const DEFAULT_TEMPLATES = [
       <tr><td style="padding:4px 0;color:#374151;font-size:14px;">✅ Progress tracking & clinical records</td></tr>
     </table>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Join Now →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#6d28d9;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Join Now →</a>
     </div>`,
   },
   // ── MEMBERSHIP ACTIVATED ──
@@ -514,7 +515,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">All your plan features are now unlocked. Explore your dashboard to get started!</p>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Explore Your Dashboard →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Explore Your Dashboard →</a>
     </div>`,
   },
   // ── PATIENT QUESTIONS ──
@@ -533,7 +534,7 @@ export const DEFAULT_TEMPLATES = [
     </div>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Your answers will help the therapist personalise your treatment. Please take a few minutes to respond through your portal.</p>
     <div style="text-align:center;margin:24px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Answer Questions →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Answer Questions →</a>
     </div>
     <p style="color:#6b7280;font-size:13px;margin:0;">Questions? Contact us at <a href="mailto:admin@bpr.rehab" style="color:#5dc9c0;">admin@bpr.rehab</a></p>`,
   },
@@ -552,7 +553,7 @@ export const DEFAULT_TEMPLATES = [
       <p style="font-size:18px;font-weight:700;color:#92400e;margin:0;">{{exerciseCount}} exercises waiting for you</p>
     </div>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{portalUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Start Exercises →</a>
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Start Exercises →</a>
     </div>`,
   },
   // ── ARTICLE NEWSLETTER ──
@@ -568,7 +569,7 @@ export const DEFAULT_TEMPLATES = [
     <h2 style="color:#1f2937;font-size:24px;font-weight:700;margin:0 0 16px;line-height:1.3;">{{articleTitle}}</h2>
     <p style="color:#374151;font-size:15px;line-height:1.8;margin:0 0 24px;">{{articleExcerpt}}</p>
     <div style="text-align:center;margin:28px 0;">
-      <a href="{{articleUrl}}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Read Full Article →</a>
+      <a href="{{articleUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Read Full Article →</a>
     </div>
     <hr style="border:none;border-top:1px solid #eef2f5;margin:24px 0;" />
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;">You are receiving this because you subscribed to BPR Health News.<br><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Unsubscribe</a></p>`,
