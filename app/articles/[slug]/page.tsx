@@ -205,7 +205,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   <p className="font-semibold text-foreground">
                     {(article as any).authorName || `${article.author.firstName} ${article.author.lastName}`}
                   </p>
-                  <LocalizedText as="p" className="text-sm text-muted-foreground" en="Physical Rehabilitation & Performance Specialist" pt="Especialista em Reabilitação Física & Performance" fallback="Physical Rehabilitation & Performance Specialist" />
+                  <LocalizedText as="p" className="text-sm text-muted-foreground" en="Physical Rehabilitation Specialist" pt="Especialista em Reabilitação Física" fallback="Physical Rehabilitation Specialist" />
                 </div>
               </div>
             </div>
