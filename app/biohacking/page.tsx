@@ -67,8 +67,8 @@ export default function BiohackingPage() {
       icon: Moon,
       title: L("Sleep & Longevity Optimisation", "Optimização do Sono e Longevidade", isPt),
       desc: L(
-        "Evidence-based sleep protocols and circadian rhythm coaching to maximise recovery and healthy ageing.",
-        "Protocolos de sono baseados em evidências e coaching do ritmo circadiano para maximizar a recuperação e o envelhecimento saudável.",
+        "Evidence-based sleep protocols and circadian rhythm optimisation to maximise recovery and healthy ageing.",
+        "Protocolos de sono baseados em evidências e optimização do ritmo circadiano para maximizar a recuperação e o envelhecimento saudável.",
         isPt
       ),
       color: "bg-sky-50 text-sky-600",
@@ -77,7 +77,7 @@ export default function BiohackingPage() {
   ];
 
   const benefits = [
-    { icon: Brain, text: L("20+ years clinical experience", "20+ anos de experiência clínica", isPt) },
+    { icon: Brain, text: L("15+ years of clinical experience", "15+ anos de experiência clínica", isPt) },
     { icon: Shield, text: L("IPHM Certified", "Certificado IPHM", isPt) },
     { icon: BarChart3, text: L("HRV-guided protocols", "Protocolos guiados por HRV", isPt) },
     { icon: Target, text: L("Wearable data integration", "Integração de dados wearable", isPt) },
@@ -94,11 +94,11 @@ export default function BiohackingPage() {
     L("Sleep architecture optimisation", "Optimização da arquitectura do sono", isPt),
     L("Holistic health appointments", "Consultas de saúde holística", isPt),
     L("Longevity analysis", "Análise de longevidade", isPt),
-    L("Wearable Data Coaching", "Coaching de Dados Wearable", isPt),
+    L("Wearable data analysis & guidance", "Análise e orientação de dados wearable", isPt),
   ];
 
   const stats = [
-    { value: "20+", label: L("Years Clinical Experience", "Anos Experiência Clínica", isPt) },
+    { value: "15+", label: L("Years of Clinical Experience", "Anos de Experiência Clínica", isPt) },
     { value: "IPHM", label: L("Certified", "Certificado", isPt) },
     { value: "HRV", label: L("Data-Guided", "Orientado por Dados", isPt) },
     { value: "1:1", label: L("Personalised Plans", "Planos Personalizados", isPt) },
@@ -164,7 +164,7 @@ export default function BiohackingPage() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 text-xs font-medium mb-6">
                 <Sparkles className="h-3 w-3" />
-                {L("IPHM Certified Biohacking Coach", "Coach de Biohacking Certificado IPHM", isPt)}
+                {L("IPHM Certified Biohacking Practitioner", "Praticante de Biohacking Certificado IPHM", isPt)}
               </div>
               <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-6">
                 {L("Beyond Recovery.", "Além da Recuperação.", isPt)}{" "}
@@ -192,7 +192,7 @@ export default function BiohackingPage() {
 
               <div className="flex items-center gap-3 text-xs text-slate-400 mb-8">
                 <Shield className="h-4 w-4 text-violet-400" />
-                {L("20+ Year Clinical Experience · IPHM Certified · Evidence-Based Protocol", "20+ Anos Experiência Clínica · Certificado IPHM · Protocolo Baseado em Evidências", isPt)}
+                {L("15+ Years of Clinical Experience · IPHM Certified · Evidence-Based Protocol", "15+ Anos de Experiência Clínica · Certificado IPHM · Protocolo Baseado em Evidências", isPt)}
               </div>
 
               <div className="flex flex-wrap gap-3">
@@ -328,8 +328,8 @@ export default function BiohackingPage() {
               </h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
                 {L(
-                  "We combine 20+ years of clinical experience with cutting-edge biohacking science. Our approach is grounded in physiology, not trends — every protocol is personalised, evidence-based, and monitored.",
-                  "Combinamos 20+ anos de experiência clínica com a ciência de biohacking mais avançada. A nossa abordagem está fundamentada na fisiologia, não em tendências — cada protocolo é personalizado, baseado em evidências e monitorado.",
+                  "We combine 15+ years of clinical experience with cutting-edge biohacking science. Our approach is grounded in physiology, not trends — every protocol is personalised, evidence-based, and monitored.",
+                  "Combinamos 15+ anos de experiência clínica com a ciência de biohacking mais avançada. A nossa abordagem está fundamentada na fisiologia, não em tendências — cada protocolo é personalizado, baseado em evidências e monitorado.",
                   isPt
                 )}
               </p>

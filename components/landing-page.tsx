@@ -557,8 +557,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 bg: "bg-violet-50 text-violet-600",
                 titleEn: "Re-education & Longevity",
                 titlePt: "Reeducação & Longevidade",
-                descEn: "Biohacking protocols, HRV monitoring, sleep optimisation and lifestyle coaching — so you leave with the knowledge and tools to maintain your health for life.",
-                descPt: "Protocolos de biohacking, monitorização de HRV, optimização do sono e coaching de estilo de vida — para saíres com o conhecimento para manter a saúde para sempre.",
+                descEn: "Biohacking protocols, HRV monitoring, sleep optimisation and lifestyle guidance — so you leave with the knowledge and tools to maintain your health for life.",
+                descPt: "Protocolos de biohacking, monitorização de HRV, optimização do sono e orientação de estilo de vida — para saíres com o conhecimento para manter a saúde para sempre.",
               },
             ] as const).map((phase) => (
               <div key={phase.num} className="relative bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md hover:border-primary/20 transition-all">

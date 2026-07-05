@@ -72,7 +72,7 @@ export default function GetTheAppPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
-      <SiteHeader currentPage="app" initialSettings={settings} />
+      <SiteHeader currentPage="other" initialSettings={settings} />
 
       <main className="flex-1">
         {/* Hero */}
