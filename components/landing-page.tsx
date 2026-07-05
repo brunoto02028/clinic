@@ -879,10 +879,16 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               </>
             </LazyLoadSection>
           ) : (
-            <div className="text-center py-12 bg-background rounded-2xl border border-border">
-              <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">{T("home.articlesComing")}</h3>
-              <p className="text-muted-foreground">{T("home.articlesComingDesc")}</p>
+            <div className="text-center py-14 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl border border-primary/10">
+              <BookOpen className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-3">{T("home.articlesComing")}</h3>
+              <p className="text-muted-foreground max-w-md mx-auto mb-6">{T("home.articlesComingDesc")}</p>
+              <Link href="/signup">
+                <Button className="gap-2">
+                  {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           )}
         </div>

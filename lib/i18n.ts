@@ -398,7 +398,7 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.bookAppointment": { "en-GB": "Book Appointment", "pt-BR": "Agendar Consulta" },
   "home.clientPortal": { "en-GB": "Client Portal", "pt-BR": "Portal do Cliente" },
   "home.fullyInsured": { "en-GB": "Fully Insured", "pt-BR": "Totalmente Segurado" },
-  "home.openEveryDay": { "en-GB": "Open Every Day", "pt-BR": "Aberto Todos os Dias" },
+  "home.openEveryDay": { "en-GB": "Book Online 24/7", "pt-BR": "Reserva Online 24/7" },
   "home.yearsExperience": { "en-GB": "Years of Clinical Experience", "pt-BR": "Anos de Experiência Clínica" },
   "home.experience": { "en-GB": "Experience", "pt-BR": "Experiência" },
 
@@ -624,16 +624,16 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.articlesLabel": { "en-GB": "Articles", "pt-BR": "Artigos" },
   "home.articlesTitle": { "en-GB": "Latest Articles", "pt-BR": "Últimos Artigos" },
   "home.articlesSubtitle": { "en-GB": "Evidence-based insights to support your rehabilitation journey.", "pt-BR": "Informações baseadas em evidências para apoiar sua jornada de reabilitação." },
-  "home.articlesComing": { "en-GB": "Articles Coming Soon", "pt-BR": "Artigos Em Breve" },
-  "home.articlesComingDesc": { "en-GB": "We're preparing insightful content to support your rehabilitation journey.", "pt-BR": "Estamos preparando conteúdo informativo para apoiar sua jornada de reabilitação." },
+  "home.articlesComing": { "en-GB": "Clinical Insights Coming", "pt-BR": "Conteúdo Clínico Em Breve" },
+  "home.articlesComingDesc": { "en-GB": "We are publishing evidence-based articles on physical rehabilitation, sports injury and performance. Follow us to be the first to know.", "pt-BR": "Estamos a publicar artigos baseados em evidências sobre reabilitação física, lesão desportiva e performance. Segue-nos para saber em primeiro lugar." },
 
   // Homepage — Contact
   "home.contactTitle": { "en-GB": "Get in Touch", "pt-BR": "Entre em Contato" },
-  "home.contactSubtitle": { "en-GB": "Home visit or our clinic — we're open every day, including weekends.", "pt-BR": "Visita domiciliar ou na clínica — estamos abertos todos os dias, incluindo fins de semana." },
+  "home.contactSubtitle": { "en-GB": "Ready to start your rehabilitation programme? Reach out and we'll get back to you within the hour.", "pt-BR": "Pronto para iniciar o teu programa de reabilitação? Entra em contacto e respondemos dentro de uma hora." },
   "home.location": { "en-GB": "Location", "pt-BR": "Localização" },
   "home.hours": { "en-GB": "Hours", "pt-BR": "Horário" },
   "home.email": { "en-GB": "Email", "pt-BR": "E-mail" },
-  "home.openEveryDayWeekends": { "en-GB": "Open every day\nincluding weekends", "pt-BR": "Aberto todos os dias\nincluindo fins de semana" },
+  "home.openEveryDayWeekends": { "en-GB": "Mon–Sat available\nSee full schedule below", "pt-BR": "Seg–Sáb disponível\nConsulte o horário completo" },
   "home.startRecovery": { "en-GB": "Start Your Recovery Journey", "pt-BR": "Comece Sua Jornada de Recuperação" },
 
   // Homepage — Navigation

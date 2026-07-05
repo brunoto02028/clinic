@@ -37,8 +37,8 @@ export const viewport: Viewport = {
 
 // Dynamic metadata — reads SEO fields from Site Settings in DB
 export async function generateMetadata(): Promise<Metadata> {
-  const FALLBACK_TITLE = "BPR";
-  const FALLBACK_DESC = "Professional physiotherapy and rehabilitation services.";
+  const FALLBACK_TITLE = "BPR — Physical Rehabilitation | Ipswich, Suffolk";
+  const FALLBACK_DESC = "Integrated physical rehabilitation programme in Ipswich, Suffolk. Combining MLS Laser, Biomechanical Analysis, HRV Monitoring and Advanced Electrotherapy into one complete, outcome-focused treatment plan.";
   const BASE_URL = "https://bpr.rehab";
 
   let s: any = null;
@@ -50,7 +50,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const title = s?.metaTitle || FALLBACK_TITLE;
   const description = s?.metaDescription || FALLBACK_DESC;
-  const keywords = s?.metaKeywords || undefined;
+  const FALLBACK_KEYWORDS = "physical rehabilitation Ipswich, sports rehabilitation Suffolk, integrated rehabilitation programme, MLS laser therapy Ipswich, biomechanical assessment Suffolk, sports injury rehabilitation, pain elimination programme, movement restoration Ipswich, physical rehabilitation specialist Suffolk, Bruno Physical Rehabilitation";
+  const keywords = s?.metaKeywords || FALLBACK_KEYWORDS;
   const siteName = s?.ogSiteName || s?.siteName || "BPR";
   const ogImage = s?.ogImageUrl
     ? (s.ogImageUrl.startsWith("http") ? s.ogImageUrl : `${BASE_URL}${s.ogImageUrl}`)
