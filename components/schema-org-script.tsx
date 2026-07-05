@@ -31,9 +31,29 @@ export async function SchemaOrgScript() {
     ? (s.ogImageUrl.startsWith("http") ? s.ogImageUrl : `${BASE_URL}${s.ogImageUrl}`)
     : `${BASE_URL}/og-image.png`;
 
-  // Parse opening hours
+  // Opening hours — live from TherapistAvailability (same source as public site)
   let openingHours: any[] = [];
-  if (s?.businessHoursJson) {
+  try {
+    const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const therapist = await prisma.user.findFirst({
+      where: { role: { in: ["SUPERADMIN", "ADMIN", "THERAPIST"] } },
+      orderBy: { createdAt: "asc" },
+    });
+    if (therapist) {
+      const rows = await prisma.therapistAvailability.findMany({
+        where: { therapistId: therapist.id, isAvailable: true },
+        orderBy: { dayOfWeek: "asc" },
+      });
+      openingHours = rows.map((r) => ({
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: DAY_NAMES[r.dayOfWeek],
+        opens: r.startTime,
+        closes: r.endTime,
+      }));
+    }
+  } catch {}
+  // Fallback to static businessHoursJson if no availability configured
+  if (openingHours.length === 0 && s?.businessHoursJson) {
     try {
       const hours = JSON.parse(s.businessHoursJson);
       if (Array.isArray(hours)) {
@@ -71,8 +91,8 @@ export async function SchemaOrgScript() {
     address: {
       "@type": "PostalAddress",
       ...(s?.businessStreet ? { streetAddress: s.businessStreet } : {}),
-      ...(s?.businessCity ? { addressLocality: s.businessCity } : {}),
-      ...(s?.businessRegion ? { addressRegion: s.businessRegion } : {}),
+      addressLocality: s?.businessCity || "Ipswich",
+      addressRegion: s?.businessRegion || "Suffolk",
       ...(s?.businessPostcode ? { postalCode: s.businessPostcode } : {}),
       addressCountry: s?.businessCountry || "GB",
     },
@@ -84,7 +104,7 @@ export async function SchemaOrgScript() {
     })() : {}),
     ...(openingHours.length > 0 ? { openingHoursSpecification: openingHours } : {}),
     ...(sameAs.length > 0 ? { sameAs } : {}),
-    medicalSpecialty: "Physiotherapy",
+    ...(s?.medicalSpecialty ? { medicalSpecialty: s.medicalSpecialty } : {}),
     ...(s?.businessPriceRange ? { priceRange: s.businessPriceRange } : {}),
   };
 

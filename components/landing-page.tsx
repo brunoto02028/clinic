@@ -749,19 +749,19 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
                   {([
-                    { icon: CircleDot,   en: "MLS® Laser Mphi 75",        pt: "Laser MLS® Mphi 75" },
-                    { icon: Thermometer, en: "Infrared Thermography",      pt: "Termografia Infravermelha" },
-                    { icon: ScanLine,    en: "Biomechanical Analysis",     pt: "Análise Biomecânica" },
-                    { icon: Footprints,  en: "Digital Foot Scan",          pt: "Scan Digital do Pé" },
-                    { icon: HeartPulse,  en: "HRV Monitoring",             pt: "Monitorização HRV" },
-                    { icon: Zap,         en: "Advanced Electrotherapy",    pt: "Eletroterapia Avançada" },
-                    { icon: Waves,       en: "Therapeutic Ultrasound",     pt: "Ultrassom Terapêutico" },
-                    { icon: Cpu,         en: "Biohacking & Performance",   pt: "Biohacking & Performance" },
+                    { icon: CircleDot,   en: "MLS® Laser Mphi 75",        pt: "Laser MLS® Mphi 75",        href: "/services/mls-laser" },
+                    { icon: Thermometer, en: "Infrared Thermography",      pt: "Termografia Infravermelha",  href: "/services/mls-laser" },
+                    { icon: ScanLine,    en: "Biomechanical Analysis",     pt: "Análise Biomecânica",        href: "/biomechanical-assessment" },
+                    { icon: Footprints,  en: "Digital Foot Scan",          pt: "Scan Digital do Pé",         href: "/custom-insoles" },
+                    { icon: HeartPulse,  en: "HRV Monitoring",             pt: "Monitorização HRV",          href: "/services/hrv-recovery-monitoring" },
+                    { icon: Zap,         en: "Advanced Electrotherapy",    pt: "Eletroterapia Avançada",     href: "/services/electrotherapy" },
+                    { icon: Waves,       en: "Therapeutic Ultrasound",     pt: "Ultrassom Terapêutico",      href: "/services/therapeutic-ultrasound" },
+                    { icon: Cpu,         en: "Biohacking & Performance",   pt: "Biohacking & Performance",   href: "/services/biohacking-performance" },
                   ] as const).map((t) => (
-                    <div key={t.en} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-primary hover:border-primary/20 transition-colors">
+                    <Link key={t.en} href={t.href} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-primary hover:border-primary/30 hover:shadow-sm transition-all">
                       <t.icon className="h-3 w-3 shrink-0" />
                       <span>{locale === "pt-BR" ? t.pt : t.en}</span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -1038,7 +1038,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           <footer className="bg-slate-900 text-white">
             {/* Main footer grid */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
 
                 {/* Col 1 — Brand */}
                 <div className="lg:col-span-1">
@@ -1099,7 +1099,30 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   </ul>
                 </div>
 
-                {/* Col 3 — Contact */}
+                {/* Col 3 — Programmes */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-5">{locale === "pt-BR" ? "Programas" : "Programmes"}</h4>
+                  <ul className="space-y-3">
+                    {[
+                      { labelEn: "MLS® Laser Therapy",       labelPt: "Laser MLS®",                 href: "/services/mls-laser" },
+                      { labelEn: "Biomechanical Assessment",  labelPt: "Avaliação Biomecânica",      href: "/biomechanical-assessment" },
+                      { labelEn: "Biohacking & Performance",  labelPt: "Biohacking & Performance",   href: "/services/biohacking-performance" },
+                      { labelEn: "HRV & Recovery",            labelPt: "HRV & Recuperação",          href: "/services/hrv-recovery-monitoring" },
+                      { labelEn: "Sleep & Longevity",         labelPt: "Sono & Longevidade",         href: "/services/sleep-longevity-optimisation" },
+                      { labelEn: "Advanced Electrotherapy",   labelPt: "Eletroterapia Avançada",     href: "/services/electrotherapy" },
+                      { labelEn: "Therapeutic Ultrasound",    labelPt: "Ultrassom Terapêutico",      href: "/services/therapeutic-ultrasound" },
+                      { labelEn: "Exercise Therapy",          labelPt: "Terapia por Exercício",      href: "/services/exercise-therapy" },
+                    ].map((item) => (
+                      <li key={item.href}>
+                        <Link href={item.href} className="text-slate-400 hover:text-white text-sm transition-colors">
+                          {locale === "pt-BR" ? item.labelPt : item.labelEn}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Col 4 — Contact */}
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-5">{locale === "pt-BR" ? "Contacto" : "Contact"}</h4>
                   <ul className="space-y-4">
@@ -1143,7 +1166,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   </ul>
                 </div>
 
-                {/* Col 4 — Opening Hours */}
+                {/* Col 5 — Opening Hours */}
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-5">{locale === "pt-BR" ? "Horário" : "Opening Hours"}</h4>
                   <ul className="space-y-2">

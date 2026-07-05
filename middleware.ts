@@ -82,6 +82,8 @@ const publicRoutes = [
   '/therapies',
   '/custom-insoles',
   '/biomechanical-assessment',
+  '/biohacking',
+  '/sitemap.xml',
   '/services',
   '/articles',
   '/help',
