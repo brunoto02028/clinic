@@ -83,6 +83,7 @@ const publicRoutes = [
   '/custom-insoles',
   '/biomechanical-assessment',
   '/biohacking',
+  '/get-the-app',
   '/sitemap.xml',
   '/services',
   '/articles',
