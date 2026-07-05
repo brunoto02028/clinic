@@ -6,6 +6,7 @@ import {
   Megaphone,
   DollarSign,
   Settings,
+  BellRing,
   type LucideIcon,
 } from "lucide-react";
 
@@ -93,13 +94,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/patient-tasks",
       },
       {
-        key: "notifications",
-        label: "Notifications",
-        labelPt: "Notificacoes",
-        href: "/admin/notifications",
-        matchRoutes: ["/admin/notifications"],
-      },
-      {
         key: "portal",
         label: "Portal",
         labelPt: "Portal",
@@ -117,13 +111,28 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/patients",
       "/admin/screening-preview",
       "/admin/patient-tasks",
-      "/admin/notifications",
       "/admin/patient-portal",
       "/admin/journey",
       "/admin/conditions",
       "/admin/quizzes",
       "/admin/achievements",
     ],
+  },
+  {
+    key: "notifications",
+    label: "Notifications",
+    labelPt: "Notificacoes",
+    icon: BellRing,
+    tabs: [
+      {
+        key: "broadcast",
+        label: "Broadcast",
+        labelPt: "Avisos Gerais",
+        href: "/admin/notifications",
+        matchRoutes: ["/admin/notifications"],
+      },
+    ],
+    matchRoutes: ["/admin/notifications"],
   },
   {
     key: "clinical",
