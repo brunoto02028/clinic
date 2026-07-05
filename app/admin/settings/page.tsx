@@ -1783,7 +1783,7 @@ export default function AdminSettingsPage() {
                     })()}
                   </h3>
                   <div className="text-xs text-muted-foreground leading-relaxed space-y-2">
-                    {(settings.aboutText || "My name is Bruno, and I'm a therapist based in the UK...").split("\n\n").slice(0, 2).map((p, i) => (
+                    {(settings.aboutText || "My name is Bruno, and I'm based in the UK...").split("\n\n").slice(0, 2).map((p, i) => (
                       <p key={i} className="line-clamp-3">{p}</p>
                     ))}
                   </div>

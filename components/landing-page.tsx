@@ -469,7 +469,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 {[
                   { icon: ShieldCheck, label: "STO Registered", color: "text-primary bg-primary/10" },
                   { icon: Sparkles, label: "IPHM Biohacking Practitioner", color: "text-emerald-600 bg-emerald-100" },
-                  { icon: Activity, label: "20+ Years Clinical Practice", color: "text-orange-600 bg-orange-100" },
+                  { icon: Activity, label: "15+ Years of Clinical Experience", color: "text-orange-600 bg-orange-100" },
                   { icon: Users, label: "Ex-Professional Footballer", color: "text-blue-600 bg-blue-100" },
                 ].map((c) => (
                   <div key={c.label} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
