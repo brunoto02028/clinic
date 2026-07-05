@@ -468,7 +468,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { icon: ShieldCheck, label: "STO Registered", color: "text-primary bg-primary/10" },
-                  { icon: Sparkles, label: "IPHM Biohacking Coach", color: "text-emerald-600 bg-emerald-100" },
+                  { icon: Sparkles, label: "IPHM Biohacking Practitioner", color: "text-emerald-600 bg-emerald-100" },
                   { icon: Activity, label: "20+ Years Clinical Practice", color: "text-orange-600 bg-orange-100" },
                   { icon: Users, label: "Ex-Professional Footballer", color: "text-blue-600 bg-blue-100" },
                 ].map((c) => (
@@ -853,8 +853,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     <Card className="h-full card-hover overflow-hidden border border-border cursor-pointer">
                       {article.imageUrl && (
                         <div className="relative aspect-video bg-muted overflow-hidden">
-                          {article.imageUrl.startsWith('data:') ? (
-                            <img src={article.imageUrl} alt={article.title} className="object-cover absolute inset-0 w-full h-full" />
+                          {article.imageUrl.startsWith('data:') || article.imageUrl.startsWith('/api/') ? (
+                            // Internal API-served images bypass next/image (optimizer can't re-fetch them)
+                            <img src={article.imageUrl} alt={article.title} loading="lazy" className="object-cover absolute inset-0 w-full h-full" />
                           ) : (
                             <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" />
                           )}

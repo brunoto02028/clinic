@@ -9,7 +9,7 @@ import { isDbUnreachableError, MOCK_SETTINGS, devFallbackResponse } from "@/lib/
 
 const DEFAULT_ABOUT_TEXT = `My name is Bruno, and I'm a therapist based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.
 
-Before becoming a therapist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.
+Before becoming a physical rehabilitation specialist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.
 
 This personal experience drives my passion for helping others recover, rebuild, and return to their best selves.`;
 
