@@ -67,7 +67,7 @@ export default async function ArticlesPage() {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-5">
                       <span className="flex items-center gap-1.5">
                         <User className="h-4 w-4" />
-                        {featured.author.firstName} {featured.author.lastName}
+                        {(featured as any).authorName || `${featured.author.firstName} ${featured.author.lastName}`}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Calendar className="h-4 w-4" />
@@ -111,7 +111,7 @@ export default async function ArticlesPage() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground pt-3 border-t border-border">
                             <span className="flex items-center gap-1">
                               <User className="h-3 w-3" />
-                              {article.author.firstName} {article.author.lastName}
+                              {(article as any).authorName || `${article.author.firstName} ${article.author.lastName}`}
                             </span>
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />

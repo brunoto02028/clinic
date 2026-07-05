@@ -864,7 +864,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                         <h3 className="font-semibold text-lg text-foreground mb-2 line-clamp-2">{article.title}</h3>
                         <p className="text-muted-foreground text-sm line-clamp-3 mb-4">{article.excerpt}</p>
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>By {article.author.firstName} {article.author.lastName}</span>
+                          <span>By {(article as any).authorName || `${article.author.firstName} ${article.author.lastName}`}</span>
                           <span>{new Date(article.createdAt).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                         </div>
                       </CardContent>
