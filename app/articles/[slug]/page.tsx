@@ -104,6 +104,9 @@ export default async function ArticlePage({ params }: PageProps) {
               <LocalizedText as="h1" className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight max-w-4xl" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
             </div>
           </div>
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+            <LocalizedText as="span" className="text-[10px] sm:text-xs text-white/70 bg-black/30 backdrop-blur-sm rounded-full px-2.5 py-1" en="Image for illustrative purposes only" pt="Imagem meramente ilustrativa" fallback="Image for illustrative purposes only" />
+          </div>
         </div>
       )}
 
@@ -202,7 +205,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   <p className="font-semibold text-foreground">
                     {(article as any).authorName || `${article.author.firstName} ${article.author.lastName}`}
                   </p>
-                  <p className="text-sm text-muted-foreground">Physiotherapist</p>
+                  <LocalizedText as="p" className="text-sm text-muted-foreground" en="Physical Rehabilitation & Performance Specialist" pt="Especialista em Reabilitação Física & Performance" fallback="Physical Rehabilitation & Performance Specialist" />
                 </div>
               </div>
             </div>
