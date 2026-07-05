@@ -92,7 +92,8 @@ export const authOptions: NextAuthOptions = {
               emailVerified: new Date(),
               profileImageUrl: (profile as any).picture || null,
               preferredLocale: "en-GB",
-              consentAcceptedAt: new Date(),
+              // consentAcceptedAt intentionally NOT set — patient must explicitly
+              // accept clinical data consent on /dashboard/consent (GDPR)
               clinicId: defaultClinic?.id || null,
             },
           });
