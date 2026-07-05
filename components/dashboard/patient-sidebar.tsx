@@ -20,7 +20,7 @@ interface PatientSidebarProps {
 export default function PatientSidebar({ notifications = 0 }: PatientSidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { locale } = useLocale();
+  const { locale, setLocale } = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
@@ -174,6 +174,29 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
 
         {/* Footer */}
         <div className="px-2 py-3 border-t border-white/[0.06] space-y-0.5">
+          {/* Language toggle */}
+          <div className="flex items-center gap-1 px-3 py-2">
+            {(["en-GB", "pt-BR"] as const).map((loc) => (
+              <button
+                key={loc}
+                onClick={() => {
+                  setLocale(loc);
+                  fetch("/api/patient/profile", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ preferredLocale: loc }),
+                  }).catch(() => {});
+                }}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                  locale === loc
+                    ? "bg-primary/20 text-primary border border-primary/30"
+                    : "text-[hsl(195,20%,45%)] hover:text-foreground border border-transparent"
+                }`}
+              >
+                {loc === "en-GB" ? "EN" : "PT"}
+              </button>
+            ))}
+          </div>
           <Link
             href={PATIENT_PROFILE_SECTION.href}
             className={navItemClass(activeSection.key === "profile")}

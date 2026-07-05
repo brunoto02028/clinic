@@ -278,8 +278,8 @@ export default function PatientDocumentsPage() {
               <Textarea value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} placeholder={isPt ? "Informações adicionais..." : "Any additional information..."} rows={2} />
             </div>
             <div className="space-y-2">
-              <Label>{isPt ? "Arquivos (PDF, JPEG, PNG)" : "Files (PDF, JPEG, PNG)"}</Label>
-              <Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic" multiple onChange={(e) => e.target.files && setSelectedFiles(Array.from(e.target.files))} />
+              <Label>{isPt ? "Arquivos (fotos, PDF, Word…)" : "Files (photos, PDF, Word…)"}</Label>
+              <Input type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv" multiple onChange={(e) => e.target.files && setSelectedFiles(Array.from(e.target.files))} />
               {selectedFiles.length > 0 && (
                 <p className="text-xs text-muted-foreground">{selectedFiles.length} {isPt ? "arquivo(s)" : "file(s)"}: {selectedFiles.map(f => f.name).join(", ")}</p>
               )}

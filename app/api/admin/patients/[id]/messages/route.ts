@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
+import { saveChatAttachment } from "@/lib/chat-attachment";
 
 export const dynamic = "force-dynamic";
 const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF", "THERAPIST"];
@@ -42,9 +43,34 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { content, title, kind = "message", language = "en" } = await req.json();
-  if (!content?.trim()) {
-    return NextResponse.json({ error: "content required" }, { status: 400 });
+  let content = "";
+  let title: string | null = null;
+  let kind = "message";
+  let attachment: { fileUrl: string; fileName: string; fileType: string } | null = null;
+
+  const reqContentType = req.headers.get("content-type") || "";
+  if (reqContentType.includes("multipart/form-data")) {
+    const formData = await req.formData();
+    content = ((formData.get("content") as string) || "").trim();
+    title = (formData.get("title") as string) || null;
+    kind = (formData.get("kind") as string) || "message";
+    const file = formData.get("file") as File | null;
+    if (file && file.size > 0) {
+      try {
+        attachment = await saveChatAttachment({ file, patientId: params.id, uploaderId: (session.user as any).id });
+      } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
+      }
+    }
+  } else {
+    const body = await req.json();
+    content = (body.content || "").trim();
+    title = body.title || null;
+    kind = body.kind || "message";
+  }
+
+  if (!content && !attachment) {
+    return NextResponse.json({ error: "content or file required" }, { status: 400 });
   }
 
   const [message, patient] = await Promise.all([
@@ -55,7 +81,10 @@ export async function POST(
         senderRole: "staff",
         kind,
         title: title || null,
-        content: content.trim(),
+        content: content || (attachment ? `📎 ${attachment.fileName}` : ""),
+        attachmentUrl: attachment?.fileUrl || null,
+        attachmentName: attachment?.fileName || null,
+        attachmentType: attachment?.fileType || null,
       },
       include: { sender: { select: { firstName: true, lastName: true, role: true } } },
     }),
@@ -67,7 +96,7 @@ export async function POST(
 
   if (patient) {
     const appUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
-    const preview = content.trim().slice(0, 120);
+    const preview = (content || attachment?.fileName || "").slice(0, 120);
     try {
       await notifyPatient({
         patientId: patient.id,

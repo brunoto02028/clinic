@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { saveChatAttachment } from "@/lib/chat-attachment";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,28 @@ export async function POST(req: NextRequest) {
   }
   const userId = effective.userId;
 
-  const { content } = await req.json();
-  if (!content?.trim()) {
-    return NextResponse.json({ error: "content required" }, { status: 400 });
+  let content = "";
+  let attachment: { fileUrl: string; fileName: string; fileType: string } | null = null;
+
+  const contentType = req.headers.get("content-type") || "";
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await req.formData();
+    content = ((formData.get("content") as string) || "").trim();
+    const file = formData.get("file") as File | null;
+    if (file && file.size > 0) {
+      try {
+        attachment = await saveChatAttachment({ file, patientId: userId, uploaderId: userId });
+      } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
+      }
+    }
+  } else {
+    const body = await req.json();
+    content = (body.content || "").trim();
+  }
+
+  if (!content && !attachment) {
+    return NextResponse.json({ error: "content or file required" }, { status: 400 });
   }
 
   const message = await (prisma as any).clinicMessage.create({
@@ -44,7 +64,10 @@ export async function POST(req: NextRequest) {
       senderId: userId,
       senderRole: "patient",
       kind: "message",
-      content: content.trim(),
+      content: content || (attachment ? `📎 ${attachment.fileName}` : ""),
+      attachmentUrl: attachment?.fileUrl || null,
+      attachmentName: attachment?.fileName || null,
+      attachmentType: attachment?.fileType || null,
     },
     include: { sender: { select: { firstName: true, lastName: true, role: true } } },
   });

@@ -2,7 +2,7 @@
 
 // Direct clinic ↔ patient message thread — admin side
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Loader2, Send, Trash2, Megaphone, MessageSquare, BellRing } from "lucide-react";
+import { Loader2, Send, Trash2, Megaphone, MessageSquare, BellRing, Paperclip, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,9 @@ interface ClinicMsg {
   kind: "message" | "notice" | "broadcast";
   title: string | null;
   content: string;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
   readAt: string | null;
   createdAt: string;
   sender: { firstName: string; lastName: string; role: string };
@@ -27,7 +30,9 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
   const [draftTitle, setDraftTitle] = useState("");
   const [kind, setKind] = useState<"message" | "notice">("message");
   const [sending, setSending] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMessages = useCallback(() => {
     fetch(`/api/admin/patients/${patientId}/messages`)
@@ -41,19 +46,31 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
 
   const send = async () => {
-    if (!draft.trim()) return;
+    if (!draft.trim() && !file) return;
     setSending(true);
     try {
-      const r = await fetch(`/api/admin/patients/${patientId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: draft, title: kind === "notice" ? draftTitle : undefined, kind }),
-      });
+      let r: Response;
+      if (file) {
+        const fd = new FormData();
+        fd.append("content", draft);
+        if (kind === "notice" && draftTitle) fd.append("title", draftTitle);
+        fd.append("kind", kind);
+        fd.append("file", file);
+        r = await fetch(`/api/admin/patients/${patientId}/messages`, { method: "POST", body: fd });
+      } else {
+        r = await fetch(`/api/admin/patients/${patientId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: draft, title: kind === "notice" ? draftTitle : undefined, kind }),
+        });
+      }
       if (!r.ok) throw new Error("Failed");
       const msg = await r.json();
       setMessages((m) => [...m, msg]);
       setDraft("");
       setDraftTitle("");
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       toast({ title: "Mensagem enviada", description: "O paciente foi notificado." });
     } catch {
       toast({ title: "Erro ao enviar", variant: "destructive" });
@@ -114,6 +131,18 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
                 </div>
                 {m.title && <p className="text-xs font-bold mb-0.5">{m.title}</p>}
                 <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                {m.attachmentUrl && (
+                  m.attachmentType?.startsWith("image/") ? (
+                    <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="block mt-2">
+                      <img src={m.attachmentUrl} alt={m.attachmentName || ""} className="max-h-40 rounded-xl border border-border/50 object-cover" />
+                    </a>
+                  ) : (
+                    <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 px-3 py-2 bg-muted/40 border border-border/60 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors">
+                      <FileText className="h-4 w-4 text-primary shrink-0" />
+                      <span className="truncate">{m.attachmentName || "Anexo"}</span>
+                    </a>
+                  )
+                )}
                 {isStaff && (
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`text-[9px] ${m.readAt ? "text-emerald-400" : "text-muted-foreground/50"}`}>
@@ -168,8 +197,26 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
           onChange={(e) => setDraft(e.target.value)}
           className="text-sm min-h-[90px]"
         />
-        <div className="flex justify-end">
-          <Button onClick={send} disabled={sending || !draft.trim()} className="gap-2">
+        {file && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/25 rounded-xl text-xs">
+            <Paperclip className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="truncate flex-1 font-medium">{file.name}</span>
+            <span className="text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)}MB</span>
+            <button onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="p-0.5 hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,.doc,.docx,.txt,.csv"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) setFile(f); }}
+          />
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => fileInputRef.current?.click()}>
+            <Paperclip className="h-3.5 w-3.5" /> Anexar ficheiro
+          </Button>
+          <Button onClick={send} disabled={sending || (!draft.trim() && !file)} className="gap-2">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Enviar ao paciente
           </Button>

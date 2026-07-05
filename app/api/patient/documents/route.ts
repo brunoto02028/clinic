@@ -53,14 +53,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
+    // Validate file type — any image, PDF, and common document formats
     const allowedTypes = [
       "application/pdf",
-      "image/jpeg", "image/jpg", "image/png", "image/webp",
-      "image/heic", "image/heif",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain", "text/csv",
     ];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: "Invalid file type. Allowed: PDF, JPEG, PNG, WebP" }, { status: 400 });
+    if (!file.type.startsWith("image/") && !allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: "Invalid file type. Allowed: images, PDF, Word, TXT, CSV" }, { status: 400 });
     }
 
     // Max 25MB

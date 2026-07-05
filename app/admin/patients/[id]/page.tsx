@@ -535,7 +535,7 @@ export default function PatientProfilePage() {
     <div className="space-y-5 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-start gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/admin/patients")}><ArrowLeft className="h-4 w-4 mr-1" /> Patients</Button>
+        <Button variant="ghost" size="sm" onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push("/admin/patients"); }}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="h-6 w-6 text-primary" /></div>
@@ -551,7 +551,7 @@ export default function PatientProfilePage() {
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"><Shield className="h-3.5 w-3.5 mr-1" /> Permissões</Button></Link>
-          <Link href={`/admin/patients/${patientId}/documents`}><Button variant="outline" size="sm" className="h-8 text-xs"><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button></Link>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setActiveTab("docs")}><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button>
           <Link href={`/admin/patients/${patientId}/diagnosis`}><Button variant="outline" size="sm" className="h-8 text-xs"><Brain className="h-3.5 w-3.5 mr-1" /> AI Assessment</Button></Link>
         </div>
       </div>
@@ -638,6 +638,39 @@ export default function PatientProfilePage() {
       {error && <div className="bg-destructive/10 text-destructive text-xs p-2.5 rounded-lg flex items-center gap-2"><AlertCircle className="h-3.5 w-3.5" /> {error} <Button variant="ghost" size="sm" className="ml-auto h-5 w-5 p-0" onClick={() => setError("")}><X className="h-3 w-3" /></Button></div>}
       {success && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-2.5 rounded-lg flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5" /> {success}</div>}
 
+      {/* ─── Document Forms (visible from any tab) ─── */}
+      {showManualDoc && (
+        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileText className="h-4 w-4 inline mr-1" /> Write Clinical History</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <EF label="Title" value={manualForm.title} onChange={(v) => setManualForm({ ...manualForm, title: v })} rows={1} placeholder="e.g. Patient History" />
+              <div className="space-y-0.5"><Label className="text-[10px] font-semibold">Category</Label><select value={manualForm.documentType} onChange={(e) => setManualForm({ ...manualForm, documentType: e.target.value })} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">{DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
+            </div>
+            <EF label="Content" value={manualForm.content} onChange={(v) => setManualForm({ ...manualForm, content: v })} rows={6} placeholder="Type or dictate..." />
+            <div className="flex gap-1.5">
+              <Button size="sm" className="h-7 text-xs" onClick={saveManualDoc} disabled={saving || !manualForm.content.trim()}><Save className="h-3 w-3 mr-1" /> Save</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowManualDoc(false)}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {showUpload && (
+        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileUp className="h-4 w-4 inline mr-1" /> Upload Document</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-0.5"><Label className="text-[10px]">Title</Label><Input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} className="h-8 text-xs" placeholder="Document title" /></div>
+              <div className="space-y-0.5"><Label className="text-[10px]">Type</Label><select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">{DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
+            </div>
+            <Input type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv" multiple onChange={(e) => e.target.files && setUploadFiles(Array.from(e.target.files))} className="text-xs" />
+            <div className="flex gap-1.5">
+              <Button size="sm" className="h-7 text-xs" onClick={handleUpload} disabled={saving || uploadFiles.length === 0}><FileUp className="h-3 w-3 mr-1" /> Upload</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowUpload(false); setUploadFiles([]); }}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ─── Tabs ─── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
         <TabsList className="w-full justify-start bg-muted/30 p-1 h-auto flex-wrap">
@@ -681,8 +714,8 @@ export default function PatientProfilePage() {
       <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-muted/30 rounded-lg border">
         <span className="text-[10px] font-medium text-muted-foreground mr-1">Actions:</span>
         <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("notas"); setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
-        <Button variant="outline" size="sm" className={btnCls} onClick={() => setShowManualDoc(true)}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
-        <Button variant="outline" size="sm" className={btnCls} onClick={() => setShowUpload(true)}><FileUp className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
+        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowManualDoc(true); }}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
+        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowUpload(true); }}><FileUp className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
         <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
           {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Generate AI Assessment
         </Button>
@@ -778,39 +811,7 @@ export default function PatientProfilePage() {
         </Card>
       )}
 
-      {/* ─── Inline Forms ─── (showNewNote moved into Notas tab) ─── */}
-
-      {showManualDoc && (
-        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileText className="h-4 w-4 inline mr-1" /> Write Clinical History</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <EF label="Title" value={manualForm.title} onChange={(v) => setManualForm({ ...manualForm, title: v })} rows={1} placeholder="e.g. Patient History" />
-              <div className="space-y-0.5"><Label className="text-[10px] font-semibold">Category</Label><select value={manualForm.documentType} onChange={(e) => setManualForm({ ...manualForm, documentType: e.target.value })} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">{DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
-            </div>
-            <EF label="Content" value={manualForm.content} onChange={(v) => setManualForm({ ...manualForm, content: v })} rows={6} placeholder="Type or dictate..." />
-            <div className="flex gap-1.5">
-              <Button size="sm" className="h-7 text-xs" onClick={saveManualDoc} disabled={saving || !manualForm.content.trim()}><Save className="h-3 w-3 mr-1" /> Save</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowManualDoc(false)}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {showUpload && (
-        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileUp className="h-4 w-4 inline mr-1" /> Upload Document</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-0.5"><Label className="text-[10px]">Title</Label><Input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} className="h-8 text-xs" placeholder="Document title" /></div>
-              <div className="space-y-0.5"><Label className="text-[10px]">Type</Label><select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">{DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
-            </div>
-            <Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic" multiple onChange={(e) => e.target.files && setUploadFiles(Array.from(e.target.files))} className="text-xs" />
-            <div className="flex gap-1.5">
-              <Button size="sm" className="h-7 text-xs" onClick={handleUpload} disabled={saving || uploadFiles.length === 0}><FileUp className="h-3 w-3 mr-1" /> Upload</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowUpload(false); setUploadFiles([]); }}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* ─── Inline Forms ─── (showNewNote moved into Notas tab; upload/write forms moved above Tabs) ─── */}
 
       {/* Red Flags Summary */}
       {data.screening && (() => {

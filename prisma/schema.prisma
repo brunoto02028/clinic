@@ -2889,6 +2889,7 @@ enum DocumentSource {
   PATIENT_CAMERA      // Patient took photo via portal
   ADMIN_UPLOAD        // Admin/therapist uploaded
   ADMIN_CAMERA        // Admin/therapist took photo in clinic
+  CHAT_UPLOAD         // Sent as attachment via clinic chat
 }
 
 model PatientDocument {
@@ -5160,6 +5161,9 @@ model ClinicMessage {
   kind        String    @default("message") // "message" | "notice" | "broadcast"
   title       String?
   content     String    @db.Text
+  attachmentUrl  String?  @db.Text
+  attachmentName String?
+  attachmentType String?
   broadcastId String?
   broadcast   ClinicBroadcast? @relation(fields: [broadcastId], references: [id], onDelete: SetNull)
   readAt      DateTime?

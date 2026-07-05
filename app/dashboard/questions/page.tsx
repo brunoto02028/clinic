@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, CheckCircle2, Send, MessageCircleQuestion, ChevronDown, ChevronUp, ClipboardList, HelpCircle, Megaphone, BellRing, MessageSquare } from "lucide-react";
+import { useRef } from "react";
+import { Loader2, CheckCircle2, Send, MessageCircleQuestion, ChevronDown, ChevronUp, ClipboardList, HelpCircle, Megaphone, BellRing, MessageSquare, Paperclip, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocale } from "@/hooks/use-locale";
@@ -24,6 +25,9 @@ interface ClinicMsg {
   kind: "message" | "notice" | "broadcast";
   title: string | null;
   content: string;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentType?: string | null;
   readAt: string | null;
   createdAt: string;
   sender: { firstName: string; lastName: string; role: string };
@@ -61,7 +65,9 @@ export default function QuestionsPage() {
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [chatDraft, setChatDraft] = useState("");
+  const [chatFile, setChatFile] = useState<File | null>(null);
   const [sendingChat, setSendingChat] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -84,18 +90,28 @@ export default function QuestionsPage() {
   }, []);
 
   const sendChat = async () => {
-    if (!chatDraft.trim()) return;
+    if (!chatDraft.trim() && !chatFile) return;
     setSendingChat(true);
     try {
-      const r = await fetch("/api/patient/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: chatDraft }),
-      });
+      let r: Response;
+      if (chatFile) {
+        const fd = new FormData();
+        fd.append("content", chatDraft);
+        fd.append("file", chatFile);
+        r = await fetch("/api/patient/messages", { method: "POST", body: fd });
+      } else {
+        r = await fetch("/api/patient/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: chatDraft }),
+        });
+      }
       if (r.ok) {
         const msg = await r.json();
         setMsgs(m => [...m, msg]);
         setChatDraft("");
+        setChatFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
     } finally {
       setSendingChat(false);
@@ -228,6 +244,18 @@ export default function QuestionsPage() {
                     </div>
                     {m.title && <p className="text-xs font-bold mb-1">{m.title}</p>}
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                    {m.attachmentUrl && (
+                      m.attachmentType?.startsWith("image/") ? (
+                        <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="block mt-2">
+                          <img src={m.attachmentUrl} alt={m.attachmentName || ""} className="max-h-48 rounded-xl border border-border/50 object-cover" />
+                        </a>
+                      ) : (
+                        <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 px-3 py-2 bg-muted/40 border border-border/60 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors">
+                          <FileText className="h-4 w-4 text-primary shrink-0" />
+                          <span className="truncate">{m.attachmentName || (isPt ? "Anexo" : "Attachment")}</span>
+                        </a>
+                      )
+                    )}
                   </div>
                 </div>
               );
@@ -412,7 +440,32 @@ export default function QuestionsPage() {
 
       {/* Reply composer — patient can message the clinic */}
       <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-background/95 backdrop-blur border-t border-border p-3">
-        <div className="max-w-2xl mx-auto flex items-end gap-2">
+        <div className="max-w-2xl mx-auto space-y-2">
+        {chatFile && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/25 rounded-xl text-xs">
+            <Paperclip className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="truncate flex-1 font-medium">{chatFile.name}</span>
+            <span className="text-muted-foreground">{(chatFile.size / 1024 / 1024).toFixed(1)}MB</span>
+            <button onClick={() => { setChatFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="p-0.5 hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,.doc,.docx,.txt,.csv"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) setChatFile(f); }}
+          />
+          <Button
+            size="icon"
+            variant="outline"
+            className="rounded-xl h-11 w-11 shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+            title={isPt ? "Anexar ficheiro (foto, PDF, exame…)" : "Attach file (photo, PDF, exam…)"}
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
           <Textarea
             value={chatDraft}
             onChange={e => setChatDraft(e.target.value)}
@@ -427,10 +480,11 @@ export default function QuestionsPage() {
             size="icon"
             className="rounded-xl h-11 w-11 shrink-0"
             onClick={sendChat}
-            disabled={sendingChat || !chatDraft.trim()}
+            disabled={sendingChat || (!chatDraft.trim() && !chatFile)}
           >
             {sendingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
+        </div>
         </div>
       </div>
     </div>
