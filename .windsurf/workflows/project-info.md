@@ -5,7 +5,7 @@ description: Project vault with all access credentials and infrastructure info f
 # BPR Clinic — Project Vault & SPEC Completa
 
 > **⚠️ SENSITIVE — não partilhar publicamente**
-> Última actualização: 3 Julho 2026 — Homepage Redesign + Horários ao Vivo + Menu Fixo
+> Última actualização: 5 Julho 2026 — Chat com anexos + Fluxo único de Documentos + Toggle idioma paciente + Auditoria páginas públicas (v2.7.0)
 
 ---
 
@@ -545,6 +545,44 @@ Localização: **Tab Notas Clínicas → painel violeta collapsível "Clinical S
 - **`landing-page.tsx`:** `sticky top-0` → `fixed top-0 left-0 right-0` + `<div class="h-16 md:h-20" aria-hidden>` como spacer após o header
 - **`site-header.tsx`:** mesma alteração, spacer dentro de React fragment (`<>`)
 - Motivo: `sticky` pode falhar se algum ancestral tiver `overflow` definido; `fixed` é incondicional
+
+---
+
+## 📎 Chat + Documentos + Idioma (5 Jul 2026)
+
+### Bug corrigido — Upload no painel do paciente (admin)
+- **Causa raiz:** forms de Upload/Write em `app/admin/patients/[id]/page.tsx` estavam renderizados DENTRO da `TabsContent value="resumo"` — clicar "+ Upload" na tab Documentos não mostrava nada
+- **Fix:** forms movidos para cima das `<Tabs>` (visíveis de qualquer tab); todos os botões de documentos mudam para a tab `docs`
+- Botão "Documents" do header da página agora abre a tab (não navega); página `/admin/patients/[id]/documents` mantém-se como vista "Full"
+
+### Chat com anexos (clinic ↔ patient)
+- **Schema:** `ClinicMessage` + `attachmentUrl/attachmentName/attachmentType`; `DocumentSource` + `CHAT_UPLOAD`
+- **`lib/chat-attachment.ts`** — helper partilhado: grava ficheiro em `$UPLOADS_DIR/documents/{patientId}/` + auto-regista como `PatientDocument` (source=CHAT_UPLOAD) → ficheiros do chat aparecem na secção Documentos (fonte única)
+- **APIs:** `POST /api/patient/messages` e `POST /api/admin/patients/[id]/messages` aceitam `multipart/form-data` (fallback JSON para texto)
+- **UIs:** clip no composer — paciente (`app/dashboard/questions/page.tsx`) e admin (`components/admin/patient-messages-tab.tsx`); imagens inline, outros ficheiros como cartão de download
+- **Tipos aceites em todo o lado:** `image/*` + PDF/Word/TXT/CSV, máx. 25MB
+
+### Idioma do paciente
+- Toggle **EN | PT** no rodapé da sidebar do paciente (`components/dashboard/patient-sidebar.tsx`) — persiste via `PATCH /api/patient/profile` → `User.preferredLocale`
+- `lib/notify-patient.ts` já escolhe `plainMessagePt` quando `preferredLocale` começa por `pt` — notificações seguem o idioma do paciente
+- `dashboard-layout.tsx` sincroniza locale da DB no primeiro load
+
+### Voltar contextual (admin)
+- Detalhe do paciente: `router.back()` com fallback a `/admin/patients` (era hardcoded)
+- Permissões: "Voltar" regressa ao detalhe do paciente (era lista)
+
+### Auditoria páginas públicas (mesma sessão, commits anteriores)
+- i18n: chaves `svc.mlsLaser/Desc` + `svc.kinesiotherapy/Desc` adicionadas (MLS mostrava chaves cruas)
+- "coach/coaching" removido de todas as páginas públicas; `/biohacking` 20+→15+ anos (4 sítios)
+- `/get-the-app` adicionado a `publicRoutes` no middleware (redirecionava para login)
+- Redirects existentes: `/services/kinesiotherapy`→`exercise-therapy`, `laser-shockwave`→`mls-laser`, `microcurrent`→`electrotherapy`
+- Páginas de serviços são editáveis em **Admin → Service Pages** (`/admin/service-pages`); DB tem prioridade sobre conteúdo hardcoded em `app/services/[slug]/page.tsx`
+- Todos os 17 links públicos do rodapé verificados 200 em produção
+
+### Deploy/verificação
+- `start.sh` corre `prisma db push` no arranque — mudanças de schema aplicam-se automaticamente no deploy
+- Monitorização de deploy sem API key do Render: comparar `/api/version` antes/depois do push
+- ⚠️ **RENDER_API_KEY antiga foi rotada** — "Unauthorized"; pedir nova ao Bruno se precisar da API
 
 ---
 

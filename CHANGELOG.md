@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.7.0] - 2026-07-05
+
+### Fixed
+- **Admin patient page — Upload bug (root cause)**: the Upload/Write Clinical History forms were rendered inside the "Resumo" tab only. Clicking "+ Upload" from the "Documentos" tab toggled state but showed nothing. Forms now render above the tabs (visible from any tab); all document buttons switch to the Documentos tab.
+- **`/get-the-app` redirected to login** — added to `publicRoutes` in `middleware.ts`.
+- **MLS Laser service page showed raw i18n keys** (`svc.mlsLaser`, `svc.mlsLaserDesc`) — 4 missing keys added to `lib/i18n.ts` (also `svc.kinesiotherapy` pair).
+- **mls-laser related-link loop** — `laser-shockwave` redirects back to `mls-laser`; replaced in related services.
+
+### Added
+- **Chat attachments (clinic ↔ patient)** — paperclip in both composers (`app/dashboard/questions/page.tsx` patient side, `components/admin/patient-messages-tab.tsx` admin side). Images render inline; other files as download cards.
+  - New fields on `ClinicMessage`: `attachmentUrl`, `attachmentName`, `attachmentType`
+  - Both message APIs accept `multipart/form-data` (with JSON fallback for text-only)
+  - `lib/chat-attachment.ts` — shared helper: saves file + auto-registers it as `PatientDocument` with new `source=CHAT_UPLOAD`, so chat files appear in the patient's Documents section (single source of truth)
+- **Patient language toggle (EN | PT)** — patient sidebar footer; persists to `User.preferredLocale` via `PATCH /api/patient/profile`. `notifyPatient` already sends comms in patient's locale.
+- **Unified documents flow (admin)** — "Documents" header button opens the Documentos tab (no separate page navigation); Resumo quick actions jump to the tab.
+
+### Changed
+- **Upload file types broadened everywhere** (admin docs, patient docs, chat): any `image/*` + PDF, Word, TXT, CSV — 25MB max.
+- **Contextual back navigation** — admin patient detail and permissions pages use real history back (fallback to sensible route) instead of hardcoded `router.push`.
+- **Public service pages audit** — removed all "coach/coaching" wording (→ practitioner/programme/guidance/consultations), "20+ years" → "15+ Years of Clinical Experience" on `/biohacking` (4 spots), fixed self-referencing links. All 17 public footer links verified 200 in production.
+- **Header/footer unification** — all public pages share the homepage `SiteHeader`/`SiteFooter` (from previous session, deployed today).
+
+---
+
 ## [2.6.0] - 2026-07-03
 
 ### Added

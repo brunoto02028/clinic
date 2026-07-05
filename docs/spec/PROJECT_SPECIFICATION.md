@@ -2,9 +2,9 @@
 
 **Projeto:** BPR - Bruno Physical Rehabilitation  
 **Localização:** Ipswich, UK  
-**Versão:** 2.0.0  
-**Data:** 01/06/2026  
-**Status:** Em Produção
+**Versão:** 2.7.0  
+**Data:** 05/07/2026  
+**Status:** Em Produção (https://bpr.rehab — Render, Frankfurt)
 
 ---
 
@@ -165,7 +165,9 @@ Ser a clínica de fisioterapia mais tecnologicamente avançada de Ipswich e regi
 - ✅ Exercícios prescritos
 - ✅ Progresso (gráficos)
 - ✅ Acesso a scans e relatórios
-- ✅ Mensagens com terapeuta
+- ✅ Mensagens com terapeuta (chat com anexos — fotos, PDF, exames; ficheiros aparecem também em Documentos)
+- ✅ Documentos: upload pelo paciente (qualquer imagem + PDF/Word/TXT/CSV, máx. 25MB) + câmara
+- ✅ Toggle de idioma EN/PT na sidebar (persistido em `User.preferredLocale`; notificações seguem o idioma do paciente)
 - ✅ Pagamentos e faturas
 - ✅ Histórico completo
 
@@ -1127,7 +1129,7 @@ Total Ano 1: £70,000-100,000
 - **GitHub:** https://github.com/brunoto02028/clinic
 - **Documentação:** /docs
 - **Issues:** GitHub Issues
-- **Deploy:** Railway
+- **Deploy:** Render (bpr.rehab, Frankfurt) — via GitHub `brunoto02028/clinic` branch `main`, auto-deploy
 
 ---
 
@@ -1136,11 +1138,22 @@ Total Ano 1: £70,000-100,000
 **Proprietário:** Bruno Toaz  
 **Desenvolvedor:** Cascade AI + Bruno Toaz  
 **Licença:** Proprietária (All Rights Reserved)  
-**Versão:** 2.0.0  
-**Última Atualização:** 01/06/2026
+**Versão:** 2.7.0  
+**Última Atualização:** 05/07/2026
 
 ---
 
 **FIM DA ESPECIFICAÇÃO**
 
 *Este documento é vivo e será atualizado conforme o projeto evolui.*
+
+---
+
+## 📝 HISTÓRICO DE ATUALIZAÇÕES DA SPEC
+
+| Data | Versão | Resumo |
+|------|--------|--------|
+| 05/07/2026 | 2.7.0 | Chat com anexos (fluxo único com Documentos), toggle idioma paciente, fix upload admin, auditoria páginas públicas de serviços, unificação header/footer público. Ver `CHANGELOG.md` [2.7.0] |
+| 01/06/2026 | 2.0.0 | Versão inicial da especificação completa |
+
+> **Para contexto detalhado de cada sessão de desenvolvimento:** consultar `CHANGELOG.md` (técnico, por versão) e `.windsurf/workflows/project-info.md` (vault do projeto: credenciais, infra, decisões e notas críticas).
