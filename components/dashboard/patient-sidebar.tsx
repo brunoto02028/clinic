@@ -54,12 +54,14 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
   }, [pathname]);
 
   useEffect(() => {
-    fetch("/api/patient/questions")
-      .then(r => r.ok ? r.json() : [])
-      .then((data: any[]) => {
-        if (Array.isArray(data)) {
-          setPendingQuestions(data.filter(q => q.status === "pending").length);
-        }
+    Promise.all([
+      fetch("/api/patient/questions").then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch("/api/patient/messages").then(r => r.ok ? r.json() : []).catch(() => []),
+    ])
+      .then(([qData, mData]) => {
+        const pending = Array.isArray(qData) ? qData.filter((q: any) => q.status === "pending").length : 0;
+        const unread = Array.isArray(mData) ? mData.filter((m: any) => m.senderRole === "staff" && !m.readAt).length : 0;
+        setPendingQuestions(pending + unread);
       })
       .catch(() => {});
   }, [pathname]);

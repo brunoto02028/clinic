@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, CheckCircle2, Send, MessageCircleQuestion, ChevronDown, ChevronUp, ClipboardList, HelpCircle } from "lucide-react";
+import { Loader2, CheckCircle2, Send, MessageCircleQuestion, ChevronDown, ChevronUp, ClipboardList, HelpCircle, Megaphone, BellRing, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocale } from "@/hooks/use-locale";
@@ -17,6 +17,21 @@ interface QuestionSet {
   createdAt: string;
   answeredAt: string | null;
 }
+
+interface ClinicMsg {
+  id: string;
+  senderRole: "staff" | "patient";
+  kind: "message" | "notice" | "broadcast";
+  title: string | null;
+  content: string;
+  readAt: string | null;
+  createdAt: string;
+  sender: { firstName: string; lastName: string; role: string };
+}
+
+type TimelineItem =
+  | { kind: "qset"; createdAt: string; q: QuestionSet }
+  | { kind: "msg"; createdAt: string; m: ClinicMsg };
 
 function dayKey(dateStr: string) {
   const d = new Date(dateStr);
@@ -39,27 +54,53 @@ export default function QuestionsPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
   const [sets, setSets] = useState<QuestionSet[]>([]);
+  const [msgs, setMsgs] = useState<ClinicMsg[]>([]);
   const [loading, setLoading] = useState(true);
   const [drafts, setDrafts] = useState<Record<string, string[]>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [chatDraft, setChatDraft] = useState("");
+  const [sendingChat, setSendingChat] = useState(false);
 
   useEffect(() => {
-    fetch("/api/patient/questions")
-      .then(r => r.json())
-      .then(data => {
-        const arr: QuestionSet[] = Array.isArray(data) ? data : [];
+    Promise.all([
+      fetch("/api/patient/questions").then(r => r.json()).catch(() => []),
+      fetch("/api/patient/messages").then(r => r.ok ? r.json() : []).catch(() => []),
+    ])
+      .then(([qData, mData]) => {
+        const arr: QuestionSet[] = Array.isArray(qData) ? qData : [];
         setSets(arr);
+        setMsgs(Array.isArray(mData) ? mData : []);
         const initial: Record<string, boolean> = {};
         arr.forEach(s => {
           if (s.status !== "pending" && s.type !== "report") initial[s.id] = true;
         });
         setCollapsed(initial);
+        // Mark staff messages as read
+        fetch("/api/patient/messages", { method: "PATCH" }).catch(() => {});
       })
-      .catch(() => setSets([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const sendChat = async () => {
+    if (!chatDraft.trim()) return;
+    setSendingChat(true);
+    try {
+      const r = await fetch("/api/patient/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: chatDraft }),
+      });
+      if (r.ok) {
+        const msg = await r.json();
+        setMsgs(m => [...m, msg]);
+        setChatDraft("");
+      }
+    } finally {
+      setSendingChat(false);
+    }
+  };
 
   const initDraft = (set: QuestionSet) => {
     if (!drafts[set.id]) {
@@ -100,14 +141,18 @@ export default function QuestionsPage() {
 
   const pendingCount = sets.filter(s => s.status === "pending" && s.type !== "report").length;
 
-  // Group by day, sorted newest-first
-  const sorted = [...sets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const days: { key: string; label: string; items: QuestionSet[] }[] = [];
-  sorted.forEach(s => {
-    const k = dayKey(s.createdAt);
+  // Merge question sets + chat messages into one timeline, group by day, newest-first
+  const timeline: TimelineItem[] = [
+    ...sets.map(q => ({ kind: "qset" as const, createdAt: q.createdAt, q })),
+    ...msgs.map(m => ({ kind: "msg" as const, createdAt: m.createdAt, m })),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const days: { key: string; label: string; items: TimelineItem[] }[] = [];
+  timeline.forEach(item => {
+    const k = dayKey(item.createdAt);
     let group = days.find(d => d.key === k);
-    if (!group) { group = { key: k, label: formatDayLabel(s.createdAt, isPt), items: [] }; days.push(group); }
-    group.items.push(s);
+    if (!group) { group = { key: k, label: formatDayLabel(item.createdAt, isPt), items: [] }; days.push(group); }
+    group.items.push(item);
   });
 
   return (
@@ -132,7 +177,7 @@ export default function QuestionsPage() {
       </div>
 
       {/* Empty state */}
-      {sets.length === 0 && (
+      {sets.length === 0 && msgs.length === 0 && (
         <div className="text-center py-24 space-y-3">
           <MessageCircleQuestion className="h-12 w-12 text-muted-foreground/20 mx-auto" />
           <p className="text-sm text-muted-foreground">
@@ -154,7 +199,40 @@ export default function QuestionsPage() {
           </div>
 
           {/* Cards for this day */}
-          {day.items.map(set => {
+          {day.items.map(item => {
+            if (item.kind === "msg") {
+              const m = item.m;
+              const fromStaff = m.senderRole === "staff";
+              const isBroadcast = m.kind === "broadcast";
+              return (
+                <div key={m.id} className={`flex ${fromStaff ? "justify-start" : "justify-end"}`}>
+                  <div className={`max-w-[85%] rounded-2xl border px-4 py-3 ${
+                    isBroadcast
+                      ? "bg-amber-500/5 border-amber-500/25"
+                      : fromStaff
+                      ? "bg-card border-border"
+                      : "bg-primary/10 border-primary/25"
+                  }`}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      {isBroadcast
+                        ? <Megaphone className="h-3 w-3 text-amber-400" />
+                        : m.kind === "notice"
+                        ? <BellRing className="h-3 w-3 text-primary" />
+                        : <MessageSquare className="h-3 w-3 text-muted-foreground" />}
+                      <span className="text-[10px] font-semibold text-muted-foreground">
+                        {fromStaff
+                          ? (isBroadcast ? (isPt ? "Aviso da Clínica" : "Clinic Notice") : `${m.sender.firstName} (${isPt ? "clínica" : "clinic"})`)
+                          : (isPt ? "Você" : "You")}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground/60">{formatTime(m.createdAt, isPt)}</span>
+                    </div>
+                    {m.title && <p className="text-xs font-bold mb-1">{m.title}</p>}
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{m.content}</p>
+                  </div>
+                </div>
+              );
+            }
+            const set = item.q;
             const isReport = set.type === "report";
             const isPending = set.status === "pending";
             const isSubmitted = submitted[set.id];
@@ -331,6 +409,30 @@ export default function QuestionsPage() {
           })}
         </div>
       ))}
+
+      {/* Reply composer — patient can message the clinic */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-background/95 backdrop-blur border-t border-border p-3">
+        <div className="max-w-2xl mx-auto flex items-end gap-2">
+          <Textarea
+            value={chatDraft}
+            onChange={e => setChatDraft(e.target.value)}
+            placeholder={isPt ? "Escreva uma mensagem à clínica…" : "Write a message to the clinic…"}
+            className="text-sm min-h-[44px] max-h-32 resize-none rounded-xl flex-1"
+            rows={1}
+            onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+            }}
+          />
+          <Button
+            size="icon"
+            className="rounded-xl h-11 w-11 shrink-0"
+            onClick={sendChat}
+            disabled={sendingChat || !chatDraft.trim()}
+          >
+            {sendingChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

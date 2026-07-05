@@ -672,6 +672,14 @@ model User {
   patientQuestionsReceived  PatientQuestion[]        @relation("PatientQuestions")
   patientQuestionsCreated   PatientQuestion[]        @relation("QuestionCreator")
 
+  // Clinic <-> Patient direct messaging
+  clinicMessagesReceived    ClinicMessage[]          @relation("PatientClinicMessages")
+  clinicMessagesSent        ClinicMessage[]          @relation("SentClinicMessages")
+  broadcastsSent            ClinicBroadcast[]        @relation("SentBroadcasts")
+
+  // Protocol templates
+  protocolTemplatesCreated  ProtocolTemplate[]       @relation("ProtocolTemplatesCreated")
+
   // Patient preferred language for reports
   reportLanguage            String                   @default("en") // "en" | "pt"
 
@@ -2536,6 +2544,7 @@ model Exercise {
 
   prescriptions   ExercisePrescription[]
   protocolItems   ProtocolItem[]
+  templateItems   ProtocolTemplateItem[] @relation("TemplateItemExercise")
 
   @@index([clinicId])
   @@index([bodyRegion])
@@ -2696,9 +2705,12 @@ model TreatmentProtocol {
   therapistId       String
   therapist         User            @relation("TherapistProtocols", fields: [therapistId], references: [id])
 
-  // Link to diagnosis
-  diagnosisId       String
-  diagnosis         AIDiagnosis     @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+  // Link to diagnosis (optional — null when created from a ProtocolTemplate)
+  diagnosisId       String?
+  diagnosis         AIDiagnosis?    @relation(fields: [diagnosisId], references: [id], onDelete: Cascade)
+
+  // Link to template origin (optional)
+  templateId        String?
 
   // Protocol overview
   title             String          // e.g. "Shoulder Rehabilitation Protocol"
@@ -5115,6 +5127,98 @@ model AtlasChatMessage {
 
   @@index([patientId])
   @@map("atlas_chat_messages")
+}
+
+// Direct free-form messaging between clinic staff and a patient (thread per patient)
+model ClinicMessage {
+  id          String    @id @default(cuid())
+  clinicId    String?
+  patientId   String
+  patient     User      @relation("PatientClinicMessages", fields: [patientId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User      @relation("SentClinicMessages", fields: [senderId], references: [id])
+  senderRole  String    // "staff" | "patient"
+  kind        String    @default("message") // "message" | "notice" | "broadcast"
+  title       String?
+  content     String    @db.Text
+  broadcastId String?
+  broadcast   ClinicBroadcast? @relation(fields: [broadcastId], references: [id], onDelete: SetNull)
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([patientId])
+  @@index([senderId])
+  @@index([broadcastId])
+  @@index([patientId, readAt])
+  @@map("clinic_messages")
+}
+
+// Broadcast notification sent to all or selected patients (fan-out to ClinicMessage)
+model ClinicBroadcast {
+  id             String   @id @default(cuid())
+  clinicId       String?
+  title          String
+  content        String   @db.Text
+  sentById       String
+  sentBy         User     @relation("SentBroadcasts", fields: [sentById], references: [id])
+  audience       String   @default("all") // "all" | "selected"
+  recipientCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  messages       ClinicMessage[]
+
+  @@index([sentById])
+  @@map("clinic_broadcasts")
+}
+
+// Reusable treatment protocol template (per service/equipment/condition)
+model ProtocolTemplate {
+  id              String   @id @default(cuid())
+  clinicId        String?
+  name            String
+  description     String?  @db.Text
+  condition       String?  // e.g. "Knee Osteoarthritis"
+  bodyRegion      String?  // e.g. "KNEE"
+  equipment       String[] // e.g. ["MLS Laser", "ALCE", "Ultrasound 1MHz"]
+  category        String?  // service category
+  estimatedWeeks  Int?
+  sessionsPerWeek Int?
+  isActive        Boolean  @default(true)
+  createdById     String
+  createdBy       User     @relation("ProtocolTemplatesCreated", fields: [createdById], references: [id])
+  items           ProtocolTemplateItem[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([isActive])
+  @@map("protocol_templates")
+}
+
+model ProtocolTemplateItem {
+  id                String           @id @default(cuid())
+  templateId        String
+  template          ProtocolTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  phase             ProtocolPhase    @default(SHORT_TERM)
+  itemType          ProtocolItemType @default(HOME_EXERCISE)
+  sortOrder         Int              @default(0)
+  title             String
+  description       String?          @db.Text
+  instructions      String?          @db.Text
+  treatmentTypeName String?          // for IN_CLINIC items
+  sessionDuration   Int?
+  sessionsPerWeek   Int?
+  exerciseId        String?          // for HOME_EXERCISE items
+  exercise          Exercise?        @relation("TemplateItemExercise", fields: [exerciseId], references: [id])
+  sets              Int?
+  reps              Int?
+  holdSeconds       Int?
+  restSeconds       Int?
+  frequency         String?
+  startWeek         Int              @default(1)
+  endWeek           Int?
+
+  @@index([templateId])
+  @@map("protocol_template_items")
 }
 
 // Questions Atlas/clinician sends to patient for pre-visit answers

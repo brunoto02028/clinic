@@ -93,6 +93,13 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/patient-tasks",
       },
       {
+        key: "notifications",
+        label: "Notifications",
+        labelPt: "Notificacoes",
+        href: "/admin/notifications",
+        matchRoutes: ["/admin/notifications"],
+      },
+      {
         key: "portal",
         label: "Portal",
         labelPt: "Portal",
@@ -141,6 +148,13 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Exercises",
         labelPt: "Exercicios",
         href: "/admin/exercises",
+      },
+      {
+        key: "protocols",
+        label: "Protocols",
+        labelPt: "Protocolos",
+        href: "/admin/protocols",
+        matchRoutes: ["/admin/protocols"],
       },
       {
         key: "rehab-agent",

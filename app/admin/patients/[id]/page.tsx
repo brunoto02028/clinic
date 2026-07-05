@@ -8,8 +8,9 @@ import {
   RefreshCw, AlertCircle, CheckCircle2, X, Loader2, Mic, MicOff, Languages, Plus, Save,
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
-  BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle,
+  BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare,
 } from "lucide-react";
+import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -645,6 +646,9 @@ export default function PatientProfilePage() {
           <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Avaliacoes</TabsTrigger>
           <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clinicas</TabsTrigger>
             <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documentos</TabsTrigger>
+          <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" />Mensagens
+          </TabsTrigger>
           <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
             <Bot className="h-3 w-3" />Rehab Agent
           </TabsTrigger>
@@ -1353,6 +1357,11 @@ export default function PatientProfilePage() {
           ) : <p className="text-xs text-muted-foreground">No documents.</p>}
         </Sec>
         </div>
+        </TabsContent>
+
+        {/* ── Tab: Mensagens ── */}
+        <TabsContent value="mensagens" className="mt-4">
+          <PatientMessagesTab patientId={patientId} />
         </TabsContent>
 
         {/* ── Tab: Rehab Agent ── */}
