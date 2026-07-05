@@ -80,6 +80,10 @@ export async function GET(request: NextRequest) {
           where: { status: "answered" },
           select: { id: true },
         },
+        clinicMessagesReceived: {
+          where: { senderRole: "patient", readAt: null },
+          select: { id: true },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -89,7 +93,9 @@ export async function GET(request: NextRequest) {
     const patientsWithCount = patients.map((p: any) => ({
       ...p,
       answeredQCount: p.patientQuestionsReceived?.length ?? 0,
+      unreadMessages: p.clinicMessagesReceived?.length ?? 0,
       patientQuestionsReceived: undefined,
+      clinicMessagesReceived: undefined,
     }));
 
     return NextResponse.json({ patients: patientsWithCount });
