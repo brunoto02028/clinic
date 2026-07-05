@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
+import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 
 export const dynamic = "force-dynamic";
 const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF", "THERAPIST"];
@@ -13,6 +14,9 @@ export async function GET() {
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Lazy-dispatch any scheduled broadcasts that are due
+  await dispatchDueBroadcasts().catch(() => {});
 
   const broadcasts = await (prisma as any).clinicBroadcast.findMany({
     include: {
@@ -28,6 +32,8 @@ export async function GET() {
     title: b.title,
     content: b.content,
     audience: b.audience,
+    status: b.status,
+    scheduledFor: b.scheduledFor,
     recipientCount: b.recipientCount,
     readCount: b.messages.filter((m: any) => m.readAt).length,
     recipients: b.messages.map((m: any) => ({
@@ -48,12 +54,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { title, content, audience = "all", patientIds = [], notify = true } = await req.json();
+  const { title, content, audience = "all", patientIds = [], notify = true, scheduledFor } = await req.json();
   if (!title?.trim() || !content?.trim()) {
     return NextResponse.json({ error: "title and content required" }, { status: 400 });
   }
   if (audience === "selected" && !patientIds.length) {
     return NextResponse.json({ error: "patientIds required for selected audience" }, { status: 400 });
+  }
+
+  // Scheduled for the future — store and dispatch later
+  if (scheduledFor && new Date(scheduledFor) > new Date()) {
+    const scheduled = await (prisma as any).clinicBroadcast.create({
+      data: {
+        title: title.trim(),
+        content: content.trim(),
+        sentById: (session.user as any).id,
+        audience,
+        status: "scheduled",
+        scheduledFor: new Date(scheduledFor),
+        targetIds: audience === "selected" ? patientIds : [],
+      },
+    });
+    return NextResponse.json(
+      { id: scheduled.id, scheduled: true, scheduledFor: scheduled.scheduledFor },
+      { status: 201 }
+    );
   }
 
   // Resolve recipients
@@ -77,6 +102,8 @@ export async function POST(req: NextRequest) {
       sentById: senderId,
       audience,
       recipientCount: patients.length,
+      status: "sent",
+      sentAt: new Date(),
     },
   });
 

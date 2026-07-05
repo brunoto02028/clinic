@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,9 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = (session.user as any).id;
+
+  // Lazy-dispatch due scheduled broadcasts so patients see them on time
+  await dispatchDueBroadcasts().catch(() => {});
 
   const messages = await (prisma as any).clinicMessage.findMany({
     where: { patientId: userId },

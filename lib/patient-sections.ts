@@ -86,8 +86,8 @@ export const PATIENT_SECTIONS: PatientSection[] = [
   },
   {
     key: "questions",
-    label: "Questions",
-    labelPt: "Perguntas",
+    label: "Messages",
+    labelPt: "Mensagens",
     icon: MessageCircleQuestion,
     href: "/dashboard/questions",
     matchRoutes: ["/dashboard/questions"],

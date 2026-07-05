@@ -5182,10 +5182,15 @@ model ClinicBroadcast {
   sentBy         User     @relation("SentBroadcasts", fields: [sentById], references: [id])
   audience       String   @default("all") // "all" | "selected"
   recipientCount Int      @default(0)
+  status         String   @default("sent") // "scheduled" | "sent"
+  scheduledFor   DateTime? // when set + status scheduled, dispatch at this time
+  sentAt         DateTime?
+  targetIds      String[] @default([]) // patient ids for scheduled "selected" audience
   createdAt      DateTime @default(now())
   messages       ClinicMessage[]
 
   @@index([sentById])
+  @@index([status, scheduledFor])
   @@map("clinic_broadcasts")
 }
 
