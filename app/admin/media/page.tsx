@@ -26,7 +26,7 @@ interface MediaItem {
   uploadedBy?: { firstName: string; lastName: string } | null;
 }
 
-const CATEGORIES = ["all", "general", "hero", "services", "about", "logo", "signature", "social"];
+const CATEGORIES = ["all", "articles", "general", "hero", "services", "about", "logo", "signature", "social"];
 
 export default function MediaLibraryPage() {
   const { locale } = useLocale();

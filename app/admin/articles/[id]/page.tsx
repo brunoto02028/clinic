@@ -14,6 +14,7 @@ import { ArrowLeft, Save, Languages, Loader2, Upload, ImageIcon, Trash2, Mic, Mi
 import Link from "next/link";
 import { AIFieldHelper } from "@/components/admin/ai-field-helper";
 import { AIImageGenerator } from "@/components/admin/ai-image-generator";
+import { ImageLibraryPicker } from "@/components/admin/image-library-picker";
 import { InstagramPostPanel } from "@/components/admin/instagram-post-panel";
 
 const RichTextEditor = dynamic(() => import("@/components/admin/rich-text-editor"), {
@@ -428,6 +429,7 @@ export default function EditArticlePage() {
                     <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5">
                       {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Replace
                     </Button>
+                    <ImageLibraryPicker onSelect={(url) => setImageUrl(url)} />
                     <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                 </div>
@@ -440,6 +442,7 @@ export default function EditArticlePage() {
                       {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                       {uploading ? "Uploading..." : "Upload Image"}
                     </Button>
+                    <ImageLibraryPicker onSelect={(url) => setImageUrl(url)} />
                     <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                   <div className="pt-2">
