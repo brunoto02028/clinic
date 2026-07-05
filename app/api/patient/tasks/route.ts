@@ -30,6 +30,15 @@ export async function GET(req: NextRequest) {
   const priorityWeight: Record<string, number> = { urgent: 4, high: 3, normal: 2, low: 1 };
   tasks.sort((a: any, b: any) => (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0));
 
+  // Read receipt — mark unviewed tasks as viewed now
+  const unviewedIds = tasks.filter((t: any) => !t.viewedAt).map((t: any) => t.id);
+  if (unviewedIds.length) {
+    await (prisma as any).patientTask.updateMany({
+      where: { id: { in: unviewedIds } },
+      data: { viewedAt: new Date() },
+    });
+  }
+
   return NextResponse.json({ tasks, count: tasks.length });
 }
 

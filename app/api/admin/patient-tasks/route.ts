@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     patientId,
+    patientIds,
+    audience = "one", // "one" | "selected" | "all"
     type = "CUSTOM",
     title,
     titlePt,
@@ -66,66 +68,87 @@ export async function POST(req: NextRequest) {
     metadata,
   } = body;
 
-  if (!patientId || !title) {
-    return NextResponse.json({ error: "patientId and title are required" }, { status: 400 });
+  if (!title) {
+    return NextResponse.json({ error: "title is required" }, { status: 400 });
+  }
+
+  // Resolve target patients
+  let targetIds: string[] = [];
+  if (audience === "all") {
+    const all = await prisma.user.findMany({
+      where: { role: "PATIENT", isActive: true },
+      select: { id: true },
+    });
+    targetIds = all.map((p) => p.id);
+  } else if (audience === "selected") {
+    targetIds = Array.isArray(patientIds) ? patientIds : [];
+  } else {
+    targetIds = patientId ? [patientId] : [];
+  }
+
+  if (!targetIds.length) {
+    return NextResponse.json({ error: "No target patients" }, { status: 400 });
   }
 
   const adminId = (session.user as any).id;
+  const clinicId = (session.user as any).clinicId || null;
+  const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString("en-GB") : "";
+  const plainMessage = `You have a new action required: "${title}"${dueDateStr ? ` — due by ${dueDateStr}` : ""}. Please check your dashboard.`;
+  const plainMessagePt = `Você tem uma nova ação necessária: "${titlePt || title}"${dueDateStr ? ` — prazo: ${dueDateStr}` : ""}. Verifique seu painel.`;
 
-  // Create the task
-  const task = await (prisma as any).patientTask.create({
-    data: {
-      clinicId: (session.user as any).clinicId || null,
-      patientId,
-      createdById: adminId,
-      type,
-      title,
-      titlePt: titlePt || null,
-      description: description || null,
-      descriptionPt: descriptionPt || null,
-      priority,
-      dueDate: dueDate ? new Date(dueDate) : null,
-      actionUrl: actionUrl || null,
-      metadata: metadata || null,
-      status: "pending",
-    },
-  });
+  const created: any[] = [];
+  let notified = 0;
 
-  // Auto-notify patient via email + preferred channel
-  let emailSent = false;
-  try {
-    const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString("en-GB") : "";
-    const plainMessage = `You have a new action required: "${title}"${dueDateStr ? ` — due by ${dueDateStr}` : ""}. Please check your dashboard.`;
-    const plainMessagePt = `Você tem uma nova ação necessária: "${titlePt || title}"${dueDateStr ? ` — prazo: ${dueDateStr}` : ""}. Verifique seu painel.`;
-
-    await notifyPatient({
-      patientId,
-      emailTemplateSlug: "PATIENT_TASK_CREATED",
-      emailVars: {
-        taskTitle: title,
-        taskDescription: description || "",
-        dueDate: dueDateStr,
-        actionUrl: actionUrl || "/dashboard/tasks",
+  for (const pid of targetIds) {
+    const task = await (prisma as any).patientTask.create({
+      data: {
+        clinicId,
+        patientId: pid,
+        createdById: adminId,
+        type,
+        title,
+        titlePt: titlePt || null,
+        description: description || null,
+        descriptionPt: descriptionPt || null,
+        priority,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        actionUrl: actionUrl || null,
+        metadata: metadata || null,
+        status: "pending",
       },
-      plainMessage,
-      plainMessagePt,
     });
+    created.push(task);
 
-    emailSent = true;
-    await (prisma as any).patientTask.update({
-      where: { id: task.id },
-      data: { emailSent: true, emailSentAt: new Date() },
-    });
-
-    // Also send push notification to patient's mobile devices
-    await sendPushToUser(patientId, {
-      title: titlePt || title,
-      body: plainMessagePt,
-      url: actionUrl || "/dashboard/tasks",
-    }).catch(() => {});
-  } catch (err) {
-    console.error("[patient-tasks] Failed to notify patient:", err);
+    try {
+      await notifyPatient({
+        patientId: pid,
+        emailTemplateSlug: "PATIENT_TASK_CREATED",
+        emailVars: {
+          taskTitle: title,
+          taskDescription: description || "",
+          dueDate: dueDateStr,
+          actionUrl: actionUrl || "/dashboard/tasks",
+        },
+        plainMessage,
+        plainMessagePt,
+      });
+      notified++;
+      await (prisma as any).patientTask.update({
+        where: { id: task.id },
+        data: { emailSent: true, emailSentAt: new Date() },
+      });
+      await sendPushToUser(pid, {
+        title: titlePt || title,
+        body: plainMessagePt,
+        url: actionUrl || "/dashboard/tasks",
+      }).catch(() => {});
+    } catch (err) {
+      console.error(`[patient-tasks] Failed to notify patient ${pid}:`, err);
+    }
   }
 
-  return NextResponse.json({ task, emailSent }, { status: 201 });
+  return NextResponse.json(
+    { task: created[0], count: created.length, notified, emailSent: notified > 0 },
+    { status: 201 }
+  );
 }

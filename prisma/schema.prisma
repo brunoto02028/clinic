@@ -4715,6 +4715,7 @@ model PatientTask {
   metadata      Json?
   emailSent     Boolean   @default(false)
   emailSentAt   DateTime?
+  viewedAt      DateTime? // patient opened/read the task in their portal
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -4723,6 +4724,24 @@ model PatientTask {
   @@index([createdById])
   @@index([clinicId])
   @@map("patient_tasks")
+}
+
+// User-defined reusable task types (beyond the built-in ones)
+model CustomTaskType {
+  id                   String   @id @default(cuid())
+  clinicId             String?
+  name                 String   // e.g. "Bring Gym Clothes"
+  namePt               String?
+  defaultTitle         String?
+  defaultTitlePt       String?
+  defaultDescription   String?  @db.Text
+  defaultDescriptionPt String?  @db.Text
+  actionUrl            String?
+  createdById          String
+  createdAt            DateTime @default(now())
+
+  @@index([clinicId])
+  @@map("custom_task_types")
 }
 
 // ============================================
