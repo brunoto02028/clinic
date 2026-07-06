@@ -5113,7 +5113,8 @@ model WearableConnection {
   userId        String
   user          User     @relation("UserWearableConnections", fields: [userId], references: [id], onDelete: Cascade)
 
-  terraUserId   String   @unique  // Terra's internal user_id for this patient
+  terraUserId   String?  @unique  // Terra's internal user_id for this patient
+  owUserId      String?  // Open Wearables user_id for this patient
   provider      String   // GARMIN | APPLE | FITBIT | OURA | WHOOP | SAMSUNG | GOOGLE | POLAR
   status        String   @default("CONNECTED")  // CONNECTED | DISCONNECTED | ERROR
   scopes        String?  @db.Text  // JSON array of authorised scopes
@@ -5124,8 +5125,10 @@ model WearableConnection {
 
   dataPoints    WearableDataPoint[]
 
+  @@unique([userId, provider])
   @@index([userId])
   @@index([terraUserId])
+  @@index([owUserId])
 }
 
 model WearableDataPoint {

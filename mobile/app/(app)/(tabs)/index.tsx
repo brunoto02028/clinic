@@ -7,6 +7,7 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchMe } from "@/api/patient";
 import { fetchAppointments, nextUpcoming } from "@/api/appointments";
 import { fetchAICoachTip } from "@/api/notifications";
+import { fetchConnections, fetchWearableData } from "@/api/wearables";
 import { formatDateTime } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
 
@@ -55,8 +56,14 @@ export default function Home() {
   const appts = useQuery({ queryKey: ["appointments"], queryFn: fetchAppointments });
 
   const aiCoach = useQuery({ queryKey: ["ai-coach"], queryFn: fetchAICoachTip });
+  const wConn = useQuery({ queryKey: ["wearable-connections"], queryFn: fetchConnections });
+  const wData = useQuery({ queryKey: ["wearable-data-home"], queryFn: () => fetchWearableData(1) });
   const next = appts.data ? nextUpcoming(appts.data) : null;
   const firstName = me.data?.user?.firstName;
+
+  const latestSleep = wData.data?.find((d) => d.dataType === "SLEEP");
+  const latestBody = wData.data?.find((d) => d.dataType === "BODY");
+  const latestActivity = wData.data?.find((d) => d.dataType === "ACTIVITY");
 
   return (
     <Screen scroll testID="home-screen">
@@ -141,6 +148,44 @@ export default function Home() {
             ))}
           </View>
         </View>
+
+        {/* ── Wearable summary ── */}
+        {wConn.data && wConn.data.length > 0 && (
+          <Pressable
+            onPress={() => router.push("/wearable-data")}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 14,
+              padding: 16,
+              backgroundColor: pressed ? "rgba(93, 201, 192, 0.1)" : "rgba(26, 39, 64, 0.8)",
+              borderRadius: t.radius.lg,
+              borderWidth: 1,
+              borderColor: "rgba(93, 201, 192, 0.15)",
+            })}
+          >
+            <View style={{
+              width: 44, height: 44, borderRadius: 14,
+              backgroundColor: "rgba(93, 201, 192, 0.15)",
+              alignItems: "center", justifyContent: "center",
+            }}>
+              <Ionicons name="pulse-outline" size={22} color="#5dc9c0" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text variant="label" style={{ fontWeight: "600" }}>Wearable</Text>
+              <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
+                {latestSleep?.sleepDuration != null
+                  ? `Sono: ${Math.floor(latestSleep.sleepDuration / 60)}h ${Math.round(latestSleep.sleepDuration % 60)}m`
+                  : latestBody?.hrv != null
+                  ? `HRV: ${Math.round(latestBody.hrv)} ms`
+                  : latestActivity?.steps != null
+                  ? `Passos: ${latestActivity.steps.toLocaleString()}`
+                  : "Toque para ver seus dados"}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
+          </Pressable>
+        )}
 
         {/* ── Upcoming Appointment ── */}
         <View style={{ gap: 12 }}>

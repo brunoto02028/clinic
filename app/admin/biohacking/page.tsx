@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Brain, Plus, Users, AlertTriangle, CheckCircle2, TrendingUp,
   Activity, Moon, Zap, Heart, Flame, Wind, Dna, Pencil, Trash2,
-  X, Save, UserCheck, ChevronDown, ChevronUp,
+  X, Save, UserCheck, ChevronDown, ChevronUp, Watch,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,11 @@ function PatientCard({ p, protocols, onAssign }: { p: any; protocols: any[]; onA
               {p.activeProtocol && (
                 <p className="text-xs text-teal-400 mt-0.5 flex items-center gap-1">
                   <Brain className="h-3 w-3" /> {p.activeProtocol}
+                </p>
+              )}
+              {p.wearableConnections?.length > 0 && (
+                <p className="text-xs text-violet-400 mt-0.5 flex items-center gap-1">
+                  <Watch className="h-3 w-3" /> {p.wearableConnections.length} device{p.wearableConnections.length > 1 ? 's' : ''}
                 </p>
               )}
             </div>
@@ -364,7 +369,7 @@ export default function AdminBiohackingPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <Users className="h-8 w-8 text-emerald-400 shrink-0" />
@@ -389,6 +394,15 @@ export default function AdminBiohackingPage() {
             <div>
               <p className="text-2xl font-bold text-foreground">{protocols.length}</p>
               <p className="text-xs text-muted-foreground">Protocols</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <Watch className="h-8 w-8 text-violet-400 shrink-0" />
+            <div>
+              <p className="text-2xl font-bold text-foreground">{patients.filter(p => p.wearableConnections?.length > 0).length}</p>
+              <p className="text-xs text-muted-foreground">Wearable Connected</p>
             </div>
           </CardContent>
         </Card>
