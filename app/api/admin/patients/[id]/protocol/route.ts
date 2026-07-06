@@ -253,22 +253,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
       },
     });
 
-    // Notify patient: treatment plan ready
-    try {
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
-      notifyPatient({
-        patientId,
-        emailTemplateSlug: 'TREATMENT_PLAN_READY',
-        emailVars: {
-          protocolTitle: fullProtocol?.title || 'Treatment Plan',
-          therapistName: fullProtocol?.therapist ? `${fullProtocol.therapist.firstName} ${fullProtocol.therapist.lastName}` : 'Your therapist',
-          portalUrl: `${BASE}/dashboard/treatment`,
-        },
-        plainMessage: `Your treatment plan "${fullProtocol?.title || 'Treatment Plan'}" is ready! Log in to your portal to review it.`,
-        plainMessagePt: `Seu plano de tratamento "${fullProtocol?.title || 'Plano de Tratamento'}" está pronto! Acesse seu portal para revisá-lo.`,
-      }).catch(err => console.error('[protocol] notify error:', err));
-    } catch {}
-
+    // NOTE: No patient notification here — protocol is DRAFT until therapist reviews and sends.
     return NextResponse.json({ success: true, protocol: fullProtocol }, { status: 201 });
   } catch (err: any) {
     console.error("[protocol] POST error:", err);

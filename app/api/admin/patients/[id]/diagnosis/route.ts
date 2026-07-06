@@ -380,22 +380,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
       },
     });
 
-    // Notify patient: assessment completed
-    try {
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
-      notifyPatient({
-        patientId: params.id,
-        emailTemplateSlug: 'ASSESSMENT_COMPLETED',
-        emailVars: {
-          assessmentType: 'AI Clinical',
-          completedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
-          portalUrl: `${BASE}/dashboard/treatment`,
-        },
-        plainMessage: 'Your clinical assessment has been completed. Your therapist will review it and prepare your treatment plan.',
-        plainMessagePt: 'Sua avaliação clínica foi concluída. Seu terapeuta irá revisá-la e preparar seu plano de tratamento.',
-      }).catch(err => console.error('[diagnosis] notify error:', err));
-    } catch {}
-
+    // NOTE: No patient notification here — assessment is DRAFT until therapist reviews and sends.
     return NextResponse.json({ success: true, diagnosis }, { status: 201 });
   } catch (err: any) {
     console.error("[diagnosis] POST error:", err);
@@ -438,6 +423,24 @@ export async function PATCH(
         _count: { select: { protocols: true } },
       },
     });
+
+    // Only notify patient when therapist explicitly sends the assessment
+    if (status === "SENT_TO_PATIENT") {
+      try {
+        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+        notifyPatient({
+          patientId: params.id,
+          emailTemplateSlug: 'ASSESSMENT_COMPLETED',
+          emailVars: {
+            assessmentType: 'AI Clinical',
+            completedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
+            portalUrl: `${BASE}/dashboard/treatment`,
+          },
+          plainMessage: 'Your clinical assessment results are now available. Your therapist has reviewed them and they are ready for you to see.',
+          plainMessagePt: 'Os resultados da sua avaliação clínica estão disponíveis. O seu terapeuta já os reviu e estão prontos para ver.',
+        }).catch(err => console.error('[diagnosis] notify error:', err));
+      } catch {}
+    }
 
     return NextResponse.json({ success: true, diagnosis: updated });
   } catch (err: any) {
