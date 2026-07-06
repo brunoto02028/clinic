@@ -388,6 +388,9 @@ model Clinic {
 
   // Waitlist
   waitlistEntries       WaitlistEntry[]
+
+  // Equipment Knowledge Base
+  clinicEquipment       ClinicEquipment[]
   
   @@index([slug])
   @@index([isActive])
@@ -944,6 +947,38 @@ model WaitlistEntry {
   @@index([therapistId])
   @@index([status])
   @@index([treatmentType])
+}
+
+// ============================================
+// CLINIC EQUIPMENT (Knowledge Base for Atlas)
+// ============================================
+
+model ClinicEquipment {
+  id              String   @id @default(cuid())
+  clinicId        String
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name            String
+  manufacturer    String?
+  model           String?
+  description     String?  @db.Text
+
+  // JSON arrays stored as text
+  indications     String?  @db.Text
+  contraindications String? @db.Text
+
+  // JSON array of { condition, settings, sessions, frequency, notes }
+  protocols       String?  @db.Text
+
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([isActive])
+  @@map("clinic_equipment")
 }
 
 // ============================================

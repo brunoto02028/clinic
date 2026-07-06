@@ -171,6 +171,12 @@ export default function PatientProfilePage() {
   const [generating, setGenerating] = useState(false);
   const [genProtocol, setGenProtocol] = useState(false);
 
+  // Atlas SOAP pre-fill
+  const [atlasPrefilling, setAtlasPrefilling] = useState(false);
+  // Atlas treatment plan
+  const [atlasPlanLoading, setAtlasPlanLoading] = useState(false);
+  const [atlasPlan, setAtlasPlan] = useState<any>(null);
+
   // Invite link
   const [inviteUrl, setInviteUrl] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -1189,16 +1195,119 @@ export default function PatientProfilePage() {
                 {autoSaveStatus === "saving" && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> A guardar...</span>}
                 {autoSaveStatus === "saved" && <span className="text-[10px] text-emerald-400 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> Guardado automaticamente</span>}
               </div>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowNewNote(false)}><X className="h-3 w-3" /></Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline" size="sm"
+                  className="h-6 px-2 text-[10px] gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                  disabled={atlasPrefilling}
+                  onClick={async () => {
+                    setAtlasPrefilling(true);
+                    try {
+                      const res = await fetch("/api/admin/atlas/soap-prefill", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ patientId }),
+                      });
+                      const d = await res.json();
+                      if (res.ok) {
+                        setNewNote({
+                          subjective: d.subjective || "",
+                          objective: d.objective || "",
+                          assessment: d.assessment || "",
+                          plan: d.plan || "",
+                        });
+                      }
+                    } catch {}
+                    finally { setAtlasPrefilling(false); }
+                  }}
+                >
+                  {atlasPrefilling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                  Pre-fill com Atlas
+                </Button>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowNewNote(false)}><X className="h-3 w-3" /></Button>
+              </div>
             </div>
             <EF label="S — Subjetivo (queixas do paciente)" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Queixas, sintomas relatados..." />
             <EF label="O — Objetivo (achados clínicos)" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Avaliação física, testes..." />
             <EF label="A — Avaliação / Diagnóstico" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Hipótese diagnóstica, raciocínio clínico..." />
             <EF label="P — Plano de Tratamento" value={newNote.plan} onChange={(v) => setNewNote({ ...newNote, plan: v })} placeholder="Intervenções, exercícios, próximos passos..." />
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap">
               <Button size="sm" className="h-7 text-xs" onClick={saveNewNote} disabled={saving}>{saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar Nota</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowNewNote(false)}>Cancelar</Button>
+              <Button
+                variant="outline" size="sm"
+                className="h-7 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                disabled={atlasPlanLoading}
+                onClick={async () => {
+                  setAtlasPlanLoading(true);
+                  setAtlasPlan(null);
+                  try {
+                    const res = await fetch("/api/admin/atlas/treatment-plan", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ patientId, soap: newNote }),
+                    });
+                    const d = await res.json();
+                    if (res.ok) setAtlasPlan(d);
+                  } catch {}
+                  finally { setAtlasPlanLoading(false); }
+                }}
+              >
+                {atlasPlanLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bot className="h-3 w-3" />}
+                Plano com Atlas
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowNewNote(false); setAtlasPlan(null); }}>Cancelar</Button>
             </div>
+
+            {/* Atlas Treatment Plan Output */}
+            {atlasPlan && (
+              <div className="mt-2 border border-primary/30 rounded-lg p-3 bg-primary/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-semibold text-primary flex items-center gap-1"><Bot className="h-3 w-3" /> Plano sugerido por Atlas</p>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setAtlasPlan(null)}><X className="h-2.5 w-2.5" /></Button>
+                </div>
+                {atlasPlan.diagnosis && <p className="text-[10px] font-medium">{atlasPlan.diagnosis}</p>}
+                {atlasPlan.frequency && <p className="text-[10px] text-muted-foreground">📅 {atlasPlan.sessions} sessions · {atlasPlan.frequency}</p>}
+                {atlasPlan.goals?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold mb-0.5">Goals</p>
+                    {atlasPlan.goals.map((g: string, i: number) => <p key={i} className="text-[10px] text-muted-foreground">• {g}</p>)}
+                  </div>
+                )}
+                {atlasPlan.phases?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold mb-1">Phases</p>
+                    {atlasPlan.phases.map((ph: any, i: number) => (
+                      <div key={i} className="border rounded p-2 mb-1.5 space-y-0.5">
+                        <p className="text-[10px] font-medium">{ph.name} <span className="text-muted-foreground font-normal">({ph.weeks})</span></p>
+                        <p className="text-[10px] text-muted-foreground">{ph.focus}</p>
+                        {ph.interventions?.map((v: string, j: number) => <p key={j} className="text-[10px]">• {v}</p>)}
+                        {ph.equipment?.length > 0 && <p className="text-[9px] text-primary">Equipment: {ph.equipment.join(", ")}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {atlasPlan.hep?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold mb-0.5">Home Exercise Programme</p>
+                    {atlasPlan.hep.map((h: string, i: number) => <p key={i} className="text-[10px] text-muted-foreground">• {h}</p>)}
+                  </div>
+                )}
+                {atlasPlan.notes && <p className="text-[10px] text-muted-foreground italic">{atlasPlan.notes}</p>}
+                <Button size="sm" className="h-6 text-[10px] gap-1 w-full" onClick={() => {
+                  const planText = [
+                    atlasPlan.diagnosis ? `Diagnosis: ${atlasPlan.diagnosis}` : "",
+                    atlasPlan.frequency ? `${atlasPlan.sessions} sessions · ${atlasPlan.frequency}` : "",
+                    atlasPlan.phases?.map((ph: any) => `${ph.name} (${ph.weeks}): ${ph.interventions?.join("; ")}`).join("\n"),
+                    atlasPlan.hep?.length > 0 ? `HEP: ${atlasPlan.hep.join("; ")}` : "",
+                    atlasPlan.progressCriteria ? `Progress criteria: ${atlasPlan.progressCriteria}` : "",
+                  ].filter(Boolean).join("\n");
+                  setNewNote(n => ({ ...n, plan: planText }));
+                  setAtlasPlan(null);
+                }}>
+                  <CheckCircle2 className="h-2.5 w-2.5" /> Copiar para campo P
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
