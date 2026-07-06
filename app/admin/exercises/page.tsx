@@ -54,7 +54,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -62,28 +64,37 @@ import { useVoiceInput } from "@/hooks/use-voice-input";
 
 // ─── Constants ─────────────────────────────────────────
 
-const BODY_REGIONS: Record<string, string> = {
-  SHOULDER: "Shoulder",
-  ELBOW: "Elbow",
-  WRIST_HAND: "Wrist / Hand",
-  HIP: "Hip",
-  KNEE: "Knee",
-  ANKLE_FOOT: "Ankle / Foot",
-  SPINE_BACK: "Spine / Back",
-  NECK_CERVICAL: "Neck / Cervical",
-  CORE_ABDOMEN: "Core / Abdomen",
-  STRETCHING: "Stretching",
-  MUSCLE_INJURY: "Muscle Injury",
-  FULL_BODY: "Full Body",
-  OTHER: "Other",
+const BODY_REGIONS: Record<string, { en: string; pt: string; icon: string }> = {
+  SHOULDER:       { en: "Shoulder",          pt: "Ombro",              icon: "💪" },
+  ELBOW:          { en: "Elbow",             pt: "Cotovelo",           icon: "🦾" },
+  WRIST_HAND:     { en: "Wrist / Hand",      pt: "Pulso / Mão",        icon: "🤲" },
+  HIP:            { en: "Hip",               pt: "Quadril",            icon: "🦴" },
+  KNEE:           { en: "Knee",              pt: "Joelho",             icon: "🦵" },
+  ANKLE_FOOT:     { en: "Ankle / Foot",      pt: "Tornozelo / Pé",     icon: "🦶" },
+  NECK_CERVICAL:  { en: "Neck / Cervical",   pt: "Cervical / Pescoço", icon: "🔴" },
+  SPINE_THORACIC: { en: "Thoracic Spine",    pt: "Coluna Torácica",    icon: "🟠" },
+  SPINE_LUMBAR:   { en: "Lumbar Spine",      pt: "Coluna Lombar",      icon: "🟡" },
+  SPINE_BACK:     { en: "Spine (general)",   pt: "Coluna Geral",       icon: "⬜" },
+  CORE_ABDOMEN:   { en: "Core / Abdomen",    pt: "Core / Abdomen",     icon: "🟢" },
+  STRETCHING:     { en: "Stretching",        pt: "Alongamento",        icon: "🤸" },
+  MUSCLE_INJURY:  { en: "Muscle Injury",     pt: "Lesão Muscular",     icon: "🩹" },
+  FULL_BODY:      { en: "Full Body",         pt: "Corpo Inteiro",      icon: "🏃" },
+  OTHER:          { en: "Other",             pt: "Outro",              icon: "⚙️" },
 };
 
-const REGION_GROUPS: Record<string, string[]> = {
-  "Upper Limbs": ["SHOULDER", "ELBOW", "WRIST_HAND"],
-  "Lower Limbs": ["HIP", "KNEE", "ANKLE_FOOT"],
-  "Trunk & Core": ["SPINE_BACK", "NECK_CERVICAL", "CORE_ABDOMEN"],
-  "Other": ["STRETCHING", "MUSCLE_INJURY", "FULL_BODY", "OTHER"],
+const regionLabel = (key: string, locale: string) => {
+  const r = BODY_REGIONS[key];
+  if (!r) return key.replace(/_/g, " ");
+  return `${r.icon} ${locale === "pt-BR" ? r.pt : r.en}`;
 };
+
+const REGION_GROUPS: { label: string; labelPt: string; keys: string[] }[] = [
+  { label: "Upper Limbs",          labelPt: "Membros Superiores",  keys: ["SHOULDER", "ELBOW", "WRIST_HAND"] },
+  { label: "Lower Limbs",          labelPt: "Membros Inferiores",  keys: ["HIP", "KNEE", "ANKLE_FOOT"] },
+  { label: "Spine",                labelPt: "Coluna Vertebral",    keys: ["NECK_CERVICAL", "SPINE_THORACIC", "SPINE_LUMBAR", "SPINE_BACK"] },
+  { label: "Core & Trunk",         labelPt: "Core & Tronco",       keys: ["CORE_ABDOMEN"] },
+  { label: "General",              labelPt: "Geral",               keys: ["STRETCHING", "MUSCLE_INJURY", "FULL_BODY", "OTHER"] },
+];
 
 const DIFFICULTIES: Record<string, { label: string; color: string }> = {
   BEGINNER: { label: "Beginner", color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
@@ -319,15 +330,24 @@ export default function ExercisesPage() {
           />
         </div>
         <Select value={bodyRegion || "ALL"} onValueChange={(v) => { setBodyRegion(v === "ALL" ? "" : v); setPage(1); }}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Body Region" />
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Body Region">
+              {bodyRegion ? regionLabel(bodyRegion, locale) : "All Regions"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All Regions</SelectItem>
-            {Object.entries(REGION_GROUPS).map(([group, regions]) => (
-              regions.map((r) => (
-                <SelectItem key={r} value={r}>{BODY_REGIONS[r]}</SelectItem>
-              ))
+            <SelectItem value="ALL">🏥 All Regions</SelectItem>
+            {REGION_GROUPS.map((group) => (
+              <SelectGroup key={group.label}>
+                <SelectLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+                  {locale === "pt-BR" ? group.labelPt : group.label}
+                </SelectLabel>
+                {group.keys.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {regionLabel(k, locale)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectContent>
         </Select>
@@ -499,7 +519,7 @@ function ExerciseCard({
 
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-            {BODY_REGIONS[exercise.bodyRegion] || exercise.bodyRegion}
+            {regionLabel(exercise.bodyRegion, "en-GB")}
           </Badge>
           {exercise._count && exercise._count.prescriptions > 0 && (
             <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
@@ -873,10 +893,13 @@ function ExerciseFormModal({
               <Select value={region} onValueChange={setRegion}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(REGION_GROUPS).map(([group, regions]) => (
-                    regions.map((r) => (
-                      <SelectItem key={r} value={r}>{BODY_REGIONS[r]}</SelectItem>
-                    ))
+                  {REGION_GROUPS.map((group) => (
+                    <SelectGroup key={group.label}>
+                      <SelectLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{group.label}</SelectLabel>
+                      {group.keys.map((k) => (
+                        <SelectItem key={k} value={k}>{regionLabel(k, "en-GB")}</SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
@@ -1203,7 +1226,7 @@ function PrescribeModal({
         <div className="flex items-center justify-between p-5 border-b">
           <div>
             <h2 className="text-lg font-semibold">Prescribe Exercise</h2>
-            <p className="text-sm text-muted-foreground">{exercise.name} — {BODY_REGIONS[exercise.bodyRegion]}</p>
+            <p className="text-sm text-muted-foreground">{exercise.name} — {regionLabel(exercise.bodyRegion, "en-GB")}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
@@ -1537,8 +1560,8 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
                             <Select value={f.bodyRegion} onValueChange={(v) => updateFile(idx, { bodyRegion: v })}>
                               <SelectTrigger className="h-6 text-[10px] w-[110px]"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                {Object.entries(BODY_REGIONS).map(([k, v]) => (
-                                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                                {REGION_GROUPS.flatMap(g => g.keys).map((k) => (
+                                  <SelectItem key={k} value={k}>{regionLabel(k, "en-GB")}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -1608,7 +1631,7 @@ function VideoPreviewModal({
         <div className="flex items-center justify-between p-4 border-b">
           <div>
             <h3 className="font-semibold">{exercise.name}</h3>
-            <p className="text-sm text-muted-foreground">{BODY_REGIONS[exercise.bodyRegion]}</p>
+            <p className="text-sm text-muted-foreground">{regionLabel(exercise.bodyRegion, "en-GB")}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>

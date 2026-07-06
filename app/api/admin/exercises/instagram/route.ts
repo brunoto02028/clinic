@@ -5,11 +5,18 @@ import { prisma } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import * as cheerio from "cheerio";
+import { callAI } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min for large profile downloads
 
 // ─── Body region keywords (PT-BR + EN) ──────────────────────────
+const VALID_REGIONS = [
+  "SHOULDER", "ELBOW", "WRIST_HAND", "HIP", "KNEE", "ANKLE_FOOT",
+  "SPINE_LUMBAR", "SPINE_THORACIC", "SPINE_BACK",
+  "NECK_CERVICAL", "CORE_ABDOMEN", "STRETCHING", "MUSCLE_INJURY", "FULL_BODY", "OTHER",
+] as const;
+
 const BODY_REGION_KEYWORDS: Record<string, string[]> = {
   SHOULDER: ["shoulder", "ombro", "deltoid", "deltóide", "rotator cuff", "manguito rotador", "supraespinhoso", "infraespinhoso"],
   ELBOW: ["elbow", "cotovelo", "epicondylitis", "epicondilite", "tennis elbow"],
@@ -17,15 +24,17 @@ const BODY_REGION_KEYWORDS: Record<string, string[]> = {
   HIP: ["hip", "quadril", "glute", "glúteo", "gluteo", "piriformis", "piriforme", "adductor", "adutor"],
   KNEE: ["knee", "joelho", "patella", "patela", "menisco", "meniscus", "acl", "lca", "pcl"],
   ANKLE_FOOT: ["ankle", "tornozelo", "foot", "pé", "pe ", "plantar", "achilles", "aquiles", "calf", "panturrilha"],
-  SPINE_BACK: ["spine", "coluna", "back", "costas", "lombar", "lumbar", "thoracic", "torácica", "disc", "disco", "hernia", "hérnia"],
-  NECK_CERVICAL: ["neck", "pescoço", "cervical", "cervicalgia", "trap", "trapézio", "trapezio"],
+  SPINE_LUMBAR: ["lombar", "lumbar", "low back", "dor lombar", "lower back", "hérnia lombar", "l1", "l2", "l3", "l4", "l5", "sacral", "sacro", "sij", "ciática", "sciatica"],
+  SPINE_THORACIC: ["thoracic", "torácica", "toracica", "dorsal", "mid back", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "cifose", "kyphosis"],
+  SPINE_BACK: ["spine", "coluna", "back", "costas", "disc", "disco", "hernia", "hérnia"],
+  NECK_CERVICAL: ["neck", "pescoço", "cervical", "cervicalgia", "trap", "trapézio", "trapezio", "c1", "c2", "c3", "c4", "c5", "c6", "c7"],
   CORE_ABDOMEN: ["core", "abdomen", "abdominal", "abs", "plank", "prancha", "oblique", "oblíquo"],
   STRETCHING: ["stretch", "alongamento", "flexibility", "flexibilidade", "mobilidade", "mobility"],
   MUSCLE_INJURY: ["injury", "lesão", "lesao", "strain", "distensão", "rupture", "ruptura", "recovery", "recuperação"],
   FULL_BODY: ["full body", "corpo inteiro", "total body", "funcional", "functional", "circuit", "circuito"],
 };
 
-function detectBodyRegion(caption: string): string {
+function detectBodyRegionByKeywords(caption: string): string {
   if (!caption) return "OTHER";
   const lower = caption.toLowerCase();
   let bestRegion = "OTHER";
@@ -41,6 +50,38 @@ function detectBodyRegion(caption: string): string {
     }
   }
   return bestRegion;
+}
+
+async function detectBodyRegion(caption: string): Promise<string> {
+  if (!caption || caption.length < 5) return "OTHER";
+
+  const keywordResult = detectBodyRegionByKeywords(caption);
+  if (keywordResult !== "OTHER") return keywordResult;
+
+  try {
+    const prompt = `You are a physiotherapy assistant. Analyze this social media post caption and classify the primary body region/joint it refers to.
+
+Caption: "${caption.substring(0, 600)}"
+
+Reply with ONLY one of these exact values (nothing else):
+${VALID_REGIONS.join(", ")}
+
+Guidelines:
+- Lower back / lombar / L1-L5 / sciatica → SPINE_LUMBAR
+- Mid back / thoracic / T1-T12 / kyphosis → SPINE_THORACIC  
+- Neck / cervical / C1-C7 → NECK_CERVICAL
+- Generic back/spine → SPINE_BACK
+- Plank / core / abs → CORE_ABDOMEN
+- If uncertain → OTHER`;
+
+    const result = await callAI(prompt, "");
+    const cleaned = result.trim().toUpperCase().replace(/[^A-Z_]/g, "");
+    if ((VALID_REGIONS as readonly string[]).includes(cleaned)) return cleaned;
+  } catch (e) {
+    console.error("AI region detection failed:", e);
+  }
+
+  return "OTHER";
 }
 
 // ─── POST handler ────────────────────────────────────────────────
@@ -166,9 +207,9 @@ export async function POST(req: NextRequest) {
           } catch {}
         }
 
-        // Auto-detect body region from caption
-        const bodyRegion = detectBodyRegion(videoData.caption || "");
-        const regionLabel = BODY_REGION_KEYWORDS[bodyRegion] ? bodyRegion : "OTHER";
+        // Auto-detect body region from caption (AI-powered)
+        const bodyRegion = await detectBodyRegion(videoData.caption || "");
+        const regionLabel = (VALID_REGIONS as readonly string[]).includes(bodyRegion) ? bodyRegion : "OTHER";
 
         // Create exercise — no text from Instagram, only body region
         const exercise = await prisma.exercise.create({
