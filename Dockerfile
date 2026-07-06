@@ -27,7 +27,8 @@ RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
 
 FROM base AS runner
-RUN apk add --no-cache openssl su-exec
+RUN apk add --no-cache openssl su-exec python3 py3-pip ffmpeg && \
+    pip3 install --break-system-packages --no-cache-dir yt-dlp
 WORKDIR /app
 
 ENV NODE_ENV=production

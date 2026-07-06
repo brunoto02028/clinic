@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, readFile, unlink } from "fs/promises";
 import path from "path";
+import { tmpdir } from "os";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import * as cheerio from "cheerio";
 import { callAI } from "@/lib/ai-provider";
+
+const execFileAsync = promisify(execFile);
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min for large profile downloads
@@ -156,31 +161,42 @@ export async function POST(req: NextRequest) {
 
     for (const postUrl of expandedUrls) {
       try {
-        const videoData = await extractInstagramVideo(postUrl);
+        let videoBuffer: ArrayBuffer | null = null;
+        let videoCaption: string | undefined;
 
-        if (!videoData) {
-          results.push({ url: postUrl, success: false, error: "Could not extract video URL. Instagram may be blocking server-side access. Try using Cobalt.tools manually." });
-          continue;
+        // ── Primary: yt-dlp (handles Instagram natively) ──────────
+        const ytResult = await ytDlpDownload(postUrl);
+        if (ytResult) {
+          videoBuffer = ytResult.buffer.buffer;
+          videoCaption = ytResult.caption;
         }
 
-        // Download the video (Cobalt tunnel URLs don't need Referer)
-        const isCobalt = videoData.videoUrl.includes("cobalt.tools");
-        const videoRes = await fetch(videoData.videoUrl, {
-          headers: isCobalt ? {} : {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Referer": "https://www.instagram.com/",
-          },
-        });
+        // ── Fallback: URL extraction + fetch ──────────────────────
+        if (!videoBuffer) {
+          const videoData = await extractInstagramVideo(postUrl);
+          if (!videoData) {
+            results.push({ url: postUrl, success: false, error: "Could not extract video URL — Instagram may be blocking server-side access to this IP." });
+            continue;
+          }
+          videoCaption = videoData.caption;
 
-        if (!videoRes.ok) {
-          results.push({ url: postUrl, success: false, error: `Download failed (HTTP ${videoRes.status}) — video URL: ${videoData.videoUrl.substring(0, 80)}` });
-          continue;
+          const isCobalt = videoData.videoUrl.includes("cobalt.tools");
+          const videoRes = await fetch(videoData.videoUrl, {
+            headers: isCobalt ? {} : {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Referer": "https://www.instagram.com/",
+            },
+          });
+
+          if (!videoRes.ok) {
+            results.push({ url: postUrl, success: false, error: `Download failed (HTTP ${videoRes.status})` });
+            continue;
+          }
+          videoBuffer = await videoRes.arrayBuffer();
         }
 
-        const videoBuffer = await videoRes.arrayBuffer();
-        // Skip very small files (likely errors)
-        if (videoBuffer.byteLength < 10000) {
-          results.push({ url: postUrl, success: false, error: "Downloaded file too small — likely not a video" });
+        if (!videoBuffer || videoBuffer.byteLength < 10000) {
+          results.push({ url: postUrl, success: false, error: "Downloaded file too small — likely not a valid video" });
           continue;
         }
 
@@ -191,26 +207,10 @@ export async function POST(req: NextRequest) {
         const videoUrl = `/uploads/exercises/${filename}`;
         const fileSize = videoBuffer.byteLength;
 
-        // Download thumbnail
-        let thumbnailUrl: string | null = null;
-        if (videoData.thumbnailUrl) {
-          try {
-            const thumbRes = await fetch(videoData.thumbnailUrl, {
-              headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://www.instagram.com/" },
-            });
-            if (thumbRes.ok) {
-              const thumbBuffer = await thumbRes.arrayBuffer();
-              const thumbFilename = `ig-thumb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`;
-              const thumbPath = path.join(exercisesDir, thumbFilename);
-              await writeFile(thumbPath, new Uint8Array(thumbBuffer));
-              thumbnailUrl = `/uploads/exercises/${thumbFilename}`;
-            }
-          } catch {}
-        }
-
         // Auto-detect body region from caption (AI-powered)
-        const bodyRegion = await detectBodyRegion(videoData.caption || "");
+        const bodyRegion = await detectBodyRegion(videoCaption || "");
         const regionLabel = (VALID_REGIONS as readonly string[]).includes(bodyRegion) ? bodyRegion : "OTHER";
+        const thumbnailUrl: string | null = null;
 
         // Create exercise — no text from Instagram, only body region
         const exercise = await prisma.exercise.create({
@@ -380,12 +380,39 @@ async function scrapeProfilePostUrls(username: string): Promise<string[]> {
   return postUrls;
 }
 
+// ─── yt-dlp direct download (most reliable) ────────────────────
+
+async function ytDlpDownload(url: string): Promise<{ buffer: Buffer; caption?: string } | null> {
+  const tempPath = path.join(tmpdir(), `ig-${Date.now()}-${Math.random().toString(36).slice(2,6)}.mp4`);
+  try {
+    await execFileAsync("yt-dlp", [
+      "--no-playlist",
+      "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+      "--merge-output-format", "mp4",
+      "-o", tempPath,
+      "--quiet",
+      "--no-warnings",
+      "--no-check-certificates",
+      url,
+    ], { timeout: 90000 });
+    const buffer = await readFile(tempPath);
+    await unlink(tempPath).catch(() => {});
+    if (buffer.byteLength < 10000) return null;
+    console.log("[yt-dlp] Success — %d bytes for %s", buffer.byteLength, url);
+    return { buffer };
+  } catch (e: any) {
+    console.error("[yt-dlp] Failed:", e?.message?.split("\n")[0]);
+    await unlink(tempPath).catch(() => {});
+    return null;
+  }
+}
+
 // ─── Video extraction (individual post) ──────────────────────────
 
 async function extractInstagramVideo(
   url: string
 ): Promise<{ videoUrl: string; thumbnailUrl?: string; caption?: string } | null> {
-  // Method 0: Cobalt API — most reliable from cloud (no IP blocking)
+  // Method 0: Cobalt API — reliable from cloud environments
   try {
     const cobaltRes = await fetch("https://api.cobalt.tools/", {
       method: "POST",
@@ -394,9 +421,18 @@ async function extractInstagramVideo(
     });
     if (cobaltRes.ok) {
       const cobaltData = await cobaltRes.json();
+      // Handle tunnel or redirect
       if ((cobaltData.status === "tunnel" || cobaltData.status === "redirect") && cobaltData.url) {
         console.log("[Instagram] Cobalt success for", url);
         return { videoUrl: cobaltData.url, caption: undefined };
+      }
+      // Handle picker (multiple quality options — take first video)
+      if (cobaltData.status === "picker" && cobaltData.picker?.length > 0) {
+        const videoItem = cobaltData.picker.find((p: any) => p.type === "video") || cobaltData.picker[0];
+        if (videoItem?.url) {
+          console.log("[Instagram] Cobalt picker success");
+          return { videoUrl: videoItem.url, thumbnailUrl: videoItem.thumb, caption: undefined };
+        }
       }
       console.log("[Instagram] Cobalt response:", cobaltData.status, cobaltData.error?.code);
     }
