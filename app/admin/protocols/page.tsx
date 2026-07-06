@@ -120,6 +120,26 @@ export default function ProtocolsPage() {
   const [assignNote, setAssignNote] = useState("");
   const [assignSearch, setAssignSearch] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+
+  const seedProtocols = async () => {
+    if (!confirm("Inserir os 10 protocolos clínicos de base? Esta ação cria os templates na biblioteca.")) return;
+    setSeeding(true);
+    try {
+      const res = await fetch("/api/admin/protocols/seed", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: `✅ ${data.created} protocolos criados!`, description: data.protocols?.join(", ") });
+        load();
+      } else {
+        toast({ title: "Erro", description: data.error, variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const load = () => {
     Promise.all([
@@ -265,10 +285,18 @@ export default function ProtocolsPage() {
             Templates reutilizáveis por condição, serviço e equipamento. Atribua a pacientes com um clique.
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Protocolo
-        </Button>
+        <div className="flex items-center gap-2">
+          {templates.length === 0 && (
+            <Button variant="outline" onClick={seedProtocols} disabled={seeding} className="gap-2 text-primary border-primary/30 hover:bg-primary/5">
+              {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+              Carregar 10 Protocolos Base
+            </Button>
+          )}
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Protocolo
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -287,7 +315,14 @@ export default function ProtocolsPage() {
         <div className="text-center py-16 space-y-3">
           <ClipboardList className="h-12 w-12 text-muted-foreground/20 mx-auto" />
           <p className="text-sm text-muted-foreground">
-            {templates.length === 0 ? "Nenhum protocolo criado ainda. Crie o primeiro!" : "Nenhum resultado."}
+            {templates.length === 0 ? (
+            <>
+              Nenhum protocolo ainda.{" "}
+              <button onClick={seedProtocols} disabled={seeding} className="text-primary underline hover:no-underline">
+                {seeding ? "A carregar..." : "Carregar os 10 protocolos de base"}
+              </button>
+            </>
+          ) : "Nenhum resultado."}
           </p>
         </div>
       )}
