@@ -42,9 +42,9 @@ async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: str
 export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB'): Promise<string> {
   const { logoUrl, whiteLogoUrl, phone, email } = await getClinicSettings();
   const pt = isPt(locale);
-  // Header: white logo on teal — settings override, else bundled white PNG; caption keeps the name visible when images are blocked
+  // Header: white logo only (no caption — the logo carries the name and captions get auto-translated by Gmail)
   const headerLogoUrl = whiteLogoUrl || EMAIL_WHITE_LOGO_URL;
-  const logoHtml = `<img src="${headerLogoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;" /><p style="margin:6px 0 0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;letter-spacing:0.3px;">Bruno Physical Rehabilitation</p>`;
+  const logoHtml = `<img src="${headerLogoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;" />`;
   // Footer: static PNG logo (Gmail-safe, not WebP, not data URI)
   const footerLogoHtml = `<img src="${EMAIL_LOGO_URL}" alt="Bruno Physical Rehabilitation" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;" />`;
   const noReplyText = pt
@@ -63,7 +63,7 @@ ${preheader ? `<span style="display:none!important;visibility:hidden;mso-hide:al
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f7fa;">
 <tr><td align="center" style="padding:30px 15px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
-  <tr><td style="background-color:#1a6b6b;padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
+  <tr><td style="background-color:#2d8a86;background:linear-gradient(135deg,#5dc9c0 0%,#1a6b6b 100%);padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
   <tr><td style="padding:36px 32px 24px;">${content}</td></tr>
   <tr><td style="padding:24px 32px 28px;border-top:1px solid #eef2f5;background:#f9fafb;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
