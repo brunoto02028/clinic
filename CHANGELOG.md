@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.8.0] - 2026-07-06
+
+### Added
+- **Automatic Waitlist for Cancelled Slots** — patients can join a per-clinic waitlist and are notified automatically when a matching appointment is freed.
+  - Prisma `WaitlistEntry` model (`WaitlistStatus` enum: `WAITING | NOTIFIED | BOOKED | REMOVED`)
+  - Patient API: `GET/POST/DELETE /api/patient/waitlist` — list own entries, join, leave
+  - Admin API: `GET/POST/DELETE /api/admin/waitlist` — list all entries, manual re-notify, remove
+  - `lib/waitlist.ts` — `notifyWaitlistForCancelledAppointment()`: matches by clinic + treatment type + optional therapist + date window, notifies up to 5 patients FIFO via `notifyPatient` (email / WhatsApp / SMS / Telegram)
+  - Hook injected into both cancellation flows: `PATCH /api/appointments/[id]` and `POST /api/admin/cancellations` (refund approval)
+  - Email template `WAITLIST_SLOT_AVAILABLE` (EN-GB + PT-BR)
+  - Patient UI page `/dashboard/waitlist` — join with treatment type + date window picker, list active entries, leave
+  - Admin UI page `/admin/waitlist` — filter by status/patient, manual notify button, remove
+  - "Waitlist" button added to patient appointments list header
+  - "Waitlist" tab added to Admin → Schedule section in sidebar
+  - `GET /api/patient/treatment-types` — lists active treatment types (for waitlist + booking pickers)
+- **Pending patient notifications badge** — admin sidebar mini-badge polls `/api/admin/pending-count` every 30 s; patient list shows unread message and answered question badges per row
+
+---
+
 ## [2.7.0] - 2026-07-05
 
 ### Fixed
