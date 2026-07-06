@@ -75,6 +75,7 @@ const publicRoutes = [
   '/api/client-error',
   '/api/foot-scans/session',
   '/api/webhooks',
+  '/api/wearables/webhook',
   '/clinics',
   '/test',
   '/preview',

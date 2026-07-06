@@ -2,10 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Brain, Zap, Moon, Activity, Heart, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Flame, Wind, Dna, Watch, Wifi, WifiOff, RefreshCw } from "lucide-react";
+import { Brain, Zap, Moon, Activity, Heart, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Flame, Wind, Dna, Watch } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { OW_PROVIDERS } from "@/lib/open-wearables";
+import { ConnectDeviceCard } from "@/components/wearables/connect-device-card";
+import { SleepSummary } from "@/components/wearables/sleep-summary";
+import { RecoveryCard } from "@/components/wearables/recovery-card";
+import { ActivityCard } from "@/components/wearables/activity-card";
 
 const CATEGORY_ICONS: Record<string, any> = {
   SLEEP: Moon, NUTRITION: Flame, EXERCISE: Activity, LIGHT: Zap,
@@ -54,6 +59,35 @@ function MiniBar({ value, max = 10, color = "emerald" }: { value: number | null;
   );
 }
 
+interface WearableConnection {
+  id: string;
+  provider: string;
+  status: string;
+  lastSyncedAt: string | null;
+  createdAt: string;
+}
+
+interface WearableDataPoint {
+  id: string;
+  dataDate: string;
+  dataType: string;
+  provider: string;
+  sleepDuration?: number | null;
+  sleepEfficiency?: number | null;
+  deepMinutes?: number | null;
+  remMinutes?: number | null;
+  lightMinutes?: number | null;
+  awakeMinutes?: number | null;
+  hrv?: number | null;
+  restingHr?: number | null;
+  spo2?: number | null;
+  bodyTemperature?: number | null;
+  steps?: number | null;
+  activeCalories?: number | null;
+  totalCalories?: number | null;
+  activeMinutes?: number | null;
+}
+
 export default function BiohackingDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,9 +98,9 @@ export default function BiohackingDashboardPage() {
   const [protocol, setProtocol] = useState<any>(null);
   const [protocolOpen, setProtocolOpen] = useState(true);
 
-  // Wearable / Terra state
-  const [wearable, setWearable] = useState<{ connections: any[]; dataPoints: any[] } | null>(null);
-  const [connectingWearable, setConnectingWearable] = useState(false);
+  // Wearable state (Open Wearables)
+  const [connections, setConnections] = useState<WearableConnection[]>([]);
+  const [wearableData, setWearableData] = useState<WearableDataPoint[]>([]);
   const [wearableMsg, setWearableMsg] = useState<string | null>(
     searchParams?.get("connected") === "1" ? "Wearable connected! Data will sync shortly." :
     searchParams?.get("connected") === "0" ? "Wearable connection failed. Please try again." : null
@@ -84,14 +118,16 @@ export default function BiohackingDashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [ciRes, prRes, wRes] = await Promise.all([
+    const [ciRes, prRes, connRes, dataRes] = await Promise.all([
       fetch("/api/patient/daily-checkin"),
       fetch("/api/biohacking/my-protocol"),
-      fetch("/api/biohacking/terra/status"),
+      fetch("/api/wearables/connections"),
+      fetch("/api/wearables/data?days=7"),
     ]);
     const ciData = await ciRes.json();
     const prData = await prRes.json();
-    const wData  = wRes.ok ? await wRes.json() : null;
+    const connData = connRes.ok ? await connRes.json() : null;
+    const dataData = dataRes.ok ? await dataRes.json() : null;
 
     if (ciData.today) {
       const t = ciData.today;
@@ -108,31 +144,34 @@ export default function BiohackingDashboardPage() {
     }
     setHistory(ciData.history || []);
     setProtocol(prData.assignment || null);
-    if (wData) setWearable(wData);
+    setConnections(connData?.connections || []);
+    setWearableData(dataData?.data || []);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const handleConnectWearable = async () => {
-    setConnectingWearable(true);
-    try {
-      const res = await fetch("/api/biohacking/terra/connect");
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-      else setWearableMsg("Could not generate connection link. Please try again.");
-    } catch {
-      setWearableMsg("Connection error. Please try again.");
-    }
-    setConnectingWearable(false);
+  const handleConnect = (providerKey: string) => {
+    window.location.href = "/api/wearables/connect/" + providerKey;
   };
 
-  const handleDisconnect = async (terraUserId: string) => {
-    await fetch("/api/biohacking/terra/connect", {
-      method: "DELETE",
+  const handleDisconnect = async (providerKey: string) => {
+    await fetch("/api/wearables/disconnect", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ terraUserId }),
+      body: JSON.stringify({ provider: providerKey }),
     });
+    load();
+  };
+
+  const handleSync = async (providerKey: string) => {
+    try {
+      await fetch("/api/wearables/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: providerKey }),
+      });
+    } catch {}
     load();
   };
 
@@ -157,6 +196,14 @@ export default function BiohackingDashboardPage() {
     return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
   };
 
+  // Latest data point per type (SLEEP, BODY = recovery, ACTIVITY)
+  const latestByType = (dataType: string) =>
+    wearableData.find(d => d.dataType === dataType) || null;
+
+  const latestSleep = latestByType("SLEEP");
+  const latestRecovery = latestByType("BODY");
+  const latestActivity = latestByType("ACTIVITY");
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-4 animate-pulse">
@@ -178,24 +225,13 @@ export default function BiohackingDashboardPage() {
         </div>
       </div>
 
-      {/* Wearable Connection */}
+      {/* Wearable Devices */}
       <Card className="border-violet-500/20">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Watch className="h-4 w-4 text-violet-400" />
-              Wearable Integration
-            </CardTitle>
-            {wearable?.connections && wearable.connections.length > 0 ? (
-              <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20 text-xs">
-                <Wifi className="h-3 w-3 mr-1" /> {wearable.connections.length} Connected
-              </Badge>
-            ) : (
-              <Badge className="bg-muted text-muted-foreground text-xs">
-                <WifiOff className="h-3 w-3 mr-1" /> Not Connected
-              </Badge>
-            )}
-          </div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Watch className="h-4 w-4 text-violet-400" />
+            Wearable Devices
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {wearableMsg && (
@@ -203,67 +239,39 @@ export default function BiohackingDashboardPage() {
               wearableMsg.includes("connected!") ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
             }`}>{wearableMsg}</div>
           )}
-
-          {wearable?.connections && wearable.connections.length > 0 ? (
-            <div className="space-y-2">
-              {wearable.connections.map((conn: any) => (
-                <div key={conn.id} className="flex items-center justify-between p-3 rounded-lg bg-muted border border-border">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{conn.provider}</p>
-                    {conn.lastSyncedAt && (
-                      <p className="text-xs text-muted-foreground">
-                        Last sync: {new Date(conn.lastSyncedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => load()} className="p-1.5 rounded-lg hover:bg-muted-foreground/10 text-muted-foreground" title="Refresh">
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    </button>
-                    <button onClick={() => handleDisconnect(conn.terraUserId)}
-                      className="text-xs text-rose-400 hover:text-rose-300 px-2 py-1 rounded-lg hover:bg-rose-500/10">Disconnect</button>
-                  </div>
-                </div>
-              ))}
-              <Button onClick={handleConnectWearable} disabled={connectingWearable} variant="outline" className="w-full text-sm">
-                + Add Another Device
-              </Button>
-            </div>
-          ) : (
-            <div className="text-center py-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Connect your wearable to automatically sync HRV, sleep, activity and readiness data.</p>
-              <p className="text-xs text-muted-foreground">Supports: Garmin · Oura · Whoop · Apple Health · Fitbit · Samsung · Polar</p>
-              <Button onClick={handleConnectWearable} disabled={connectingWearable}
-                className="bg-violet-600 hover:bg-violet-700 text-white">
-                {connectingWearable ? "Connecting..." : "Connect Wearable"}
-              </Button>
-            </div>
-          )}
-
-          {/* Latest wearable data snapshot */}
-          {wearable?.dataPoints && wearable.dataPoints.length > 0 && (() => {
-            const latest = wearable.dataPoints[0];
-            return (
-              <div className="pt-2 border-t border-border">
-                <p className="text-xs text-muted-foreground mb-2">Latest sync — {latest.dataDate} · {latest.provider}</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { label: "Sleep Score",  val: latest.sleepScore != null ? `${Math.round(latest.sleepScore)}%` : null, color: "indigo" },
-                    { label: "HRV",          val: latest.hrv != null ? `${Math.round(latest.hrv)} ms` : null, color: "rose" },
-                    { label: "Resting HR",   val: latest.restingHr != null ? `${Math.round(latest.restingHr)} bpm` : null, color: "amber" },
-                    { label: "Recovery",     val: latest.hrvScore != null ? `${Math.round(latest.hrvScore)}%` : null, color: "emerald" },
-                  ].filter(x => x.val).map(({ label, val, color }) => (
-                    <div key={label} className={`p-2.5 rounded-lg bg-${color}-500/10 border border-${color}-500/20 text-center`}>
-                      <p className={`text-sm font-bold text-${color}-400`}>{val}</p>
-                      <p className="text-xs text-muted-foreground">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {OW_PROVIDERS.map(provider => {
+              const conn = connections.find(c => c.provider === provider.key.toUpperCase());
+              return (
+                <ConnectDeviceCard
+                  key={provider.key}
+                  provider={provider}
+                  connected={!!conn}
+                  lastSync={conn?.lastSyncedAt || undefined}
+                  onConnect={() => handleConnect(provider.key)}
+                  onDisconnect={() => handleDisconnect(provider.key)}
+                  onSync={() => handleSync(provider.key)}
+                />
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Today's Metrics */}
+      {(latestSleep || latestRecovery || latestActivity) && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Activity className="h-4 w-4 text-emerald-400" />
+            Today's Metrics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <SleepSummary data={latestSleep} />
+            <RecoveryCard data={latestRecovery} />
+            <ActivityCard data={latestActivity} />
+          </div>
+        </div>
+      )}
 
       {/* Daily Check-In */}
       <Card className="border-emerald-500/20">
