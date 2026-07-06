@@ -105,10 +105,16 @@ export default function EquipmentPage() {
 
   const load = async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/equipment");
-    const data = await res.json();
-    setList(Array.isArray(data) ? data : []);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/equipment");
+      const data = await res.json();
+      setList(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Equipment load error:", e);
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);

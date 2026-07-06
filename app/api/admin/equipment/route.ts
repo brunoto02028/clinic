@@ -8,16 +8,22 @@ export const dynamic = "force-dynamic";
 const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const clinicId = (session.user as any).clinicId;
+    if (!clinicId) return NextResponse.json([]);
+    const equipment = await (prisma as any).clinicEquipment.findMany({
+      where: { clinicId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+    return NextResponse.json(equipment);
+  } catch (e: any) {
+    console.error("GET /api/admin/equipment error:", e);
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
-  const clinicId = (session.user as any).clinicId;
-  const equipment = await (prisma as any).clinicEquipment.findMany({
-    where: { clinicId },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
-  return NextResponse.json(equipment);
 }
 
 export async function POST(req: NextRequest) {
@@ -26,6 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const clinicId = (session.user as any).clinicId;
+  if (!clinicId) return NextResponse.json({ error: "No clinic associated" }, { status: 400 });
   const body = await req.json();
   const { name, manufacturer, model, description, indications, contraindications, protocols, sortOrder } = body;
 
