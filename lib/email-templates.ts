@@ -5,6 +5,8 @@ const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
 const CONTACT_EMAIL = 'admin@bpr.rehab';
 const CONTACT_PHONE = '';
 const EMAIL_LOGO_URL = `${BASE_URL}/uploads/email-logo.png`;
+// Bundled white logo (see .dockerignore exceptions) — email clients need a hosted PNG, not a data URI
+const EMAIL_WHITE_LOGO_URL = `${BASE_URL}/uploads/email-logo-white.png`;
 
 // ─── Dynamic Clinic Settings ───
 async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: string; phone: string; email: string }> {
@@ -40,10 +42,9 @@ async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: str
 export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB'): Promise<string> {
   const { logoUrl, whiteLogoUrl, phone, email } = await getClinicSettings();
   const pt = isPt(locale);
-  // Header: white text on teal (no logo image to avoid Gmail rendering issues)
-  const logoHtml = whiteLogoUrl
-    ? `<img src="${whiteLogoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;" /><p style="margin:6px 0 0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;letter-spacing:0.3px;">Bruno Physical Rehabilitation</p>`
-    : `<span style="color:#ffffff;font-size:22px;font-weight:700;font-family:Arial,sans-serif;letter-spacing:-0.5px;">Bruno Physical Rehabilitation</span>`;
+  // Header: white logo on teal — settings override, else bundled white PNG; caption keeps the name visible when images are blocked
+  const headerLogoUrl = whiteLogoUrl || EMAIL_WHITE_LOGO_URL;
+  const logoHtml = `<img src="${headerLogoUrl}" alt="Bruno Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;" /><p style="margin:6px 0 0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;letter-spacing:0.3px;">Bruno Physical Rehabilitation</p>`;
   // Footer: static PNG logo (Gmail-safe, not WebP, not data URI)
   const footerLogoHtml = `<img src="${EMAIL_LOGO_URL}" alt="Bruno Physical Rehabilitation" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;" />`;
   const noReplyText = pt

@@ -12,6 +12,8 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 public/uploads
+!public/uploads/email-logo.png
+!public/uploads/email-logo-white.png
 .windsurf
 .vscode
 .DS_Store
