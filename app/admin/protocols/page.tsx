@@ -385,23 +385,31 @@ export default function ProtocolsPage() {
                       <p className="text-[11px] font-bold uppercase tracking-wide text-primary mt-2">{p.label}</p>
                       {p.items.map((it, i) => {
                         const TypeIcon = ITEM_TYPES.find((x) => x.value === it.itemType)?.icon || Dumbbell;
+                        const meta = [
+                          it.sets && it.reps ? `${it.sets}×${it.reps}` : null,
+                          it.holdSeconds ? `${it.holdSeconds}s hold` : null,
+                          it.frequency,
+                          it.sessionDuration ? `${it.sessionDuration} min` : null,
+                          it.sessionsPerWeek ? `${it.sessionsPerWeek}×/week` : null,
+                          it.startWeek ? `Week ${it.startWeek}${it.endWeek ? `–${it.endWeek}` : "+"}` : null,
+                        ].filter(Boolean).join(" · ");
                         return (
                           <div key={i} className="flex items-start gap-2.5 pl-2">
-                            <TypeIcon className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium">
+                            <TypeIcon className="h-3.5 w-3.5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold">
                                 {it.title}
                                 {it.exercise && <span className="text-primary"> → {it.exercise.name}</span>}
                               </p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {[
-                                  it.sets && it.reps ? `${it.sets}×${it.reps}` : null,
-                                  it.holdSeconds ? `${it.holdSeconds}s hold` : null,
-                                  it.frequency,
-                                  it.sessionDuration ? `${it.sessionDuration} min` : null,
-                                  it.sessionsPerWeek ? `${it.sessionsPerWeek}×/semana` : null,
-                                ].filter(Boolean).join(" · ")}
-                              </p>
+                              {meta && <p className="text-[10px] text-muted-foreground mt-0.5">{meta}</p>}
+                              {it.treatmentTypeName && (
+                                <p className="text-[10px] text-primary/70 mt-0.5">⚙ {it.treatmentTypeName}</p>
+                              )}
+                              {it.instructions && (
+                                <div className="mt-1.5 text-[11px] text-muted-foreground bg-muted/30 rounded-lg p-2.5 border border-border/40 whitespace-pre-wrap leading-relaxed">
+                                  {it.instructions}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -419,29 +427,29 @@ export default function ProtocolsPage() {
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Protocolo" : "Novo Protocolo"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Protocol / Editar Protocolo" : "New Protocol / Novo Protocolo"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <Label className="text-xs">Nome do Protocolo *</Label>
+                <Label className="text-xs">Protocol Name / Nome do Protocolo *</Label>
                 <Input
                   value={form.name || ""}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="ex.: Osteoartrite do Joelho — Conservador Fase 1-3"
+                  placeholder="e.g.: Knee Osteoarthritis — Conservative Phase 1–3 / Osteoartrite do Joelho"
                 />
               </div>
               <div>
-                <Label className="text-xs">Condição</Label>
+                <Label className="text-xs">Condition / Condição</Label>
                 <Input
                   value={form.condition || ""}
                   onChange={(e) => setForm({ ...form, condition: e.target.value })}
-                  placeholder="ex.: Osteoartrite do joelho"
+                  placeholder="e.g.: Knee Osteoarthritis / Osteoartrite do joelho"
                 />
               </div>
               <div>
-                <Label className="text-xs">Região do Corpo</Label>
+                <Label className="text-xs">Body Region / Região do Corpo</Label>
                 <Input
                   value={form.bodyRegion || ""}
                   onChange={(e) => setForm({ ...form, bodyRegion: e.target.value })}
@@ -449,7 +457,7 @@ export default function ProtocolsPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Duração estimada (semanas)</Label>
+                <Label className="text-xs">Estimated Duration (weeks) / Duração (semanas)</Label>
                 <Input
                   type="number"
                   value={form.estimatedWeeks ?? ""}
@@ -457,7 +465,7 @@ export default function ProtocolsPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Sessões por semana</Label>
+                <Label className="text-xs">Sessions per Week / Sessões por semana</Label>
                 <Input
                   type="number"
                   value={form.sessionsPerWeek ?? ""}
@@ -465,16 +473,16 @@ export default function ProtocolsPage() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label className="text-xs">Descrição</Label>
+                <Label className="text-xs">Description / Descrição</Label>
                 <Textarea
                   value={form.description || ""}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="min-h-[70px]"
-                  placeholder="Objectivos, critérios de progressão, notas clínicas…"
+                  placeholder="Goals, progression criteria, clinical notes… / Objetivos, critérios de progressão…"
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label className="text-xs mb-1.5 block">Equipamentos utilizados</Label>
+                <Label className="text-xs mb-1.5 block">Equipment Used / Equipamentos utilizados</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {EQUIPMENT_OPTIONS.map((eq) => {
                     const active = (form.equipment || []).includes(eq);
@@ -507,12 +515,12 @@ export default function ProtocolsPage() {
             {/* Items builder */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold">Itens do Protocolo</Label>
+                <Label className="text-xs font-bold">Protocol Items / Itens do Protocolo</Label>
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
                   onClick={() => setItems((prev) => [...prev, emptyItem()])}
                 >
-                  <Plus className="h-3 w-3" /> Adicionar Item
+                  <Plus className="h-3 w-3" /> Add Item / Adicionar
                 </Button>
               </div>
 
@@ -526,7 +534,7 @@ export default function ProtocolsPage() {
                   </button>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                      <Label className="text-[10px]">Fase</Label>
+                      <Label className="text-[10px]">Phase / Fase</Label>
                       <Select value={it.phase} onValueChange={(v) => updateItem(idx, { phase: v })}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -535,7 +543,7 @@ export default function ProtocolsPage() {
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px]">Tipo</Label>
+                      <Label className="text-[10px]">Type / Tipo</Label>
                       <Select value={it.itemType} onValueChange={(v) => updateItem(idx, { itemType: v })}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -544,12 +552,12 @@ export default function ProtocolsPage() {
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-[10px]">Título *</Label>
+                      <Label className="text-[10px]">Title / Título *</Label>
                       <Input
                         className="h-8 text-xs"
                         value={it.title}
                         onChange={(e) => updateItem(idx, { title: e.target.value })}
-                        placeholder="ex.: MLS Laser no joelho"
+                        placeholder="e.g.: In-Clinic Laser Session / Sessão Laser"
                       />
                     </div>
                   </div>
@@ -557,7 +565,7 @@ export default function ProtocolsPage() {
                   {it.itemType === "HOME_EXERCISE" && (
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       <div className="col-span-2">
-                        <Label className="text-[10px]">Exercício da biblioteca (vídeo)</Label>
+                        <Label className="text-[10px]">Exercise from library (video) / Exercício da biblioteca</Label>
                         <Select
                           value={it.exerciseId || "none"}
                           onValueChange={(v) => {
@@ -582,7 +590,7 @@ export default function ProtocolsPage() {
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-[10px]">Séries</Label>
+                        <Label className="text-[10px]">Sets / Séries</Label>
                         <Input className="h-8 text-xs" type="number" value={it.sets ?? ""} onChange={(e) => updateItem(idx, { sets: e.target.value ? Number(e.target.value) : null })} />
                       </div>
                       <div>
@@ -590,7 +598,7 @@ export default function ProtocolsPage() {
                         <Input className="h-8 text-xs" type="number" value={it.reps ?? ""} onChange={(e) => updateItem(idx, { reps: e.target.value ? Number(e.target.value) : null })} />
                       </div>
                       <div>
-                        <Label className="text-[10px]">Frequência</Label>
+                        <Label className="text-[10px]">Frequency / Frequência</Label>
                         <Input className="h-8 text-xs" value={it.frequency || ""} onChange={(e) => updateItem(idx, { frequency: e.target.value })} placeholder="3×/semana" />
                       </div>
                     </div>
@@ -599,27 +607,27 @@ export default function ProtocolsPage() {
                   {it.itemType === "IN_CLINIC" && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       <div>
-                        <Label className="text-[10px]">Serviço / Equipamento</Label>
-                        <Input className="h-8 text-xs" value={it.treatmentTypeName || ""} onChange={(e) => updateItem(idx, { treatmentTypeName: e.target.value })} placeholder="ex.: MLS Laser Therapy" />
+                        <Label className="text-[10px]">Service / Equipment Setup</Label>
+                        <Input className="h-8 text-xs" value={it.treatmentTypeName || ""} onChange={(e) => updateItem(idx, { treatmentTypeName: e.target.value })} placeholder="e.g.: MLS Laser — 4 J/cm² pulsed 905nm" />
                       </div>
                       <div>
-                        <Label className="text-[10px]">Duração (min)</Label>
+                        <Label className="text-[10px]">Duration (min)</Label>
                         <Input className="h-8 text-xs" type="number" value={it.sessionDuration ?? ""} onChange={(e) => updateItem(idx, { sessionDuration: e.target.value ? Number(e.target.value) : null })} />
                       </div>
                       <div>
-                        <Label className="text-[10px]">Sessões/semana</Label>
+                        <Label className="text-[10px]">Sessions/week</Label>
                         <Input className="h-8 text-xs" type="number" value={it.sessionsPerWeek ?? ""} onChange={(e) => updateItem(idx, { sessionsPerWeek: e.target.value ? Number(e.target.value) : null })} />
                       </div>
                     </div>
                   )}
 
                   <div>
-                    <Label className="text-[10px]">Instruções para o paciente</Label>
+                    <Label className="text-[10px]">Instructions & Equipment Setup / Instruções e Setup</Label>
                     <Textarea
-                      className="text-xs min-h-[48px]"
+                      className="text-xs min-h-[80px]"
                       value={it.instructions || ""}
                       onChange={(e) => updateItem(idx, { instructions: e.target.value })}
-                      placeholder="Como executar, precauções, progressão…"
+                      placeholder="EN: Step-by-step session protocol, equipment parameters (e.g. US 1MHz 1W/cm² pulsed), clinical rationale…&#10;PT: Protocolo passo a passo, parâmetros do equipamento, justificação clínica…"
                     />
                   </div>
                 </div>
@@ -628,10 +636,10 @@ export default function ProtocolsPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
             <Button onClick={save} disabled={saving} className="gap-2">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {editing ? "Guardar Alterações" : "Criar Protocolo"}
+              {editing ? "Save Changes" : "Create Protocol"}
             </Button>
           </DialogFooter>
         </DialogContent>

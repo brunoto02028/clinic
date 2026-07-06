@@ -44,19 +44,19 @@ const MLS_MPHI75_SEED = {
     "Pacemakers (avoid thoracic region)",
   ],
   protocols: [
-    { condition: "Achilles tendinopathy", settings: "4–6 J/cm² | 905nm pulsed + 808nm CW", sessions: 8, frequency: "3×/week", notes: "Apply along tendon and peritendinous tissue. Week 1–2 lower dose, progress." },
-    { condition: "Patellar tendinopathy", settings: "4–6 J/cm²", sessions: 8, frequency: "3×/week", notes: "Treat insertion and mid-portion. Combine with eccentric loading." },
-    { condition: "Rotator cuff tendinopathy", settings: "4 J/cm² | 905nm pulsed", sessions: 8, frequency: "2–3×/week", notes: "Target supraspinatus insertion and subacromial space." },
-    { condition: "Lateral epicondylalgia", settings: "3–4 J/cm²", sessions: 6, frequency: "2–3×/week", notes: "Treat ECRB origin and radial head. Combine with eccentric wrist extension." },
-    { condition: "Plantar fasciitis", settings: "4–6 J/cm²", sessions: 8, frequency: "3×/week", notes: "Treat medial calcaneal tuberosity and fascial band." },
-    { condition: "Knee osteoarthritis", settings: "6–8 J/cm²", sessions: 12, frequency: "3×/week", notes: "Circumferential irradiation of joint. Combine with strengthening." },
-    { condition: "Acute muscle strain", settings: "2–3 J/cm² | pulsed mode", sessions: 4, frequency: "Daily (days 1–3) then 3×/week", notes: "Begin within 48–72h. Low dose initially, increase as inflammation reduces." },
-    { condition: "Low back pain (non-specific)", settings: "4–6 J/cm²", sessions: 8, frequency: "3×/week", notes: "Paraspinal muscles and facet joint regions. Combine with motor control." },
-    { condition: "Neck pain / cervicogenic", settings: "3–4 J/cm²", sessions: 8, frequency: "2–3×/week", notes: "Treat cervical paraspinals and trigger points. Avoid direct carotid." },
-    { condition: "Shoulder bursitis (subacromial)", settings: "4 J/cm² | 808nm CW", sessions: 6, frequency: "3×/week", notes: "Target subacromial space and bursa. Reduce dose if acute." },
-    { condition: "Post-surgical recovery", settings: "2–4 J/cm² increasing", sessions: 10, frequency: "3×/week", notes: "Start 72h post-op on closed incision. Focus on surrounding tissue." },
-    { condition: "Neuropathic pain", settings: "4 J/cm² | 905nm pulsed", sessions: 10, frequency: "3×/week", notes: "Treat along nerve distribution. May require higher session count." },
-    { condition: "Wound healing / scar", settings: "2 J/cm² | low power CW", sessions: 8, frequency: "3×/week", notes: "Apply tangentially to wound margins. Avoid direct contact with open wounds." },
+    { condition: "Achilles tendinopathy", settings: "4–6 J/cm² | 905nm pulsed + 808nm CW", sessions: 8, frequency: "3×/week", notes: "Apply along tendon and peritendinous tissue. Week 1–2 lower dose, progress.", rationale: "905nm pulsed targets tendon depth (PBM reduces neurogenic inflammation); 808nm CW improves tendon matrix remodelling and neovascularisation. Higher fluence at 4–6 J/cm² is evidence-based for chronic tendinopathy." },
+    { condition: "Patellar tendinopathy", settings: "4–6 J/cm² | 905nm pulsed", sessions: 8, frequency: "3×/week", notes: "Treat insertion and mid-portion. Combine with eccentric loading.", rationale: "Pulsed mode preferred for tendon PBM: reduces inflammatory cytokines (IL-1β, TNF-α) and stimulates tenocyte proliferation. 4–6 J/cm² provides adequate penetration to patellar tendon depth. Eccentric loading synergises with PBM for collagen synthesis." },
+    { condition: "Rotator cuff tendinopathy", settings: "4 J/cm² | 905nm pulsed", sessions: 8, frequency: "2–3×/week", notes: "Target supraspinatus insertion and subacromial space.", rationale: "905nm pulsed penetrates to supraspinatus depth (≈3–4 cm). Reduces subacromial bursa inflammation and promotes tendon healing. 4 J/cm² avoids thermal damage in the confined subacromial space." },
+    { condition: "Lateral epicondylalgia", settings: "3–4 J/cm² | 905nm pulsed", sessions: 6, frequency: "2–3×/week", notes: "Treat ECRB origin and radial head. Combine with eccentric wrist extension.", rationale: "Lower fluence (3–4 J/cm²) appropriate for superficial ECRB origin (≈1–2 cm depth). Pulsed 905nm reduces local inflammatory state and pain sensitisation at the lateral epicondyle insertion." },
+    { condition: "Plantar fasciitis", settings: "4–6 J/cm² | 905nm pulsed + 808nm CW", sessions: 8, frequency: "3×/week", notes: "Treat medial calcaneal tuberosity and fascial band.", rationale: "Dual wavelength targets calcaneal enthesis (905nm for deeper periosteal PBM) and plantar fascia band (808nm CW for superficial tissue). Higher fluence compensates for plantar fat pad attenuation." },
+    { condition: "Knee osteoarthritis", settings: "6–8 J/cm² | 808nm CW + 905nm pulsed", sessions: 12, frequency: "3×/week", notes: "Circumferential irradiation of joint. Combine with strengthening.", rationale: "Higher fluence (6–8 J/cm²) required to penetrate knee joint capsule and cartilage (≈3–5 cm). 808nm CW improves synovial fluid dynamics; 905nm reduces pro-inflammatory mediators in synovium. 12 sessions needed for cartilage-level effects." },
+    { condition: "Acute muscle strain", settings: "2–3 J/cm² | 905nm pulsed only", sessions: 4, frequency: "Daily (days 1–3) then 3×/week", notes: "Begin within 48–72h. Low dose initially, increase as inflammation reduces.", rationale: "Low fluence (2–3 J/cm²) in acute phase: controls inflammation without accelerating it. Pulsed only — avoids thermal stimulus on acutely injured tissue. Progressing dose as acute phase resolves supports satellite cell activation and myofibre repair." },
+    { condition: "Low back pain (non-specific)", settings: "4–6 J/cm² | 905nm pulsed + 808nm CW", sessions: 8, frequency: "3×/week", notes: "Paraspinal muscles and facet joint regions. Combine with motor control.", rationale: "Dual wavelength reaches lumbar paraspinal depth (3–5 cm). Reduces myofascial trigger point activity and facet capsule inflammation. Combine with motor control to address underlying neuromuscular dysfunction." },
+    { condition: "Neck pain / cervicogenic", settings: "3–4 J/cm² | 905nm pulsed", sessions: 8, frequency: "2–3×/week", notes: "Treat cervical paraspinals and trigger points. Avoid direct carotid.", rationale: "Lower fluence for cervical spine: superficial structures (≈1–3 cm). 905nm pulsed modulates cervical facet and myofascial nociception. Caution: avoid direct irradiation over carotid sinus and thyroid." },
+    { condition: "Shoulder bursitis (subacromial)", settings: "4 J/cm² | 808nm CW", sessions: 6, frequency: "3×/week", notes: "Target subacromial space and bursa. Reduce dose if acute.", rationale: "808nm CW provides anti-inflammatory effect on bursal tissue without high thermal load. 4 J/cm² is conservative for acute bursitis — reduces prostaglandin E2 and substance P at the bursa level." },
+    { condition: "Post-surgical recovery", settings: "2–4 J/cm² increasing | 808nm CW", sessions: 10, frequency: "3×/week", notes: "Start 72h post-op on closed incision. Focus on surrounding tissue.", rationale: "PBM accelerates wound healing by stimulating fibroblast proliferation and collagen synthesis. Start at 2 J/cm² (72h post-op) on peri-incisional tissue; increase to 4 J/cm² by week 2 as tissue consolidates." },
+    { condition: "Neuropathic pain", settings: "4 J/cm² | 905nm pulsed", sessions: 10, frequency: "3×/week", notes: "Treat along nerve distribution. May require higher session count.", rationale: "905nm pulsed modulates peripheral nerve sensitisation and reduces ectopic discharge along the nerve. PBM supports Schwann cell function and axonal regeneration. Treat entire peripheral nerve course for maximum effect." },
+    { condition: "Wound healing / scar", settings: "2 J/cm² | 808nm CW low power", sessions: 8, frequency: "3×/week", notes: "Apply tangentially to wound margins. Avoid direct contact with open wounds.", rationale: "808nm CW at low fluence (2 J/cm²) stimulates fibroblast-to-myofibroblast transition, collagen remodelling, and reduces excessive scar formation. Tangential application maintains photon density without contact contamination." },
   ],
 };
 
@@ -66,6 +66,7 @@ type Protocol = {
   sessions: number;
   frequency: string;
   notes: string;
+  rationale?: string;
 };
 
 type Equipment = {
@@ -304,8 +305,12 @@ export default function EquipmentPage() {
                     </div>
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">Notes</Label>
+                    <Label className="text-[10px]">Notes (application tips)</Label>
                     <Textarea value={p.notes} onChange={e => updateProtocol(i, "notes", e.target.value)} rows={1} className="text-[11px]" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[10px]">Rationale / Why (clinical explanation for parameters)</Label>
+                    <Textarea value={(p as any).rationale || ""} onChange={e => updateProtocol(i, "rationale" as any, e.target.value)} rows={2} className="text-[11px]" placeholder="Explain why these settings (wavelength, power, mode) are used for this condition..." />
                   </div>
                   <Button type="button" variant="ghost" size="sm" className="h-5 text-[10px] text-red-400 hover:text-red-500 p-0" onClick={() => removeProtocol(i)}>
                     <Trash2 className="h-2.5 w-2.5 mr-0.5" /> Remove
@@ -390,30 +395,27 @@ export default function EquipmentPage() {
                     </div>
                     {protocols.length > 0 && (
                       <div>
-                        <p className="text-[11px] font-semibold mb-2">Clinical Protocols ({protocols.length})</p>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-[10px]">
-                            <thead>
-                              <tr className="border-b text-muted-foreground">
-                                <th className="text-left py-1 pr-3 font-medium">Condition</th>
-                                <th className="text-left py-1 pr-3 font-medium">Settings</th>
-                                <th className="text-left py-1 pr-3 font-medium">Sessions</th>
-                                <th className="text-left py-1 pr-3 font-medium">Frequency</th>
-                                <th className="text-left py-1 font-medium">Notes</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {protocols.map((p: Protocol, i: number) => (
-                                <tr key={i} className="border-b border-muted/40 last:border-0 align-top">
-                                  <td className="py-1.5 pr-3 font-medium">{p.condition}</td>
-                                  <td className="py-1.5 pr-3 text-muted-foreground font-mono text-[9px]">{p.settings}</td>
-                                  <td className="py-1.5 pr-3">{p.sessions}</td>
-                                  <td className="py-1.5 pr-3">{p.frequency}</td>
-                                  <td className="py-1.5 text-muted-foreground max-w-xs">{p.notes}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        <p className="text-sm font-semibold mb-3">Clinical Protocols ({protocols.length})</p>
+                        <div className="space-y-3">
+                          {protocols.map((p: Protocol, i: number) => (
+                            <div key={i} className="border border-border/50 rounded-lg p-3 space-y-2 bg-muted/10">
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <p className="text-sm font-semibold">{p.condition}</p>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                  <span className="bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5 font-mono">{p.settings}</span>
+                                  <span className="text-muted-foreground">{p.sessions} sessions · {p.frequency}</span>
+                                </div>
+                              </div>
+                              {p.notes && (
+                                <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground/70">Notes:</span> {p.notes}</p>
+                              )}
+                              {p.rationale && (
+                                <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 border-l-2 border-primary/40">
+                                  <span className="font-semibold text-primary/80">Why / Rationale: </span>{p.rationale}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
