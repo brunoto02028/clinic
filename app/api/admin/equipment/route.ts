@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { resolveClinicId } from "@/lib/resolve-clinic-id";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const clinicId = (session.user as any).clinicId;
+    const clinicId = await resolveClinicId(session);
     if (!clinicId) return NextResponse.json([]);
     const equipment = await (prisma as any).clinicEquipment.findMany({
       where: { clinicId },
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const clinicId = (session.user as any).clinicId;
+  const clinicId = await resolveClinicId(session);
   if (!clinicId) return NextResponse.json({ error: "No clinic associated" }, { status: 400 });
   const body = await req.json();
   const { name, manufacturer, model, description, indications, contraindications, protocols, sortOrder } = body;

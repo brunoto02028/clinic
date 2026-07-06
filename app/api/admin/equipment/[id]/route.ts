@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { resolveClinicId } from "@/lib/resolve-clinic-id";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function PATCH(
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const clinicId = (session.user as any).clinicId;
+  const clinicId = await resolveClinicId(session);
   const body = await req.json();
   const { name, manufacturer, model, description, indications, contraindications, protocols, isActive, sortOrder } = body;
 
@@ -62,9 +63,9 @@ export async function DELETE(
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const clinicId = (session.user as any).clinicId;
+  const clinicId = await resolveClinicId(session);
   const eq = await (prisma as any).clinicEquipment.findFirst({
-    where: { id: params.id, clinicId },
+    where: { id: params.id, ...(clinicId ? { clinicId } : {}) },
   });
   if (!eq) return NextResponse.json({ error: "Not found" }, { status: 404 });
   await (prisma as any).clinicEquipment.delete({ where: { id: params.id } });
