@@ -159,20 +159,21 @@ export async function POST(req: NextRequest) {
         const videoData = await extractInstagramVideo(postUrl);
 
         if (!videoData) {
-          // Not a video post — skip silently (photos are common)
+          results.push({ url: postUrl, success: false, error: "Could not extract video URL. Instagram may be blocking server-side access. Try using Cobalt.tools manually." });
           continue;
         }
 
-        // Download the video
+        // Download the video (Cobalt tunnel URLs don't need Referer)
+        const isCobalt = videoData.videoUrl.includes("cobalt.tools");
         const videoRes = await fetch(videoData.videoUrl, {
-          headers: {
+          headers: isCobalt ? {} : {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Referer": "https://www.instagram.com/",
           },
         });
 
         if (!videoRes.ok) {
-          results.push({ url: postUrl, success: false, error: "Failed to download video" });
+          results.push({ url: postUrl, success: false, error: `Download failed (HTTP ${videoRes.status}) — video URL: ${videoData.videoUrl.substring(0, 80)}` });
           continue;
         }
 
@@ -384,6 +385,25 @@ async function scrapeProfilePostUrls(username: string): Promise<string[]> {
 async function extractInstagramVideo(
   url: string
 ): Promise<{ videoUrl: string; thumbnailUrl?: string; caption?: string } | null> {
+  // Method 0: Cobalt API — most reliable from cloud (no IP blocking)
+  try {
+    const cobaltRes = await fetch("https://api.cobalt.tools/", {
+      method: "POST",
+      headers: { "Accept": "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ url, videoQuality: "max", downloadMode: "auto" }),
+    });
+    if (cobaltRes.ok) {
+      const cobaltData = await cobaltRes.json();
+      if ((cobaltData.status === "tunnel" || cobaltData.status === "redirect") && cobaltData.url) {
+        console.log("[Instagram] Cobalt success for", url);
+        return { videoUrl: cobaltData.url, caption: undefined };
+      }
+      console.log("[Instagram] Cobalt response:", cobaltData.status, cobaltData.error?.code);
+    }
+  } catch (e) {
+    console.error("[Instagram] Cobalt failed:", e);
+  }
+
   // Method 1: Page scraping with mobile UA
   try {
     const pageRes = await fetch(url, {
@@ -482,9 +502,7 @@ async function extractInstagramVideo(
     if (shortcode) {
       const ddUrl = `https://ddinstagram.com/p/${shortcode}`;
       const ddRes = await fetch(ddUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-        },
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
         redirect: "follow",
       });
       if (ddRes.ok) {
@@ -494,7 +512,6 @@ async function extractInstagramVideo(
         const ogVideo = $('meta[property="og:video"]').attr("content");
         const ogDesc = $('meta[property="og:description"]').attr("content") || "";
         const poster = $("video").attr("poster") || $('meta[property="og:image"]').attr("content");
-
         const finalVideo = videoSrc || ogVideo;
         if (finalVideo) {
           return {
@@ -506,9 +523,37 @@ async function extractInstagramVideo(
       }
     }
   } catch (e) {
-    console.error("Method 3 failed:", e);
+    console.error("[Instagram] Method 3 (ddinstagram) failed:", e);
   }
 
+  // Method 4: Instagram embed page (often bypasses login wall)
+  try {
+    const shortcode = extractShortcode(url);
+    if (shortcode) {
+      const embedRes = await fetch(`https://www.instagram.com/p/${shortcode}/embed/captioned/`, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "text/html",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        redirect: "follow",
+      });
+      if (embedRes.ok) {
+        const html = await embedRes.text();
+        const videoMatch = html.match(/"video_url"\s*:\s*"([^"]+)"/)
+          || html.match(/src\s*=\s*"(https:\/\/[^"]+\.mp4[^"]*)"/i);
+        const captionMatch = html.match(/"text"\s*:\s*"([^"]{10,400})"/);
+        if (videoMatch) {
+          const videoUrl = videoMatch[1].replace(/\\u0026/g, "&").replace(/\\\//g, "/");
+          return { videoUrl, caption: captionMatch?.[1] };
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[Instagram] Method 4 (embed) failed:", e);
+  }
+
+  console.log("[Instagram] All methods failed for", url);
   return null;
 }
 
