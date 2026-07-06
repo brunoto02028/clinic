@@ -385,6 +385,9 @@ model Clinic {
 
   // Voice AI (Vapi)
   vapiCalls             VapiCall[]
+
+  // Waitlist
+  waitlistEntries       WaitlistEntry[]
   
   @@index([slug])
   @@index([isActive])
@@ -683,6 +686,10 @@ model User {
   // Patient preferred language for reports
   reportLanguage            String                   @default("en") // "en" | "pt"
 
+  // Waitlist
+  waitlistEntries           WaitlistEntry[]          @relation("PatientWaitlist")
+  waitlistPreferredTherapist WaitlistEntry[]         @relation("TherapistWaitlist")
+
   @@index([clinicId])
   @@index([email])
   @@index([role])
@@ -897,6 +904,46 @@ model Appointment {
   @@index([therapistId])
   @@index([dateTime])
   @@index([status])
+}
+
+// ============================================
+// WAITLIST (Auto-fill cancelled slots)
+// ============================================
+
+enum WaitlistStatus {
+  ACTIVE     // waiting for a slot
+  NOTIFIED   // a slot opened up, patient was notified
+  BOOKED     // patient booked a slot from the waitlist
+  CANCELLED  // patient removed themselves / admin removed them
+  EXPIRED    // preferred date window passed with no match
+}
+
+model WaitlistEntry {
+  id              String          @id @default(cuid())
+  clinicId        String?
+  clinic          Clinic?         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         User            @relation("PatientWaitlist", fields: [patientId], references: [id], onDelete: Cascade)
+  therapistId     String?         // optional: only wait for a specific therapist
+  therapist       User?           @relation("TherapistWaitlist", fields: [therapistId], references: [id], onDelete: SetNull)
+
+  treatmentType   String          // matches Appointment.treatmentType / TreatmentType.name
+  preferredFrom   DateTime?       // earliest acceptable date/time
+  preferredTo     DateTime?       // latest acceptable date/time
+  notes           String?         @db.Text
+
+  status          WaitlistStatus  @default(ACTIVE)
+  notifiedAt      DateTime?
+  notifiedForSlot DateTime?       // the cancelled appointment's dateTime that triggered the notification
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([therapistId])
+  @@index([status])
+  @@index([treatmentType])
 }
 
 // ============================================

@@ -60,12 +60,19 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Disponibilidade",
         href: "/admin/appointments/availability",
       },
+      {
+        key: "waitlist",
+        label: "Waitlist",
+        labelPt: "Lista de Espera",
+        href: "/admin/waitlist",
+      },
     ],
     matchRoutes: [
       "/admin",
       "/admin/appointments",
       "/admin/video-consultations",
       "/admin/calls",
+      "/admin/waitlist",
     ],
   },
   {

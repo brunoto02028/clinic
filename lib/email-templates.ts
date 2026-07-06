@@ -250,6 +250,26 @@ export const DEFAULT_TEMPLATES = [
     </div>`,
   },
   {
+    slug: 'WAITLIST_SLOT_AVAILABLE' as const,
+    name: 'Waitlist Slot Available',
+    subject: 'A slot just opened up — {{appointmentDate}} at {{appointmentTime}}',
+    description: 'Sent when a cancelled appointment matches a patient on the waitlist',
+    variables: ['patientName', 'treatmentType', 'appointmentDate', 'appointmentTime', 'portalUrl'],
+    htmlBody: `
+    <h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">A Slot Just Opened Up! 🎉</h2>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, good news — a spot for <strong>{{treatmentType}}</strong> just became available and you're on the waitlist.</p>
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px 24px;margin:0 0 24px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+        <tr><td style="padding:6px 0;font-size:14px;color:#6b7280;width:100px;">📅 Date</td><td style="padding:6px 0;font-size:15px;color:#111827;font-weight:600;">{{appointmentDate}}</td></tr>
+        <tr><td style="padding:6px 0;font-size:14px;color:#6b7280;">🕐 Time</td><td style="padding:6px 0;font-size:15px;color:#111827;font-weight:600;">{{appointmentTime}}</td></tr>
+      </table>
+    </div>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">This slot is offered on a first-come, first-served basis — book it now in your portal before it's gone.</p>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4db8b0;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Book This Slot →</a>
+    </div>`,
+  },
+  {
     slug: 'SCREENING_RECEIVED' as const,
     name: 'Assessment Screening Received',
     subject: "Assessment screening received — we'll review it shortly, {{patientName}}",

@@ -9,6 +9,7 @@ import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 import { getRequestSession } from "@/lib/dual-auth";
+import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
 
 export async function GET(
   request: NextRequest,
@@ -167,6 +168,16 @@ async function handleUpdate(
       });
     } catch (emailError) {
       console.error('Failed to send appointment update notification:', emailError);
+    }
+
+    if (body?.status === "CANCELLED") {
+      notifyWaitlistForCancelledAppointment({
+        id: appointment.id,
+        clinicId: (appointment as any).clinicId ?? null,
+        therapistId: appointment.therapist.id,
+        treatmentType: appointment.treatmentType,
+        dateTime: appointment.dateTime,
+      }).catch(err => console.error("[appointments] waitlist notify error:", err));
     }
 
     return NextResponse.json({

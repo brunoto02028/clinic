@@ -38,6 +38,7 @@ export const PATIENT_SECTIONS: PatientSection[] = [
       "/dashboard/screening",
       "/dashboard/consent",
       "/dashboard/assessment-flow",
+      "/dashboard/waitlist",
     ],
   },
   {

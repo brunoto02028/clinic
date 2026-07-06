@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
+import { notifyWaitlistForCancelledAppointment } from '@/lib/waitlist';
 
 // GET: list all cancellation requests (admin)
 export async function GET(req: NextRequest) {
@@ -176,6 +177,16 @@ export async function POST(req: NextRequest) {
           where: { id: cancellation.appointmentId },
           data: { status: 'CANCELLED' },
         });
+
+        if (cancellation.appointment) {
+          notifyWaitlistForCancelledAppointment({
+            id: cancellation.appointment.id,
+            clinicId: cancellation.appointment.clinicId ?? null,
+            therapistId: cancellation.appointment.therapistId,
+            treatmentType: cancellation.appointment.treatmentType,
+            dateTime: cancellation.appointment.dateTime,
+          }).catch(err => console.error('[cancellations] waitlist notify error:', err));
+        }
       }
 
       // Cancel the treatment plan if linked

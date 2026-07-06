@@ -124,12 +124,22 @@ export default function AppointmentsList() {
               : (isPt ? "Visualize e gerencie seus agendamentos" : "View and manage your booked appointments")}
           </p>
         </div>
-        <Link href="/dashboard/appointments/book" className="w-full sm:w-auto">
-          <Button className="gap-2 w-full sm:w-auto">
-            <Plus className="h-4 w-4" />
-            {isPt ? "Agendar Consulta" : "Book Appointment"}
-          </Button>
-        </Link>
+        <div className="flex gap-2 w-full sm:w-auto">
+          {!isTherapist && (
+            <Link href="/dashboard/waitlist" className="w-full sm:w-auto">
+              <Button variant="outline" className="gap-2 w-full sm:w-auto">
+                <Clock className="h-4 w-4" />
+                {isPt ? "Lista de Espera" : "Waitlist"}
+              </Button>
+            </Link>
+          )}
+          <Link href="/dashboard/appointments/book" className="w-full sm:w-auto">
+            <Button className="gap-2 w-full sm:w-auto">
+              <Plus className="h-4 w-4" />
+              {isPt ? "Agendar Consulta" : "Book Appointment"}
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Initial Assessment Banner for patients */}
