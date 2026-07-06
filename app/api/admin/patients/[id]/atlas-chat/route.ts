@@ -68,6 +68,22 @@ export async function POST(
     take: 3,
   });
 
+  // Fetch recent clinic <-> patient messages
+  const clinicMessages = await (prisma as any).clinicMessage.findMany({
+    where: { patientId: params.id, kind: "message" },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: { senderRole: true, content: true, createdAt: true },
+  });
+
+  // Fetch available protocol templates (names + conditions + equipment)
+  const protocols = await (prisma as any).protocolTemplate.findMany({
+    where: { isActive: true },
+    select: { name: true, condition: true, bodyRegion: true, equipment: true, estimatedWeeks: true, sessionsPerWeek: true },
+    orderBy: { name: "asc" },
+    take: 20,
+  });
+
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
   const age = patient.dateOfBirth
@@ -101,15 +117,34 @@ export async function POST(
           return `[${new Date(qs.answeredAt).toLocaleDateString("en-GB")}]\n${qaText}`;
         }).join("\n\n")}`
       : "",
+    clinicMessages.length > 0
+      ? `\nRecent clinic↔patient message thread (newest first):\n${[...clinicMessages].reverse().map((m: any) => {
+          const who = m.senderRole === "patient" ? "Patient" : "Clinic";
+          const date = new Date(m.createdAt).toLocaleDateString("en-GB");
+          return `  [${date}] ${who}: ${m.content}`;
+        }).join("\n")}`
+      : "",
+    protocols.length > 0
+      ? `\nAvailable treatment protocol templates in this clinic:\n${protocols.map((p: any) =>
+          `  • ${p.name}${p.condition ? ` (${p.condition})` : ""} — ${p.equipment?.join(", ") || ""}${p.estimatedWeeks ? ` — ~${p.estimatedWeeks} weeks` : ""}`
+        ).join("\n")}`
+      : "",
   ].filter(Boolean).join("\n");
 
-  const systemPrompt = `You are Atlas, a Clinical Rehabilitation Specialist working directly with a physiotherapist (Bruno). You are having a real-time clinical conversation about a specific patient. Be concise, insightful, and clinically precise. You can answer questions, help with differential diagnosis, suggest approaches, discuss exercises, or just think through the case together.
+  const systemPrompt = `You are Atlas, a Clinical Rehabilitation Specialist working directly with a physiotherapist (Bruno). You are having a real-time clinical conversation about a specific patient. Be concise, insightful, and clinically precise. You can answer questions, help with differential diagnosis, suggest treatment approaches, recommend specific protocol templates from the clinic's library, discuss exercises, or think through the case together.
+
+You have full visibility into:
+- The patient's clinical screening data, postural assessment and rehab history
+- The private message thread between the patient and clinic
+- All available treatment protocol templates in this clinic (with equipment and timelines)
+
+When recommending a treatment plan, always reference the specific protocol template name from the clinic's library if one matches the patient's condition. Suggest which protocol to assign, any adaptations needed, and what to communicate to the patient.
 
 Current patient context:
 ${patientBrief || "No clinical data available yet for this patient."}
 
-Respond in the same language the therapist uses (English or Portuguese).
-IMPORTANT — when suggesting questions to send to the patient: always write them in the SECOND PERSON addressed directly to the patient ("você" in Brazilian Portuguese, "you" in English). Never use third person ("o paciente", "ele", "ela"). Use warm, simple, non-clinical language the patient will understand. If writing in Portuguese, always use Brazilian Portuguese (pt-BR).
+Respond in the same language Bruno uses (English or Portuguese).
+IMPORTANT — when suggesting questions to send to the patient: write them in SECOND PERSON directly to the patient ("você" in Brazilian Portuguese, "you" in English). Never use third person ("o paciente", "ele", "ela"). Use warm, simple, non-clinical language. If writing in Portuguese, always use Brazilian Portuguese (pt-BR).
 Keep responses focused and clinically relevant. You are a trusted colleague, not a formal assistant.`;
 
   const messages = [
@@ -117,7 +152,7 @@ Keep responses focused and clinically relevant. You are a trusted colleague, not
     { role: "user" as const, content: message },
   ];
 
-  const reply = await claudeGenerate(messages, { systemPrompt, maxTokens: 1024 });
+  const reply = await claudeGenerate(messages, { systemPrompt, maxTokens: 3000 });
 
   // Persist both turns to DB
   await (prisma as any).atlasChatMessage.createMany({
