@@ -35,6 +35,8 @@ import {
   Edit,
   Save,
   Zap,
+  MessageSquare,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,34 +103,34 @@ interface Protocol {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  GENERATING: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300",
-  DRAFT: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300",
-  UNDER_REVIEW: "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300",
-  APPROVED: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
-  SENT_TO_PATIENT: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300",
-  ARCHIVED: "bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300",
+  GENERATING: "bg-primary/10 text-primary border-primary/20",
+  DRAFT: "bg-muted text-muted-foreground border-border",
+  UNDER_REVIEW: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  APPROVED: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  SENT_TO_PATIENT: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  ARCHIVED: "bg-muted text-muted-foreground border-border",
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  mild: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
-  moderate: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300",
-  severe: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
-  critical: "bg-red-200 dark:bg-red-500/30 text-red-800 dark:text-red-300",
-  low: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
-  high: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
+  mild: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  moderate: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  severe: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  critical: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+  low: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  high: "bg-rose-500/10 text-rose-400 border-rose-500/20",
 };
 
 const PHASE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
-  SHORT_TERM: { label: "Short-Term (Acute)", color: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", desc: "Weeks 1-4" },
-  MEDIUM_TERM: { label: "Medium-Term (Rehab)", color: "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800", desc: "Weeks 4-12" },
-  LONG_TERM: { label: "Long-Term (Maintenance)", color: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", desc: "Weeks 12+" },
+  SHORT_TERM: { label: "Short-Term (Acute)", color: "bg-rose-500/10 text-rose-400 border-rose-500/20", desc: "Weeks 1-4" },
+  MEDIUM_TERM: { label: "Medium-Term (Rehab)", color: "bg-amber-500/10 text-amber-400 border-amber-500/20", desc: "Weeks 4-12" },
+  LONG_TERM: { label: "Long-Term (Maintenance)", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", desc: "Weeks 12+" },
 };
 
 const ITEM_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  IN_CLINIC: { label: "In-Clinic", color: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300" },
-  HOME_EXERCISE: { label: "Home Exercise", color: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300" },
-  HOME_CARE: { label: "Home Care", color: "bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300" },
-  ASSESSMENT: { label: "Assessment", color: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300" },
+  IN_CLINIC: { label: "In-Clinic", color: "bg-primary/10 text-primary border-primary/20" },
+  HOME_EXERCISE: { label: "Home Exercise", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+  HOME_CARE: { label: "Home Care", color: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" },
+  ASSESSMENT: { label: "Assessment", color: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
 };
 
 // ─── Main Page ───
@@ -368,6 +370,7 @@ export default function PatientDiagnosisPage() {
             <DiagnosisCard
               key={diag.id}
               diagnosis={diag}
+              patientId={patientId}
               onUpdate={(update) => handleUpdateDiagnosis(diag.id, update)}
               onGenerateProtocol={() => handleGenerateProtocol(diag.id)}
               generatingProtocol={generatingProtocol}
@@ -445,8 +448,9 @@ function DataCard({ icon: Icon, label, available, detail, required }: {
 
 // ─── Assessment Card ───
 
-function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingProtocol }: {
+function DiagnosisCard({ diagnosis: d, patientId, onUpdate, onGenerateProtocol, generatingProtocol }: {
   diagnosis: Diagnosis;
+  patientId: string;
   onUpdate: (update: any) => void;
   onGenerateProtocol: () => void;
   generatingProtocol: boolean;
@@ -454,6 +458,34 @@ function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingP
   const [expanded, setExpanded] = useState(true);
   const [showRefs, setShowRefs] = useState(false);
   const [comment, setComment] = useState(d.therapistComments || "");
+
+  // Atlas inline chat
+  const [showAtlas, setShowAtlas] = useState(false);
+  const [atlasHistory, setAtlasHistory] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [atlasInput, setAtlasInput] = useState("");
+  const [atlasSending, setAtlasSending] = useState(false);
+
+  const sendAtlas = async (msg?: string) => {
+    const text = (msg || atlasInput).trim();
+    if (!text) return;
+    setAtlasInput("");
+    setAtlasSending(true);
+    const newHistory = [...atlasHistory, { role: "user" as const, content: text }];
+    setAtlasHistory(newHistory);
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/atlas-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history: newHistory }),
+      });
+      const data = await res.json();
+      setAtlasHistory([...newHistory, { role: "assistant" as const, content: data.reply || data.error }]);
+    } catch (e: any) {
+      setAtlasHistory([...newHistory, { role: "assistant" as const, content: "Error: " + e.message }]);
+    } finally {
+      setAtlasSending(false);
+    }
+  };
 
   return (
     <Card>
@@ -563,13 +595,13 @@ function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingP
 
           {/* Additional Assessments Needed */}
           {d.additionalAssessments?.length > 0 && (
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-lg p-3">
-              <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-amber-700">
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+              <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-amber-400">
                 <AlertTriangle className="h-4 w-4" /> Additional Assessments Recommended
               </h4>
               {d.additionalAssessments.map((a: any, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm mb-1">
-                  <Badge className={`text-[10px] ${a.priority === "required" ? "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300" : "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300"}`}>{a.priority}</Badge>
+                  <Badge className={`text-[10px] ${a.priority === "required" ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"}`}>{a.priority}</Badge>
                   <span className="font-medium">{a.assessmentType?.replace("_", " ")}</span>
                   <span className="text-muted-foreground">— {a.reason}</span>
                 </div>
@@ -607,13 +639,75 @@ function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingP
 
           {/* Therapist Comments */}
           <div className="space-y-2 border-t pt-3">
-            <Label className="text-sm font-semibold">Therapist Comments</Label>
+            <Label className="text-sm font-semibold">Therapist Comments / Notes</Label>
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Add your clinical comments, corrections or notes..."
               rows={2}
             />
+          </div>
+
+          {/* Atlas inline chat */}
+          <div className="border border-primary/20 rounded-xl overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-2.5 bg-primary/5 hover:bg-primary/10 transition-colors"
+              onClick={() => {
+                setShowAtlas((v) => !v);
+                if (!showAtlas && atlasHistory.length === 0) {
+                  sendAtlas(`I need your help reviewing this AI assessment for ${d.summary?.substring(0, 120)}... What corrections or additions would you suggest?`);
+                }
+              }}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <Bot className="h-4 w-4" />
+                Chat with Atlas — Review &amp; Correct this Assessment
+              </span>
+              {showAtlas ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+
+            {showAtlas && (
+              <div className="flex flex-col">
+                <div className="max-h-72 overflow-y-auto p-3 space-y-3 bg-background">
+                  {atlasHistory.length === 0 && atlasSending && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Atlas is reading the assessment...
+                    </div>
+                  )}
+                  {atlasHistory.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${
+                        m.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted/60 border border-border/50 text-foreground"
+                      }`}>
+                        {m.content}
+                      </div>
+                    </div>
+                  ))}
+                  {atlasSending && atlasHistory.length > 0 && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted/60 border border-border/50 rounded-xl px-3 py-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
+                  <input
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    placeholder="Ask Atlas to review, correct or suggest changes..."
+                    value={atlasInput}
+                    onChange={(e) => setAtlasInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAtlas(); } }}
+                    disabled={atlasSending}
+                  />
+                  <Button size="sm" className="h-7 px-2" onClick={() => sendAtlas()} disabled={atlasSending || !atlasInput.trim()}>
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
