@@ -153,13 +153,14 @@ export default function AdminAppointmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(blockForm),
       });
-      if (!res.ok) throw new Error("Failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       await fetchBlocks();
       setShowBlockDialog(false);
       setBlockForm({ startDate: "", endDate: "", reason: "", blockType: "ABSENCE" });
       toast({ title: "Period blocked", description: "Days marked as unavailable." });
-    } catch {
-      toast({ title: "Error", description: "Could not create block.", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Could not create block.", variant: "destructive" });
     } finally { setBlockSubmitting(false); }
   };
 
