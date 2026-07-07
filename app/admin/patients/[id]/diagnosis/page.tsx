@@ -155,8 +155,8 @@ export default function PatientDiagnosisPage() {
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [protocols, setProtocols] = useState<Protocol[]>([]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const [diagRes, protoRes] = await Promise.all([
         fetch(`/api/admin/patients/${patientId}/diagnosis`),
@@ -241,9 +241,12 @@ export default function PatientDiagnosisPage() {
         body: JSON.stringify({ protocolId, ...update }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
-      fetchData();
+      // Silent refresh — keeps all local editing state intact (no full-page spinner)
+      await fetchData({ silent: true });
+      return true;
     } catch (err: any) {
       setError(err.message);
+      return false;
     }
   };
 
@@ -810,7 +813,7 @@ const DELIVERY_MODES = [
 
 function ProtocolCard({ protocol: p, onUpdate, patientId }: {
   protocol: Protocol;
-  onUpdate: (update: any) => void;
+  onUpdate: (update: any) => Promise<boolean> | void;
   patientId: string;
 }) {
   const [expanded, setExpanded] = useState(true);
@@ -818,6 +821,13 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
   const [editing, setEditing] = useState(false);
   const [showPackageForm, setShowPackageForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  // Atlas revision panel
+  const [showAtlasReview, setShowAtlasReview] = useState(false);
+  const [atlasFeedback, setAtlasFeedback] = useState("");
+  const [atlasProposal, setAtlasProposal] = useState<any>(null);
+  const [atlasBusy, setAtlasBusy] = useState<"" | "proposing" | "applying">("");
+  const [atlasError, setAtlasError] = useState("");
 
   // Editable protocol fields
   const [editTitle, setEditTitle] = useState(p.title);
@@ -860,23 +870,87 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
 
   const hasElectro = (p as any).includesElectrotherapy || p.items?.some((it: any) => it.treatmentTypeName?.toLowerCase().includes("electro") || it.treatmentTypeName?.toLowerCase().includes("tens") || it.treatmentTypeName?.toLowerCase().includes("ultrasound"));
 
+  // Full form state payload — every save carries EVERYTHING so nothing is ever lost
+  const buildPayload = () => ({
+    title: editTitle,
+    summary: editSummary,
+    deliveryMode: editDelivery,
+    totalSessions: editTotalSessions,
+    sessionsPerWeek: editSessionsPerWeek,
+    sessionDuration: editSessionDuration,
+    language: editLanguage,
+    therapistComments: editComment,
+    includesElectrotherapy: hasElectro,
+    startDate: editStartDate ? new Date(editStartDate).toISOString() : null,
+    sessionTime: editSessionTime,
+    sessionDays: JSON.stringify(editSessionDays),
+  });
+
   const saveEdits = async () => {
     setSaving(true);
-    onUpdate({
-      title: editTitle,
-      summary: editSummary,
-      deliveryMode: editDelivery,
-      totalSessions: editTotalSessions,
-      sessionsPerWeek: editSessionsPerWeek,
-      sessionDuration: editSessionDuration,
-      language: editLanguage,
-      therapistComments: editComment,
-      includesElectrotherapy: hasElectro,
-      startDate: editStartDate ? new Date(editStartDate).toISOString() : null,
-      sessionTime: editSessionTime,
-      sessionDays: JSON.stringify(editSessionDays),
+    setSaveStatus("saving");
+    await onUpdate(buildPayload());
+    setSaving(false);
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus("idle"), 2500);
+  };
+
+  // ── AUTOSAVE: debounce 1.5s after any field change ──
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    setSaveStatus("saving");
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(async () => {
+      await onUpdate(buildPayload());
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2500);
+    }, 1500);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editTitle, editSummary, editDelivery, editTotalSessions, editSessionsPerWeek, editSessionDuration, editLanguage, editComment, editStartDate, editSessionTime, editSessionDays]);
+
+  // Release buttons: include the full current form state so unsaved edits are never lost
+  const setRelease = (week: number | null) => {
+    setSaveStatus("saving");
+    Promise.resolve(onUpdate({ ...buildPayload(), releasedThroughWeek: week })).then(() => {
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2500);
     });
-    setTimeout(() => { setSaving(false); setEditing(false); }, 500);
+  };
+
+  // ── Atlas revision ──
+  const atlasPropose = async () => {
+    setAtlasBusy("proposing"); setAtlasError(""); setAtlasProposal(null);
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/protocol-revise`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "propose", protocolId: p.id, feedback: atlasFeedback }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAtlasProposal(data.proposal);
+    } catch (err: any) { setAtlasError(err.message); }
+    finally { setAtlasBusy(""); }
+  };
+
+  const atlasApply = async () => {
+    setAtlasBusy("applying"); setAtlasError("");
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/protocol-revise`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "apply", protocolId: p.id, proposal: atlasProposal }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAtlasProposal(null);
+      setAtlasFeedback("");
+      await onUpdate({}); // silent refresh
+    } catch (err: any) { setAtlasError(err.message); }
+    finally { setAtlasBusy(""); }
   };
 
   const createPackage = async () => {
@@ -932,6 +1006,8 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
               {p.estimatedWeeks && <Badge variant="outline" className="text-[10px]"><Clock className="h-2.5 w-2.5 mr-0.5" /> {p.estimatedWeeks} weeks</Badge>}
               {(p as any).totalSessions && <Badge variant="outline" className="text-[10px]">{(p as any).totalSessions} sessions</Badge>}
               {hasElectro && <Badge className="text-[10px] bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300"><Zap className="h-2 w-2 mr-0.5" /> Electro</Badge>}
+              {saveStatus === "saving" && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving…</span>}
+              {saveStatus === "saved" && <span className="text-[10px] text-emerald-500 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> Saved</span>}
             </div>
             <p className="text-xs text-muted-foreground">
               By {p.therapist.firstName} {p.therapist.lastName} · {new Date(p.createdAt).toLocaleString()}
@@ -1066,12 +1142,12 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                 : `Patient sees items up to week ${(p as any).releasedThroughWeek}. Remaining items stay hidden until you release them.`}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: 1 })}>Week 1 only</Button>
-              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: ((p as any).releasedThroughWeek || 0) + 1 })}>+1 week</Button>
-              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: ((p as any).releasedThroughWeek || 0) + 2 })}>+2 weeks</Button>
-              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: 4 })}>Short-term phase (wk 4)</Button>
-              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: 12 })}>Medium-term (wk 12)</Button>
-              <Button size="sm" className="h-7 text-[11px] bg-violet-600 hover:bg-violet-700" onClick={() => onUpdate({ releasedThroughWeek: null })}>Release everything</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(1)}>Week 1 only</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(((p as any).releasedThroughWeek || 0) + 1)}>+1 week</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(((p as any).releasedThroughWeek || 0) + 2)}>+2 weeks</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(4)}>Short-term phase (wk 4)</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(12)}>Medium-term (wk 12)</Button>
+              <Button size="sm" className="h-7 text-[11px] bg-violet-600 hover:bg-violet-700" onClick={() => setRelease(null)}>Release everything</Button>
             </div>
           </div>
 
@@ -1081,12 +1157,73 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
             <Textarea value={editComment} onChange={(e) => setEditComment(e.target.value)} placeholder="Add comments, corrections..." rows={2} />
           </div>
 
-          {/* Save Edits Button — always visible so nothing is ever lost */}
-          <div className="flex gap-2 sticky bottom-2 z-10">
+          {/* Save Edits Button — autosave also runs 1.5s after any change */}
+          <div className="flex items-center gap-2 sticky bottom-2 z-10">
             <Button size="sm" onClick={saveEdits} disabled={saving} className="shadow-lg">
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />} Save Changes
             </Button>
-            {editing && <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Close editing</Button>}
+            <span className="text-[10px] text-muted-foreground">Autosaves as you edit</span>
+          </div>
+
+          {/* ── Atlas Protocol Review ── */}
+          <div className="border rounded-lg p-3 bg-sky-500/5 border-sky-500/20 space-y-2">
+            <button className="text-xs font-semibold flex items-center gap-1.5 w-full" onClick={() => setShowAtlasReview(!showAtlasReview)}>
+              <Bot className="h-4 w-4 text-sky-400" /> Review with Atlas — correct the whole protocol
+              {showAtlasReview ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
+            </button>
+            {showAtlasReview && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-muted-foreground">Describe your clinical perception from the assessment (what the AI got wrong, what you observed, treatments you want). Atlas will propose a full revision — you approve before anything changes.</p>
+                <Textarea
+                  value={atlasFeedback}
+                  onChange={(e) => setAtlasFeedback(e.target.value)}
+                  rows={4}
+                  className="text-xs"
+                  placeholder="E.g.: Patient has better quadriceps strength than assumed (MMT 4/5). DEXA confirmed osteoporosis only in the hip. I want Aussie current 1MHz on quadriceps 20min instead of TENS, and isometrics can progress to week 2..."
+                />
+                <Button size="sm" className="h-7 text-[11px] bg-sky-600 hover:bg-sky-700" onClick={atlasPropose} disabled={!atlasFeedback.trim() || atlasBusy !== ""}>
+                  {atlasBusy === "proposing" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Bot className="h-3 w-3 mr-1" />} Generate revision
+                </Button>
+                {atlasError && <p className="text-[11px] text-red-400">{atlasError}</p>}
+
+                {atlasProposal && (
+                  <div className="border border-sky-500/30 rounded-lg p-3 space-y-2 bg-card">
+                    <p className="text-xs font-semibold text-sky-400">Proposed revision</p>
+                    <p className="text-xs">{atlasProposal.revisionSummary}</p>
+                    {(atlasProposal.updateItems?.length || 0) > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-amber-400 mb-1">Modified ({atlasProposal.updateItems.length}):</p>
+                        {atlasProposal.updateItems.map((u: any, i: number) => (
+                          <p key={i} className="text-[11px] ml-2">• <span className="font-medium">{u.currentTitle}</span>{u.changes?.title ? ` → ${u.changes.title}` : ""} <span className="text-muted-foreground">({Object.keys(u.changes || {}).join(", ")})</span></p>
+                        ))}
+                      </div>
+                    )}
+                    {(atlasProposal.removeItemTitles?.length || 0) > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-red-400 mb-1">Removed ({atlasProposal.removeItemTitles.length}):</p>
+                        {atlasProposal.removeItemTitles.map((t: string, i: number) => (
+                          <p key={i} className="text-[11px] ml-2 line-through text-muted-foreground">• {t}</p>
+                        ))}
+                      </div>
+                    )}
+                    {(atlasProposal.newItems?.length || 0) > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-emerald-400 mb-1">Added ({atlasProposal.newItems.length}):</p>
+                        {atlasProposal.newItems.map((n: any, i: number) => (
+                          <p key={i} className="text-[11px] ml-2">• <span className="font-medium">{n.title}</span> <span className="text-muted-foreground">[{n.phase}/{n.itemType}]</span></p>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700" onClick={atlasApply} disabled={atlasBusy !== ""}>
+                        {atlasBusy === "applying" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />} Apply revision
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setAtlasProposal(null)}>Discard</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Goals */}
@@ -1133,6 +1270,9 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                   {items.map((item: any) => (
                     <ProtocolItemRow key={item.id} item={item} onUpdate={onUpdate} />
                   ))}
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] border-dashed" onClick={() => onUpdate({ newItem: { phase, title: "New item — edit me", description: "", itemType: "HOME_EXERCISE" } })}>
+                    <Plus className="h-3 w-3 mr-1" /> Add item to this phase
+                  </Button>
                 </div>
               </div>
             );
@@ -1339,6 +1479,23 @@ function ProtocolItemRow({ item, onUpdate }: { item: any; onUpdate: (update: any
 
   const toggleHidden = () => onUpdate({ itemId: item.id, itemUpdate: { hiddenFromPatient: !hidden } });
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteItem = () => {
+    if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return; }
+    onUpdate({ deleteItemId: item.id });
+  };
+
+  const duplicateItem = () => onUpdate({
+    newItem: {
+      phase: item.phase, itemType: item.itemType, sortOrder: (item.sortOrder ?? 0) + 1,
+      title: `${item.title} (copy)`, description: item.description, instructions: item.instructions,
+      bodyRegion: item.bodyRegion, references: item.references, treatmentTypeName: item.treatmentTypeName,
+      sessionDuration: item.sessionDuration, sessionsPerWeek: item.sessionsPerWeek, exerciseId: item.exerciseId,
+      sets: item.sets, reps: item.reps, holdSeconds: item.holdSeconds, restSeconds: item.restSeconds,
+      frequency: item.frequency, startWeek: item.startWeek, endWeek: item.endWeek,
+    },
+  });
+
   return (
     <div className={`border rounded-lg p-3 transition-opacity ${hidden ? "opacity-50 border-dashed" : ""}`}>
       <div className="flex items-start justify-between gap-2">
@@ -1358,8 +1515,14 @@ function ProtocolItemRow({ item, onUpdate }: { item: any; onUpdate: (update: any
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title={hidden ? "Show to patient" : "Hide from patient"} onClick={toggleHidden}>
             {hidden ? <EyeOff className="h-3.5 w-3.5 text-amber-500" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
           </Button>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditing(!editing)}>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Edit item" onClick={() => setEditing(!editing)}>
             <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Duplicate item" onClick={duplicateItem}>
+            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="sm" className={`h-6 p-0 ${confirmDelete ? "w-auto px-1.5" : "w-6"}`} title="Delete item" onClick={deleteItem}>
+            {confirmDelete ? <span className="text-[9px] text-red-500 font-semibold">Confirm?</span> : <X className="h-3.5 w-3.5 text-red-400" />}
           </Button>
         </div>
       </div>

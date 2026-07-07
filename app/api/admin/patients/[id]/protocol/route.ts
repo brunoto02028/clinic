@@ -345,7 +345,43 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { protocolId, status, therapistComments, itemId, itemUpdate } = body;
+    const { protocolId, status, therapistComments, itemId, itemUpdate, deleteItemId, newItem } = body;
+
+    // Delete a specific protocol item
+    if (deleteItemId) {
+      await (prisma as any).protocolItem.delete({ where: { id: deleteItemId } });
+      return NextResponse.json({ success: true, deleted: deleteItemId });
+    }
+
+    // Create a new protocol item (manual add or duplicate)
+    if (newItem && protocolId) {
+      const created = await (prisma as any).protocolItem.create({
+        data: {
+          protocolId,
+          phase: newItem.phase || "SHORT_TERM",
+          itemType: newItem.itemType || "HOME_EXERCISE",
+          sortOrder: newItem.sortOrder ?? 999,
+          title: newItem.title || "New item",
+          description: newItem.description || "",
+          instructions: newItem.instructions || null,
+          bodyRegion: newItem.bodyRegion || null,
+          references: newItem.references || undefined,
+          treatmentTypeName: newItem.treatmentTypeName || null,
+          sessionDuration: newItem.sessionDuration ?? null,
+          sessionsPerWeek: newItem.sessionsPerWeek ?? null,
+          exerciseId: newItem.exerciseId || null,
+          sets: newItem.sets ?? null,
+          reps: newItem.reps ?? null,
+          holdSeconds: newItem.holdSeconds ?? null,
+          restSeconds: newItem.restSeconds ?? null,
+          frequency: newItem.frequency || null,
+          startWeek: newItem.startWeek ?? 1,
+          endWeek: newItem.endWeek ?? null,
+          hiddenFromPatient: newItem.hiddenFromPatient ?? false,
+        },
+      });
+      return NextResponse.json({ success: true, item: created });
+    }
 
     // Update a specific protocol item (e.g. patient marks as completed)
     if (itemId && itemUpdate) {
