@@ -166,7 +166,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
   ]
 }`;
 
-    const rawText = await callAIClinical(prompt, { temperature: 0.3, maxTokens: 8192 });
+    const rawText = await callAIClinical(prompt, { temperature: 0.3, maxTokens: 16384 });
     if (!rawText) throw new Error("No response from AI. Please try again.");
 
     // Strip markdown code fences if present
@@ -175,25 +175,62 @@ Respond in this exact JSON format (no markdown, no code blocks):
       .replace(/\s*```\s*$/im, "")
       .trim();
 
-    // Extract the outermost JSON object
+    // Extract from the first { onwards
     const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if (start === -1 || end === -1) {
+    if (start === -1) {
       console.error("[protocol] Raw AI response (no JSON found):", rawText.slice(0, 500));
       throw new Error("Failed to extract JSON from AI response");
     }
-    cleaned = cleaned.slice(start, end + 1);
+    const end = cleaned.lastIndexOf("}");
+    cleaned = end > start ? cleaned.slice(start, end + 1) : cleaned.slice(start);
 
     // Remove trailing commas before ] or } (common AI mistake)
     cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
 
+    // Attempt to repair truncated JSON: trim to last complete element and close open brackets
+    const repairTruncatedJson = (text: string): string => {
+      // Cut back to the last complete value boundary (}, ], ", digit, true/false/null)
+      let i = text.length - 1;
+      while (i > 0 && !/[}\]"el0-9]/.test(text[i])) i--;
+      let candidate = text.slice(0, i + 1);
+      // Remove a dangling partial key/value like `"someKey": "unterminated...`
+      const lastComma = candidate.lastIndexOf(",");
+      const attempts = [candidate, lastComma > 0 ? candidate.slice(0, lastComma) : candidate];
+      for (const base of attempts) {
+        // Balance brackets
+        let openCurly = 0, openSquare = 0, inString = false, escape = false;
+        for (const ch of base) {
+          if (escape) { escape = false; continue; }
+          if (ch === "\\") { escape = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === "{") openCurly++;
+          else if (ch === "}") openCurly--;
+          else if (ch === "[") openSquare++;
+          else if (ch === "]") openSquare--;
+        }
+        if (inString) continue; // unterminated string — try next attempt
+        let repaired = base.replace(/,\s*$/, "");
+        repaired += "]".repeat(Math.max(0, openSquare)) + "}".repeat(Math.max(0, openCurly));
+        try { JSON.parse(repaired); return repaired; } catch { /* try next */ }
+      }
+      return text; // give up — return original
+    };
+
     let parsed: any;
     try {
       parsed = JSON.parse(cleaned);
-    } catch (jsonErr: any) {
-      console.error("[protocol] JSON parse error:", jsonErr.message);
-      console.error("[protocol] Cleaned text (first 1000 chars):", cleaned.slice(0, 1000));
-      throw new Error(`Invalid JSON in AI response: ${jsonErr.message}`);
+    } catch (firstErr: any) {
+      console.warn("[protocol] JSON parse failed, attempting repair:", firstErr.message);
+      const repaired = repairTruncatedJson(cleaned);
+      try {
+        parsed = JSON.parse(repaired);
+        console.warn("[protocol] JSON repaired successfully (response was truncated)");
+      } catch (jsonErr: any) {
+        console.error("[protocol] JSON parse error after repair:", jsonErr.message);
+        console.error("[protocol] Cleaned text (last 500 chars):", cleaned.slice(-500));
+        throw new Error(`Invalid JSON in AI response: ${jsonErr.message}`);
+      }
     }
 
     // ─── Save to DB ───
