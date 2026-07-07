@@ -169,14 +169,31 @@ Respond in this exact JSON format (no markdown, no code blocks):
     const rawText = await callAIClinical(prompt, { temperature: 0.3, maxTokens: 8192 });
     if (!rawText) throw new Error("No response from AI. Please try again.");
 
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Failed to parse AI protocol response");
+    // Strip markdown code fences if present
+    let cleaned = rawText
+      .replace(/^```(?:json)?\s*/im, "")
+      .replace(/\s*```\s*$/im, "")
+      .trim();
+
+    // Extract the outermost JSON object
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start === -1 || end === -1) {
+      console.error("[protocol] Raw AI response (no JSON found):", rawText.slice(0, 500));
+      throw new Error("Failed to extract JSON from AI response");
+    }
+    cleaned = cleaned.slice(start, end + 1);
+
+    // Remove trailing commas before ] or } (common AI mistake)
+    cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
 
     let parsed: any;
     try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      throw new Error("Invalid JSON in AI protocol response");
+      parsed = JSON.parse(cleaned);
+    } catch (jsonErr: any) {
+      console.error("[protocol] JSON parse error:", jsonErr.message);
+      console.error("[protocol] Cleaned text (first 1000 chars):", cleaned.slice(0, 1000));
+      throw new Error(`Invalid JSON in AI response: ${jsonErr.message}`);
     }
 
     // ─── Save to DB ───
