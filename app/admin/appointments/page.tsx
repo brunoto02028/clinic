@@ -157,7 +157,7 @@ export default function AdminAppointmentsPage() {
       await fetchBlocks();
       setShowBlockDialog(false);
       setBlockForm({ startDate: "", endDate: "", reason: "", blockType: "ABSENCE" });
-      toast({ title: isPt ? "Período bloqueado" : "Period blocked", description: isPt ? "Dias marcados como indisponível." : "Days marked as unavailable." });
+      toast({ title: "Period blocked", description: "Days marked as unavailable." });
     } catch {
       toast({ title: "Error", description: "Could not create block.", variant: "destructive" });
     } finally { setBlockSubmitting(false); }
@@ -166,7 +166,7 @@ export default function AdminAppointmentsPage() {
   const deleteBlock = async (id: string) => {
     await fetch("/api/admin/calendar/blocks", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     setBlocks(prev => prev.filter(b => b.id !== id));
-    toast({ title: isPt ? "Bloqueio removido" : "Block removed" });
+    toast({ title: "Block removed" });
   };
 
   const isDayBlocked = (day: Date) => {
@@ -517,7 +517,7 @@ export default function AdminAppointmentsPage() {
                 {calendarDays[6].toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", year: "numeric" })}
               </span>
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-red-500/40 text-red-400 hover:bg-red-500/10" onClick={() => setShowBlockDialog(true)}>
-                <BanIcon className="h-3 w-3" />{isPt ? "Bloquear Período" : "Block Period"}
+                <BanIcon className="h-3 w-3" />Block Period
               </Button>
             </div>
             <Button variant="outline" size="sm" onClick={() => navWeek(1)}>
@@ -531,9 +531,9 @@ export default function AdminAppointmentsPage() {
               {blocks.map(b => (
                 <div key={b.id} className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-md px-2 py-1 text-[10px] text-red-400">
                   <BanIcon className="h-2.5 w-2.5 shrink-0" />
-                  <span>{new Date(b.startDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" })}</span>
-                  {b.startDate !== b.endDate && <><span>→</span><span>{new Date(b.endDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" })}</span></>}
-                  {b.reason && <span className="text-muted-foreground">· {b.reason}</span>}
+                  <span>{new Date(b.startDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span>
+                  {b.startDate !== b.endDate && <><span>→</span><span>{new Date(b.endDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span></>}
+                  {b.reason && <span className="text-muted-foreground">· {b.reason.trim()}</span>}
                   <button onClick={() => deleteBlock(b.id)} className="ml-0.5 hover:text-red-300"><X className="h-2.5 w-2.5" /></button>
                 </div>
               ))}
@@ -554,7 +554,7 @@ export default function AdminAppointmentsPage() {
                     <div key={i} className={`p-2 text-center border-l ${isToday ? "bg-emerald-500/10" : ""} ${blocked ? "bg-red-500/10" : ""}`}>
                       <p className="text-[10px] text-muted-foreground">{(isPt ? DAY_NAMES_PT : DAY_NAMES_EN)[i]}</p>
                       <p className={`text-sm font-semibold ${isToday ? "text-emerald-400" : ""} ${blocked ? "text-red-400" : ""}`}>{day.getDate()}</p>
-                      {blocked && <p className="text-[8px] text-red-400/80 leading-tight truncate">{blk?.reason || (isPt ? "Indisponível" : "Unavailable")}</p>}
+                      {blocked && <p className="text-[8px] text-red-400/80 leading-tight truncate">{blk?.reason || "Unavailable"}</p>}
                     </div>
                   );
                 })}
@@ -1033,51 +1033,49 @@ export default function AdminAppointmentsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BanIcon className="h-5 w-5 text-red-400" />
-              {isPt ? "Bloquear Período" : "Block Period"}
+              Block Period
             </DialogTitle>
             <DialogDescription>
-              {isPt
-                ? "Marque dias como indisponível. Nenhum agendamento será aceite neste período."
-                : "Mark days as unavailable. No bookings will be accepted during this period."}
+              Mark days as unavailable. No bookings will be accepted during this period.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">{isPt ? "Data início" : "Start date"}</Label>
+                <Label className="text-xs">Start date</Label>
                 <Input type="date" value={blockForm.startDate} onChange={e => setBlockForm(f => ({ ...f, startDate: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">{isPt ? "Data fim" : "End date"}</Label>
+                <Label className="text-xs">End date</Label>
                 <Input type="date" value={blockForm.endDate} onChange={e => setBlockForm(f => ({ ...f, endDate: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">{isPt ? "Motivo" : "Reason"} <span className="text-muted-foreground">(opcional)</span></Label>
-              <Input placeholder={isPt ? "Ex: Férias, Congresso, Formação..." : "e.g. Vacation, Conference, Training..."} value={blockForm.reason} onChange={e => setBlockForm(f => ({ ...f, reason: e.target.value }))} />
+              <Label className="text-xs">Reason <span className="text-muted-foreground">(optional)</span></Label>
+              <Input placeholder="e.g. Vacation, Conference, Training..." value={blockForm.reason} onChange={e => setBlockForm(f => ({ ...f, reason: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">{isPt ? "Tipo" : "Type"}</Label>
+              <Label className="text-xs">Type</Label>
               <Select value={blockForm.blockType} onValueChange={v => setBlockForm(f => ({ ...f, blockType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ABSENCE">{isPt ? "Ausência" : "Absence"}</SelectItem>
-                  <SelectItem value="VACATION">{isPt ? "Férias" : "Vacation"}</SelectItem>
-                  <SelectItem value="TRAINING">{isPt ? "Formação" : "Training"}</SelectItem>
-                  <SelectItem value="OTHER">{isPt ? "Outro" : "Other"}</SelectItem>
+                  <SelectItem value="ABSENCE">Absence</SelectItem>
+                  <SelectItem value="VACATION">Vacation</SelectItem>
+                  <SelectItem value="TRAINING">Training</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBlockDialog(false)}>{isPt ? "Cancelar" : "Cancel"}</Button>
+            <Button variant="outline" onClick={() => setShowBlockDialog(false)}>Cancel</Button>
             <Button
               onClick={createBlock}
               disabled={!blockForm.startDate || !blockForm.endDate || blockSubmitting}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               {blockSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <BanIcon className="h-4 w-4 mr-1" />}
-              {isPt ? "Bloquear" : "Block"}
+              Block
             </Button>
           </DialogFooter>
         </DialogContent>
