@@ -12,6 +12,21 @@ export interface CheckIn {
   notes: string | null;
 }
 
+export interface PatientProgress {
+  streakDays: number;
+  longestStreak: number;
+  xp: number;
+  level: number;
+  levelTitle: string;
+  totalXpEarned: number;
+}
+
+export interface StreakResult {
+  current: number;
+  longest: number;
+  isNewRecord: boolean;
+}
+
 export async function submitCheckIn(data: {
   painLevel: number;
   moodLevel: number;
@@ -21,12 +36,12 @@ export async function submitCheckIn(data: {
   exercisesDone: boolean;
   notes?: string;
 }) {
-  return apiFetch<{ checkIn: CheckIn; xpAwarded?: number }>("/api/patient/daily-checkin", {
+  return apiFetch<{ checkIn: CheckIn; xpAwarded?: number; streak: StreakResult }>("/api/patient/daily-checkin", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export async function fetchCheckIns() {
-  return apiFetch<{ today: CheckIn | null; history: CheckIn[] }>("/api/patient/daily-checkin");
+  return apiFetch<{ today: CheckIn | null; history: CheckIn[]; todayDate: string; progress: PatientProgress | null }>("/api/patient/daily-checkin");
 }
