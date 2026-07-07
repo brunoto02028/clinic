@@ -6,7 +6,7 @@ import { resolveClinicId } from "@/lib/resolve-clinic-id";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF", "THERAPIST"];
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
