@@ -145,6 +145,7 @@ export default function PatientDiagnosisPage() {
   const [generating, setGenerating] = useState(false);
   const [generatingProtocol, setGeneratingProtocol] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [patient, setPatient] = useState<any>(null);
   const [dataAvail, setDataAvail] = useState<DataAvailability | null>(null);
@@ -205,6 +206,8 @@ export default function PatientDiagnosisPage() {
       try { data = await res.json(); } catch { throw new Error("Invalid server response"); }
       if (!res.ok) throw new Error(data.error);
       setTab("protocol");
+      setSuccess("Protocolo gerado com sucesso! A redirecionar para o tab Protocolo...");
+      setTimeout(() => setSuccess(""), 5000);
       fetchData();
     } catch (err: any) {
       setError(err.message);
@@ -270,6 +273,12 @@ export default function PatientDiagnosisPage() {
         </div>
       </div>
 
+      {success && (
+        <div className="bg-emerald-500/10 text-emerald-400 text-sm p-3 rounded-lg flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0" /> {success}
+          <Button variant="ghost" size="sm" className="ml-auto h-6 w-6 p-0" onClick={() => setSuccess("")}><X className="h-3 w-3" /></Button>
+        </div>
+      )}
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" /> {error}

@@ -8,7 +8,7 @@ import {
   RefreshCw, AlertCircle, CheckCircle2, X, Loader2, Mic, MicOff, Languages, Plus, Save,
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
-  BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare,
+  BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
 } from "lucide-react";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import { Button } from "@/components/ui/button";
@@ -159,6 +159,11 @@ export default function PatientProfilePage() {
   const [diagForm, setDiagForm] = useState<any>({});
   const [editingProtoId, setEditingProtoId] = useState<string | null>(null);
   const [protoForm, setProtoForm] = useState<any>({});
+  // Protocol tab full editor
+  const [protoFullEditing, setProtoFullEditing] = useState<string | null>(null);
+  const [protoFullForm, setProtoFullForm] = useState<any>({});
+  const [protoFullSaving, setProtoFullSaving] = useState(false);
+  const [sendingProto, setSendingProto] = useState(false);
 
   // New document/upload/history
   const [showManualDoc, setShowManualDoc] = useState(false);
@@ -330,6 +335,36 @@ export default function PatientProfilePage() {
   const saveProto = async () => {
     const r = await apiPatch({ action: "edit_protocol", protocolId: editingProtoId, ...protoForm });
     if (r) { setEditingProtoId(null); flash("Protocol updated"); fetchData(); }
+  };
+
+  const patchProtocol = async (protocolId: string, body: any) => {
+    const payload: any = { protocolId, ...body };
+    if (Array.isArray(payload.sessionDays)) payload.sessionDays = JSON.stringify(payload.sessionDays);
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/protocol`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      return d;
+    } catch (err: any) { setError(err.message); return null; }
+  };
+
+  const saveProtoFull = async () => {
+    if (!protoFullEditing) return;
+    setProtoFullSaving(true);
+    const r = await patchProtocol(protoFullEditing, protoFullForm);
+    if (r) { setProtoFullEditing(null); flash("Protocolo guardado!"); fetchData(); }
+    setProtoFullSaving(false);
+  };
+
+  const sendProtocol = async (protocolId: string) => {
+    if (!confirm("Enviar protocolo ao paciente? Os slots de calendário serão pré-bloqueados aguardando confirmação do paciente.")) return;
+    setSendingProto(true);
+    const r = await patchProtocol(protocolId, { status: "SENT_TO_PATIENT" });
+    if (r) { flash("Protocolo enviado ao paciente! Calendário pré-bloqueado."); fetchData(); }
+    setSendingProto(false);
   };
 
   const saveManualDoc = async () => {
@@ -718,6 +753,14 @@ export default function PatientProfilePage() {
                 <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
                   <MessageSquare className="h-3 w-3" />Mensagens
                   {unreadMsg > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white px-1">{unreadMsg}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="protocolo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                  <ClipboardCheck className="h-3 w-3" />Protocolo
+                  {(data.protocols?.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length ?? 0) > 0 && (
+                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/60 text-[9px] font-bold text-white px-1">
+                      {data.protocols.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length}
+                    </span>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
                   <Bot className="h-3 w-3" />Rehab Agent
@@ -1514,6 +1557,201 @@ export default function PatientProfilePage() {
         {/* ── Tab: Mensagens ── */}
         <TabsContent value="mensagens" className="mt-4">
           <PatientMessagesTab patientId={patientId} />
+        </TabsContent>
+
+        {/* ── Tab: Protocolo ── */}
+        <TabsContent value="protocolo" className="space-y-4 mt-4">
+          {(!data.protocols || data.protocols.length === 0) ? (
+            <div className="border-dashed border rounded-xl p-10 text-center text-muted-foreground space-y-3">
+              <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground/30" />
+              <p className="font-medium text-sm">Nenhum protocolo de tratamento criado</p>
+              <p className="text-xs">Gere uma avaliação AI e depois crie o protocolo a partir da página de diagnóstico.</p>
+              {data.diagnoses?.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => generateProtocol(data.diagnoses[0].id)} disabled={genProtocol}>
+                  {genProtocol ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />} Gerar Protocolo
+                </Button>
+              )}
+              <div><a href={`/admin/patients/${patientId}/diagnosis`} className="text-xs text-primary hover:underline">→ Ir para Avaliações & Diagnóstico</a></div>
+            </div>
+          ) : data.protocols.map((pr: any) => {
+            const STATUS_STEPS = ["DRAFT", "UNDER_REVIEW", "APPROVED", "SENT_TO_PATIENT"];
+            const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", UNDER_REVIEW: "Em Revisão", APPROVED: "Aprovado", SENT_TO_PATIENT: "Enviado" };
+            const currentStep = STATUS_STEPS.indexOf(pr.status);
+            const isEditing = protoFullEditing === pr.id;
+            const sessionDays: string[] = isEditing
+              ? (protoFullForm.sessionDays || [])
+              : (() => { try { return JSON.parse(pr.sessionDays || "[]"); } catch { return []; } })();
+            return (
+              <div key={pr.id} className="border rounded-xl overflow-hidden">
+                {/* Header */}
+                <div className="p-3 bg-muted/20 flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                      <Input value={protoFullForm.title || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, title: e.target.value }))} className="h-8 text-sm font-medium" />
+                    ) : (
+                      <h3 className="text-sm font-semibold truncate">{pr.title}</h3>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{pr.items?.length || 0} itens · {pr.totalSessions || "?"} sessões · {pr.estimatedWeeks || "?"} semanas</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isEditing ? (
+                      <>
+                        <Button size="sm" className="h-7 text-xs" onClick={saveProtoFull} disabled={protoFullSaving}>
+                          {protoFullSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setProtoFullEditing(null)}>Cancelar</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
+                          setProtoFullEditing(pr.id);
+                          setProtoFullForm({
+                            title: pr.title || "",
+                            summary: pr.summary || "",
+                            therapistComments: pr.therapistComments || "",
+                            status: pr.status,
+                            deliveryMode: pr.deliveryMode || "IN_CLINIC",
+                            totalSessions: pr.totalSessions || 12,
+                            sessionsPerWeek: pr.sessionsPerWeek || 2,
+                            sessionDuration: pr.sessionDuration || 60,
+                            startDate: pr.startDate ? new Date(pr.startDate).toISOString().split("T")[0] : "",
+                            sessionTime: pr.sessionTime || "09:00",
+                            sessionDays: (() => { try { return JSON.parse(pr.sessionDays || "[]"); } catch { return []; } })(),
+                          });
+                        }}>
+                          <Pencil className="h-3 w-3 mr-1" /> Editar
+                        </Button>
+                        {pr.status !== "SENT_TO_PATIENT" && (
+                          <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => sendProtocol(pr.id)} disabled={sendingProto}>
+                            {sendingProto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />} Enviar ao Paciente
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Status stepper */}
+                <div className="px-3 py-2 border-b bg-muted/10 flex items-center">
+                  {STATUS_STEPS.map((s, i) => (
+                    <div key={s} className="flex items-center">
+                      <div className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium ${
+                        i <= currentStep ? "text-primary" : "text-muted-foreground"
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          i < currentStep ? "bg-primary" : i === currentStep ? "bg-primary animate-pulse" : "bg-muted-foreground/30"
+                        }`} />
+                        {STATUS_LABELS[s]}
+                      </div>
+                      {i < STATUS_STEPS.length - 1 && <div className={`h-px w-4 ${i < currentStep ? "bg-primary/50" : "bg-muted-foreground/20"}`} />}
+                    </div>
+                  ))}
+                </div>
+                <div className="p-3 space-y-3">
+                  {/* Summary */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Sumário Clínico</p>
+                    {isEditing ? (
+                      <Textarea value={protoFullForm.summary || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, summary: e.target.value }))} rows={5} className="text-xs" />
+                    ) : (
+                      <p className="text-xs leading-relaxed whitespace-pre-line">{pr.summary || "—"}</p>
+                    )}
+                  </div>
+                  {/* Scheduling */}
+                  <div className="border rounded-lg p-3 bg-muted/10 space-y-2.5">
+                    <p className="text-[10px] font-semibold flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-primary" /> Agendamento</p>
+                    {isEditing ? (
+                      <div className="space-y-2.5">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1"><Label className="text-[10px]">Data início</Label>
+                            <Input type="date" value={protoFullForm.startDate || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, startDate: e.target.value }))} className="h-8 text-xs" />
+                          </div>
+                          <div className="space-y-1"><Label className="text-[10px]">Horário</Label>
+                            <Input type="time" value={protoFullForm.sessionTime || "09:00"} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionTime: e.target.value }))} className="h-8 text-xs" />
+                          </div>
+                          <div className="space-y-1"><Label className="text-[10px]">Duração (min)</Label>
+                            <Input type="number" value={protoFullForm.sessionDuration || 60} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionDuration: parseInt(e.target.value) || 60 }))} className="h-8 text-xs" min={15} max={180} step={15} />
+                          </div>
+                        </div>
+                        <div className="space-y-1"><Label className="text-[10px]">Dias da semana</Label>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {["MON","TUE","WED","THU","FRI","SAT","SUN"].map(d => (
+                              <button key={d} type="button"
+                                onClick={() => setProtoFullForm((f: any) => ({ ...f, sessionDays: f.sessionDays?.includes(d) ? f.sessionDays.filter((x: string) => x !== d) : [...(f.sessionDays || []), d] }))}
+                                className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${
+                                  protoFullForm.sessionDays?.includes(d) ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/50"
+                                }`}>{d}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1"><Label className="text-[10px]">Total sessões</Label>
+                            <Input type="number" value={protoFullForm.totalSessions || 12} onChange={e => setProtoFullForm((f: any) => ({ ...f, totalSessions: parseInt(e.target.value) || 12 }))} className="h-8 text-xs" min={1} />
+                          </div>
+                          <div className="space-y-1"><Label className="text-[10px]">Por semana</Label>
+                            <Input type="number" value={protoFullForm.sessionsPerWeek || 2} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionsPerWeek: parseInt(e.target.value) || 2 }))} className="h-8 text-xs" min={1} max={7} />
+                          </div>
+                          <div className="space-y-1"><Label className="text-[10px]">Modalidade</Label>
+                            <select value={protoFullForm.deliveryMode || "IN_CLINIC"} onChange={e => setProtoFullForm((f: any) => ({ ...f, deliveryMode: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[10px]">
+                              <option value="IN_CLINIC">Presencial</option>
+                              <option value="REMOTE">Remoto</option>
+                              <option value="HYBRID">Híbrido</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div><p className="text-[9px] text-muted-foreground">Data início</p><p className="text-xs font-medium">{pr.startDate ? new Date(pr.startDate).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }) : "Não definida"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Horário</p><p className="text-xs font-medium">{pr.sessionTime || "—"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Duração</p><p className="text-xs font-medium">{pr.sessionDuration ? `${pr.sessionDuration} min` : "—"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Dias</p><p className="text-xs font-medium">{sessionDays.length > 0 ? sessionDays.join(", ") : "—"}</p></div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Therapist comments */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Notas do Terapeuta</p>
+                    {isEditing ? (
+                      <Textarea value={protoFullForm.therapistComments || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, therapistComments: e.target.value }))} rows={3} className="text-xs" placeholder="Correções, observações ou notas adicionais..." />
+                    ) : (
+                      <p className="text-xs text-muted-foreground leading-relaxed">{pr.therapistComments || "—"}</p>
+                    )}
+                  </div>
+                  {/* Status selector in edit mode */}
+                  {isEditing && (
+                    <div className="space-y-1"><Label className="text-[10px]">Estado do Protocolo</Label>
+                      <select value={protoFullForm.status || "DRAFT"} onChange={e => setProtoFullForm((f: any) => ({ ...f, status: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[10px]">
+                        {["DRAFT","UNDER_REVIEW","APPROVED","SENT_TO_PATIENT","ARCHIVED"].map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {/* Items */}
+                  {pr.items?.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Itens do Protocolo ({pr.items.length})</p>
+                      <div className="space-y-0.5">
+                        {pr.items.slice(0, 6).map((item: any, i: number) => (
+                          <div key={item.id || i} className="flex items-center gap-2 text-[10px] py-0.5 border-b border-border/30 last:border-0">
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{item.phase || "—"}</Badge>
+                            <span className="truncate">{item.treatmentTypeName || item.title || "—"}</span>
+                            {item.sets && item.reps && <span className="text-muted-foreground/60 shrink-0">{item.sets}×{item.reps}</span>}
+                          </div>
+                        ))}
+                        {pr.items.length > 6 && <p className="text-[9px] text-muted-foreground pt-0.5">+{pr.items.length - 6} more items</p>}
+                      </div>
+                    </div>
+                  )}
+                  {/* Sent banner */}
+                  {pr.status === "SENT_TO_PATIENT" && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <p className="text-xs text-emerald-300">Protocolo enviado. Os slots de calendário estão pré-bloqueados aguardando confirmação do paciente.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </TabsContent>
 
         {/* ── Tab: Rehab Agent ── */}
