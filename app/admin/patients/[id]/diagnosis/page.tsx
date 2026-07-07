@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Brain,
@@ -464,6 +464,28 @@ function DiagnosisCard({ diagnosis: d, patientId, onUpdate, onGenerateProtocol, 
   const [atlasHistory, setAtlasHistory] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [atlasInput, setAtlasInput] = useState("");
   const [atlasSending, setAtlasSending] = useState(false);
+  const [atlasHistoryLoaded, setAtlasHistoryLoaded] = useState(false);
+  const atlasEndRef = useRef<HTMLDivElement>(null);
+
+  // Load persisted history on first open
+  const handleToggleAtlas = async () => {
+    const opening = !showAtlas;
+    setShowAtlas(opening);
+    if (opening && !atlasHistoryLoaded) {
+      try {
+        const res = await fetch(`/api/admin/patients/${patientId}/atlas-chat`);
+        if (res.ok) {
+          const data = await res.json();
+          setAtlasHistory(data.map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })));
+        }
+      } catch {}
+      setAtlasHistoryLoaded(true);
+    }
+  };
+
+  useEffect(() => {
+    if (showAtlas) atlasEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [atlasHistory, showAtlas]);
 
   const sendAtlas = async (msg?: string) => {
     const text = (msg || atlasInput).trim();
@@ -652,12 +674,7 @@ function DiagnosisCard({ diagnosis: d, patientId, onUpdate, onGenerateProtocol, 
           <div className="border border-primary/20 rounded-xl overflow-hidden">
             <button
               className="w-full flex items-center justify-between px-4 py-2.5 bg-primary/5 hover:bg-primary/10 transition-colors"
-              onClick={() => {
-                setShowAtlas((v) => !v);
-                if (!showAtlas && atlasHistory.length === 0) {
-                  sendAtlas(`I need your help reviewing this AI assessment for ${d.summary?.substring(0, 120)}... What corrections or additions would you suggest?`);
-                }
-              }}
+              onClick={handleToggleAtlas}
             >
               <span className="flex items-center gap-2 text-sm font-semibold text-primary">
                 <Bot className="h-4 w-4" />
@@ -692,6 +709,10 @@ function DiagnosisCard({ diagnosis: d, patientId, onUpdate, onGenerateProtocol, 
                       </div>
                     </div>
                   )}
+                  {atlasHistoryLoaded && !atlasSending && atlasHistory.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">No conversation yet. Ask Atlas to review this assessment.</p>
+                  )}
+                  <div ref={atlasEndRef} />
                 </div>
                 <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
                   <input
