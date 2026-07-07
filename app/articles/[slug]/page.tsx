@@ -11,10 +11,35 @@ interface PageProps {
   params: { slug: string };
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const article = await prisma.article.findUnique({
-    where: { slug: params.slug },
+const slugify = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+/** Resolve an article by slug, with fallback matching against slugified titles
+ *  (handles legacy URLs whose slug changed after a title edit). */
+async function resolveArticle(slug: string) {
+  const direct = await prisma.article.findUnique({
+    where: { slug },
+    include: { author: { select: { firstName: true, lastName: true } } },
   });
+  if (direct) return direct;
+
+  const candidates = await (prisma as any).article.findMany({
+    where: { published: true },
+    select: { id: true, title: true, titleEn: true, titlePt: true },
+  });
+  const match = candidates.find((c: any) =>
+    [c.title, c.titleEn, c.titlePt].filter(Boolean).some((t: string) => slugify(t) === slug)
+  );
+  if (!match) return null;
+
+  return prisma.article.findUnique({
+    where: { id: match.id },
+    include: { author: { select: { firstName: true, lastName: true } } },
+  });
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const article = await resolveArticle(params.slug);
   if (!article) return { title: "Article Not Found" };
   return {
     title: `${article.title} - Bruno Physical Rehabilitation`,
@@ -44,10 +69,7 @@ function sanitizeContent(html: string): string {
 }
 
 export default async function ArticlePage({ params }: PageProps) {
-  const article = await prisma.article.findUnique({
-    where: { slug: params.slug },
-    include: { author: { select: { firstName: true, lastName: true } } },
-  });
+  const article = await resolveArticle(params.slug);
 
   if (!article || !article.published) notFound();
 

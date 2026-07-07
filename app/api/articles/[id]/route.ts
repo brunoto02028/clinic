@@ -83,23 +83,16 @@ export async function PUT(
       const primaryTitle   = (pubLang === "pt" ? ptT : enT) || title;
       const primaryExcerpt = (pubLang === "pt" ? ptE : enE) || excerpt;
       const primaryContent = (pubLang === "pt" ? ptC : enC) || content;
+      // NOTE: slug is intentionally NOT regenerated on update — public URLs must stay stable.
       if (primaryTitle !== undefined && primaryTitle !== null) {
         updateData.title = primaryTitle;
-        updateData.slug = String(primaryTitle)
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "");
       }
       if (primaryExcerpt !== undefined) updateData.excerpt = primaryExcerpt;
       if (primaryContent !== undefined) updateData.content = primaryContent;
     } else {
-      // Legacy single-language update
+      // Legacy single-language update (slug intentionally kept stable)
       if (title !== undefined) {
         updateData.title = title;
-        updateData.slug = title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "");
       }
       if (excerpt !== undefined) updateData.excerpt = excerpt;
       if (content !== undefined) updateData.content = content;
