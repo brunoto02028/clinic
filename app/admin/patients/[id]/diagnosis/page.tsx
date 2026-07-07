@@ -37,6 +37,7 @@ import {
   Zap,
   MessageSquare,
   Bot,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MarkdownMessage } from "@/components/ui/markdown-message";
 
 // ─── Types ───
 
@@ -693,12 +695,14 @@ function DiagnosisCard({ diagnosis: d, patientId, onUpdate, onGenerateProtocol, 
                   )}
                   {atlasHistory.map((m, i) => (
                     <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${
+                      <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
                         m.role === "user"
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted/60 border border-border/50 text-foreground"
                       }`}>
-                        {m.content}
+                        {m.role === "user"
+                          ? <p className="leading-relaxed">{m.content}</p>
+                          : <MarkdownMessage content={m.content} />}
                       </div>
                     </div>
                   ))}
@@ -714,6 +718,16 @@ function DiagnosisCard({ diagnosis: d, patientId, onUpdate, onGenerateProtocol, 
                   )}
                   <div ref={atlasEndRef} />
                 </div>
+                {atlasHistory.length >= 2 && (
+                  <div className="px-3 py-2 border-t border-border/50 bg-emerald-500/5">
+                    <Button size="sm" className="w-full h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700"
+                      onClick={onGenerateProtocol} disabled={generatingProtocol}>
+                      {generatingProtocol
+                        ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Generating Protocol...</>
+                        : <><Plus className="h-3 w-3 mr-1" /> Generate Treatment Protocol from this Conversation</>}
+                    </Button>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
                   <input
                     className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -802,6 +816,20 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
   const [editLanguage, setEditLanguage] = useState((p as any).language || "en-GB");
   const [editComment, setEditComment] = useState(p.therapistComments || "");
 
+  // Scheduling fields
+  const [editStartDate, setEditStartDate] = useState<string>(
+    (p as any).startDate ? new Date((p as any).startDate).toISOString().split("T")[0] : ""
+  );
+  const [editSessionTime, setEditSessionTime] = useState<string>((p as any).sessionTime || "09:00");
+  const [editSessionDays, setEditSessionDays] = useState<string[]>(() => {
+    try { return JSON.parse((p as any).sessionDays || "[]"); } catch { return []; }
+  });
+  const [editSessionDuration, setEditSessionDuration] = useState<number>((p as any).sessionDuration || 60);
+
+  const toggleDay = (day: string) => setEditSessionDays(days =>
+    days.includes(day) ? days.filter(d => d !== day) : [...days, day]
+  );
+
   // Package form
   const [pkgForm, setPkgForm] = useState({
     pricePerSession: 60,
@@ -828,9 +856,13 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
       deliveryMode: editDelivery,
       totalSessions: editTotalSessions,
       sessionsPerWeek: editSessionsPerWeek,
+      sessionDuration: editSessionDuration,
       language: editLanguage,
       therapistComments: editComment,
       includesElectrotherapy: hasElectro,
+      startDate: editStartDate ? new Date(editStartDate).toISOString() : null,
+      sessionTime: editSessionTime,
+      sessionDays: JSON.stringify(editSessionDays),
     });
     setTimeout(() => { setSaving(false); setEditing(false); }, 500);
   };
@@ -971,6 +1003,47 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ── Schedule ── */}
+          <div className="space-y-2.5 border rounded-lg p-3 bg-muted/10">
+            <p className="text-xs font-semibold flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Treatment Schedule</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="space-y-1">
+                <Label className="text-[10px]">Start date</Label>
+                <Input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px]">Session time</Label>
+                <Input type="time" value={editSessionTime} onChange={e => setEditSessionTime(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px]">Duration (min)</Label>
+                <Input type="number" value={editSessionDuration} onChange={e => setEditSessionDuration(parseInt(e.target.value) || 60)} className="h-8 text-xs" min={15} max={180} step={15} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Session days</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {["MON","TUE","WED","THU","FRI","SAT","SUN"].map(d => (
+                  <button key={d} type="button"
+                    onClick={() => toggleDay(d)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${editSessionDays.includes(d) ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/50"}`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {editStartDate && editSessionDays.length > 0 && (
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-md p-2">
+                <p className="text-[10px] text-emerald-400 font-medium">
+                  {editTotalSessions} sessions · {editSessionDays.join(", ")} at {editSessionTime} · {editSessionDuration}min each
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Starting {new Date(editStartDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Therapist Comments */}

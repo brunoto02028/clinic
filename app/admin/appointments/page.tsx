@@ -473,6 +473,7 @@ export default function AdminAppointmentsPage() {
   const STATUS_CAL: Record<string, string> = {
     CONFIRMED: "bg-blue-500/20 border-blue-500/40 text-blue-300",
     PENDING: "bg-amber-500/20 border-amber-500/40 text-amber-300",
+    PENDING_PATIENT: "bg-orange-500/20 border-orange-500/40 text-orange-300 border-dashed",
     COMPLETED: "bg-emerald-500/20 border-emerald-500/40 text-emerald-300",
     CANCELLED: "bg-red-500/20 border-red-500/40 text-red-300 opacity-60",
   };

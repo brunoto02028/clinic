@@ -28,6 +28,8 @@ import {
   CreditCard,
   Loader2,
   PoundSterling,
+  Calendar,
+  CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,6 +72,9 @@ export default function PatientTreatmentPage() {
   const [videoModal, setVideoModal] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null); // packageId being paid
   const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
+  const [pendingAppointments, setPendingAppointments] = useState<any[]>([]);
+  const [confirmingSchedule, setConfirmingSchedule] = useState(false);
+  const [scheduleConfirmed, setScheduleConfirmed] = useState(false);
   const searchParams = useSearchParams();
 
   // Handle Stripe redirect query params
@@ -102,7 +107,32 @@ export default function PatientTreatmentPage() {
     }
   }, []);
 
-  useEffect(() => { fetchProtocols(); }, [fetchProtocols]);
+  const fetchPendingAppointments = useCallback(async () => {
+    try {
+      const res = await fetch("/api/patient/appointments?status=PENDING_PATIENT");
+      if (res.ok) {
+        const data = await res.json();
+        setPendingAppointments(data.appointments || []);
+      }
+    } catch {}
+  }, []);
+
+  const confirmSchedule = async () => {
+    setConfirmingSchedule(true);
+    try {
+      const res = await fetch("/api/patient/appointments/confirm-schedule", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to confirm");
+      setScheduleConfirmed(true);
+      setPendingAppointments([]);
+      fetchProtocols();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setConfirmingSchedule(false);
+    }
+  };
+
+  useEffect(() => { fetchProtocols(); fetchPendingAppointments(); }, [fetchProtocols, fetchPendingAppointments]);
 
   const handleToggleItem = async (itemId: string, completed: boolean) => {
     try {
@@ -186,6 +216,44 @@ export default function PatientTreatmentPage() {
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg flex items-center gap-2">
           <AlertCircle className="h-4 w-4" /> {error}
           <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setError("")}><X className="h-3 w-3" /></Button>
+        </div>
+      )}
+
+      {/* ── Proposed Schedule (PENDING_PATIENT) ── */}
+      {pendingAppointments.length > 0 && !scheduleConfirmed && (
+        <div className="border-2 border-orange-500/30 bg-orange-500/5 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-orange-400" />
+            <h3 className="font-semibold text-orange-300">{isPt ? "Agenda Proposta — Aguarda a sua confirmação" : "Proposed Schedule — Awaiting your confirmation"}</h3>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {isPt ? "O seu terapeuta sugeriu os seguintes dias e horários para o seu tratamento. Confirme para bloquear a sua agenda." : "Your therapist has suggested the following days and times for your treatment. Confirm to lock in your schedule."}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
+            {pendingAppointments.slice(0, 20).map((a: any, i: number) => (
+              <div key={a.id} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 text-xs">
+                <span className="text-orange-400 font-bold w-5 text-right shrink-0">{i + 1}</span>
+                <div>
+                  <p className="font-medium">{new Date(a.dateTime).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</p>
+                  <p className="text-muted-foreground">{new Date(a.dateTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · {a.duration}min</p>
+                </div>
+              </div>
+            ))}
+            {pendingAppointments.length > 20 && (
+              <p className="text-xs text-muted-foreground col-span-2 text-center">+{pendingAppointments.length - 20} more sessions</p>
+            )}
+          </div>
+          <Button className="w-full bg-orange-600 hover:bg-orange-700 gap-2" onClick={confirmSchedule} disabled={confirmingSchedule}>
+            {confirmingSchedule
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> {isPt ? "A confirmar..." : "Confirming..."}</>
+              : <><CalendarCheck className="h-4 w-4" /> {isPt ? "Confirmar Agenda de Tratamento" : "Confirm Treatment Schedule"}</>}
+          </Button>
+        </div>
+      )}
+      {scheduleConfirmed && (
+        <div className="bg-green-500/10 border border-green-500/20 text-green-300 text-sm p-4 rounded-lg flex items-center gap-3">
+          <CalendarCheck className="h-5 w-5 shrink-0" />
+          <p>{isPt ? "Agenda confirmada! As suas sessões foram marcadas." : "Schedule confirmed! Your sessions have been booked."}</p>
         </div>
       )}
 

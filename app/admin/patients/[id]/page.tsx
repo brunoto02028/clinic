@@ -14,6 +14,7 @@ import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MarkdownMessage } from "@/components/ui/markdown-message";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -2031,9 +2032,9 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                     {tpChatHistory.map((m, i) => (
                       <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                         {m.role === "assistant" && <AtlasAvatar size="sm" />}
-                        <div className={`max-w-[90%] text-[10px] rounded-xl px-2.5 py-2 leading-relaxed whitespace-pre-wrap ${
+                        <div className={`max-w-[90%] text-[10px] rounded-xl px-2.5 py-2 ${
                           m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 rounded-tl-none"
-                        }`}>{m.content}</div>
+                        }`}>{m.role === "user" ? <p className="leading-relaxed">{m.content}</p> : <MarkdownMessage content={m.content} className="text-[10px]" />}</div>
                       </div>
                     ))}
                     {tpChatLoading && (
@@ -2096,9 +2097,9 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
             {quickHistory.map((m, i) => (
               <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
                 {m.role === "assistant" && <AtlasAvatar size="sm" />}
-                <div className={`max-w-[90%] text-[10px] rounded-xl px-2.5 py-2 leading-relaxed whitespace-pre-wrap ${
+                <div className={`max-w-[90%] text-[10px] rounded-xl px-2.5 py-2 ${
                   m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 rounded-tl-none"
-                }`}>{m.content}</div>
+                }`}>{m.role === "user" ? <p className="leading-relaxed">{m.content}</p> : <MarkdownMessage content={m.content} className="text-[10px]" />}</div>
               </div>
             ))}
             {quickLoading && (
@@ -2359,7 +2360,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               m.role === "user"
                 ? "bg-emerald-600 text-white rounded-tr-none"
                 : "bg-muted/40 text-foreground rounded-tl-none"
-            }`}>{m.content}</div>
+            }`}>{m.role === "user" ? <p className="text-[10px] leading-relaxed">{m.content}</p> : <MarkdownMessage content={m.content} className="text-[10px]" />}</div>
           </div>
         ))}
         {preLoading && preChat.length > 0 && (
@@ -2520,9 +2521,9 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           {(activePlan?.messages || []).map((m: any, i: number) => (
             <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
               {m.role === "assistant" && <AtlasAvatar size="sm" />}
-              <div className={`max-w-[88%] text-[10px] rounded-xl px-2.5 py-1.5 leading-relaxed whitespace-pre-wrap ${
+              <div className={`max-w-[88%] text-[10px] rounded-xl px-2.5 py-1.5 ${
                 m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 rounded-tl-none"
-              }`}>{m.content}</div>
+              }`}>{m.role === "user" ? <p className="leading-relaxed">{m.content}</p> : <MarkdownMessage content={m.content} className="text-[10px]" />}</div>
             </div>
           ))}
           {chatLoading && <div className="flex items-start gap-2"><AtlasAvatar size="sm" /><div className="bg-muted/40 rounded-xl rounded-tl-none px-2.5 py-2"><Loader2 className="h-3 w-3 animate-spin" /></div></div>}

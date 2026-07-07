@@ -21,6 +21,7 @@ enum UserRole {
 
 enum AppointmentStatus {
   PENDING
+  PENDING_PATIENT
   CONFIRMED
   COMPLETED
   CANCELLED
@@ -2815,6 +2816,17 @@ model TreatmentProtocol {
   estimatedWeeks    Int?            // Total estimated duration
   startDate         DateTime?
   endDate           DateTime?
+
+  // Scheduling
+  sessionDays       String?         // JSON array: ["MONDAY","WEDNESDAY","FRIDAY"]
+  sessionTime       String?         // e.g. "10:00"
+
+  // Protocol succession (history)
+  replacedById      String?         // id of the protocol that replaced this one
+  replacementReason String?         @db.Text
+
+  // Source conversation from Atlas
+  atlasConversation String?         @db.Text
 
   // Session delivery configuration
   deliveryMode      SessionDeliveryMode @default(IN_CLINIC)

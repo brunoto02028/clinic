@@ -311,6 +311,10 @@ export async function PATCH(
     if (body.goals !== undefined) updateData.goals = body.goals;
     if (body.precautions !== undefined) updateData.precautions = body.precautions;
     if (body.estimatedWeeks !== undefined) updateData.estimatedWeeks = body.estimatedWeeks;
+    // Scheduling fields
+    if (body.startDate !== undefined) updateData.startDate = body.startDate ? new Date(body.startDate) : null;
+    if (body.sessionDays !== undefined) updateData.sessionDays = body.sessionDays;
+    if (body.sessionTime !== undefined) updateData.sessionTime = body.sessionTime;
 
     const updated = await (prisma as any).treatmentProtocol.update({
       where: { id: protocolId },
@@ -352,6 +356,51 @@ export async function PATCH(
           }).catch(err => console.error('[protocol] MEMBERSHIP_OFFER notify error:', err));
         }, 5000);
       } catch {}
+    }
+
+    // Create PENDING_PATIENT appointments when protocol is sent to patient
+    if (status === "SENT_TO_PATIENT") {
+      try {
+        const proto = await (prisma as any).treatmentProtocol.findUnique({
+          where: { id: protocolId },
+          select: { startDate: true, sessionDays: true, sessionTime: true, totalSessions: true, sessionDuration: true, therapistId: true, clinicId: true, patientId: true },
+        });
+        if (proto?.startDate && proto?.sessionDays && proto?.sessionTime) {
+          const days: string[] = JSON.parse(proto.sessionDays || "[]");
+          const DAY_MAP: Record<string, number> = { SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6 };
+          const [hh, mm] = (proto.sessionTime as string).split(":").map(Number);
+          const totalSessions = proto.totalSessions || 12;
+          const duration = proto.sessionDuration || 60;
+          let count = 0;
+          let cursor = new Date(proto.startDate);
+          cursor.setHours(0, 0, 0, 0);
+          const appts: any[] = [];
+          while (count < totalSessions) {
+            const dow = cursor.getDay();
+            const dayName = ["SUN","MON","TUE","WED","THU","FRI","SAT"][dow];
+            if (days.includes(dayName)) {
+              const dt = new Date(cursor);
+              dt.setHours(hh, mm, 0, 0);
+              appts.push({
+                clinicId: proto.clinicId,
+                patientId: proto.patientId,
+                therapistId: proto.therapistId,
+                dateTime: dt,
+                duration,
+                treatmentType: updated.title || "Treatment Session",
+                status: "PENDING_PATIENT",
+                notes: `Protocol: ${updated.title} — Session ${count + 1} of ${totalSessions}`,
+              });
+              count++;
+            }
+            cursor.setDate(cursor.getDate() + 1);
+            if (cursor.getTime() - new Date(proto.startDate).getTime() > 365 * 24 * 60 * 60 * 1000) break;
+          }
+          if (appts.length > 0) {
+            await (prisma as any).appointment.createMany({ data: appts });
+          }
+        }
+      } catch (e) { console.error("[protocol] create appointments error:", e); }
     }
 
     // Notify patient when protocol is sent to them
