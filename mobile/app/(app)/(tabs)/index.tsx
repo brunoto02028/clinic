@@ -10,6 +10,7 @@ import { fetchAICoachTip } from "@/api/notifications";
 import { fetchConnections, fetchWearableData } from "@/api/wearables";
 import { formatDateTime } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
+import { fetchCheckIns } from "@/api/daily-checkin";
 
 // ── Quick actions grid ──
 const QUICK_ACTIONS = [
@@ -58,6 +59,8 @@ export default function Home() {
   const aiCoach = useQuery({ queryKey: ["ai-coach"], queryFn: fetchAICoachTip });
   const wConn = useQuery({ queryKey: ["wearable-connections"], queryFn: fetchConnections });
   const wData = useQuery({ queryKey: ["wearable-data-home"], queryFn: () => fetchWearableData(1) });
+  const checkinData = useQuery({ queryKey: ["daily-checkin"], queryFn: fetchCheckIns });
+  const streak = checkinData.data?.progress;
   const next = appts.data ? nextUpcoming(appts.data) : null;
   const firstName = me.data?.user?.firstName;
 
@@ -186,6 +189,32 @@ export default function Home() {
             <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
           </Pressable>
         )}
+
+        {/* ── Streak card ── */}
+        <Pressable
+          onPress={() => router.push("/daily-checkin")}
+          style={({ pressed }) => ({
+            flexDirection: "row", alignItems: "center", gap: 14, padding: 16,
+            backgroundColor: pressed ? "rgba(251, 191, 36, 0.1)" : "rgba(26, 39, 64, 0.8)",
+            borderRadius: t.radius.lg, borderWidth: 1,
+            borderColor: streak && streak.streakDays > 0 ? "rgba(251, 191, 36, 0.2)" : "rgba(74, 124, 138, 0.15)",
+          })}
+        >
+          <Text style={{ fontSize: 28 }}>{streak && streak.streakDays > 0 ? "🔥" : "❄️"}</Text>
+          <View style={{ flex: 1 }}>
+            <Text variant="label" style={{ fontWeight: "600" }}>
+              {streak && streak.streakDays > 0
+                ? `${streak.streakDays} dia${streak.streakDays !== 1 ? "s" : ""} seguidos`
+                : "Comece sua sequência hoje!"}
+            </Text>
+            <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
+              {streak
+                ? `${streak.xp} XP · Recorde: ${streak.longestStreak} dias`
+                : "Faça check-in + exercícios para manter o streak"}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} />
+        </Pressable>
 
         {/* ── Upcoming Appointment ── */}
         <View style={{ gap: 12 }}>
