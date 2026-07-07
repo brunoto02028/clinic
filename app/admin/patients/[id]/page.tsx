@@ -1566,6 +1566,96 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
   const [quickLoading, setQuickLoading] = useState(false);
   const quickEndRef = useRef<HTMLDivElement>(null);
 
+  // ── Treatment Plan (Atlas) ──
+  const [tpView, setTpView]             = useState<"idle" | "generating" | "viewing" | "chat">("idle");
+  const [treatmentPlan, setTreatmentPlan] = useState<any>(null);
+  const [tpChatHistory, setTpChatHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [tpChatInput, setTpChatInput]   = useState("");
+  const [tpChatLoading, setTpChatLoading] = useState(false);
+  const [tpSending, setTpSending]       = useState(false);
+  const [tpSentOk, setTpSentOk]         = useState(false);
+  const tpChatEndRef = useRef<HTMLDivElement>(null);
+
+  const handleGenerateTreatmentPlan = async () => {
+    setTpView("generating");
+    setTreatmentPlan(null);
+    setTpChatHistory([]);
+    setTpSentOk(false);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate" }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setTreatmentPlan(d.plan);
+      setTpView("viewing");
+    } catch (e: any) {
+      setError(e.message || "Failed to generate plan");
+      setTpView("idle");
+    }
+  };
+
+  const handleTpChat = async () => {
+    const msg = tpChatInput.trim();
+    if (!msg || tpChatLoading) return;
+    const newHistory = [...tpChatHistory, { role: "user" as const, content: msg }];
+    setTpChatHistory(newHistory);
+    setTpChatInput("");
+    setTpChatLoading(true);
+    setTimeout(() => tpChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "chat", message: msg, history: tpChatHistory, planData: treatmentPlan }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setTpChatHistory(h => [...h, { role: "assistant", content: d.reply }]);
+    } catch (e: any) { setError(e.message); }
+    finally {
+      setTpChatLoading(false);
+      setTimeout(() => tpChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
+  };
+
+  const handleShareTreatmentPlan = async () => {
+    if (!treatmentPlan) return;
+    setTpSending(true);
+    try {
+      const planText = [
+        `**Plano de Tratamento — ${treatmentPlan.workingDiagnosis || "Personalizado"}**`,
+        treatmentPlan.clinicalRationale ? `\n${treatmentPlan.clinicalRationale}` : "",
+        treatmentPlan.goals?.shortTerm?.length ? `\n**Objetivos a curto prazo:**\n${treatmentPlan.goals.shortTerm.map((g: string) => `• ${g}`).join("\n")}` : "",
+        treatmentPlan.goals?.longTerm?.length ? `\n**Objetivos a longo prazo:**\n${treatmentPlan.goals.longTerm.map((g: string) => `• ${g}`).join("\n")}` : "",
+        treatmentPlan.phases?.length ? `\n**Fases do tratamento:**\n${treatmentPlan.phases.map((ph: any) => [
+          `\n📌 ${ph.name} (${ph.weeks})`,
+          `Objetivo: ${ph.objective}`,
+          ph.inClinic?.length ? `Em clínica:\n${ph.inClinic.map((i: any) => `  • ${i.intervention}${i.parameters ? ` — ${i.parameters}` : ""}`).join("\n")}` : "",
+          ph.hep?.length ? `Exercícios em casa:\n${ph.hep.map((h: any) => `  • ${h.exercise} — ${h.sets} (${h.frequency})`).join("\n")}` : "",
+        ].filter(Boolean).join("\n")).join("\n")}` : "",
+        treatmentPlan.patientEducation?.length ? `\n**Educação para o Paciente:**\n${treatmentPlan.patientEducation.map((e: string) => `• ${e}`).join("\n")}` : "",
+      ].filter(Boolean).join("\n");
+
+      const r = await fetch(`/api/admin/patients/${patientId}/questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questions: planText.split("\n\n").filter(Boolean),
+          context: "Plano de tratamento Atlas",
+          language: "pt",
+          type: "report",
+        }),
+      });
+      if (!r.ok) throw new Error("Failed to share");
+      setTpSentOk(true);
+      fetchSentQuestions();
+    } catch (e: any) { setError(e.message); }
+    finally { setTpSending(false); }
+  };
+
   // Send questions to patient
   const [showQDialog, setShowQDialog]   = useState(false);
   const [qText, setQText]               = useState("");
@@ -1824,6 +1914,152 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           ))}
         </div>
       )}
+
+      {/* ── Treatment Plan with Atlas ── */}
+      <div className="border border-emerald-500/20 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2 bg-emerald-500/5 border-b border-emerald-500/20">
+          <div className="flex items-center gap-2">
+            <AtlasAvatar size="sm" />
+            <div>
+              <p className="text-xs font-semibold leading-tight">Plano de Tratamento</p>
+              <p className="text-[9px] text-muted-foreground leading-tight">Atlas gera um plano faseado com base em todos os dados do paciente</p>
+            </div>
+          </div>
+          <Button size="sm" className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 shrink-0"
+            onClick={handleGenerateTreatmentPlan}
+            disabled={tpView === "generating"}>
+            {tpView === "generating" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3 mr-1" />}
+            {tpView === "generating" ? "A gerar..." : treatmentPlan ? "Regenerar" : "Gerar Plano"}
+          </Button>
+        </div>
+
+        {tpView === "generating" && (
+          <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+            Atlas está a analisar todos os dados do paciente e a criar o plano...
+          </div>
+        )}
+
+        {tpView !== "generating" && treatmentPlan && (
+          <div className="p-3 space-y-3">
+            {/* Diagnosis + rationale */}
+            <div className="p-2.5 bg-muted/20 rounded-lg">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-0.5">Diagnóstico de trabalho</p>
+              <p className="text-xs font-medium">{treatmentPlan.workingDiagnosis}</p>
+              {treatmentPlan.clinicalRationale && <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{treatmentPlan.clinicalRationale}</p>}
+            </div>
+
+            {/* Red flags */}
+            {treatmentPlan.redFlags?.length > 0 && (
+              <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-[10px] font-semibold text-red-400 uppercase mb-1">⚠ Red Flags</p>
+                {treatmentPlan.redFlags.map((f: string, i: number) => <p key={i} className="text-[10px] text-red-300">• {f}</p>)}
+              </div>
+            )}
+
+            {/* Goals */}
+            {(treatmentPlan.goals?.shortTerm?.length || treatmentPlan.goals?.longTerm?.length) && (
+              <div className="grid grid-cols-2 gap-2">
+                {treatmentPlan.goals?.shortTerm?.length > 0 && (
+                  <div className="p-2 bg-muted/20 rounded-lg">
+                    <p className="text-[9px] font-semibold uppercase text-amber-400 mb-1">Curto Prazo</p>
+                    {treatmentPlan.goals.shortTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
+                  </div>
+                )}
+                {treatmentPlan.goals?.longTerm?.length > 0 && (
+                  <div className="p-2 bg-muted/20 rounded-lg">
+                    <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Longo Prazo</p>
+                    {treatmentPlan.goals.longTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Phases */}
+            {treatmentPlan.phases?.map((ph: any, pi: number) => (
+              <div key={pi} className="border rounded-lg overflow-hidden">
+                <div className="px-3 py-1.5 bg-muted/30 flex items-center justify-between">
+                  <p className="text-[10px] font-semibold">{ph.name} <span className="text-muted-foreground font-normal">({ph.weeks})</span></p>
+                  <p className="text-[9px] text-muted-foreground">{ph.objective}</p>
+                </div>
+                <div className="p-2.5 grid grid-cols-1 gap-2">
+                  {ph.inClinic?.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase text-blue-400 mb-1">Em Clínica</p>
+                      {ph.inClinic.map((ic: any, ii: number) => (
+                        <div key={ii} className="text-[10px] mb-1">
+                          <span className="font-medium">• {ic.intervention}</span>
+                          {ic.equipment && <span className="text-muted-foreground"> [{ic.equipment}]</span>}
+                          {ic.parameters && <span className="text-blue-300/70"> — {ic.parameters}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {ph.hep?.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Casa (HEP)</p>
+                      {ph.hep.map((h: any, hi: number) => (
+                        <p key={hi} className="text-[10px] mb-0.5">• {h.exercise} — {h.sets} <span className="text-muted-foreground">({h.frequency})</span></p>
+                      ))}
+                    </div>
+                  )}
+                  {ph.progressionCriteria && (
+                    <p className="text-[9px] text-muted-foreground border-t pt-1.5 mt-0.5">↗ Progressão: {ph.progressionCriteria}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Chat + Share buttons */}
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" variant="outline" className="h-7 text-[10px] flex-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                onClick={() => setTpView(tpView === "chat" ? "viewing" : "chat")}>
+                <MessageSquare className="h-3 w-3 mr-1" />{tpView === "chat" ? "Fechar Chat" : "Discutir com Atlas"}
+              </Button>
+              <Button size="sm" className="h-7 text-[10px] flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={handleShareTreatmentPlan} disabled={tpSending || tpSentOk}>
+                {tpSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                {tpSentOk ? "Enviado ✓" : "Partilhar com Paciente"}
+              </Button>
+            </div>
+
+            {/* Inline chat for plan refinement */}
+            {tpView === "chat" && (
+              <div className="border rounded-lg overflow-hidden mt-1">
+                {tpChatHistory.length > 0 && (
+                  <div className="max-h-52 overflow-y-auto p-2.5 space-y-2">
+                    {tpChatHistory.map((m, i) => (
+                      <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                        {m.role === "assistant" && <AtlasAvatar size="sm" />}
+                        <div className={`max-w-[90%] text-[10px] rounded-xl px-2.5 py-2 leading-relaxed whitespace-pre-wrap ${
+                          m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 rounded-tl-none"
+                        }`}>{m.content}</div>
+                      </div>
+                    ))}
+                    {tpChatLoading && (
+                      <div className="flex items-start gap-2">
+                        <AtlasAvatar size="sm" />
+                        <div className="bg-muted/40 rounded-xl rounded-tl-none px-2.5 py-2"><Loader2 className="h-3 w-3 animate-spin text-emerald-400" /></div>
+                      </div>
+                    )}
+                    <div ref={tpChatEndRef} />
+                  </div>
+                )}
+                <div className="p-2 flex gap-2 border-t">
+                  <Input className="text-xs h-8 flex-1" placeholder="Ex: Adiciona uma fase de retorno ao desporto... Altera a frequência da fase 2..."
+                    value={tpChatInput} onChange={e => setTpChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleTpChat(); } }}
+                    disabled={tpChatLoading} />
+                  <Button size="sm" className="h-8 w-8 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0"
+                    onClick={handleTpChat} disabled={tpChatLoading || !tpChatInput.trim()}>
+                    {tpChatLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── Chat Livre com Atlas ── */}
       <div className="border rounded-lg overflow-hidden">

@@ -323,6 +323,7 @@ model Clinic {
   subscription      Subscription?
   imageLibrary      ImageLibrary[]
   therapistAvailabilities TherapistAvailability[]
+  therapistBlocks   TherapistBlock[]
   payments          Payment[]
   treatmentTypes    TreatmentType[]
   treatmentPlans    TreatmentPlan[]
@@ -572,6 +573,7 @@ model User {
   soapNotesFor          SOAPNote[]        @relation("PatientNotes")
   payments              Payment[]
   therapistAvailability TherapistAvailability[]
+  therapistBlocks       TherapistBlock[]       @relation("TherapistBlocks")
   articles              Article[]
   uploadedImages        ImageLibrary[]
   
@@ -5334,6 +5336,29 @@ model ProtocolTemplateItem {
 
   @@index([templateId])
   @@map("protocol_template_items")
+}
+
+// ============================================
+// THERAPIST BLOCKS (absence / unavailability)
+// ============================================
+
+model TherapistBlock {
+  id          String    @id @default(cuid())
+  clinicId    String?
+  clinic      Clinic?   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  therapistId String
+  therapist   User      @relation("TherapistBlocks", fields: [therapistId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  blockType   String    @default("ABSENCE") // ABSENCE | VACATION | TRAINING | OTHER
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([clinicId])
+  @@index([therapistId])
+  @@index([startDate, endDate])
+  @@map("therapist_blocks")
 }
 
 // Questions Atlas/clinician sends to patient for pre-visit answers
