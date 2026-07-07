@@ -558,7 +558,22 @@ export default function PatientProfilePage() {
         <div className="flex items-center gap-1.5 flex-wrap">
           <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"><Shield className="h-3.5 w-3.5 mr-1" /> Permissões</Button></Link>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setActiveTab("docs")}><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button>
-          <Link href={`/admin/patients/${patientId}/diagnosis`}><Button variant="outline" size="sm" className="h-8 text-xs"><Brain className="h-3.5 w-3.5 mr-1" /> AI Assessment</Button></Link>
+{(() => {
+            const latestDiag = data.diagnoses?.[0];
+            const diagCls = !latestDiag
+              ? "h-8 text-xs"
+              : latestDiag.status === "APPROVED" || latestDiag.status === "SENT_TO_PATIENT"
+              ? "h-8 text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+              : "h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20";
+            return (
+              <Link href={`/admin/patients/${patientId}/diagnosis`}>
+                <Button variant="outline" size="sm" className={diagCls}>
+                  <Brain className="h-3.5 w-3.5 mr-1" />
+                  {latestDiag ? `AI Assessment · ${latestDiag.status.replace(/_/g, " ")}` : "AI Assessment"}
+                </Button>
+              </Link>
+            );
+          })()}
         </div>
       </div>
 
@@ -680,17 +695,33 @@ export default function PatientProfilePage() {
       {/* ─── Tabs ─── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
         <TabsList className="w-full justify-start bg-muted/30 p-1 h-auto flex-wrap">
-          <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Resumo</TabsTrigger>
-          <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Screening</TabsTrigger>
-          <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Avaliacoes</TabsTrigger>
-          <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clinicas</TabsTrigger>
-            <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documentos</TabsTrigger>
-          <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />Mensagens
-          </TabsTrigger>
-          <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
-            <Bot className="h-3 w-3" />Rehab Agent
-          </TabsTrigger>
+  {(() => {
+            const pendingDiag = data.diagnoses?.filter((d: any) => d.status === "DRAFT" || d.status === "UNDER_REVIEW").length ?? 0;
+            const pendingQ = sentQuestions.filter((q: any) => q.status === "answered").length;
+            const unreadMsg = data.unreadMessages ?? 0;
+            return (
+              <>
+                <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Resumo</TabsTrigger>
+                <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                  Screening
+                  {pendingQ > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white px-1">{pendingQ}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                  Avaliações
+                  {pendingDiag > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white px-1">{pendingDiag}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clínicas</TabsTrigger>
+                <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documentos</TabsTrigger>
+                <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
+                  <MessageSquare className="h-3 w-3" />Mensagens
+                  {unreadMsg > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white px-1">{unreadMsg}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
+                  <Bot className="h-3 w-3" />Rehab Agent
+                </TabsTrigger>
+              </>
+            );
+          })()}
         </TabsList>
 
         {/* ── Tab: Resumo ── */}
@@ -716,15 +747,23 @@ export default function PatientProfilePage() {
         <span className="text-[9px] text-blue-500">Send via WhatsApp/SMS so the patient can complete their profile</span>
       </div>
 
-      {/* Quick Actions */}
+{/* Quick Actions */}
       <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-muted/30 rounded-lg border">
         <span className="text-[10px] font-medium text-muted-foreground mr-1">Actions:</span>
         <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("notas"); setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
         <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowManualDoc(true); }}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
         <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowUpload(true); }}><FileUp className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
-        <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
-          {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Generate AI Assessment
-        </Button>
+        {data.diagnoses?.length > 0 ? (
+          <Link href={`/admin/patients/${patientId}/diagnosis`}>
+            <Button variant="outline" size="sm" className={`${btnCls} bg-primary/10 border-primary/30 text-primary hover:bg-primary/20`}>
+              <Brain className="h-2.5 w-2.5 mr-0.5" /> Ver AI Assessment →
+            </Button>
+          </Link>
+        ) : (
+          <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
+            {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Gerar AI Assessment
+          </Button>
+        )}
         <Button variant="outline" size="sm" className={`${btnCls} bg-violet-500/10 border-violet-500/30 text-violet-400 hover:bg-violet-500/20`} onClick={() => setShowAIImport(true)}>
           <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Import
         </Button>

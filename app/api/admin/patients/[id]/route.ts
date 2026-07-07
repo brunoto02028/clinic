@@ -18,7 +18,7 @@ export async function GET(
 
     const patientId = params.id;
 
-    const [patient, screening, footScans, bodyAssessments, soapNotes, documents, diagnoses, protocols, bpReadings] = await Promise.all([
+    const [patient, screening, footScans, bodyAssessments, soapNotes, documents, diagnoses, protocols, bpReadings, unreadMessages] = await Promise.all([
       prisma.user.findUnique({
         where: { id: patientId },
         select: {
@@ -71,6 +71,9 @@ export async function GET(
         orderBy: { measuredAt: "desc" },
         take: 20,
       }),
+      (prisma as any).clinicMessage.count({
+        where: { patientId, senderRole: "patient", readAt: null },
+      }),
     ]);
 
     if (!patient) {
@@ -89,6 +92,7 @@ export async function GET(
       diagnoses,
       protocols,
       bpReadings,
+      unreadMessages: unreadMessages ?? 0,
     });
   } catch (err: any) {
     console.error("[patient-profile] GET error:", err);

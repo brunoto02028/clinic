@@ -71,6 +71,7 @@ interface Patient {
   clinicId?: string | null;
   answeredQCount?: number;
   unreadMessages?: number;
+  latestDiagnosisStatus?: string | null;
   medicalScreening: {
     id: string;
     consentGiven: boolean;
@@ -348,9 +349,19 @@ export default function PatientsList() {
                         <Link
                           href={`/admin/patients/${patient.id}/diagnosis`}
                           onClick={(e) => e.stopPropagation()}
-                          className="hidden lg:inline-flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1.5 rounded-md transition-colors"
+                          className={`hidden lg:inline-flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md transition-colors ${
+                            patient.latestDiagnosisStatus === "APPROVED" || patient.latestDiagnosisStatus === "SENT_TO_PATIENT"
+                              ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30"
+                              : patient.latestDiagnosisStatus === "UNDER_REVIEW" || patient.latestDiagnosisStatus === "DRAFT"
+                              ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30"
+                              : "bg-primary/10 text-primary hover:bg-primary/20"
+                          }`}
                         >
-                          <Brain className="h-3 w-3" /> AI
+                          <Brain className="h-3 w-3" />
+                          AI
+                          {patient.latestDiagnosisStatus && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                          )}
                         </Link>
                         <Link
                           href={`/admin/patients/${patient.id}/permissions`}
