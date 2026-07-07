@@ -31,7 +31,7 @@ export async function POST(
       where: { id: protocolId },
       include: {
         items: { orderBy: [{ phase: "asc" }, { sortOrder: "asc" }] },
-        diagnosis: { select: { summary: true, primaryDiagnosis: true, findings: true, recommendations: true } },
+        diagnosis: { select: { summary: true, conditions: true, findings: true, recommendations: true } },
       },
     });
     if (!protocol || protocol.patientId !== params.id) {
