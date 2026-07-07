@@ -62,7 +62,7 @@ export async function GET() {
           
           // Articles Placeholder
           articlesPlaceholderTitle: "Articles Coming Soon",
-          articlesPlaceholderText: "We're working on bringing you valuable content about physiotherapy, rehabilitation techniques, and wellness tips. Stay tuned!",
+          articlesPlaceholderText: "We're working on bringing you valuable content about physical rehabilitation techniques, and wellness tips. Stay tuned!",
           
           // Contact Section
           contactTitle: "Get in Touch",
@@ -78,9 +78,9 @@ export async function GET() {
           socialLinksJson: JSON.stringify([]),
           
           // SEO
-          metaTitle: "Bruno Physical Rehabilitation - Professional Physiotherapy in Richmond",
-          metaDescription: "Professional physiotherapy and sports rehabilitation services in Richmond, London. Expert treatment for injuries, chronic pain, and optimal physical performance.",
-          metaKeywords: "physiotherapy, sports rehabilitation, Richmond, London, physical therapy, injury treatment, pain management",
+          metaTitle: "Bruno Physical Rehabilitation - Physical Rehabilitation in Ipswich",
+          metaDescription: "Professional physical rehabilitation and sports therapy services in Richmond, London. Expert treatment for injuries, chronic pain, and optimal physical performance.",
+          metaKeywords: "physical rehabilitation, sports therapy, Richmond, London, physical therapy, injury treatment, pain management",
         },
       });
     }

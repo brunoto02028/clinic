@@ -78,7 +78,7 @@ ${patient.dateOfBirth ? `DOB: ${new Date(patient.dateOfBirth).toLocaleDateString
     });
   }
 
-  const prompt = `You are a senior clinical analyst AI for Bruno Physical Rehabilitation (BPR), a physiotherapy clinic.
+  const prompt = `You are a senior clinical analyst AI for Bruno Physical Rehabilitation (BPR), a physical rehabilitation clinic.
 
 Analyse the following COMPLETE patient record and provide a comprehensive clinical intelligence report.
 

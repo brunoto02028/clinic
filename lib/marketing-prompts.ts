@@ -2,7 +2,7 @@
 // Prompts especializados para a BPR — optimizados para Qwen3-Coder:30b
 
 export const BPR_SYSTEM_CONTEXT = `
-You are the marketing AI for BPR (Bruno Physical Rehabilitation), a premium physiotherapy and rehabilitation clinic in Ipswich, Suffolk, UK.
+You are the marketing AI for BPR (Bruno Physical Rehabilitation), a premium physical rehabilitation clinic in Ipswich, Suffolk, UK.
 
 CLINIC IDENTITY:
 - Founded by Bruno, a former professional footballer who played in Brazil, Germany and Sweden
@@ -78,7 +78,7 @@ CRITICAL IMAGE PROMPT RULES — you MUST follow these:
 - image_prompt must describe ONLY visual elements: people, lighting, objects, setting, colours, mood
 - ABSOLUTELY NO TEXT, NO WORDS, NO LETTERS, NO LABELS, NO SIGNS, NO TYPOGRAPHY in the image
 - Do NOT include the topic title, condition name, or any text that would appear visually in the image
-- Example good: "physiotherapist treating patient's shoulder, clinical setting, soft teal lighting, focused hands"
+- Example good: "physical rehabilitation specialist treating patient's shoulder, clinical setting, soft teal lighting, focused hands"
 - Example bad: "image with the words MEDO & ESTRESSE" — never do this
 
 Format your response as JSON:
@@ -104,7 +104,7 @@ export function buildSeoArticlePrompt(params: {
     keyword,
     title,
     wordCount = 1200,
-    targetAudience = 'adults in Ipswich, Suffolk UK seeking physiotherapy',
+    targetAudience = 'adults in Ipswich, Suffolk UK seeking physical rehabilitation',
   } = params
 
   return `
@@ -139,7 +139,7 @@ CONTENT REQUIREMENTS:
 IMAGE PROMPT:
 - Also generate a detailed image prompt for an AI image generator to create a professional cover photo for this article.
 - The image prompt should describe a photorealistic scene related to the article topic.
-- Style: warm, professional, modern healthcare/physiotherapy aesthetic.
+- Style: warm, professional, modern healthcare/physical rehabilitation aesthetic.
 - NO text, letters, or words in the image.
 
 Format as JSON:

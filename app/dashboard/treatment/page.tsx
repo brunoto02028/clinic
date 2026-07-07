@@ -370,6 +370,16 @@ export default function PatientTreatmentPage() {
               {/* Summary */}
               <p className="text-sm bg-muted/30 rounded-lg p-3">{proto.summary}</p>
 
+              {/* Progressive release notice */}
+              {proto.hasMoreComing && (
+                <div className="bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs p-3 rounded-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <p>{isPt
+                    ? "O seu especialista liberta o plano progressivamente conforme a sua evolução. Novos exercícios e atividades aparecerão aqui."
+                    : "Your specialist releases the plan progressively as you improve. New exercises and activities will appear here."}</p>
+                </div>
+              )}
+
               {/* ─── Payment Gate ─── */}
               {proto.paymentRequired && proto.activePackage && (
                 <div className="border-2 border-amber-500/30 bg-amber-500/10 rounded-lg p-4 sm:p-6 text-center space-y-3">

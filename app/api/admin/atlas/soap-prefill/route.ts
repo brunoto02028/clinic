@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
 
   const context = contextLines.join("\n");
 
-  const systemPrompt = `You are Atlas, a clinical rehabilitation specialist AI assistant. Your task is to draft a SOAP note for a physiotherapy session based on the patient's available clinical data.
+  const systemPrompt = `You are Atlas, a clinical rehabilitation specialist AI assistant. Your task is to draft a SOAP note for a physical rehabilitation session based on the patient's available clinical data.
 
 Generate a structured JSON response with four fields:
 - subjective: patient's complaints and history (as if written from the patient's reported information)
@@ -136,7 +136,7 @@ Generate a structured JSON response with four fields:
 - assessment: clinical reasoning, working diagnosis, and prognosis
 - plan: treatment plan including interventions, frequency, HEP, and next steps
 
-Keep each section concise but clinically precise. Use UK physiotherapy documentation style. Write in English.
+Keep each section concise but clinically precise. Use UK physical rehabilitation documentation style. Write in English.
 IMPORTANT: Return ONLY a valid JSON object with keys: subjective, objective, assessment, plan. No markdown, no explanation.`;
 
   const reply = await claudeGenerate(

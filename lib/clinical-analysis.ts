@@ -726,13 +726,13 @@ function generateClinicalSummary(
   
   // Urgency action
   if (urgencyLevel === 'urgent') {
-    parts.push('URGENT MEDICAL REVIEW REQUIRED before physiotherapy treatment');
+    parts.push('URGENT MEDICAL REVIEW REQUIRED before physical rehabilitation treatment');
   } else if (urgencyLevel === 'high') {
     parts.push('Medical review recommended before commencing treatment');
   } else if (urgencyLevel === 'moderate') {
     parts.push('Exercise clinical judgement and consider GP liaison');
   } else {
-    parts.push('Standard physiotherapy care pathway appropriate');
+    parts.push('Standard physical rehabilitation care pathway appropriate');
   }
   
   return parts.join('. ') + '.';

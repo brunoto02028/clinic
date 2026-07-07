@@ -38,6 +38,9 @@ import {
   MessageSquare,
   Bot,
   Calendar,
+  Eye,
+  EyeOff,
+  Unlock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -967,8 +970,8 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                 return (
                   <button
                     key={dm.value}
-                    disabled={isDisabled || !editing}
-                    onClick={() => editing && setEditDelivery(dm.value)}
+                    disabled={isDisabled}
+                    onClick={() => setEditDelivery(dm.value)}
                     className={`rounded-lg border p-2 text-center transition-all ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"} ${isDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     <Icon className={`h-4 w-4 mx-auto mb-1 ${isSelected ? "text-primary" : dm.color}`} />
@@ -990,11 +993,11 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div>
                 <Label className="text-[10px]">Total Sessions</Label>
-                <Input type="number" value={editTotalSessions} onChange={(e) => setEditTotalSessions(parseInt(e.target.value) || 0)} disabled={!editing} className="h-8 text-sm" />
+                <Input type="number" value={editTotalSessions} onChange={(e) => setEditTotalSessions(parseInt(e.target.value) || 0)} className="h-8 text-sm" />
               </div>
               <div>
                 <Label className="text-[10px]">Sessions/Week</Label>
-                <Input type="number" value={editSessionsPerWeek} onChange={(e) => setEditSessionsPerWeek(parseInt(e.target.value) || 0)} disabled={!editing} className="h-8 text-sm" />
+                <Input type="number" value={editSessionsPerWeek} onChange={(e) => setEditSessionsPerWeek(parseInt(e.target.value) || 0)} className="h-8 text-sm" />
               </div>
               <div className="sm:col-span-2">
                 <Label className="text-[10px] flex items-center gap-1"><Languages className="h-3 w-3" /> Language</Label>
@@ -1002,8 +1005,7 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                   {[{ v: "en-GB", l: "English (UK)" }, { v: "pt-BR", l: "Português (BR)" }].map((lang) => (
                     <button
                       key={lang.v}
-                      disabled={!editing}
-                      onClick={() => editing && setEditLanguage(lang.v)}
+                      onClick={() => setEditLanguage(lang.v)}
                       className={`flex-1 text-[10px] font-medium py-1.5 px-2 rounded-md border transition-colors ${editLanguage === lang.v ? "border-primary bg-primary/5 text-primary" : "hover:bg-muted/50"}`}
                     >
                       {lang.l}
@@ -1055,23 +1057,37 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
             )}
           </div>
 
-          {/* Therapist Comments */}
-          {editing && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Therapist Comments</Label>
-              <Textarea value={editComment} onChange={(e) => setEditComment(e.target.value)} placeholder="Add comments, corrections..." rows={2} />
+          {/* ── Progressive Release to Patient ── */}
+          <div className="border rounded-lg p-3 bg-violet-500/5 border-violet-500/20 space-y-2">
+            <p className="text-xs font-semibold flex items-center gap-1.5"><Unlock className="h-3.5 w-3.5 text-violet-400" /> Patient Release — what the patient can see</p>
+            <p className="text-[11px] text-muted-foreground">
+              {(p as any).releasedThroughWeek == null
+                ? "Full plan visible to the patient."
+                : `Patient sees items up to week ${(p as any).releasedThroughWeek}. Remaining items stay hidden until you release them.`}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: 1 })}>Week 1 only</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: ((p as any).releasedThroughWeek || 0) + 1 })}>+1 week</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: ((p as any).releasedThroughWeek || 0) + 2 })}>+2 weeks</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: 4 })}>Short-term phase (wk 4)</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => onUpdate({ releasedThroughWeek: 12 })}>Medium-term (wk 12)</Button>
+              <Button size="sm" className="h-7 text-[11px] bg-violet-600 hover:bg-violet-700" onClick={() => onUpdate({ releasedThroughWeek: null })}>Release everything</Button>
             </div>
-          )}
+          </div>
 
-          {/* Save Edits Button */}
-          {editing && (
-            <div className="flex gap-2">
-              <Button size="sm" onClick={saveEdits} disabled={saving}>
-                {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />} Save Changes
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
-            </div>
-          )}
+          {/* Therapist Comments */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Therapist Comments</Label>
+            <Textarea value={editComment} onChange={(e) => setEditComment(e.target.value)} placeholder="Add comments, corrections..." rows={2} />
+          </div>
+
+          {/* Save Edits Button — always visible so nothing is ever lost */}
+          <div className="flex gap-2 sticky bottom-2 z-10">
+            <Button size="sm" onClick={saveEdits} disabled={saving} className="shadow-lg">
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />} Save Changes
+            </Button>
+            {editing && <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Close editing</Button>}
+          </div>
 
           {/* Goals */}
           {p.goals?.length > 0 && (
@@ -1114,42 +1130,8 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                   <p className="text-[11px]">{meta.desc} · {items.length} items</p>
                 </div>
                 <div className="space-y-2 ml-2 border-l-2 pl-3">
-                  {items.map((item: any, i: number) => (
-                    <div key={i} className="border rounded-lg p-3">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <Badge className={`text-[10px] ${ITEM_TYPE_LABELS[item.itemType]?.color || ""}`}>
-                          {ITEM_TYPE_LABELS[item.itemType]?.label || item.itemType}
-                        </Badge>
-                        <span className="font-medium text-sm">{item.title}</span>
-                        {item.bodyRegion && <Badge variant="outline" className="text-[10px]">{item.bodyRegion}</Badge>}
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-1">{item.description}</p>
-
-                      <div className="flex flex-wrap gap-2 text-[11px]">
-                        {item.frequency && <span className="bg-muted px-1.5 py-0.5 rounded">{item.frequency}</span>}
-                        {item.sets && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sets} sets</span>}
-                        {item.reps && <span className="bg-muted px-1.5 py-0.5 rounded">{item.reps} reps</span>}
-                        {item.holdSeconds && <span className="bg-muted px-1.5 py-0.5 rounded">Hold {item.holdSeconds}s</span>}
-                        {item.restSeconds && <span className="bg-muted px-1.5 py-0.5 rounded">Rest {item.restSeconds}s</span>}
-                        {item.sessionsPerWeek && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sessionsPerWeek}x/week</span>}
-                        {item.sessionDuration && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sessionDuration}min</span>}
-                        {item.startWeek && <span className="bg-muted px-1.5 py-0.5 rounded">Week {item.startWeek}{item.endWeek ? `-${item.endWeek}` : "+"}</span>}
-                      </div>
-
-                      {item.exercise && (
-                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-primary">
-                          <Activity className="h-3 w-3" />
-                          <span>{item.exercise.name}</span>
-                          {item.exercise.videoUrl && <Badge variant="outline" className="text-[9px]">Video</Badge>}
-                        </div>
-                      )}
-
-                      {item.references?.map((r: any, j: number) => (
-                        <p key={j} className="text-[10px] text-primary/70 mt-1 italic">
-                          <BookOpen className="h-2.5 w-2.5 inline mr-0.5" /> {r.citation}
-                        </p>
-                      ))}
-                    </div>
+                  {items.map((item: any) => (
+                    <ProtocolItemRow key={item.id} item={item} onUpdate={onUpdate} />
                   ))}
                 </div>
               </div>
@@ -1312,5 +1294,125 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
         </CardContent>
       )}
     </Card>
+  );
+}
+
+// ─── Protocol Item Row (inline edit + hide/show from patient) ───
+function ProtocolItemRow({ item, onUpdate }: { item: any; onUpdate: (update: any) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    title: item.title || "",
+    description: item.description || "",
+    instructions: item.instructions || "",
+    frequency: item.frequency || "",
+    sets: item.sets ?? "",
+    reps: item.reps ?? "",
+    holdSeconds: item.holdSeconds ?? "",
+    restSeconds: item.restSeconds ?? "",
+    startWeek: item.startWeek ?? 1,
+    endWeek: item.endWeek ?? "",
+  });
+
+  const hidden = !!item.hiddenFromPatient;
+
+  const saveItem = async () => {
+    setSaving(true);
+    await onUpdate({
+      itemId: item.id,
+      itemUpdate: {
+        title: form.title,
+        description: form.description,
+        instructions: form.instructions || null,
+        frequency: form.frequency || null,
+        sets: form.sets === "" ? null : parseInt(String(form.sets)) || null,
+        reps: form.reps === "" ? null : parseInt(String(form.reps)) || null,
+        holdSeconds: form.holdSeconds === "" ? null : parseInt(String(form.holdSeconds)) || null,
+        restSeconds: form.restSeconds === "" ? null : parseInt(String(form.restSeconds)) || null,
+        startWeek: parseInt(String(form.startWeek)) || 1,
+        endWeek: form.endWeek === "" ? null : parseInt(String(form.endWeek)) || null,
+      },
+    });
+    setSaving(false);
+    setEditing(false);
+  };
+
+  const toggleHidden = () => onUpdate({ itemId: item.id, itemUpdate: { hiddenFromPatient: !hidden } });
+
+  return (
+    <div className={`border rounded-lg p-3 transition-opacity ${hidden ? "opacity-50 border-dashed" : ""}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap mb-1 flex-1">
+          <Badge className={`text-[10px] ${ITEM_TYPE_LABELS[item.itemType]?.color || ""}`}>
+            {ITEM_TYPE_LABELS[item.itemType]?.label || item.itemType}
+          </Badge>
+          {editing ? (
+            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-7 text-sm font-medium flex-1 min-w-[200px]" />
+          ) : (
+            <span className="font-medium text-sm">{item.title}</span>
+          )}
+          {item.bodyRegion && <Badge variant="outline" className="text-[10px]">{item.bodyRegion}</Badge>}
+          {hidden && <Badge variant="outline" className="text-[9px] text-amber-500 border-amber-500/40">Hidden from patient</Badge>}
+        </div>
+        <div className="flex gap-1 shrink-0">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title={hidden ? "Show to patient" : "Hide from patient"} onClick={toggleHidden}>
+            {hidden ? <EyeOff className="h-3.5 w-3.5 text-amber-500" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditing(!editing)}>
+            <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </div>
+      </div>
+
+      {editing ? (
+        <div className="space-y-2 mt-2">
+          <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="text-xs" placeholder="Description" />
+          <Textarea value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} rows={2} className="text-xs" placeholder="Patient instructions (optional)" />
+          <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
+            <div><Label className="text-[9px]">Frequency</Label><Input value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })} className="h-7 text-[11px]" placeholder="3x/week" /></div>
+            <div><Label className="text-[9px]">Sets</Label><Input type="number" value={form.sets} onChange={(e) => setForm({ ...form, sets: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">Reps</Label><Input type="number" value={form.reps} onChange={(e) => setForm({ ...form, reps: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">Hold (s)</Label><Input type="number" value={form.holdSeconds} onChange={(e) => setForm({ ...form, holdSeconds: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">Rest (s)</Label><Input type="number" value={form.restSeconds} onChange={(e) => setForm({ ...form, restSeconds: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">Start wk</Label><Input type="number" value={form.startWeek} onChange={(e) => setForm({ ...form, startWeek: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">End wk</Label><Input type="number" value={form.endWeek} onChange={(e) => setForm({ ...form, endWeek: e.target.value })} className="h-7 text-[11px]" placeholder="—" /></div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" className="h-7 text-[11px]" onClick={saveItem} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />} Save item
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground mb-1">{item.description}</p>
+          <div className="flex flex-wrap gap-2 text-[11px]">
+            {item.frequency && <span className="bg-muted px-1.5 py-0.5 rounded">{item.frequency}</span>}
+            {item.sets && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sets} sets</span>}
+            {item.reps && <span className="bg-muted px-1.5 py-0.5 rounded">{item.reps} reps</span>}
+            {item.holdSeconds && <span className="bg-muted px-1.5 py-0.5 rounded">Hold {item.holdSeconds}s</span>}
+            {item.restSeconds && <span className="bg-muted px-1.5 py-0.5 rounded">Rest {item.restSeconds}s</span>}
+            {item.sessionsPerWeek && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sessionsPerWeek}x/week</span>}
+            {item.sessionDuration && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sessionDuration}min</span>}
+            {item.startWeek && <span className="bg-muted px-1.5 py-0.5 rounded">Week {item.startWeek}{item.endWeek ? `-${item.endWeek}` : "+"}</span>}
+          </div>
+
+          {item.exercise && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-xs text-primary">
+              <Activity className="h-3 w-3" />
+              <span>{item.exercise.name}</span>
+              {item.exercise.videoUrl && <Badge variant="outline" className="text-[9px]">Video</Badge>}
+            </div>
+          )}
+
+          {item.references?.map((r: any, j: number) => (
+            <p key={j} className="text-[10px] text-primary/70 mt-1 italic">
+              <BookOpen className="h-2.5 w-2.5 inline mr-0.5" /> {r.citation}
+            </p>
+          ))}
+        </>
+      )}
+    </div>
   );
 }

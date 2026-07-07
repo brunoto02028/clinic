@@ -2841,6 +2841,9 @@ model TreatmentProtocol {
   // Language
   language          String              @default("en-GB") // Protocol language: en-GB, pt-BR
 
+  // Progressive release to patient (null = release everything)
+  releasedThroughWeek Int?              // Patient only sees items with startWeek <= this value
+
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
@@ -2890,6 +2893,9 @@ model ProtocolItem {
   startWeek         Int               @default(1)   // Week number to start
   endWeek           Int?              // Week number to end (null = ongoing)
   daysPerWeek       Int?
+
+  // Visibility control
+  hiddenFromPatient Boolean           @default(false) // Therapist can hide individual items
 
   // Patient progress
   isCompleted       Boolean           @default(false)

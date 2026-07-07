@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   // 3. Call AI to parse into structured data
-  const systemPrompt = `You are a clinical data extraction AI for a physiotherapy/rehabilitation clinic.
+  const systemPrompt = `You are a clinical data extraction AI for a physical rehabilitation clinic.
 Given the clinical text and document contents, extract structured patient data.
 
 Return a JSON object with these fields:

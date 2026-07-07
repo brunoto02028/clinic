@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const lang = language === "pt" ? "Portuguese (Brazil)" : "English";
 
-  const prompt = `You are an expert clinical documentation AI for a physiotherapy/rehabilitation clinic (Bruno Physical Rehabilitation - BPR).
+  const prompt = `You are an expert clinical documentation AI for a physical rehabilitation clinic (Bruno Physical Rehabilitation - BPR).
 
 Your task: Convert the following consultation audio transcription into a structured SOAP note.
 
@@ -68,7 +68,7 @@ ${transcript}
 """
 ${patientContext}
 
-APPOINTMENT TYPE: ${appointmentType || "General physiotherapy consultation"}
+APPOINTMENT TYPE: ${appointmentType || "General physical rehabilitation consultation"}
 
 INSTRUCTIONS:
 1. Extract and structure the information from the transcription into SOAP format

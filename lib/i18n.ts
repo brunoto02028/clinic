@@ -312,7 +312,7 @@ const translations: Record<string, Record<Locale, string>> = {
   "patient.stat.clinical": { "en-GB": "Clinical", "pt-BR": "Clínicas" },
   "patient.stat.notes": { "en-GB": "Notes", "pt-BR": "Notas" },
   "patient.action.bookTitle": { "en-GB": "Book Appointment", "pt-BR": "Agendar Consulta" },
-  "patient.action.bookDesc": { "en-GB": "Schedule your next physiotherapy or sports therapy session at a time that works for you.", "pt-BR": "Agende sua próxima sessão de fisioterapia ou terapia esportiva no horário que funcionar para você." },
+  "patient.action.bookDesc": { "en-GB": "Schedule your next physical rehabilitation or sports therapy session at a time that works for you.", "pt-BR": "Agende sua próxima sessão de reabilitação física ou terapia esportiva no horário que funcionar para você." },
   "patient.action.bookBtn": { "en-GB": "Book Now", "pt-BR": "Agendar Agora" },
   "patient.action.recordsTitle": { "en-GB": "View Records", "pt-BR": "Ver Registros" },
   "patient.action.recordsDesc": { "en-GB": "Access your treatment history, clinical notes, and track your rehabilitation progress.", "pt-BR": "Acesse seu histórico de tratamento, notas clínicas e acompanhe seu progresso." },

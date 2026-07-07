@@ -107,7 +107,7 @@ export async function POST(
     ]);
 
     // Build prompt
-    const prompt = `You are a senior physiotherapy clinical AI assistant. Based on the following diagnosis, generate a comprehensive treatment protocol divided into phases.
+    const prompt = `You are a senior physical rehabilitation clinical AI assistant. Based on the following diagnosis, generate a comprehensive treatment protocol divided into phases.
 
 == DIAGNOSIS ==
 Summary: ${diagnosis.summary}
@@ -127,6 +127,7 @@ ${treatmentTypes.map((t: any) => `- ${t.name} [${t.category}]${t.requiresInPerso
 ${exercises.map((e: any) => `- ID: ${e.id} | Name: ${e.name} | Region: ${e.bodyRegion} | Difficulty: ${e.difficulty} | Sets: ${e.defaultSets || "?"} | Reps: ${e.defaultReps || "?"} | Hold: ${e.defaultHoldSec || "?"} | Rest: ${e.defaultRestSec || "?"}`).join("\n")}
 
 RULES:
+0. TERMINOLOGY: NEVER use the words "physiotherapy", "physiotherapist" or "fisioterapia" in any generated text. Always use "physical rehabilitation" / "reabilitação física" and "physical rehabilitation specialist" / "especialista em reabilitação física" instead.
 1. Create a protocol with THREE phases: SHORT_TERM (weeks 1-4, acute), MEDIUM_TERM (weeks 4-12, rehabilitation), LONG_TERM (weeks 12+, maintenance).
 2. Each phase must have IN_CLINIC items (from the available treatments) and HOME_EXERCISE items (from the exercise library or custom).
 3. Include HOME_CARE items for self-care instructions (ice, ergonomics, sleep, etc.).
@@ -404,6 +405,19 @@ export async function PATCH(
     if (body.startDate !== undefined) updateData.startDate = body.startDate ? new Date(body.startDate) : null;
     if (body.sessionDays !== undefined) updateData.sessionDays = body.sessionDays;
     if (body.sessionTime !== undefined) updateData.sessionTime = body.sessionTime;
+    // Progressive release (null = release everything)
+    if (body.releasedThroughWeek !== undefined) updateData.releasedThroughWeek = body.releasedThroughWeek;
+
+    // Detect release expansion on an already-sent protocol (to notify patient)
+    let releaseExpanded = false;
+    if (body.releasedThroughWeek !== undefined) {
+      const before = await (prisma as any).treatmentProtocol.findUnique({
+        where: { id: protocolId },
+        select: { releasedThroughWeek: true, status: true },
+      });
+      releaseExpanded = before?.status === "SENT_TO_PATIENT"
+        && (body.releasedThroughWeek === null || (before?.releasedThroughWeek != null && body.releasedThroughWeek > before.releasedThroughWeek));
+    }
 
     const updated = await (prisma as any).treatmentProtocol.update({
       where: { id: protocolId },
@@ -413,6 +427,15 @@ export async function PATCH(
         items: { orderBy: [{ phase: "asc" }, { sortOrder: "asc" }] },
       },
     });
+
+    if (releaseExpanded) {
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      notifyPatient({
+        patientId: params.id,
+        plainMessage: `New exercises and activities from your plan "${updated.title}" are now available. Log in to see them: ${BASE}/dashboard/treatment`,
+        plainMessagePt: `Novos exercícios e atividades do seu plano "${updated.title}" já estão disponíveis. Acesse o portal para vê-los: ${BASE}/dashboard/treatment`,
+      }).catch(err => console.error('[protocol] release notify error:', err));
+    }
 
     // Notify patient when treatment is completed
     if (status === "COMPLETED") {

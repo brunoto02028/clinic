@@ -263,7 +263,9 @@ export async function POST(
     });
 
     // ─── Call Gemini ───
-    const prompt = `You are a senior physiotherapy clinical AI assistant. Based on the following patient data, generate a comprehensive clinical diagnosis.
+    const prompt = `You are a senior physical rehabilitation clinical AI assistant. Based on the following patient data, generate a comprehensive clinical diagnosis.
+
+TERMINOLOGY RULE: NEVER use the words "physiotherapy", "physiotherapist" or "fisioterapia" in any generated text. Always use "physical rehabilitation" / "reabilitação física" and "physical rehabilitation specialist" instead.
 
 ${patientContext}
 
