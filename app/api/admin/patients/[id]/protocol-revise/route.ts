@@ -10,35 +10,27 @@ const ALLOWED_ROLES = ["SUPERADMIN", "ADMIN", "THERAPIST"];
 
 // ── Build the COMPLETE clinical picture of the patient ──
 async function buildFullPatientContext(patientId: string) {
-  const [patient, atlasChat] = await Promise.all([
+  // Each query is independently resilient — one failure never breaks the whole context
+  const [patient, ms, ba, soapsRaw, atlasChat] = await Promise.all([
     prisma.user.findUnique({
       where: { id: patientId },
-      select: {
-        firstName: true, lastName: true, dateOfBirth: true, preferredLocale: true,
-        medicalScreening: {
-          select: {
-            chiefComplaint: true, painScore: true, painLocation: true,
-            painAggravating: true, painRelieving: true, occupation: true,
-            surgicalHistory: true, otherConditions: true, currentMedications: true,
-            relevantMedicalHistory: true, physioGoals: true,
-          },
-        },
-        bodyAssessmentsAsPatient: {
-          orderBy: { createdAt: "desc" }, take: 1,
-          select: { aiSummary: true, aiRecommendations: true, overallScore: true },
-        },
-        soapNotesFor: {
-          orderBy: { createdAt: "desc" }, take: 5,
-          select: { subjective: true, objective: true, assessment: true, plan: true, createdAt: true },
-        },
-      } as any,
-    }),
+      select: { firstName: true, lastName: true, dateOfBirth: true } as any,
+    }).catch(() => null),
+    (prisma as any).medicalScreening.findUnique({ where: { userId: patientId } }).catch(() => null),
+    (prisma as any).bodyAssessment.findFirst({
+      where: { patientId },
+      orderBy: { createdAt: "desc" },
+    }).catch(() => null),
+    (prisma as any).sOAPNote.findMany({
+      where: { patientId },
+      orderBy: { createdAt: "desc" }, take: 5,
+    }).catch(() => [] as any[]),
     (prisma as any).atlasChatMessage.findMany({
       where: { patientId },
       orderBy: { createdAt: "asc" },
       take: 60,
       select: { role: true, content: true, createdAt: true },
-    }).catch(() => []),
+    }).catch(() => [] as any[]),
   ]);
 
   if (!patient) return { context: "", atlasChat: [] as any[] };
@@ -46,8 +38,6 @@ async function buildFullPatientContext(patientId: string) {
   const age = (patient as any).dateOfBirth
     ? new Date().getFullYear() - new Date((patient as any).dateOfBirth).getFullYear()
     : null;
-  const ms = (patient as any).medicalScreening;
-  const ba = (patient as any).bodyAssessmentsAsPatient?.[0];
 
   const lines: string[] = [
     `Patient: ${(patient as any).firstName} ${(patient as any).lastName}${age ? `, ${age}yo` : ""}`,
@@ -60,13 +50,16 @@ async function buildFullPatientContext(patientId: string) {
     ms?.surgicalHistory ? `Surgical history: ${ms.surgicalHistory}` : "",
     ms?.otherConditions ? `Comorbidities: ${ms.otherConditions}` : "",
     ms?.currentMedications ? `Medications: ${ms.currentMedications}` : "",
-    ms?.physioGoals ? `Patient goals: ${ms.physioGoals}` : "",
-    ms?.relevantMedicalHistory ? `Medical history: ${ms.relevantMedicalHistory}` : "",
+    ms?.allergies ? `Allergies: ${ms.allergies}` : "",
+    ms?.treatmentGoals ? `Patient goals: ${ms.treatmentGoals}` : "",
+    ms?.functionalLimitations ? `Functional limitations: ${ms.functionalLimitations}` : "",
+    ms?.activityLevel ? `Activity level: ${ms.activityLevel}` : "",
+    ms?.previousPhysioDetails ? `Previous rehabilitation: ${ms.previousPhysioDetails}` : "",
     ba?.aiSummary ? `Postural assessment: ${ba.aiSummary}` : "",
     ba?.aiRecommendations ? `Assessment recommendations: ${ba.aiRecommendations}` : "",
   ];
 
-  const soaps = (patient as any).soapNotesFor || [];
+  const soaps = soapsRaw || [];
   if (soaps.length > 0) {
     lines.push(`\nRecent SOAP notes:`);
     soaps.forEach((s: any) => {

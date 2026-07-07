@@ -178,6 +178,22 @@ export default function PatientDiagnosisPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const [sendingReport, setSendingReport] = useState(false);
+  const sendReportToPatient = async () => {
+    setSendingReport(true); setError(""); setSuccess("");
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/report`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSuccess(`Full report sent to ${data.sentTo}`);
+      setTimeout(() => setSuccess(""), 6000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSendingReport(false);
+    }
+  };
+
   const handleGenerateDiagnosis = async () => {
     setGenerating(true);
     setError("");
@@ -276,6 +292,14 @@ export default function PatientDiagnosisPage() {
               Patient: <strong>{patient.firstName} {patient.lastName}</strong>
             </p>
           )}
+        </div>
+        <div className="flex gap-2 ml-auto">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.open(`/api/admin/patients/${patientId}/report`, "_blank")}>
+            <FileText className="h-3.5 w-3.5" /> Full Report / PDF
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" disabled={sendingReport} onClick={sendReportToPatient}>
+            {sendingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Send Report to Patient
+          </Button>
         </div>
       </div>
 

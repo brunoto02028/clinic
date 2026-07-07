@@ -21,7 +21,8 @@ async function buildPatientContext(patientId: string, clinicId: string) {
             chiefComplaint: true, painScore: true, painLocation: true,
             painAggravating: true, painRelieving: true, occupation: true,
             surgicalHistory: true, otherConditions: true, currentMedications: true,
-            relevantMedicalHistory: true, physioGoals: true,
+            allergies: true, treatmentGoals: true, functionalLimitations: true,
+            activityLevel: true, previousPhysioDetails: true,
           },
         },
         bodyAssessmentsAsPatient: {
@@ -30,7 +31,7 @@ async function buildPatientContext(patientId: string, clinicId: string) {
         },
         diagnosesAsPatient: {
           orderBy: { createdAt: "desc" }, take: 1,
-          select: { primaryDiagnosis: true, findings: true, recommendations: true, status: true, createdAt: true },
+          select: { summary: true, conditions: true, findings: true, recommendations: true, status: true, createdAt: true },
         },
         soapNotesFor: {
           orderBy: { createdAt: "desc" }, take: 3,
@@ -40,9 +41,9 @@ async function buildPatientContext(patientId: string, clinicId: string) {
           orderBy: { createdAt: "desc" }, take: 2,
           select: { chiefComplaint: true, bodyPart: true, severity: true, phase: true, status: true, createdAt: true },
         },
-        treatmentProtocols: {
+        protocolsAsPatient: {
           orderBy: { createdAt: "desc" }, take: 2,
-          select: { name: true, condition: true, status: true, createdAt: true },
+          select: { title: true, summary: true, status: true, createdAt: true },
         },
       },
     }),
@@ -78,13 +79,14 @@ async function buildPatientContext(patientId: string, clinicId: string) {
     ms?.surgicalHistory ? `Surgical history: ${ms.surgicalHistory}` : "",
     ms?.otherConditions ? `Comorbidities: ${ms.otherConditions}` : "",
     ms?.currentMedications ? `Medications: ${ms.currentMedications}` : "",
-    ms?.physioGoals ? `Patient goals: ${ms.physioGoals}` : "",
-    ms?.relevantMedicalHistory ? `Medical history: ${ms.relevantMedicalHistory}` : "",
+    ms?.treatmentGoals ? `Patient goals: ${ms.treatmentGoals}` : "",
+    ms?.functionalLimitations ? `Functional limitations: ${ms.functionalLimitations}` : "",
+    ms?.allergies ? `Allergies: ${ms.allergies}` : "",
     ba?.aiSummary ? `Postural assessment: ${ba.aiSummary}` : "",
     ba?.aiRecommendations ? `Assessment recommendations: ${ba.aiRecommendations}` : "",
-    dx?.primaryDiagnosis ? `AI Diagnosis: ${dx.primaryDiagnosis}` : "",
-    dx?.findings ? `Clinical findings: ${dx.findings}` : "",
-    dx?.recommendations ? `Previous recommendations: ${dx.recommendations}` : "",
+    dx?.summary ? `AI Diagnosis: ${dx.summary}` : "",
+    dx?.findings ? `Clinical findings: ${JSON.stringify(dx.findings)}` : "",
+    dx?.recommendations ? `Previous recommendations: ${JSON.stringify(dx.recommendations)}` : "",
   ];
 
   if (patient.soapNotesFor.length > 0) {
@@ -139,7 +141,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const clinicId = await resolveClinicId(session);
+  const clinicId = (await resolveClinicId(session)) || "";
   const { action, message, history = [], planData } = await req.json();
 
   // ── action: "generate" → produce a full structured plan ──
