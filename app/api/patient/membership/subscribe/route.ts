@@ -130,24 +130,28 @@ export async function POST(request: NextRequest) {
 
     // Create Stripe Checkout Session for recurring subscription
     const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+    const isMobile = request.headers.get("x-platform") === "mobile"
+      || request.nextUrl.searchParams.get("platform") === "mobile";
+
+    const successUrl = isMobile
+      ? "bprrehab://membership?status=success"
+      : `${BASE_URL}/dashboard/membership?success=true&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = isMobile
+      ? "bprrehab://membership?status=cancelled"
+      : `${BASE_URL}/dashboard/membership?cancelled=true`;
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer_email: userEmail,
-      line_items: [
-        {
-          price: plan.stripePriceId,
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
       metadata: {
         patientId: userId,
         planId: plan.id,
         clinicId: clinicId || plan.clinicId,
         type: "membership_subscription",
       },
-      success_url: `${BASE_URL}/dashboard/membership?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${BASE_URL}/dashboard/membership?cancelled=true`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     });
 
     return NextResponse.json({
