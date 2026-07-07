@@ -62,7 +62,24 @@ export async function POST(
 
     const patientId = params.id;
     const therapistId = (session.user as any).id;
-    const clinicId = (session.user as any).clinicId;
+    let clinicId = (session.user as any).clinicId as string | null;
+
+    // Resolve clinicId robustly — session may not carry it
+    if (!clinicId) {
+      const patientRec = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+      clinicId = patientRec?.clinicId || null;
+    }
+    if (!clinicId) {
+      const therapistRec = await prisma.user.findUnique({ where: { id: therapistId }, select: { clinicId: true } });
+      clinicId = therapistRec?.clinicId || null;
+    }
+    if (!clinicId) {
+      const firstClinic = await (prisma as any).clinic.findFirst({ select: { id: true }, orderBy: { createdAt: "asc" } });
+      clinicId = firstClinic?.id || null;
+    }
+    if (!clinicId) {
+      return NextResponse.json({ error: "No clinic found — cannot create protocol" }, { status: 400 });
+    }
 
     // Get the diagnosis
     const diagnosis = await (prisma as any).aIDiagnosis.findUnique({
@@ -236,7 +253,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
     // ─── Save to DB ───
     const protocol = await (prisma as any).treatmentProtocol.create({
       data: {
-        clinicId: clinicId || "",
+        clinicId,
         patientId,
         therapistId,
         diagnosisId,
