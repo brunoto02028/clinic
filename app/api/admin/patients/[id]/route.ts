@@ -18,6 +18,13 @@ export async function GET(
 
     const patientId = params.id;
 
+    const safe = async <T>(promise: Promise<T>, fallback: T): Promise<T> => {
+      try { return await promise; } catch (e: any) {
+        console.error("[patient-profile] sub-query error:", e?.message || e);
+        return fallback;
+      }
+    };
+
     const [patient, screening, footScans, bodyAssessments, soapNotes, documents, diagnoses, protocols, bpReadings, unreadMessages] = await Promise.all([
       prisma.user.findUnique({
         where: { id: patientId },
@@ -28,52 +35,40 @@ export async function GET(
           intakeToken: true, intakeTokenExpiry: true, password: true,
         },
       }),
-      prisma.medicalScreening.findUnique({ where: { userId: patientId } }),
-      prisma.footScan.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
-      }),
-      (prisma as any).bodyAssessment.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
+      safe(prisma.medicalScreening.findUnique({ where: { userId: patientId } }), null),
+      safe(prisma.footScan.findMany({ where: { patientId }, orderBy: { createdAt: "desc" } }), []),
+      safe((prisma as any).bodyAssessment.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
         include: { therapist: { select: { firstName: true, lastName: true } } },
-      }),
-      prisma.sOAPNote.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
-        include: {
-          therapist: { select: { firstName: true, lastName: true } },
-        },
-      }),
-      (prisma as any).patientDocument.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
+      }), []),
+      safe(prisma.sOAPNote.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
+        include: { therapist: { select: { firstName: true, lastName: true } } },
+      }), []),
+      safe((prisma as any).patientDocument.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
         include: { uploadedBy: { select: { firstName: true, lastName: true, role: true } } },
-      }),
-      (prisma as any).aIDiagnosis.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
+      }), []),
+      safe((prisma as any).aIDiagnosis.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
         include: {
           therapist: { select: { firstName: true, lastName: true } },
           _count: { select: { protocols: true } },
         },
-      }),
-      (prisma as any).treatmentProtocol.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
+      }), []),
+      safe((prisma as any).treatmentProtocol.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
         include: {
           items: { orderBy: { sortOrder: "asc" } },
           therapist: { select: { firstName: true, lastName: true } },
         },
-      }),
-      (prisma as any).bloodPressureReading.findMany({
-        where: { patientId },
-        orderBy: { measuredAt: "desc" },
-        take: 20,
-      }),
-      (prisma as any).clinicMessage.count({
+      }), []),
+      safe((prisma as any).bloodPressureReading.findMany({
+        where: { patientId }, orderBy: { measuredAt: "desc" }, take: 20,
+      }), []),
+      safe((prisma as any).clinicMessage.count({
         where: { patientId, senderRole: "patient", readAt: null },
-      }),
+      }), 0),
     ]);
 
     if (!patient) {

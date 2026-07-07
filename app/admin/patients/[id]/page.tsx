@@ -530,7 +530,9 @@ export default function PatientProfilePage() {
 
   if (!data?.patient) return (
     <div className="text-center py-20 text-muted-foreground">
-      <AlertCircle className="h-8 w-8 mx-auto mb-2" /><p>Patient not found.</p>
+      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+      <p>Patient not found.</p>
+      {error && <p className="text-sm text-destructive mt-2 max-w-sm mx-auto">{error}</p>}
       <Button variant="outline" className="mt-4" onClick={() => router.push("/admin/patients")}>Back to Patients</Button>
     </div>
   );

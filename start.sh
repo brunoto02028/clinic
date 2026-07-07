@@ -5,7 +5,7 @@ set -e
 # prisma db push is idempotent: creates tables if missing, no-ops if already in sync.
 # Pin to 6.7.0 to avoid breaking changes from future Prisma major versions.
 echo "[start.sh] Syncing database schema..."
-npx prisma@6.7.0 db push --skip-generate || echo "[start.sh] DB sync warning — check logs"
+npx prisma@6.7.0 db push --skip-generate --accept-data-loss || echo "[start.sh] DB sync warning — check logs"
 
 # Create upload directories if UPLOADS_DIR is set
 if [ -n "$UPLOADS_DIR" ]; then
