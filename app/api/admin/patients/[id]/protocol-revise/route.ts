@@ -8,6 +8,82 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_ROLES = ["SUPERADMIN", "ADMIN", "THERAPIST"];
 
+// ── Build the COMPLETE clinical picture of the patient ──
+async function buildFullPatientContext(patientId: string) {
+  const [patient, atlasChat] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: patientId },
+      select: {
+        firstName: true, lastName: true, dateOfBirth: true, preferredLocale: true,
+        medicalScreening: {
+          select: {
+            chiefComplaint: true, painScore: true, painLocation: true,
+            painAggravating: true, painRelieving: true, occupation: true,
+            surgicalHistory: true, otherConditions: true, currentMedications: true,
+            relevantMedicalHistory: true, physioGoals: true,
+          },
+        },
+        bodyAssessmentsAsPatient: {
+          orderBy: { createdAt: "desc" }, take: 1,
+          select: { aiSummary: true, aiRecommendations: true, overallScore: true },
+        },
+        soapNotesFor: {
+          orderBy: { createdAt: "desc" }, take: 5,
+          select: { subjective: true, objective: true, assessment: true, plan: true, createdAt: true },
+        },
+      } as any,
+    }),
+    (prisma as any).atlasChatMessage.findMany({
+      where: { patientId },
+      orderBy: { createdAt: "asc" },
+      take: 60,
+      select: { role: true, content: true, createdAt: true },
+    }).catch(() => []),
+  ]);
+
+  if (!patient) return { context: "", atlasChat: [] as any[] };
+
+  const age = (patient as any).dateOfBirth
+    ? new Date().getFullYear() - new Date((patient as any).dateOfBirth).getFullYear()
+    : null;
+  const ms = (patient as any).medicalScreening;
+  const ba = (patient as any).bodyAssessmentsAsPatient?.[0];
+
+  const lines: string[] = [
+    `Patient: ${(patient as any).firstName} ${(patient as any).lastName}${age ? `, ${age}yo` : ""}`,
+    ms?.occupation ? `Occupation: ${ms.occupation}` : "",
+    ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
+    ms?.painScore != null ? `Pain VAS: ${ms.painScore}/10` : "",
+    ms?.painLocation ? `Pain location: ${ms.painLocation}` : "",
+    ms?.painAggravating ? `Aggravating: ${ms.painAggravating}` : "",
+    ms?.painRelieving ? `Relieving: ${ms.painRelieving}` : "",
+    ms?.surgicalHistory ? `Surgical history: ${ms.surgicalHistory}` : "",
+    ms?.otherConditions ? `Comorbidities: ${ms.otherConditions}` : "",
+    ms?.currentMedications ? `Medications: ${ms.currentMedications}` : "",
+    ms?.physioGoals ? `Patient goals: ${ms.physioGoals}` : "",
+    ms?.relevantMedicalHistory ? `Medical history: ${ms.relevantMedicalHistory}` : "",
+    ba?.aiSummary ? `Postural assessment: ${ba.aiSummary}` : "",
+    ba?.aiRecommendations ? `Assessment recommendations: ${ba.aiRecommendations}` : "",
+  ];
+
+  const soaps = (patient as any).soapNotesFor || [];
+  if (soaps.length > 0) {
+    lines.push(`\nRecent SOAP notes:`);
+    soaps.forEach((s: any) => {
+      lines.push(`  [${new Date(s.createdAt).toLocaleDateString("en-GB")}] S: ${s.subjective || ""} | O: ${s.objective || ""} | A: ${s.assessment || ""} | P: ${s.plan || ""}`);
+    });
+  }
+
+  if (atlasChat.length > 0) {
+    lines.push(`\nPrevious Atlas conversations about this patient (chronological):`);
+    atlasChat.forEach((m: any) => {
+      lines.push(`  ${m.role === "user" ? "Bruno" : "Atlas"}: ${String(m.content).slice(0, 400)}`);
+    });
+  }
+
+  return { context: lines.filter(Boolean).join("\n"), atlasChat };
+}
+
 // ─── POST — Atlas protocol revision ───
 // action: "propose" → { protocolId, feedback } returns a structured revision proposal
 // action: "apply"   → { protocolId, proposal } applies the proposal to the DB
@@ -99,68 +175,92 @@ export async function POST(
       return NextResponse.json({ success: true, applied: { updated: proposal.updateItems?.length || 0, removed: proposal.removeItemIds?.length || 0, added: proposal.newItems?.length || 0 } });
     }
 
-    // ─── PROPOSE a revision based on the therapist's clinical perception ───
-    const { feedback } = body;
-    if (!feedback?.trim()) {
-      return NextResponse.json({ error: "feedback required" }, { status: 400 });
+    // ─── CHAT: converse about the protocol; emit a PROPOSAL block when agreement is reached ───
+    const { message, chatHistory = [] } = body;
+    if (!message?.trim()) {
+      return NextResponse.json({ error: "message required" }, { status: 400 });
     }
+
+    const { context } = await buildFullPatientContext(params.id);
 
     const itemsContext = protocol.items.map((it: any) =>
       `- ID: ${it.id} | [${it.phase}/${it.itemType}] ${it.title} | ${it.description} | freq: ${it.frequency || "-"} | sets: ${it.sets ?? "-"} reps: ${it.reps ?? "-"} hold: ${it.holdSeconds ?? "-"}s | weeks ${it.startWeek}-${it.endWeek ?? "+"}${it.hiddenFromPatient ? " | HIDDEN" : ""}`
     ).join("\n");
 
-    const prompt = `You are Atlas — a senior physical rehabilitation specialist with 30+ years of experience. Bruno (the treating clinician) has assessed the patient in person and wants you to revise the existing treatment protocol based on HIS clinical perception, which OVERRIDES any previous AI assumptions.
+    const systemPrompt = `You are Atlas — a senior physical rehabilitation specialist with 30+ years of clinical experience, discussing a real patient's treatment protocol with Bruno (the treating clinician). Bruno assessed the patient in person; his clinical perception OVERRIDES previous AI assumptions.
 
 TERMINOLOGY RULE: NEVER use the words "physiotherapy", "physiotherapist" or "fisioterapia". Always use "physical rehabilitation" / "reabilitação física".
+LANGUAGE: Reply in the language Bruno writes in (Portuguese or English).
+
+HOW TO BEHAVE:
+1. CONVERSE like an experienced colleague — agree, disagree with reasoning, flag precautions, suggest parameters (e.g. Aussie current 1kHz carrier / 4kHz burst, 20min), cite evidence when relevant. Keep replies concise and practical.
+2. DO NOT produce a revision until Bruno clearly confirms he wants the changes applied (e.g. "fecha assim", "pode montar", "faz isso", "aplica").
+3. WHEN (and only when) agreement is reached, end your reply with the exact block below — nothing after it:
+
+<PROPOSAL>
+{
+  "revisionSummary": "1-3 sentences on what changes and why",
+  "updatedSummary": "revised protocol summary, or null",
+  "updateItems": [{ "itemId": "exact-id-from-list", "changes": { "title": "...", "description": "...", "instructions": "...", "frequency": "...", "sets": 3, "reps": 10, "holdSeconds": null, "restSeconds": 30, "startWeek": 1, "endWeek": 4 } }],
+  "removeItemIds": ["exact-id"],
+  "newItems": [{ "phase": "SHORT_TERM|MEDIUM_TERM|LONG_TERM", "itemType": "IN_CLINIC|HOME_EXERCISE|HOME_CARE|ASSESSMENT", "title": "...", "description": "...", "instructions": "...", "frequency": "...", "sets": null, "reps": null, "holdSeconds": null, "restSeconds": null, "sessionDuration": null, "sessionsPerWeek": null, "bodyRegion": "...", "startWeek": 1, "endWeek": null, "references": [{"citation": "Author (Year). Title. Journal."}] }]
+}
+</PROPOSAL>
+
+Only include "changes" keys that actually change. Use the exact item IDs from the list.
+
+== COMPLETE PATIENT RECORD ==
+${context || "No patient data available."}
 
 == CURRENT PROTOCOL ==
 Title: ${protocol.title}
 Summary: ${protocol.summary}
-${protocol.diagnosis ? `Diagnosis: ${protocol.diagnosis.summary || ""}` : ""}
+${protocol.diagnosis ? `AI Diagnosis: ${protocol.diagnosis.summary || ""}` : ""}
+Released through week: ${protocol.releasedThroughWeek ?? "all"}
 
-== CURRENT ITEMS (use the exact IDs) ==
-${itemsContext}
+== CURRENT PROTOCOL ITEMS (exact IDs) ==
+${itemsContext}`;
 
-== BRUNO'S CLINICAL PERCEPTION / CORRECTIONS ==
-"""
-${feedback}
-"""
+    const messages = [
+      ...chatHistory.slice(-20).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      { role: "user" as const, content: message },
+    ];
 
-Revise the protocol to reflect Bruno's perception. Be specific and evidence-based. Keep items that remain appropriate. Modify, remove or add items as clinically indicated.
+    const reply = await claudeGenerate(messages, { systemPrompt, maxTokens: 8000, temperature: 0.5 });
 
-Return ONLY a valid JSON object (no markdown fences) with this exact structure:
-{
-  "revisionSummary": "1-3 sentence summary of what changed and why",
-  "updatedSummary": "revised protocol summary text, or null if unchanged",
-  "updateItems": [{ "itemId": "exact-id", "changes": { "title": "...", "description": "...", "instructions": "...", "frequency": "...", "sets": 3, "reps": 10, "holdSeconds": null, "restSeconds": 30, "startWeek": 1, "endWeek": 4 } }],
-  "removeItemIds": ["exact-id"],
-  "newItems": [{ "phase": "SHORT_TERM|MEDIUM_TERM|LONG_TERM", "itemType": "IN_CLINIC|HOME_EXERCISE|HOME_CARE|ASSESSMENT", "title": "...", "description": "...", "instructions": "...", "frequency": "...", "sets": null, "reps": null, "holdSeconds": null, "restSeconds": null, "sessionDuration": null, "sessionsPerWeek": null, "bodyRegion": "...", "startWeek": 1, "endWeek": null, "references": [{"citation": "Author (Year). Title. Journal."}] }]
-}
-Only include "changes" keys that actually change. Use null to clear a value.`;
-
-    const reply = await claudeGenerate(
-      [{ role: "user", content: prompt }],
-      { maxTokens: 8000, temperature: 0.4 }
-    );
-
-    // Parse JSON robustly
-    let proposal: any;
-    try {
-      const cleaned = reply.replace(/^```(?:json)?/m, "").replace(/```\s*$/m, "").trim();
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      proposal = JSON.parse(cleaned.slice(start, end + 1));
-    } catch {
-      return NextResponse.json({ error: "Atlas returned an unparseable response. Try again.", raw: reply.slice(0, 500) }, { status: 502 });
+    // Extract optional PROPOSAL block
+    let proposal: any = null;
+    let visibleReply = reply;
+    const propMatch = reply.match(/<PROPOSAL>([\s\S]*?)<\/PROPOSAL>/);
+    if (propMatch) {
+      visibleReply = reply.replace(/<PROPOSAL>[\s\S]*?<\/PROPOSAL>/, "").trim();
+      try {
+        const raw = propMatch[1].trim().replace(/^```(?:json)?/m, "").replace(/```\s*$/m, "").trim();
+        const start = raw.indexOf("{");
+        const end = raw.lastIndexOf("}");
+        proposal = JSON.parse(raw.slice(start, end + 1));
+        const titleById: Record<string, string> = {};
+        protocol.items.forEach((it: any) => { titleById[it.id] = it.title; });
+        (proposal.updateItems || []).forEach((u: any) => { u.currentTitle = titleById[u.itemId] || u.itemId; });
+        proposal.removeItemTitles = (proposal.removeItemIds || []).map((id: string) => titleById[id] || id);
+      } catch {
+        proposal = null; // fall back to plain conversation if the block is malformed
+      }
     }
 
-    // Attach current titles so the UI can show before/after
-    const titleById: Record<string, string> = {};
-    protocol.items.forEach((it: any) => { titleById[it.id] = it.title; });
-    (proposal.updateItems || []).forEach((u: any) => { u.currentTitle = titleById[u.itemId] || u.itemId; });
-    proposal.removeItemTitles = (proposal.removeItemIds || []).map((id: string) => titleById[id] || id);
+    // Persist the exchange to the patient's Atlas chat history
+    try {
+      await (prisma as any).atlasChatMessage.createMany({
+        data: [
+          { patientId: params.id, role: "user", content: `[Protocol review] ${message}` },
+          { patientId: params.id, role: "assistant", content: `[Protocol review] ${visibleReply}${proposal ? `\n\n(Proposed revision: ${proposal.revisionSummary})` : ""}` },
+        ],
+      });
+    } catch (e) {
+      console.warn("[protocol-revise] could not persist atlas chat:", e);
+    }
 
-    return NextResponse.json({ success: true, proposal });
+    return NextResponse.json({ success: true, reply: visibleReply, proposal });
   } catch (err: any) {
     console.error("[protocol-revise] error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

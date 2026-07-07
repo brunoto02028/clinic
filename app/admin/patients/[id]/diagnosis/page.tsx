@@ -822,12 +822,14 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
   const [showPackageForm, setShowPackageForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  // Atlas revision panel
+  // Atlas revision panel (conversational)
   const [showAtlasReview, setShowAtlasReview] = useState(false);
-  const [atlasFeedback, setAtlasFeedback] = useState("");
-  const [atlasProposal, setAtlasProposal] = useState<any>(null);
-  const [atlasBusy, setAtlasBusy] = useState<"" | "proposing" | "applying">("");
+  const [atlasInput, setAtlasInput] = useState("");
+  const [atlasMsgs, setAtlasMsgs] = useState<{ role: "user" | "assistant"; content: string; proposal?: any }[]>([]);
+  const [atlasBusy, setAtlasBusy] = useState<"" | "chatting" | "applying">("");
   const [atlasError, setAtlasError] = useState("");
+  const atlasChatEndRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { atlasChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [atlasMsgs]);
 
   // Editable protocol fields
   const [editTitle, setEditTitle] = useState(p.title);
@@ -920,34 +922,40 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
     });
   };
 
-  // ── Atlas revision ──
-  const atlasPropose = async () => {
-    setAtlasBusy("proposing"); setAtlasError(""); setAtlasProposal(null);
+  // ── Atlas conversational revision ──
+  const atlasSend = async () => {
+    const msg = atlasInput.trim();
+    if (!msg) return;
+    setAtlasBusy("chatting"); setAtlasError("");
+    setAtlasMsgs((prev) => [...prev, { role: "user", content: msg }]);
+    setAtlasInput("");
     try {
       const res = await fetch(`/api/admin/patients/${patientId}/protocol-revise`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "propose", protocolId: p.id, feedback: atlasFeedback }),
+        body: JSON.stringify({
+          action: "chat", protocolId: p.id, message: msg,
+          chatHistory: atlasMsgs.map((m) => ({ role: m.role, content: m.content })),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setAtlasProposal(data.proposal);
+      setAtlasMsgs((prev) => [...prev, { role: "assistant", content: data.reply, proposal: data.proposal || undefined }]);
     } catch (err: any) { setAtlasError(err.message); }
     finally { setAtlasBusy(""); }
   };
 
-  const atlasApply = async () => {
+  const atlasApply = async (proposal: any) => {
     setAtlasBusy("applying"); setAtlasError("");
     try {
       const res = await fetch(`/api/admin/patients/${patientId}/protocol-revise`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "apply", protocolId: p.id, proposal: atlasProposal }),
+        body: JSON.stringify({ action: "apply", protocolId: p.id, proposal }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setAtlasProposal(null);
-      setAtlasFeedback("");
+      setAtlasMsgs((prev) => [...prev, { role: "assistant", content: `✅ Revision applied — ${data.applied.updated} modified, ${data.applied.added} added, ${data.applied.removed} removed.` }]);
       await onUpdate({}); // silent refresh
     } catch (err: any) { setAtlasError(err.message); }
     finally { setAtlasBusy(""); }
@@ -1173,55 +1181,72 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
             </button>
             {showAtlasReview && (
               <div className="space-y-2">
-                <p className="text-[11px] text-muted-foreground">Describe your clinical perception from the assessment (what the AI got wrong, what you observed, treatments you want). Atlas will propose a full revision — you approve before anything changes.</p>
-                <Textarea
-                  value={atlasFeedback}
-                  onChange={(e) => setAtlasFeedback(e.target.value)}
-                  rows={4}
-                  className="text-xs"
-                  placeholder="E.g.: Patient has better quadriceps strength than assumed (MMT 4/5). DEXA confirmed osteoporosis only in the hip. I want Aussie current 1MHz on quadriceps 20min instead of TENS, and isometrics can progress to week 2..."
-                />
-                <Button size="sm" className="h-7 text-[11px] bg-sky-600 hover:bg-sky-700" onClick={atlasPropose} disabled={!atlasFeedback.trim() || atlasBusy !== ""}>
-                  {atlasBusy === "proposing" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Bot className="h-3 w-3 mr-1" />} Generate revision
-                </Button>
-                {atlasError && <p className="text-[11px] text-red-400">{atlasError}</p>}
+                <p className="text-[11px] text-muted-foreground">Discuss the protocol with Atlas — he knows the full patient record (screening, assessments, SOAP notes, previous Atlas conversations). When you agree, tell him to apply (e.g. “fecha assim”, “pode montar”) and he will build the revision for your approval.</p>
 
-                {atlasProposal && (
-                  <div className="border border-sky-500/30 rounded-lg p-3 space-y-2 bg-card">
-                    <p className="text-xs font-semibold text-sky-400">Proposed revision</p>
-                    <p className="text-xs">{atlasProposal.revisionSummary}</p>
-                    {(atlasProposal.updateItems?.length || 0) > 0 && (
-                      <div>
-                        <p className="text-[10px] font-semibold text-amber-400 mb-1">Modified ({atlasProposal.updateItems.length}):</p>
-                        {atlasProposal.updateItems.map((u: any, i: number) => (
-                          <p key={i} className="text-[11px] ml-2">• <span className="font-medium">{u.currentTitle}</span>{u.changes?.title ? ` → ${u.changes.title}` : ""} <span className="text-muted-foreground">({Object.keys(u.changes || {}).join(", ")})</span></p>
-                        ))}
+                {atlasMsgs.length > 0 && (
+                  <div className="max-h-96 overflow-y-auto space-y-2 border rounded-lg p-2 bg-card/50">
+                    {atlasMsgs.map((m, i) => (
+                      <div key={i} className={`text-xs rounded-lg p-2 ${m.role === "user" ? "bg-sky-500/15 ml-8" : "bg-muted/50 mr-8"}`}>
+                        <p className="text-[9px] font-semibold text-muted-foreground mb-0.5">{m.role === "user" ? "You" : "Atlas"}</p>
+                        <p className="whitespace-pre-wrap">{m.content}</p>
+                        {m.proposal && (
+                          <div className="border border-sky-500/30 rounded-lg p-2 mt-2 space-y-1.5 bg-card">
+                            <p className="text-[11px] font-semibold text-sky-400">Proposed revision</p>
+                            <p className="text-[11px]">{m.proposal.revisionSummary}</p>
+                            {(m.proposal.updateItems?.length || 0) > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold text-amber-400">Modified ({m.proposal.updateItems.length}):</p>
+                                {m.proposal.updateItems.map((u: any, j: number) => (
+                                  <p key={j} className="text-[11px] ml-2">• <span className="font-medium">{u.currentTitle}</span>{u.changes?.title ? ` → ${u.changes.title}` : ""} <span className="text-muted-foreground">({Object.keys(u.changes || {}).join(", ")})</span></p>
+                                ))}
+                              </div>
+                            )}
+                            {(m.proposal.removeItemTitles?.length || 0) > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold text-red-400">Removed ({m.proposal.removeItemTitles.length}):</p>
+                                {m.proposal.removeItemTitles.map((t: string, j: number) => (
+                                  <p key={j} className="text-[11px] ml-2 line-through text-muted-foreground">• {t}</p>
+                                ))}
+                              </div>
+                            )}
+                            {(m.proposal.newItems?.length || 0) > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold text-emerald-400">Added ({m.proposal.newItems.length}):</p>
+                                {m.proposal.newItems.map((n: any, j: number) => (
+                                  <p key={j} className="text-[11px] ml-2">• <span className="font-medium">{n.title}</span> <span className="text-muted-foreground">[{n.phase}/{n.itemType}]</span></p>
+                                ))}
+                              </div>
+                            )}
+                            <Button size="sm" className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 mt-1" onClick={() => atlasApply(m.proposal)} disabled={atlasBusy !== ""}>
+                              {atlasBusy === "applying" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />} Apply revision
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {atlasBusy === "chatting" && (
+                      <div className="text-xs bg-muted/50 mr-8 rounded-lg p-2 flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" /> <span className="text-muted-foreground">Atlas is thinking…</span>
                       </div>
                     )}
-                    {(atlasProposal.removeItemTitles?.length || 0) > 0 && (
-                      <div>
-                        <p className="text-[10px] font-semibold text-red-400 mb-1">Removed ({atlasProposal.removeItemTitles.length}):</p>
-                        {atlasProposal.removeItemTitles.map((t: string, i: number) => (
-                          <p key={i} className="text-[11px] ml-2 line-through text-muted-foreground">• {t}</p>
-                        ))}
-                      </div>
-                    )}
-                    {(atlasProposal.newItems?.length || 0) > 0 && (
-                      <div>
-                        <p className="text-[10px] font-semibold text-emerald-400 mb-1">Added ({atlasProposal.newItems.length}):</p>
-                        {atlasProposal.newItems.map((n: any, i: number) => (
-                          <p key={i} className="text-[11px] ml-2">• <span className="font-medium">{n.title}</span> <span className="text-muted-foreground">[{n.phase}/{n.itemType}]</span></p>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex gap-2 pt-1">
-                      <Button size="sm" className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700" onClick={atlasApply} disabled={atlasBusy !== ""}>
-                        {atlasBusy === "applying" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />} Apply revision
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setAtlasProposal(null)}>Discard</Button>
-                    </div>
+                    <div ref={atlasChatEndRef} />
                   </div>
                 )}
+
+                <div className="flex gap-2">
+                  <Textarea
+                    value={atlasInput}
+                    onChange={(e) => setAtlasInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); atlasSend(); } }}
+                    rows={2}
+                    className="text-xs flex-1"
+                    placeholder="E.g.: A paciente está normal, quer qualidade de vida — corrente Aussie 3x/semana + alongamentos + isométricos nas primeiras semanas. Concordas?"
+                  />
+                  <Button size="sm" className="h-auto bg-sky-600 hover:bg-sky-700" onClick={atlasSend} disabled={!atlasInput.trim() || atlasBusy !== ""}>
+                    {atlasBusy === "chatting" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+                {atlasError && <p className="text-[11px] text-red-400">{atlasError}</p>}
               </div>
             )}
           </div>
