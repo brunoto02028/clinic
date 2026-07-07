@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
           where: { senderRole: "patient", readAt: null },
           select: { id: true },
         },
-        aIDiagnoses: {
+        diagnosesAsPatient: {
           orderBy: { createdAt: "desc" as const },
           take: 1,
           select: { status: true },
@@ -99,10 +99,10 @@ export async function GET(request: NextRequest) {
       ...p,
       answeredQCount: p.patientQuestionsReceived?.length ?? 0,
       unreadMessages: p.clinicMessagesReceived?.length ?? 0,
-      latestDiagnosisStatus: p.aIDiagnoses?.[0]?.status ?? null,
+      latestDiagnosisStatus: p.diagnosesAsPatient?.[0]?.status ?? null,
       patientQuestionsReceived: undefined,
       clinicMessagesReceived: undefined,
-      aIDiagnoses: undefined,
+      diagnosesAsPatient: undefined,
     }));
 
     return NextResponse.json({ patients: patientsWithCount });
