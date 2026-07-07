@@ -20,7 +20,7 @@ export async function GET() {
     const userId = effectiveUser.userId;
     const today = todayStr();
 
-    const [todayCheckIn, history] = await Promise.all([
+    const [todayCheckIn, history, progress] = await Promise.all([
       (prisma as any).dailyCheckIn.findUnique({
         where: { patientId_checkinDate: { patientId: userId, checkinDate: today } },
       }),
@@ -29,9 +29,13 @@ export async function GET() {
         orderBy: { checkinDate: "desc" },
         take: 7,
       }),
+      (prisma as any).patientProgress.findUnique({
+        where: { patientId: userId },
+        select: { streakDays: true, longestStreak: true, xp: true, level: true, levelTitle: true, totalXpEarned: true },
+      }),
     ]);
 
-    return NextResponse.json({ today: todayCheckIn, history, todayDate: today });
+    return NextResponse.json({ today: todayCheckIn, history, todayDate: today, progress });
   } catch (err: any) {
     console.error("[daily-checkin GET]", err);
     return NextResponse.json({ error: "Failed to fetch" }, { status: 500 });
@@ -88,27 +92,60 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Award XP for daily check-in (15 XP, once per day)
+    // Award XP + update streak
+    let streak = { current: 0, longest: 0, isNewRecord: false };
     try {
-      const progress = await (prisma as any).patientProgress.findUnique({ where: { patientId: userId } });
-      if (progress) {
-        const lastActiveDate = progress.lastActiveDate ? new Date(progress.lastActiveDate).toISOString().split("T")[0] : null;
-        const alreadyActive = lastActiveDate === today;
-        if (!alreadyActive) {
+      let progress = await (prisma as any).patientProgress.findUnique({ where: { patientId: userId } });
+      if (!progress) {
+        progress = await (prisma as any).patientProgress.create({
+          data: { patientId: userId, level: 1, levelTitle: 'Iniciante', xp: 0, xpToNextLevel: 100, streakDays: 0, longestStreak: 0, totalXpEarned: 0, bprCredits: 0 },
+        });
+      }
+
+      const lastActive = progress.lastActiveDate
+        ? new Date(progress.lastActiveDate).toISOString().split("T")[0]
+        : null;
+      const alreadyActive = lastActive === today;
+
+      if (!alreadyActive) {
+        const xpData: any = { xp: { increment: 15 }, totalXpEarned: { increment: 15 }, bprCredits: { increment: 1 }, lastActiveDate: new Date() };
+
+        if (exercisesDone) {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+          if (lastActive === yesterdayStr) {
+            xpData.streakDays = { increment: 1 };
+          } else {
+            xpData.streakDays = 1;
+          }
+        }
+
+        const updated = await (prisma as any).patientProgress.update({
+          where: { patientId: userId },
+          data: xpData,
+        });
+
+        if (exercisesDone && updated.streakDays > updated.longestStreak) {
           await (prisma as any).patientProgress.update({
             where: { patientId: userId },
-            data: {
-              xp: { increment: 15 },
-              totalXpEarned: { increment: 15 },
-              bprCredits: { increment: 1 },
-              lastActiveDate: new Date(),
-            },
+            data: { longestStreak: updated.streakDays },
           });
+          updated.longestStreak = updated.streakDays;
         }
+
+        streak = {
+          current: updated.streakDays,
+          longest: Math.max(updated.streakDays, updated.longestStreak),
+          isNewRecord: updated.streakDays > progress.longestStreak,
+        };
+      } else {
+        streak = { current: progress.streakDays, longest: progress.longestStreak, isNewRecord: false };
       }
     } catch {}
 
-    return NextResponse.json({ checkIn, xpAwarded: 15 });
+    return NextResponse.json({ checkIn, xpAwarded: 15, streak });
   } catch (err: any) {
     console.error("[daily-checkin POST]", err);
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });
