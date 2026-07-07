@@ -359,10 +359,16 @@ export default function PatientProfilePage() {
     setProtoFullSaving(false);
   };
 
-  const sendProtocol = async (protocolId: string) => {
-    if (!confirm("Enviar protocolo ao paciente? Os slots de calendário serão pré-bloqueados aguardando confirmação do paciente.")) return;
+  const sendProtocol = async (pr: any) => {
+    let days: string[] = [];
+    try { days = JSON.parse(pr.sessionDays || "[]"); } catch {}
+    if (!pr.startDate || days.length === 0 || !pr.sessionTime) {
+      setError("Agendamento incompleto: clique em Editar e defina a data de início, os dias da semana e o horário antes de enviar ao paciente.");
+      return;
+    }
+    if (!confirm(`Enviar protocolo ao paciente?\n\nInício: ${new Date(pr.startDate).toLocaleDateString("pt-PT")}\nDias: ${days.join(", ")}\nHorário: ${pr.sessionTime}\n\nOs slots de calendário serão pré-bloqueados aguardando confirmação do paciente.`)) return;
     setSendingProto(true);
-    const r = await patchProtocol(protocolId, { status: "SENT_TO_PATIENT" });
+    const r = await patchProtocol(pr.id, { status: "SENT_TO_PATIENT" });
     if (r) { flash("Protocolo enviado ao paciente! Calendário pré-bloqueado."); fetchData(); }
     setSendingProto(false);
   };
@@ -1622,7 +1628,7 @@ export default function PatientProfilePage() {
                           <Pencil className="h-3 w-3 mr-1" /> Editar
                         </Button>
                         {pr.status !== "SENT_TO_PATIENT" && (
-                          <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => sendProtocol(pr.id)} disabled={sendingProto}>
+                          <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => sendProtocol(pr)} disabled={sendingProto}>
                             {sendingProto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />} Enviar ao Paciente
                           </Button>
                         )}

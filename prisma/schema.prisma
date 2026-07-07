@@ -886,6 +886,7 @@ model Appointment {
   price           Float             @default(60.00)
   treatmentPlanId String?
   treatmentPlan   TreatmentPlan?    @relation(fields: [treatmentPlanId], references: [id])
+  protocolId      String?           // Links appointment to a TreatmentProtocol (soft reference)
 
   // Reminders
   reminderSent                 Boolean    @default(false)

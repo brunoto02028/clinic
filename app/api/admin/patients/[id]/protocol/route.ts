@@ -360,6 +360,24 @@ export async function PATCH(
       return NextResponse.json({ error: "protocolId is required" }, { status: 400 });
     }
 
+    // Guard: cannot send to patient without complete scheduling
+    if (status === "SENT_TO_PATIENT") {
+      const current = await (prisma as any).treatmentProtocol.findUnique({
+        where: { id: protocolId },
+        select: { startDate: true, sessionDays: true, sessionTime: true },
+      });
+      const effStartDate = body.startDate !== undefined ? body.startDate : current?.startDate;
+      const effSessionDays = body.sessionDays !== undefined ? body.sessionDays : current?.sessionDays;
+      const effSessionTime = body.sessionTime !== undefined ? body.sessionTime : current?.sessionTime;
+      let daysArr: string[] = [];
+      try { daysArr = JSON.parse(effSessionDays || "[]"); } catch {}
+      if (!effStartDate || daysArr.length === 0 || !effSessionTime) {
+        return NextResponse.json({
+          error: "Agendamento incompleto: defina data de início, dias da semana e horário antes de enviar ao paciente.",
+        }, { status: 400 });
+      }
+    }
+
     const updateData: any = {};
     if (status) {
       updateData.status = status;
@@ -460,6 +478,7 @@ export async function PATCH(
                 duration,
                 treatmentType: updated.title || "Treatment Session",
                 status: "PENDING_PATIENT",
+                protocolId,
                 notes: `Protocol: ${updated.title} — Session ${count + 1} of ${totalSessions}`,
               });
               count++;

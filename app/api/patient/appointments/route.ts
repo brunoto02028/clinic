@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         treatmentType: true,
         status: true,
         notes: true,
+        protocolId: true,
       },
     });
 
