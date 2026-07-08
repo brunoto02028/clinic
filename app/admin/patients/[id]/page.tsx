@@ -170,6 +170,13 @@ export default function PatientProfilePage() {
   const [protoItemBusy, setProtoItemBusy] = useState<string>("");
   const [protoItemsExpanded, setProtoItemsExpanded] = useState<Record<string, boolean>>({});
 
+  // Atlas document generator
+  const [showAtlasDoc, setShowAtlasDoc] = useState(false);
+  const [atlasDocForm, setAtlasDocForm] = useState({ instructions: "", docKind: "Carta ao médico assistente", language: "pt" });
+  const [atlasDocBusy, setAtlasDocBusy] = useState(false);
+  const [atlasDocResult, setAtlasDocResult] = useState<{ title: string; content: string } | null>(null);
+  const [atlasDocSaving, setAtlasDocSaving] = useState(false);
+
   // New document/upload/history
   const [showManualDoc, setShowManualDoc] = useState(false);
   const [manualForm, setManualForm] = useState({ title: "", content: "", documentType: "OTHER" });
@@ -368,10 +375,17 @@ export default function PatientProfilePage() {
     if (!protoItemEditId) return;
     setProtoItemBusy(protoItemEditId);
     const upd: any = { ...protoItemForm };
-    ["sets", "reps", "holdSeconds", "startWeek", "endWeek"].forEach(k => {
+    // Only convert numeric fields that are present in the form; never inject nulls for absent fields
+    ["sets", "reps", "holdSeconds", "restSeconds", "endWeek"].forEach(k => {
+      if (!(k in upd)) return;
       if (upd[k] === "" || upd[k] == null) upd[k] = null;
       else upd[k] = parseInt(upd[k]) || null;
     });
+    // startWeek is NOT nullable in the schema — only send it when it has a valid value
+    if ("startWeek" in upd) {
+      const sw = parseInt(upd.startWeek);
+      if (Number.isFinite(sw) && sw >= 1) upd.startWeek = sw; else delete upd.startWeek;
+    }
     const r = await patchProtocol("", { itemId: protoItemEditId, itemUpdate: upd });
     if (r) { setProtoItemEditId(null); flash("Item atualizado"); fetchData(); }
     setProtoItemBusy("");
@@ -430,6 +444,49 @@ export default function PatientProfilePage() {
     if (!manualForm.content.trim()) return;
     const r = await apiPatch({ action: "add_manual_document", title: manualForm.title || "Clinical History", content: manualForm.content, documentType: manualForm.documentType });
     if (r) { setShowManualDoc(false); setManualForm({ title: "", content: "", documentType: "OTHER" }); flash("History saved"); fetchData(); }
+  };
+
+  const generateAtlasDoc = async () => {
+    if (!atlasDocForm.instructions.trim()) return;
+    setAtlasDocBusy(true); setError("");
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/documents/generate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(atlasDocForm),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      setAtlasDocResult({ title: d.title, content: d.content });
+    } catch (err: any) { setError(err.message); }
+    finally { setAtlasDocBusy(false); }
+  };
+
+  const saveAtlasDoc = async () => {
+    if (!atlasDocResult) return;
+    setAtlasDocSaving(true);
+    const r = await apiPatch({ action: "add_manual_document", title: atlasDocResult.title, content: atlasDocResult.content, documentType: "MEDICAL_REFERRAL" });
+    if (r) { flash("Documento guardado nos ficheiros do paciente"); fetchData(); }
+    setAtlasDocSaving(false);
+  };
+
+  const printAtlasDoc = () => {
+    if (!atlasDocResult) return;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    w.document.write(`<!DOCTYPE html><html><head><title>${esc(atlasDocResult.title)}</title><style>
+      body { font-family: Georgia, 'Times New Roman', serif; max-width: 720px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.6; font-size: 14px; }
+      h1 { font-size: 18px; border-bottom: 2px solid #607d7d; padding-bottom: 8px; }
+      pre { white-space: pre-wrap; font-family: inherit; font-size: inherit; }
+      .no-print { text-align: right; margin-bottom: 16px; }
+      .no-print button { padding: 8px 16px; cursor: pointer; }
+      @media print { .no-print { display: none; } body { margin: 0; } }
+    </style></head><body>
+      <div class="no-print"><button onclick="window.print()">Print / Save as PDF</button></div>
+      <h1>${esc(atlasDocResult.title)}</h1>
+      <pre>${esc(atlasDocResult.content)}</pre>
+    </body></html>`);
+    w.document.close();
   };
 
   const handleUpload = async () => {
@@ -1572,8 +1629,57 @@ export default function PatientProfilePage() {
         <TabsContent value="docs" className="mt-4">
         <div className="space-y-2.5">
         {/* ── Documents ── */}
+        {/* ── Atlas Document Generator ── */}
+        {showAtlasDoc && (
+          <Card className="border-sky-500/40"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Bot className="h-4 w-4 text-sky-400" /> Criar Documento com Atlas</CardTitle></CardHeader>
+            <CardContent className="space-y-2.5">
+              <p className="text-[11px] text-muted-foreground">O Atlas conhece todo o histórico clínico deste paciente e redige documentos profissionais prontos a enviar — cartas ao médico, pedidos de autorização, declarações, relatórios de encaminhamento, etc.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5"><Label className="text-[10px]">Tipo de documento</Label>
+                  <select value={atlasDocForm.docKind} onChange={e => setAtlasDocForm(f => ({ ...f, docKind: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">
+                    {["Carta ao médico assistente", "Pedido de autorização para tratamentos", "Relatório de encaminhamento", "Declaração clínica", "Carta para seguradora", "Resumo clínico para outro profissional", "Outro documento"].map(k => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-0.5"><Label className="text-[10px]">Idioma</Label>
+                  <select value={atlasDocForm.language} onChange={e => setAtlasDocForm(f => ({ ...f, language: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">
+                    <option value="pt">Português</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-0.5"><Label className="text-[10px]">O que o documento deve conter / objetivo</Label>
+                <Textarea value={atlasDocForm.instructions} onChange={e => setAtlasDocForm(f => ({ ...f, instructions: e.target.value }))} rows={3} className="text-xs" placeholder="Ex: Carta ao médico da Isabel a solicitar autorização para eletroterapia e treino de resistência leve, considerando as lesões hepáticas e o estado hematológico dela..." />
+              </div>
+              <div className="flex gap-1.5">
+                <Button size="sm" className="h-7 text-xs bg-sky-600 hover:bg-sky-700" onClick={generateAtlasDoc} disabled={atlasDocBusy || !atlasDocForm.instructions.trim()}>
+                  {atlasDocBusy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />} {atlasDocResult ? "Gerar novamente" : "Gerar documento"}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowAtlasDoc(false); setAtlasDocResult(null); }}>Fechar</Button>
+              </div>
+              {atlasDocResult && (
+                <div className="border border-sky-500/30 rounded-lg p-3 space-y-2 bg-card">
+                  <div className="space-y-0.5"><Label className="text-[10px]">Título</Label>
+                    <Input value={atlasDocResult.title} onChange={e => setAtlasDocResult(r => r ? { ...r, title: e.target.value } : r)} className="h-8 text-xs font-medium" />
+                  </div>
+                  <div className="space-y-0.5"><Label className="text-[10px]">Conteúdo (editável)</Label>
+                    <Textarea value={atlasDocResult.content} onChange={e => setAtlasDocResult(r => r ? { ...r, content: e.target.value } : r)} rows={16} className="text-xs font-mono leading-relaxed" />
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <Button size="sm" className="h-7 text-xs" onClick={saveAtlasDoc} disabled={atlasDocSaving}>
+                      {atlasDocSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar nos documentos
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={printAtlasDoc}>
+                      <ExternalLink className="h-3 w-3 mr-1" /> Imprimir / PDF
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
         <Sec title="Documents & Files" icon={FileUp} badge={data.documents?.length ? `${data.documents.length}` : "None"}
           actions={<>
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowAtlasDoc(true)}><Bot className="h-2.5 w-2.5 mr-0.5 text-sky-400" /> Criar com Atlas</Button>
             <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowUpload(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
             <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowManualDoc(true)}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write</Button>
             <Link href={`/admin/patients/${patientId}/documents`}><Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]"><Eye className="h-2.5 w-2.5 mr-0.5" /> Full</Button></Link>
@@ -1830,8 +1936,12 @@ export default function PatientProfilePage() {
                             <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{item.phase || "—"}</Badge>
                             <span className="truncate flex-1">{item.treatmentTypeName || item.title || "—"}</span>
                             {item.sets && item.reps && <span className="text-muted-foreground/60 shrink-0">{item.sets}×{item.reps}</span>}
-                            {item.hiddenFromPatient && <EyeOff className="h-3 w-3 text-amber-400 shrink-0" />}
-                            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {item.hiddenFromPatient && (
+                              <button title="Oculto do paciente — clique para mostrar" className="shrink-0 p-0.5 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
+                                <EyeOff className="h-3 w-3 text-amber-400" />
+                              </button>
+                            )}
+                            <div className="flex items-center gap-0.5 shrink-0">
                               <button title="Editar" className="p-1 rounded hover:bg-muted" onClick={() => { setProtoItemEditId(item.id); setProtoItemForm({ title: item.title || "", phase: item.phase || "SHORT_TERM", frequency: item.frequency || "", sets: item.sets ?? "", reps: item.reps ?? "", description: item.description || "" }); }}>
                                 <Pencil className="h-3 w-3" />
                               </button>
