@@ -89,8 +89,8 @@ export async function POST(
       select: { name: true, email: true, phone: true, address: true, city: true, postcode: true, country: true },
     }).catch(() => null);
 
-    const lang = language === "pt" ? "European Portuguese (Portugal)" : "English (UK)";
-    const today = new Date().toLocaleDateString(language === "pt" ? "pt-PT" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+    const lang = language === "pt" ? "Brazilian Portuguese (português do Brasil)" : "English (UK)";
+    const today = new Date().toLocaleDateString(language === "pt" ? "pt-BR" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
 
     const systemPrompt = `You are Atlas, clinical rehabilitation specialist at ${clinic?.name || "Bruno Physical Rehabilitation"}. You draft professional clinical correspondence and documents on behalf of the treating rehabilitation professional (Bruno).
 
