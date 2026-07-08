@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
         },
         patient: {
           select: {
+            id: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -124,9 +125,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Resolve clinicId from the patient record so the note is tenant-scoped
+    const patientRec = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+
     const soapNote = await prisma.sOAPNote.create({
       data: {
         appointmentId: appointmentId || null,
+        clinicId: patientRec?.clinicId || null,
         patientId,
         therapistId,
         subjective,

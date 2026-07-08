@@ -726,9 +726,18 @@ export default function AdminTreatmentPlansPage() {
               </div>
 
               {form.items.length === 0 && (
-                <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg border-dashed">
-                  No treatments added yet. Use the catalog or add manually.
-                </p>
+                <div className="text-sm text-muted-foreground py-4 text-center border rounded-lg border-dashed space-y-1">
+                  <p>No treatments added yet. Use the catalog or add manually.</p>
+                  {treatmentTypes.length === 0 && (
+                    <p className="text-xs">
+                      Your treatment catalog is empty —{" "}
+                      <a href="/admin/treatment-types" target="_blank" className="text-primary underline hover:no-underline">
+                        create treatment types here
+                      </a>{" "}
+                      to add them with one click.
+                    </p>
+                  )}
+                </div>
               )}
 
               {form.items.map((item, i) => (

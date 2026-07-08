@@ -1769,6 +1769,11 @@ model TreatmentPlan {
   totalPrice  Float                @default(0)   // 0 = free
   isFree      Boolean              @default(false)
   isCombo     Boolean              @default(false) // true if it's a combo/package deal
+
+  // Plan classification (drives UI + Stripe behaviour)
+  planType             String      @default("SINGLE")   // SINGLE | COMBO | FREE | SUBSCRIPTION
+  patientScope         String      @default("specific") // specific | all | none (draft template)
+  subscriptionInterval String?                          // monthly | weekly | yearly (for SUBSCRIPTION)
   
   // Sessions tracking
   totalSessions     Int            @default(1)
