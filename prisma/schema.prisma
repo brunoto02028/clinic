@@ -2602,10 +2602,14 @@ model Exercise {
   clinicId        String
   clinic          Clinic              @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
-  // Info
+  // Info — English is the primary language
   name            String
   description     String?             @db.Text
   instructions    String?             @db.Text
+  // Optional Portuguese translation (patient-facing when locale is PT)
+  namePt          String?
+  descriptionPt   String?             @db.Text
+  instructionsPt  String?             @db.Text
   bodyRegion      ExerciseBodyRegion
   difficulty      ExerciseDifficulty  @default(BEGINNER)
   tags            String[]            // e.g. ["post-surgery", "strengthening", "mobility"]

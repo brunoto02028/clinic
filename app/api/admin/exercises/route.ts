@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
   const bodyRegion = searchParams.get("bodyRegion");
   const difficulty = searchParams.get("difficulty");
   const search = searchParams.get("search") || "";
+  const translated = searchParams.get("translated"); // "yes" | "no"
+  const sort = searchParams.get("sort") || "recent"; // recent | name | region
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "50");
   const all = searchParams.get("all") === "true"; // For select dropdowns
@@ -28,13 +30,21 @@ export async function GET(req: NextRequest) {
   if (clinicId) where.clinicId = clinicId;
   if (bodyRegion && bodyRegion !== "ALL") where.bodyRegion = bodyRegion;
   if (difficulty && difficulty !== "ALL") where.difficulty = difficulty;
+  if (translated === "yes") where.namePt = { not: null };
+  if (translated === "no") where.namePt = null;
   if (search) {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
+      { namePt: { contains: search, mode: "insensitive" } },
       { description: { contains: search, mode: "insensitive" } },
       { tags: { hasSome: [search.toLowerCase()] } },
     ];
   }
+
+  const orderBy: any =
+    sort === "name" ? [{ name: "asc" }]
+    : sort === "region" ? [{ bodyRegion: "asc" }, { name: "asc" }]
+    : [{ createdAt: "desc" }];
 
   try {
     if (all) {
@@ -61,7 +71,7 @@ export async function GET(req: NextRequest) {
     const [exercises, total] = await Promise.all([
       prisma.exercise.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: limit,
         include: {

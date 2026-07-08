@@ -107,6 +107,9 @@ interface Exercise {
   name: string;
   description: string | null;
   instructions: string | null;
+  namePt?: string | null;
+  descriptionPt?: string | null;
+  instructionsPt?: string | null;
   bodyRegion: string;
   difficulty: string;
   tags: string[];
@@ -144,6 +147,10 @@ export default function ExercisesPage() {
   const [search, setSearch] = useState("");
   const [bodyRegion, setBodyRegion] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [translatedFilter, setTranslatedFilter] = useState("");
+  const [sort, setSort] = useState("recent");
+  const [bulkTranslating, setBulkTranslating] = useState(false);
+  const [bulkResult, setBulkResult] = useState<string>("");
 
   // Modal states
   const [showForm, setShowForm] = useState(false);
@@ -190,6 +197,8 @@ export default function ExercisesPage() {
       if (search) params.set("search", search);
       if (bodyRegion) params.set("bodyRegion", bodyRegion);
       if (difficulty) params.set("difficulty", difficulty);
+      if (translatedFilter) params.set("translated", translatedFilter);
+      if (sort) params.set("sort", sort);
 
       const res = await fetch(`/api/admin/exercises?${params}`);
       const data = await res.json();
@@ -201,7 +210,7 @@ export default function ExercisesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, bodyRegion, difficulty]);
+  }, [page, search, bodyRegion, difficulty, translatedFilter, sort]);
 
   useEffect(() => {
     fetchExercises();
@@ -211,6 +220,29 @@ export default function ExercisesPage() {
     if (!confirm("Remove this exercise from the library?")) return;
     await fetch(`/api/admin/exercises/${id}`, { method: "DELETE" });
     fetchExercises();
+  };
+
+  const handleBulkTranslate = async () => {
+    if (!confirm("Traduzir para português todos os exercícios sem tradução? (AI — pode demorar alguns minutos)")) return;
+    setBulkTranslating(true);
+    setBulkResult("");
+    try {
+      const res = await fetch("/api/admin/exercises/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBulkResult(data.translated === 0 && data.remaining === 0
+        ? "Todos os exercícios já estão traduzidos."
+        : `${data.translated} traduzido(s)${data.remaining > 0 ? ` — ${data.remaining} por traduzir (clique novamente)` : ""}`);
+      fetchExercises();
+    } catch (err: any) {
+      setBulkResult(`Erro: ${err.message}`);
+    } finally {
+      setBulkTranslating(false);
+    }
   };
 
   const openEdit = (ex: Exercise) => {
@@ -307,6 +339,10 @@ export default function ExercisesPage() {
               </div>
             </DialogContent>
           </Dialog>
+          <Button variant="outline" onClick={handleBulkTranslate} disabled={bulkTranslating}>
+            {bulkTranslating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+            <span className="hidden sm:inline">{bulkTranslating ? "Traduzindo..." : "Traduzir PT"}</span>
+          </Button>
           <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
             <FolderUp className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">Bulk Upload</span>
@@ -362,8 +398,28 @@ export default function ExercisesPage() {
             <SelectItem value="ADVANCED">Advanced</SelectItem>
           </SelectContent>
         </Select>
-        {(search || bodyRegion || difficulty) && (
-          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setBodyRegion(""); setDifficulty(""); setPage(1); }}>
+        <Select value={translatedFilter || "ALL"} onValueChange={(v) => { setTranslatedFilter(v === "ALL" ? "" : v); setPage(1); }}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Translation" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">PT: All</SelectItem>
+            <SelectItem value="yes">🇵🇹 Translated</SelectItem>
+            <SelectItem value="no">⚠️ Not translated</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recent">Newest first</SelectItem>
+            <SelectItem value="name">Name A–Z</SelectItem>
+            <SelectItem value="region">By region</SelectItem>
+          </SelectContent>
+        </Select>
+        {(search || bodyRegion || difficulty || translatedFilter) && (
+          <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setBodyRegion(""); setDifficulty(""); setTranslatedFilter(""); setPage(1); }}>
             Clear filters
           </Button>
         )}
@@ -371,6 +427,13 @@ export default function ExercisesPage() {
           {total} exercise{total !== 1 ? "s" : ""}
         </div>
       </div>
+
+      {bulkResult && (
+        <div className="bg-primary/10 text-primary text-sm p-2.5 rounded-lg flex items-center gap-2">
+          <Sparkles className="h-4 w-4 shrink-0" /> {bulkResult}
+          <button className="ml-auto" onClick={() => setBulkResult("")}><X className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
 
       {/* Exercise Grid */}
       {loading ? (
@@ -511,7 +574,10 @@ function ExerciseCard({
 
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-sm line-clamp-1">{exercise.name}</h3>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-sm line-clamp-1">{exercise.name}</h3>
+            {exercise.namePt && <p className="text-[10px] text-muted-foreground line-clamp-1">🇵🇹 {exercise.namePt}</p>}
+          </div>
           <Badge className={`${diff.color} text-[10px] px-1.5 py-0 shrink-0`}>
             {diff.label}
           </Badge>
@@ -521,6 +587,9 @@ function ExerciseCard({
           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
             {regionLabel(exercise.bodyRegion, "en-GB")}
           </Badge>
+          {!exercise.namePt && (
+            <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-500 border-amber-500/40">no PT</Badge>
+          )}
           {exercise._count && exercise._count.prescriptions > 0 && (
             <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
               <Users className="h-3 w-3" />
@@ -588,6 +657,11 @@ function ExerciseFormModal({
   const [name, setName] = useState(exercise?.name || "");
   const [description, setDescription] = useState(exercise?.description || "");
   const [instructions, setInstructions] = useState(exercise?.instructions || "");
+  const [namePt, setNamePt] = useState(exercise?.namePt || "");
+  const [descriptionPt, setDescriptionPt] = useState(exercise?.descriptionPt || "");
+  const [instructionsPt, setInstructionsPt] = useState(exercise?.instructionsPt || "");
+  const [translating, setTranslating] = useState(false);
+  const [showPtFields, setShowPtFields] = useState(!!exercise?.namePt);
   const [region, setRegion] = useState(exercise?.bodyRegion || "SHOULDER");
   const [diff, setDiff] = useState(exercise?.difficulty || "BEGINNER");
   const [tags, setTags] = useState(exercise?.tags?.join(", ") || "");
@@ -698,6 +772,37 @@ function ExerciseFormModal({
     }
   };
 
+  const handleTranslate = async () => {
+    if (!name.trim()) { setError("Fill the English name first"); return; }
+    setTranslating(true);
+    setError("");
+    try {
+      // Translate current form content (not yet saved) via the single-exercise endpoint pattern:
+      // for unsaved exercises we translate locally via API using a transient payload
+      if (exercise?.id) {
+        // Persisted exercise — make sure latest EN text is what gets translated
+        const res = await fetch("/api/admin/exercises/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ exerciseId: exercise.id }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setNamePt(data.exercise.namePt || "");
+        setDescriptionPt(data.exercise.descriptionPt || "");
+        setInstructionsPt(data.exercise.instructionsPt || "");
+      } else {
+        setError("Save the exercise first, then translate.");
+        return;
+      }
+      setShowPtFields(true);
+    } catch (err: any) {
+      setError(err.message || "Translation failed");
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) { setError("Name is required"); return; }
     setSaving(true);
@@ -708,6 +813,9 @@ function ExerciseFormModal({
       formData.append("name", name.trim());
       formData.append("description", description);
       formData.append("instructions", instructions);
+      formData.append("namePt", namePt.trim());
+      formData.append("descriptionPt", descriptionPt);
+      formData.append("instructionsPt", instructionsPt);
       formData.append("bodyRegion", region);
       formData.append("difficulty", diff);
       formData.append("tags", tags);
@@ -945,6 +1053,48 @@ function ExerciseFormModal({
                 placeholder="e.g. strengthening, mobility, post-surgery"
               />
             </div>
+          </div>
+
+          {/* Portuguese Translation */}
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">🇵🇹 Portuguese Translation</span>
+                {namePt ? (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-600/40">Translated</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-500 border-amber-500/40">Not translated</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {exercise?.id && (
+                  <Button type="button" variant="outline" size="sm" onClick={handleTranslate} disabled={translating} className="gap-1.5">
+                    {translating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    {translating ? "Translating..." : "Translate with AI"}
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowPtFields(!showPtFields)}>
+                  {showPtFields ? "Hide" : "Edit"}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">English is the primary language. The Portuguese version is shown to patients using the app in PT.</p>
+            {showPtFields && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Nome (PT)</Label>
+                  <Input value={namePt} onChange={(e) => setNamePt(e.target.value)} placeholder="ex: Rotação Externa do Ombro" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Descrição (PT)</Label>
+                  <Textarea value={descriptionPt} onChange={(e) => setDescriptionPt(e.target.value)} rows={2} placeholder="Breve descrição em português..." />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Instruções para o Paciente (PT)</Label>
+                  <Textarea value={instructionsPt} onChange={(e) => setInstructionsPt(e.target.value)} rows={3} placeholder="Instruções passo a passo em português..." />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Default parameters */}
@@ -1493,7 +1643,7 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {Object.entries(BODY_REGIONS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                        <SelectItem key={k} value={k}>{`${v.icon} ${v.en}`}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
