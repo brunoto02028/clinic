@@ -6,14 +6,6 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointment } from "@/api/appointments";
 import { useTheme } from "@/theme/useTheme";
 
-const STATUS_MAP: Record<string, { bg: string; text: string; label: string; icon: string }> = {
-  SCHEDULED: { bg: "rgba(59, 130, 246, 0.12)", text: "#60a5fa", label: "Agendado", icon: "time-outline" },
-  CONFIRMED: { bg: "rgba(16, 185, 129, 0.12)", text: "#34d399", label: "Confirmado", icon: "checkmark-circle-outline" },
-  COMPLETED: { bg: "rgba(107, 163, 176, 0.12)", text: "#8494a7", label: "Concluído", icon: "checkbox-outline" },
-  CANCELLED: { bg: "rgba(239, 68, 68, 0.12)", text: "#f87171", label: "Cancelado", icon: "close-circle-outline" },
-  NO_SHOW: { bg: "rgba(245, 158, 11, 0.12)", text: "#fbbf24", label: "Faltou", icon: "alert-circle-outline" },
-};
-
 function formatDate(iso: string) {
   const d = new Date(iso);
   const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -29,6 +21,15 @@ function formatTime(iso: string) {
 export default function AppointmentDetail() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  const STATUS_MAP: Record<string, { bg: string; text: string; label: string; icon: string }> = {
+    SCHEDULED: { bg: t.colors.workSoft, text: t.colors.work, label: "Agendado", icon: "time-outline" },
+    CONFIRMED: { bg: t.colors.okSoft, text: t.colors.ok, label: "Confirmado", icon: "checkmark-circle-outline" },
+    COMPLETED: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Concluído", icon: "checkbox-outline" },
+    CANCELLED: { bg: t.colors.badSoft, text: t.colors.bad, label: "Cancelado", icon: "close-circle-outline" },
+    NO_SHOW: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Faltou", icon: "alert-circle-outline" },
+  };
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["appointment", id],
     queryFn: () => fetchAppointment(id),
@@ -64,13 +65,13 @@ export default function AppointmentDetail() {
                 width: 56,
                 height: 56,
                 borderRadius: 18,
-                backgroundColor: "rgba(74, 124, 138, 0.15)",
+                backgroundColor: t.colors.surfaceMuted,
                 borderWidth: 1.5,
-                borderColor: "rgba(93, 201, 192, 0.25)",
+                borderColor: t.colors.border,
                 alignItems: "center",
                 justifyContent: "center",
               }}>
-                <Ionicons name="person-outline" size={28} color="#5dc9c0" />
+                <Ionicons name="person-outline" size={28} color={t.colors.ok} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="subtitle">
@@ -126,11 +127,11 @@ export default function AppointmentDetail() {
                   width: 40,
                   height: 40,
                   borderRadius: 12,
-                  backgroundColor: "rgba(93, 201, 192, 0.1)",
+                  backgroundColor: t.colors.okSoft,
                   alignItems: "center",
                   justifyContent: "center",
                 }}>
-                  <Ionicons name="calendar-outline" size={20} color="#5dc9c0" />
+                  <Ionicons name="calendar-outline" size={20} color={t.colors.ok} />
                 </View>
                 <View>
                   <Text variant="caption" color={t.colors.textMuted}>Data</Text>
@@ -138,18 +139,18 @@ export default function AppointmentDetail() {
                 </View>
               </View>
 
-              <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)" }} />
+              <View style={{ height: 1, backgroundColor: t.colors.borderSubtle }} />
 
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{
                   width: 40,
                   height: 40,
                   borderRadius: 12,
-                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                  backgroundColor: t.colors.workSoft,
                   alignItems: "center",
                   justifyContent: "center",
                 }}>
-                  <Ionicons name="time-outline" size={20} color="#60a5fa" />
+                  <Ionicons name="time-outline" size={20} color={t.colors.work} />
                 </View>
                 <View>
                   <Text variant="caption" color={t.colors.textMuted}>Horário</Text>
@@ -157,18 +158,18 @@ export default function AppointmentDetail() {
                 </View>
               </View>
 
-              <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.04)" }} />
+              <View style={{ height: 1, backgroundColor: t.colors.borderSubtle }} />
 
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <View style={{
                   width: 40,
                   height: 40,
                   borderRadius: 12,
-                  backgroundColor: "rgba(245, 158, 11, 0.1)",
+                  backgroundColor: t.colors.warnSoft,
                   alignItems: "center",
                   justifyContent: "center",
                 }}>
-                  <Ionicons name="hourglass-outline" size={20} color="#f59e0b" />
+                  <Ionicons name="hourglass-outline" size={20} color={t.colors.warn} />
                 </View>
                 <View>
                   <Text variant="caption" color={t.colors.textMuted}>Duração</Text>

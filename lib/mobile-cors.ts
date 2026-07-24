@@ -10,7 +10,7 @@ const ORIGIN = process.env.MOBILE_CORS_ORIGIN || "*";
 
 const HEADERS = {
   "Access-Control-Allow-Origin": ORIGIN,
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 

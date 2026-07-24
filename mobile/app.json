@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "BPR Rehab",
+    "name": "BA One",
     "slug": "bpr-rehab",
     "scheme": "bprrehab",
     "version": "1.0.0",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#0f172a",
+      "backgroundColor": "#20242D",
       "resizeMode": "contain"
     },
     "ios": {
@@ -22,7 +22,7 @@
     "android": {
       "package": "com.bpr.rehab",
       "adaptiveIcon": {
-        "backgroundColor": "#0f172a",
+        "backgroundColor": "#20242D",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -36,7 +36,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ],
     "extra": {
       "router": {},

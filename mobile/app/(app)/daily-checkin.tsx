@@ -17,18 +17,20 @@ const MOODS = [
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-function SliderRow({ label, value, onChange, color = "#5dc9c0" }: { label: string; value: number; onChange: (v: number) => void; color?: string }) {
+function SliderRow({ label, value, onChange, color }: { label: string; value: number; onChange: (v: number) => void; color?: string }) {
+  const t = useTheme();
+  const c = color ?? t.colors.health;
   return (
     <View style={{ gap: 6 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <Text variant="label">{label}</Text>
-        <Text variant="label" style={{ color, fontWeight: "700" }}>{value}</Text>
+        <Text variant="label" style={{ color: c, fontWeight: "700" }}>{value}</Text>
       </View>
       <View style={{ flexDirection: "row", gap: 4 }}>
         {Array.from({ length: 11 }, (_, i) => (
           <Pressable key={i} onPress={() => onChange(i)}
-            style={{ flex: 1, height: 32, borderRadius: 6, alignItems: "center", justifyContent: "center", backgroundColor: i === value ? color : "rgba(26, 39, 64, 0.8)", borderWidth: 1, borderColor: i === value ? color : "rgba(255, 255, 255, 0.06)" }}>
-            <Text style={{ fontSize: 10, color: i === value ? "#fff" : "rgba(255,255,255,0.4)" }}>{i}</Text>
+            style={{ flex: 1, height: 32, borderRadius: 6, alignItems: "center", justifyContent: "center", backgroundColor: i === value ? c : t.colors.surfaceMuted, borderWidth: 1, borderColor: i === value ? c : t.colors.borderSubtle }}>
+            <Text style={{ fontSize: 10, color: i === value ? t.colors.primaryFg : t.colors.textMuted }}>{i}</Text>
           </Pressable>
         ))}
       </View>
@@ -54,15 +56,15 @@ function HistoryDots({ history }: { history: Array<{ checkinDate: string; exerci
           <View style={{
             width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center",
             backgroundColor: d.entry
-              ? d.entry.exercisesDone ? "rgba(52, 211, 153, 0.2)" : "rgba(251, 191, 36, 0.2)"
-              : "rgba(74, 124, 138, 0.08)",
+              ? d.entry.exercisesDone ? t.colors.okSoft : t.colors.warnSoft
+              : t.colors.surfaceMuted,
             borderWidth: 1.5,
             borderColor: d.entry
-              ? d.entry.exercisesDone ? "#34d399" : "#fbbf24"
-              : "rgba(74, 124, 138, 0.15)",
+              ? d.entry.exercisesDone ? t.colors.ok : t.colors.warn
+              : t.colors.borderSubtle,
           }}>
-            {d.entry && d.entry.exercisesDone && <Ionicons name="checkmark" size={16} color="#34d399" />}
-            {d.entry && !d.entry.exercisesDone && <Ionicons name="remove" size={14} color="#fbbf24" />}
+            {d.entry && d.entry.exercisesDone && <Ionicons name="checkmark" size={16} color={t.colors.ok} />}
+            {d.entry && !d.entry.exercisesDone && <Ionicons name="remove" size={14} color={t.colors.warn} />}
           </View>
           <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{d.day}</Text>
         </View>
@@ -141,7 +143,7 @@ export default function DailyCheckIn() {
                   </View>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
-                  <Text variant="label" color="#fbbf24" style={{ fontWeight: "700" }}>{progress.xp} XP</Text>
+                  <Text variant="label" color={t.colors.warn} style={{ fontWeight: "700" }}>{progress.xp} XP</Text>
                   <Text variant="caption" color={t.colors.textMuted}>Nível {progress.level}</Text>
                 </View>
               </View>
@@ -150,17 +152,17 @@ export default function DailyCheckIn() {
 
           <Text variant="title">Como você está hoje?</Text>
 
-          <SliderRow label="Dor" value={pain} onChange={setPain} color="#f87171" />
-          <SliderRow label="Energia" value={energy} onChange={setEnergy} color="#fbbf24" />
-          <SliderRow label="Qualidade do Sono" value={sleep} onChange={setSleep} color="#818cf8" />
-          <SliderRow label="Estresse" value={stress} onChange={setStress} color="#a78bfa" />
+          <SliderRow label="Dor" value={pain} onChange={setPain} color={t.colors.bad} />
+          <SliderRow label="Energia" value={energy} onChange={setEnergy} color={t.colors.warn} />
+          <SliderRow label="Qualidade do Sono" value={sleep} onChange={setSleep} color={t.colors.work} />
+          <SliderRow label="Estresse" value={stress} onChange={setStress} color={t.colors.community} />
 
           <View style={{ gap: 4 }}>
             <Text variant="label">Humor</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {MOODS.map((m) => (
                 <Pressable key={m.v} onPress={() => setMood(m.v)}
-                  style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: "center", backgroundColor: mood === m.v ? "rgba(93, 201, 192, 0.2)" : "rgba(26, 39, 64, 0.8)", borderWidth: 1, borderColor: mood === m.v ? "rgba(93, 201, 192, 0.4)" : "rgba(255, 255, 255, 0.06)" }}>
+                  style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: "center", backgroundColor: mood === m.v ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: mood === m.v ? t.colors.health : t.colors.borderSubtle }}>
                   <Text style={{ fontSize: 24 }}>{m.emoji}</Text>
                 </Pressable>
               ))}
@@ -168,9 +170,9 @@ export default function DailyCheckIn() {
           </View>
 
           <Pressable onPress={() => setExercises((v) => !v)}
-            style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: t.radius.lg, backgroundColor: exercises ? "rgba(93, 201, 192, 0.1)" : "rgba(26, 39, 64, 0.8)", borderWidth: 1, borderColor: exercises ? "rgba(93, 201, 192, 0.3)" : "rgba(255, 255, 255, 0.06)" }}>
-            <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: exercises ? "#5dc9c0" : "transparent", borderWidth: exercises ? 0 : 1.5, borderColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" }}>
-              {exercises && <Text style={{ color: "#fff", fontSize: 14 }}>{"✓"}</Text>}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: t.radius.lg, backgroundColor: exercises ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: exercises ? t.colors.health : t.colors.borderSubtle }}>
+            <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: exercises ? t.colors.health : "transparent", borderWidth: exercises ? 0 : 1.5, borderColor: t.colors.border, alignItems: "center", justifyContent: "center" }}>
+              {exercises && <Text style={{ color: t.colors.primaryFg, fontSize: 14 }}>{"✓"}</Text>}
             </View>
             <Text variant="label">Exercícios do dia realizados</Text>
           </Pressable>
@@ -178,12 +180,12 @@ export default function DailyCheckIn() {
           <View style={{ gap: 4 }}>
             <Text variant="label">Notas (opcional)</Text>
             <TextInput value={notes} onChangeText={setNotes} placeholder="Como você se sente hoje?" placeholderTextColor={t.colors.textMuted} multiline numberOfLines={3}
-              style={{ padding: 12, borderRadius: t.radius.lg, backgroundColor: "rgba(26, 39, 64, 0.8)", borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.06)", color: "#fff", fontSize: 14, textAlignVertical: "top", minHeight: 80 }} />
+              style={{ padding: 12, borderRadius: t.radius.lg, backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.border, color: t.colors.text, fontSize: 14, textAlignVertical: "top", minHeight: 80 }} />
           </View>
 
           <Pressable onPress={handleSave} disabled={mutation.isPending}
-            style={{ padding: 16, borderRadius: t.radius.lg, backgroundColor: "#5dc9c0", alignItems: "center", opacity: mutation.isPending ? 0.6 : 1 }}>
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+            style={{ padding: 16, borderRadius: t.radius.lg, backgroundColor: t.colors.primary, alignItems: "center", opacity: mutation.isPending ? 0.6 : 1 }}>
+            <Text style={{ color: t.colors.primaryFg, fontWeight: "700", fontSize: 16 }}>
               {mutation.isPending ? "Salvando..." : data?.today ? "Atualizar" : "Salvar"}
             </Text>
           </Pressable>
@@ -195,11 +197,11 @@ export default function DailyCheckIn() {
               <HistoryDots history={data.history} />
               <View style={{ flexDirection: "row", gap: 16, marginTop: 12, justifyContent: "center" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#34d399" }} />
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: t.colors.ok }} />
                   <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>Check-in + exercício</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#fbbf24" }} />
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: t.colors.warn }} />
                   <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>Só check-in</Text>
                 </View>
               </View>

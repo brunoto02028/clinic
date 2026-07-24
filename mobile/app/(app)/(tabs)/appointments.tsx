@@ -7,13 +7,15 @@ import { fetchAppointments } from "@/api/appointments";
 import { formatDateTime } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  SCHEDULED: { bg: "rgba(59, 130, 246, 0.12)", text: "#60a5fa", label: "Agendado" },
-  CONFIRMED: { bg: "rgba(16, 185, 129, 0.12)", text: "#34d399", label: "Confirmado" },
-  COMPLETED: { bg: "rgba(107, 163, 176, 0.12)", text: "#8494a7", label: "Concluído" },
-  CANCELLED: { bg: "rgba(239, 68, 68, 0.12)", text: "#f87171", label: "Cancelado" },
-  NO_SHOW: { bg: "rgba(245, 158, 11, 0.12)", text: "#fbbf24", label: "Faltou" },
-};
+function getStatusColors(t: ReturnType<typeof useTheme>): Record<string, { bg: string; text: string; label: string }> {
+  return {
+    SCHEDULED: { bg: t.colors.workSoft, text: t.colors.work, label: "Agendado" },
+    CONFIRMED: { bg: t.colors.okSoft, text: t.colors.ok, label: "Confirmado" },
+    COMPLETED: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Concluído" },
+    CANCELLED: { bg: t.colors.badSoft, text: t.colors.bad, label: "Cancelado" },
+    NO_SHOW: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Faltou" },
+  };
+}
 
 export default function Appointments() {
   const t = useTheme();
@@ -32,10 +34,10 @@ export default function Appointments() {
         <Text variant="title">Agenda</Text>
         <Pressable
           onPress={() => router.push("/book-appointment")}
-          style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(93,201,192,0.15)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: "rgba(93,201,192,0.25)" }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: t.colors.healthSoft, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: t.colors.health }}
         >
-          <Ionicons name="add" size={16} color="#5dc9c0" />
-          <Text variant="caption" color="#5dc9c0" style={{ fontWeight: "600" }}>Agendar</Text>
+          <Ionicons name="add" size={16} color={t.colors.health} />
+          <Text variant="caption" color={t.colors.health} style={{ fontWeight: "600" }}>Agendar</Text>
         </Pressable>
       </View>
 
@@ -62,7 +64,8 @@ export default function Appointments() {
           contentContainerStyle={{ gap: 12 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const status = STATUS_COLORS[item.status] ?? STATUS_COLORS.SCHEDULED;
+            const statusMap = getStatusColors(t);
+            const status = statusMap[item.status] ?? statusMap.SCHEDULED;
             return (
               <Pressable
                 testID={`appt-${item.id}`}
@@ -74,11 +77,11 @@ export default function Appointments() {
                       width: 44,
                       height: 44,
                       borderRadius: 14,
-                      backgroundColor: "rgba(74, 124, 138, 0.12)",
+                      backgroundColor: t.colors.healthSoft,
                       alignItems: "center",
                       justifyContent: "center",
                     }}>
-                      <Ionicons name="medical-outline" size={22} color="#5dc9c0" />
+                      <Ionicons name="medical-outline" size={22} color={t.colors.health} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="label" style={{ fontWeight: "600" }}>{item.treatmentType}</Text>

@@ -11,15 +11,6 @@ import { useTheme } from "@/theme/useTheme";
 import { API_URL } from "@/api/config";
 import { tokenStorage } from "@/lib/secure-storage";
 
-const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
-  MEDICAL_REFERRAL: { icon: "document-text-outline", color: "#60a5fa" },
-  REPORT: { icon: "clipboard-outline", color: "#5dc9c0" },
-  PRESCRIPTION: { icon: "medical-outline", color: "#34d399" },
-  IMAGING: { icon: "scan-outline", color: "#f59e0b" },
-  INSURANCE: { icon: "shield-checkmark-outline", color: "#8b5cf6" },
-  OTHER: { icon: "document-outline", color: "#64748b" },
-};
-
 async function uploadDocument(uri: string, fileName: string, mimeType: string) {
   const formData = new FormData();
   formData.append("file", { uri, name: fileName, type: mimeType } as any);
@@ -43,13 +34,22 @@ export default function Documents() {
   const { data, isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
   const [uploading, setUploading] = useState(false);
 
+  const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
+    MEDICAL_REFERRAL: { icon: "document-text-outline", color: t.colors.work, bg: t.colors.workSoft },
+    REPORT: { icon: "clipboard-outline", color: t.colors.ok, bg: t.colors.okSoft },
+    PRESCRIPTION: { icon: "medical-outline", color: t.colors.ok, bg: t.colors.okSoft },
+    IMAGING: { icon: "scan-outline", color: t.colors.warn, bg: t.colors.warnSoft },
+    INSURANCE: { icon: "shield-checkmark-outline", color: t.colors.community, bg: t.colors.communitySoft },
+    OTHER: { icon: "document-outline", color: t.colors.textMuted, bg: t.colors.surfaceMuted },
+  };
+
   const pickImage = async (source: "camera" | "gallery") => {
     const permission = source === "camera"
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert("Permissão necessária", "Permita o acesso para continuar.");
+      Alert.alert("Permissao necessaria", "Permita o acesso para continuar.");
       return;
     }
 
@@ -68,7 +68,7 @@ export default function Documents() {
       await uploadDocument(asset.uri, fileName, mimeType);
       qc.invalidateQueries({ queryKey: ["documents"] });
     } catch (e) {
-      Alert.alert("Erro", "Não foi possível fazer o upload.");
+      Alert.alert("Erro", "Nao foi possivel fazer o upload.");
     } finally {
       setUploading(false);
     }
@@ -88,17 +88,17 @@ export default function Documents() {
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
               onPress={() => pickImage("camera")}
-              style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: "rgba(107,163,176,0.3)" }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: t.colors.border }}
             >
               <Ionicons name="camera-outline" size={18} color={t.colors.accent} />
               <Text variant="caption" color={t.colors.accent} style={{ fontWeight: "600" }}>Foto</Text>
             </Pressable>
             <Pressable
               onPress={() => pickImage("gallery")}
-              style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "rgba(74,124,138,0.15)" }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: t.colors.surfaceMuted }}
             >
-              <Ionicons name="cloud-upload-outline" size={18} color="#5dc9c0" />
-              <Text variant="caption" color="#5dc9c0" style={{ fontWeight: "600" }}>Upload</Text>
+              <Ionicons name="cloud-upload-outline" size={18} color={t.colors.ok} />
+              <Text variant="caption" color={t.colors.ok} style={{ fontWeight: "600" }}>Upload</Text>
             </Pressable>
           </View>
         </View>
@@ -115,14 +115,14 @@ export default function Documents() {
         {isLoading ? (
           <Spinner center />
         ) : isError ? (
-          <Card><Text color={t.colors.danger}>Não foi possível carregar.</Text></Card>
+          <Card><Text color={t.colors.danger}>Nao foi possivel carregar.</Text></Card>
         ) : (data ?? []).length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="folder-open-outline" size={48} color={t.colors.textMuted} />
               <Text variant="subtitle" color={t.colors.textSecondary}>Nenhum documento</Text>
               <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
-                Faça upload de documentos ou tire fotos{"\n"}de receitas e laudos.
+                Faca upload de documentos ou tire fotos{"\n"}de receitas e laudos.
               </Text>
             </View>
           </Card>
@@ -138,7 +138,7 @@ export default function Documents() {
                 <Pressable onPress={() => Linking.openURL(item.fileUrl).catch(() => {})}>
                   <Card>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: `${typeInfo.color}15`, alignItems: "center", justifyContent: "center" }}>
+                      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: typeInfo.bg, alignItems: "center", justifyContent: "center" }}>
                         <Ionicons name={typeInfo.icon as any} size={22} color={typeInfo.color} />
                       </View>
                       <View style={{ flex: 1 }}>

@@ -4,12 +4,12 @@ import {
   StyleSheet,
   View,
   type PressableProps,
+  type ViewStyle,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Text } from "./Text";
 import { useTheme } from "@/theme/useTheme";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline";
+type Variant = "primary" | "greige" | "ghost" | "danger" | "work" | "health" | "community";
 
 export interface ButtonProps extends Omit<PressableProps, "style"> {
   title: string;
@@ -18,95 +18,36 @@ export interface ButtonProps extends Omit<PressableProps, "style"> {
   disabled?: boolean;
   icon?: React.ReactNode;
   size?: "sm" | "md" | "lg";
+  style?: ViewStyle;
 }
 
 export function Button({
   title,
-  variant = "primary",
+  variant = "greige",
   loading,
   disabled,
   icon,
   size = "md",
+  style: outerStyle,
   ...rest
 }: ButtonProps) {
   const t = useTheme();
   const isDisabled = disabled || loading;
 
-  const heights = { sm: 40, md: 48, lg: 56 };
-  const fontSizes = { sm: 13, md: 15, lg: 17 };
+  const heights = { sm: 36, md: 46, lg: 54 };
+  const fontSizes = { sm: 12, md: 13.5, lg: 15 };
 
-  const fg = {
-    primary: t.colors.primaryText,
-    secondary: t.colors.text,
-    ghost: t.colors.accent,
-    danger: t.colors.dangerText,
-    outline: t.colors.accent,
-  }[variant];
+  const colorMap: Record<Variant, { bg: string; fg: string; border?: string }> = {
+    primary: { bg: t.colors.primary, fg: t.colors.primaryFg },
+    greige: { bg: t.colors.greige, fg: t.colors.greigeFg },
+    ghost: { bg: t.colors.surface, fg: t.colors.text, border: t.colors.border },
+    danger: { bg: t.colors.bad, fg: "#FFFFFF" },
+    work: { bg: t.colors.work, fg: "#FFFFFF" },
+    health: { bg: t.colors.health, fg: "#FFFFFF" },
+    community: { bg: t.colors.community, fg: "#FFFFFF" },
+  };
 
-  const content = (
-    <View style={styles.inner}>
-      {loading ? (
-        <ActivityIndicator color={fg} size="small" />
-      ) : (
-        <>
-          {icon}
-          <Text
-            variant="label"
-            color={fg}
-            style={{ fontWeight: "600", fontSize: fontSizes[size] }}
-          >
-            {title}
-          </Text>
-        </>
-      )}
-    </View>
-  );
-
-  if (variant === "primary") {
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
-        disabled={isDisabled}
-        style={({ pressed }) => ({
-          opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-          borderRadius: t.radius.md,
-          overflow: "hidden" as const,
-        })}
-        {...rest}
-      >
-        <LinearGradient
-          colors={["#4a7c8a", "#2c4f58"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[
-            styles.base,
-            {
-              minHeight: heights[size],
-              borderRadius: t.radius.md,
-            },
-          ]}
-        >
-          {content}
-        </LinearGradient>
-      </Pressable>
-    );
-  }
-
-  const bg = {
-    secondary: "rgba(74, 124, 138, 0.12)",
-    ghost: "transparent",
-    danger: t.colors.danger,
-    outline: "transparent",
-  }[variant];
-
-  const borderColor = {
-    secondary: "rgba(74, 124, 138, 0.2)",
-    ghost: "transparent",
-    danger: "transparent",
-    outline: "rgba(107, 163, 176, 0.3)",
-  }[variant];
+  const c = colorMap[variant];
 
   return (
     <Pressable
@@ -116,18 +57,37 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         {
-          backgroundColor: bg,
+          backgroundColor: c.bg,
           borderRadius: t.radius.md,
-          borderWidth: 1,
-          borderColor,
+          borderWidth: c.border ? 1.5 : 0,
+          borderColor: c.border,
           minHeight: heights[size],
           opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
           transform: [{ scale: pressed ? 0.98 : 1 }],
         },
+        outerStyle,
       ]}
       {...rest}
     >
-      {content}
+      <View style={styles.inner}>
+        {loading ? (
+          <ActivityIndicator color={c.fg} size="small" />
+        ) : (
+          <>
+            {icon}
+            <Text
+              variant="label"
+              color={c.fg}
+              style={{
+                fontFamily: "Sora_700Bold",
+                fontSize: fontSizes[size],
+              }}
+            >
+              {title}
+            </Text>
+          </>
+        )}
+      </View>
     </Pressable>
   );
 }

@@ -6,17 +6,24 @@ export interface Theme {
   radius: typeof theme.radius;
   fontSize: typeof theme.fontSize;
   fontWeight: typeof theme.fontWeight;
-  scheme: "light" | "dark";
+  fonts: {
+    display: string;
+    body: string;
+  };
+  scheme: "light";
 }
 
-/** Always returns dark theme to match the web app identity. */
 export function useTheme(): Theme {
   return {
-    colors: themes.dark,
+    colors: themes.light,
     spacing: theme.spacing,
     radius: theme.radius,
     fontSize: theme.fontSize,
     fontWeight: theme.fontWeight,
-    scheme: "dark",
+    fonts: {
+      display: "Sora_700Bold",
+      body: "Inter_400Regular",
+    },
+    scheme: "light",
   };
 }

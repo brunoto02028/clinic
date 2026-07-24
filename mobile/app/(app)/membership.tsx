@@ -99,21 +99,21 @@ export default function Membership() {
         <Card variant="highlight">
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="shield-checkmark-outline" size={18} color="#5dc9c0" />
+              <Ionicons name="shield-checkmark-outline" size={18} color={t.colors.health} />
               <Text variant="label" style={{ fontWeight: "600" }}>Seu plano atual</Text>
             </View>
             <View style={{
-              backgroundColor: currentSub?.cancelAtPeriodEnd ? "rgba(251, 191, 36, 0.15)" : "rgba(16, 185, 129, 0.15)",
+              backgroundColor: currentSub?.cancelAtPeriodEnd ? t.colors.warnSoft : t.colors.okSoft,
               paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
             }}>
-              <Text variant="caption" color={currentSub?.cancelAtPeriodEnd ? "#fbbf24" : "#34d399"} style={{ fontWeight: "700", fontSize: 11 }}>
+              <Text variant="caption" color={currentSub?.cancelAtPeriodEnd ? t.colors.warn : t.colors.ok} style={{ fontWeight: "700", fontSize: 11 }}>
                 {currentSub?.cancelAtPeriodEnd ? "Cancela em breve" : "Ativo"}
               </Text>
             </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6 }}>
             <Text variant="subtitle" style={{ fontSize: 22 }}>{currentPlan?.name ?? "Plano Free"}</Text>
-            <Text variant="caption" color="#34d399" style={{ fontWeight: "600" }}>
+            <Text variant="caption" color={t.colors.ok} style={{ fontWeight: "600" }}>
               {currentPlan?.isFree !== false ? "Free" : `£${currentPlan.price?.toFixed(2)}/mês`}
             </Text>
           </View>
@@ -127,7 +127,7 @@ export default function Membership() {
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
             {MODULES.map((m) => (
               <View key={m} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Ionicons name="checkmark-circle" size={14} color="#34d399" />
+                <Ionicons name="checkmark-circle" size={14} color={t.colors.ok} />
                 <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 12 }}>{m}</Text>
               </View>
             ))}
@@ -170,10 +170,10 @@ export default function Membership() {
                   <Text variant="subtitle">{item.name}</Text>
                   {currentPlan?.id === item.id && (
                     <View style={{
-                      backgroundColor: "rgba(139, 92, 246, 0.15)",
+                      backgroundColor: t.colors.communitySoft,
                       paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10,
                     }}>
-                      <Text variant="caption" color="#a78bfa" style={{ fontWeight: "700", fontSize: 10 }}>ATUAL</Text>
+                      <Text variant="caption" color={t.colors.community} style={{ fontWeight: "700", fontSize: 10 }}>ATUAL</Text>
                     </View>
                   )}
                 </View>

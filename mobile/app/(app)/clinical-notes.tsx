@@ -35,7 +35,7 @@ export default function ClinicalNotes() {
         ) : filtered.length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
-              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(74,124,138,0.1)", alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: t.colors.healthSoft, alignItems: "center", justifyContent: "center" }}>
                 <Ionicons name="clipboard-outline" size={32} color={t.colors.textMuted} />
               </View>
               <Text variant="subtitle" color={t.colors.textSecondary}>Nenhuma nota clínica</Text>
