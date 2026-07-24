@@ -11,10 +11,10 @@ function MetricCard({ title, metrics }: { title: string; metrics: { label: strin
     <View
       style={{
         padding: 16,
-        backgroundColor: "rgba(26, 39, 64, 0.8)",
+        backgroundColor: t.colors.surface,
         borderRadius: t.radius.lg,
         borderWidth: 1,
-        borderColor: "rgba(255, 255, 255, 0.06)",
+        borderColor: t.colors.border,
         gap: 12,
       }}
     >
@@ -31,7 +31,7 @@ function MetricCard({ title, metrics }: { title: string; metrics: { label: strin
             <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 11 }}>
               {m.label}
             </Text>
-            <Text variant="subtitle" style={{ color: m.color || "#fff", fontWeight: "700" }}>
+            <Text variant="subtitle" style={{ color: m.color || t.colors.text, fontWeight: "700" }}>
               {m.value}
             </Text>
           </View>
@@ -69,7 +69,7 @@ export default function WearableData() {
         ) : !data || data.length === 0 ? (
           <View style={{ padding: 40, alignItems: "center", gap: 12 }}>
             <Text variant="caption" color={t.colors.textSecondary} style={{ textAlign: "center" }}>
-              Nenhum dado ainda. Conecte um wearable e aguarde a sincronização.
+              Nenhum dado ainda. Conecte um wearable e aguarde a sincronizacao.
             </Text>
           </View>
         ) : (
@@ -78,22 +78,22 @@ export default function WearableData() {
               <MetricCard
                 title="Sono"
                 metrics={[
-                  { label: "Duração", value: fmtDuration(sleep.sleepDuration) },
-                  { label: "Eficiência", value: sleep.sleepEfficiency != null ? `${Math.round(sleep.sleepEfficiency)}%` : "—" },
-                  { label: "Deep", value: sleep.deepMinutes != null ? `${Math.round(sleep.deepMinutes)}m` : "—", color: "#818cf8" },
-                  { label: "REM", value: sleep.remMinutes != null ? `${Math.round(sleep.remMinutes)}m` : "—", color: "#a78bfa" },
-                  { label: "HRV", value: sleep.hrv != null ? `${Math.round(sleep.hrv)} ms` : "—", color: "#f87171" },
+                  { label: "Duracao", value: fmtDuration(sleep.sleepDuration) },
+                  { label: "Eficiencia", value: sleep.sleepEfficiency != null ? `${Math.round(sleep.sleepEfficiency)}%` : "—" },
+                  { label: "Deep", value: sleep.deepMinutes != null ? `${Math.round(sleep.deepMinutes)}m` : "—", color: t.colors.work },
+                  { label: "REM", value: sleep.remMinutes != null ? `${Math.round(sleep.remMinutes)}m` : "—", color: t.colors.community },
+                  { label: "HRV", value: sleep.hrv != null ? `${Math.round(sleep.hrv)} ms` : "—", color: t.colors.bad },
                 ]}
               />
             )}
 
             {body && (
               <MetricCard
-                title="Recuperação"
+                title="Recuperacao"
                 metrics={[
-                  { label: "HRV", value: body.hrv != null ? `${Math.round(body.hrv)} ms` : "—", color: body.hrv && body.hrv > 40 ? "#34d399" : "#fbbf24" },
-                  { label: "FC Repouso", value: body.restingHr != null ? `${Math.round(body.restingHr)} bpm` : "—", color: body.restingHr && body.restingHr < 65 ? "#34d399" : "#fbbf24" },
-                  { label: "SpO2", value: body.spo2 != null ? `${Math.round(body.spo2)}%` : "—", color: body.spo2 && body.spo2 > 95 ? "#34d399" : "#fbbf24" },
+                  { label: "HRV", value: body.hrv != null ? `${Math.round(body.hrv)} ms` : "—", color: body.hrv && body.hrv > 40 ? t.colors.ok : t.colors.warn },
+                  { label: "FC Repouso", value: body.restingHr != null ? `${Math.round(body.restingHr)} bpm` : "—", color: body.restingHr && body.restingHr < 65 ? t.colors.ok : t.colors.warn },
+                  { label: "SpO2", value: body.spo2 != null ? `${Math.round(body.spo2)}%` : "—", color: body.spo2 && body.spo2 > 95 ? t.colors.ok : t.colors.warn },
                 ]}
               />
             )}
@@ -110,7 +110,7 @@ export default function WearableData() {
             )}
 
             <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center", marginTop: 8 }}>
-              Dados dos últimos 7 dias • {sleep?.provider || body?.provider || activity?.provider || ""}
+              Dados dos ultimos 7 dias • {sleep?.provider || body?.provider || activity?.provider || ""}
             </Text>
           </View>
         )}

@@ -20,7 +20,7 @@ export async function fetchProfile(): Promise<PatientProfile> {
   return res.user;
 }
 
-export async function updateProfile(patch: Partial<Omit<PatientProfile, "id" | "email" | "firstName" | "lastName">>): Promise<PatientProfile> {
+export async function updateProfile(patch: Partial<Omit<PatientProfile, "id" | "email">>): Promise<PatientProfile> {
   const res = await apiFetch<{ success: boolean; user: PatientProfile }>(
     "/api/patient/profile",
     { method: "PATCH", body: JSON.stringify(patch) }

@@ -6,12 +6,6 @@ import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchPrescriptions, completeExercise } from "@/api/exercises";
 import { useTheme } from "@/theme/useTheme";
 
-const DIFFICULTY_MAP: Record<string, { label: string; color: string }> = {
-  EASY: { label: "Fácil", color: "#34d399" },
-  MEDIUM: { label: "Moderado", color: "#fbbf24" },
-  HARD: { label: "Avançado", color: "#f87171" },
-};
-
 const REGION_MAP: Record<string, { label: string; icon: string }> = {
   LOWER_BODY: { label: "Membros Inferiores", icon: "footsteps-outline" },
   UPPER_BODY: { label: "Membros Superiores", icon: "body-outline" },
@@ -23,6 +17,13 @@ export default function ExerciseDetail() {
   const t = useTheme();
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
+
+  const DIFFICULTY_MAP: Record<string, { label: string; color: string; bg: string }> = {
+    EASY: { label: "Facil", color: t.colors.ok, bg: t.colors.okSoft },
+    MEDIUM: { label: "Moderado", color: t.colors.warn, bg: t.colors.warnSoft },
+    HARD: { label: "Avancado", color: t.colors.bad, bg: t.colors.badSoft },
+  };
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["prescriptions"],
     queryFn: fetchPrescriptions,
@@ -32,9 +33,9 @@ export default function ExerciseDetail() {
     mutationFn: () => completeExercise(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["prescriptions"] });
-      Alert.alert("Exercício concluído!", "Parabéns por completar mais uma sessão.");
+      Alert.alert("Exercicio concluido!", "Parabens por completar mais uma sessao.");
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message || "Não foi possível registrar."),
+    onError: (e) => Alert.alert("Erro", (e as Error).message || "Nao foi possivel registrar."),
   });
 
   const rx = data?.find((p) => p.id === id);
@@ -44,7 +45,7 @@ export default function ExerciseDetail() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "Exercício",
+          title: "Exercicio",
           headerStyle: { backgroundColor: t.colors.background },
           headerTintColor: t.colors.text,
           headerShadowVisible: false,
@@ -56,11 +57,11 @@ export default function ExerciseDetail() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-            <Text color={t.colors.danger}>Não foi possível carregar.</Text>
+            <Text color={t.colors.danger}>Nao foi possivel carregar.</Text>
           </View>
         </Card>
       ) : !rx ? (
-        <Text muted>Exercício não encontrado.</Text>
+        <Text muted>Exercicio nao encontrado.</Text>
       ) : (
         <View style={{ gap: 16 }}>
           {/* Header */}
@@ -74,7 +75,7 @@ export default function ExerciseDetail() {
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 4,
-                    backgroundColor: "rgba(74, 124, 138, 0.1)",
+                    backgroundColor: t.colors.surfaceMuted,
                     paddingHorizontal: 10,
                     paddingVertical: 4,
                     borderRadius: 14,
@@ -88,7 +89,7 @@ export default function ExerciseDetail() {
                 const diff = DIFFICULTY_MAP[rx.exercise.difficulty];
                 return diff ? (
                   <View style={{
-                    backgroundColor: `${diff.color}18`,
+                    backgroundColor: diff.bg,
                     paddingHorizontal: 10,
                     paddingVertical: 4,
                     borderRadius: 14,
@@ -107,13 +108,13 @@ export default function ExerciseDetail() {
                 flex: 1,
                 alignItems: "center",
                 padding: 14,
-                backgroundColor: "rgba(74, 124, 138, 0.08)",
+                backgroundColor: t.colors.surfaceMuted,
                 borderRadius: t.radius.md,
                 borderWidth: 1,
-                borderColor: "rgba(74, 124, 138, 0.1)",
+                borderColor: t.colors.borderSubtle,
               }}>
                 <Text variant="title" color={t.colors.secondary} style={{ fontSize: 24 }}>{rx.sets}</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Séries</Text>
+                <Text variant="caption" color={t.colors.textMuted}>Series</Text>
               </View>
             ) : null}
             {rx.reps ? (
@@ -121,13 +122,13 @@ export default function ExerciseDetail() {
                 flex: 1,
                 alignItems: "center",
                 padding: 14,
-                backgroundColor: "rgba(74, 124, 138, 0.08)",
+                backgroundColor: t.colors.surfaceMuted,
                 borderRadius: t.radius.md,
                 borderWidth: 1,
-                borderColor: "rgba(74, 124, 138, 0.1)",
+                borderColor: t.colors.borderSubtle,
               }}>
                 <Text variant="title" color={t.colors.secondary} style={{ fontSize: 24 }}>{rx.reps}</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Repetições</Text>
+                <Text variant="caption" color={t.colors.textMuted}>Repeticoes</Text>
               </View>
             ) : null}
             {rx.holdSeconds ? (
@@ -135,13 +136,13 @@ export default function ExerciseDetail() {
                 flex: 1,
                 alignItems: "center",
                 padding: 14,
-                backgroundColor: "rgba(74, 124, 138, 0.08)",
+                backgroundColor: t.colors.surfaceMuted,
                 borderRadius: t.radius.md,
                 borderWidth: 1,
-                borderColor: "rgba(74, 124, 138, 0.1)",
+                borderColor: t.colors.borderSubtle,
               }}>
                 <Text variant="title" color={t.colors.secondary} style={{ fontSize: 24 }}>{rx.holdSeconds}s</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Sustentação</Text>
+                <Text variant="caption" color={t.colors.textMuted}>Sustentacao</Text>
               </View>
             ) : null}
             {rx.frequency ? (
@@ -149,10 +150,10 @@ export default function ExerciseDetail() {
                 flex: 1,
                 alignItems: "center",
                 padding: 14,
-                backgroundColor: "rgba(74, 124, 138, 0.08)",
+                backgroundColor: t.colors.surfaceMuted,
                 borderRadius: t.radius.md,
                 borderWidth: 1,
-                borderColor: "rgba(74, 124, 138, 0.1)",
+                borderColor: t.colors.borderSubtle,
               }}>
                 <Ionicons name="repeat-outline" size={22} color={t.colors.secondary} />
                 <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 4 }}>{rx.frequency}</Text>
@@ -169,25 +170,25 @@ export default function ExerciseDetail() {
                 alignItems: "center",
                 gap: 12,
                 padding: 16,
-                backgroundColor: "rgba(239, 68, 68, 0.08)",
+                backgroundColor: t.colors.badSoft,
                 borderRadius: t.radius.lg,
                 borderWidth: 1,
-                borderColor: "rgba(239, 68, 68, 0.15)",
+                borderColor: t.colors.badSoft,
               }}
             >
               <View style={{
                 width: 48,
                 height: 48,
                 borderRadius: 24,
-                backgroundColor: "rgba(239, 68, 68, 0.15)",
+                backgroundColor: t.colors.badSoft,
                 alignItems: "center",
                 justifyContent: "center",
               }}>
-                <Ionicons name="play" size={24} color="#f87171" />
+                <Ionicons name="play" size={24} color={t.colors.bad} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text variant="label" style={{ fontWeight: "600" }}>Assistir vídeo</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Ver demonstração do exercício</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>Assistir video</Text>
+                <Text variant="caption" color={t.colors.textMuted}>Ver demonstracao do exercicio</Text>
               </View>
               <Ionicons name="open-outline" size={18} color={t.colors.textMuted} />
             </Pressable>
@@ -198,7 +199,7 @@ export default function ExerciseDetail() {
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Ionicons name="information-circle-outline" size={18} color={t.colors.secondary} />
-                <Text variant="label" style={{ fontWeight: "600" }}>Descrição</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>Descricao</Text>
               </View>
               <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
                 {rx.exercise.description}
@@ -211,7 +212,7 @@ export default function ExerciseDetail() {
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Ionicons name="list-outline" size={18} color={t.colors.secondary} />
-                <Text variant="label" style={{ fontWeight: "600" }}>Instruções</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>Instrucoes</Text>
               </View>
               <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
                 {rx.exercise.instructions}
@@ -221,10 +222,10 @@ export default function ExerciseDetail() {
 
           {/* Complete button */}
           <Button
-            title={completeMutation.isPending ? "Registrando..." : "Marcar como concluído"}
+            title={completeMutation.isPending ? "Registrando..." : "Marcar como concluido"}
             onPress={() => completeMutation.mutate()}
             loading={completeMutation.isPending}
-            icon={<Ionicons name="checkmark-circle-outline" size={20} color="#fff" />}
+            icon={<Ionicons name="checkmark-circle-outline" size={20} color={t.colors.primaryFg} />}
           />
 
           {/* Therapist notes */}

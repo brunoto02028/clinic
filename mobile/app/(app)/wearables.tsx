@@ -57,10 +57,10 @@ export default function Wearables() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: 16,
-                    backgroundColor: isConnected ? "rgba(93, 201, 192, 0.08)" : "rgba(26, 39, 64, 0.8)",
+                    backgroundColor: isConnected ? t.colors.okSoft : t.colors.surfaceMuted,
                     borderRadius: t.radius.lg,
                     borderWidth: 1,
-                    borderColor: isConnected ? "rgba(93, 201, 192, 0.25)" : "rgba(255, 255, 255, 0.06)",
+                    borderColor: isConnected ? t.colors.ok : t.colors.border,
                   }}
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -86,7 +86,7 @@ export default function Wearables() {
                           paddingHorizontal: 12,
                           paddingVertical: 6,
                           borderRadius: 8,
-                          backgroundColor: "#5dc9c0",
+                          backgroundColor: t.colors.health,
                           opacity: syncMut.isPending ? 0.6 : 1,
                         }}
                       >
@@ -110,10 +110,10 @@ export default function Wearables() {
                           paddingVertical: 6,
                           borderRadius: 8,
                           borderWidth: 1,
-                          borderColor: "rgba(239, 68, 68, 0.3)",
+                          borderColor: t.colors.bad,
                         }}
                       >
-                        <Text style={{ fontSize: 12, color: "#ef4444" }}>Remover</Text>
+                        <Text style={{ fontSize: 12, color: t.colors.bad }}>Remover</Text>
                       </Pressable>
                     </View>
                   ) : (
@@ -123,7 +123,7 @@ export default function Wearables() {
                         paddingHorizontal: 16,
                         paddingVertical: 8,
                         borderRadius: 8,
-                        backgroundColor: "#8b5cf6",
+                        backgroundColor: t.colors.primary,
                       }}
                     >
                       <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Conectar</Text>

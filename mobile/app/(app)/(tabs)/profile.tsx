@@ -1,79 +1,47 @@
-import { useEffect, useRef, useState } from "react";
-import { View, Pressable, ScrollView } from "react-native";
+import { View, Pressable } from "react-native";
 import { router } from "expo-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
-import { fetchProfile, updateProfile } from "@/api/profile";
+import { useQuery } from "@tanstack/react-query";
+import { Screen, Text, Card, Avatar, ListItem, Spinner } from "@/components/ui";
+import { fetchProfile } from "@/api/profile";
+import { fetchSubscription } from "@/api/extras";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/theme/useTheme";
+import type { Pillar } from "@/theme/tokens";
 
-function convertDobToISO(dob: string): string | null {
-  if (!dob) return null;
-  // dd/mm/aaaa → aaaa-mm-dd
-  const match = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (match) return `${match[3]}-${match[2]}-${match[1]}`;
-  // Already ISO or other format — return as-is
-  return dob;
-}
+const MENU_ACCOUNT: {
+  label: string;
+  emoji: string;
+  pillar: Pillar;
+  path: string;
+}[] = [
+  { label: "My business", emoji: "💼", pillar: "work", path: "/business-settings" },
+  { label: "My health record", emoji: "🩺", pillar: "health", path: "/health-records" },
+  { label: "My public profile", emoji: "◉", pillar: "community", path: "/public-profile" },
+];
 
-const MENU_ITEMS = [
-  { icon: "lock-closed-outline" as const, label: "Alterar Senha", path: "/change-password", color: "#f59e0b" },
-  { icon: "trophy-outline" as const, label: "Conquistas", path: "/achievements", color: "#34d399" },
-  { icon: "card-outline" as const, label: "Assinatura", path: "/membership", color: "#8b5cf6" },
-  { icon: "clipboard-outline" as const, label: "Notas Clínicas", path: "/clinical-notes", color: "#60a5fa" },
-  { icon: "help-circle-outline" as const, label: "Quizzes", path: "/quizzes", color: "#3b82f6" },
-  { icon: "notifications-outline" as const, label: "Notificações", path: "/notifications", color: "#5dc9c0" },
-  { icon: "document-text-outline" as const, label: "Termos & Consentimento", path: "/consent", color: "#64748b" },
-  { icon: "book-outline" as const, label: "Guia do Portal", path: "/guide", color: "#6ba3b0" },
+const MENU_SETTINGS: {
+  label: string;
+  emoji: string;
+  path: string;
+}[] = [
+  { label: "Language", emoji: "🌐", path: "/language" },
+  { label: "Notifications", emoji: "🔔", path: "/notifications" },
+  { label: "Membership", emoji: "⭐", path: "/membership" },
+  { label: "Privacy & data", emoji: "🔒", path: "/privacy" },
 ];
 
 export default function Profile() {
   const t = useTheme();
   const logout = useAuth((s) => s.logout);
-  const qc = useQueryClient();
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["profile"],
     queryFn: fetchProfile,
   });
 
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
-  const [dob, setDob] = useState("");
-  const [emergName, setEmergName] = useState("");
-  const [emergPhone, setEmergPhone] = useState("");
-  const [emergRelation, setEmergRelation] = useState("");
-  const [saved, setSaved] = useState(false);
-  const initialized = useRef(false);
-
-  useEffect(() => {
-    if (data && !initialized.current) {
-      setPhone(data.phone ?? "");
-      setAddress(data.address ?? "");
-      // Convert ISO (aaaa-mm-dd) to Brazilian (dd/mm/aaaa) for display
-      const rawDob = data.dateOfBirth ?? "";
-      const isoMatch = rawDob.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      setDob(isoMatch ? `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}` : rawDob);
-      setEmergName(data.emergencyContactName ?? "");
-      setEmergPhone(data.emergencyContactPhone ?? "");
-      setEmergRelation(data.emergencyContactRelation ?? "");
-      initialized.current = true;
-    }
-  }, [data]);
-
-  const mutation = useMutation({
-    mutationFn: () => updateProfile({
-      phone: phone.trim() || null,
-      address: address.trim() || null,
-      dateOfBirth: convertDobToISO(dob.trim()) || null,
-      emergencyContactName: emergName.trim() || null,
-      emergencyContactPhone: emergPhone.trim() || null,
-      emergencyContactRelation: emergRelation.trim() || null,
-    }),
-    onSuccess: () => {
-      setSaved(true);
-      qc.invalidateQueries({ queryKey: ["profile"] });
-    },
+  const { data: subData } = useQuery({
+    queryKey: ["subscription"],
+    queryFn: fetchSubscription,
   });
 
   const onLogout = async () => {
@@ -85,169 +53,145 @@ export default function Profile() {
     ? `${data.firstName?.[0] ?? ""}${data.lastName?.[0] ?? ""}`.toUpperCase()
     : "?";
 
+  const fullName = data ? `${data.firstName} ${data.lastName}` : "";
+
+  const sub = subData?.subscription;
+  const planName = sub?.plan?.name ?? "BA One Pro";
+  const planPrice = sub?.plan?.price != null
+    ? `£${(sub.plan.price / 100).toFixed(2)}/mo`
+    : "£14.99/mo";
+
   return (
     <Screen scroll testID="profile-screen">
-      <View style={{ gap: 24 }}>
-        <Text variant="title">Perfil</Text>
+      <View style={{ gap: 20 }}>
+        <Text variant="title">Profile</Text>
 
         {isLoading ? (
           <Spinner center />
         ) : isError || !data ? (
           <Card>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-              <Text color={t.colors.danger}>Não foi possível carregar o perfil.</Text>
-            </View>
+            <Text color={t.colors.danger}>Unable to load profile.</Text>
           </Card>
         ) : (
           <>
-            {/* Profile header */}
-            <Card variant="highlight">
+            {/* ── Profile card ── */}
+            <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                <View style={{
-                  width: 64, height: 64, borderRadius: 32,
-                  backgroundColor: "rgba(74, 124, 138, 0.2)",
-                  borderWidth: 2, borderColor: "rgba(93, 201, 192, 0.3)",
-                  alignItems: "center", justifyContent: "center",
-                }}>
-                  <Text variant="subtitle" color="#5dc9c0" style={{ fontSize: 22, fontWeight: "700" }}>
-                    {initials}
-                  </Text>
-                </View>
-                <View>
+                <Avatar label={initials} round size={56} />
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text variant="subtitle" testID="profile-name">
-                    {data.firstName} {data.lastName}
+                    {fullName}
                   </Text>
-                  <Text variant="caption" color={t.colors.textSecondary} testID="profile-email" style={{ marginTop: 2 }}>
+                  <Text
+                    variant="caption"
+                    color={t.colors.textMuted}
+                    testID="profile-email"
+                    style={{ marginTop: 2 }}
+                  >
                     {data.email}
                   </Text>
                 </View>
+                <Pressable
+                  onPress={() => router.push("/edit-profile")}
+                  testID="profile-edit"
+                  hitSlop={8}
+                >
+                  <Text variant="label" color={t.colors.work}>
+                    Edit {"›"}
+                  </Text>
+                </Pressable>
               </View>
             </Card>
 
-            {/* Personal info */}
-            <Card>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <Ionicons name="person-outline" size={18} color={t.colors.secondary} />
-                <Text variant="label" style={{ fontWeight: "600" }}>Informações pessoais</Text>
-              </View>
-
-              <Input
-                label="Data de nascimento"
-                value={dob}
-                onChangeText={(v) => { setDob(v); setSaved(false); }}
-                placeholder="dd/mm/aaaa"
-                testID="profile-dob"
-              />
-              <Input
-                label="Telefone"
-                value={phone}
-                onChangeText={(v) => { setPhone(v); setSaved(false); }}
-                placeholder="+55 ..."
-                keyboardType="phone-pad"
-                testID="profile-phone"
-              />
-              <Input
-                label="Endereço"
-                value={address}
-                onChangeText={(v) => { setAddress(v); setSaved(false); }}
-                placeholder="Seu endereço..."
-                testID="profile-address"
-              />
-            </Card>
-
-            {/* Emergency contact */}
-            <Card>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <Ionicons name="alert-circle-outline" size={18} color="#ef4444" />
-                <Text variant="label" style={{ fontWeight: "600" }}>Contato de emergência</Text>
-              </View>
-              <Input
-                label="Nome"
-                value={emergName}
-                onChangeText={(v) => { setEmergName(v); setSaved(false); }}
-                placeholder="Nome completo"
-              />
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    label="Telefone"
-                    value={emergPhone}
-                    onChangeText={(v) => { setEmergPhone(v); setSaved(false); }}
-                    placeholder="+55 ..."
-                    keyboardType="phone-pad"
-                  />
+            {/* ── BA One Pro card ── */}
+            <Card accent="work" style={{ borderWidth: 2, borderColor: t.colors.work }}>
+              <View style={{ gap: 4 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <Text variant="heading">{planName}</Text>
+                  <Text variant="label" color={t.colors.textSecondary}>{planPrice}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    label="Parentesco"
-                    value={emergRelation}
-                    onChangeText={(v) => { setEmergRelation(v); setSaved(false); }}
-                    placeholder="Ex: Cônjuge"
-                  />
+                <View style={{ gap: 2, marginTop: 4 }}>
+                  <Text variant="caption" color={t.colors.textSecondary}>
+                    {"✓"} Priority booking & support
+                  </Text>
+                  <Text variant="caption" color={t.colors.textSecondary}>
+                    {"✓"} Full health record access
+                  </Text>
+                  <Text variant="caption" color={t.colors.textSecondary}>
+                    {"✓"} Business tools & analytics
+                  </Text>
                 </View>
+                <Pressable
+                  onPress={() => router.push("/membership")}
+                  testID="link-membership-manage"
+                  hitSlop={8}
+                  style={{ marginTop: 4 }}
+                >
+                  <Text variant="caption" color={t.colors.textMuted}>
+                    Manage {"›"}
+                  </Text>
+                </Pressable>
               </View>
             </Card>
-
-            {/* Save button */}
-            <View style={{ gap: 6 }}>
-              {saved && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center" }}>
-                  <Ionicons name="checkmark-circle" size={16} color={t.colors.success} />
-                  <Text variant="caption" color={t.colors.success} testID="profile-saved">Alterações salvas</Text>
-                </View>
-              )}
-              {mutation.isError && (
-                <Text variant="caption" color={t.colors.danger} style={{ textAlign: "center" }}>
-                  {(mutation.error as Error)?.message || "Falha ao salvar."}
-                </Text>
-              )}
-              <Button
-                title="Salvar alterações"
-                onPress={() => mutation.mutate()}
-                loading={mutation.isPending}
-                testID="profile-save"
-              />
-            </View>
           </>
         )}
 
-        {/* Menu */}
-        <View style={{ gap: 2 }}>
-          <Text variant="label" color={t.colors.textSecondary} style={{ marginBottom: 8 }}>Conta</Text>
-          {MENU_ITEMS.map((item, i) => (
-            <Pressable
+        {/* ── Account menu ── */}
+        <Card>
+          {MENU_ACCOUNT.map((item, i) => (
+            <ListItem
               key={item.path}
+              icon={<Avatar label={item.emoji} pillar={item.pillar} size={32} round />}
+              title={item.label}
+              right={<Text variant="caption" color={t.colors.textMuted}>{"›"}</Text>}
               onPress={() => router.push(item.path)}
-              testID={`link-${item.path.slice(1)}`}
-              style={({ pressed }) => ({
-                flexDirection: "row", alignItems: "center", gap: 12,
-                paddingVertical: 14, paddingHorizontal: 4,
-                backgroundColor: pressed ? "rgba(74, 124, 138, 0.08)" : "transparent",
-                borderBottomWidth: i < MENU_ITEMS.length - 1 ? 1 : 0,
-                borderBottomColor: "rgba(255, 255, 255, 0.04)",
-              })}
-            >
-              <Ionicons name={item.icon} size={22} color={item.color} />
-              <Text variant="body" style={{ flex: 1 }}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
-            </Pressable>
+              last={i === MENU_ACCOUNT.length - 1}
+            />
           ))}
-        </View>
+        </Card>
 
-        {/* Logout */}
+        {/* ── Settings menu ── */}
+        <Card>
+          {MENU_SETTINGS.map((item, i) => (
+            <ListItem
+              key={item.path}
+              icon={
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 9999,
+                    backgroundColor: t.colors.surfaceMuted,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 15 }}>{item.emoji}</Text>
+                </View>
+              }
+              title={item.label}
+              right={<Text variant="caption" color={t.colors.textMuted}>{"›"}</Text>}
+              onPress={() => router.push(item.path)}
+              last={i === MENU_SETTINGS.length - 1}
+            />
+          ))}
+        </Card>
+
+        {/* ── Logout ── */}
         <Pressable
           onPress={onLogout}
           testID="logout"
           style={({ pressed }) => ({
-            flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-            paddingVertical: 14, borderRadius: t.radius.md,
-            borderWidth: 1, borderColor: "rgba(239, 68, 68, 0.15)",
-            backgroundColor: pressed ? "rgba(239, 68, 68, 0.08)" : "transparent",
+            alignItems: "center",
+            justifyContent: "center",
+            paddingVertical: 14,
+            borderRadius: t.radius.md,
+            borderWidth: 1,
+            borderColor: t.colors.border,
+            backgroundColor: pressed ? t.colors.surfaceMuted : t.colors.surface,
           })}
         >
-          <Ionicons name="log-out-outline" size={20} color="#f87171" />
-          <Text variant="label" color="#f87171">Sair da conta</Text>
+          <Text variant="label" color={t.colors.bad}>Log out</Text>
         </Pressable>
       </View>
     </Screen>

@@ -34,7 +34,7 @@ export default function TreatmentProtocol() {
               <Ionicons name="list-outline" size={48} color={t.colors.textMuted} />
               <Text variant="subtitle" color={t.colors.textSecondary}>Nenhum protocolo</Text>
               <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
-                Seu terapeuta criará um plano de tratamento{"\n"}personalizado após a avaliação.
+                Seu terapeuta criara um plano de tratamento{"\n"}personalizado apos a avaliacao.
               </Text>
             </View>
           </Card>
@@ -59,11 +59,11 @@ export default function TreatmentProtocol() {
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                         <View style={{
                           width: 28, height: 28, borderRadius: 8,
-                          borderWidth: 1.5, borderColor: item.isCompleted ? "#34d399" : "rgba(74,124,138,0.3)",
-                          backgroundColor: item.isCompleted ? "rgba(16,185,129,0.15)" : "transparent",
+                          borderWidth: 1.5, borderColor: item.isCompleted ? t.colors.ok : t.colors.border,
+                          backgroundColor: item.isCompleted ? t.colors.okSoft : "transparent",
                           alignItems: "center", justifyContent: "center",
                         }}>
-                          {item.isCompleted && <Ionicons name="checkmark" size={16} color="#34d399" />}
+                          {item.isCompleted && <Ionicons name="checkmark" size={16} color={t.colors.ok} />}
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text variant="label" style={{ fontWeight: "600", textDecorationLine: item.isCompleted ? "line-through" : "none" }}>
@@ -76,7 +76,7 @@ export default function TreatmentProtocol() {
                           )}
                           {item.completedCount > 0 && (
                             <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
-                              Concluído {item.completedCount}x
+                              Concluido {item.completedCount}x
                             </Text>
                           )}
                         </View>

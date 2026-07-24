@@ -696,6 +696,19 @@ model User {
   waitlistEntries           WaitlistEntry[]          @relation("PatientWaitlist")
   waitlistPreferredTherapist WaitlistEntry[]         @relation("TherapistWaitlist")
 
+  // BA One — Work Module
+  businessProfile           BusinessProfile?         @relation("UserBusinessProfile")
+  quotesCreated             Quote[]                  @relation("QuoteCreator")
+  invoicesCreated           Invoice[]                @relation("InvoiceCreator")
+  followUpSteps             FollowUpStep[]           @relation("UserFollowUpSteps")
+  complianceDeadlines       ComplianceDeadline[]     @relation("UserComplianceDeadlines")
+
+  // BA One — Labs Module
+  labOrders                 LabOrder[]               @relation("PatientLabOrders")
+
+  // BA One — Entitlements
+  entitlements              Entitlement[]            @relation("UserEntitlements")
+
   @@index([clinicId])
   @@index([email])
   @@index([role])
@@ -5409,4 +5422,334 @@ model PatientQuestion {
 
   @@index([patientId])
   @@map("patient_questions")
+}
+
+// ============================================
+// BA ONE — WORK MODULE (Self-employed business tools)
+// ============================================
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  INVOICED
+}
+
+enum InvoiceStatus {
+  DRAFT_INV
+  SENT_INV
+  PAID_INV
+  OVERDUE_INV
+  VOID
+  PARTIALLY_PAID
+}
+
+enum FollowUpStepStatus {
+  PENDING_FU
+  DONE
+  SKIPPED
+}
+
+model BusinessProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation("UserBusinessProfile", fields: [userId], references: [id], onDelete: Cascade)
+
+  tradingName       String
+  companyNumber     String?
+  vatNumber         String?
+  address           String?  @db.Text
+  phone             String?
+  email             String?
+  logoUrl           String?
+  bankName          String?
+  bankSortCode      String?
+  bankAccountNumber String?
+  paymentTermsDays  Int      @default(14)
+  currency          String   @default("GBP")
+  defaultNotes      String?  @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  quotes      Quote[]
+  invoices    Invoice[]
+
+  @@map("business_profiles")
+}
+
+model Quote {
+  id              String      @id @default(cuid())
+  quoteNumber     String      @unique
+  businessId      String
+  business        BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User        @relation("QuoteCreator", fields: [createdById], references: [id])
+
+  clientName      String
+  clientEmail     String?
+  clientAddress   String?     @db.Text
+  status          QuoteStatus @default(DRAFT)
+  validUntil      DateTime?
+  subtotal        Float       @default(0)
+  vatRate         Float       @default(20)
+  vatAmount       Float       @default(0)
+  total           Float       @default(0)
+  notes           String?     @db.Text
+  sentAt          DateTime?
+  acceptedAt      DateTime?
+
+  items           QuoteItem[]
+  invoice         Invoice?    @relation("QuoteToInvoice")
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([businessId])
+  @@index([createdById])
+  @@index([status])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id          String @id @default(cuid())
+  quoteId     String
+  quote       Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float  @default(1)
+  unitPrice   Float
+  total       Float
+
+  @@index([quoteId])
+  @@map("quote_items")
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  invoiceNumber   String        @unique
+  businessId      String
+  business        BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User          @relation("InvoiceCreator", fields: [createdById], references: [id])
+
+  quoteId         String?       @unique
+  quote           Quote?        @relation("QuoteToInvoice", fields: [quoteId], references: [id])
+
+  clientName      String
+  clientEmail     String?
+  clientAddress   String?       @db.Text
+  status          InvoiceStatus @default(DRAFT_INV)
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime?
+  subtotal        Float         @default(0)
+  vatRate         Float         @default(20)
+  vatAmount       Float         @default(0)
+  total           Float         @default(0)
+  paidAmount      Float         @default(0)
+  notes           String?       @db.Text
+  stripePaymentIntentId String?
+  paidAt          DateTime?
+
+  items           InvoiceItem[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([businessId])
+  @@index([createdById])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float   @default(1)
+  unitPrice   Float
+  total       Float
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model FollowUpStep {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation("UserFollowUpSteps", fields: [userId], references: [id], onDelete: Cascade)
+  clientName  String
+  title       String
+  note        String?           @db.Text
+  dueDate     DateTime
+  status      FollowUpStepStatus @default(PENDING_FU)
+  completedAt DateTime?
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([dueDate])
+  @@index([status])
+  @@map("follow_up_steps")
+}
+
+model ComplianceDeadline {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation("UserComplianceDeadlines", fields: [userId], references: [id], onDelete: Cascade)
+  companyNumber   String?
+  title           String
+  description     String?  @db.Text
+  dueDate         DateTime
+  source          String   @default("manual")
+  filedAt         DateTime?
+  isOverdue       Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([dueDate])
+  @@map("compliance_deadlines")
+}
+
+// ============================================
+// BA ONE — LABS MODULE (Blood test ordering via LML)
+// ============================================
+
+enum LabOrderStatus {
+  BASKET
+  CONFIRMED
+  KIT_DISPATCHED
+  SAMPLE_RECEIVED
+  PROCESSING_LAB
+  RESULTS_READY
+  CANCELLED_LAB
+}
+
+model LabProduct {
+  id              String   @id @default(cuid())
+  lmlProductId    String   @unique
+  name            String
+  shortName       String?
+  category        String?
+  description     String?  @db.Text
+  biomarkers      String[]
+  sampleType      String?
+  turnaroundDays  Int?
+  retailPrice     Float
+  costPrice       Float?
+  currency        String   @default("GBP")
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  lastSyncedAt    DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orderItems      LabOrderItem[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("lab_products")
+}
+
+model LabOrder {
+  id              String         @id @default(cuid())
+  orderNumber     String         @unique
+  patientId       String
+  patient         User           @relation("PatientLabOrders", fields: [patientId], references: [id], onDelete: Cascade)
+
+  status          LabOrderStatus @default(BASKET)
+  subtotal        Float          @default(0)
+  total           Float          @default(0)
+  currency        String         @default("GBP")
+
+  shippingName    String?
+  shippingAddress String?        @db.Text
+  shippingPostcode String?
+
+  stripePaymentIntentId String?
+  paidAt          DateTime?
+
+  lmlOrderRef     String?
+  resultsUrl      String?
+  resultsPdf      String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  items           LabOrderItem[]
+  events          LabOrderEvent[]
+
+  @@index([patientId])
+  @@index([status])
+  @@map("lab_orders")
+}
+
+model LabOrderItem {
+  id          String     @id @default(cuid())
+  orderId     String
+  order       LabOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     LabProduct @relation(fields: [productId], references: [id])
+  productName String
+  quantity    Int        @default(1)
+  unitPrice   Float
+  total       Float
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("lab_order_items")
+}
+
+model LabOrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     LabOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@map("lab_order_events")
+}
+
+// ============================================
+// BA ONE — ENTITLEMENTS (Unified access control)
+// ============================================
+
+enum EntitlementSource {
+  REVENUECAT
+  STRIPE
+  ADMIN_GRANT
+}
+
+model Entitlement {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation("UserEntitlements", fields: [userId], references: [id], onDelete: Cascade)
+
+  featureKey      String
+  source          EntitlementSource @default(ADMIN_GRANT)
+  externalId      String?
+  isActive        Boolean          @default(true)
+  expiresAt       DateTime?
+  grantedAt       DateTime         @default(now())
+  revokedAt       DateTime?
+  metadata        Json?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([userId, featureKey, source])
+  @@index([userId])
+  @@index([featureKey])
+  @@index([isActive])
+  @@map("entitlements")
 }

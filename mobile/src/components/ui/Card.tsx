@@ -1,47 +1,45 @@
 import { type ReactNode } from "react";
 import { View, type ViewStyle, Platform } from "react-native";
 import { useTheme } from "@/theme/useTheme";
+import type { Pillar } from "@/theme/tokens";
 
 export interface CardProps {
   children: ReactNode;
   style?: ViewStyle;
-  variant?: "default" | "elevated" | "highlight";
+  accent?: Pillar;
+  dark?: boolean;
 }
 
-export function Card({ children, style, variant = "default" }: CardProps) {
+export function Card({ children, style, accent, dark }: CardProps) {
   const t = useTheme();
 
-  const bgMap = {
-    default: t.colors.surface,
-    elevated: t.colors.surfaceElevated,
-    highlight: "rgba(74, 124, 138, 0.12)",
-  };
-
-  const borderMap = {
-    default: t.colors.borderSubtle,
-    elevated: t.colors.border,
-    highlight: "rgba(93, 201, 192, 0.2)",
+  const accentColorMap: Record<Pillar, string> = {
+    work: t.colors.work,
+    health: t.colors.health,
+    community: t.colors.community,
   };
 
   return (
     <View
       style={[
         {
-          backgroundColor: bgMap[variant],
-          borderRadius: t.radius.lg,
-          borderWidth: 1,
-          borderColor: borderMap[variant],
-          padding: t.spacing.lg,
+          backgroundColor: dark ? t.colors.primary : t.colors.surface,
+          borderRadius: t.radius.md,
+          borderWidth: dark ? 0 : 1,
+          borderColor: t.colors.border,
+          borderTopWidth: accent ? 3 : dark ? 0 : 1,
+          borderTopColor: accent ? accentColorMap[accent] : t.colors.border,
+          padding: 13,
           gap: t.spacing.sm,
           ...Platform.select({
             ios: {
               shadowColor: t.colors.cardShadow,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 1,
+              shadowRadius: 3,
             },
             android: {
-              elevation: 4,
+              elevation: 1,
             },
           }),
         },

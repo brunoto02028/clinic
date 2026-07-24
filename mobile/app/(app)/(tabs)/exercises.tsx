@@ -26,14 +26,14 @@ export default function Exercises() {
         <Text variant="title">Exercícios</Text>
         {(data ?? []).length > 0 && (
           <View style={{
-            backgroundColor: "rgba(74, 124, 138, 0.1)",
+            backgroundColor: t.colors.healthSoft,
             paddingHorizontal: 12,
             paddingVertical: 6,
             borderRadius: 20,
             borderWidth: 1,
-            borderColor: "rgba(74, 124, 138, 0.15)",
+            borderColor: t.colors.health,
           }}>
-            <Text variant="caption" color={t.colors.secondary}>
+            <Text variant="caption" color={t.colors.textSecondary}>
               {data!.length} exercício{data!.length !== 1 ? "s" : ""}
             </Text>
           </View>
@@ -75,30 +75,30 @@ export default function Exercises() {
                       width: 44,
                       height: 44,
                       borderRadius: 14,
-                      backgroundColor: "rgba(93, 201, 192, 0.1)",
+                      backgroundColor: t.colors.healthSoft,
                       alignItems: "center",
                       justifyContent: "center",
                     }}>
-                      <Ionicons name={iconName as any} size={22} color="#5dc9c0" />
+                      <Ionicons name={iconName as any} size={22} color={t.colors.health} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="label" style={{ fontWeight: "600" }}>{item.exercise.name}</Text>
                       <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
                         {item.sets && item.reps ? (
                           <View style={{
-                            backgroundColor: "rgba(74, 124, 138, 0.1)",
+                            backgroundColor: t.colors.healthSoft,
                             paddingHorizontal: 8,
                             paddingVertical: 2,
                             borderRadius: 6,
                           }}>
-                            <Text variant="caption" color={t.colors.secondary}>
+                            <Text variant="caption" color={t.colors.textSecondary}>
                               {item.sets}x{item.reps}
                             </Text>
                           </View>
                         ) : null}
                         {item.frequency ? (
                           <View style={{
-                            backgroundColor: "rgba(107, 163, 176, 0.1)",
+                            backgroundColor: t.colors.surfaceMuted,
                             paddingHorizontal: 8,
                             paddingVertical: 2,
                             borderRadius: 6,

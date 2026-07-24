@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { View, KeyboardAvoidingView, Platform } from "react-native";
+import { View, KeyboardAvoidingView, Platform, Pressable } from "react-native";
 import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Input, Button } from "@/components/ui";
 import { useAuth } from "@/store/auth";
@@ -24,7 +23,7 @@ export default function Login() {
       router.replace("/");
     } catch (e) {
       setError(
-        e instanceof AuthError ? e.message : "Não foi possível entrar. Tente novamente."
+        e instanceof AuthError ? e.message : "Unable to sign in. Please try again."
       );
     } finally {
       setLoading(false);
@@ -38,72 +37,35 @@ export default function Login() {
         style={{ flex: 1 }}
       >
         <View style={{ flex: 1, justifyContent: "center", gap: 32 }}>
-          {/* Logo / Brand */}
-          <View style={{ alignItems: "center", gap: 16 }}>
-            <View style={{
-              width: 80,
-              height: 80,
-              borderRadius: 24,
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-            }}>
-              <LinearGradient
-                colors={["#1a3a45", "#4a7c8a"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 80,
-                  height: 80,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 24,
-                  borderWidth: 1,
-                  borderColor: "rgba(93, 201, 192, 0.3)",
-                }}
-              >
-                <Ionicons name="body-outline" size={36} color="#5dc9c0" />
-              </LinearGradient>
-            </View>
-            <View style={{ alignItems: "center", gap: 4 }}>
-              <Text variant="title" color="#5dc9c0" style={{ letterSpacing: -0.5 }}>
-                BPR Clinic
-              </Text>
-              <Text variant="body" color={t.colors.textMuted}>
-                Portal do Paciente
-              </Text>
-            </View>
+          {/* Header */}
+          <View style={{ gap: 6 }}>
+            <Text variant="hero">Welcome back</Text>
+            <Text variant="body" color={t.colors.textMuted} style={{ fontSize: 13 }}>
+              Sign in to continue.
+            </Text>
           </View>
 
           {/* Form */}
-          <View style={{
-            gap: 16,
-            backgroundColor: "rgba(26, 39, 64, 0.6)",
-            borderRadius: t.radius.xl,
-            padding: 24,
-            borderWidth: 1,
-            borderColor: "rgba(74, 124, 138, 0.1)",
-          }}>
+          <View style={{ gap: 4 }}>
             {error ? (
               <View style={{
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 8,
-                backgroundColor: "rgba(239, 68, 68, 0.1)",
+                backgroundColor: t.colors.badSoft,
                 padding: 12,
                 borderRadius: t.radius.md,
-                borderWidth: 1,
-                borderColor: "rgba(239, 68, 68, 0.2)",
+                marginBottom: 8,
               }}>
-                <Ionicons name="alert-circle" size={18} color={t.colors.danger} />
-                <Text variant="caption" color={t.colors.danger} testID="login-error" style={{ flex: 1 }}>
+                <Ionicons name="alert-circle" size={18} color={t.colors.bad} />
+                <Text variant="caption" color={t.colors.bad} testID="login-error" style={{ flex: 1 }}>
                   {error}
                 </Text>
               </View>
             ) : null}
             <Input
               label="Email"
-              placeholder="seu@email.com"
+              placeholder="you@example.com"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -112,21 +74,57 @@ export default function Login() {
               testID="login-email"
             />
             <Input
-              label="Senha"
-              placeholder="Sua senha"
+              label="Password"
+              placeholder="••••••••"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               testID="login-password"
             />
-            <Button
-              title="Entrar"
-              onPress={onSubmit}
-              loading={loading}
-              disabled={!email || !password}
-              testID="login-submit"
-              size="lg"
-            />
+            <View style={{ marginTop: 10 }}>
+              <Button
+                title="Sign in"
+                variant="primary"
+                onPress={onSubmit}
+                loading={loading}
+                disabled={!email || !password}
+                testID="login-submit"
+                size="lg"
+              />
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: t.colors.border }} />
+            <Text variant="caption" color={t.colors.textMuted}>or</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: t.colors.border }} />
+          </View>
+
+          {/* Social buttons */}
+          <View style={{ gap: 9 }}>
+            <Button title=" Continue with Apple" variant="ghost" size="md" />
+            <Button title="G  Continue with Google" variant="ghost" size="md" />
+          </View>
+
+          {/* Language switcher */}
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 8 }}>
+            <Pressable style={{
+              paddingHorizontal: 10, paddingVertical: 5, borderRadius: 9999,
+              backgroundColor: t.colors.primary, borderWidth: 1, borderColor: t.colors.primary,
+            }}>
+              <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 10.5, color: "#FFFFFF" }}>
+                🌐 English
+              </Text>
+            </Pressable>
+            <Pressable style={{
+              paddingHorizontal: 10, paddingVertical: 5, borderRadius: 9999,
+              backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.border,
+            }}>
+              <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 10.5, color: "#4A4F59" }}>
+                Português
+              </Text>
+            </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>

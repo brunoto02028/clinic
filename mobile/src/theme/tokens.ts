@@ -1,50 +1,48 @@
-/**
- * Design tokens aligned with the BPR Clinic web app's dark futuristic theme.
- * Brand: teal #4a7c8a (primary), turquoise #5dc9c0 (secondary),
- * dark surface #0f172a, glassmorphism effects.
- */
-
 export const palette = {
-  // Brand — aligned with web CSS variables
-  primary: "#4a7c8a",
-  primaryDark: "#2c4f58",
-  primaryLight: "#6ba3b0",
-  turquoise: "#5dc9c0",
-  turquoiseDark: "#4ab3ab",
-  turquoiseLight: "#7dd4cd",
+  ink: "#20242D",
+  ink2: "#3A4150",
+  bone: "#F5F4F1",
+  card: "#FFFFFF",
+  line: "#E4E3DF",
+  muted: "#767B85",
 
-  // Bruno brand (kept for compat)
-  slate: "#607d7d",
-  slateDark: "#4a6363",
-  slateLight: "#7a9494",
+  greige: "#CDC7BE",
+  greigePress: "#BFB8AD",
+  greigeFg: "#26221C",
 
-  // Dark surfaces — matching web hsl(200 35% 7%) etc.
-  ink: "#0d1520",
-  ink900: "#111b2b",
-  ink800: "#1a2740",
-  ink700: "#243352",
-  ink600: "#2e3f5e",
-  ink500: "#64748b",
-  ink400: "#8494a7",
-  ink300: "#cbd5e1",
-  ink200: "#e2e8f0",
-  ink100: "#f1f5f9",
-  white: "#ffffff",
+  work: "#46587A",
+  workSoft: "#EDF0F5",
+  health: "#4F7361",
+  healthSoft: "#EDF3EF",
+  community: "#A87438",
+  communitySoft: "#F7F1E7",
+
+  ok: "#55705F",
+  okSoft: "#E7EEE9",
+  warn: "#8A6D3B",
+  warnSoft: "#F3ECDD",
+  bad: "#A85A4B",
+  badSoft: "#F4E4E0",
+
+  white: "#FFFFFF",
   black: "#000000",
 
-  // Neon accents (for glows/shadows)
-  neonCyan: "rgba(74, 124, 138, 0.4)",
-  neonCyanStrong: "rgba(93, 201, 192, 0.5)",
-
-  // Feedback
-  danger: "#ef4444",
-  dangerLight: "#fca5a5",
-  success: "#10b981",
-  successLight: "#a7f3d0",
-  warning: "#f59e0b",
-  warningLight: "#fde68a",
-  info: "#3b82f6",
+  transparent: "transparent",
 } as const;
+
+export type Pillar = "work" | "health" | "community";
+
+export const pillarColor: Record<Pillar, string> = {
+  work: palette.work,
+  health: palette.health,
+  community: palette.community,
+};
+
+export const pillarSoftColor: Record<Pillar, string> = {
+  work: palette.workSoft,
+  health: palette.healthSoft,
+  community: palette.communitySoft,
+};
 
 export const spacing = {
   xs: 4,
@@ -57,26 +55,27 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  sm: 10,
+  md: 14,
+  lg: 20,
   full: 9999,
 } as const;
 
 export const fontSize = {
-  xs: 11,
-  sm: 13,
-  md: 15,
-  lg: 17,
-  xl: 22,
-  "2xl": 28,
-  "3xl": 34,
+  xs: 9.5,
+  sm: 11,
+  md: 13,
+  lg: 15,
+  xl: 17,
+  "2xl": 19,
+  "3xl": 22,
+  "4xl": 30,
 } as const;
 
 export const fontWeight = {
-  regular: "400",
-  medium: "500",
-  semibold: "600",
-  bold: "700",
-} as const;
+  regular: "400" as const,
+  medium: "500" as const,
+  semibold: "600" as const,
+  bold: "700" as const,
+  extrabold: "800" as const,
+};
