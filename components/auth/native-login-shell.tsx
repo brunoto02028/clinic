@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode, useState, useEffect } from "react";
-import Image from "next/image";
 import { LocaleToggle } from "@/components/locale-toggle";
 
 interface NativeLoginShellProps {
@@ -64,12 +63,12 @@ export function NativeLoginShell({ children, webShell }: NativeLoginShellProps) 
       <div className="flex flex-col items-center pt-10 pb-4 px-6">
         <div className="h-14 w-40 relative mb-3">
           {logoUrl ? (
-            <Image
+            <img
               src={logoUrl}
               alt="BPR Rehab"
-              fill
-              className="object-contain"
-              priority
+              className="h-full w-full object-contain"
+              loading="eager"
+              decoding="async"
             />
           ) : (
             <div className="flex items-center justify-center h-full">
