@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
 
     // ─── If reference image provided, use Gemini multimodal (image model) ───
     if (referenceImageBase64) {
+      if (process.env.AI_STRICT_MODE === 'true') {
+        return NextResponse.json({ error: 'Reference image generation not available in strict mode (requires Gemini direct API).' }, { status: 503 });
+      }
       const apiKey = await getConfigValue('GEMINI_API_KEY');
       const imageModel = (await getConfigValue('AI_IMAGE_MODEL')) || 'gemini-2.5-flash-preview-image-generation';
       if (apiKey) {

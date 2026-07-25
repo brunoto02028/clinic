@@ -3,7 +3,7 @@
 // All AI calls in the system should go through this layer.
 
 import { getConfigValue } from "@/lib/system-config";
-import { claudeGenerate } from "@/lib/claude";
+import { claudeGenerate, claudeGenerateWithFallback, claudeVision, AI_STRICT_MODE } from "@/lib/claude";
 
 // ─── Claude sentinel — import this constant to route callAI/callAIChat through Claude Sonnet 5 ───
 // When OPENROUTER_API_KEY is set → uses claude-sonnet-5 via OpenRouter
@@ -475,13 +475,21 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
 
   // 0. OpenRouter / Claude Sonnet 5 — PRIMARY for all text when key is configured
   if (process.env.OPENROUTER_API_KEY || opts?.model?.startsWith('claude')) {
-    return claudeGenerate(
-      [{ role: 'user', content: prompt }],
-      { temperature: opts?.temperature, maxTokens: opts?.maxTokens, systemPrompt: opts?.systemPrompt }
-    );
+    try {
+      return await claudeGenerateWithFallback(
+        [{ role: 'user', content: prompt }],
+        callOpts
+      );
+    } catch (err: any) {
+      if (AI_STRICT_MODE) {
+        console.error('[ai-provider] OpenRouter failed in strict mode, refusing to fall back to direct providers:', err.message);
+        throw new Error(`AI provider unavailable (strict mode): ${err.message}`);
+      }
+      console.warn('[ai-provider] OpenRouter failed, falling back to direct providers:', err.message);
+    }
   }
 
-  // 1. Try Minimax M3 first (primary)
+  // 1. Try Minimax M3 (primary fallback)
   const minimaxKey = await getMinimaxKey();
   if (minimaxKey) {
     try {
@@ -524,7 +532,8 @@ export async function generateImage(prompt: string, opts?: AIImageOptions): Prom
 
 /**
  * Analyze an image using AI vision capabilities.
- * Priority chain: Minimax M3 (primary) → Gemini (fallback)
+ * Priority chain: OpenRouter vision (primary) → Minimax M3 → Gemini (fallback)
+ * In AI_STRICT_MODE: only OpenRouter is used; fails hard if unavailable.
  */
 export async function analyzeImage(
   imageUrl: string,
@@ -537,7 +546,20 @@ export async function analyzeImage(
     systemPrompt: opts?.systemPrompt,
   };
 
-  // 1. Try Minimax M3 vision first
+  // 0. OpenRouter vision — PRIMARY when key is configured
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      return await claudeVision([{ url: imageUrl }], prompt, callOpts);
+    } catch (err: any) {
+      if (AI_STRICT_MODE) {
+        console.error('[ai-provider] OpenRouter vision failed in strict mode:', err.message);
+        throw new Error(`AI vision provider unavailable (strict mode): ${err.message}`);
+      }
+      console.warn('[ai-provider] OpenRouter vision failed, falling back to direct providers:', err.message);
+    }
+  }
+
+  // 1. Try Minimax M3 vision
   const minimaxKey = await getMinimaxKey();
   if (minimaxKey) {
     try {
@@ -557,7 +579,8 @@ export async function analyzeImage(
 
 /**
  * Analyze multiple images using AI vision capabilities.
- * Priority chain: Minimax M3 (primary) → Gemini (fallback, first image only)
+ * Priority chain: OpenRouter vision (primary) → Minimax M3 → Gemini (fallback, first image only)
+ * In AI_STRICT_MODE: only OpenRouter is used; fails hard if unavailable.
  */
 export async function analyzeMultipleImages(
   images: Array<{ url: string; base64?: string; mimeType?: string }>,
@@ -569,6 +592,19 @@ export async function analyzeMultipleImages(
     maxTokens: opts?.maxTokens,
     systemPrompt: opts?.systemPrompt,
   };
+
+  // 0. OpenRouter vision — PRIMARY when key is configured
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      return await claudeVision(images, prompt, callOpts);
+    } catch (err: any) {
+      if (AI_STRICT_MODE) {
+        console.error('[ai-provider] OpenRouter multi-vision failed in strict mode:', err.message);
+        throw new Error(`AI vision provider unavailable (strict mode): ${err.message}`);
+      }
+      console.warn('[ai-provider] OpenRouter multi-vision failed, falling back to direct providers:', err.message);
+    }
+  }
 
   // 1. Try Minimax M3 — supports multiple images natively
   const minimaxKey = await getMinimaxKey();
@@ -627,14 +663,21 @@ export async function callAIChat(
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
     const systemMsg = opts?.systemPrompt
       || messages.find(m => m.role === 'system')?.content;
-    return claudeGenerate(claudeMessages, {
-      temperature: opts?.temperature,
-      maxTokens: opts?.maxTokens,
-      systemPrompt: systemMsg,
-    });
+    try {
+      return await claudeGenerateWithFallback(claudeMessages, {
+        ...chatOpts,
+        systemPrompt: systemMsg,
+      });
+    } catch (err: any) {
+      if (AI_STRICT_MODE) {
+        console.error('[ai-provider] OpenRouter chat failed in strict mode:', err.message);
+        throw new Error(`AI provider unavailable (strict mode): ${err.message}`);
+      }
+      console.warn('[ai-provider] OpenRouter chat failed, falling back to direct providers:', err.message);
+    }
   }
 
-  // 1. Try Minimax M3 first (primary)
+  // 1. Try Minimax M3 first (primary fallback)
   const minimaxKey = await getMinimaxKey();
   if (minimaxKey) {
     try {
@@ -846,6 +889,7 @@ export async function getActiveProviderInfo(): Promise<{
   else if (openaiKey) provider = "openai";
 
   const chain: string[] = [];
+  if (process.env.OPENROUTER_API_KEY) chain.push("openrouter (claude-sonnet-5 → gemini-2.5-flash)");
   if (minimaxKey) chain.push("minimax (MiniMax-M3)");
   if (groqKey) chain.push("groq");
   if (geminiKey) chain.push("gemini");
@@ -856,7 +900,7 @@ export async function getActiveProviderInfo(): Promise<{
     hasMinimax: !!minimaxKey,
     hasGemini: !!geminiKey,
     hasOpenAI: !!openaiKey,
-    defaultProvider: "minimax",
+    defaultProvider: process.env.OPENROUTER_API_KEY ? "openrouter" : "minimax",
     fallbackChain: chain,
   };
 }
@@ -894,6 +938,11 @@ export async function generateImageSmart(prompt: string, opts?: AIImageOptions):
     }
   }
   
+  // In strict mode, only DALL-E is approved for image gen (no Gemini/HuggingFace)
+  if (AI_STRICT_MODE) {
+    throw new Error('Image generation failed (strict mode): DALL-E 3 unavailable, no fallback to Gemini/HuggingFace');
+  }
+
   // Fallback to Gemini
   return generateImageGemini(prompt, {
     model: opts?.model,

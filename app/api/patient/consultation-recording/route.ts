@@ -89,25 +89,30 @@ export async function POST(req: NextRequest) {
     }
 
     if (!transcript) {
-      // Gemini fallback
-      const { getConfigValue } = await import("@/lib/system-config");
-      const geminiKey = await getConfigValue("GEMINI_API_KEY");
-      if (geminiKey) {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
-        const res = await fetch(geminiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [
-              { inlineData: { mimeType, data: base64Audio } },
-              { text: `Transcribe this audio precisely. Language: ${language === "pt" ? "Portuguese" : "English"}. Return ONLY the transcription.` },
-            ]}],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          transcript = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+      // In strict mode, do not fall back to Gemini for patient audio
+      if (process.env.AI_STRICT_MODE === 'true') {
+        console.warn('[consultation-recording] Groq Whisper failed, strict mode prevents Gemini fallback');
+      } else {
+        // Gemini fallback
+        const { getConfigValue } = await import("@/lib/system-config");
+        const geminiKey = await getConfigValue("GEMINI_API_KEY");
+        if (geminiKey) {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+          const res = await fetch(geminiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [
+                { inlineData: { mimeType, data: base64Audio } },
+                { text: `Transcribe this audio precisely. Language: ${language === "pt" ? "Portuguese" : "English"}. Return ONLY the transcription.` },
+              ]}],
+              generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            transcript = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+          }
         }
       }
     }
