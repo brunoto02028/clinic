@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical } from "@/lib/ai-provider";
 import { extractText } from "@/lib/docling";
+import { patientPseudonym } from "@/lib/pseudonymize";
 import fs from "fs";
 import path from "path";
 
@@ -121,7 +122,7 @@ Rules:
 
   try {
     const aiResponse = await callAIClinical(
-      `Patient: ${patient.firstName} ${patient.lastName}\n\n${allText}`,
+      `Patient: ${patientPseudonym(patientId)}\n\n${allText}`,
       {
         systemPrompt,
         temperature: 0.3,
