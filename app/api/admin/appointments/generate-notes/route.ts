@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { callAIClinical } from "@/lib/ai-provider";
+import { patientPseudonym } from "@/lib/pseudonymize";
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +12,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { patientName, treatmentType, duration, instructions } = await req.json();
+  const { patientName, patientId, treatmentType, duration, instructions } = await req.json();
 
-  const prompt = `You are a clinical notes generator for a physiotherapy clinic (Bruno Physical Rehabilitation - BPR).
+  const prompt = `You are a clinical notes generator for a physical rehabilitation clinic (Bruno Physical Rehabilitation - BPR).
 Generate professional appointment notes for:
-- Patient: ${patientName}
+- Patient: ${patientId ? patientPseudonym(patientId) : "the patient"}
 - Treatment: ${treatmentType}
 - Duration: ${duration} minutes
 

@@ -238,6 +238,7 @@ export default function AdminAppointmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientName: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim(),
+          patientId: createForm.patientId,
           treatmentType: createForm.treatmentType,
           duration: createForm.duration,
           instructions: aiInstructions || "",
