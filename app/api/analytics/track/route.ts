@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import crypto from "crypto";
 
 export const dynamic = 'force-dynamic';
+
+// Hash IP with SHA-256 + salt before storing — never store raw IP
+function hashIp(ip: string): string {
+  if (!ip || ip === "unknown") return "unknown";
+  const salt = process.env.NEXTAUTH_SECRET || "bpr-salt-fallback";
+  return crypto.createHash("sha256").update(ip + salt).digest("hex").slice(0, 16);
+}
 
 // Get the clinic ID (single-tenant for now — first active clinic)
 async function getClinicId(): Promise<string | null> {
@@ -68,7 +76,8 @@ export async function POST(req: NextRequest) {
     const clinicId = await getClinicId();
     if (!clinicId) return new NextResponse("OK", { status: 200 });
 
-    const ip = getClientIp(req);
+    const rawIp = getClientIp(req);
+    const ip = hashIp(rawIp);
 
     if (type === "page_view") {
       // ─── Upsert visitor ───
@@ -79,7 +88,8 @@ export async function POST(req: NextRequest) {
         where: { clinicId_fingerprint: { clinicId, fingerprint } },
       });
 
-      const geo = visitor?.country ? null : await getGeoFromIp(ip);
+      // Geolocation uses raw IP (not stored), geo result is stored instead
+      const geo = visitor?.country ? null : await getGeoFromIp(rawIp);
 
       if (visitor) {
         // Update existing visitor
