@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { claudeGenerate } from "@/lib/claude";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ async function buildPatientContext(patientId: string) {
   const [patient, ms, ba, diagnosis, protocol, soaps] = await Promise.all([
     prisma.user.findUnique({
       where: { id: patientId },
-      select: { firstName: true, lastName: true, dateOfBirth: true, email: true, phone: true } as any,
+      select: { firstName: true, lastName: true, dateOfBirth: true } as any,
     }).catch(() => null),
     (prisma as any).medicalScreening.findUnique({ where: { userId: patientId } }).catch(() => null),
     (prisma as any).bodyAssessment.findFirst({ where: { patientId }, orderBy: { createdAt: "desc" } }).catch(() => null),
@@ -27,12 +28,10 @@ async function buildPatientContext(patientId: string) {
 
   if (!patient) return { patient: null, context: "" };
 
-  const age = (patient as any).dateOfBirth
-    ? new Date().getFullYear() - new Date((patient as any).dateOfBirth).getFullYear()
-    : null;
+  const band = ageBand((patient as any).dateOfBirth);
 
   const lines: string[] = [
-    `Patient: ${(patient as any).firstName} ${(patient as any).lastName}${age ? `, ${age}yo` : ""}`,
+    `Patient: ${patientPseudonym(patientId)}${band ? ` (age band: ${band})` : ""}`,
     ms?.occupation ? `Occupation: ${ms.occupation}` : "",
     ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
     ms?.painScore != null ? `Pain VAS: ${ms.painScore}/10` : "",
@@ -99,6 +98,7 @@ RULES:
 - NEVER use the words "physiotherapy"/"physiotherapist"/"fisioterapia"/"fisioterapeuta" — always "physical rehabilitation"/"reabilitação física" and "rehabilitation professional"/"profissional de reabilitação".
 - Produce a COMPLETE, ready-to-send professional document in formal register: proper letterhead block, date, recipient block (use placeholders like [Nome do Médico] / [Doctor's Name] if unknown), subject line, formal salutation, well-structured body grounded in the patient's real clinical data, professional closing and signature block.
 - Be clinically precise: cite the patient's relevant conditions, medications and risks from the record when pertinent.
+- NEVER write the patient's real name. Whenever you need to refer to the patient by name (salutation, subject line, body references, closing), use the placeholder {{PATIENT_NAME}} instead. The system will replace it with the real name after generation.
 - Output PLAIN TEXT only (no markdown symbols like ** or #). Use line breaks and spacing for structure.
 - On the FIRST line output only the document title (e.g. "Carta ao Médico Assistente — Pedido de Autorização"), then a blank line, then the document.`;
 
@@ -124,7 +124,11 @@ ${instructions}`;
     const title = firstBreak > 0 ? raw.slice(0, firstBreak).trim() : (docKind || "Documento Clínico");
     const content = firstBreak > 0 ? raw.slice(firstBreak).trim() : raw.trim();
 
-    return NextResponse.json({ success: true, title, content });
+    const fullName = `${(patient as any).firstName || ""} ${(patient as any).lastName || ""}`.trim();
+    const finalTitle = title.replace(/\{\{PATIENT_NAME\}\}/g, fullName);
+    const finalContent = content.replace(/\{\{PATIENT_NAME\}\}/g, fullName);
+
+    return NextResponse.json({ success: true, title: finalTitle, content: finalContent });
   } catch (err: any) {
     console.error("[documents/generate] error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
