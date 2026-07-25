@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical, parseAIJson } from "@/lib/ai-provider";
+import { patientPseudonym } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
 
       if (patient) {
         patientContext = `\n\nPATIENT CONTEXT:
-- Name: ${patient.firstName} ${patient.lastName}`;
+- Patient ID: ${patientPseudonym(patientId)}`;
 
         if (patient.medicalScreening?.responses) {
           const screening = patient.medicalScreening.responses as any;

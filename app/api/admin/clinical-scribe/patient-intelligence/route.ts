@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical } from "@/lib/ai-provider";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,9 @@ export async function POST(req: NextRequest) {
   // Build comprehensive patient timeline
   const lang = language === "pt" ? "Portuguese (Brazil)" : "English";
 
-  let patientData = `PATIENT: ${patient.firstName} ${patient.lastName}
+  let patientData = `PATIENT: ${patientPseudonym(patientId)}
 Created account: ${patient.createdAt ? new Date(patient.createdAt).toLocaleDateString("en-GB") : "Unknown"}
-${patient.dateOfBirth ? `DOB: ${new Date(patient.dateOfBirth).toLocaleDateString("en-GB")}` : ""}
+${patient.dateOfBirth ? `Age band: ${ageBand(patient.dateOfBirth) || "unknown"}` : ""}
 `;
 
   // Medical screening

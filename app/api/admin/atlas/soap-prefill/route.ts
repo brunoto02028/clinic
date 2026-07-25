@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { claudeGenerate } from "@/lib/claude";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +71,7 @@ export async function POST(req: NextRequest) {
 
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
-  const age = patient.dateOfBirth
-    ? Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / (365.25 * 24 * 3600 * 1000))
-    : null;
+  const band = ageBand(patient.dateOfBirth);
   const ms = patient.medicalScreening;
   const ba = patient.bodyAssessmentsAsPatient[0];
 
@@ -87,7 +86,7 @@ export async function POST(req: NextRequest) {
     : [];
 
   const contextLines: string[] = [
-    `Patient: ${patient.firstName} ${patient.lastName}${age ? `, ${age} years old` : ""}`,
+    `Patient: ${patientPseudonym(patientId)}${band ? ` (age band: ${band})` : ""}`,
     ms?.occupation ? `Occupation: ${ms.occupation}` : "",
     ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
     ms?.painScore != null ? `Pain score (screening): ${ms.painScore}/10` : "",
