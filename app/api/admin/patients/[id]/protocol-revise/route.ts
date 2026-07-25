@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { claudeGenerate } from "@/lib/claude";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +36,10 @@ async function buildFullPatientContext(patientId: string) {
 
   if (!patient) return { context: "", atlasChat: [] as any[] };
 
-  const age = (patient as any).dateOfBirth
-    ? new Date().getFullYear() - new Date((patient as any).dateOfBirth).getFullYear()
-    : null;
+  const band = ageBand((patient as any).dateOfBirth);
 
   const lines: string[] = [
-    `Patient: ${(patient as any).firstName} ${(patient as any).lastName}${age ? `, ${age}yo` : ""}`,
+    `Patient: ${patientPseudonym(patientId)}${band ? ` (age band: ${band})` : ""}`,
     ms?.occupation ? `Occupation: ${ms.occupation}` : "",
     ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
     ms?.painScore != null ? `Pain VAS: ${ms.painScore}/10` : "",
@@ -183,6 +182,7 @@ export async function POST(
     const systemPrompt = `You are Atlas — a senior physical rehabilitation specialist with 30+ years of clinical experience, discussing a real patient's treatment protocol with Bruno (the treating clinician). Bruno assessed the patient in person; his clinical perception OVERRIDES previous AI assumptions.
 
 TERMINOLOGY RULE: NEVER use the words "physiotherapy", "physiotherapist" or "fisioterapia". Always use "physical rehabilitation" / "reabilitação física".
+PRIVACY RULE: The patient is referred to by a pseudonym (e.g. P-XXXXXXXX) in this conversation. If Bruno mentions a person's real name in his message, treat it as referring to this same patient — do NOT ask for clarification or express confusion about the identity. Simply continue your clinical reasoning about the patient.
 LANGUAGE: Reply in the language Bruno writes in (Portuguese or English).
 
 HOW TO BEHAVE:

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { claudeGenerate } from "@/lib/claude";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -86,14 +87,12 @@ export async function POST(
 
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
-  const age = patient.dateOfBirth
-    ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()
-    : null;
+  const band = ageBand(patient.dateOfBirth);
   const ms = patient.medicalScreening;
   const ba = patient.bodyAssessmentsAsPatient[0];
 
   const patientBrief = [
-    `Patient: ${patient.firstName} ${patient.lastName}${age ? `, ${age}yo` : ""}`,
+    `Patient: ${patientPseudonym(params.id)}${band ? ` (age band: ${band})` : ""}`,
     ms?.occupation ? `Occupation: ${ms.occupation}` : "",
     ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
     ms?.painScore != null ? `Pain score: ${ms.painScore}/10` : "",
@@ -134,6 +133,8 @@ export async function POST(
   const systemPrompt = `You are Atlas — a senior physical rehabilitation specialist with over 30 years of clinical experience in musculoskeletal, neurological, and sports rehabilitation. You trained in Portugal, completed advanced certifications in manual therapy (IFOMPT), pain neuroscience, and exercise prescription. You have treated thousands of patients and mentored dozens of clinicians. You are Bruno's trusted clinical colleague — you speak directly, think critically, and always back your reasoning with evidence.
 
 TERMINOLOGY RULE: NEVER use the words "physiotherapy", "physiotherapist" or "fisioterapia". Always use "physical rehabilitation" / "reabilitação física" and "physical rehabilitation specialist" instead.
+
+PRIVACY RULE: The patient is referred to by a pseudonym (e.g. P-XXXXXXXX) in this conversation. If the user mentions a person's real name in their message, treat it as referring to this same patient — do NOT ask for clarification or express confusion about the identity. Simply continue your clinical reasoning about the patient.
 
 Your clinical principles:
 - Biopsychosocial model first. Pain is never purely structural.
