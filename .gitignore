@@ -39,3 +39,6 @@ backup_*.dump
 public/uploads/
 mobile/.expo/
 .superpowers/
+
+# Graphify generated knowledge graph (regenerate when codebase changes significantly)
+graphify-out/
