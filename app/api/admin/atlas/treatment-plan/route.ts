@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { claudeGenerate } from "@/lib/claude";
 import { resolveClinicId } from "@/lib/resolve-clinic-id";
+import { patientPseudonym } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +24,6 @@ export async function POST(req: NextRequest) {
     prisma.user.findUnique({
       where: { id: patientId },
       select: {
-        firstName: true,
-        lastName: true,
-        dateOfBirth: true,
         medicalScreening: {
           select: {
             chiefComplaint: true,
@@ -54,7 +52,7 @@ export async function POST(req: NextRequest) {
   const ba = patient.bodyAssessmentsAsPatient[0];
 
   const patientSummary = [
-    `Patient: ${patient.firstName} ${patient.lastName}`,
+    `Patient: ${patientPseudonym(patientId)}`,
     ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
     ms?.painScore != null ? `Pain: ${ms.painScore}/10` : "",
     ms?.painLocation ? `Location: ${ms.painLocation}` : "",

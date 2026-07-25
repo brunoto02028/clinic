@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { claudeGenerate } from "@/lib/claude";
 import { resolveClinicId } from "@/lib/resolve-clinic-id";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -61,15 +62,13 @@ async function buildPatientContext(patientId: string, clinicId: string) {
 
   if (!patient) return null;
 
-  const age = patient.dateOfBirth
-    ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()
-    : null;
+  const band = ageBand(patient.dateOfBirth);
   const ms = patient.medicalScreening;
   const ba = patient.bodyAssessmentsAsPatient[0];
   const dx = patient.diagnosesAsPatient[0];
 
   const lines: string[] = [
-    `Patient: ${patient.firstName} ${patient.lastName}${age ? `, ${age}yo` : ""}`,
+    `Patient: ${patientPseudonym(patientId)}${band ? ` (age band: ${band})` : ""}`,
     ms?.occupation ? `Occupation: ${ms.occupation}` : "",
     ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
     ms?.painScore != null ? `Pain VAS: ${ms.painScore}/10` : "",
