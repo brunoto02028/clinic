@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   const lang = language || 'British English';
 
-  const prompt = `You are a specialist physiotherapy and rehabilitation content writer for "BPR — Bruno Physical Rehabilitation", a clinic based in Ipswich, Suffolk, UK.
+  const prompt = `You are a specialist physical rehabilitation content writer for "BPR — Bruno Physical Rehabilitation", a clinic based in Ipswich, Suffolk, UK.
 
 Clinic specialisms: sports injury rehabilitation, electrotherapy & ultrasound, dry needling, myofascial dry cupping, biomechanical assessments, custom orthotics, exercise therapy, postural rehabilitation.
 
@@ -55,12 +55,11 @@ Respond in this exact JSON format (no markdown wrapping, no code blocks):
 {
   "title": "Article Title Here",
   "excerpt": "A compelling 1-2 sentence summary for previews",
-  "content": "<p>HTML content here</p>",
-  "suggestedImageSearch": "A search query to find a relevant stock photo"
+  "content": "<p>HTML content here</p>"
 }`;
 
   try {
-    const raw = await callAI(prompt, { model: CLAUDE_SONNET_MODEL, temperature: 0.7, maxTokens: 4096 });
+    const raw = await callAI(prompt, { model: CLAUDE_SONNET_MODEL, temperature: 0.7, maxTokens: 8192 });
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Failed to parse article from AI response');
     const article = JSON.parse(jsonMatch[0]);

@@ -459,7 +459,7 @@ export default function NewArticlePage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="title">Title *</Label>
-                  <AIFieldHelper fieldName="title" fieldLabel="Article Title" currentValue={title} context="Blog article title for a physiotherapy clinic" onApply={(t) => setTitle(t)} />
+                  <AIFieldHelper fieldName="title" fieldLabel="Article Title" currentValue={title} context="Blog article title for a physical rehabilitation clinic" onApply={(t) => setTitle(t)} />
                 </div>
                 <Input id="title" placeholder="Enter article title" value={title} onChange={(e) => setTitle(e.target.value)} required />
               </div>
@@ -500,7 +500,7 @@ export default function NewArticlePage() {
                     </Button>
                     <AIImageGenerator
                       section="Article Cover"
-                      defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""}
+                      defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""}
                       aspectRatio="16:9"
                       onApply={(url) => setImageUrl(url)}
                       onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
@@ -519,7 +519,7 @@ export default function NewArticlePage() {
                     </Button>
                     <AIImageGenerator
                       section="Article Cover"
-                      defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""}
+                      defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""}
                       aspectRatio="16:9"
                       onApply={(url) => setImageUrl(url)}
                       onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
@@ -548,7 +548,7 @@ export default function NewArticlePage() {
                     </button>
                   </div>
                 </div>
-                <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physiotherapy clinic website" onApply={(t) => setContent(t)} />
+                <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physical rehabilitation clinic website" onApply={(t) => setContent(t)} />
               </div>
               {showPreview ? (
                 <div className="border rounded-lg p-6 min-h-[350px] bg-white">

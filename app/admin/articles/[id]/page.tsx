@@ -395,7 +395,7 @@ export default function EditArticlePage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="title">Title *</Label>
-                  <AIFieldHelper fieldName="title" fieldLabel="Article Title" currentValue={title} context="Blog article title for a physiotherapy clinic" onApply={(t) => setTitle(t)} />
+                  <AIFieldHelper fieldName="title" fieldLabel="Article Title" currentValue={title} context="Blog article title for a physical rehabilitation clinic" onApply={(t) => setTitle(t)} />
                 </div>
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
               </div>
@@ -430,7 +430,7 @@ export default function EditArticlePage() {
                       {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Replace
                     </Button>
                     <ImageLibraryPicker onSelect={(url) => setImageUrl(url)} />
-                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
+                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                 </div>
               ) : (
@@ -443,7 +443,7 @@ export default function EditArticlePage() {
                       {uploading ? "Uploading..." : "Upload Image"}
                     </Button>
                     <ImageLibraryPicker onSelect={(url) => setImageUrl(url)} />
-                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
+                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                   <div className="pt-2">
                     <Input placeholder="Or paste image URL..." value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="max-w-md mx-auto text-sm" />
@@ -470,14 +470,14 @@ export default function EditArticlePage() {
                 <div className="flex items-center gap-2">
                   <AIImageGenerator
                     section="Article Body Image"
-                    defaultPrompt={title ? `Illustration for physiotherapy article: ${title}` : ""}
+                    defaultPrompt={title ? `Illustration for physical rehabilitation article: ${title}` : ""}
                     aspectRatio="16:9"
                     onApply={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
                     articleContext={{ title, excerpt, content }}
                     buttonLabel="Add Body Image"
                     buttonVariant="outline"
                   />
-                  <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physiotherapy clinic website" onApply={(t) => setContent(t)} />
+                  <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physical rehabilitation clinic website" onApply={(t) => setContent(t)} />
                 </div>
               </div>
               {showPreview ? (
@@ -503,11 +503,11 @@ export default function EditArticlePage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Target Keyword</Label>
-                    <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. physiotherapy Ipswich" className="text-sm" />
+                    <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. rehabilitation Ipswich" className="text-sm" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Tags (comma-separated)</Label>
-                    <Input value={tags.join(', ')} onChange={(e) => setTags(e.target.value.split(',').map(t => t.trim()).filter(Boolean))} placeholder="e.g. physiotherapy, knee pain" className="text-sm" />
+                    <Input value={tags.join(', ')} onChange={(e) => setTags(e.target.value.split(',').map(t => t.trim()).filter(Boolean))} placeholder="e.g. rehabilitation, knee pain" className="text-sm" />
                   </div>
                 </div>
               </div>

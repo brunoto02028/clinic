@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         ? 'Write the caption in Brazilian Portuguese.'
         : 'Write the caption in English.';
 
-      const prompt = `You are a social media expert for Bruno Physical Rehabilitation, a physiotherapy clinic.
+      const prompt = `You are a social media expert for Bruno Physical Rehabilitation, a physical rehabilitation clinic.
 Write an engaging Instagram caption based on this full article:
 
 TITLE: ${article.title}
@@ -68,7 +68,7 @@ Write ONLY the caption text, nothing else.`;
         const generatedCaption = await callAI(prompt, { temperature: 0.75, maxTokens: 1200 });
         return NextResponse.json({ caption: generatedCaption.trim() });
       } catch {
-        const fallback = `${article.title}\n\n${article.excerpt || ''}\n\n🔗 ${articleUrl}\n\n#physiotherapy #rehabilitation #health`;
+        const fallback = `${article.title}\n\n${article.excerpt || ''}\n\n🔗 ${articleUrl}\n\n#rehabilitation #physicaltherapy #health`;
         return NextResponse.json({ caption: fallback });
       }
     }
@@ -89,7 +89,7 @@ Write ONLY the caption text, nothing else.`;
         }
       }
 
-      const systemPrompt = `You are an expert Instagram social media assistant for Bruno Physical Rehabilitation, a physiotherapy clinic. You help create and refine Instagram captions, suggest improvements, answer questions about tone/hashtags/strategy, and help make posts more engaging.${articleContext}\n\nBe concise, helpful and professional. If the user asks you to rewrite or improve the caption, do so directly.`;
+      const systemPrompt = `You are an expert Instagram social media assistant for Bruno Physical Rehabilitation, a physical rehabilitation clinic. You help create and refine Instagram captions, suggest improvements, answer questions about tone/hashtags/strategy, and help make posts more engaging.${articleContext}\n\nBe concise, helpful and professional. If the user asks you to rewrite or improve the caption, do so directly.`;
 
       try {
         const reply = await callAIChat(messages || [], {
