@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical } from "@/lib/ai-provider";
 import { notifyPatient } from "@/lib/notify-patient";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export async function POST(
     const [patient, screening, footScans, bodyAssessments, soapNotes, patientDocs, treatmentTypes, exercises] = await Promise.all([
       prisma.user.findUnique({
         where: { id: patientId },
-        select: { id: true, firstName: true, lastName: true, email: true, phone: true, createdAt: true, clinicId: true },
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true, dateOfBirth: true, createdAt: true, clinicId: true },
       }),
       prisma.medicalScreening.findUnique({ where: { userId: patientId } }),
       prisma.footScan.findMany({
@@ -165,8 +166,10 @@ export async function POST(
     const latestFootScan = footScans[0] || null;
     const latestBodyAssessment = bodyAssessments[0] || null;
 
-    // ─── Build prompt context ───
-    let patientContext = `Patient: ${patient.firstName} ${patient.lastName}\n`;
+    // ─── Build prompt context (pseudonymized) ───
+    const pseudonym = patientPseudonym(patientId);
+    const band = ageBand((patient as any).dateOfBirth || null);
+    let patientContext = `Patient: ${pseudonym}${band ? ` (age band: ${band})` : ""}\n`;
 
     // Medical Screening
     if (screening) {
