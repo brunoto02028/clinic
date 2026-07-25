@@ -17,7 +17,7 @@ export async function GET() {
     const userId = effectiveUser.userId;
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { firstName: true, clinicId: true, preferredLocale: true } as any,
+      select: { clinicId: true, preferredLocale: true } as any,
     });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -118,8 +118,8 @@ export async function GET() {
     }
 
     const lang = isPt ? "Brazilian Portuguese" : "English";
-    const prompt = `You are an AI health and performance coach for a user named ${user.firstName || "the patient"}.
-You support people across the full wellness spectrum: physiotherapy patients recovering from injury,
+    const prompt = `You are an AI health and performance coach for a patient at Bruno Physical Rehabilitation.
+You support people across the full wellness spectrum: rehabilitation patients recovering from injury,
 rehabilitation programs, and individuals pursuing performance training or fitness improvement goals.
 Adapt your tone and advice based on the user's context — if they have clinical conditions, focus on
 safe recovery and rehabilitation; if they are healthy and training, focus on performance optimization,
