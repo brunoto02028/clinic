@@ -1,0 +1,22 @@
+# Componentes de UI genericos (shadcn/ui) — ruido puro nas queries
+components/ui/
+
+# Scripts de manutencao pontuais, nao fazem parte do fluxo da aplicacao
+scripts/
+
+# Build, cache e artefatos
+.next/
+out/
+dist/
+build/
+coverage/
+*.min.js
+*.bundle.js
+
+# Migrations do Prisma (o schema.prisma ja e indexado)
+prisma/migrations/
+
+# Testes — descomente se quiser tira-los do grafo
+# tests/
+# **/*.test.ts
+# **/*.spec.ts
