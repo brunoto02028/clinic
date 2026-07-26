@@ -38,8 +38,13 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function StartPage() {
+export default async function StartPage({
+  searchParams,
+}: {
+  searchParams?: { via?: string };
+}) {
   const settings = await getStartPageSettings();
+  const isGift = searchParams?.via === "card";
 
-  return <StartLanding settings={settings} />;
+  return <StartLanding settings={settings} isGift={isGift} />;
 }

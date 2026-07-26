@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap } from "lucide-react";
+import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap, Quote } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
@@ -25,10 +25,17 @@ function absoluteImageUrl(url?: string | null): string | undefined {
   return url.startsWith("http") ? url : `https://bpr.rehab${url}`;
 }
 
-export function StartLanding({ settings }: { settings: StartPageSettings }) {
+// TODO: add Bruno's short intro video URL here once recorded (direct .mp4 link) — hidden until set
+const INTRO_VIDEO_URL = "";
+
+// TODO: replace with 3 real patient testimonials — section stays hidden until filled
+const TESTIMONIALS: { quoteEn: string; quotePt: string; nameEn: string; namePt: string }[] = [];
+
+export function StartLanding({ settings, isGift = false }: { settings: StartPageSettings; isGift?: boolean }) {
   const { locale, setLocale } = useLocale();
   const isPt = locale === "pt-BR";
   const aboutImage = absoluteImageUrl(settings?.aboutImageUrl);
+  const viaSuffix = isGift ? "?via=card" : "";
 
   const waHref =
     settings?.whatsappEnabled && settings?.whatsappNumber
@@ -37,28 +44,30 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
 
   const trustChips = [
     { icon: Clock, en: "15+ Years Clinical Experience", pt: "15+ Anos de Experiência Clínica" },
-    { icon: Trophy, en: "Ex-Professional Footballer", pt: "Ex-Futebolista Profissional" },
+    { icon: Trophy, en: "Ex-Professional Footballer", pt: "Ex-Atleta de Futebol Profissional" },
     { icon: ShieldCheck, en: "Fully Insured", pt: "Totalmente Segurado" },
   ];
 
   const offerBullets = [
-    { titleEn: "A full clinical assessment.", titlePt: "Uma avaliação clínica completa.", descEn: "We look at why the pain exists, not only where it hurts.", descPt: "Investigamos porque é que a dor existe, não só onde dói." },
-    { titleEn: "A clear treatment plan.", titlePt: "Um plano de tratamento claro.", descEn: "You leave knowing exactly what's going on and what happens next.", descPt: "Sais a saber exatamente o que se passa e quais são os próximos passos." },
+    { titleEn: "A full clinical assessment.", titlePt: "Uma avaliação clínica completa.", descEn: "We look at why the pain exists, not only where it hurts.", descPt: "Investigamos por que a dor existe, não só onde ela dói." },
+    { titleEn: "A clear treatment plan.", titlePt: "Um plano de tratamento claro.", descEn: "You leave knowing exactly what's going on and what happens next.", descPt: "Você sai sabendo exatamente o que está acontecendo e quais são os próximos passos." },
     { titleEn: "No pressure, no session-counting.", titlePt: "Sem pressão, sem contar sessões.", descEn: "We deliver results, not appointments.", descPt: "Entregamos resultados, não consultas." },
   ];
 
   const steps = [
-    { titleEn: "Create your free account", titlePt: "Cria a tua conta gratuita", descEn: "Sign up in under 2 minutes to access your private patient area.", descPt: "Regista-te em menos de 2 minutos para aceder à tua área de paciente." },
-    { titleEn: "Complete your screening", titlePt: "Preenche a tua triagem", descEn: "Answer a short guided questionnaire so we understand your case before you arrive.", descPt: "Responde a um questionário guiado para entendermos o teu caso antes de chegares." },
-    { titleEn: "Reviewed personally by Bruno", titlePt: "Revista pessoalmente pelo Bruno", descEn: "Your screening is reviewed by hand — not a bot — before your visit.", descPt: "A tua triagem é revista à mão — não por um robô — antes da tua visita." },
-    { titleEn: "Book your free consultation", titlePt: "Marca a tua consulta gratuita", descEn: "Choose a time that works and start your recovery.", descPt: "Escolhe um horário e começa a tua recuperação." },
+    isGift
+      ? { titleEn: "Create your account to redeem", titlePt: "Crie a sua conta para resgatar", descEn: "Sign up in under 2 minutes. Your free assessment is linked to your account.", descPt: "Cadastre-se em menos de 2 minutos. A sua avaliação gratuita fica vinculada à sua conta." }
+      : { titleEn: "Create your free account", titlePt: "Crie sua conta gratuita", descEn: "Sign up in under 2 minutes to access your private patient area.", descPt: "Cadastre-se em menos de 2 minutos para acessar sua área de paciente." },
+    { titleEn: "Complete your screening", titlePt: "Preencha sua triagem", descEn: "Answer a short guided questionnaire so we understand your case before you arrive.", descPt: "Responda a um questionário guiado para entendermos o seu caso antes da sua chegada." },
+    { titleEn: "Reviewed personally by Bruno", titlePt: "Revista pessoalmente pelo Bruno", descEn: "Your screening is reviewed by hand before your visit.", descPt: "A sua triagem é revista à mão antes da sua visita." },
+    { titleEn: "Book your free assessment", titlePt: "Marque sua avaliação gratuita", descEn: "Choose a time that works and start your recovery.", descPt: "Escolha um horário e comece sua recuperação." },
   ];
 
   const conditions = [
-    { icon: Activity, titleEn: "Sports Injuries", titlePt: "Lesões Desportivas", descEn: "Sprains, strains, ligament and tendon injuries — from weekend athletes to competitive sport.", descPt: "Entorses, distensões e lesões de ligamentos e tendões — de atletas de fim de semana a desporto competitivo." },
-    { icon: Heart, titleEn: "Chronic Pain", titlePt: "Dor Crónica", descEn: "Back, neck and joint pain lasting months or years — when nothing else has worked.", descPt: "Dor nas costas, pescoço e articulações há meses ou anos — quando mais nada resultou." },
+    { icon: Activity, titleEn: "Sports Injuries", titlePt: "Lesões Esportivas", descEn: "Sprains, strains, ligament and tendon injuries — from weekend athletes to competitive sport.", descPt: "Entorses, distensões e lesões de ligamentos e tendões — de atletas de fim de semana a esporte competitivo." },
+    { icon: Heart, titleEn: "Chronic Pain", titlePt: "Dor Crônica", descEn: "Back, neck and joint pain lasting months or years — when nothing else has worked.", descPt: "Dor nas costas, pescoço e articulações há meses ou anos — quando mais nada resultou." },
     { icon: Shield, titleEn: "Pre & Post-Surgery", titlePt: "Pré e Pós-Cirurgia", descEn: "Structured rehabilitation before and after orthopaedic surgery, for a faster, safer recovery.", descPt: "Reabilitação estruturada antes e depois de cirurgia ortopédica, para uma recuperação mais rápida e segura." },
-    { icon: Dumbbell, titleEn: "Everyday Mobility", titlePt: "Mobilidade do Dia a Dia", descEn: "Stiffness, poor movement patterns and general aches that limit your daily life.", descPt: "Rigidez, padrões de movimento pobres e dores gerais que limitam o teu dia a dia." },
+    { icon: Dumbbell, titleEn: "Everyday Mobility", titlePt: "Mobilidade do Dia a Dia", descEn: "Stiffness, poor movement patterns and general aches that limit your daily life.", descPt: "Rigidez, padrões de movimento pobres e dores gerais que limitam o seu dia a dia." },
   ];
 
   const treatmentPills = [
@@ -71,9 +80,9 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
   ];
 
   const diffs = [
-    { icon: Target, titleEn: "No session limits", titlePt: "Sem limite de sessões", descEn: "You don't pay for hours — you invest in a complete result. Every appointment lasts as long as it needs.", descPt: "Não pagas por horas — investes num resultado completo. Cada consulta dura o tempo necessário." },
+    { icon: Target, titleEn: "No session limits", titlePt: "Sem limite de sessões", descEn: "You don't pay for hours — you invest in a complete result. Every appointment lasts as long as it needs.", descPt: "Você não paga por horas — investe num resultado completo. Cada consulta dura o tempo necessário." },
     { icon: Sparkles, titleEn: "Root cause, not symptoms", titlePt: "Causa-raiz, não sintomas", descEn: "Thermography and HRV to understand the source — then we treat it.", descPt: "Termografia e HRV para entender a origem — e depois tratá-la." },
-    { icon: HeartHandshake, titleEn: "Whole-person approach", titlePt: "Cuidado do corpo inteiro", descEn: "When your recovery needs it, we integrate other specialists. Your body is a system — we treat it as one.", descPt: "Quando a tua recuperação exige, integramos outros especialistas. O teu corpo é um sistema — e tratamo-lo como tal." },
+    { icon: HeartHandshake, titleEn: "Whole-person approach", titlePt: "Cuidado do corpo inteiro", descEn: "When your recovery needs it, we integrate other specialists. Your body is a system — we treat it as one.", descPt: "Quando a sua recuperação exige, integramos outros especialistas. O seu corpo é um sistema — e nós o tratamos como tal." },
   ];
 
   return (
@@ -125,18 +134,28 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
             </span>
 
             <h1 className="font-sora text-3xl sm:text-4xl font-extrabold leading-tight mb-4">
-              {isPt ? (
-                <>Dor que não passa? <span className="text-primary">Descobre a causa real</span> — não só onde dói.</>
+              {isGift ? (
+                isPt ? (
+                  <>Este cartão vale uma avaliação completa com o Bruno — <span className="text-primary">grátis</span>.</>
+                ) : (
+                  <>This card is worth one full assessment with Bruno — <span className="text-primary">free</span>.</>
+                )
+              ) : isPt ? (
+                <>Dor que não passa? <span className="text-primary">Descubra a causa real</span> — não só onde dói.</>
               ) : (
                 <>Pain that won&apos;t go away? <span className="text-primary">Find the real cause</span> — not just where it hurts.</>
               )}
             </h1>
             <p className="text-background/75 text-base max-w-md mx-auto mb-6 leading-relaxed">
-              {isPt
-                ? "O meu propósito é simples: tratar cada pessoa da forma como gostaria de ter sido tratado durante a minha própria recuperação — com atenção verdadeira, não só protocolo. Como novo paciente, a tua primeira consulta completa é totalmente gratuita."
-                : "My purpose is simple: treat every person the way I wish I'd been treated during my own recovery — with real attention, not just protocol. As a new patient, your first full consultation is completely free."}
+              {isGift
+                ? (isPt
+                    ? "Alguém achou que você deveria estar aqui. Uma avaliação clínica completa para encontrar a causa real da sua dor — sem custo e sem compromisso. Esta página resgata o seu cartão."
+                    : "Someone thought you should be here. A full clinical assessment to find the real cause of your pain — with no cost and no obligation. This page redeems it.")
+                : (isPt
+                    ? "O meu propósito é simples: tratar cada pessoa da forma como gostaria de ter sido tratado durante a minha própria recuperação — com atenção verdadeira, não só protocolo. Como novo paciente, a sua primeira avaliação completa é totalmente gratuita."
+                    : "My purpose is simple: treat every person the way I wish I'd been treated during my own recovery — with real attention, not just protocol. As a new patient, your first full assessment is completely free.")}
             </p>
-            <div className="flex flex-wrap justify-center gap-2 mb-8">
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
               {trustChips.map((chip, i) => (
                 <span key={i} className="inline-flex items-center gap-1.5 bg-white/[0.06] border border-white/[0.14] rounded-full px-3 py-1.5 text-[11px] font-semibold text-background/90">
                   <chip.icon className="h-3 w-3 text-primary" />
@@ -144,30 +163,71 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
                 </span>
               ))}
             </div>
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold text-primary mb-8">
+              <Clock className="h-3.5 w-3.5" />
+              {isPt ? "Vagas gratuitas limitadas a cada semana" : "Free assessment slots are limited each week"}
+            </p>
             <div className="flex flex-col gap-2.5 max-w-sm mx-auto">
               <Button size="lg" variant="ba1Primary" className="w-full" asChild>
-                <Link href="/signup">
-                  {isPt ? "Quero a Minha Consulta Gratuita" : "Claim My Free Consultation"}
+                <Link href={`/signup${viaSuffix}`}>
+                  {isGift
+                    ? (isPt ? "Resgatar Minha Avaliação" : "Redeem My Assessment")
+                    : (isPt ? "Quero a Minha Avaliação Gratuita" : "Claim My Free Assessment")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" className={GHOST_DARK} asChild>
                 <Link href="/login">
                   <LogIn className="h-4 w-4" />
-                  {isPt ? "Já és paciente? Entra" : "Already a patient? Log in"}
+                  {isPt ? "Já é paciente? Entre" : "Already a patient? Log in"}
                 </Link>
               </Button>
               <p className="text-[11px] text-background/50 mt-0.5">
-                {isPt ? "Grátis para novos pacientes · Leva 2 minutos para começar" : "Free for new patients · Takes 2 minutes to start"}
+                {isGift
+                  ? (isPt ? "Um resgate por cartão · Novos pacientes · Leva 2 minutos" : "One redemption per card · New patients · Takes 2 minutes")
+                  : (isPt ? "Grátis para novos pacientes · Leva 2 minutos para começar" : "Free for new patients · Takes 2 minutes to start")}
               </p>
+              {waHref && (
+                <a
+                  href={waHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 text-[12px] font-semibold text-background/70 hover:text-background transition-colors mt-1"
+                >
+                  <WhatsAppIcon className="h-3.5 w-3.5 text-[#25D366]" />
+                  {isPt ? "Prefere WhatsApp? Fale conosco" : "Prefer WhatsApp? Message us"}
+                </a>
+              )}
             </div>
           </div>
         </header>
 
+        {/* INTRO VIDEO */}
+        {INTRO_VIDEO_URL && (
+          <section className="mt-8">
+            <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
+              <video
+                controls
+                playsInline
+                poster={aboutImage}
+                className="w-full aspect-video bg-black"
+                src={INTRO_VIDEO_URL}
+              />
+            </div>
+            <p className="text-center text-xs text-muted-foreground mt-2">
+              {isPt ? "Uma mensagem rápida do Bruno" : "A quick message from Bruno"}
+            </p>
+          </section>
+        )}
+
         {/* OFFER */}
         <section className="mt-12 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary mb-2">{isPt ? "O que recebes" : "What you get"}</p>
-          <h2 className="font-sora text-2xl sm:text-3xl font-extrabold mb-6">{isPt ? "A tua primeira consulta gratuita" : "Your free first consultation"}</h2>
+          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary mb-2">
+            {isGift
+              ? (isPt ? "O que este cartão te dá" : "What this card gives you")
+              : (isPt ? "O que recebes" : "What you get")}
+          </p>
+          <h2 className="font-sora text-2xl sm:text-3xl font-extrabold mb-6">{isPt ? "A sua primeira avaliação gratuita" : "Your free first assessment"}</h2>
           <div className="bg-accent border border-primary/15 rounded-3xl p-6 sm:p-8 text-left">
             <div className="text-center mb-5">
               <span className="font-sora text-3xl font-extrabold text-primary">{isPt ? "Grátis" : "Free"}</span>
@@ -225,7 +285,7 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
 
           <p className="text-sm text-foreground/80 leading-relaxed mb-4">
             {isPt
-              ? "Cada plano segue um protocolo de avaliação, tratamento e treino — focado em voltares às tuas atividades normais, com acompanhamento constante ao longo de toda a recuperação."
+              ? "Cada plano segue um protocolo de avaliação, tratamento e treino — focado em fazer você voltar às suas atividades normais, com acompanhamento constante ao longo de toda a recuperação."
               : "Every plan follows a protocol of assessment, treatment and training — focused on getting you back to your normal activities, with constant follow-up throughout your recovery."}
           </p>
 
@@ -279,7 +339,7 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
           <div className="bg-card border border-border rounded-3xl p-6 sm:p-8">
             <p className="text-[15px] leading-relaxed text-foreground/90">
               {isPt ? (
-                <>&ldquo;Antes de me tornar especialista em reabilitação, fui futebolista profissional durante mais de uma década — no Brasil, na Alemanha e na Suécia. Depois de <b className="text-foreground">três cirurgias importantes ao joelho</b>, conheço na pele o lado físico e emocional da recuperação. É por isso que cuido de cada paciente como gostaria de ter sido cuidado.&rdquo;</>
+                <>&ldquo;Antes de me tornar especialista em reabilitação, fui atleta de futebol profissional durante mais de uma década — no Brasil, na Alemanha e na Suécia. Depois de <b className="text-foreground">três cirurgias importantes ao joelho</b>, conheço na pele o lado físico e emocional da recuperação. É por isso que cuido de cada paciente como gostaria de ter sido cuidado.&rdquo;</>
               ) : (
                 <>&ldquo;Before becoming a rehabilitation specialist, I was a professional footballer for over a decade — in Brazil, Germany and Sweden. After <b className="text-foreground">three major knee surgeries</b>, I know the physical and emotional side of recovery firsthand. That&apos;s why I care for every patient the way I wished I&apos;d been cared for.&rdquo;</>
               )}
@@ -303,21 +363,50 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
           </div>
         </section>
 
+        {/* TESTIMONIALS */}
+        {TESTIMONIALS.length > 0 && (
+          <section className="mt-14">
+            <div className="text-center mb-6">
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary mb-2">{isPt ? "O que dizem os pacientes" : "What patients say"}</p>
+              <h2 className="font-sora text-2xl sm:text-3xl font-extrabold">{isPt ? "Resultados reais, pessoas reais" : "Real results, real people"}</h2>
+            </div>
+            <div className="space-y-2.5">
+              {TESTIMONIALS.map((t, i) => (
+                <div key={i} className="bg-card border border-border rounded-2xl p-5">
+                  <Quote className="h-5 w-5 text-primary/40 mb-2" />
+                  <p className="text-sm text-foreground/90 italic leading-relaxed mb-3">
+                    &ldquo;{isPt ? t.quotePt : t.quoteEn}&rdquo;
+                  </p>
+                  <p className="text-xs font-bold text-foreground">{isPt ? t.namePt : t.nameEn}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* FINAL CTA */}
         <section className="mt-14">
           <div className="bg-foreground text-background rounded-[26px] px-6 sm:px-8 py-9 text-center">
             <span className="inline-flex items-center gap-2 text-[11px] font-bold text-primary bg-primary/15 border border-primary/25 rounded-full px-3 py-1.5 mb-4">
               {isPt ? "Apenas para novos pacientes" : "For new patients only"}
             </span>
-            <h2 className="font-sora text-2xl sm:text-3xl font-extrabold mb-3">{isPt ? "Pronto para começares?" : "Ready to start?"}</h2>
+            <h2 className="font-sora text-2xl sm:text-3xl font-extrabold mb-3">
+              {isGift
+                ? (isPt ? "Não deixe este cartão se perder" : "Don't let this card go to waste")
+                : (isPt ? "Pronto para começar?" : "Ready to start?")}
+            </h2>
             <p className="text-background/70 text-sm max-w-sm mx-auto mb-7">
               {isPt
-                ? "Cria a tua conta, preenche a tua triagem e marca a tua consulta gratuita hoje."
-                : "Create your account, complete your screening, and book your free consultation today."}
+                ? "Crie sua conta, preencha sua triagem e marque sua avaliação gratuita hoje."
+                : "Create your account, complete your screening, and book your free assessment today."}
             </p>
             <div className="flex flex-col gap-2.5 max-w-sm mx-auto">
               <Button size="lg" variant="ba1Primary" className="w-full" asChild>
-                <Link href="/signup">{isPt ? "Quero a Minha Consulta Gratuita" : "Claim My Free Consultation"}</Link>
+                <Link href={`/signup${viaSuffix}`}>
+                  {isGift
+                    ? (isPt ? "Resgatar Minha Avaliação" : "Redeem My Assessment")
+                    : (isPt ? "Quero a Minha Avaliação Gratuita" : "Claim My Free Assessment")}
+                </Link>
               </Button>
               <Button size="lg" variant="outline" className={GHOST_DARK} asChild>
                 <Link href="/login">{isPt ? "Entrar na minha conta" : "Log in to your account"}</Link>
@@ -330,7 +419,7 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
                   className="w-full flex items-center justify-center gap-2 bg-background text-foreground rounded-lg py-3 text-sm font-bold hover:opacity-90 transition-opacity"
                 >
                   <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
-                  {isPt ? "Prefere falar? Manda-nos WhatsApp" : "Prefer to chat? Message us on WhatsApp"}
+                  {isPt ? "Prefere falar? Mande-nos uma mensagem no WhatsApp" : "Prefer to chat? Message us on WhatsApp"}
                 </a>
               )}
             </div>
@@ -352,8 +441,10 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
       <div className="fixed left-0 right-0 bottom-0 z-50 px-4 pb-4 pt-3 bg-gradient-to-t from-background via-background/95 to-transparent">
         <div className="max-w-2xl mx-auto">
           <Button size="lg" variant="ba1Primary" className="w-full shadow-xl" asChild>
-            <Link href="/signup">
-              {isPt ? "Começar grátis — quero a minha consulta" : "Start free — claim my consultation"}
+            <Link href={`/signup${viaSuffix}`}>
+              {isGift
+                ? (isPt ? "Resgatar a minha avaliação gratuita" : "Redeem my free assessment")
+                : (isPt ? "Começar grátis — quero a minha avaliação" : "Start free — claim my assessment")}
             </Link>
           </Button>
         </div>
