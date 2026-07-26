@@ -48,7 +48,7 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
           <Logo
             logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
             darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
-            size="md"
+            size="lg"
             linkTo="/"
           />
 

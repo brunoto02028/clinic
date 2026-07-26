@@ -231,7 +231,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {settings ? (
-              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="md" priority />
+              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="lg" priority />
             ) : (
               <div style={{ height: 40, width: 40 }} />
             )}
@@ -401,7 +401,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <div className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Users className="h-5 w-5 text-primary" /></div>
-                  <div><p className="text-xl font-bold text-foreground">500+</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Pacientes" : "Patients"}</p></div>
+                  <div><p className="text-xl font-bold text-foreground">{locale === "pt-BR" ? "Personalizado" : "Personalised"}</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Cuidado 1-para-1" : "1-to-1 Care"}</p></div>
                 </div>
               </div>
               <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
@@ -420,10 +420,10 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
             {[
-              { value: "500+", label: locale === "pt-BR" ? "Pacientes Tratados" : "Patients Treated" },
               { value: "15+", label: locale === "pt-BR" ? "Anos de Experiência" : "Years Experience" },
-              { value: "10+", label: locale === "pt-BR" ? "Especialidades" : "Specialties" },
-              { value: "98%", label: locale === "pt-BR" ? "Taxa de Satisfação" : "Satisfaction Rate" },
+              { value: locale === "pt-BR" ? "Comprovado" : "Proven", label: locale === "pt-BR" ? "Baseado em Evidências" : "Evidence-Based Care" },
+              { value: locale === "pt-BR" ? "Corpo Inteiro" : "Whole-Body", label: locale === "pt-BR" ? "Abordagem Integrada" : "Integrated Approach" },
+              { value: locale === "pt-BR" ? "1-para-1" : "1-to-1", label: locale === "pt-BR" ? "Cuidado Personalizado" : "Personalised Care" },
             ].map((stat) => (
               <div key={stat.label}>
                 <p className="text-3xl sm:text-4xl font-bold text-white">{stat.value}</p>
@@ -1045,7 +1045,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <div className="lg:col-span-1">
                   {settings && (
                     <div className="mb-4">
-                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" />
+                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="md" linkTo="/" />
                     </div>
                   )}
                   <p className="text-slate-400 text-sm leading-relaxed mb-5">

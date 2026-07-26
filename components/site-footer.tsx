@@ -64,7 +64,7 @@ export function SiteFooter() {
                 <Logo
                   logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl}
                   darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl}
-                  size="sm"
+                  size="md"
                   linkTo="/"
                 />
               </div>
