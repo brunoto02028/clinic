@@ -25,14 +25,7 @@ export const shopMetadata: Metadata = {
     description: 'Clinically designed 3D printed foot care products for plantar fasciitis, bunions, and daily comfort. Made in-house by Bruno Physical Rehabilitation.',
     url: 'https://bpr.rehab/shop',
     siteName: 'BPR Rehab',
-    images: [
-      {
-        url: 'https://bpr.rehab/og-shop.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'BPR 3D Printed Foot Care Products',
-      },
-    ],
+    // images set dynamically in layout.tsx (real logo, resolved from DB)
     locale: 'en_GB',
     type: 'website',
   },
@@ -40,17 +33,14 @@ export const shopMetadata: Metadata = {
     card: 'summary_large_image',
     title: '3D Printed Foot Care Products | BPR Rehab',
     description: 'Clinically designed 3D printed foot care for plantar fasciitis, bunions, and daily comfort.',
-    images: ['https://bpr.rehab/og-shop.jpg'],
   },
+  // Shop is unlisted — not linked from any menu and must not be indexed or surfaced in search
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
     googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      index: false,
+      follow: false,
     },
   },
   alternates: {
@@ -64,8 +54,6 @@ export const shopJsonLd = {
   name: 'BPR Rehab Shop',
   description: 'Clinically designed 3D printed foot care products',
   url: 'https://bpr.rehab/shop',
-  logo: 'https://bpr.rehab/logo.png',
-  image: 'https://bpr.rehab/og-shop.jpg',
   priceRange: '£15-£150',
   address: {
     '@type': 'PostalAddress',

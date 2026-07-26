@@ -63,7 +63,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteName = s?.ogSiteName || s?.siteName || "BPR";
   const ogImage = s?.ogImageUrl
     ? (s.ogImageUrl.startsWith("http") ? s.ogImageUrl : `${BASE_URL}${s.ogImageUrl}`)
-    : `${BASE_URL}/og-image.png`;
+    : s?.logoUrl
+      ? (s.logoUrl.startsWith("http") ? s.logoUrl : `${BASE_URL}${s.logoUrl}`)
+      : `${BASE_URL}/og-image.png`;
   const canonical = s?.canonicalUrl || BASE_URL;
   const ogType = (s?.ogType as any) || "website";
   const ogLocale = s?.ogLocale || "en_GB";

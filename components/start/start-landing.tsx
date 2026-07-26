@@ -1,19 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
-import type { SiteSettingsLogo } from "@/lib/get-site-settings";
-
-interface WhatsAppSettings {
-  whatsappNumber?: string | null;
-  whatsappEnabled?: boolean;
-  whatsappMessage?: string | null;
-  aboutImageUrl?: string | null;
-}
+import type { StartPageSettings } from "@/lib/get-site-settings";
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -25,17 +18,9 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 const GHOST_DARK = "w-full bg-transparent border-white/25 text-background hover:bg-white/10 hover:text-background";
 
-export function StartLanding({ logoSettings }: { logoSettings: SiteSettingsLogo }) {
+export function StartLanding({ settings }: { settings: StartPageSettings }) {
   const { locale, setLocale } = useLocale();
   const isPt = locale === "pt-BR";
-  const [settings, setSettings] = useState<WhatsAppSettings | null>(null);
-
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setSettings(d))
-      .catch(() => {});
-  }, []);
 
   const waHref =
     settings?.whatsappEnabled && settings?.whatsappNumber
@@ -87,7 +72,7 @@ export function StartLanding({ logoSettings }: { logoSettings: SiteSettingsLogo 
     <div className="public-site min-h-screen bg-background text-foreground pb-28">
       {/* Topbar */}
       <div className="max-w-2xl mx-auto flex items-center justify-between px-4 sm:px-6 pt-5 pb-2">
-        <Logo logoUrl={logoSettings?.logoUrl} darkLogoUrl={logoSettings?.darkLogoUrl} size="xl" linkTo="/" />
+        <Logo logoUrl={settings?.logoUrl} darkLogoUrl={settings?.darkLogoUrl} size="xl" linkTo="/" priority />
         <div className="flex gap-1 bg-card border border-border rounded-full p-1">
           <button
             onClick={() => setLocale("en-GB")}
@@ -115,10 +100,13 @@ export function StartLanding({ logoSettings }: { logoSettings: SiteSettingsLogo 
             {settings?.aboutImageUrl && (
               <div className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-5">
                 <div className="absolute inset-0 rounded-full bg-primary/40 blur-xl scale-110" />
-                <img
+                <Image
                   src={settings.aboutImageUrl}
                   alt="Bruno"
-                  className="relative w-full h-full rounded-full object-cover border-[3px] border-white/20 shadow-2xl"
+                  fill
+                  sizes="112px"
+                  priority
+                  className="relative rounded-full object-cover border-[3px] border-white/20 shadow-2xl"
                 />
               </div>
             )}
@@ -293,7 +281,9 @@ export function StartLanding({ logoSettings }: { logoSettings: SiteSettingsLogo 
             </p>
             <div className="flex items-center gap-3 mt-5 pt-5 border-t border-border">
               {settings?.aboutImageUrl ? (
-                <img src={settings.aboutImageUrl} alt="Bruno" className="w-11 h-11 rounded-full object-cover flex-shrink-0" />
+                <div className="relative w-11 h-11 rounded-full flex-shrink-0 overflow-hidden">
+                  <Image src={settings.aboutImageUrl} alt="Bruno" fill sizes="44px" className="object-cover" />
+                </div>
               ) : (
                 <span className="w-11 h-11 rounded-full bg-primary text-white font-sora font-extrabold flex items-center justify-center flex-shrink-0">B</span>
               )}
@@ -342,7 +332,7 @@ export function StartLanding({ logoSettings }: { logoSettings: SiteSettingsLogo 
         {/* FOOTER */}
         <footer className="mt-10 pb-4 text-center border-t border-border pt-8">
           <div className="flex justify-center mb-4">
-            <Logo logoUrl={logoSettings?.logoUrl} darkLogoUrl={logoSettings?.darkLogoUrl} size="xl" linkTo="/" />
+            <Logo logoUrl={settings?.logoUrl} darkLogoUrl={settings?.darkLogoUrl} size="xl" linkTo="/" />
           </div>
           <p className="text-muted-foreground text-xs">Bruno Physical Rehabilitation · Ipswich, Suffolk, {isPt ? "Reino Unido" : "UK"}</p>
           <p className="text-primary text-[11px] font-bold mt-1">{isPt ? "Curar com Coração" : "Healing With Heart"}</p>

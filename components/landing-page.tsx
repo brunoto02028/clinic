@@ -48,6 +48,7 @@ import {
   Cpu,
   Moon,
   HeartPulse,
+  HeartHandshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -334,9 +335,15 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full mb-5 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full" />
-                {locale === "pt-BR" ? "Reabilitação Física & Desportiva" : "Physical & Sports Rehabilitation"}
+              <div className="flex flex-wrap items-center gap-2 mb-5">
+                <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full" />
+                  {locale === "pt-BR" ? "Reabilitação Física & Desportiva" : "Physical & Sports Rehabilitation"}
+                </div>
+                <div className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 text-xs font-bold px-3 py-1.5 rounded-full border border-rose-200">
+                  <HeartHandshake className="h-3.5 w-3.5" />
+                  {T("home.healingWithHeart")}
+                </div>
               </div>
               <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight tracking-tight">
                 {(() => {
@@ -463,6 +470,16 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     <p>{T("home.aboutText3")}</p>
                   </>
                 )}
+              </div>
+              {/* Healing With Heart pull-quote */}
+              <div className="mt-6 bg-rose-50 border border-rose-200 rounded-2xl p-5">
+                <div className="inline-flex items-center gap-1.5 text-rose-600 text-xs font-bold uppercase tracking-wider mb-2">
+                  <HeartHandshake className="h-4 w-4" />
+                  {T("home.healingWithHeart")}
+                </div>
+                <p className="text-sm text-slate-700 leading-relaxed italic">
+                  &ldquo;{T("home.healingWithHeartQuote")}&rdquo;
+                </p>
               </div>
               {/* Credentials */}
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">

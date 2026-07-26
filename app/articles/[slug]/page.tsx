@@ -4,6 +4,13 @@ import Link from "next/link";
 import { Calendar, User, ChevronLeft, ChevronRight, BookOpen, ArrowLeft, Clock, Share2 } from "lucide-react";
 import type { Metadata } from "next";
 import { LocalizedText, LocalizedHtml } from "./localized";
+import { getSiteSettingsLogo } from "@/lib/get-site-settings";
+
+const BASE_URL = "https://bpr.rehab";
+function absoluteUrl(url?: string | null): string | null {
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${BASE_URL}${url}`;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +48,13 @@ async function resolveArticle(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const article = await resolveArticle(params.slug);
   if (!article) return { title: "Article Not Found" };
+
+  let ogImage = absoluteUrl(article.imageUrl);
+  if (!ogImage) {
+    const logoSettings = await getSiteSettingsLogo();
+    ogImage = absoluteUrl(logoSettings?.logoUrl) || `${BASE_URL}/og-image.png`;
+  }
+
   return {
     title: `${article.title} - Bruno Physical Rehabilitation`,
     description: article.excerpt || undefined,
@@ -48,7 +62,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: article.title,
       description: article.excerpt || undefined,
       type: "article",
-      images: article.imageUrl ? [{ url: article.imageUrl }] : undefined,
+      images: [{ url: ogImage }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.excerpt || undefined,
+      images: [ogImage],
     },
   };
 }
