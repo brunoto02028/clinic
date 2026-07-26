@@ -34,7 +34,7 @@ const DEFAULT_CONFIG = {
       description: "Manage your foot scan sessions and view results",
       icon: "Footprints",
       href: "/dashboard/scans",
-      enabled: true,
+      enabled: false,
       order: 2,
     },
     {
@@ -70,7 +70,7 @@ const DEFAULT_CONFIG = {
       description: "View your biomechanical and posture assessment results",
       icon: "Activity",
       href: "/dashboard/body-assessments",
-      enabled: true,
+      enabled: false,
       order: 6,
     },
     {
@@ -211,7 +211,7 @@ const DEFAULT_CONFIG = {
       buttonText: "View Assessment",
       buttonLink: "/dashboard/body-assessments",
       icon: "Activity",
-      enabled: true,
+      enabled: false,
     },
   ],
   statsCards: [

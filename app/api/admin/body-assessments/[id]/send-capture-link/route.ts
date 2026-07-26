@@ -62,7 +62,7 @@ export async function POST(
           patientName: assessment.patient.firstName,
           clinicName,
           captureUrl,
-          portalUrl: `${baseUrl}/dashboard/body-assessments`,
+          portalUrl: `${baseUrl}/dashboard`,
         },
         plainMessage: isPt
           ? `Olá ${assessment.patient.firstName}! 📸\n\nSua avaliação corporal está pronta para captura de fotos. Abra o link abaixo no seu celular para tirar as fotos:\n\n${captureUrl}\n\nInstruções:\n• Use roupa justa\n• Local bem iluminado\n• Corpo inteiro visível\n• Tire as 4 fotos (frente, costas, esquerda, direita)\n\nEquipe ${clinicName}`

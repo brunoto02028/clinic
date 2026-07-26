@@ -9,15 +9,15 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-gradient-to-r from-[#4a7c8a] to-[#2c4f58] text-white shadow-md shadow-[#4a7c8a]/20 hover:shadow-lg hover:shadow-[#4a7c8a]/25 hover:-translate-y-0.5",
+          "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md shadow-red-500/20 hover:shadow-lg",
         outline:
-          "border border-[#6ba3b0]/30 bg-transparent text-[#6ba3b0] hover:bg-[#6ba3b0]/10 hover:border-[#6ba3b0]/50 hover:shadow-[0_0_15px_rgba(107,163,176,0.08)] transition-all",
+          "border border-secondary/30 bg-transparent text-secondary hover:bg-secondary/10 hover:border-secondary/50 hover:shadow-[0_0_15px_hsl(var(--secondary)/0.08)] transition-all",
         secondary:
-          "bg-[#4a7c8a]/10 text-[#6ba3b0] border border-[#4a7c8a]/20 hover:bg-[#4a7c8a]/20 hover:border-[#6ba3b0]/40 shadow-sm hover:shadow-md transition-all",
+          "bg-primary/10 text-secondary border border-primary/20 hover:bg-primary/20 hover:border-secondary/40 shadow-sm hover:shadow-md transition-all",
         ghost: "hover:bg-white/5 hover:text-foreground",
-        link: "text-[#6ba3b0] underline-offset-4 hover:underline hover:text-[#8aaab5]",
+        link: "text-secondary underline-offset-4 hover:underline hover:text-secondary/70",
         success:
           "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-500/20 hover:shadow-lg",
         warning:

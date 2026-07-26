@@ -84,7 +84,7 @@ const TEST_CASES: { slug: string; vars: Record<string, string>; locale: string }
     vars: {
       patientName: 'John Smith', assessmentType: 'Body Assessment',
       completedDate: '18 February 2026',
-      portalUrl: `${BASE}/dashboard/body-assessments`, locale: 'en-GB',
+      portalUrl: `${BASE}/dashboard`, locale: 'en-GB',
     },
   },
   {
@@ -109,7 +109,7 @@ const TEST_CASES: { slug: string; vars: Record<string, string>; locale: string }
     locale: 'pt-BR',
     vars: {
       patientName: 'João Silva',
-      portalUrl: `${BASE}/dashboard/body-assessments`, locale: 'pt-BR',
+      portalUrl: `${BASE}/dashboard`, locale: 'pt-BR',
     },
   },
   {
@@ -117,7 +117,7 @@ const TEST_CASES: { slug: string; vars: Record<string, string>; locale: string }
     locale: 'en-GB',
     vars: {
       patientName: 'John Smith',
-      portalUrl: `${BASE}/dashboard/scans`, locale: 'en-GB',
+      portalUrl: `${BASE}/dashboard`, locale: 'en-GB',
     },
   },
   {

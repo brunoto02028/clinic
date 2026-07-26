@@ -834,7 +834,7 @@ export async function POST(
           type: 'ANALYSIS_READY',
           title: 'Posture Analysis Ready!',
           message: 'Your posture assessment has been analysed. View your results now!',
-          actionUrl: `/dashboard/body-assessments`,
+          actionUrl: `/dashboard`,
           metadata: { assessmentId: updated.id, assessmentNumber: updated.assessmentNumber },
         });
 
@@ -846,7 +846,7 @@ export async function POST(
             data: {
               firstName: updated.patient.firstName,
               scanNumber: updated.assessmentNumber,
-              scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/body-assessments`,
+              scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
             },
           });
         }

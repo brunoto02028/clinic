@@ -16,8 +16,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/services/electrotherapy`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/services/therapeutic-ultrasound`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/services/exercise-therapy`, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${BASE_URL}/biomechanical-assessment`, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${BASE_URL}/custom-insoles`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/help`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE_URL}/privacy`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${BASE_URL}/terms`, changeFrequency: "yearly", priority: 0.2 },

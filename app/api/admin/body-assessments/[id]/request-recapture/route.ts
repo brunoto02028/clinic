@@ -87,7 +87,7 @@ export async function POST(
             ? "Por favor, siga as instruções na tela ao tirar as fotos. Certifique-se de que o corpo inteiro esteja visível, boa iluminação e fundo neutro."
             : "Please follow the on-screen instructions when taking photos. Ensure your full body is visible, good lighting, and neutral background."),
           captureUrl,
-          portalUrl: `${baseUrl}/dashboard/body-assessments`,
+          portalUrl: `${baseUrl}/dashboard`,
         },
         plainMessage: isPt
           ? `Olá ${assessment.patient.firstName}, precisamos que você refaça algumas fotos da sua avaliação corporal (${viewList}). Motivo: ${reason || "Melhoria na qualidade"}. Acesse o link para enviar novas fotos: ${captureUrl}`

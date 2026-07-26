@@ -81,7 +81,6 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     matchRoutes: [
       "/dashboard/education",
       "/dashboard/guide",
-      "/dashboard/insole-guide",
       "/dashboard/community",
     ],
   },

@@ -68,7 +68,7 @@ export function ShareReportDialog({
   };
 
   const handleWhatsApp = () => {
-    const url = `${window.location.origin}/dashboard/body-assessments`;
+    const url = `${window.location.origin}/dashboard`;
     const msg = locale === "pt-BR"
       ? `Olá ${a.patient?.firstName}! Sua avaliação biomecânica (${a.assessmentNumber}) está pronta. Acesse seu portal para ver o relatório completo: ${url}`
       : `Hello ${a.patient?.firstName}! Your biomechanical assessment (${a.assessmentNumber}) is ready. Access your portal to see the full report: ${url}`;

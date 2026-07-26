@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Logo } from "@/components/ui/logo";
+import { AuthPageHeader } from "@/components/auth/auth-page-header";
 import { useLocale } from "@/hooks/use-locale";
 
 export default function StaffLoginPageWrapper() {
@@ -23,7 +23,7 @@ export default function StaffLoginPageWrapper() {
 function StaffLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { locale, toggleLocale, t: T } = useLocale();
+  const { locale } = useLocale();
   const isPt = locale === "pt-BR";
 
   const [mounted, setMounted] = useState(false);
@@ -97,25 +97,7 @@ function StaffLoginPage() {
 
   return (
     <div className="public-site min-h-screen bg-background flex flex-col">
-      {/* Minimal header with logo + locale toggle */}
-      <header className="p-4 sm:p-6 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <Logo
-          logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
-          darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
-          size="md"
-          linkTo="/"
-        />
-        <div className="flex items-center gap-0.5 bg-slate-100 rounded-md p-0.5">
-          <button
-            onClick={() => { if (locale !== "en-GB") toggleLocale(); }}
-            className={`text-[10px] font-medium px-2 py-1 rounded transition-colors ${locale === "en-GB" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >EN</button>
-          <button
-            onClick={() => { if (locale !== "pt-BR") toggleLocale(); }}
-            className={`text-[10px] font-medium px-2 py-1 rounded transition-colors ${locale === "pt-BR" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >PT</button>
-        </div>
-      </header>
+      <AuthPageHeader settings={settings} />
 
       {/* Main content */}
       <main className="flex-1 flex items-center justify-center p-4 pb-12">

@@ -118,60 +118,6 @@ const SERVICE_DATA: Record<string, ServiceData> = {
       pt: "Exercícios em casa: Diários | Sessões na clínica: 1-2 vezes por semana | Orientação remota disponível",
     },
   },
-  "foot-scan": {
-    slug: "foot-scan",
-    icon: Footprints,
-    color: "bg-blue-100 text-blue-700",
-    titleKey: "svc.footScan",
-    descKey: "svc.footScanDesc",
-    benefits: [
-      { en: "Detailed pressure mapping of both feet", pt: "Mapeamento detalhado de pressão de ambos os pés" },
-      { en: "Gait analysis to identify movement abnormalities", pt: "Análise de marcha para identificar anormalidades de movimento" },
-      { en: "Detection of arch problems (flat feet, high arches)", pt: "Detecção de problemas de arco (pé plano, arco alto)" },
-      { en: "Weight distribution analysis", pt: "Análise de distribuição de peso" },
-      { en: "Pronation and supination assessment", pt: "Avaliação de pronação e supinação" },
-      { en: "Digital report stored in your patient record", pt: "Relatório digital armazenado no seu prontuário" },
-    ],
-    whoIsItFor: {
-      en: "Foot scan analysis is recommended for patients with foot pain, knee problems, hip issues, or lower back pain that may originate from biomechanical imbalances in the feet. It is also valuable for runners and athletes seeking to optimise performance.",
-      pt: "A análise de escaneamento do pé é recomendada para pacientes com dor no pé, problemas no joelho, problemas no quadril ou dor lombar que podem ter origem em desequilíbrios biomecânicos nos pés. Também é valiosa para corredores e atletas que buscam otimizar o desempenho.",
-    },
-    howItWorks: {
-      en: "You stand on our digital pressure plate while our system captures detailed readings of your foot pressure distribution. The scan takes just a few minutes and produces a comprehensive colour-coded map showing pressure points, arch height, and weight distribution. Results are analysed alongside your biomechanical assessment to create a complete picture of your lower limb function.",
-      pt: "Você fica de pé em nossa placa de pressão digital enquanto nosso sistema captura leituras detalhadas da distribuição de pressão do seu pé. O escaneamento leva apenas alguns minutos e produz um mapa abrangente codificado por cores mostrando pontos de pressão, altura do arco e distribuição de peso. Os resultados são analisados junto com sua avaliação biomecânica para criar uma imagem completa da função dos membros inferiores.",
-    },
-    sessionInfo: {
-      en: "Duration: 15-20 minutes | Single session | In-clinic only",
-      pt: "Duração: 15-20 minutos | Sessão única | Somente na clínica",
-    },
-  },
-  "biomechanical-assessment": {
-    slug: "biomechanical-assessment",
-    icon: ScanLine,
-    color: "bg-purple-100 text-purple-700",
-    titleKey: "svc.biomechanical",
-    descKey: "svc.biomechanicalDesc",
-    benefits: [
-      { en: "Full-body posture analysis with AI technology", pt: "Análise postural completa com tecnologia de IA" },
-      { en: "Joint mobility and range of motion testing", pt: "Teste de mobilidade articular e amplitude de movimento" },
-      { en: "Muscle strength and balance assessment", pt: "Avaliação de força muscular e equilíbrio" },
-      { en: "Movement pattern analysis", pt: "Análise de padrões de movimento" },
-      { en: "Identification of root cause of dysfunction", pt: "Identificação da causa raiz da disfunção" },
-      { en: "Digital body maps with angle measurements", pt: "Mapas corporais digitais com medições de ângulos" },
-    ],
-    whoIsItFor: {
-      en: "The biomechanical assessment is ideal for anyone with persistent pain, postural problems, recurrent injuries, or those wanting a comprehensive understanding of how their body moves. Athletes use it to identify areas of weakness or imbalance that may affect performance.",
-      pt: "A avaliação biomecânica é ideal para qualquer pessoa com dor persistente, problemas posturais, lesões recorrentes ou que deseja uma compreensão abrangente de como seu corpo se move. Atletas a utilizam para identificar áreas de fraqueza ou desequilíbrio que podem afetar o desempenho.",
-    },
-    howItWorks: {
-      en: "Using our AI-powered pose detection system, we capture multi-angle images of your body (front, back, left, right). The system automatically calculates joint angles, plumb line deviations, and symmetry scores. Your therapist then performs manual tests for strength, mobility, and specific clinical assessments. All data feeds into your treatment protocol.",
-      pt: "Usando nosso sistema de detecção de pose por IA, capturamos imagens multi-angulares do seu corpo (frente, costas, esquerda, direita). O sistema calcula automaticamente ângulos articulares, desvios da linha de prumo e pontuações de simetria. Seu terapeuta então realiza testes manuais de força, mobilidade e avaliações clínicas específicas. Todos os dados alimentam seu protocolo de tratamento.",
-    },
-    sessionInfo: {
-      en: "Duration: 45-60 minutes | Single comprehensive session | In-clinic only",
-      pt: "Duração: 45-60 minutos | Sessão única abrangente | Somente na clínica",
-    },
-  },
   "therapeutic-ultrasound": {
     slug: "therapeutic-ultrasound",
     icon: Waves,

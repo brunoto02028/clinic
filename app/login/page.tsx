@@ -2,8 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth-options";
 import LoginForm from "@/components/auth/login-form";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
+import { AuthPageHeader } from "@/components/auth/auth-page-header";
 import { NativeLoginShell } from "@/components/auth/native-login-shell";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
 
@@ -26,11 +25,15 @@ export default async function LoginPage() {
     <NativeLoginShell
       webShell={
         <div className="public-site min-h-screen bg-background flex flex-col">
-          <SiteHeader currentPage="other" initialSettings={settings} />
-          <main className="flex-1 flex items-center justify-center p-4 py-8">
+          <AuthPageHeader settings={settings} />
+          <main className="flex-1 flex items-center justify-center p-4 pb-12">
             <LoginForm />
           </main>
-          <SiteFooter />
+          <footer className="p-4 text-center">
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Bruno Physical Rehabilitation
+            </p>
+          </footer>
         </div>
       }
     >

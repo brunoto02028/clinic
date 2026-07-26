@@ -527,8 +527,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 bg: "bg-blue-50 text-blue-600",
                 titleEn: "Global Assessment",
                 titlePt: "Avaliação Global",
-                descEn: "Full-body evaluation using infrared thermography, biomechanical analysis, digital foot scan, and HRV — to identify the true root cause of your condition.",
-                descPt: "Avaliação completa com termografia infravermelha, análise biomecânica, scan digital do pé e HRV — para identificar a verdadeira causa do problema.",
+                descEn: "Full-body evaluation using infrared thermography and HRV — to identify the true root cause of your condition.",
+                descPt: "Avaliação completa com termografia infravermelha e HRV — para identificar a verdadeira causa do problema.",
               },
               {
                 num: "02",
@@ -604,13 +604,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         try { mls = settings?.mlsLaserJson ? JSON.parse(settings.mlsLaserJson) : {}; } catch {}
         const mlsTreatImg = validImg(mls.treatmentImageUrl) || validImg(mls.deviceImageUrl);
         const thermoImg   = validImg(settings?.thermoImageUrl as string | null);
-        const bioImg      = validImg(settings?.bioImageUrl as string | null);
 
         const phases = [
           {
             key: "assess",
             step: "01",
-            img: thermoImg || bioImg,
+            img: thermoImg,
             fallbackImg: "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800&q=80",
             gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
             accent: "bg-blue-400/20 border-blue-300/40 text-blue-200",
@@ -620,10 +619,10 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             tagPt: "Passo 01",
             titleEn: "We understand your body",
             titlePt: "Percebemos o teu corpo",
-            descEn: "A complete 360° assessment — thermography, biomechanical analysis, digital foot scan and HRV — to find the real cause, not just the symptom.",
-            descPt: "Uma avaliação 360° completa — termografia, análise biomecânica, scan do pé e HRV — para encontrar a causa real, não apenas o sintoma.",
-            techEn: "Thermography · Biomechanics · HRV",
-            techPt: "Termografia · Biomecânica · HRV",
+            descEn: "A complete 360° assessment — thermography and HRV — to find the real cause, not just the symptom.",
+            descPt: "Uma avaliação 360° completa — termografia e HRV — para encontrar a causa real, não apenas o sintoma.",
+            techEn: "Thermography · HRV",
+            techPt: "Termografia · HRV",
           },
           {
             key: "treat",
@@ -751,8 +750,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   {([
                     { icon: CircleDot,   en: "MLS® Laser Mphi 75",        pt: "Laser MLS® Mphi 75",        href: "/services/mls-laser" },
                     { icon: Thermometer, en: "Infrared Thermography",      pt: "Termografia Infravermelha",  href: "/services/mls-laser" },
-                    { icon: ScanLine,    en: "Biomechanical Analysis",     pt: "Análise Biomecânica",        href: "/biomechanical-assessment" },
-                    { icon: Footprints,  en: "Digital Foot Scan",          pt: "Scan Digital do Pé",         href: "/custom-insoles" },
                     { icon: HeartPulse,  en: "HRV Monitoring",             pt: "Monitorização HRV",          href: "/services/hrv-recovery-monitoring" },
                     { icon: Zap,         en: "Advanced Electrotherapy",    pt: "Eletroterapia Avançada",     href: "/services/electrotherapy" },
                     { icon: Waves,       en: "Therapeutic Ultrasound",     pt: "Ultrassom Terapêutico",      href: "/services/therapeutic-ultrasound" },
@@ -798,8 +795,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 accent: "from-primary to-cyan-400",
                 titleEn: "Root cause, not symptoms",
                 titlePt: "Causa raiz, não sintomas",
-                descEn: "We use thermography, biomechanical analysis and HRV to understand why the problem exists — not just where it hurts. We treat the source.",
-                descPt: "Usamos termografia, análise biomecânica e HRV para perceber por que o problema existe — não apenas onde dói. Tratamos a origem.",
+                descEn: "We use thermography and HRV to understand why the problem exists — not just where it hurts. We treat the source.",
+                descPt: "Usamos termografia e HRV para perceber por que o problema existe — não apenas onde dói. Tratamos a origem.",
               },
               {
                 icon: Users,
@@ -1045,7 +1042,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <div className="lg:col-span-1">
                   {settings && (
                     <div className="mb-4">
-                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="md" linkTo="/" />
+                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="lg" linkTo="/" />
                     </div>
                   )}
                   <p className="text-slate-400 text-sm leading-relaxed mb-5">
@@ -1106,7 +1103,6 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   <ul className="space-y-3">
                     {[
                       { labelEn: "MLS® Laser Therapy",       labelPt: "Laser MLS®",                 href: "/services/mls-laser" },
-                      { labelEn: "Biomechanical Assessment",  labelPt: "Avaliação Biomecânica",      href: "/biomechanical-assessment" },
                       { labelEn: "Biohacking & Performance",  labelPt: "Biohacking & Performance",   href: "/services/biohacking-performance" },
                       { labelEn: "HRV & Recovery",            labelPt: "HRV & Recuperação",          href: "/services/hrv-recovery-monitoring" },
                       { labelEn: "Sleep & Longevity",         labelPt: "Sono & Longevidade",         href: "/services/sleep-longevity-optimisation" },

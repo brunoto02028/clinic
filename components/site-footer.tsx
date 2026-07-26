@@ -64,7 +64,7 @@ export function SiteFooter() {
                 <Logo
                   logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl}
                   darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl}
-                  size="md"
+                  size="lg"
                   linkTo="/"
                 />
               </div>
@@ -121,7 +121,6 @@ export function SiteFooter() {
             <ul className="space-y-3">
               {[
                 { labelEn: "MLS® Laser Therapy",       labelPt: "Laser MLS®",                 href: "/services/mls-laser" },
-                { labelEn: "Biomechanical Assessment",  labelPt: "Avaliação Biomecânica",      href: "/biomechanical-assessment" },
                 { labelEn: "Biohacking & Performance",  labelPt: "Biohacking & Performance",   href: "/services/biohacking-performance" },
                 { labelEn: "HRV & Recovery",            labelPt: "HRV & Recuperação",          href: "/services/hrv-recovery-monitoring" },
                 { labelEn: "Sleep & Longevity",         labelPt: "Sono & Longevidade",         href: "/services/sleep-longevity-optimisation" },

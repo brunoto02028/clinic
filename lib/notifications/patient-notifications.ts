@@ -67,7 +67,7 @@ export async function notifyScanReceived(patientId: string, scanId: string, scan
     type: 'SCAN_RECEIVED',
     title: '✅ Scan Recebido',
     message: 'Suas imagens foram recebidas com sucesso. Estamos analisando agora!',
-    actionUrl: `/dashboard/scans/${scanId}`,
+    actionUrl: `/dashboard`,
     metadata: { scanId, scanNumber },
   });
 
@@ -79,7 +79,7 @@ export async function notifyScanReceived(patientId: string, scanId: string, scan
     data: {
       firstName: patient.firstName,
       scanNumber,
-      scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/scans/${scanId}`,
+      scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
     },
   });
 
@@ -103,7 +103,7 @@ export async function notifyAnalysisReady(patientId: string, scanId: string, sca
     type: 'ANALYSIS_READY',
     title: '🎉 Resultados Prontos!',
     message: 'Sua análise biomecânica está completa. Veja seus resultados agora!',
-    actionUrl: `/dashboard/scans/${scanId}`,
+    actionUrl: `/dashboard`,
     metadata: { scanId, scanNumber },
   });
 
@@ -115,7 +115,7 @@ export async function notifyAnalysisReady(patientId: string, scanId: string, sca
     data: {
       firstName: patient.firstName,
       scanNumber,
-      scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/scans/${scanId}`,
+      scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
     },
   });
 
@@ -148,7 +148,7 @@ export async function notifyInProduction(
     type: 'IN_PRODUCTION',
     title: '🔄 Em Produção',
     message: `Suas palmilhas estão sendo fabricadas! Previsão: ${estimatedDate}`,
-    actionUrl: `/dashboard/scans/${scanId}`,
+    actionUrl: `/dashboard`,
     metadata: { scanId, scanNumber, estimatedDelivery },
   });
 
@@ -161,7 +161,7 @@ export async function notifyInProduction(
       firstName: patient.firstName,
       scanNumber,
       estimatedDate,
-      scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/scans/${scanId}`,
+      scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
     },
   });
 
@@ -185,7 +185,7 @@ export async function notifyReadyForPickup(patientId: string, scanId: string, sc
     type: 'READY_FOR_PICKUP',
     title: '🎉 Pronto para Retirar!',
     message: 'Suas palmilhas estão prontas! Você pode retirá-las na clínica.',
-    actionUrl: `/dashboard/scans/${scanId}`,
+    actionUrl: `/dashboard`,
     metadata: { scanId, scanNumber },
   });
 
@@ -199,7 +199,7 @@ export async function notifyReadyForPickup(patientId: string, scanId: string, sc
       scanNumber,
       clinicAddress: 'BPR Clinic - Ipswich',
       clinicHours: 'Segunda a Sexta: 9h - 18h',
-      scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/scans/${scanId}`,
+      scanUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
     },
   });
 

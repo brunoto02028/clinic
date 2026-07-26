@@ -680,7 +680,7 @@ const translations: Record<string, Record<Locale, string>> = {
 
   // ─── Exercise Library Admin ───
   "exercises.title": { "en-GB": "Exercise Library", "pt-BR": "Biblioteca de Exercícios" },
-  "exercises.subtitle": { "en-GB": "Upload exercise videos, organize by body region, and prescribe to patients", "pt-BR": "Envie vídeos de exercícios, organize por região do corpo e prescreva para pacientes" },
+  "exercises.subtitle": { "en-GB": "Upload exercise videos, organise by body region, and prescribe to patients", "pt-BR": "Envie vídeos de exercícios, organize por região do corpo e prescreva para pacientes" },
   "exercises.bulkUpload": { "en-GB": "Bulk Upload", "pt-BR": "Envio em Lote" },
   "exercises.addExercise": { "en-GB": "Add Exercise", "pt-BR": "Adicionar Exercício" },
   "exercises.searchPlaceholder": { "en-GB": "Search exercises...", "pt-BR": "Buscar exercícios..." },

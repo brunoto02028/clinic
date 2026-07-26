@@ -1,120 +1,70 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, Search, BookOpen, Video, FileText, HelpCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { ChevronDown, Search, BookOpen, HelpCircle, Calendar, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useLocale } from "@/hooks/use-locale";
 
-const getFaqs = (isPt: boolean) => [
+type FaqQuestion = { q: string; a: string; link?: { href: string; label: string } };
+type FaqCategory = { category: string; icon: any; questions: FaqQuestion[] };
+
+const getFaqs = (isPt: boolean): FaqCategory[] => [
   {
-    category: isPt ? "Primeiros Passos" : "Getting Started",
-    icon: BookOpen,
+    category: isPt ? "Marcações e Primeiros Passos" : "Bookings & Getting Started",
+    icon: Calendar,
     questions: [
       {
-        q: isPt ? "Como faço upload de um scan do pé?" : "How do I upload a foot scan?",
-        a: isPt 
-          ? "1. Vá para 'Pacientes' no menu\n2. Selecione o paciente\n3. Clique em 'Novo Scan'\n4. Arraste o arquivo 3D ou clique para selecionar\n5. Aguarde o processamento (30-60 segundos)"
-          : "1. Go to 'Patients' in the menu\n2. Select the patient\n3. Click 'New Scan'\n4. Drag the 3D file or click to select\n5. Wait for processing (30-60 seconds)",
-        video: "/videos/upload-scan.mp4"
+        q: isPt ? "Como marco a minha primeira consulta?" : "How do I book my first appointment?",
+        a: isPt
+          ? "Clica em 'Iniciar o Meu Programa' em qualquer página do site, ou contacta-nos diretamente. A nossa equipa entra em contacto para agendar a tua primeira consulta."
+          : "Click 'Start Your Programme' on any page of the site, or contact us directly. Our team will get in touch to schedule your first appointment.",
       },
       {
-        q: isPt ? "Quanto tempo leva para processar um scan?" : "How long does it take to process a scan?",
+        q: isPt ? "O que esperar na minha primeira consulta?" : "What should I expect at my first appointment?",
         a: isPt
-          ? "O processamento geralmente leva entre 30 a 60 segundos, dependendo do tamanho do arquivo e complexidade do scan. Você receberá uma notificação quando estiver pronto."
-          : "Processing typically takes 30 to 60 seconds, depending on file size and scan complexity. You'll receive a notification when it's ready.",
-      },
-      {
-        q: isPt ? "Quais formatos de arquivo são suportados?" : "What file formats are supported?",
-        a: isPt
-          ? "Aceitamos arquivos 3D nos formatos:\n• .OBJ (recomendado)\n• .STL\n• .GLB\n• .FBX\n\nTamanho máximo: 50MB por arquivo"
-          : "We accept 3D files in the following formats:\n• .OBJ (recommended)\n• .STL\n• .GLB\n• .FBX\n\nMaximum size: 50MB per file",
-      },
-    ],
-  },
-  {
-    category: isPt ? "Palmilhas" : "Insoles",
-    icon: FileText,
-    questions: [
-      {
-        q: isPt ? "Como gero palmilhas customizadas?" : "How do I generate custom insoles?",
-        a: isPt
-          ? "1. Após o scan ser processado, clique em 'Gerar Palmilhas'\n2. Revise as medidas biomecânicas\n3. Ajuste se necessário\n4. Clique em 'Confirmar e Gerar'\n5. Aguarde a geração (15-30 segundos)\n6. Baixe os arquivos STL para impressão 3D"
-          : "1. After the scan is processed, click 'Generate Insoles'\n2. Review the biomechanical measurements\n3. Adjust if necessary\n4. Click 'Confirm and Generate'\n5. Wait for generation (15-30 seconds)\n6. Download STL files for 3D printing",
-      },
-      {
-        q: isPt ? "Posso ajustar as palmilhas manualmente?" : "Can I adjust the insoles manually?",
-        a: isPt
-          ? "Sim! Após a geração automática, você pode:\n• Ajustar altura do arco\n• Modificar suporte do calcanhar\n• Alterar densidade do material\n• Adicionar correções específicas\n\nTodas as mudanças são salvas automaticamente."
-          : "Yes! After automatic generation, you can:\n• Adjust arch height\n• Modify heel support\n• Change material density\n• Add specific corrections\n\nAll changes are saved automatically.",
-      },
-      {
-        q: isPt ? "Como envio as palmilhas para o paciente?" : "How do I send the insoles to the patient?",
-        a: isPt
-          ? "1. Após gerar, clique em 'Compartilhar com Paciente'\n2. O paciente receberá um email com link\n3. Ele pode visualizar em 3D no navegador\n4. Pode baixar os arquivos se autorizado\n5. Você pode revogar acesso a qualquer momento"
-          : "1. After generating, click 'Share with Patient'\n2. The patient will receive an email with a link\n3. They can view in 3D in the browser\n4. Can download files if authorized\n5. You can revoke access at any time",
+          ? "A tua primeira consulta é feita presencialmente com o teu terapeuta, que avalia a tua condição e define o plano de tratamento mais adequado. Antes da consulta, vamos pedir-te para completares um breve questionário de triagem médica no teu portal."
+          : "Your first appointment is carried out in person with your therapist, who assesses your condition and defines the most suitable treatment plan. Ahead of your appointment, we'll ask you to complete a short medical screening questionnaire in your portal.",
       },
     ],
   },
   {
     category: isPt ? "Portal do Paciente" : "Patient Portal",
-    icon: HelpCircle,
+    icon: BookOpen,
     questions: [
       {
-        q: isPt ? "Como o paciente acessa seus scans?" : "How does the patient access their scans?",
+        q: isPt ? "Como acedo ao portal do paciente?" : "How do I access the patient portal?",
         a: isPt
-          ? "O paciente recebe um email com link único e seguro. Não precisa criar conta. Pode visualizar:\n• Scans 3D interativos\n• Timeline de progresso\n• Análise biomecânica\n• Recomendações\n\nO link expira após 30 dias por segurança."
-          : "The patient receives an email with a unique and secure link. No account needed. They can view:\n• Interactive 3D scans\n• Progress timeline\n• Biomechanical analysis\n• Recommendations\n\nThe link expires after 30 days for security.",
+          ? "A tua conta é criada pela nossa equipa. Vais receber um email de convite para definires a tua palavra-passe e entrares no portal."
+          : "Your account is created by our team. You'll receive an email invite to set your password and log in to the portal.",
       },
       {
-        q: isPt ? "O paciente pode baixar os arquivos?" : "Can the patient download the files?",
+        q: isPt ? "O que posso ver no portal?" : "What can I see in the portal?",
         a: isPt
-          ? "Depende da sua configuração:\n• Visualização: Sempre permitida\n• Download: Você controla\n• Compartilhamento: Você controla\n\nVá em Configurações > Privacidade para ajustar."
-          : "It depends on your settings:\n• Viewing: Always allowed\n• Download: You control\n• Sharing: You control\n\nGo to Settings > Privacy to adjust.",
+          ? "Consultas, o teu histórico clínico, plano de exercícios, artigos educativos e as tuas mensagens com a clínica — tudo num só lugar."
+          : "Appointments, your clinical history, exercise plan, educational articles and your messages with the clinic — all in one place.",
+      },
+      {
+        q: isPt ? "Esqueci a minha palavra-passe" : "I forgot my password",
+        a: isPt
+          ? "Clica em 'Esqueci a minha palavra-passe' na página de login, introduz o teu email e segue o link que recebes (válido por 1 hora) para criares uma nova."
+          : "Click 'Forgot password' on the login page, enter your email, and follow the link you receive (valid for 1 hour) to set a new one.",
       },
     ],
   },
   {
-    category: isPt ? "Análise Biomecânica" : "Biomechanical Analysis",
-    icon: Video,
+    category: isPt ? "Consultas e Cancelamentos" : "Appointments & Cancellations",
+    icon: RefreshCw,
     questions: [
       {
-        q: isPt ? "O que significa 'Arch Index'?" : "What does 'Arch Index' mean?",
+        q: isPt ? "Como cancelo ou remarco uma consulta?" : "How do I cancel or reschedule an appointment?",
         a: isPt
-          ? "Arch Index é a razão entre a área do mediopé e a área total do pé:\n• Normal: 0.21 - 0.26\n• Pé Plano: > 0.26\n• Arco Alto: < 0.21\n\nÉ calculado automaticamente pelo nosso algoritmo de IA."
-          : "Arch Index is the ratio between the midfoot area and the total foot area:\n• Normal: 0.21 - 0.26\n• Flat Foot: > 0.26\n• High Arch: < 0.21\n\nIt's calculated automatically by our AI algorithm.",
-      },
-      {
-        q: isPt ? "Como interpreto o mapa de pressão?" : "How do I interpret the pressure map?",
-        a: isPt
-          ? "O mapa de pressão mostra distribuição de força:\n• Vermelho: Alta pressão (>100 kPa)\n• Amarelo: Pressão média (50-100 kPa)\n• Verde: Pressão baixa (<50 kPa)\n• Azul: Sem contato\n\nÁreas vermelhas indicam pontos de atenção."
-          : "The pressure map shows force distribution:\n• Red: High pressure (>100 kPa)\n• Yellow: Medium pressure (50-100 kPa)\n• Green: Low pressure (<50 kPa)\n• Blue: No contact\n\nRed areas indicate points of attention.",
-      },
-    ],
-  },
-  {
-    category: isPt ? "Problemas Comuns" : "Common Issues",
-    icon: HelpCircle,
-    questions: [
-      {
-        q: isPt ? "O scan não está processando" : "The scan is not processing",
-        a: isPt
-          ? "Verifique:\n1. Arquivo está no formato correto (.obj, .stl, .glb)\n2. Tamanho é menor que 50MB\n3. Conexão com internet está estável\n4. Tente fazer upload novamente\n\nSe persistir, contate suporte."
-          : "Check:\n1. File is in the correct format (.obj, .stl, .glb)\n2. Size is less than 50MB\n3. Internet connection is stable\n4. Try uploading again\n\nIf it persists, contact support.",
-      },
-      {
-        q: isPt ? "Esqueci minha senha" : "I forgot my password",
-        a: isPt
-          ? "1. Clique em 'Esqueci minha senha' no login\n2. Digite seu email\n3. Verifique sua caixa de entrada\n4. Clique no link recebido (válido por 1 hora)\n5. Crie nova senha\n\nSe não receber o email, verifique spam."
-          : "1. Click 'Forgot password' on login\n2. Enter your email\n3. Check your inbox\n4. Click the link received (valid for 1 hour)\n5. Create new password\n\nIf you don't receive the email, check spam.",
-      },
-      {
-        q: isPt ? "Como cancelo minha assinatura?" : "How do I cancel my subscription?",
-        a: isPt
-          ? "1. Vá em Configurações > Assinatura\n2. Clique em 'Gerenciar Assinatura'\n3. Selecione 'Cancelar'\n4. Confirme o cancelamento\n\nVocê terá acesso até o fim do período pago."
-          : "1. Go to Settings > Subscription\n2. Click 'Manage Subscription'\n3. Select 'Cancel'\n4. Confirm cancellation\n\nYou'll have access until the end of the paid period.",
+          ? "Consulta a nossa Política de Cancelamento e Reembolso para todos os detalhes, ou contacta-nos diretamente para remarcar."
+          : "Please check our Cancellation & Refund Policy for full details, or contact us directly to reschedule.",
+        link: { href: "/cancellation-policy", label: isPt ? "Ver Política de Cancelamento" : "View Cancellation Policy" },
       },
     ],
   },
@@ -125,6 +75,14 @@ export default function HelpPage() {
   const isPt = locale === "pt-BR";
   const [searchQuery, setSearchQuery] = useState("");
   const [openItems, setOpenItems] = useState<string[]>([]);
+  const [settings, setSettings] = useState<{ whatsappEnabled?: boolean; whatsappNumber?: string; whatsappMessage?: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setSettings(d))
+      .catch(() => {});
+  }, []);
 
   const toggleItem = (id: string) => {
     setOpenItems(prev =>
@@ -144,11 +102,10 @@ export default function HelpPage() {
   })).filter(category => category.questions.length > 0);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-12">
+    <div className="max-w-4xl mx-auto px-4 py-12 w-full">
           {/* Header */}
           <div className="text-center mb-12">
-          <h1 className="font-sora text-4xl font-bold mb-4 tracking-tight">{isPt ? "Central de Ajuda" : "Help Center"}</h1>
+          <h1 className="font-sora text-4xl font-bold mb-4 tracking-tight">{isPt ? "Central de Ajuda" : "Help Centre"}</h1>
           <p className="text-muted-foreground text-lg mb-8">
             {isPt ? "Encontre respostas para suas dúvidas" : "Find answers to your questions"}
           </p>
@@ -164,33 +121,6 @@ export default function HelpPage() {
               className="pl-10 py-6 text-lg"
             />
           </div>
-        </div>
-
-        {/* Quick Links */}
-        <div className="grid md:grid-cols-3 gap-4 mb-12">
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <Video className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle className="text-lg">{isPt ? "Vídeos Tutoriais" : "Video Tutorials"}</CardTitle>
-              <CardDescription>{isPt ? "Aprenda assistindo" : "Learn by watching"}</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <BookOpen className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle className="text-lg">{isPt ? "Guia Completo" : "Complete Guide"}</CardTitle>
-              <CardDescription>{isPt ? "Documentação detalhada" : "Detailed documentation"}</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <HelpCircle className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle className="text-lg">{isPt ? "Contato" : "Contact"}</CardTitle>
-              <CardDescription>{isPt ? "Fale com suporte" : "Talk to support"}</CardDescription>
-            </CardHeader>
-          </Card>
         </div>
 
         {/* FAQs */}
@@ -230,10 +160,9 @@ export default function HelpPage() {
                             <p className="text-muted-foreground whitespace-pre-line">
                               {faq.a}
                             </p>
-                            {faq.video && (
-                              <Button variant="link" className="mt-4 p-0">
-                                <Video className="h-4 w-4 mr-2" />
-                                {isPt ? "Ver vídeo tutorial" : "Watch video tutorial"}
+                            {faq.link && (
+                              <Button variant="link" className="mt-2 p-0 h-auto" asChild>
+                                <Link href={faq.link.href}>{faq.link.label} →</Link>
                               </Button>
                             )}
                           </CardContent>
@@ -268,13 +197,24 @@ export default function HelpPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4">
-              <Button>{isPt ? "Enviar Mensagem" : "Send Message"}</Button>
-              <Button variant="outline">{isPt ? "Agendar Chamada" : "Schedule Call"}</Button>
+            <div className="flex flex-wrap gap-4">
+              {settings?.whatsappEnabled && settings?.whatsappNumber && (
+                <Button asChild>
+                  <a
+                    href={`https://wa.me/${settings.whatsappNumber.replace(/\D/g, "")}${settings.whatsappMessage ? `?text=${encodeURIComponent(settings.whatsappMessage)}` : ""}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {isPt ? "Enviar Mensagem" : "Send Message"}
+                  </a>
+                </Button>
+              )}
+              <Button variant="outline" asChild>
+                <Link href="/signup">{isPt ? "Iniciar o Meu Programa" : "Start Your Programme"}</Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }
