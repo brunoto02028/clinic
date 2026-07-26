@@ -18,9 +18,17 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 const GHOST_DARK = "w-full bg-transparent border-white/25 text-background hover:bg-white/10 hover:text-background";
 
+// next/image's optimizer needs an absolute URL here — relative/local paths
+// fail ("not a valid image") behind Render's reverse proxy in production.
+function absoluteImageUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  return url.startsWith("http") ? url : `https://bpr.rehab${url}`;
+}
+
 export function StartLanding({ settings }: { settings: StartPageSettings }) {
   const { locale, setLocale } = useLocale();
   const isPt = locale === "pt-BR";
+  const aboutImage = absoluteImageUrl(settings?.aboutImageUrl);
 
   const waHref =
     settings?.whatsappEnabled && settings?.whatsappNumber
@@ -97,11 +105,11 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
           <div className="pointer-events-none absolute -bottom-24 -right-16 w-72 h-72 rounded-full bg-secondary/20 blur-[90px]" />
 
           <div className="relative z-10">
-            {settings?.aboutImageUrl && (
+            {aboutImage && (
               <div className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-5">
                 <div className="absolute inset-0 rounded-full bg-primary/40 blur-xl scale-110" />
                 <Image
-                  src={settings.aboutImageUrl}
+                  src={aboutImage}
                   alt="Bruno"
                   fill
                   sizes="112px"
@@ -280,9 +288,9 @@ export function StartLanding({ settings }: { settings: StartPageSettings }) {
               {isPt ? "É isto que significa Curar com Coração, para nós." : "This is what Healing With Heart means to us."}
             </p>
             <div className="flex items-center gap-3 mt-5 pt-5 border-t border-border">
-              {settings?.aboutImageUrl ? (
+              {aboutImage ? (
                 <div className="relative w-11 h-11 rounded-full flex-shrink-0 overflow-hidden">
-                  <Image src={settings.aboutImageUrl} alt="Bruno" fill sizes="44px" className="object-cover" />
+                  <Image src={aboutImage} alt="Bruno" fill sizes="44px" className="object-cover" />
                 </div>
               ) : (
                 <span className="w-11 h-11 rounded-full bg-primary text-white font-sora font-extrabold flex items-center justify-center flex-shrink-0">B</span>
