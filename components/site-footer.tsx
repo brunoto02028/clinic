@@ -52,7 +52,7 @@ export function SiteFooter() {
     : dayOrder.map((d,i) => ({ day: d, dayOfWeek: i, open: "09:00", close: "18:00", closed: d === "Sunday" }));
 
   return (
-    <footer className="bg-slate-900 text-white mt-auto site-footer-web-only">
+    <footer className="bg-[#20242D] text-white mt-auto site-footer-web-only">
       {/* Main footer grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
         <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">

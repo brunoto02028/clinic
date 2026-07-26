@@ -78,6 +78,25 @@ const config: Config = {
           'secondary-light': 'var(--clinic-secondary-light, #7dd4cd)',
           'secondary-dark': 'var(--clinic-secondary-dark, #4ab3ab)',
         },
+        // BA1 Design System v4 — public-site only (Home, Articles, Services, etc.)
+        ba1: {
+          ink: '#20242D',
+          'ink-2': '#3A4150',
+          bone: '#F5F4F1',
+          card: '#FFFFFF',
+          line: '#E4E3DF',
+          muted: '#767B85',
+          greige: '#CDC7BE',
+          'greige-press': '#BFB8AD',
+          health: '#4F7361',
+          'health-soft': '#EDF3EF',
+          ok: '#55705F',
+          warn: '#8A6D3B',
+          bad: '#A85A4B',
+        },
+      },
+      fontFamily: {
+        sora: ['var(--font-sora)', 'Sora', 'sans-serif'],
       },
       keyframes: {
         'accordion-down': {

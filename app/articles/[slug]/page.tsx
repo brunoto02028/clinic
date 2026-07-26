@@ -123,7 +123,7 @@ export default async function ArticlePage({ params }: PageProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 lg:p-12">
             <div className="max-w-7xl mx-auto">
-              <LocalizedText as="h1" className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight max-w-4xl" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
+              <LocalizedText as="h1" className="font-sora text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight max-w-4xl tracking-tight" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
             </div>
           </div>
           <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
@@ -139,7 +139,7 @@ export default async function ArticlePage({ params }: PageProps) {
           <article className="min-w-0 overflow-hidden">
             {/* Title (if no cover image) */}
             {!article.imageUrl && (
-              <LocalizedText as="h1" className="text-3xl sm:text-4xl font-bold text-foreground mb-6 leading-tight" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
+              <LocalizedText as="h1" className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-6 leading-tight tracking-tight" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
             )}
 
             {/* Meta bar */}
@@ -301,7 +301,7 @@ export default async function ArticlePage({ params }: PageProps) {
       {relatedArticles.length > 0 && (
         <section className="bg-muted/30 border-t border-border py-12 sm:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-bold text-foreground mb-8">More Articles</h2>
+            <h2 className="font-sora text-2xl font-bold text-foreground mb-8 tracking-tight">More Articles</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {relatedArticles.map((related) => (
                 <Link key={related.id} href={`/articles/${related.slug}`} className="group">

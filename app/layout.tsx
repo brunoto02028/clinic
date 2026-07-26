@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Sora } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import { DynamicFavicon } from "@/components/dynamic-favicon";
@@ -25,6 +25,14 @@ const inter = Inter({
   variable: '--font-inter',
   fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Arial', 'sans-serif'],
   adjustFontFallback: true,
+});
+
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: 'swap',
+  preload: false,
+  variable: '--font-sora',
 });
 
 export const viewport: Viewport = {
@@ -140,7 +148,7 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${inter.className} ${sora.variable}`} suppressHydrationWarning>
         <Suspense fallback={null}>
           <SchemaOrgScript />
         </Suspense>

@@ -101,8 +101,8 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
                 {isPt ? "Staff" : "Staff"}
               </Button>
             </Link>
-            <Link href="/login"><Button variant="outline" className="text-foreground">{isPt ? "Login do Paciente" : "Patient Login"}</Button></Link>
-            <Link href="/signup"><Button className="bg-primary hover:bg-primary/90">{isPt ? "Começar" : "Start Programme"}</Button></Link>
+            <Link href="/login"><Button variant="ba1Outline">{isPt ? "Login do Paciente" : "Patient Login"}</Button></Link>
+            <Link href="/signup"><Button variant="ba1Primary">{isPt ? "Começar" : "Start Programme"}</Button></Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -141,10 +141,10 @@ export function SiteHeader({ currentPage, initialSettings }: SiteHeaderProps) {
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full">{isPt ? "Login do Paciente" : "Patient Login"}</Button>
+                  <Button variant="ba1Outline" className="w-full">{isPt ? "Login do Paciente" : "Patient Login"}</Button>
                 </Link>
                 <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full">{isPt ? "Começar" : "Start Programme"}</Button>
+                  <Button variant="ba1Primary" className="w-full">{isPt ? "Começar" : "Start Programme"}</Button>
                 </Link>
                 <div className="space-y-1 pt-2 border-t border-border">
                   <Link href="/staff-login" onClick={() => setMobileMenuOpen(false)}>

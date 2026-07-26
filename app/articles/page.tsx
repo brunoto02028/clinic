@@ -27,7 +27,7 @@ export default async function ArticlesPage() {
       {/* Hero */}
       <section className="bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-12 sm:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+          <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4 tracking-tight">
             Our Blog & Articles
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -42,7 +42,7 @@ export default async function ArticlesPage() {
             {/* Featured Article */}
             {featured && (
               <Link href={`/articles/${featured.slug}`} className="group block mb-10 sm:mb-14">
-                <article className="grid lg:grid-cols-2 gap-6 lg:gap-10 items-center bg-card rounded-2xl border border-border shadow-sm overflow-hidden hover:shadow-lg transition-shadow">
+                <article className="grid lg:grid-cols-2 gap-6 lg:gap-10 items-center bg-card rounded-2xl border border-border shadow-sm overflow-hidden hover:shadow-lg transition-shadow border-t-[3px] border-t-[#4F7361]">
                   <div className="relative aspect-video lg:aspect-[4/3] bg-muted overflow-hidden">
                     {featured.imageUrl ? (
                       <img
@@ -60,7 +60,7 @@ export default async function ArticlesPage() {
                     <div className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-4">
                       Featured Article
                     </div>
-                    <LocalizedText as="h2" className="text-2xl sm:text-3xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors line-clamp-3 block" en={featured.titleEn} pt={featured.titlePt} fallback={featured.title} />
+                    <LocalizedText as="h2" className="font-sora text-2xl sm:text-3xl font-bold text-foreground mb-3 group-hover:text-primary transition-colors line-clamp-3 block tracking-tight" en={featured.titleEn} pt={featured.titlePt} fallback={featured.title} />
                     {featured.excerpt && (
                       <LocalizedText as="p" className="text-muted-foreground mb-4 line-clamp-3 leading-relaxed" en={featured.excerptEn} pt={featured.excerptPt} fallback={featured.excerpt} />
                     )}
@@ -85,11 +85,11 @@ export default async function ArticlesPage() {
             {/* Rest of articles */}
             {rest.length > 0 && (
               <>
-                <h2 className="text-xl font-bold text-foreground mb-6">All Articles</h2>
+                <h2 className="font-sora text-xl font-bold text-foreground mb-6 tracking-tight">All Articles</h2>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                   {rest.map((article) => (
                     <Link key={article.id} href={`/articles/${article.slug}`} className="group">
-                      <article className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
+                      <article className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col border-t-[3px] border-t-[#4F7361]">
                         <div className="relative aspect-video bg-muted overflow-hidden">
                           {article.imageUrl ? (
                             <img
@@ -104,7 +104,7 @@ export default async function ArticlesPage() {
                           )}
                         </div>
                         <div className="p-5 sm:p-6 flex-1 flex flex-col">
-                          <LocalizedText as="h3" className="font-semibold text-lg text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors block" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
+                          <LocalizedText as="h3" className="font-sora font-semibold text-lg text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors block" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
                           <p className="text-muted-foreground text-sm line-clamp-3 mb-4 flex-1">
                             <LocalizedText en={article.excerptEn} pt={article.excerptPt} fallback={article.excerpt} />
                           </p>

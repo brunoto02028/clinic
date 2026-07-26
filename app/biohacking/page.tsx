@@ -166,7 +166,7 @@ export default function BiohackingPage() {
                 <Sparkles className="h-3 w-3" />
                 {L("IPHM Certified Biohacking Practitioner", "Praticante de Biohacking Certificado IPHM", isPt)}
               </div>
-              <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-6">
+              <h1 className="font-sora text-4xl sm:text-5xl font-extrabold leading-tight mb-6 tracking-tight">
                 {L("Beyond Recovery.", "Além da Recuperação.", isPt)}{" "}
                 <span className="text-violet-400">{L("Feel Better.", "Sinta-se Melhor.", isPt)}</span>{" "}
                 {L("Move Better.", "Mova-se Melhor.", isPt)}{" "}
@@ -249,7 +249,7 @@ export default function BiohackingPage() {
       <section className="py-16 sm:py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold text-foreground mb-3">
+            <h2 className="font-sora text-3xl font-extrabold text-foreground mb-3 tracking-tight">
               {L("Our Biohacking Services", "Os Nossos Serviços de Biohacking", isPt)}
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
@@ -262,7 +262,7 @@ export default function BiohackingPage() {
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {pillars.map((p) => (
-              <Card key={p.title} className="group border border-slate-100 hover:border-primary/30 hover:shadow-lg transition-all duration-300">
+              <Card key={p.title} className="group border border-slate-100 hover:border-primary/30 hover:shadow-lg transition-all duration-300 border-t-[3px] border-t-violet-500">
                 <CardContent className="p-6">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${p.color}`}>
                     <p.icon className="h-6 w-6" />
@@ -286,7 +286,7 @@ export default function BiohackingPage() {
       <section className="py-16 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-extrabold text-foreground mb-3">
+            <h2 className="font-sora text-3xl font-extrabold text-foreground mb-3 tracking-tight">
               {L("How It Works", "Como Funciona", isPt)}
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
@@ -323,7 +323,7 @@ export default function BiohackingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-extrabold text-foreground mb-4">
+              <h2 className="font-sora text-3xl font-extrabold text-foreground mb-4 tracking-tight">
                 {L("Why BPR for Biohacking?", "Porquê a BPR para Biohacking?", isPt)}
               </h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
@@ -371,7 +371,7 @@ export default function BiohackingPage() {
       <section className="py-16 bg-gradient-to-br from-violet-950 to-slate-900 text-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Sparkles className="h-8 w-8 text-violet-400 mx-auto mb-4" />
-          <h2 className="text-3xl font-extrabold mb-4">
+          <h2 className="font-sora text-3xl font-extrabold mb-4 tracking-tight">
             {L("Ready to Optimise Your Biology?", "Pronto para Optimizar a Sua Biologia?", isPt)}
           </h2>
           <p className="text-slate-300 mb-8">

@@ -305,16 +305,35 @@ body {
    ============================================ */
 
 .public-site {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  /* BA1 Design System v4 — bone/ink base, health-moss primary, greige signature CTA */
+  --background: 43 20% 95%;        /* bone #F5F4F1 */
+  --foreground: 222 17% 15%;       /* ink #20242D */
+  --card: 0 0% 100%;               /* white cards on bone */
+  --card-foreground: 222 17% 15%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  --popover-foreground: 222 17% 15%;
+  --muted: 43 15% 93%;
+  --muted-foreground: 220 7% 49%;  /* #767B85 */
+  --border: 48 10% 88%;            /* line #E4E3DF */
+  --input: 48 10% 88%;
+  --primary: 150 19% 38%;          /* health moss #4F7361 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 36 13% 77%;         /* greige signature CTA #CDC7BE */
+  --secondary-foreground: 222 17% 15%; /* dark ink text on greige */
+  --accent: 140 20% 94%;           /* health-soft #EDF3EF */
+  --accent-foreground: 150 19% 38%;
+  --ring: 150 19% 38%;
+
+  /* BA1 raw tokens for bespoke UX patterns (accent-top cards, pills, hero) */
+  --ba1-ink: 32 36 45;
+  --ba1-bone: 245 244 241;
+  --ba1-greige: 205 199 190;
+  --ba1-health: 79 115 97;
+  --ba1-health-soft: 237 243 239;
+  --ba1-ok: 85 112 95;
+  --ba1-warn: 138 109 59;
+  --ba1-bad: 168 90 75;
+
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
@@ -323,30 +342,46 @@ body {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(74, 124, 138, 0.15);
+  border: 1px solid rgba(79, 115, 97, 0.15);
 }
 
 .public-site .header-futuristic {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(245, 244, 241, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid hsl(214, 32%, 91%);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-bottom: 1px solid hsl(48, 10%, 88%);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .public-site .bg-dot-pattern {
-  background-color: hsl(0, 0%, 100%);
-  background-image: radial-gradient(rgba(74, 124, 138, 0.07) 1px, transparent 1px);
+  background-color: hsl(43, 20%, 95%);
+  background-image: radial-gradient(rgba(79, 115, 97, 0.07) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 .public-site .bg-grid-pattern {
-  background-color: hsl(0, 0%, 100%);
+  background-color: hsl(43, 20%, 95%);
   background-image:
-    linear-gradient(rgba(74, 124, 138, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 124, 138, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(79, 115, 97, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 115, 97, 0.04) 1px, transparent 1px);
   background-size: 40px 40px;
 }
+
+/* BA1 accent-top card pattern (Design System v4) */
+.public-site .ba1-card {
+  background: #fff;
+  border: 1px solid hsl(48, 10%, 88%);
+  border-radius: 14px;
+}
+.public-site .ba1-card-accent {
+  border-top: 3px solid rgb(var(--ba1-health));
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+.public-site .ba1-pill-ok { background: #E7EEE9; color: rgb(var(--ba1-ok)); }
+.public-site .ba1-pill-warn { background: #F3ECDD; color: rgb(var(--ba1-warn)); }
+.public-site .ba1-pill-bad { background: #F4E4E0; color: rgb(var(--ba1-bad)); }
+.public-site .ba1-pill-health { background: rgb(var(--ba1-health-soft)); color: rgb(var(--ba1-health)); }
 
 /* ============================================
    CARD HOVER EFFECTS (FUTURISTIC)

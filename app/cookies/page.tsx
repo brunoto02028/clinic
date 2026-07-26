@@ -27,7 +27,7 @@ export default function CookiePolicyPage() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Cookie className="h-7 w-7 text-primary" />
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+              <h1 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
                 {isPt ? "Política de Cookies" : "Cookie Policy"}
               </h1>
             </div>

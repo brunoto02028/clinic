@@ -37,7 +37,7 @@ export default function TermsPage() {
           </Link>
 
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            <h1 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
               {isPt ? "Termos de Uso e Política de Privacidade" : "Terms of Use & Privacy Policy"}
             </h1>
             <p className="text-muted-foreground mt-2 text-sm">

@@ -22,6 +22,15 @@ const buttonVariants = cva(
           "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-500/20 hover:shadow-lg",
         warning:
           "bg-amber-500 text-white hover:bg-amber-400 shadow-md shadow-amber-500/20 hover:shadow-lg",
+        // BA1 Design System v4 — public-site only, additive (does not affect admin/dashboard)
+        ba1Primary:
+          "bg-[#CDC7BE] text-[#26221C] hover:bg-[#BFB8AD] font-['Sora'] shadow-sm hover:shadow-md transition-all",
+        ba1Dark:
+          "bg-[#20242D] text-white hover:bg-[#2C313C] font-['Sora'] shadow-sm hover:shadow-md transition-all",
+        ba1Outline:
+          "bg-white border-[1.5px] border-[#E4E3DF] text-[#20242D] hover:border-[#4F7361]/40 hover:bg-[#EDF3EF]/40 transition-all",
+        ba1Health:
+          "bg-[#4F7361] text-white hover:bg-[#436154] font-['Sora'] shadow-sm hover:shadow-md transition-all",
       },
       size: {
         default: "h-10 px-4 py-2",

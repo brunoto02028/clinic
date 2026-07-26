@@ -89,7 +89,7 @@ export default function BiomechanicalAssessmentPage() {
             <span className="inline-block px-4 py-1.5 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold uppercase tracking-wider mb-4">
               {L("Advanced Technology for Physical Assessment", "Tecnologia Avançada para Avaliação Física")}
             </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4">
+            <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight">
               {settings?.bioTitle || L("Biomechanical Assessment", "Avaliação Biomecânica")} —{" "}
               <span className="text-primary">{settings?.bioSubtitle || L("Find The Root Cause", "Encontre a Causa Raiz")}</span>
             </h1>
@@ -100,8 +100,8 @@ export default function BiomechanicalAssessmentPage() {
               )}
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="/signup"><Button size="lg" className="gap-2">{L("Book Your Assessment", "Agende Sua Avaliação")} <ArrowRight className="h-4 w-4" /></Button></Link>
-              <Link href="/#biomechanics"><Button size="lg" variant="outline">{L("View on Homepage", "Ver na Página Inicial")}</Button></Link>
+              <Link href="/signup"><Button size="lg" variant="ba1Primary" className="gap-2">{L("Book Your Assessment", "Agende Sua Avaliação")} <ArrowRight className="h-4 w-4" /></Button></Link>
+              <Link href="/#biomechanics"><Button size="lg" variant="ba1Outline">{L("View on Homepage", "Ver na Página Inicial")}</Button></Link>
             </div>
           </div>
           <div>
@@ -125,7 +125,7 @@ export default function BiomechanicalAssessmentPage() {
       <section className="py-16 bg-card">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">{L("What We Analyse", "O Que Analisamos")}</h2>
+            <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">{L("What We Analyse", "O Que Analisamos")}</h2>
             <p className="mt-3 text-muted-foreground max-w-xl mx-auto">{L("Advanced technology combined with clinical expertise for a complete picture.", "Tecnologia avançada combinada com expertise clínica para um quadro completo.")}</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -133,7 +133,7 @@ export default function BiomechanicalAssessmentPage() {
               const Icon = f.icon;
               return (
                 <div>
-                  <Card className="h-full hover:shadow-md transition-shadow">
+                  <Card className="h-full hover:shadow-md transition-shadow border-t-[3px] border-t-[#4F7361]">
                     <CardContent className="p-5">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
@@ -157,7 +157,7 @@ export default function BiomechanicalAssessmentPage() {
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">{L("How The Process Works", "Como Funciona o Processo")}</h2>
+            <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">{L("How The Process Works", "Como Funciona o Processo")}</h2>
             <p className="mt-3 text-muted-foreground max-w-xl mx-auto">{L("From capture to treatment plan — a data-driven approach.", "Da captura ao plano de tratamento — uma abordagem baseada em dados.")}</p>
           </div>
           <div className="space-y-6">
@@ -196,7 +196,7 @@ export default function BiomechanicalAssessmentPage() {
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
             <div>
               <span className="inline-block px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold uppercase tracking-wider mb-3">{L("Remote Assessment", "Avaliação Remota")}</span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">{L("Assess From Anywhere", "Avalie de Qualquer Lugar")}</h2>
+              <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground mb-4 tracking-tight">{L("Assess From Anywhere", "Avalie de Qualquer Lugar")}</h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
                 {L(
                   "Our guided capture system works on any smartphone. We send you a secure link, you follow the on-screen prompts to photograph your posture from four angles, and our AI processes the images immediately. Your therapist reviews the analysis and creates your treatment plan — all without leaving home.",
@@ -216,7 +216,7 @@ export default function BiomechanicalAssessmentPage() {
                   </div>
                 ))}
               </div>
-              <Link href="/signup"><Button size="lg" className="gap-2">{L("Get Started", "Começar Agora")} <ArrowRight className="h-4 w-4" /></Button></Link>
+              <Link href="/signup"><Button size="lg" variant="ba1Primary" className="gap-2">{L("Get Started", "Começar Agora")} <ArrowRight className="h-4 w-4" /></Button></Link>
             </div>
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-muted">
@@ -231,15 +231,15 @@ export default function BiomechanicalAssessmentPage() {
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
+            <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground mb-4 tracking-tight">
               {L("Ready to Find the Root Cause?", "Pronto para Encontrar a Causa Raiz?")}
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto mb-8">
               {L("Book your biomechanical assessment today and get a data-driven treatment plan.", "Agende sua avaliação biomecânica hoje e receba um plano de tratamento baseado em dados.")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/signup"><Button size="lg" className="gap-2">{T("home.bookAppointment")} <ArrowRight className="h-5 w-5" /></Button></Link>
-              <Link href="/"><Button size="lg" variant="outline">{L("Back to Home", "Voltar para Início")}</Button></Link>
+              <Link href="/signup"><Button size="lg" variant="ba1Primary" className="gap-2">{T("home.bookAppointment")} <ArrowRight className="h-5 w-5" /></Button></Link>
+              <Link href="/"><Button size="lg" variant="ba1Outline">{L("Back to Home", "Voltar para Início")}</Button></Link>
             </div>
           </div>
         </div>

@@ -281,8 +281,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   {T("home.staff")}
                 </Button>
               </Link>
-              <Link href="/login"><Button variant="outline" className="text-foreground">{T("home.patientLogin")}</Button></Link>
-              <Link href="/signup"><Button className="bg-primary hover:bg-primary/90">{locale === "pt-BR" ? "Começar" : "Start Programme"}</Button></Link>
+              <Link href="/login"><Button variant="ba1Outline">{T("home.patientLogin")}</Button></Link>
+              <Link href="/signup"><Button variant="ba1Primary">{locale === "pt-BR" ? "Começar" : "Start Programme"}</Button></Link>
             </div>
 
             {/* Mobile Menu Button */}
@@ -313,8 +313,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <Link href="/articles" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{T("home.articlesLabel") || "Articles"}</Link>
                 <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                  <Link href="/login"><Button variant="outline" className="w-full">{T("home.patientLogin")}</Button></Link>
-                  <Link href="/signup"><Button className="w-full">{T("home.getStarted")}</Button></Link>
+                  <Link href="/login"><Button variant="ba1Outline" className="w-full">{T("home.patientLogin")}</Button></Link>
+                  <Link href="/signup"><Button variant="ba1Primary" className="w-full">{T("home.getStarted")}</Button></Link>
                   <div className="space-y-1 pt-2 border-t border-border">
                     <Link href="/staff-login" onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground"><Shield className="h-4 w-4 mr-2" />{T("home.staff")}</Button>
@@ -338,7 +338,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <span className="w-1.5 h-1.5 bg-primary rounded-full" />
                 {locale === "pt-BR" ? "Reabilitação Física & Desportiva" : "Physical & Sports Rehabilitation"}
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight">
+              <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight tracking-tight">
                 {(() => {
                   const hasSettingsValue = locale === "en-GB" && settings?.heroTitle;
                   const raw = hasSettingsValue || T("home.heroTitle");
@@ -355,13 +355,13 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3">
                 <Link href="/signup">
-                  <Button size="lg" className="w-full sm:w-auto gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 transition-all">
+                  <Button size="lg" variant="ba1Primary" className="w-full sm:w-auto gap-2 hover:-translate-y-0.5">
                     {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"}
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
                 <Link href="/login">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto border-slate-300 hover:border-primary hover:text-primary">
+                  <Button size="lg" variant="ba1Outline" className="w-full sm:w-auto">
                     {locale === "pt-BR" ? "Portal do Paciente" : "Patient Portal"}
                   </Button>
                 </Link>
@@ -443,7 +443,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-5">
                 {locale === "pt-BR" ? "Sobre Mim" : "About Me"}
               </span>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-5">
+              <h2 className="font-sora text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-5 tracking-tight">
                 {(() => {
                   const raw = S("aboutTitle", "home.aboutTitle");
                   if (raw.includes("|")) {
@@ -480,7 +480,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               </div>
               <div className="mt-7">
                 <Link href="/signup">
-                  <Button className="gap-2 shadow-md shadow-primary/20">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
+                  <Button variant="ba1Health" className="gap-2">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
                 </Link>
               </div>
             </div>
@@ -507,7 +507,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
               {locale === "pt-BR" ? "O Método" : "The Method"}
             </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+            <h2 className="font-sora text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight">
               {locale === "pt-BR" ? "Reabilitação completa." : "Complete rehabilitation."}{" "}
               <span className="text-primary">{locale === "pt-BR" ? "Sem contar sessões." : "We don't count sessions."}</span>
             </h2>
@@ -590,7 +590,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
           <div className="mt-10 text-center">
             <Link href="/signup">
-              <Button size="lg" className="gap-2 shadow-md shadow-primary/20">
+              <Button size="lg" variant="ba1Primary" className="gap-2">
                 {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"} <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
@@ -688,7 +688,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
                   {locale === "pt-BR" ? "A Tua Jornada" : "Your Journey"}
                 </span>
-                <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+                <h2 className="font-sora text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
                   {locale === "pt-BR"
                     ? "Não vendemos sessões. Entregamos resultados."
                     : "We don't sell sessions. We deliver results."}
@@ -777,7 +777,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <span className="inline-block px-4 py-1.5 rounded-full bg-white/10 text-white/80 text-xs font-semibold uppercase tracking-wider mb-4">
               {locale === "pt-BR" ? "Porque somos diferentes" : "Why we are different"}
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white">
+            <h2 className="font-sora text-3xl sm:text-4xl font-bold text-white tracking-tight">
               {locale === "pt-BR"
                 ? "Um nível de cuidado que poucas clínicas no mundo oferecem"
                 : "A level of care that few clinics in the world offer"}
@@ -827,7 +827,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 sm:mb-10">
             <p className="text-secondary font-medium mb-2">{T("home.articlesLabel")}</p>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+            <h2 className="font-sora text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
               {S("articlesTitle", "home.articlesTitle")}
             </h2>
             <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("articlesSubtitle", "home.articlesSubtitle")}</p>
@@ -875,7 +875,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 ))}
               </div>
               <div className="text-center mt-8">
-                <Link href="/articles"><Button variant="outline" className="gap-2">{T("home.articlesLabel")} <ArrowRight className="h-4 w-4" /></Button></Link>
+                <Link href="/articles"><Button variant="ba1Outline" className="gap-2">{T("home.articlesLabel")} <ArrowRight className="h-4 w-4" /></Button></Link>
               </div>
               </>
             </LazyLoadSection>
@@ -885,7 +885,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <h3 className="text-xl font-semibold text-foreground mb-3">{T("home.articlesComing")}</h3>
               <p className="text-muted-foreground max-w-md mx-auto mb-6">{T("home.articlesComingDesc")}</p>
               <Link href="/signup">
-                <Button className="gap-2">
+                <Button variant="ba1Primary" className="gap-2">
                   {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -910,7 +910,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
                   {locale === "pt-BR" ? "Fala Connosco" : "Get in Touch"}
                 </span>
-                <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+                <h2 className="font-sora text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
                   {S("contactTitle", "home.contactTitle")}
                 </h2>
                 <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -972,7 +972,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   )}
                   <div className="mt-6">
                     <Link href="/signup">
-                      <Button size="lg" className="w-full gap-2 shadow-md shadow-primary/20">
+                      <Button size="lg" variant="ba1Primary" className="w-full gap-2">
                         {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"} <ArrowRight className="h-5 w-5" />
                       </Button>
                     </Link>
@@ -1036,7 +1036,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         const socialIconMap: Record<string, any> = { instagram: Instagram, facebook: Facebook, twitter: Twitter, linkedin: Linkedin, youtube: Youtube };
 
         return (
-          <footer className="bg-slate-900 text-white">
+          <footer className="bg-[#20242D] text-white">
             {/* Main footer grid */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
               <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">

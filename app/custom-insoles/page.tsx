@@ -88,7 +88,7 @@ export default function CustomInsolesPage() {
             <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold uppercase tracking-wider mb-4">
               {L("Custom Insoles & Foot Analysis", "Palmilhas Personalizadas e Análise do Pé")}
             </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4">
+            <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-4 tracking-tight">
               {settings?.insolesTitle || L("Custom-Made Insoles", "Palmilhas Sob Medida")}{" "}
               <span className="text-primary">{settings?.insolesSubtitle || L("For Your Unique Feet", "Para os Seus Pés Únicos")}</span>
             </h1>
@@ -99,8 +99,8 @@ export default function CustomInsolesPage() {
               )}
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="/signup"><Button size="lg" className="gap-2">{L("Book Your Foot Scan", "Agende Seu Escaneamento")} <ArrowRight className="h-4 w-4" /></Button></Link>
-              <Link href="/#insoles"><Button size="lg" variant="outline">{L("View on Homepage", "Ver na Página Inicial")}</Button></Link>
+              <Link href="/signup"><Button size="lg" variant="ba1Primary" className="gap-2">{L("Book Your Foot Scan", "Agende Seu Escaneamento")} <ArrowRight className="h-4 w-4" /></Button></Link>
+              <Link href="/#insoles"><Button size="lg" variant="ba1Outline">{L("View on Homepage", "Ver na Página Inicial")}</Button></Link>
             </div>
           </div>
           <div>
@@ -120,7 +120,7 @@ export default function CustomInsolesPage() {
       <section className="py-16 bg-card">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">{L("How The Process Works", "Como Funciona o Processo")}</h2>
+            <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">{L("How The Process Works", "Como Funciona o Processo")}</h2>
             <p className="mt-3 text-muted-foreground max-w-xl mx-auto">{L("From scan to sole — a simple 4-step process.", "Do escaneamento à palmilha — um processo simples em 4 etapas.")}</p>
           </div>
           <div className="grid md:grid-cols-2 gap-8">
@@ -128,7 +128,7 @@ export default function CustomInsolesPage() {
               const Icon = step.icon;
               return (
                 <div key={i}>
-                  <Card className="h-full border border-border hover:shadow-md transition-shadow">
+                  <Card className="h-full border border-border hover:shadow-md transition-shadow border-t-[3px] border-t-[#4F7361]">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4">
                         <div className="relative">
@@ -155,7 +155,7 @@ export default function CustomInsolesPage() {
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground">{L("Conditions We Treat", "Condições que Tratamos")}</h2>
+            <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">{L("Conditions We Treat", "Condições que Tratamos")}</h2>
             <p className="mt-3 text-muted-foreground max-w-xl mx-auto">{L("Our custom insoles address a wide range of foot and lower limb conditions.", "Nossas palmilhas personalizadas tratam uma ampla gama de condições do pé e membros inferiores.")}</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -163,7 +163,7 @@ export default function CustomInsolesPage() {
               const Icon = c.icon;
               return (
                 <div key={i}>
-                  <Card className="h-full hover:shadow-md transition-shadow">
+                  <Card className="h-full hover:shadow-md transition-shadow border-t-[3px] border-t-[#4F7361]">
                     <CardContent className="p-5">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
@@ -189,7 +189,7 @@ export default function CustomInsolesPage() {
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
             <div>
               <span className="inline-block px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold uppercase tracking-wider mb-3">{L("Scan From Home", "Escaneie em Casa")}</span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">{L("Can't Visit Us?", "Não Pode Nos Visitar?")}</h2>
+              <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground mb-4 tracking-tight">{L("Can't Visit Us?", "Não Pode Nos Visitar?")}</h2>
               <p className="text-muted-foreground leading-relaxed mb-6">
                 {L(
                   "We offer a home scanning solution. Our digital foot scanning system allows you to capture your foot profile from the comfort of your home using your smartphone. Simply follow the guided instructions in our app, submit your scan, and we'll design your custom insoles remotely.",
@@ -209,7 +209,7 @@ export default function CustomInsolesPage() {
                   </div>
                 ))}
               </div>
-              <Link href="/signup"><Button size="lg" className="gap-2">{L("Get Started", "Começar Agora")} <ArrowRight className="h-4 w-4" /></Button></Link>
+              <Link href="/signup"><Button size="lg" variant="ba1Primary" className="gap-2">{L("Get Started", "Começar Agora")} <ArrowRight className="h-4 w-4" /></Button></Link>
             </div>
             <div>
               <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-muted">
@@ -224,15 +224,15 @@ export default function CustomInsolesPage() {
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
+            <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground mb-4 tracking-tight">
               {L("Ready for Custom Comfort?", "Pronto para Conforto Personalizado?")}
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto mb-8">
               {L("Book your foot scan today and take the first step towards pain-free movement.", "Agende seu escaneamento hoje e dê o primeiro passo para se mover sem dor.")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/signup"><Button size="lg" className="gap-2">{T("home.bookAppointment")} <ArrowRight className="h-5 w-5" /></Button></Link>
-              <Link href="/"><Button size="lg" variant="outline">{L("Back to Home", "Voltar para Início")}</Button></Link>
+              <Link href="/signup"><Button size="lg" variant="ba1Primary" className="gap-2">{T("home.bookAppointment")} <ArrowRight className="h-5 w-5" /></Button></Link>
+              <Link href="/"><Button size="lg" variant="ba1Outline">{L("Back to Home", "Voltar para Início")}</Button></Link>
             </div>
           </div>
         </div>

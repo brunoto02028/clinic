@@ -706,7 +706,7 @@ export default function ServiceDetailPage() {
               {tagline && (
                 <p className="text-xs font-semibold tracking-widest uppercase text-white/50 mb-1">{tagline}</p>
               )}
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">{title}</h1>
+              <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight tracking-tight">{title}</h1>
             </div>
           </div>
           <p className="text-base sm:text-lg text-white/70 leading-relaxed max-w-3xl mb-8">{description}</p>
@@ -750,13 +750,13 @@ export default function ServiceDetailPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1 h-8 rounded-full bg-secondary" />
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
+              <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
                 {isPt ? "Benefícios" : "Benefits"}
               </h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {benefits.map((b, i) => (
-                <div key={i} className="group flex items-start gap-3 p-4 rounded-xl bg-card border border-border hover:border-secondary/40 hover:shadow-sm transition-all">
+                <div key={i} className="group flex items-start gap-3 p-4 rounded-xl bg-card border border-border hover:border-secondary/40 hover:shadow-sm transition-all border-t-[3px] border-t-[#4F7361]">
                   <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-secondary/20 transition-colors">
                     <CheckCircle2 className="h-4 w-4 text-secondary" />
                   </div>
@@ -774,7 +774,7 @@ export default function ServiceDetailPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1 h-8 rounded-full bg-primary" />
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
+              <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
                 {isPt ? "Como Funciona" : "How It Works"}
               </h2>
             </div>
@@ -810,7 +810,7 @@ export default function ServiceDetailPage() {
                       <div className="w-9 h-9 rounded-xl bg-secondary/10 flex items-center justify-center">
                         <Users className="h-5 w-5 text-secondary" />
                       </div>
-                      <h2 className="text-lg font-bold text-foreground">
+                      <h2 className="font-sora text-lg font-bold text-foreground tracking-tight">
                         {isPt ? "Para Quem É?" : "Who Is It For?"}
                       </h2>
                     </div>
@@ -825,7 +825,7 @@ export default function ServiceDetailPage() {
                       <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
                         <Lightbulb className="h-5 w-5 text-primary" />
                       </div>
-                      <h2 className="text-lg font-bold text-foreground">
+                      <h2 className="font-sora text-lg font-bold text-foreground tracking-tight">
                         {isPt ? "Como Funciona?" : "The Science Behind It"}
                       </h2>
                     </div>
@@ -873,7 +873,7 @@ export default function ServiceDetailPage() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1 h-8 rounded-full bg-secondary" />
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
+              <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
                 {isPt ? "Perguntas Frequentes" : "Frequently Asked Questions"}
               </h2>
             </div>
@@ -908,7 +908,7 @@ export default function ServiceDetailPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-1 h-8 rounded-full bg-primary" />
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+              <h2 className="font-sora text-xl sm:text-2xl font-bold text-foreground tracking-tight">
                 {isPt ? "Serviços Relacionados" : "Related Services"}
               </h2>
             </div>
@@ -943,7 +943,7 @@ export default function ServiceDetailPage() {
             <Award className="h-4 w-4" />
             {isPt ? "Bruno Physical Rehabilitation — Ipswich, Suffolk" : "Bruno Physical Rehabilitation — Ipswich, Suffolk"}
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4">
+          <h2 className="font-sora text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4 tracking-tight">
             {isPt ? "Pronto para Começar?" : "Ready to Get Started?"}
           </h2>
           <p className="text-muted-foreground mb-8 leading-relaxed">
@@ -953,12 +953,12 @@ export default function ServiceDetailPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
             <Link href="/signup">
-              <Button size="lg" className="gap-2 w-full sm:w-auto text-base px-8">
+              <Button size="lg" variant="ba1Primary" className="gap-2 w-full sm:w-auto text-base px-8">
                 {T("home.bookAppointment")} <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
             <Link href="/#services">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-base px-8">
+              <Button size="lg" variant="ba1Outline" className="w-full sm:w-auto text-base px-8">
                 {isPt ? "Ver Todos os Serviços" : "View All Services"}
               </Button>
             </Link>
