@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
 import { Calendar, User, ChevronLeft, ChevronRight, BookOpen, ArrowLeft, Clock, Share2 } from "lucide-react";
 import type { Metadata } from "next";
 import { LocalizedText, LocalizedHtml } from "./localized";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
+import { authOptions } from "@/lib/auth-options";
+
+const STAFF_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 const BASE_URL = "https://bpr.rehab";
 function absoluteUrl(url?: string | null): string | null {
@@ -91,9 +95,16 @@ function sanitizeContent(html: string): string {
 export default async function ArticlePage({ params }: PageProps) {
   const article = await resolveArticle(params.slug);
 
-  if (!article || !article.published) notFound();
+  if (!article) notFound();
 
-  const readTime = estimateReadTime(article.content || "");
+  if (!article.published) {
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as any)?.role;
+    const isStaffPreview = !!session && STAFF_ROLES.includes(role);
+    if (!isStaffPreview) notFound();
+  }
+
+  const readTime = estimateReadTime(sanitizeContent(article.content || ""));
 
   // Get prev/next articles
   const [prevArticle, nextArticle] = await Promise.all([
@@ -119,6 +130,11 @@ export default async function ArticlePage({ params }: PageProps) {
 
   return (
     <>
+      {!article.published && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-700 dark:text-amber-400 text-center text-sm font-semibold py-2.5 px-4">
+          👁️ Draft preview — this article is not published yet. Only visible to staff.
+        </div>
+      )}
       {/* Breadcrumb */}
       <div className="bg-muted/30 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
