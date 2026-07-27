@@ -335,15 +335,17 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
-              <div className="flex flex-wrap items-center gap-2 mb-5">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
                 <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 bg-primary rounded-full" />
                   {locale === "pt-BR" ? "Reabilitação Física & Desportiva" : "Physical & Sports Rehabilitation"}
                 </div>
-                <div className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 text-xs font-bold px-3 py-1.5 rounded-full border border-rose-200">
-                  <HeartHandshake className="h-3.5 w-3.5" />
-                  {T("home.healingWithHeart")}
-                </div>
+              </div>
+              <div className="inline-flex items-center gap-2.5 bg-rose-50 text-rose-600 font-bold pl-2.5 pr-4 py-2 rounded-full border border-rose-200 shadow-sm mb-5">
+                <span className="flex items-center justify-center w-7 h-7 bg-rose-100 rounded-full flex-shrink-0">
+                  <HeartHandshake className="h-4 w-4" />
+                </span>
+                <span className="text-sm sm:text-base">{T("home.healingWithHeart")}</span>
               </div>
               <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight tracking-tight">
                 {(() => {
@@ -360,7 +362,13 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg">
                 {S("heroSubtitle", "home.heroSubtitle")}
               </p>
-              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <div className="mt-4 flex items-start gap-2 max-w-lg">
+                <HeartHandshake className="h-4 w-4 text-rose-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-slate-500 italic leading-relaxed">
+                  &ldquo;{T("home.healingWithHeartQuote")}&rdquo;
+                </p>
+              </div>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
                 <Link href="/signup">
                   <Button size="lg" variant="ba1Primary" className="w-full sm:w-auto gap-2 hover:-translate-y-0.5">
                     {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"}
@@ -405,6 +413,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
               </div>
               {/* Floating stat cards */}
+              <div className="hidden sm:block absolute -top-4 -left-4 sm:-top-6 sm:-left-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center"><HeartHandshake className="h-5 w-5 text-rose-600" /></div>
+                  <div><p className="text-base font-bold text-foreground leading-tight">{T("home.healingWithHeart")}</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Atenção real, não protocolo" : "Real care, not protocol"}</p></div>
+                </div>
+              </div>
               <div className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Users className="h-5 w-5 text-primary" /></div>
