@@ -13,7 +13,10 @@ npx prisma@6.7.0 db push --skip-generate --accept-data-loss || echo "[start.sh] 
 # matches articles still dated 2026-07-30, so it silently no-ops on every
 # deploy after the first successful run. Safe to remove once confirmed live.
 echo "[start.sh] Checking for one-off article date fix..."
-cat > /tmp/article-date-fix.js << 'EOF'
+# Written into /app (not /tmp) — Node resolves bare `require()` specifiers
+# relative to the requiring file's own directory, not the process cwd, so
+# the script must live where /app/node_modules/@prisma/client is reachable.
+cat > /app/article-date-fix.js << 'EOF'
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -50,7 +53,8 @@ function randomTimeOfDay(date) {
   .catch((e) => console.error('[article-date-fix] error', e))
   .finally(() => prisma.$disconnect());
 EOF
-node /tmp/article-date-fix.js || echo "[start.sh] article date fix warning — check logs"
+node /app/article-date-fix.js || echo "[start.sh] article date fix warning — check logs"
+rm -f /app/article-date-fix.js
 
 # Create upload directories if UPLOADS_DIR is set
 if [ -n "$UPLOADS_DIR" ]; then
