@@ -222,6 +222,9 @@ export function SiteFooter() {
             <Link href="/terms" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
               {isPt ? "Termos" : "Terms"}
             </Link>
+            <Link href="/complaints-policy" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+              {isPt ? "Reclamações" : "Complaints"}
+            </Link>
             <CookiePreferencesButton />
             <Link href="/login" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
               {isPt ? "Portal do Paciente" : "Patient Portal"}

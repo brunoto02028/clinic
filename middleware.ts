@@ -91,6 +91,8 @@ const publicRoutes = [
   '/terms',
   '/privacy',
   '/cookies',
+  '/complaints-policy',
+  '/cancellation-policy',
   '/intake',
   '/api/intake',
   '/api/analytics/track',

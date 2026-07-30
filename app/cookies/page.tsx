@@ -255,9 +255,10 @@ export default function CookiePolicyPage() {
             </div>
           </div>
 
-          <div className="flex gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <Link href="/privacy" className="text-primary hover:underline">{isPt ? "Política de Privacidade" : "Privacy Policy"}</Link>
             <Link href="/terms" className="text-primary hover:underline">{isPt ? "Termos de Uso" : "Terms of Use"}</Link>
+            <Link href="/complaints-policy" className="text-primary hover:underline">{isPt ? "Política de Reclamações" : "Complaints Policy"}</Link>
           </div>
         </div>
       </main>
