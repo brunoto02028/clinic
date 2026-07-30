@@ -21,6 +21,8 @@ const TAG_LABELS: Record<string, { en: string; pt: string }> = {
   "Neck": { en: "Neck", pt: "Pescoço" },
   "Hand & Wrist": { en: "Hand & Wrist", pt: "Mão e Pulso" },
   "Foot": { en: "Foot", pt: "Pé" },
+  "Elbow": { en: "Elbow", pt: "Cotovelo" },
+  "Shin & Calf": { en: "Shin & Calf", pt: "Canela e Panturrilha" },
 };
 
 function tagLabel(tag: string, isPt: boolean) {
