@@ -1095,6 +1095,7 @@ model Article {
   keyword         String?
   generatedBy     String?  // e.g. "CLAUDE", "GEMINI", null for manual
   language        String?  @default("en")
+  audioTracks     ArticleAudio[] // cached ElevenLabs "listen to article" narration, one per locale
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1104,6 +1105,28 @@ model Article {
   @@index([published])
   @@index([authorId])
   @@index([published, createdAt(sort: Desc)])
+}
+
+// ============================================
+// ARTICLE AUDIO — cached ElevenLabs TTS narration ("Listen to article")
+// One row per (articleId, locale). Audio bytes are stored as base64 in the
+// DB (same pattern as ImageLibrary/image-serve) so they survive redeploys
+// without needing S3/persistent volume config.
+// ============================================
+
+model ArticleAudio {
+  id             String   @id @default(cuid())
+  articleId      String
+  article        Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  locale         String   // "en" | "pt"
+  voiceId        String
+  mimeType       String   @default("audio/mpeg")
+  audioData      String   @db.Text // base64-encoded MP3
+  characterCount Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@unique([articleId, locale])
+  @@index([articleId])
 }
 
 // ============================================

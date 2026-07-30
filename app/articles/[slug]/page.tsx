@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { Calendar, User, ChevronLeft, ChevronRight, BookOpen, ArrowLeft, Clock, Share2 } from "lucide-react";
 import type { Metadata } from "next";
 import { LocalizedText, LocalizedHtml } from "./localized";
+import { ArticleAudioPlayer } from "./audio-player";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
 import { authOptions } from "@/lib/auth-options";
 
@@ -196,6 +197,11 @@ export default async function ArticlePage({ params }: PageProps) {
                 <Clock className="h-4 w-4" />
                 {readTime} min read
               </span>
+            </div>
+
+            {/* Listen to article (ElevenLabs TTS, generated + cached on first play) */}
+            <div className="mb-8">
+              <ArticleAudioPlayer articleId={article.id} />
             </div>
 
             {/* Excerpt */}
