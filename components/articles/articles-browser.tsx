@@ -16,6 +16,11 @@ const TAG_LABELS: Record<string, { en: string; pt: string }> = {
   "Recovery Science": { en: "Recovery Science", pt: "Ciência da Recuperação" },
   "Technology": { en: "Technology", pt: "Tecnologia" },
   "Osteoarthritis": { en: "Osteoarthritis", pt: "Osteoartrite" },
+  "Hip": { en: "Hip", pt: "Anca" },
+  "Shoulder": { en: "Shoulder", pt: "Ombro" },
+  "Neck": { en: "Neck", pt: "Pescoço" },
+  "Hand & Wrist": { en: "Hand & Wrist", pt: "Mão e Pulso" },
+  "Foot": { en: "Foot", pt: "Pé" },
 };
 
 function tagLabel(tag: string, isPt: boolean) {
