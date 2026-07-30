@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Sparkles, Loader2, Mic, MicOff, Languages, Upload, ImageIcon, X, Trash2, Send, Check, Eye, Pencil, MessageSquare, User } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Loader2, Mic, MicOff, Languages, Upload, ImageIcon, X, Trash2, Send, Check, Eye, Pencil, MessageSquare, User, Calendar } from "lucide-react";
 import Link from "next/link";
 import { AIFieldHelper } from "@/components/admin/ai-field-helper";
 import { AIImageGenerator } from "@/components/admin/ai-image-generator";
@@ -27,6 +27,8 @@ export default function NewArticlePage() {
   const [imageUrl, setImageUrl] = useState("");
   const [published, setPublished] = useState(false);
   const [authorName, setAuthorName] = useState("");
+  // Publish date shown on the public site — defaults to today, editable via the calendar picker below
+  const [createdAt, setCreatedAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -269,6 +271,7 @@ export default function NewArticlePage() {
           titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
           publishLanguage,
           imageUrl, published, authorName: authorName || undefined,
+          createdAt: createdAt ? `${createdAt}T12:00:00.000Z` : undefined,
         }),
       });
       if (res.ok) {
@@ -472,6 +475,15 @@ export default function NewArticlePage() {
                   <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <Input id="authorName" placeholder="Author name (leave empty to use your account name)" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="createdAt">Publish Date</Label>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Input id="createdAt" type="date" value={createdAt} onChange={(e) => setCreatedAt(e.target.value)} />
+                </div>
+                <p className="text-xs text-muted-foreground">Defaults to today. Change it to backdate or schedule how this article sorts on the public site.</p>
               </div>
             </div>
 

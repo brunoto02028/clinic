@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Languages, Loader2, Upload, ImageIcon, Trash2, Mic, MicOff, Send, Check, Eye, Pencil, MessageSquare, User, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Languages, Loader2, Upload, ImageIcon, Trash2, Mic, MicOff, Send, Check, Eye, Pencil, MessageSquare, User, Sparkles, Calendar } from "lucide-react";
 import Link from "next/link";
 import { AIFieldHelper } from "@/components/admin/ai-field-helper";
 import { AIImageGenerator } from "@/components/admin/ai-image-generator";
@@ -30,6 +30,7 @@ export default function EditArticlePage() {
   const [imageUrl, setImageUrl] = useState("");
   const [published, setPublished] = useState(false);
   const [authorName, setAuthorName] = useState("");
+  const [createdAt, setCreatedAt] = useState(""); // publish date (YYYY-MM-DD) shown on the public site
   // SEO fields
   const [metaDescription, setMetaDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -98,6 +99,7 @@ export default function EditArticlePage() {
         setImageUrl(data.imageUrl || "");
         setPublished(data.published);
         setAuthorName(data.authorName || "");
+        setCreatedAt(data.createdAt ? new Date(data.createdAt).toISOString().slice(0, 10) : "");
         setMetaDescription(data.metaDescription || "");
         setTags(data.tags || []);
         setKeyword(data.keyword || "");
@@ -296,6 +298,7 @@ export default function EditArticlePage() {
           titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
           publishLanguage,
           imageUrl, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, tags, keyword: keyword || undefined,
+          createdAt: createdAt ? `${createdAt}T12:00:00.000Z` : undefined,
         }),
       });
       if (res.ok) {
@@ -429,6 +432,14 @@ export default function EditArticlePage() {
                   <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <Input id="authorName" placeholder="Author name (leave empty to use account name)" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="createdAt">Publish Date</Label>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Input id="createdAt" type="date" value={createdAt} onChange={(e) => setCreatedAt(e.target.value)} />
+                </div>
+                <p className="text-xs text-muted-foreground">Date shown on the public site and used for sorting. Change it to backdate or postdate this article.</p>
               </div>
             </div>
 

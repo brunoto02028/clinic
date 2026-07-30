@@ -50,7 +50,7 @@ export async function PUT(
     const {
       title, excerpt, content, imageUrl, published, authorName, metaDescription, tags, keyword,
       titleEn, excerptEn, contentEn, titlePt, excerptPt, contentPt, publishLanguage,
-      notifySubscribers, scheduledAt,
+      notifySubscribers, scheduledAt, createdAt,
     } = body;
 
     const updateData: Record<string, unknown> = {};
@@ -105,6 +105,12 @@ export async function PUT(
     if (tags !== undefined) updateData.tags = tags;
     if (keyword !== undefined) updateData.keyword = keyword;
     if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    // Publish date shown publicly (used for sorting + display everywhere — see app/articles/*).
+    // Staff can backdate/postdate it from the admin editor's date picker.
+    if (createdAt) {
+      const parsed = new Date(createdAt);
+      if (!isNaN(parsed.getTime())) updateData.createdAt = parsed;
+    }
 
     const article = await prisma.article.update({
       where: { id: params.id },
