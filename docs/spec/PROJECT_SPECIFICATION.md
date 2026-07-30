@@ -4,7 +4,7 @@
 **Localização:** Ipswich, UK  
 **Versão:** 2.7.0  
 **Data:** 05/07/2026  
-**Status:** Em Produção (https://bpr.rehab — Render, Frankfurt)
+**Status:** Em Produção (https://bpr.rehab — Coolify, migrado do Render em Jul 2026)
 
 ---
 
@@ -1129,7 +1129,7 @@ Total Ano 1: £70,000-100,000
 - **GitHub:** https://github.com/brunoto02028/clinic
 - **Documentação:** /docs
 - **Issues:** GitHub Issues
-- **Deploy:** Render (bpr.rehab, Frankfurt) — via GitHub `brunoto02028/clinic` branch `main`, auto-deploy
+- **Deploy:** Coolify (bpr.rehab) — via GitHub `brunoto02028/clinic` branch `main`, auto-deploy
 
 ---
 

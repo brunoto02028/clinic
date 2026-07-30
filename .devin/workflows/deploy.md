@@ -1,10 +1,10 @@
 ---
-description: How to deploy bpr.rehab (clinic) to GitHub + Render
+description: How to deploy bpr.rehab (clinic) to GitHub + Coolify
 ---
 
-# Deploy bpr.rehab — GitHub + Render
+# Deploy bpr.rehab — GitHub + Coolify
 
-O deploy é automático: push para GitHub → Render detecta e faz build + deploy.
+O deploy é automático: push para GitHub → Coolify detecta (webhook) e faz build + deploy.
 
 ## Dados de Acesso
 
@@ -13,33 +13,35 @@ O deploy é automático: push para GitHub → Render detecta e faz build + deplo
 | **Projeto local (Mac)** | `/Users/brunotoaz/Downloads/DESENVOLVIMENTO/Bruno/Widsurf/clinic` |
 | **GitHub repo** | `https://github.com/brunoto02028/clinic` |
 | **Branch** | `main` |
-| **Hosting** | Render — https://dashboard.render.com |
-| **Web Service** | `bpr-clinic` (Starter plan, Frankfurt) |
-| **Database** | PostgreSQL on Render — `bpr-clinic-db` (Starter plan, Frankfurt) |
-| **Domain** | `bpr.rehab` |
-| **Infrastructure** | `render.yaml` (Blueprint) at repo root |
+| **Hosting** | Coolify (self-hosted) — `BAIntelligence` → `production` → app `clinic` |
+| **Build Pack** | Dockerfile (usa o `Dockerfile` do repo) |
+| **Domain** | `bpr.rehab` (+ `www.bpr.rehab`, `clinic.c.baintelligence.co.uk`) |
+| **Database** | PostgreSQL — migrado do Render para o Coolify (ver painel Coolify → Databases / env vars da app) |
+
+> ⚠️ Migrado do Render (antigo repo `brunoto02028/clinic` na Render) para o Coolify. Render **não é mais usado** — não referenciar `render.yaml`, `dashboard.render.com` ou hosts `*.onrender.com` / `*-postgres.render.com` como fonte de verdade.
 
 ## Passos do Deploy
 
 // turbo
-1. Commit e push para GitHub (Render deploys automaticamente):
+1. Commit e push para GitHub (Coolify faz deploy automaticamente):
 ```bash
 git add -A
 git commit -m "feat: <descrição das mudanças>"
 git push origin main
 ```
 
-2. Verificar deploy no Render dashboard (opcional):
-   - https://dashboard.render.com → bpr-clinic → ver logs do deploy
+2. Verificar deploy no Coolify (opcional):
+   - Painel Coolify → Projects → `BAIntelligence` → `production` → `clinic` → aba **Deployments**/**Logs**
 
 ## Primeiro Deploy (setup inicial)
 
-Se estás a fazer o setup pela primeira vez:
-1. dashboard.render.com → "New" → "Blueprint"
-2. Conecta o GitHub repo `brunoto02028/clinic`
-3. Render lê o `render.yaml` e cria tudo automaticamente
-4. Preenche as variáveis marcadas com `sync: false` (API keys)
-5. Clica "Apply" — Render cria a DB + Web Service e faz o primeiro deploy
+Se for necessário recriar o app no Coolify:
+1. Coolify → Projects → criar/selecionar projeto e environment
+2. "New Resource" → conectar o GitHub repo `brunoto02028/clinic`, branch `main`
+3. Build Pack: **Dockerfile** (usa o `Dockerfile` do repo)
+4. Configurar as Environment Variables da app (ver `.env` local como referência — nunca commitar valores reais)
+5. Configurar os domínios (`bpr.rehab`, `www.bpr.rehab`) em **Domains**
+6. Deploy
 
 ## Convenção de Commit Messages
 - `feat: <descrição>` — nova funcionalidade
@@ -48,7 +50,7 @@ Se estás a fazer o setup pela primeira vez:
 - `chore: <descrição>` — mudanças de config, dependências
 
 ## Notas Importantes
-- Render faz auto-deploy a cada push para `main`
+- Coolify faz auto-deploy a cada push para `main` (via webhook do GitHub)
 - O build usa o `Dockerfile` — se falhar, a versão anterior continua online
 - Schema DB: `start.sh` corre `prisma db push` automaticamente no arranque
 - Ficheiros `test_*.js`, `fix_*.js`, `check_*.js` estão no `.gitignore` — não vão para o GitHub

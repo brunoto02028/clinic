@@ -5,7 +5,7 @@ description: Pre-work sync check — confirm local code, GitHub and the database
 # Sync Check — run BEFORE starting any new task
 
 Purpose: the user works from more than one machine. Before making any change,
-verify that local code, GitHub, the database, and the live Render deploy are
+verify that local code, GitHub, the database, and the live Coolify deploy are
 all aligned — so no work is based on stale/wrong state.
 
 ## 1. Git — local vs GitHub
@@ -38,10 +38,14 @@ all aligned — so no work is based on stale/wrong state.
    ```bash
    grep -n "^DATABASE_URL" .env
    ```
-   - Expected host: `dpg-d8mgpurbc2fs73dvc160-a.frankfurt-postgres.render.com`
-     (Render production Postgres — `bpr_clinic` DB). This is intentional:
-     local dev reads/writes the SAME database as production so previews
-     never show stale or deleted content.
+   - Expected: the Coolify-managed production Postgres (`bpr_clinic` DB) —
+     get the current host/connection string from the Coolify app's
+     Environment Variables if unsure. This is intentional: local dev reads/
+     writes the SAME database as production so previews never show stale or
+     deleted content.
+   - ⚠️ The project migrated from Render to Coolify (Jul 2026), including the
+     database. A `DATABASE_URL` still pointing at the old Render Postgres
+     host (`*-postgres.render.com`) is now STALE — flag it to the user.
    - If it points anywhere else (old Railway `interchange.proxy.rlwy.net`,
      or a local Postgres like `bpr_clinic_local`), warn the user — this
      means local preview will NOT match what's live.
@@ -59,18 +63,18 @@ all aligned — so no work is based on stale/wrong state.
    ```
    Then start `npm run dev` again as a fresh process.
 
-## 4. Render deploy — confirm the live site matches GitHub main
+## 4. Coolify deploy — confirm the live site matches GitHub main
 
-5. After any `git push origin main`, Render auto-deploys via webhook
+5. After any `git push origin main`, Coolify auto-deploys via GitHub webhook
    (usually 2–4 min). To confirm the live site is actually running the
    pushed commit (not still building or failed):
    - Note the `timestamp` from `https://bpr.rehab/api/version` BEFORE the
      push.
    - Wait ~3 minutes after pushing, then fetch `/api/version` again — the
      `timestamp` should have changed.
-   - If it hasn't changed after 5+ minutes, check the Render dashboard
-     (or use `check_deploy_status` if a `windsurf_deployment_id` exists)
-     for build failures.
+   - If it hasn't changed after 5+ minutes, check the Coolify dashboard
+     (Projects → `BAIntelligence` → `production` → app `clinic` →
+     Deployments/Logs) for build failures.
 
 ## Summary — when to run this
 

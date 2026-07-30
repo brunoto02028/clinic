@@ -99,7 +99,7 @@ async function auditPage(page, entry) {
     }
   }
 
-  // Check for /uploads/ images (ephemeral on Render — will break after redeploy)
+  // Check for /uploads/ images (ephemeral without persistent storage — will break after redeploy)
   const uploadsImages = imgResults.filter(
     (img) => img.src && img.src.includes("/uploads/")
   );

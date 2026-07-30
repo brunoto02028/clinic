@@ -103,7 +103,7 @@ const publicRoutes = [
   '/api/agent', // OpenClaw Agent API - uses Bearer token authentication
   '/api/admin/maintenance', // protected by x-maintenance-secret header, not session
   '/api/image-serve', // public image serving from DB (no auth needed to display images)
-  '/api/health', // Render health check — must be public or deploy zero-downtime breaks
+  '/api/health', // Coolify health check — must be public or deploy zero-downtime breaks
   '/api/public', // public read-only endpoints (clinic schedule, etc.)
 ];
 

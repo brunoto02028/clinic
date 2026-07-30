@@ -5,7 +5,7 @@ description: Project vault with all access credentials and infrastructure info f
 # BPR Clinic — Project Vault & SPEC Completa
 
 > **⚠️ SENSITIVE — não partilhar publicamente**
-> Última actualização: 5 Julho 2026 — Chat com anexos + Fluxo único de Documentos + Toggle idioma paciente + Auditoria páginas públicas (v2.7.0)
+> Última actualização: 30 Julho 2026 — Migração de infraestrutura Render → Coolify (web + database)
 
 ---
 
@@ -14,9 +14,9 @@ description: Project vault with all access credentials and infrastructure info f
 | Item | URL |
 |---|---|
 | **Site público** | https://bpr.rehab |
-| **Render URL** | https://clinic-1w3u.onrender.com |
+| **Coolify URL (interna)** | https://clinic.c.baintelligence.co.uk |
 | **Admin** | https://bpr.rehab/admin |
-| **Render Dashboard** | https://dashboard.render.com |
+| **Coolify Dashboard** | painel Coolify → `BAIntelligence` → `production` → app `clinic` |
 | **GitHub** | https://github.com/brunoto02028/clinic |
 | **Local dev** | http://localhost:3000 |
 
@@ -34,23 +34,26 @@ description: Project vault with all access credentials and infrastructure info f
 
 ---
 
-## 🏗️ Infraestrutura (Render)
+## 🏗️ Infraestrutura (Coolify)
+
+> ⚠️ Migrado do Render (Jul 2026) — web service e database. Render **não é mais usado**;
+> não confiar em referências antigas a `render.yaml`, `dashboard.render.com` ou hosts
+> `*.onrender.com` / `*-postgres.render.com` como fonte de verdade.
 
 | Componente | Detalhes |
 |---|---|
-| **Web Service** | `bpr-clinic` — Starter plan — Frankfurt |
-| **Service ID** | `srv-d8mh0lnlk1mc738m82ng` |
-| **Database** | `bpr-clinic-db` — Basic-256mb — Frankfurt |
-| **Database ID** | `dpg-d8mgpurbc2fs73dvc160-a` |
-| **PostgreSQL** | v16 (upgradado 2 Jul 2026) |
+| **Provedor** | Coolify (self-hosted) |
+| **Team** | `BA TEAM` |
+| **Projeto** | `BAIntelligence` → environment `production` |
+| **App** | `clinic` |
+| **Build Pack** | Dockerfile |
+| **Database** | PostgreSQL gerido pelo Coolify (ver env vars da app no painel para a `DATABASE_URL` actual) |
 | **DB name** | `bpr_clinic` |
-| **DB user** | `bpr_clinic` |
-| **Render API Key** | ⚠️ ROTACIONADA/INVÁLIDA — pedir nova ao Bruno, guardar fora do git |
 
 ### Deploy flow
 ```bash
 git add -A && git commit -m "feat: descrição"
-git push origin main    # Render auto-deploys via GitHub webhook
+git push origin main    # Coolify auto-deploya via webhook do GitHub
 ```
 - `start.sh` corre `prisma db push --skip-generate` no arranque (idempotente)
 - Nunca commitar: `.env`, `*.sql`, `backup_*.sql`
@@ -62,10 +65,8 @@ git push origin main    # Render auto-deploys via GitHub webhook
 
 ## 🌍 DNS (Hostinger)
 
-| Tipo | Name | Valor |
-|---|---|---|
-| `ALIAS` | `@` | `clinic-1w3u.onrender.com` |
-| `CNAME` | `www` | `clinic-1w3u.onrender.com` |
+DNS aponta para o Coolify (ver painel Coolify → app `clinic` → **Domains** para os valores actuais
+de `bpr.rehab` / `www.bpr.rehab`). Os registos antigos para `clinic-1w3u.onrender.com` ficaram obsoletos com a migração.
 
 ---
 
@@ -112,9 +113,9 @@ USE_OPENROUTER = Boolean(process.env.OPENROUTER_API_KEY)
 
 ---
 
-## 🔑 API Keys (todas activas no Render + .env local)
+## 🔑 API Keys (todas activas no Coolify + .env local)
 
-| Serviço | Variável env | Status Render | Notas |
+| Serviço | Variável env | Status Coolify | Notas |
 |---|---|---|---|
 | **OpenRouter** | `OPENROUTER_API_KEY` | ✅ SET | PRIMARY para todo texto |
 | **Anthropic** | `ANTHROPIC_API_KEY` | ✅ SET | Fallback se sem OpenRouter |
@@ -128,13 +129,13 @@ USE_OPENROUTER = Boolean(process.env.OPENROUTER_API_KEY)
 | **Vapi Assistant** | `VAPI_ASSISTANT_ID` | ✅ SET | (Amy) |
 | **Vapi Phone** | `VAPI_PHONE_NUMBER_ID` | ✅ SET | (US test +18392789516) |
 
-> Valores reais de todas as keys: ver `.env` local (gitignored) ou Render → Environment. **Nunca colar valores aqui — este ficheiro vai para o GitHub público.**
+> Valores reais de todas as keys: ver `.env` local (gitignored) ou Coolify → Environment Variables. **Nunca colar valores aqui — este ficheiro vai para o GitHub público.**
 
 ### Auth
 | Variável | Valor |
 |---|---|
 | `NEXTAUTH_URL` | `https://bpr.rehab` |
-| `NEXTAUTH_SECRET` | ver Render (⚠️ rotacionar — esteve exposta neste ficheiro) |
+| `NEXTAUTH_SECRET` | ver Coolify (⚠️ rotacionar — esteve exposta neste ficheiro) |
 
 ---
 
@@ -473,7 +474,7 @@ Localização: **Tab Notas Clínicas → painel violeta collapsível "Clinical S
 - Nav no `landing-page.tsx`: O Método, Tecnologia, Artigos, Sobre, Contacto
 
 #### Imagens
-- `validImg()` guard — filtra paths `/uploads/` efémeros do Render
+- `validImg()` guard — filtra paths `/uploads/` efémeros (sem storage persistente)
 - Todas as imagens das settings passaram de `<Image>` (Next.js) para `<img>` simples — evita falhas de optimização com URLs internas da API
 - Fallbacks MLS removidos (não referência mais `/uploads/`)
 
@@ -583,14 +584,13 @@ Localização: **Tab Notas Clínicas → painel violeta collapsível "Clinical S
 
 ### Deploy/verificação
 - `start.sh` corre `prisma db push` no arranque — mudanças de schema aplicam-se automaticamente no deploy
-- Monitorização de deploy sem API key do Render: comparar `/api/version` antes/depois do push
-- ⚠️ **RENDER_API_KEY antiga foi rotada** — "Unauthorized"; pedir nova ao Bruno se precisar da API
+- Monitorização de deploy: comparar `/api/version` antes/depois do push (ver logs do deploy no painel Coolify)
 
 ---
 
 ## ⚠️ Notas críticas
 
-- **GEMINI_API_KEY** está na DB (não em env var do Render) — gerir via Admin → Settings
+- **GEMINI_API_KEY** está na DB (não em env var do Coolify) — gerir via Admin → Settings
 - **S3 não configurado** — imagens geradas ficam em base64 local, perdem-se no redeploy. Configurar AWS S3 para persistência real.
 - **MINIMAX key** tipo `sk-cp-...` = Token Plan key. Se Minimax falhar, verificar tipo de chave no dashboard minimax.
 - **Backup SQL** — nunca commitar para git (contém tokens e dados de produção)

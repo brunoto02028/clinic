@@ -37,10 +37,10 @@ TERRA_API_KEY=terra_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TERRA_DEV_ID=terra-dev-xxxxxxxxxx
 ```
 
-### Produção (Render dashboard):
-1. Vai a https://dashboard.render.com
-2. Selecciona o serviço `clinic`
-3. **Environment → Add Environment Variable**:
+### Produção (painel Coolify):
+1. Vai ao painel Coolify → `BAIntelligence` → `production` → app `clinic`
+2. Aba **Environment Variables**
+3. **Add Environment Variable**:
    - `TERRA_API_KEY` = (valor do Terra dashboard)
    - `TERRA_DEV_ID` = (valor do Terra dashboard)
 4. Guarda — o serviço faz redeploy automático
@@ -163,8 +163,8 @@ GARMIN · 2026-06-14   HRV 52ms   Sleep 78%   RHR 58bpm   Recovery 71%
 
 | Problema | Causa | Solução |
 |---|---|---|
-| Botão "Connect Wearable" não redirige | `TERRA_API_KEY` não definida | Adicionar ao `.env` / Render |
-| Webhook retorna 401 | Assinatura HMAC inválida | Verificar `TERRA_API_KEY` no Render |
+| Botão "Connect Wearable" não redirige | `TERRA_API_KEY` não definida | Adicionar ao `.env` / Coolify |
+| Webhook retorna 401 | Assinatura HMAC inválida | Verificar `TERRA_API_KEY` no Coolify |
 | Dados não aparecem após ligação | Webhook não configurado | Verificar URL do webhook no Terra Dashboard |
 | Provider não listado no widget | Plano Sandbox limitado | Upgrade para plano Pro no Terra |
 
