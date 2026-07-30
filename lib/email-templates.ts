@@ -46,15 +46,29 @@ async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: str
   }
 }
 
+// Dynamic clinic logos are served via /api/image-serve and are often stored as
+// WebP with alpha transparency — many email clients (notably Gmail's mobile
+// apps) mis-render that combination, showing a solid black box instead of a
+// transparent background. Appending ?bg=<hex> makes image-serve flatten the
+// image onto the matching brand colour and re-encode it as a plain PNG,
+// which every email client renders correctly. Bundled static PNGs and other
+// external URLs are left untouched.
+function emailSafeLogoUrl(url: string, bgHex: string): string {
+  if (!url || !url.includes('/api/image-serve/')) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}bg=${bgHex.replace('#', '')}`;
+}
+
 // ─── Base Layout Wrapper ───
 export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB'): Promise<string> {
   const { logoUrl, whiteLogoUrl, phone, email } = await getClinicSettings();
   const pt = isPt(locale);
   // Header: white logo only (no caption — the logo carries the name and captions get auto-translated by Gmail)
-  const headerLogoUrl = whiteLogoUrl || EMAIL_WHITE_LOGO_URL;
-  const logoHtml = `<img src="${headerLogoUrl}" alt="BPR Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;" />`;
+  const headerLogoUrl = emailSafeLogoUrl(whiteLogoUrl, BRAND_PRIMARY) || EMAIL_WHITE_LOGO_URL;
+  const logoHtml = `<img src="${headerLogoUrl}" alt="BPR Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;background-color:${BRAND_PRIMARY};" />`;
   // Footer: dynamic clinic logo (falls back to bundled static PNG if not configured)
-  const footerLogoHtml = `<img src="${logoUrl || EMAIL_LOGO_URL}" alt="BPR Physical Rehabilitation" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;" />`;
+  const footerLogoUrl = emailSafeLogoUrl(logoUrl, BRAND_HEALTH_SOFT) || EMAIL_LOGO_URL;
+  const footerLogoHtml = `<img src="${footerLogoUrl}" alt="BPR Physical Rehabilitation" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;background-color:${BRAND_HEALTH_SOFT};" />`;
   const noReplyText = pt
     ? `Esta é uma mensagem automática &mdash; por favor não responda diretamente a este email.<br>Para nos contactar, utilize os dados acima ou aceda ao seu <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">portal do paciente</a>.`
     : `This is an automated message &mdash; please do not reply to this email.<br>To contact us, use the details above or log in to your <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">patient portal</a>.`;
@@ -65,15 +79,17 @@ export async function wrapInLayout(content: string, preheader?: string, locale =
   return `<!DOCTYPE html>
 <html lang="${pt ? 'pt' : 'en'}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 ${preheader ? `<span style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;color:#fff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>` : ''}
 </head>
 <body style="margin:0;padding:0;background-color:${BRAND_BONE};font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND_BONE};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${BRAND_BONE}" style="background-color:${BRAND_BONE};">
 <tr><td align="center" style="padding:30px 15px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
-  <tr><td style="background-color:${BRAND_PRIMARY};background:linear-gradient(135deg,${BRAND_PRIMARY} 0%,${BRAND_PRIMARY_DARK} 100%);padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
-  <tr><td style="padding:36px 32px 24px;">${content}</td></tr>
-  <tr><td style="padding:24px 32px 28px;border-top:1px solid ${BRAND_LINE};background:${BRAND_HEALTH_SOFT};">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+  <tr><td bgcolor="${BRAND_PRIMARY}" style="background-color:${BRAND_PRIMARY};background:linear-gradient(135deg,${BRAND_PRIMARY} 0%,${BRAND_PRIMARY_DARK} 100%);padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
+  <tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:36px 32px 24px;">${content}</td></tr>
+  <tr><td bgcolor="${BRAND_HEALTH_SOFT}" style="padding:24px 32px 28px;border-top:1px solid ${BRAND_LINE};background-color:${BRAND_HEALTH_SOFT};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr><td style="text-align:center;">
       ${footerLogoHtml}
