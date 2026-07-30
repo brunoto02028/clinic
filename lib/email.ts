@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const FROM_ADDRESS = 'Bruno Physical Rehabilitation <noreply@bpr.rehab>';
+const FROM_ADDRESS = 'BPR Physical Rehabilitation <noreply@bpr.rehab>';
 const REPLY_TO     = 'admin@bpr.rehab';
 
 function getResend(): Resend {

@@ -1085,6 +1085,7 @@ model Article {
   publishLanguage String? @default("en") // primary/default language shown publicly ("en" | "pt")
   imageUrl    String?
   published   Boolean  @default(false)
+  scheduledAt DateTime? // if set and published=false, a cron job auto-publishes once this time has passed
   authorId    String
   author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorName  String?  // Optional override for displayed author name
@@ -3476,6 +3477,7 @@ model EmailContact {
   firstName     String?
   lastName      String?
   phone         String?
+  language      String?  @default("en") // "en" | "pt" — preferred language for newsletters (e.g. article notifications)
   tags          String[] @default([])
   subscribed    Boolean  @default(true)
   unsubscribedAt DateTime?

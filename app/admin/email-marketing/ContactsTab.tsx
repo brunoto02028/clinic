@@ -9,7 +9,7 @@ import { Plus, Trash2, Upload, Search, RefreshCw, Users, Check, X, Loader2 } fro
 
 export interface EmailContact {
   id: string; email: string; firstName?: string; lastName?: string;
-  subscribed: boolean; source?: string; createdAt: string;
+  subscribed: boolean; source?: string; createdAt: string; language?: string;
 }
 export interface EmailGroup { id: string; name: string; _count: { members: number }; }
 
@@ -25,7 +25,7 @@ export default function ContactsTab({ contacts, total, groups, loading, onRefres
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
-  const [newContact, setNewContact] = useState({ email: "", firstName: "", lastName: "", phone: "" });
+  const [newContact, setNewContact] = useState({ email: "", firstName: "", lastName: "", phone: "", language: "en" });
   const [csvText, setCsvText] = useState("");
   const [csvGroupId, setCsvGroupId] = useState("");
   const [csvImporting, setCsvImporting] = useState(false);
@@ -39,7 +39,7 @@ export default function ContactsTab({ contacts, total, groups, loading, onRefres
     });
     if (r.ok) {
       toast({ title: "Contact added" });
-      setNewContact({ email: "", firstName: "", lastName: "", phone: "" });
+      setNewContact({ email: "", firstName: "", lastName: "", phone: "", language: "en" });
       setShowAdd(false);
       onRefresh(search);
     } else {
@@ -62,7 +62,8 @@ export default function ContactsTab({ contacts, total, groups, loading, onRefres
     const cd = lines
       .map(line => {
         const p = line.split(",").map(x => x.trim().replace(/^"|"$/g, ""));
-        return { email: p[0], firstName: p[1] || "", lastName: p[2] || "" };
+        const lang = (p[3] || "").toLowerCase();
+        return { email: p[0], firstName: p[1] || "", lastName: p[2] || "", language: lang === "pt" ? "pt" : "en" };
       })
       .filter(c => c.email.includes("@"));
     const r = await fetch("/api/admin/email-contacts", {
@@ -138,6 +139,14 @@ export default function ContactsTab({ contacts, total, groups, loading, onRefres
               <Input placeholder="First name" value={newContact.firstName} onChange={e => setNewContact({ ...newContact, firstName: e.target.value })} />
               <Input placeholder="Last name" value={newContact.lastName} onChange={e => setNewContact({ ...newContact, lastName: e.target.value })} />
               <Input placeholder="Phone" value={newContact.phone} onChange={e => setNewContact({ ...newContact, phone: e.target.value })} />
+              <select
+                className="border rounded-md px-3 py-2 text-sm bg-background"
+                value={newContact.language}
+                onChange={e => setNewContact({ ...newContact, language: e.target.value })}
+              >
+                <option value="en">English</option>
+                <option value="pt">Português (BR)</option>
+              </select>
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={addContact}><Check className="h-4 w-4 mr-1" />Save</Button>
@@ -151,7 +160,7 @@ export default function ContactsTab({ contacts, total, groups, loading, onRefres
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2"><Upload className="h-4 w-4" />Bulk Import (CSV)</CardTitle>
-          <CardDescription className="text-xs">Format: email, first name, last name — one per line. Header row is ignored automatically.</CardDescription>
+          <CardDescription className="text-xs">Format: email, first name, last name, language (en/pt, optional) — one per line. Header row is ignored automatically.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2 flex-wrap">
@@ -197,6 +206,7 @@ export default function ContactsTab({ contacts, total, groups, loading, onRefres
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Email</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Name</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Source</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Language</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground">Status</th>
                 <th className="px-4 py-2.5"></th>
               </tr>
@@ -207,6 +217,7 @@ export default function ContactsTab({ contacts, total, groups, loading, onRefres
                   <td className="px-4 py-2.5 font-mono text-xs">{c.email}</td>
                   <td className="px-4 py-2.5 text-xs">{[c.firstName, c.lastName].filter(Boolean).join(" ") || "—"}</td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground capitalize">{c.source || "manual"}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground uppercase">{c.language === "pt" ? "PT" : "EN"}</td>
                   <td className="px-4 py-2.5">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c.subscribed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                       {c.subscribed ? "Subscribed" : "Unsubscribed"}
@@ -220,7 +231,7 @@ export default function ContactsTab({ contacts, total, groups, loading, onRefres
                 </tr>
               ))}
               {contacts.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">No contacts found</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">No contacts found</td></tr>
               )}
             </tbody>
           </table>

@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       templateSlug: templateSlug || null,
       htmlBody: htmlBody || null,
       preheader: preheader || null,
-      fromName: fromName || "Bruno Physical Rehabilitation",
+      fromName: fromName || "BPR Physical Rehabilitation",
       fromEmail: fromEmail || "noreply@bpr.rehab",
       replyTo: replyTo || null,
       groupId: groupId || null,

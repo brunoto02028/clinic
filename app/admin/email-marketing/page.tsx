@@ -50,7 +50,7 @@ export default function EmailMarketingPage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6 brand-accent">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Mail className="h-6 w-6 text-primary" />Email Marketing

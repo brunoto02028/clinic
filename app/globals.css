@@ -300,6 +300,19 @@ body {
 }
 
 /* ============================================
+   BRAND ACCENT OVERRIDE — for admin screens that manage
+   brand-facing content (email marketing, templates). Keeps
+   the dark admin shell but swaps the accent to the public
+   site's health-moss primary, so buttons/badges/links match
+   the brand palette used in the emails themselves.
+   ============================================ */
+.brand-accent {
+  --primary: 150 19% 38%;          /* health moss #4F7361 */
+  --primary-foreground: 0 0% 100%;
+  --ring: 150 19% 38%;
+}
+
+/* ============================================
    PUBLIC SITE — LIGHT THEME
    Scoped to .public-site — admin stays dark
    ============================================ */

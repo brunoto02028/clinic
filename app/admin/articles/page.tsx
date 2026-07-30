@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,9 @@ import {
   ExternalLink,
   Download,
   RefreshCw,
+  Mail,
+  Send,
+  Users,
 } from "lucide-react";
 import {
   Dialog,
@@ -49,6 +53,7 @@ interface Article {
 }
 
 export default function AdminArticlesPage() {
+  const { data: session } = useSession() || {};
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -62,6 +67,16 @@ export default function AdminArticlesPage() {
   const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
   // Instagram
   const [igArticle, setIgArticle] = useState<Article | null>(null);
+  // Publish / notify-subscribers flow
+  const [notifyArticle, setNotifyArticle] = useState<Article | null>(null);
+  const [notifyMode, setNotifyMode] = useState<"publish" | "standalone">("publish");
+  const [notifyLocale, setNotifyLocale] = useState<"en" | "pt">("en");
+  const [notifyPreview, setNotifyPreview] = useState<{ subject: string; html: string; counts: { en: number; pt: number; total: number } } | null>(null);
+  const [notifyLoadingPreview, setNotifyLoadingPreview] = useState(false);
+  const [notifyWorking, setNotifyWorking] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testSentMsg, setTestSentMsg] = useState<{ ok: boolean; text: string } | null>(null);
   // Bulk import
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkSiteUrl, setBulkSiteUrl] = useState("https://brunophysicalrehabilitation.co.uk");
@@ -92,23 +107,23 @@ export default function AdminArticlesPage() {
   };
 
   const togglePublish = async (article: Article) => {
+    // Publishing (draft -> published): open the confirm+preview dialog so staff can
+    // freely decide whether to notify subscribers by email, in their own time.
+    if (!article.published) {
+      openNotifyModal(article, "publish");
+      return;
+    }
+    // Unpublishing: no email implications, apply immediately.
     try {
       const res = await fetch(`/api/articles/${article.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ published: !article.published }),
+        body: JSON.stringify({ published: false }),
       });
 
       if (res.ok) {
-        setArticles(
-          articles.map((a) =>
-            a.id === article.id ? { ...a, published: !a.published } : a
-          )
-        );
-        toast({
-          title: article.published ? "Article unpublished" : "Article published",
-          description: `"${article.title}" has been ${article.published ? "unpublished" : "published"}.`,
-        });
+        setArticles(articles.map((a) => (a.id === article.id ? { ...a, published: false } : a)));
+        toast({ title: "Article unpublished", description: `"${article.title}" has been unpublished.` });
       }
     } catch (error) {
       toast({
@@ -116,6 +131,107 @@ export default function AdminArticlesPage() {
         description: "Failed to update article.",
         variant: "destructive",
       });
+    }
+  };
+
+  // ── Notify-subscribers dialog ──────────────────────────────────────────
+  const fetchNotifyPreview = async (article: Article, locale: "en" | "pt") => {
+    setNotifyLoadingPreview(true);
+    try {
+      const res = await fetch(`/api/admin/articles/${article.id}/notify-preview?locale=${locale}`);
+      if (res.ok) {
+        setNotifyPreview(await res.json());
+      }
+    } catch {
+      // ignore — preview is best-effort
+    } finally {
+      setNotifyLoadingPreview(false);
+    }
+  };
+
+  const openNotifyModal = (article: Article, mode: "publish" | "standalone") => {
+    setNotifyArticle(article);
+    setNotifyMode(mode);
+    setNotifyLocale("en");
+    setNotifyPreview(null);
+    setTestEmail((session as any)?.user?.email || "");
+    setTestSentMsg(null);
+    fetchNotifyPreview(article, "en");
+  };
+
+  const sendTestEmail = async () => {
+    if (!notifyArticle || !testEmail.trim()) return;
+    setSendingTest(true);
+    setTestSentMsg(null);
+    try {
+      const res = await fetch(`/api/admin/articles/${notifyArticle.id}/notify-test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: notifyLocale, email: testEmail.trim() }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setTestSentMsg({ ok: true, text: `✓ Test email sent to ${d.sentTo}. Check your inbox.` });
+        toast({ title: "Test email sent", description: `Sent to ${d.sentTo}. Check your inbox.` });
+      } else {
+        setTestSentMsg({ ok: false, text: d.error || "Failed to send test email." });
+        toast({ title: "Error", description: d.error, variant: "destructive" });
+      }
+    } catch {
+      setTestSentMsg({ ok: false, text: "Failed to send test email." });
+      toast({ title: "Error", description: "Failed to send test email.", variant: "destructive" });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const changeNotifyLocale = (locale: "en" | "pt") => {
+    setNotifyLocale(locale);
+    if (notifyArticle) fetchNotifyPreview(notifyArticle, locale);
+  };
+
+  const confirmPublish = async (notify: boolean) => {
+    if (!notifyArticle) return;
+    setNotifyWorking(true);
+    try {
+      const res = await fetch(`/api/articles/${notifyArticle.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published: true, notifySubscribers: notify }),
+      });
+      if (res.ok) {
+        setArticles(articles.map((a) => (a.id === notifyArticle.id ? { ...a, published: true } : a)));
+        toast({
+          title: "Article published",
+          description: notify
+            ? `"${notifyArticle.title}" is live and subscribers are being notified.`
+            : `"${notifyArticle.title}" is live.`,
+        });
+        setNotifyArticle(null);
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to publish article.", variant: "destructive" });
+    } finally {
+      setNotifyWorking(false);
+    }
+  };
+
+  const sendStandaloneNotify = async () => {
+    if (!notifyArticle) return;
+    setNotifyWorking(true);
+    try {
+      const res = await fetch(`/api/admin/articles/${notifyArticle.id}/notify`, { method: "POST" });
+      if (res.ok) {
+        toast({ title: "Notification sent", description: `Subscribers are being notified about "${notifyArticle.title}".` });
+        setNotifyArticle(null);
+      } else {
+        const d = await res.json();
+        toast({ title: "Error", description: d.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to send notification.", variant: "destructive" });
+    } finally {
+      setNotifyWorking(false);
     }
   };
 
@@ -469,6 +585,19 @@ export default function AdminArticlesPage() {
                         <span className="hidden sm:inline">Instagram</span>
                       </Button>
                     )}
+                    {/* Notify subscribers — available even on drafts, so staff can preview
+                        and send a test email before publishing. Sending to real subscribers
+                        is still gated on the article being published (checked in the modal). */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+                      onClick={() => openNotifyModal(article, "standalone")}
+                      title="Preview / notify email subscribers about this article"
+                    >
+                      <Mail className="h-4 w-4" />
+                      <span className="hidden sm:inline">Notify</span>
+                    </Button>
                     {/* Publish/Unpublish */}
                     <Button variant="outline" size="sm" onClick={() => togglePublish(article)}>
                       {article.published ? (
@@ -528,6 +657,151 @@ export default function AdminArticlesPage() {
       {/* ── Instagram Post Modal ── */}
       {igArticle && (
         <InstagramArticleModal article={igArticle} onClose={() => setIgArticle(null)} />
+      )}
+
+      {/* ── Publish / Notify Subscribers Modal ── */}
+      {notifyArticle && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-start justify-center pt-8 overflow-y-auto brand-accent" onClick={() => !notifyWorking && setNotifyArticle(null)}>
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-2xl mx-4 mb-10" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b">
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-primary" />
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    {notifyMode === "publish" ? "Publish Article" : "Notify Subscribers"}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{notifyArticle.title}</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" disabled={notifyWorking} onClick={() => setNotifyArticle(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Subscriber counts */}
+              {notifyPreview?.counts && (
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+                  <span className="flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5" />
+                    {notifyPreview.counts.total} subscribed contact{notifyPreview.counts.total === 1 ? "" : "s"} — {notifyPreview.counts.en} EN · {notifyPreview.counts.pt} PT
+                  </span>
+                  <Link href="/admin/email-marketing" target="_blank" className="text-primary hover:underline whitespace-nowrap">
+                    Manage list →
+                  </Link>
+                </div>
+              )}
+
+              {/* Draft notice — sending to real subscribers requires publishing first */}
+              {notifyMode === "standalone" && !notifyArticle.published && (
+                <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  This article is still a draft — you can preview and send a test email, but publish it first to notify real subscribers.
+                </div>
+              )}
+
+              {/* Locale toggle for preview */}
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Email preview — each subscriber receives it in their own language</p>
+                <div className="flex rounded-lg border overflow-hidden">
+                  <button
+                    className={`px-3 py-1.5 text-xs font-medium ${notifyLocale === "en" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}
+                    onClick={() => changeNotifyLocale("en")}
+                  >
+                    EN
+                  </button>
+                  <button
+                    className={`px-3 py-1.5 text-xs font-medium ${notifyLocale === "pt" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}
+                    onClick={() => changeNotifyLocale("pt")}
+                  >
+                    PT-BR
+                  </button>
+                </div>
+              </div>
+
+              {/* Rendered email preview */}
+              <div className="border rounded-xl overflow-hidden bg-muted/20">
+                {notifyLoadingPreview ? (
+                  <div className="h-72 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : notifyPreview ? (
+                  <>
+                    <div className="px-4 py-2 border-b bg-background text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Subject: </span>{notifyPreview.subject}
+                    </div>
+                    <iframe
+                      title="Email preview"
+                      srcDoc={notifyPreview.html}
+                      className="w-full h-80 bg-white"
+                    />
+                  </>
+                ) : (
+                  <div className="h-72 flex items-center justify-center text-sm text-muted-foreground">
+                    Preview unavailable
+                  </div>
+                )}
+              </div>
+
+              {/* Send test email */}
+              <div className="flex items-center gap-2 pt-1">
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={sendingTest || !testEmail.trim()}
+                  onClick={sendTestEmail}
+                  className="gap-1.5 whitespace-nowrap"
+                >
+                  {sendingTest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  Send test email
+                </Button>
+              </div>
+              {testSentMsg && (
+                <p className={`text-xs font-medium ${testSentMsg.ok ? "text-emerald-600" : "text-destructive"}`}>
+                  {testSentMsg.text}
+                </p>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 pt-2">
+                {notifyMode === "publish" ? (
+                  <>
+                    <Button variant="outline" disabled={notifyWorking} onClick={() => confirmPublish(false)}>
+                      {notifyWorking ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Eye className="h-4 w-4 mr-2" />}
+                      Publish only
+                    </Button>
+                    <Button disabled={notifyWorking} onClick={() => confirmPublish(true)} className="gap-2">
+                      {notifyWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      Publish &amp; Notify Subscribers
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" disabled={notifyWorking} onClick={() => setNotifyArticle(null)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      disabled={notifyWorking || !notifyArticle.published}
+                      onClick={sendStandaloneNotify}
+                      className="gap-2"
+                      title={!notifyArticle.published ? "Publish the article first" : undefined}
+                    >
+                      {notifyWorking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      Send Notification Now
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
