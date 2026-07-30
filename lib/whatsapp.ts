@@ -9,6 +9,7 @@
  *   WHATSAPP_VERIFY_TOKEN      — Webhook verification token
  */
 
+import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { getConfigValue } from "@/lib/system-config";
 
@@ -315,4 +316,19 @@ export function verifyWebhook(params: {
     return params.challenge;
   }
   return null;
+}
+
+// ─── Webhook signature verification (Meta X-Hub-Signature-256) ───
+// Requires WHATSAPP_APP_SECRET (Meta App > Settings > Basic > App Secret).
+// Verifies the raw request body against the signature Meta sends on every
+// inbound webhook call, so forged payloads can't be injected as patient messages.
+export function verifyWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+  if (!appSecret || !signatureHeader) return false;
+
+  const expected = "sha256=" + crypto.createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex");
+  const sigBuf = Buffer.from(signatureHeader);
+  const expBuf = Buffer.from(expected);
+  if (sigBuf.length !== expBuf.length) return false;
+  return crypto.timingSafeEqual(sigBuf, expBuf);
 }

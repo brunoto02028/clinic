@@ -275,14 +275,16 @@ export async function POST(req: NextRequest) {
     const message = body?.message ?? body;
     const msgType: string = message?.type ?? "";
 
-    // Optional webhook secret validation
+    // Webhook secret validation (required)
     const secret = getVapiWebhookSecret();
-    if (secret) {
-      const authHeader = req.headers.get("x-vapi-secret");
-      if (authHeader !== secret) {
-        console.warn("[vapi-webhook] Invalid webhook secret");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (!secret) {
+      console.error("[vapi-webhook] VAPI_WEBHOOK_SECRET not configured — rejecting webhook");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    }
+    const authHeader = req.headers.get("x-vapi-secret");
+    if (authHeader !== secret) {
+      console.warn("[vapi-webhook] Invalid webhook secret");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // ── Tool calls ────────────────────────────────────────────────────────────

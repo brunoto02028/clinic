@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyWebhook } from "@/lib/whatsapp";
+import { verifyWebhook, verifyWebhookSignature } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,13 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    const signature = req.headers.get("x-hub-signature-256");
+    if (!verifyWebhookSignature(rawBody, signature)) {
+      console.warn("[whatsapp-webhook] Invalid or missing signature");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const body = JSON.parse(rawBody);
 
     // Process each entry
     const entries = body?.entry || [];

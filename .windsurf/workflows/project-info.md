@@ -27,7 +27,7 @@ description: Project vault with all access credentials and infrastructure info f
 | Campo | Valor |
 |---|---|
 | **Email** | admin@bpr.rehab |
-| **Password** | Bruno@Admin2026! |
+| **Password** | ⚠️ REMOVIDO — ver gestor de senhas (rotacionada em 28 Jul 2026 após exposição pública) |
 | **Role** | SUPERADMIN |
 | **Login URL (local)** | http://localhost:3000/staff-login |
 | **Login URL (prod)** | https://bpr.rehab/staff-login |
@@ -45,7 +45,7 @@ description: Project vault with all access credentials and infrastructure info f
 | **PostgreSQL** | v16 (upgradado 2 Jul 2026) |
 | **DB name** | `bpr_clinic` |
 | **DB user** | `bpr_clinic` |
-| **Render API Key** | `rnd_bi5VBQLvzzHrYLMaCh6vwKcU31cd` |
+| **Render API Key** | ⚠️ ROTACIONADA/INVÁLIDA — pedir nova ao Bruno, guardar fora do git |
 
 ### Deploy flow
 ```bash
@@ -116,23 +116,25 @@ USE_OPENROUTER = Boolean(process.env.OPENROUTER_API_KEY)
 
 | Serviço | Variável env | Status Render | Notas |
 |---|---|---|---|
-| **OpenRouter** | `OPENROUTER_API_KEY` | ✅ SET | `sk-or-v1-baff...` — PRIMARY para todo texto |
+| **OpenRouter** | `OPENROUTER_API_KEY` | ✅ SET | PRIMARY para todo texto |
 | **Anthropic** | `ANTHROPIC_API_KEY` | ✅ SET | Fallback se sem OpenRouter |
-| **MiniMax** | `MINIMAX_API_KEY` | ✅ SET | `sk-cp-OzXP...` — voz + visão |
-| **Groq** | `GROQ_API_KEY` | ✅ SET | `gsk_ki1P...` — fallback texto/whisper |
-| **Hugging Face** | `HUGGINGFACE_API_KEY` | ✅ SET | `hf_qhqg...` |
+| **MiniMax** | `MINIMAX_API_KEY` | ✅ SET | voz + visão |
+| **Groq** | `GROQ_API_KEY` | ✅ SET | fallback texto/whisper |
+| **Hugging Face** | `HUGGINGFACE_API_KEY` | ✅ SET | |
 | **Google Gemini** | `GEMINI_API_KEY` | ✅ Na DB | Admin → Settings → AI → Gemini API Key |
 | **Google OAuth** | `GOOGLE_CLIENT_ID/SECRET` | ✅ SET | Login Google |
-| **Vapi** | `VAPI_API_KEY` | ✅ SET | `7ad173e0...` |
-| **Vapi Public** | `VAPI_PUBLIC_KEY` | ✅ SET | `8013e75f...` |
-| **Vapi Assistant** | `VAPI_ASSISTANT_ID` | ✅ SET | `cdce0b8c...` (Amy) |
-| **Vapi Phone** | `VAPI_PHONE_NUMBER_ID` | ✅ SET | `d9b8f30b...` (US test +18392789516) |
+| **Vapi** | `VAPI_API_KEY` | ✅ SET | |
+| **Vapi Public** | `VAPI_PUBLIC_KEY` | ✅ SET | |
+| **Vapi Assistant** | `VAPI_ASSISTANT_ID` | ✅ SET | (Amy) |
+| **Vapi Phone** | `VAPI_PHONE_NUMBER_ID` | ✅ SET | (US test +18392789516) |
+
+> Valores reais de todas as keys: ver `.env` local (gitignored) ou Render → Environment. **Nunca colar valores aqui — este ficheiro vai para o GitHub público.**
 
 ### Auth
 | Variável | Valor |
 |---|---|
 | `NEXTAUTH_URL` | `https://bpr.rehab` |
-| `NEXTAUTH_SECRET` | `ba3a0be3...` (ver Render) |
+| `NEXTAUTH_SECRET` | ver Render (⚠️ rotacionar — esteve exposta neste ficheiro) |
 
 ---
 
@@ -592,3 +594,4 @@ Localização: **Tab Notas Clínicas → painel violeta collapsível "Clinical S
 - **S3 não configurado** — imagens geradas ficam em base64 local, perdem-se no redeploy. Configurar AWS S3 para persistência real.
 - **MINIMAX key** tipo `sk-cp-...` = Token Plan key. Se Minimax falhar, verificar tipo de chave no dashboard minimax.
 - **Backup SQL** — nunca commitar para git (contém tokens e dados de produção)
+- **28 Jul 2026 — INCIDENTE DE SEGURANÇA:** este ficheiro (e o equivalente em `.devin/workflows/`) esteve no repositório **público** do GitHub desde 8 Mar 2026 com a password do SUPERADMIN e prefixos de API keys em texto puro. Password rotacionada, valores removidos deste ficheiro. **Pendente:** tornar o repo privado, rotacionar `NEXTAUTH_SECRET` + todas as API keys listadas acima, considerar limpeza do histórico git (BFG/filter-repo). Nunca mais colar segredos completos ou parciais em ficheiros rastreados pelo git.
