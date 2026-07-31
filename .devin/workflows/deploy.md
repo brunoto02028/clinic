@@ -20,15 +20,24 @@ O deploy é automático: push para GitHub → Coolify detecta (webhook) e faz bu
 
 ## Passos do Deploy
 
-// turbo
-1. Commit e push para GitHub (Coolify faz deploy automaticamente):
+> ⚠️ NÃO fazer push direto para `main`. Cada trabalho vai para uma branch
+> separada; só abrir PR para `main` quando o utilizador pedir explicitamente.
+
+1. Commit e push para uma branch separada (nunca `main` diretamente):
 ```bash
+git checkout -b <nome-da-branch>   # ex: feat/condition-pages
 git add -A
 git commit -m "feat: <descrição das mudanças>"
-git push origin main
+git push origin <nome-da-branch>
 ```
 
-2. Verificar deploy no Coolify (opcional):
+2. Só abrir o PR para `main` quando o utilizador pedir:
+```bash
+gh pr create --base main --head <nome-da-branch> --title "..." --body "..."
+```
+   - Coolify faz deploy automaticamente a cada push/merge em `main` (webhook do GitHub) — branches separadas não disparam deploy.
+
+3. Verificar deploy no Coolify (depois do merge, opcional):
    - Painel Coolify → Projects → `BAIntelligence` → `production` → `clinic` → aba **Deployments**/**Logs**
 
 ## Primeiro Deploy (setup inicial)
