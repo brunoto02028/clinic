@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 
 export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Help Centre | Bruno Physical Rehabilitation",
+  description: "Answers to common questions about appointments, the patient portal, treatment programmes and billing at Bruno Physical Rehabilitation.",
+  alternates: { canonical: "https://bpr.rehab/help" },
+};
 
 export default async function HelpLayout({
   children,

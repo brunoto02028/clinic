@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = {
   title: "Cancellation Policy | Bruno Physical Rehabilitation",
   description: "Our cancellation and refund policy for appointments and treatment plans.",
+  alternates: { canonical: "https://bpr.rehab/cancellation-policy" },
 };
 
 async function getSiteSettings() {

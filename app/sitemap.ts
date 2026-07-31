@@ -16,6 +16,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/services/electrotherapy`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/services/therapeutic-ultrasound`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE_URL}/services/exercise-therapy`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/services/microcurrent`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/services/sports-injury`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/services/chronic-pain`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/services/pre-post-surgery`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE_URL}/therapies`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE_URL}/biohacking`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE_URL}/start`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE_URL}/get-the-app`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE_URL}/help`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE_URL}/privacy`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${BASE_URL}/terms`, changeFrequency: "yearly", priority: 0.2 },
@@ -42,5 +50,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // DB unavailable — static pages only
   }
 
-  return [...staticPages, ...articlePages];
+  // Published condition pages (P4 SEO bridges) — dynamic
+  let conditionPages: MetadataRoute.Sitemap = [];
+  try {
+    const conditions = await (prisma as any).conditionPage.findMany({
+      where: { published: true },
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    conditionPages = conditions.map((c: any) => ({
+      url: `${BASE_URL}/conditions/${c.slug}`,
+      lastModified: c.updatedAt,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    }));
+  } catch {
+    // DB unavailable or table not yet migrated — skip
+  }
+
+  return [...staticPages, ...articlePages, ...conditionPages];
 }
