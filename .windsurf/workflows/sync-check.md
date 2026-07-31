@@ -43,9 +43,6 @@ all aligned — so no work is based on stale/wrong state.
      Environment Variables if unsure. This is intentional: local dev reads/
      writes the SAME database as production so previews never show stale or
      deleted content.
-   - ⚠️ The project migrated from Render to Coolify (Jul 2026), including the
-     database. A `DATABASE_URL` still pointing at the old Render Postgres
-     host (`*-postgres.render.com`) is now STALE — flag it to the user.
    - If it points anywhere else (old Railway `interchange.proxy.rlwy.net`,
      or a local Postgres like `bpr_clinic_local`), warn the user — this
      means local preview will NOT match what's live.

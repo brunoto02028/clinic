@@ -16,9 +16,7 @@ O deploy é automático: push para GitHub → Coolify detecta (webhook) e faz bu
 | **Hosting** | Coolify (self-hosted) — `BAIntelligence` → `production` → app `clinic` |
 | **Build Pack** | Dockerfile (usa o `Dockerfile` do repo) |
 | **Domain** | `bpr.rehab` (+ `www.bpr.rehab`, `clinic.c.baintelligence.co.uk`) |
-| **Database** | PostgreSQL — migrado do Render para o Coolify (ver painel Coolify → Databases / env vars da app) |
-
-> ⚠️ Migrado do Render (antigo repo `brunoto02028/clinic` na Render) para o Coolify. Render **não é mais usado** — não referenciar `render.yaml`, `dashboard.render.com` ou hosts `*.onrender.com` / `*-postgres.render.com` como fonte de verdade.
+| **Database** | PostgreSQL gerido pelo Coolify (ver painel Coolify → Databases / env vars da app) |
 
 ## Passos do Deploy
 

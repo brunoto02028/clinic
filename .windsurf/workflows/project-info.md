@@ -36,10 +36,6 @@ description: Project vault with all access credentials and infrastructure info f
 
 ## 🏗️ Infraestrutura (Coolify)
 
-> ⚠️ Migrado do Render (Jul 2026) — web service e database. Render **não é mais usado**;
-> não confiar em referências antigas a `render.yaml`, `dashboard.render.com` ou hosts
-> `*.onrender.com` / `*-postgres.render.com` como fonte de verdade.
-
 | Componente | Detalhes |
 |---|---|
 | **Provedor** | Coolify (self-hosted) |
@@ -66,7 +62,7 @@ git push origin main    # Coolify auto-deploya via webhook do GitHub
 ## 🌍 DNS (Hostinger)
 
 DNS aponta para o Coolify (ver painel Coolify → app `clinic` → **Domains** para os valores actuais
-de `bpr.rehab` / `www.bpr.rehab`). Os registos antigos para `clinic-1w3u.onrender.com` ficaram obsoletos com a migração.
+de `bpr.rehab` / `www.bpr.rehab`).
 
 ---
 
