@@ -5,6 +5,12 @@ import { cookies } from "next/headers";
 import { authOptions } from "@/lib/auth-options";
 import DashboardLayout from "@/components/dashboard/dashboard-layout";
 import ImpersonationBanner from "@/components/impersonation-banner";
+import type { Metadata } from "next";
+
+// Patient portal — private, keep out of the index (P4.1)
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
+};
 
 export default async function DashboardRootLayout({
   children,

@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/terms`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${BASE_URL}/cookies`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${BASE_URL}/cancellation-policy`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${BASE_URL}/complaints-policy`, changeFrequency: "yearly", priority: 0.2 },
   ];
 
   // Published articles — dynamic

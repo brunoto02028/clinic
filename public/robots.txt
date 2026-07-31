@@ -2,3 +2,5 @@
 User-agent: *
 Allow: /
 Disallow: /shop
+
+Sitemap: https://bpr.rehab/sitemap.xml

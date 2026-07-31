@@ -5,6 +5,12 @@ import SimplifiedSignupForm from "@/components/auth/simplified-signup-form";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
+import type { Metadata } from "next";
+
+// Utility page — keep out of the index so crawl budget goes to content (P4.1)
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
+};
 
 export default async function SignupPage() {
   const [session, settings] = await Promise.all([

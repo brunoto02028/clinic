@@ -4,6 +4,12 @@ import { authOptions } from "@/lib/auth-options";
 import AdminMiniSidebar from "@/components/admin/admin-mini-sidebar";
 import AdminHeader from "@/components/admin/admin-header";
 import SectionTabs from "@/components/admin/section-tabs";
+import type { Metadata } from "next";
+
+// Staff portal — private, keep out of the index (P4.1)
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
+};
 
 export default async function AdminLayout({
   children,

@@ -5,6 +5,12 @@ import LoginForm from "@/components/auth/login-form";
 import { AuthPageHeader } from "@/components/auth/auth-page-header";
 import { NativeLoginShell } from "@/components/auth/native-login-shell";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
+import type { Metadata } from "next";
+
+// Utility page — keep out of the index so crawl budget goes to content (P4.1)
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
+};
 
 export default async function LoginPage() {
   const [session, settings] = await Promise.all([
