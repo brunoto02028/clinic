@@ -568,8 +568,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 bg: "bg-orange-50 text-orange-600",
                 titleEn: "Pain Elimination",
                 titlePt: "Eliminação da Dor",
-                descEn: "MLS® Laser, electrotherapy, microcurrent (MENS), therapeutic ultrasound and shockwave — the most effective technologies for rapid pain relief and tissue repair.",
-                descPt: "Laser MLS®, eletroterapia, microcorrente (MENS), ultrassom terapêutico e ondas de choque — as tecnologias mais eficazes para alívio rápido da dor e reparação tecidual.",
+                descEn: "MLS® Laser, electrotherapy and therapeutic ultrasound accelerate comfort and tissue repair — while movement and re-education deliver the lasting result.",
+                descPt: "Laser MLS®, eletroterapia e ultrassom terapêutico aceleram o alívio e a reparação tecidual — enquanto o movimento e a reeducação entregam o resultado duradouro.",
               },
               {
                 num: "03",

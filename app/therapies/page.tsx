@@ -10,7 +10,6 @@ import {
   Footprints,
   ScanLine,
   Waves,
-  CircleDot,
   Activity,
   Heart,
   Syringe,
@@ -64,19 +63,6 @@ const ALL_THERAPIES = [
       { en: "Accelerated soft tissue healing", pt: "Cicatrização acelerada de tecidos moles" },
       { en: "Scar tissue and adhesion reduction", pt: "Redução de tecido cicatricial e aderências" },
       { en: "Painless and non-invasive", pt: "Indolor e não invasivo" },
-    ],
-  },
-  {
-    slug: "laser-shockwave",
-    icon: CircleDot,
-    color: "bg-rose-100 text-rose-700",
-    title: { en: "Laser & Shockwave Therapy", pt: "Terapia a Laser e Ondas de Choque" },
-    desc: { en: "Non-surgical treatment for chronic tendon problems, calcifications, and conditions that haven't responded to conventional treatment.", pt: "Tratamento não cirúrgico para problemas crônicos de tendão, calcificações e condições que não responderam ao tratamento convencional." },
-    benefits: [
-      { en: "Breaks down calcifications and scar tissue", pt: "Quebra calcificações e tecido cicatricial" },
-      { en: "Stimulates natural healing response", pt: "Estimula a resposta natural de cicatrização" },
-      { en: "Proven for plantar fasciitis and tennis elbow", pt: "Comprovado para fascite plantar e epicondilite" },
-      { en: "Non-surgical alternative", pt: "Alternativa não cirúrgica" },
     ],
   },
   {
@@ -185,10 +171,10 @@ export default function TherapiesPage() {
       {/* Therapies Grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="space-y-8">
-          {ALL_THERAPIES.map((therapy, i) => {
+          {ALL_THERAPIES.map((therapy) => {
             const Icon = therapy.icon;
             return (
-              <div>
+              <div key={therapy.slug}>
                 <Card className="overflow-hidden border border-border hover:shadow-lg transition-shadow border-t-[3px] border-t-[#4F7361]">
                   <CardContent className="p-0">
                     <div className="grid md:grid-cols-[1fr_2fr] gap-0">

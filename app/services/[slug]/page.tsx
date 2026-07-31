@@ -145,33 +145,6 @@ const SERVICE_DATA: Record<string, ServiceData> = {
       pt: "Sessões: 5-10 minutos por área | 2-3 vezes por semana | Somente na clínica",
     },
   },
-  "laser-shockwave": {
-    slug: "laser-shockwave",
-    icon: CircleDot,
-    color: "bg-rose-100 text-rose-700",
-    titleKey: "svc.laserShockwave",
-    descKey: "svc.laserShockwaveDesc",
-    benefits: [
-      { en: "Effective for chronic tendon problems", pt: "Eficaz para problemas crônicos de tendão" },
-      { en: "Breaks down calcifications and scar tissue", pt: "Quebra calcificações e tecido cicatricial" },
-      { en: "Stimulates natural healing response", pt: "Estimula a resposta natural de cicatrização" },
-      { en: "Reduces chronic pain", pt: "Reduz a dor crônica" },
-      { en: "Non-surgical treatment option", pt: "Opção de tratamento não cirúrgica" },
-      { en: "Proven results for plantar fasciitis and tennis elbow", pt: "Resultados comprovados para fascite plantar e epicondilite" },
-    ],
-    whoIsItFor: {
-      en: "Laser and shockwave therapy is particularly effective for plantar fasciitis, tennis elbow, Achilles tendinopathy, calcific tendinitis, trigger points, and conditions that have not responded to conventional treatment. It is a powerful non-surgical alternative.",
-      pt: "A terapia a laser e ondas de choque é particularmente eficaz para fascite plantar, epicondilite lateral, tendinopatia de Aquiles, tendinite calcificada, pontos-gatilho e condições que não responderam ao tratamento convencional. É uma poderosa alternativa não cirúrgica.",
-    },
-    howItWorks: {
-      en: "Shockwave therapy delivers acoustic waves to the affected area, stimulating the body's natural healing process. Laser therapy uses focused light energy to reduce inflammation and promote cellular repair. Both treatments are performed in-clinic and are well-tolerated by patients, though some mild discomfort may be felt during shockwave treatment.",
-      pt: "A terapia por ondas de choque emite ondas acústicas na área afetada, estimulando o processo natural de cicatrização do corpo. A terapia a laser usa energia luminosa focada para reduzir a inflamação e promover o reparo celular. Ambos os tratamentos são realizados na clínica e são bem tolerados pelos pacientes, embora algum desconforto leve possa ser sentido durante o tratamento por ondas de choque.",
-    },
-    sessionInfo: {
-      en: "Sessions: 10-15 minutes | Weekly for 3-6 weeks | In-clinic only",
-      pt: "Sessões: 10-15 minutos | Semanalmente por 3-6 semanas | Somente na clínica",
-    },
-  },
   "sports-injury": {
     slug: "sports-injury",
     icon: Activity,
