@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { getVapiWebhookSecret } from "@/lib/vapi";
 import { sendEmail } from "@/lib/email";
 import { getAppName } from "@/lib/utils";
+import { logBookedEventForEmail } from "@/lib/lead-magnet";
 
 export const dynamic = "force-dynamic";
 
@@ -184,6 +185,10 @@ async function handleBookAppointment(
         therapist: { select: { firstName: true, lastName: true } },
       },
     });
+
+    // Lead-magnet attribution (P3): log a "booked" event if this patient's
+    // email was previously captured via an article lead-magnet.
+    logBookedEventForEmail(appointment.patient.email).catch(() => {});
 
     // Update VapiCall record with appointment ID
     if (vapiCallId) {

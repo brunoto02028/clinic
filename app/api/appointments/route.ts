@@ -11,6 +11,7 @@ import { notifyPatient } from "@/lib/notify-patient";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
 import { getRequestSession } from "@/lib/dual-auth";
+import { logBookedEventForEmail } from "@/lib/lead-magnet";
 
 export async function GET(request: NextRequest) {
   try {
@@ -185,6 +186,10 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Lead-magnet attribution (P3): log a "booked" event if this patient's
+    // email was previously captured via an article lead-magnet.
+    logBookedEventForEmail(appointment.patient.email).catch(() => {});
 
     // Send confirmation to patient via their preferred channel
     try {

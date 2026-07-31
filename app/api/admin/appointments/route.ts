@@ -5,6 +5,7 @@ import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/
 import { notifyPatient } from "@/lib/notify-patient";
 import { stripe } from "@/lib/stripe";
 import { sendEmail } from "@/lib/email";
+import { logBookedEventForEmail } from "@/lib/lead-magnet";
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +86,10 @@ export async function POST(request: NextRequest) {
         therapist: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+
+    // Lead-magnet attribution (P3): log a "booked" event if this patient's
+    // email was previously captured via an article lead-magnet.
+    logBookedEventForEmail(appointment.patient.email).catch(() => {});
 
     // Create Stripe checkout if online payment requested
     let checkoutUrl: string | null = null;

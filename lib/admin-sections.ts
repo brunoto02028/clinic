@@ -240,6 +240,18 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         ],
       },
       {
+        key: "leads",
+        label: "Leads",
+        labelPt: "Contatos",
+        href: "/admin/marketing/leads",
+      },
+      {
+        key: "condition-pages",
+        label: "Conditions (SEO)",
+        labelPt: "Condições (SEO)",
+        href: "/admin/marketing/condition-pages",
+      },
+      {
         key: "education",
         label: "Education",
         labelPt: "Educacao",

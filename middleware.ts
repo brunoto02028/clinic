@@ -87,6 +87,7 @@ const publicRoutes = [
   '/sitemap.xml',
   '/services',
   '/articles',
+  '/conditions', // public SEO bridge pages (P4)
   '/help',
   '/terms',
   '/privacy',
@@ -97,6 +98,7 @@ const publicRoutes = [
   '/api/unsubscribe',
   '/lead-magnet',
   '/api/lead-magnet',
+  '/api/newsletter', // public footer newsletter signup (P4) — feeds the same EmailContact/Lead list
   '/intake',
   '/api/intake',
   '/api/analytics/track',
@@ -108,6 +110,7 @@ const publicRoutes = [
   '/api/amazon-image',
   '/api/agent', // OpenClaw Agent API - uses Bearer token authentication
   '/api/admin/maintenance', // protected by x-maintenance-secret header, not session
+  '/api/cron', // all cron/* routes verify their own ?key= secret, not session — see each route
   '/api/image-serve', // public image serving from DB (no auth needed to display images)
   '/api/health', // Coolify health check — must be public or deploy zero-downtime breaks
   '/api/public', // public read-only endpoints (clinic schedule, etc.)
