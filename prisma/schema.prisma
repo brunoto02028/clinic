@@ -3504,17 +3504,61 @@ model EmailContact {
   tags          String[] @default([])
   subscribed    Boolean  @default(true)
   unsubscribedAt DateTime?
-  source        String?  // "manual", "csv", "patient", "signup"
+  source        String?  // "manual", "csv", "patient", "signup", or a lead-magnet slug (e.g. "guide-running")
   patientId     String?  // link to User if they are a patient
   notes         String?
+
+  // ── Lead-magnet / double opt-in (P1.2) ──
+  cluster       String?   // topic cluster of the magnet that captured them, e.g. "running", "knee", "neck"
+  consent       Boolean   @default(false) // explicit GDPR marketing consent checkbox at capture time
+  consentAt     DateTime?
+  confirmed     Boolean   @default(false) // double opt-in — true once they've clicked the confirmation email link
+  confirmedAt   DateTime?
+  confirmToken  String?   @unique // single-use-ish token for the confirm link + gated PDF download link
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   groupMembers  EmailGroupMember[]
   campaignJobs  EmailCampaignJob[]
+  events        EmailContactEvent[]
 
   @@index([email])
   @@index([subscribed])
+  @@index([cluster])
+}
+
+// Funnel event log for lead-magnet contacts (captured → confirmed → downloaded → booked,
+// or unsubscribed at any point). Used by the admin funnel view (P3) and booking attribution.
+model EmailContactEvent {
+  id        String   @id @default(cuid())
+  contactId String
+  contact   EmailContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  type      String   // "captured" | "confirmed" | "downloaded" | "booked" | "unsubscribed"
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([contactId])
+  @@index([type])
+}
+
+// Branded PDF guide shown by the lead-magnet capture component (P1.2/P3).
+// PDF bytes stored as base64 (same pattern as ImageLibrary/image-serve — no
+// S3/Supabase dependency, survives redeploys without persistent storage).
+model LeadMagnetGuide {
+  id          String   @id @default(cuid())
+  slug        String   @unique // e.g. "return-to-running", "desk-setup-neck-pain"
+  cluster     String   // matches Article.tags for magnet-matching, e.g. "running", "neck", "knee", "pain", "tendon"
+  titleEn     String
+  titlePt     String
+  pdfDataEn   String   @db.Text // base64-encoded PDF (English)
+  pdfDataPt   String   @db.Text // base64-encoded PDF (Portuguese)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([cluster])
+  @@index([isActive])
 }
 
 model EmailGroup {
