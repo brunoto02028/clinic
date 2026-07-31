@@ -9,6 +9,7 @@ import { ArticleAudioPlayer } from "./audio-player";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
 import { authOptions } from "@/lib/auth-options";
 import { isTtsEnabled } from "@/lib/eleven-labs";
+import { MedicalDisclaimer } from "@/components/medical-disclaimer";
 
 const STAFF_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
@@ -220,6 +221,9 @@ export default async function ArticlePage({ params }: PageProps) {
               pt={article.contentPt}
               fallback={article.content}
             />
+
+            {/* Medical disclaimer — single source of truth, every article (P1.1) */}
+            <MedicalDisclaimer />
 
             {/* Prev/Next Navigation */}
             <nav className="mt-12 pt-8 border-t border-border">
