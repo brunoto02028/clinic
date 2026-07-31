@@ -11,6 +11,7 @@ import {
 import { Logo } from "@/components/ui/logo";
 import { useLocale } from "@/hooks/use-locale";
 import { CookiePreferencesButton } from "@/components/cookie-consent";
+import { NewsletterSignup } from "@/components/newsletter-signup";
 
 const SOCIAL_ICONS: Record<string, any> = {
   instagram: Instagram,
@@ -88,6 +89,9 @@ export function SiteFooter() {
                 })}
               </div>
             )}
+            <div className="mt-6">
+              <NewsletterSignup isPt={isPt} />
+            </div>
           </div>
 
           {/* Col 2 — Navigation */}

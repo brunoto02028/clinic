@@ -11,6 +11,7 @@ import { authOptions } from "@/lib/auth-options";
 import { isTtsEnabled } from "@/lib/eleven-labs";
 import { MedicalDisclaimer } from "@/components/medical-disclaimer";
 import { LeadMagnetCapture } from "@/components/lead-magnet-capture";
+import { extractFaqPairs, buildFaqPageSchema, buildArticleSchema } from "@/lib/article-schema";
 
 const STAFF_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
@@ -66,10 +67,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${article.title} - Bruno Physical Rehabilitation`,
     description: article.excerpt || undefined,
+    alternates: { canonical: `${BASE_URL}/articles/${article.slug}` },
     openGraph: {
       title: article.title,
       description: article.excerpt || undefined,
       type: "article",
+      url: `${BASE_URL}/articles/${article.slug}`,
       images: [{ url: ogImage }],
     },
     twitter: {
@@ -110,6 +113,22 @@ export default async function ArticlePage({ params }: PageProps) {
 
   const readTime = estimateReadTime(sanitizeContent(article.content || ""));
 
+  // Structured data (P4): Article/MedicalWebPage schema on every article,
+  // plus FAQPage schema when the article has a FAQ section (EN or PT).
+  const articleUrl = `${BASE_URL}/articles/${article.slug}`;
+  const articleSchema = buildArticleSchema({
+    url: articleUrl,
+    title: article.title,
+    description: article.excerpt,
+    imageUrl: absoluteUrl(article.imageUrl),
+    authorName: (article as any).authorName || `${article.author.firstName} ${article.author.lastName}`,
+    datePublished: article.createdAt,
+    dateModified: article.updatedAt,
+  });
+  const faqPairsPrimary = extractFaqPairs(article.contentEn || article.content);
+  const faqPairs = faqPairsPrimary.length ? faqPairsPrimary : extractFaqPairs(article.contentPt);
+  const faqSchema = buildFaqPageSchema(faqPairs);
+
   // Get prev/next articles
   const [prevArticle, nextArticle] = await Promise.all([
     prisma.article.findFirst({
@@ -134,6 +153,16 @@ export default async function ArticlePage({ params }: PageProps) {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
       {!article.published && (
         <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-700 dark:text-amber-400 text-center text-sm font-semibold py-2.5 px-4">
           👁️ Draft preview — this article is not published yet. Only visible to staff.
