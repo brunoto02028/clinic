@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { generateSpeech, stripHtmlForSpeech } from "@/lib/eleven-labs";
+import { generateSpeech, stripHtmlForSpeech, isTtsEnabled } from "@/lib/eleven-labs";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Feature-flagged off (see lib/eleven-labs.ts) — ElevenLabs free-plan
+    // quota is exhausted; re-enable via ELEVENLABS_TTS_ENABLED once credits
+    // are purchased. Checked before touching the DB/ElevenLabs at all.
+    if (!isTtsEnabled()) {
+      return NextResponse.json({ error: "Article narration is currently unavailable" }, { status: 503 });
+    }
+
     const { searchParams } = new URL(request.url);
     const locale: "en" | "pt" = searchParams.get("locale") === "pt" ? "pt" : "en";
 

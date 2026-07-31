@@ -31,6 +31,16 @@ export function voiceIdForLocale(locale: 'en' | 'pt'): string {
   return VOICE_IDS[locale];
 }
 
+// ── Feature flag ─────────────────────────────────────────────────────────
+// The clinic's ElevenLabs account is on the free plan (10,000 characters／
+// month) — enough for roughly one article's EN+PT narration, already used up
+// by testing. "Listen to article" is hidden everywhere (button + API) until
+// credits are purchased. Set ELEVENLABS_TTS_ENABLED=true once the plan
+// supports real usage — no other code change needed to turn it back on.
+export function isTtsEnabled(): boolean {
+  return process.env.ELEVENLABS_TTS_ENABLED === 'true';
+}
+
 /** Strips HTML tags/entities down to plain, speakable text. */
 export function stripHtmlForSpeech(html: string): string {
   return html

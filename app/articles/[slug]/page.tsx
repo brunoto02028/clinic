@@ -8,6 +8,7 @@ import { LocalizedText, LocalizedHtml } from "./localized";
 import { ArticleAudioPlayer } from "./audio-player";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
 import { authOptions } from "@/lib/auth-options";
+import { isTtsEnabled } from "@/lib/eleven-labs";
 
 const STAFF_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
@@ -199,10 +200,13 @@ export default async function ArticlePage({ params }: PageProps) {
               </span>
             </div>
 
-            {/* Listen to article (ElevenLabs TTS, generated + cached on first play) */}
-            <div className="mb-8">
-              <ArticleAudioPlayer articleId={article.id} />
-            </div>
+            {/* Listen to article (ElevenLabs TTS, generated + cached on first play) —
+                hidden while ELEVENLABS_TTS_ENABLED is off (free-plan quota exhausted) */}
+            {isTtsEnabled() && (
+              <div className="mb-8">
+                <ArticleAudioPlayer articleId={article.id} />
+              </div>
+            )}
 
             {/* Excerpt */}
             {article.excerpt && (
