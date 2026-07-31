@@ -13,7 +13,6 @@ import {
   Activity,
   Heart,
   Syringe,
-  Users,
   CheckCircle2,
   Clock,
   Menu,
@@ -102,19 +101,6 @@ const ALL_THERAPIES = [
       { en: "Faster post-surgical recovery", pt: "Recuperação pós-cirúrgica mais rápida" },
       { en: "Reduced complication risk", pt: "Risco reduzido de complicações" },
       { en: "Coordination with surgical team", pt: "Coordenação com equipe cirúrgica" },
-    ],
-  },
-  {
-    slug: "kinesiotherapy",
-    icon: Users,
-    color: "bg-indigo-100 text-indigo-700",
-    title: { en: "Kinesiotherapy", pt: "Cinesioterapia" },
-    desc: { en: "Therapeutic movement techniques to restore natural movement patterns, improve postural balance, and enhance neuromuscular coordination.", pt: "Técnicas de movimento terapêutico para restaurar padrões naturais de movimento, melhorar o equilíbrio postural e aprimorar a coordenação neuromuscular." },
-    benefits: [
-      { en: "Restore natural movement patterns", pt: "Restaurar padrões naturais de movimento" },
-      { en: "Improve postural balance", pt: "Melhorar equilíbrio postural" },
-      { en: "Functional movement training", pt: "Treinamento de movimento funcional" },
-      { en: "Preventive musculoskeletal health", pt: "Saúde musculoesquelética preventiva" },
     ],
   },
   {

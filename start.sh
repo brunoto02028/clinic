@@ -13,6 +13,12 @@ npx prisma@6.7.0 db push --skip-generate --accept-data-loss || echo "[start.sh] 
 echo "[start.sh] Seeding lead-magnet guides..."
 node /app/scripts/seed-lead-magnet-guides.js || echo "[start.sh] guide seed warning — check logs"
 
+# Remove any DB-driven service pages still promoting shockwave therapy —
+# not an offered treatment (P2). Idempotent, see
+# scripts/fix-shockwave-service-pages.js.
+echo "[start.sh] Checking for shockwave service pages to remove..."
+node /app/scripts/fix-shockwave-service-pages.js || echo "[start.sh] shockwave cleanup warning — check logs"
+
 # Create upload directories if UPLOADS_DIR is set
 if [ -n "$UPLOADS_DIR" ]; then
   mkdir -p "$UPLOADS_DIR" || true

@@ -57,6 +57,7 @@ import { t, getLocale, setLocale } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
 import { VapiVoiceWidget } from "@/components/vapi-voice-widget";
+import { NewsletterSignup } from "@/components/newsletter-signup";
 
 // Code splitting - lazy load heavy components
 const ThermographyIllustration = dynamic(
@@ -568,8 +569,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 bg: "bg-orange-50 text-orange-600",
                 titleEn: "Pain Elimination",
                 titlePt: "Eliminação da Dor",
-                descEn: "MLS® Laser, electrotherapy and therapeutic ultrasound accelerate comfort and tissue repair — while movement and re-education deliver the lasting result.",
-                descPt: "Laser MLS®, eletroterapia e ultrassom terapêutico aceleram o alívio e a reparação tecidual — enquanto o movimento e a reeducação entregam o resultado duradouro.",
+                descEn: "MLS® Laser, electrotherapy, microcurrent (MENS) and therapeutic ultrasound accelerate comfort and tissue repair — while movement and re-education deliver the lasting result.",
+                descPt: "Laser MLS®, eletroterapia, microcorrente (MENS) e ultrassom terapêutico aceleram o alívio e a reparação tecidual — enquanto o movimento e a reeducação entregam o resultado duradouro.",
               },
               {
                 num: "03",
@@ -783,6 +784,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     { icon: Thermometer, en: "Infrared Thermography",      pt: "Termografia Infravermelha",  href: "/services/mls-laser" },
                     { icon: HeartPulse,  en: "HRV Monitoring",             pt: "Monitorização HRV",          href: "/services/hrv-recovery-monitoring" },
                     { icon: Zap,         en: "Advanced Electrotherapy",    pt: "Eletroterapia Avançada",     href: "/services/electrotherapy" },
+                    { icon: Zap,         en: "Microcurrent (MENS)",        pt: "Microcorrente (MENS)",       href: "/services/microcurrent" },
                     { icon: Waves,       en: "Therapeutic Ultrasound",     pt: "Ultrassom Terapêutico",      href: "/services/therapeutic-ultrasound" },
                     { icon: Cpu,         en: "Biohacking & Performance",   pt: "Biohacking & Performance",   href: "/services/biohacking-performance" },
                   ] as const).map((t) => (
@@ -1095,6 +1097,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                       })}
                     </div>
                   )}
+                  <div className="mt-6">
+                    <NewsletterSignup isPt={locale === "pt-BR"} />
+                  </div>
                 </div>
 
                 {/* Col 2 — Navigation */}
