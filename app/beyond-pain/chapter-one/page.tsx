@@ -6,6 +6,7 @@ import { getBookReaderFromToken } from "@/lib/book";
 import { BookCaptureForm } from "@/components/book-capture-form";
 import { BookChapterReader } from "@/components/book-chapter-reader";
 import { MedicalDisclaimer } from "@/components/medical-disclaimer";
+import { Button } from "@/components/ui/button";
 
 // Gated HTML chapter reader (§2 of BPR_Devin_Spec_Beyond_Pain_Book.md).
 // Server-side gate — the chapter body is only ever included in the render
@@ -58,8 +59,8 @@ export default async function ChapterOnePage() {
 
       <div className="mt-14 rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8 text-center">
         <p className="text-muted-foreground mb-4">Enjoyed this? Follow the journey as the rest of the book is written.</p>
-        <Link href="/signup" className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors">
-          Book an assessment
+        <Link href="/signup">
+          <Button variant="ba1Primary" className="gap-2">Book an assessment</Button>
         </Link>
       </div>
 

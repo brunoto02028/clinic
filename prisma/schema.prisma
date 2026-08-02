@@ -3620,6 +3620,7 @@ model BookConfig {
   authorName  String? @default("Bruno")
   authorBio   String? @db.Text
   authorPhoto String?
+  coverImage  String? // book cover artwork shown in the hero
 
   // On-sale purchase links (§4) — only used once status = ON_SALE
   buyLinkAmazon String?

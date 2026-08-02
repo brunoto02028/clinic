@@ -47,7 +47,7 @@ export async function PATCH(req: NextRequest) {
 
     const allowed = [
       "status", "title", "subtitle", "authorName", "authorBio", "authorPhoto",
-      "buyLinkAmazon", "buyLinkDirect", "priceDisplay",
+      "coverImage", "buyLinkAmazon", "buyLinkDirect", "priceDisplay",
     ];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, Mail, MailCheck, Unlock, CalendarCheck, Loader2, Save } from "lucide-react";
+import { BookOpen, Mail, MailCheck, Unlock, CalendarCheck, Loader2, Save, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,8 @@ interface BookConfig {
   subtitle: string;
   authorName: string | null;
   authorBio: string | null;
+  authorPhoto: string | null;
+  coverImage: string | null;
   buyLinkAmazon: string | null;
   buyLinkDirect: string | null;
   priceDisplay: string | null;
@@ -50,6 +52,21 @@ export default function BookAdminPage() {
       toast({ title: "Error loading book settings", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const uploadImage = async (file: File, field: "coverImage" | "authorPhoto") => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("category", field === "coverImage" ? "hero" : "about");
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      const fullUrl = data.url.startsWith("http") ? data.url : `${window.location.origin}${data.url}`;
+      setConfig((prev) => (prev ? { ...prev, [field]: fullUrl } : prev));
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     }
   };
 
@@ -121,7 +138,7 @@ export default function BookAdminPage() {
       {/* Copy */}
       <Card>
         <CardHeader><CardTitle className="text-base">Book identity</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
               <Label>Title</Label>
@@ -132,10 +149,60 @@ export default function BookAdminPage() {
               <Input value={config.subtitle} onChange={(e) => setConfig({ ...config, subtitle: e.target.value })} />
             </div>
           </div>
+
+          {/* Cover image */}
+          <div>
+            <Label>Book cover</Label>
+            <div className="flex items-center gap-3 mt-1.5">
+              {config.coverImage ? (
+                <div className="relative w-20 h-28 rounded-lg overflow-hidden border shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={config.coverImage} alt="Cover" className="object-cover w-full h-full" />
+                  <button type="button" onClick={() => setConfig({ ...config, coverImage: null })} className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5"><X className="h-3 w-3" /></button>
+                </div>
+              ) : (
+                <div className="w-20 h-28 rounded-lg border border-dashed flex items-center justify-center text-muted-foreground shrink-0">
+                  <BookOpen className="h-6 w-6" />
+                </div>
+              )}
+              <div>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => document.getElementById("cover-upload")?.click()}>
+                  <Upload className="h-3.5 w-3.5" />Upload cover
+                </Button>
+                <input id="cover-upload" type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "coverImage"); e.target.value = ""; }} />
+              </div>
+            </div>
+          </div>
+
           <div>
             <Label>Author name</Label>
             <Input value={config.authorName || ""} onChange={(e) => setConfig({ ...config, authorName: e.target.value })} />
           </div>
+
+          {/* Author photo */}
+          <div>
+            <Label>Author photo</Label>
+            <div className="flex items-center gap-3 mt-1.5">
+              {config.authorPhoto ? (
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={config.authorPhoto} alt="Author" className="object-cover w-full h-full" />
+                  <button type="button" onClick={() => setConfig({ ...config, authorPhoto: null })} className="absolute top-0 right-0 bg-black/60 text-white rounded-full p-0.5"><X className="h-3 w-3" /></button>
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full border border-dashed flex items-center justify-center text-muted-foreground shrink-0 text-lg font-bold">
+                  {(config.authorName || "B").charAt(0)}
+                </div>
+              )}
+              <div>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => document.getElementById("author-upload")?.click()}>
+                  <Upload className="h-3.5 w-3.5" />Upload photo
+                </Button>
+                <input id="author-upload" type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "authorPhoto"); e.target.value = ""; }} />
+              </div>
+            </div>
+          </div>
+
           <div>
             <Label>Author bio</Label>
             <Textarea rows={4} value={config.authorBio || ""} onChange={(e) => setConfig({ ...config, authorBio: e.target.value })} />
