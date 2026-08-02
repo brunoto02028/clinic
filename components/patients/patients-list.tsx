@@ -24,6 +24,7 @@ import {
   Shield,
   Eye,
   EyeOff,
+  MessageCircle,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
@@ -68,6 +69,9 @@ interface Patient {
   createdAt: string;
   isActive?: boolean;
   clinicId?: string | null;
+  answeredQCount?: number;
+  unreadMessages?: number;
+  latestDiagnosisStatus?: string | null;
   medicalScreening: {
     id: string;
     consentGiven: boolean;
@@ -221,6 +225,51 @@ export default function PatientsList() {
         {searchQuery && <span>· {filteredPatients.length} matching</span>}
       </div>
 
+      {/* Pending patient activity banners */}
+      {(() => {
+        const withAnswers = patients.filter(p => (p.answeredQCount ?? 0) > 0);
+        const withMessages = patients.filter(p => (p.unreadMessages ?? 0) > 0);
+        if (!withAnswers.length && !withMessages.length) return null;
+        return (
+          <div className="space-y-2">
+            {withMessages.length > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                  <MessageCircle className="h-4 w-4 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-blue-300">
+                    {withMessages.length === 1
+                      ? `${withMessages[0].firstName} enviou uma mensagem`
+                      : `${withMessages.length} pacientes enviaram mensagens`}
+                  </p>
+                  <p className="text-xs text-blue-400/70 mt-0.5">
+                    {withMessages.map(p => `${p.firstName} ${p.lastName}`).join(", ")} — clique no paciente → Mensagens para ver
+                  </p>
+                </div>
+              </div>
+            )}
+            {withAnswers.length > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <MessageCircle className="h-4 w-4 text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-emerald-300">
+                    {withAnswers.length === 1
+                      ? `${withAnswers[0].firstName} respondeu às perguntas`
+                      : `${withAnswers.length} pacientes responderam às perguntas`}
+                  </p>
+                  <p className="text-xs text-emerald-400/70 mt-0.5">
+                    {withAnswers.map(p => `${p.firstName} ${p.lastName}`).join(", ")} — clique no paciente → Rehab Agent para ver
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Patients List */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -258,6 +307,18 @@ export default function PatientsList() {
                             {patient.firstName} {patient.lastName}
                           </h3>
                           {patient.isActive === false && <Badge variant="outline" className="text-[9px]">Inactive</Badge>}
+                          {(patient.unreadMessages ?? 0) > 0 && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-[9px] font-semibold text-blue-300">
+                              <MessageCircle className="h-2.5 w-2.5" />
+                              {patient.unreadMessages} mensage{(patient.unreadMessages ?? 0) !== 1 ? "ns" : "m"}
+                            </span>
+                          )}
+                          {(patient.answeredQCount ?? 0) > 0 && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[9px] font-semibold text-emerald-300">
+                              <MessageCircle className="h-2.5 w-2.5" />
+                              {patient.answeredQCount} nova{(patient.answeredQCount ?? 0) !== 1 ? "s" : ""}
+                            </span>
+                          )}
                           {patient.medicalScreening?.consentGiven ? (
                             <Badge variant="success" className="gap-0.5 text-[10px] hidden sm:flex">
                               <CheckCircle className="h-2.5 w-2.5" /> Screened
@@ -288,9 +349,19 @@ export default function PatientsList() {
                         <Link
                           href={`/admin/patients/${patient.id}/diagnosis`}
                           onClick={(e) => e.stopPropagation()}
-                          className="hidden lg:inline-flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1.5 rounded-md transition-colors"
+                          className={`hidden lg:inline-flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md transition-colors ${
+                            patient.latestDiagnosisStatus === "APPROVED" || patient.latestDiagnosisStatus === "SENT_TO_PATIENT"
+                              ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30"
+                              : patient.latestDiagnosisStatus === "UNDER_REVIEW" || patient.latestDiagnosisStatus === "DRAFT"
+                              ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30"
+                              : "bg-primary/10 text-primary hover:bg-primary/20"
+                          }`}
                         >
-                          <Brain className="h-3 w-3" /> AI
+                          <Brain className="h-3 w-3" />
+                          AI
+                          {patient.latestDiagnosisStatus && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                          )}
                         </Link>
                         <Link
                           href={`/admin/patients/${patient.id}/permissions`}

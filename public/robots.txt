@@ -1,3 +1,6 @@
 # Allow all web crawlers to access all content
 User-agent: *
 Allow: /
+Disallow: /shop
+
+Sitemap: https://bpr.rehab/sitemap.xml

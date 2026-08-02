@@ -29,6 +29,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
+  const [pendingPatients, setPendingPatients] = useState(0);
   const { locale } = useLocale();
 
   const activeNav = getActiveAdminNav(pathname);
@@ -48,6 +49,20 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
         setLogoReady(true);
       })
       .catch(() => setLogoReady(true));
+  }, []);
+
+  useEffect(() => {
+    const fetchPending = () => {
+      fetch("/api/admin/pending-count")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.pendingPatients !== undefined) setPendingPatients(data.pendingPatients);
+        })
+        .catch(() => {});
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const initials =
@@ -145,7 +160,12 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
               >
                 {isActive && activeBar}
                 <Icon size={18} className="flex-shrink-0" />
-                <span>{isPt ? section.labelPt : section.label}</span>
+                <span className="flex-1">{isPt ? section.labelPt : section.label}</span>
+                {section.key === "patients" && pendingPatients > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    {pendingPatients > 9 ? "9+" : pendingPatients}
+                  </span>
+                )}
               </button>
             );
           })}

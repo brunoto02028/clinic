@@ -20,11 +20,12 @@ interface PatientSidebarProps {
 export default function PatientSidebar({ notifications = 0 }: PatientSidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { locale } = useLocale();
+  const { locale, setLocale } = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
+  const [pendingQuestions, setPendingQuestions] = useState(0);
 
   const activeSection = getActivePatientSection(pathname);
   const isPt = locale?.startsWith("pt");
@@ -50,6 +51,19 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
 
   useEffect(() => {
     setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/patient/questions").then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch("/api/patient/messages").then(r => r.ok ? r.json() : []).catch(() => []),
+    ])
+      .then(([qData, mData]) => {
+        const pending = Array.isArray(qData) ? qData.filter((q: any) => q.status === "pending").length : 0;
+        const unread = Array.isArray(mData) ? mData.filter((m: any) => m.senderRole === "staff" && !m.readAt).length : 0;
+        setPendingQuestions(pending + unread);
+      })
+      .catch(() => {});
   }, [pathname]);
 
   const navItemClass = (active: boolean) =>
@@ -147,7 +161,12 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
               >
                 {isActive && activeBar}
                 <Icon size={18} className="flex-shrink-0" />
-                <span>{isPt ? section.labelPt : section.label}</span>
+                <span className="flex-1">{isPt ? section.labelPt : section.label}</span>
+                {section.key === "questions" && pendingQuestions > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-amber-400 text-black text-[10px] font-bold flex items-center justify-center px-1">
+                    {pendingQuestions > 9 ? "9+" : pendingQuestions}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -155,6 +174,29 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
 
         {/* Footer */}
         <div className="px-2 py-3 border-t border-white/[0.06] space-y-0.5">
+          {/* Language toggle */}
+          <div className="flex items-center gap-1 px-3 py-2">
+            {(["en-GB", "pt-BR"] as const).map((loc) => (
+              <button
+                key={loc}
+                onClick={() => {
+                  setLocale(loc);
+                  fetch("/api/patient/profile", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ preferredLocale: loc }),
+                  }).catch(() => {});
+                }}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                  locale === loc
+                    ? "bg-primary/20 text-primary border border-primary/30"
+                    : "text-[hsl(195,20%,45%)] hover:text-foreground border border-transparent"
+                }`}
+              >
+                {loc === "en-GB" ? "EN" : "PT"}
+              </button>
+            ))}
+          </div>
           <Link
             href={PATIENT_PROFILE_SECTION.href}
             className={navItemClass(activeSection.key === "profile")}

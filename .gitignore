@@ -30,7 +30,15 @@ www/
 # Playwright MCP test artifacts
 .playwright-mcp/
 
+# Database backups (contain production data & secrets — NEVER commit)
+*.sql
+backup_*.sql
+backup_*.dump
+
 # Uploaded patient files (PII — never commit; runtime storage)
 public/uploads/
 mobile/.expo/
 .superpowers/
+
+# Graphify generated knowledge graph (regenerate when codebase changes significantly)
+graphify-out/

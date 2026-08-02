@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical } from "@/lib/ai-provider";
+import { patientPseudonym } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -183,7 +184,7 @@ Analyze this patient's engagement data and provide:
 4. A suggested email/message to re-engage this patient (warm, personal tone)
 
 Patient Data:
-- Name: ${patientData.name}
+- Patient: ${patientPseudonym(patientData.patientId || patientData.id || "unknown")}
 - Retention Score: ${patientData.retention?.score}/100 (${patientData.retention?.risk} risk)
 - Level: ${patientData.level} | XP: ${patientData.xp} | Streak: ${patientData.streak} days
 - Longest Streak: ${patientData.longestStreak} days
@@ -207,7 +208,7 @@ Respond in JSON format:
 }`;
     } else if (action === "suggest_campaign" && patientsInput) {
       const atRiskSummary = patientsInput.slice(0, 20).map((p: any) =>
-        `${p.name} (Score:${p.retention?.score}, Risk:${p.retention?.risk}, Streak:${p.streak}d, Last:${p.lastActive ? new Date(p.lastActive).toLocaleDateString() : "Never"})`
+        `${patientPseudonym(p.patientId || p.id || "unknown")} (Score:${p.retention?.score}, Risk:${p.retention?.risk}, Streak:${p.streak}d, Last:${p.lastActive ? new Date(p.lastActive).toLocaleDateString() : "Never"})`
       ).join("\n");
 
       prompt = `You are an AI retention coach for "Bruno Physical Rehabilitation" (BPR), a physiotherapy clinic.

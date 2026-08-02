@@ -62,7 +62,24 @@ export async function POST(
 
     const patientId = params.id;
     const therapistId = (session.user as any).id;
-    const clinicId = (session.user as any).clinicId;
+    let clinicId = (session.user as any).clinicId as string | null;
+
+    // Resolve clinicId robustly — session may not carry it
+    if (!clinicId) {
+      const patientRec = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+      clinicId = patientRec?.clinicId || null;
+    }
+    if (!clinicId) {
+      const therapistRec = await prisma.user.findUnique({ where: { id: therapistId }, select: { clinicId: true } });
+      clinicId = therapistRec?.clinicId || null;
+    }
+    if (!clinicId) {
+      const firstClinic = await (prisma as any).clinic.findFirst({ select: { id: true }, orderBy: { createdAt: "asc" } });
+      clinicId = firstClinic?.id || null;
+    }
+    if (!clinicId) {
+      return NextResponse.json({ error: "No clinic found — cannot create protocol" }, { status: 400 });
+    }
 
     // Get the diagnosis
     const diagnosis = await (prisma as any).aIDiagnosis.findUnique({
@@ -90,7 +107,7 @@ export async function POST(
     ]);
 
     // Build prompt
-    const prompt = `You are a senior physiotherapy clinical AI assistant. Based on the following diagnosis, generate a comprehensive treatment protocol divided into phases.
+    const prompt = `You are a senior physical rehabilitation clinical AI assistant. Based on the following diagnosis, generate a comprehensive treatment protocol divided into phases.
 
 == DIAGNOSIS ==
 Summary: ${diagnosis.summary}
@@ -110,6 +127,7 @@ ${treatmentTypes.map((t: any) => `- ${t.name} [${t.category}]${t.requiresInPerso
 ${exercises.map((e: any) => `- ID: ${e.id} | Name: ${e.name} | Region: ${e.bodyRegion} | Difficulty: ${e.difficulty} | Sets: ${e.defaultSets || "?"} | Reps: ${e.defaultReps || "?"} | Hold: ${e.defaultHoldSec || "?"} | Rest: ${e.defaultRestSec || "?"}`).join("\n")}
 
 RULES:
+0. TERMINOLOGY: NEVER use the words "physiotherapy", "physiotherapist" or "fisioterapia" in any generated text. Always use "physical rehabilitation" / "reabilitação física" and "physical rehabilitation specialist" / "especialista em reabilitação física" instead.
 1. Create a protocol with THREE phases: SHORT_TERM (weeks 1-4, acute), MEDIUM_TERM (weeks 4-12, rehabilitation), LONG_TERM (weeks 12+, maintenance).
 2. Each phase must have IN_CLINIC items (from the available treatments) and HOME_EXERCISE items (from the exercise library or custom).
 3. Include HOME_CARE items for self-care instructions (ice, ergonomics, sleep, etc.).
@@ -166,23 +184,77 @@ Respond in this exact JSON format (no markdown, no code blocks):
   ]
 }`;
 
-    const rawText = await callAIClinical(prompt, { temperature: 0.3, maxTokens: 8192 });
+    const rawText = await callAIClinical(prompt, { temperature: 0.3, maxTokens: 16384 });
     if (!rawText) throw new Error("No response from AI. Please try again.");
 
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Failed to parse AI protocol response");
+    // Strip markdown code fences if present
+    let cleaned = rawText
+      .replace(/^```(?:json)?\s*/im, "")
+      .replace(/\s*```\s*$/im, "")
+      .trim();
+
+    // Extract from the first { onwards
+    const start = cleaned.indexOf("{");
+    if (start === -1) {
+      console.error("[protocol] Raw AI response (no JSON found):", rawText.slice(0, 500));
+      throw new Error("Failed to extract JSON from AI response");
+    }
+    const end = cleaned.lastIndexOf("}");
+    cleaned = end > start ? cleaned.slice(start, end + 1) : cleaned.slice(start);
+
+    // Remove trailing commas before ] or } (common AI mistake)
+    cleaned = cleaned.replace(/,\s*([}\]])/g, "$1");
+
+    // Attempt to repair truncated JSON: trim to last complete element and close open brackets
+    const repairTruncatedJson = (text: string): string => {
+      // Cut back to the last complete value boundary (}, ], ", digit, true/false/null)
+      let i = text.length - 1;
+      while (i > 0 && !/[}\]"el0-9]/.test(text[i])) i--;
+      let candidate = text.slice(0, i + 1);
+      // Remove a dangling partial key/value like `"someKey": "unterminated...`
+      const lastComma = candidate.lastIndexOf(",");
+      const attempts = [candidate, lastComma > 0 ? candidate.slice(0, lastComma) : candidate];
+      for (const base of attempts) {
+        // Balance brackets
+        let openCurly = 0, openSquare = 0, inString = false, escape = false;
+        for (const ch of base) {
+          if (escape) { escape = false; continue; }
+          if (ch === "\\") { escape = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === "{") openCurly++;
+          else if (ch === "}") openCurly--;
+          else if (ch === "[") openSquare++;
+          else if (ch === "]") openSquare--;
+        }
+        if (inString) continue; // unterminated string — try next attempt
+        let repaired = base.replace(/,\s*$/, "");
+        repaired += "]".repeat(Math.max(0, openSquare)) + "}".repeat(Math.max(0, openCurly));
+        try { JSON.parse(repaired); return repaired; } catch { /* try next */ }
+      }
+      return text; // give up — return original
+    };
 
     let parsed: any;
     try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      throw new Error("Invalid JSON in AI protocol response");
+      parsed = JSON.parse(cleaned);
+    } catch (firstErr: any) {
+      console.warn("[protocol] JSON parse failed, attempting repair:", firstErr.message);
+      const repaired = repairTruncatedJson(cleaned);
+      try {
+        parsed = JSON.parse(repaired);
+        console.warn("[protocol] JSON repaired successfully (response was truncated)");
+      } catch (jsonErr: any) {
+        console.error("[protocol] JSON parse error after repair:", jsonErr.message);
+        console.error("[protocol] Cleaned text (last 500 chars):", cleaned.slice(-500));
+        throw new Error(`Invalid JSON in AI response: ${jsonErr.message}`);
+      }
     }
 
     // ─── Save to DB ───
     const protocol = await (prisma as any).treatmentProtocol.create({
       data: {
-        clinicId: clinicId || "",
+        clinicId,
         patientId,
         therapistId,
         diagnosisId,
@@ -253,22 +325,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
       },
     });
 
-    // Notify patient: treatment plan ready
-    try {
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
-      notifyPatient({
-        patientId,
-        emailTemplateSlug: 'TREATMENT_PLAN_READY',
-        emailVars: {
-          protocolTitle: fullProtocol?.title || 'Treatment Plan',
-          therapistName: fullProtocol?.therapist ? `${fullProtocol.therapist.firstName} ${fullProtocol.therapist.lastName}` : 'Your therapist',
-          portalUrl: `${BASE}/dashboard/treatment`,
-        },
-        plainMessage: `Your treatment plan "${fullProtocol?.title || 'Treatment Plan'}" is ready! Log in to your portal to review it.`,
-        plainMessagePt: `Seu plano de tratamento "${fullProtocol?.title || 'Plano de Tratamento'}" está pronto! Acesse seu portal para revisá-lo.`,
-      }).catch(err => console.error('[protocol] notify error:', err));
-    } catch {}
-
+    // NOTE: No patient notification here — protocol is DRAFT until therapist reviews and sends.
     return NextResponse.json({ success: true, protocol: fullProtocol }, { status: 201 });
   } catch (err: any) {
     console.error("[protocol] POST error:", err);
@@ -288,7 +345,43 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { protocolId, status, therapistComments, itemId, itemUpdate } = body;
+    const { protocolId, status, therapistComments, itemId, itemUpdate, deleteItemId, newItem } = body;
+
+    // Delete a specific protocol item
+    if (deleteItemId) {
+      await (prisma as any).protocolItem.delete({ where: { id: deleteItemId } });
+      return NextResponse.json({ success: true, deleted: deleteItemId });
+    }
+
+    // Create a new protocol item (manual add or duplicate)
+    if (newItem && protocolId) {
+      const created = await (prisma as any).protocolItem.create({
+        data: {
+          protocolId,
+          phase: newItem.phase || "SHORT_TERM",
+          itemType: newItem.itemType || "HOME_EXERCISE",
+          sortOrder: newItem.sortOrder ?? 999,
+          title: newItem.title || "New item",
+          description: newItem.description || "",
+          instructions: newItem.instructions || null,
+          bodyRegion: newItem.bodyRegion || null,
+          references: newItem.references || undefined,
+          treatmentTypeName: newItem.treatmentTypeName || null,
+          sessionDuration: newItem.sessionDuration ?? null,
+          sessionsPerWeek: newItem.sessionsPerWeek ?? null,
+          exerciseId: newItem.exerciseId || null,
+          sets: newItem.sets ?? null,
+          reps: newItem.reps ?? null,
+          holdSeconds: newItem.holdSeconds ?? null,
+          restSeconds: newItem.restSeconds ?? null,
+          frequency: newItem.frequency || null,
+          startWeek: newItem.startWeek ?? 1,
+          endWeek: newItem.endWeek ?? null,
+          hiddenFromPatient: newItem.hiddenFromPatient ?? false,
+        },
+      });
+      return NextResponse.json({ success: true, item: created });
+    }
 
     // Update a specific protocol item (e.g. patient marks as completed)
     if (itemId && itemUpdate) {
@@ -302,6 +395,24 @@ export async function PATCH(
     // Update protocol itself
     if (!protocolId) {
       return NextResponse.json({ error: "protocolId is required" }, { status: 400 });
+    }
+
+    // Guard: cannot send to patient without complete scheduling
+    if (status === "SENT_TO_PATIENT") {
+      const current = await (prisma as any).treatmentProtocol.findUnique({
+        where: { id: protocolId },
+        select: { startDate: true, sessionDays: true, sessionTime: true },
+      });
+      const effStartDate = body.startDate !== undefined ? body.startDate : current?.startDate;
+      const effSessionDays = body.sessionDays !== undefined ? body.sessionDays : current?.sessionDays;
+      const effSessionTime = body.sessionTime !== undefined ? body.sessionTime : current?.sessionTime;
+      let daysArr: string[] = [];
+      try { daysArr = JSON.parse(effSessionDays || "[]"); } catch {}
+      if (!effStartDate || daysArr.length === 0 || !effSessionTime) {
+        return NextResponse.json({
+          error: "Agendamento incompleto: defina data de início, dias da semana e horário antes de enviar ao paciente.",
+        }, { status: 400 });
+      }
     }
 
     const updateData: any = {};
@@ -326,6 +437,23 @@ export async function PATCH(
     if (body.goals !== undefined) updateData.goals = body.goals;
     if (body.precautions !== undefined) updateData.precautions = body.precautions;
     if (body.estimatedWeeks !== undefined) updateData.estimatedWeeks = body.estimatedWeeks;
+    // Scheduling fields
+    if (body.startDate !== undefined) updateData.startDate = body.startDate ? new Date(body.startDate) : null;
+    if (body.sessionDays !== undefined) updateData.sessionDays = body.sessionDays;
+    if (body.sessionTime !== undefined) updateData.sessionTime = body.sessionTime;
+    // Progressive release (null = release everything)
+    if (body.releasedThroughWeek !== undefined) updateData.releasedThroughWeek = body.releasedThroughWeek;
+
+    // Detect release expansion on an already-sent protocol (to notify patient)
+    let releaseExpanded = false;
+    if (body.releasedThroughWeek !== undefined) {
+      const before = await (prisma as any).treatmentProtocol.findUnique({
+        where: { id: protocolId },
+        select: { releasedThroughWeek: true, status: true },
+      });
+      releaseExpanded = before?.status === "SENT_TO_PATIENT"
+        && (body.releasedThroughWeek === null || (before?.releasedThroughWeek != null && body.releasedThroughWeek > before.releasedThroughWeek));
+    }
 
     const updated = await (prisma as any).treatmentProtocol.update({
       where: { id: protocolId },
@@ -335,6 +463,15 @@ export async function PATCH(
         items: { orderBy: [{ phase: "asc" }, { sortOrder: "asc" }] },
       },
     });
+
+    if (releaseExpanded) {
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      notifyPatient({
+        patientId: params.id,
+        plainMessage: `New exercises and activities from your plan "${updated.title}" are now available. Log in to see them: ${BASE}/dashboard/treatment`,
+        plainMessagePt: `Novos exercícios e atividades do seu plano "${updated.title}" já estão disponíveis. Acesse o portal para vê-los: ${BASE}/dashboard/treatment`,
+      }).catch(err => console.error('[protocol] release notify error:', err));
+    }
 
     // Notify patient when treatment is completed
     if (status === "COMPLETED") {
@@ -367,6 +504,52 @@ export async function PATCH(
           }).catch(err => console.error('[protocol] MEMBERSHIP_OFFER notify error:', err));
         }, 5000);
       } catch {}
+    }
+
+    // Create PENDING_PATIENT appointments when protocol is sent to patient
+    if (status === "SENT_TO_PATIENT") {
+      try {
+        const proto = await (prisma as any).treatmentProtocol.findUnique({
+          where: { id: protocolId },
+          select: { startDate: true, sessionDays: true, sessionTime: true, totalSessions: true, sessionDuration: true, therapistId: true, clinicId: true, patientId: true },
+        });
+        if (proto?.startDate && proto?.sessionDays && proto?.sessionTime) {
+          const days: string[] = JSON.parse(proto.sessionDays || "[]");
+          const DAY_MAP: Record<string, number> = { SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6 };
+          const [hh, mm] = (proto.sessionTime as string).split(":").map(Number);
+          const totalSessions = proto.totalSessions || 12;
+          const duration = proto.sessionDuration || 60;
+          let count = 0;
+          let cursor = new Date(proto.startDate);
+          cursor.setHours(0, 0, 0, 0);
+          const appts: any[] = [];
+          while (count < totalSessions) {
+            const dow = cursor.getDay();
+            const dayName = ["SUN","MON","TUE","WED","THU","FRI","SAT"][dow];
+            if (days.includes(dayName)) {
+              const dt = new Date(cursor);
+              dt.setHours(hh, mm, 0, 0);
+              appts.push({
+                clinicId: proto.clinicId,
+                patientId: proto.patientId,
+                therapistId: proto.therapistId,
+                dateTime: dt,
+                duration,
+                treatmentType: updated.title || "Treatment Session",
+                status: "PENDING_PATIENT",
+                protocolId,
+                notes: `Protocol: ${updated.title} — Session ${count + 1} of ${totalSessions}`,
+              });
+              count++;
+            }
+            cursor.setDate(cursor.getDate() + 1);
+            if (cursor.getTime() - new Date(proto.startDate).getTime() > 365 * 24 * 60 * 60 * 1000) break;
+          }
+          if (appts.length > 0) {
+            await (prisma as any).appointment.createMany({ data: appts });
+          }
+        }
+      } catch (e) { console.error("[protocol] create appointments error:", e); }
     }
 
     // Notify patient when protocol is sent to them

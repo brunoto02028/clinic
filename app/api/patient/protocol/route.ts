@@ -57,6 +57,9 @@ export async function GET(req: NextRequest) {
                 name: true,
                 description: true,
                 instructions: true,
+                namePt: true,
+                descriptionPt: true,
+                instructionsPt: true,
                 videoUrl: true,
                 thumbnailUrl: true,
                 defaultSets: true,
@@ -70,16 +73,24 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // For each protocol, check if payment is required
+    // For each protocol, check payment + apply visibility rules
     const enriched = protocols.map((p: any) => {
       const pkg = p.packages?.[0];
       const paymentRequired = pkg && !pkg.isPaid;
+      // Visibility: exclude items hidden by the therapist and items beyond the released window
+      let visibleItems = (p.items || []).filter((it: any) => !it.hiddenFromPatient);
+      if (p.releasedThroughWeek != null) {
+        visibleItems = visibleItems.filter((it: any) => (it.startWeek || 1) <= p.releasedThroughWeek);
+      }
+      const hasMoreComing = p.releasedThroughWeek != null
+        && (p.items || []).some((it: any) => !it.hiddenFromPatient && (it.startWeek || 1) > p.releasedThroughWeek);
       return {
         ...p,
         paymentRequired,
         activePackage: pkg || null,
+        hasMoreComing, // patient UI can show "your specialist releases the plan progressively"
         // If payment required, hide detailed items (only show summary)
-        items: paymentRequired ? [] : p.items,
+        items: paymentRequired ? [] : visibleItems,
       };
     });
 

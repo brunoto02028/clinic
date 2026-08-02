@@ -47,33 +47,20 @@ async function transcribeWithGroqAndClaude(
   const rawTranscript = (await sttRes.text()).trim();
   if (!rawTranscript) throw new Error("Empty transcript from Groq Whisper");
 
-  // Step 2: Claude Haiku — raw transcript → structured JSON extraction
-  const claudeKey = process.env.ANTHROPIC_API_KEY;
-  if (!claudeKey) return rawTranscript; // return plain text if Claude unavailable
+  // Step 2: Claude via OpenRouter — raw transcript → structured JSON extraction
+  const { claudeGenerateWithFallback } = await import("@/lib/claude");
+  if (!process.env.OPENROUTER_API_KEY && !process.env.ANTHROPIC_API_KEY) return rawTranscript;
 
-  const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": claudeKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: rawTranscript }],
-      temperature: 0.1,
-    }),
-  });
-
-  if (!claudeRes.ok) {
-    const err = await claudeRes.text();
-    throw new Error(`Claude extraction error (${claudeRes.status}): ${err}`);
+  try {
+    const extracted = await claudeGenerateWithFallback(
+      [{ role: 'user', content: rawTranscript }],
+      { systemPrompt, temperature: 0.1, maxTokens: 4096 }
+    );
+    return extracted || rawTranscript;
+  } catch (err: any) {
+    console.warn('[voice-transcribe] Claude extraction failed, returning raw transcript:', err.message);
+    return rawTranscript;
   }
-
-  const claudeData = await claudeRes.json();
-  return claudeData.content?.[0]?.text || rawTranscript;
 }
 
 // POST — Patient sends audio blob, transcribed via Groq Whisper + Claude (fallback: Gemini)
@@ -146,7 +133,14 @@ If the patient mentions medications, list them. If they mention allergies, list 
       costPerMin = GROQ_CLAUDE_COST_PER_MINUTE_USD;
       console.log("[voice-transcribe] Groq Whisper + Claude transcription OK");
     } catch (primaryErr: any) {
-      console.warn("[voice-transcribe] Groq+Claude failed, falling back to Gemini:", primaryErr.message);
+      console.warn("[voice-transcribe] Groq+Claude failed:", primaryErr.message);
+
+      // In strict mode, do not fall back to Gemini for patient audio
+      if (process.env.AI_STRICT_MODE === 'true') {
+        return NextResponse.json({
+          error: "Transcription service unavailable (strict mode). Groq Whisper failed, no fallback to Gemini.",
+        }, { status: 503 });
+      }
 
       // ── Fallback: Gemini multimodal ─────────────────────────────────────────
       const geminiConfig = await (prisma as any).systemConfig.findUnique({ where: { key: "GEMINI_API_KEY" } });

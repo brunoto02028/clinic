@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { renderTemplate } from "@/lib/email-templates";
-import { sendEmail } from "@/lib/email";
+import { sendArticleNewsletter } from "@/lib/article-newsletter";
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +50,7 @@ export async function PUT(
     const {
       title, excerpt, content, imageUrl, published, authorName, metaDescription, tags, keyword,
       titleEn, excerptEn, contentEn, titlePt, excerptPt, contentPt, publishLanguage,
+      notifySubscribers, scheduledAt, createdAt,
     } = body;
 
     const updateData: Record<string, unknown> = {};
@@ -83,23 +83,16 @@ export async function PUT(
       const primaryTitle   = (pubLang === "pt" ? ptT : enT) || title;
       const primaryExcerpt = (pubLang === "pt" ? ptE : enE) || excerpt;
       const primaryContent = (pubLang === "pt" ? ptC : enC) || content;
+      // NOTE: slug is intentionally NOT regenerated on update — public URLs must stay stable.
       if (primaryTitle !== undefined && primaryTitle !== null) {
         updateData.title = primaryTitle;
-        updateData.slug = String(primaryTitle)
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "");
       }
       if (primaryExcerpt !== undefined) updateData.excerpt = primaryExcerpt;
       if (primaryContent !== undefined) updateData.content = primaryContent;
     } else {
-      // Legacy single-language update
+      // Legacy single-language update (slug intentionally kept stable)
       if (title !== undefined) {
         updateData.title = title;
-        updateData.slug = title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "");
       }
       if (excerpt !== undefined) updateData.excerpt = excerpt;
       if (content !== undefined) updateData.content = content;
@@ -111,19 +104,24 @@ export async function PUT(
     if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
     if (tags !== undefined) updateData.tags = tags;
     if (keyword !== undefined) updateData.keyword = keyword;
-
-    // Fetch current state before update to detect publish transition
-    const existing = await prisma.article.findUnique({ where: { id: params.id }, select: { published: true, slug: true } });
+    if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    // Publish date shown publicly (used for sorting + display everywhere — see app/articles/*).
+    // Staff can backdate/postdate it from the admin editor's date picker.
+    if (createdAt) {
+      const parsed = new Date(createdAt);
+      if (!isNaN(parsed.getTime())) updateData.createdAt = parsed;
+    }
 
     const article = await prisma.article.update({
       where: { id: params.id },
       data: updateData,
     });
 
-    // ── Newsletter trigger: fire-and-forget when article is first published ──
-    if (published === true && existing && !existing.published) {
-      triggerArticleNewsletter(article).catch(err =>
-        console.error('[newsletter] trigger error:', err)
+    // ── Newsletter: opt-in only. Staff must explicitly request notifySubscribers=true
+    //    (e.g. via a "Notify subscribers" checkbox in the publish dialog). Never automatic. ──
+    if (notifySubscribers === true) {
+      sendArticleNewsletter(article).catch(err =>
+        console.error('[newsletter] send error:', err)
       );
     }
 
@@ -135,53 +133,6 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
-
-// ── Background newsletter sender ────────────────────────────────────────────
-async function triggerArticleNewsletter(article: { id: string; title: string; excerpt?: string | null; imageUrl?: string | null; slug: string }) {
-  const BASE = process.env.NEXTAUTH_URL || 'https://clinic.bpr.rehab';
-  const articleUrl = `${BASE}/articles/${article.slug}`;
-
-  const contacts = await (prisma as any).emailContact.findMany({
-    where: { subscribed: true },
-    select: { id: true, email: true, firstName: true },
-  });
-
-  if (contacts.length === 0) return;
-
-  const BATCH = 10;
-  const DELAY_MS = 300_000; // 5 minutes between batches
-
-  const sendBatch = async (batch: typeof contacts) => {
-    for (const contact of batch) {
-      try {
-        const unsubscribeUrl = `${BASE}/unsubscribe?email=${encodeURIComponent(contact.email)}`;
-        const rendered = await renderTemplate('ARTICLE_NEWSLETTER', {
-          recipientName: contact.firstName || 'Reader',
-          articleTitle: article.title,
-          articleExcerpt: article.excerpt || '',
-          articleImageUrl: article.imageUrl || '',
-          articleUrl,
-          unsubscribeUrl,
-        });
-        if (!rendered) continue;
-        await sendEmail({ to: contact.email, subject: rendered.subject, html: rendered.html });
-      } catch (err) {
-        console.error(`[newsletter] failed for ${contact.email}:`, err);
-      }
-    }
-  };
-
-  for (let i = 0; i < contacts.length; i += BATCH) {
-    const batch = contacts.slice(i, i + BATCH);
-    if (i === 0) {
-      await sendBatch(batch);
-    } else {
-      setTimeout(() => sendBatch(batch), (i / BATCH) * DELAY_MS);
-    }
-  }
-
-  console.log(`[newsletter] triggered for article "${article.title}" to ${contacts.length} contacts`);
 }
 
 export async function DELETE(

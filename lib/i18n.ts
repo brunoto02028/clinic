@@ -312,7 +312,7 @@ const translations: Record<string, Record<Locale, string>> = {
   "patient.stat.clinical": { "en-GB": "Clinical", "pt-BR": "Clínicas" },
   "patient.stat.notes": { "en-GB": "Notes", "pt-BR": "Notas" },
   "patient.action.bookTitle": { "en-GB": "Book Appointment", "pt-BR": "Agendar Consulta" },
-  "patient.action.bookDesc": { "en-GB": "Schedule your next physiotherapy or sports therapy session at a time that works for you.", "pt-BR": "Agende sua próxima sessão de fisioterapia ou terapia esportiva no horário que funcionar para você." },
+  "patient.action.bookDesc": { "en-GB": "Schedule your next physical rehabilitation or sports therapy session at a time that works for you.", "pt-BR": "Agende sua próxima sessão de reabilitação física ou terapia esportiva no horário que funcionar para você." },
   "patient.action.bookBtn": { "en-GB": "Book Now", "pt-BR": "Agendar Agora" },
   "patient.action.recordsTitle": { "en-GB": "View Records", "pt-BR": "Ver Registros" },
   "patient.action.recordsDesc": { "en-GB": "Access your treatment history, clinical notes, and track your rehabilitation progress.", "pt-BR": "Acesse seu histórico de tratamento, notas clínicas e acompanhe seu progresso." },
@@ -398,7 +398,7 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.bookAppointment": { "en-GB": "Book Appointment", "pt-BR": "Agendar Consulta" },
   "home.clientPortal": { "en-GB": "Client Portal", "pt-BR": "Portal do Cliente" },
   "home.fullyInsured": { "en-GB": "Fully Insured", "pt-BR": "Totalmente Segurado" },
-  "home.openEveryDay": { "en-GB": "Open Every Day", "pt-BR": "Aberto Todos os Dias" },
+  "home.openEveryDay": { "en-GB": "Book Online 24/7", "pt-BR": "Reserva Online 24/7" },
   "home.yearsExperience": { "en-GB": "Years of Clinical Experience", "pt-BR": "Anos de Experiência Clínica" },
   "home.experience": { "en-GB": "Experience", "pt-BR": "Experiência" },
 
@@ -497,13 +497,18 @@ const translations: Record<string, Record<Locale, string>> = {
   "svc.prePostSurgeryDesc": { "en-GB": "Specialist rehabilitation programmes to prepare for surgery and optimise recovery afterwards, including orthopaedic and sports surgeries.", "pt-BR": "Programas de reabilitação especializados para preparação cirúrgica e otimização da recuperação pós-operatória, incluindo cirurgias ortopédicas e esportivas." },
   "svc.microcurrent": { "en-GB": "Microcurrent Therapy (MENS)", "pt-BR": "Terapia por Microcorrente (MENS)" },
   "svc.microcurrentDesc": { "en-GB": "Sub-sensory electrical stimulation to promote cellular regeneration, reduce inflammation, and accelerate tissue healing at the cellular level.", "pt-BR": "Estimulação elétrica sub-sensorial para promover regeneração celular, reduzir inflamação e acelerar a cicatrização de tecidos a nível celular." },
-  "svc.biohacking": { "en-GB": "Biohacking & Performance", "pt-BR": "Biohacking & Performance" },
-  "svc.biohackingDesc": { "en-GB": "Personalised biohacking protocols using HRV data, sleep analysis and lifestyle design to boost energy, focus and long-term recovery.", "pt-BR": "Protocolos de biohacking personalizados usando dados de VFC, análise do sono e design de estilo de vida para aumentar energia, foco e recuperação a longo prazo." },
-  "svc.hrv": { "en-GB": "HRV & Recovery Monitoring", "pt-BR": "Monitoramento de VFC e Recuperação" },
-  "svc.hrvDesc": { "en-GB": "Heart rate variability analysis to calibrate training load, stress levels and nervous system resilience for peak performance.", "pt-BR": "Análise da variabilidade da frequência cardíaca para calibrar carga de treino, estresse e resiliência do sistema nervoso para performance máxima." },
+  "svc.biohacking": { "en-GB": "Biohacking & Performance", "pt-BR": "Biohacking e Performance" },
+  "svc.biohackingDesc": { "en-GB": "IPHM-certified biohacking protocols using data, technology, and lifestyle optimisation to enhance recovery, energy, and long-term health performance.", "pt-BR": "Protocolos de biohacking certificados IPHM usando dados, tecnologia e otimização de estilo de vida para melhorar a recuperação, energia e performance de saúde a longo prazo." },
+  "svc.hrv": { "en-GB": "HRV & Recovery Monitoring", "pt-BR": "Monitoramento de HRV e Recuperação" },
+  "svc.hrvDesc": { "en-GB": "Heart Rate Variability tracking and analysis to measure your nervous system recovery, guide training loads, and optimise your rehabilitation progression.", "pt-BR": "Rastreamento e análise de Variabilidade da Frequência Cardíaca para medir a recuperação do sistema nervoso, guiar cargas de treino e otimizar a progressão da reabilitação." },
+  "svc.sleep": { "en-GB": "Sleep & Longevity Optimisation", "pt-BR": "Optimização do Sono e Longevidade" },
+  "svc.sleepDesc": { "en-GB": "Evidence-based sleep protocols, circadian rhythm optimisation, and longevity strategies to maximise recovery, cognitive performance, and healthy ageing.", "pt-BR": "Protocolos de sono baseados em evidências, optimização do ritmo circadiano e estratégias de longevidade para maximizar a recuperação, desempenho cognitivo e envelhecimento saudável." },
   "svc.sleepLongevity": { "en-GB": "Sleep & Longevity Optimisation", "pt-BR": "Otimização do Sono e Longevidade" },
   "svc.sleepLongevityDesc": { "en-GB": "Circadian rhythm, light exposure and sleep architecture protocols to accelerate tissue repair and extend your healthspan.", "pt-BR": "Protocolos de ritmo circadiano, exposição à luz e arquitetura do sono para acelerar a reparação tecidual e prolongar a sua saúde." },
-
+  "svc.mlsLaser": { "en-GB": "MLS® Laser Therapy", "pt-BR": "Laserterapia MLS®" },
+  "svc.mlsLaserDesc": { "en-GB": "Class IV MLS® Mphi 75 — patented dual-wavelength photobiomodulation (808nm + 905nm) for rapid pain relief, powerful anti-inflammatory action, and accelerated tissue repair from the very first session.", "pt-BR": "MLS® Mphi 75 Classe IV — fotobiomodulação patenteada de duplo comprimento de onda (808nm + 905nm) para alívio rápido da dor, potente acção anti-inflamatória e reparação acelerada de tecidos desde a primeira sessão." },
+  "svc.kinesiotherapy": { "en-GB": "Kinesiotherapy", "pt-BR": "Cinesioterapia" },
+  "svc.kinesiotherapyDesc": { "en-GB": "Movement-based therapy to restore natural movement patterns, improve postural balance, and build long-term musculoskeletal health through guided therapeutic exercise.", "pt-BR": "Terapia baseada em movimento para restaurar padrões naturais de movimento, melhorar o equilíbrio postural e construir saúde musculoesquelética durável através de exercício terapêutico orientado." },
   "svc.customInsoles": { "en-GB": "Custom Insoles & Foot Scan", "pt-BR": "Palmilhas Personalizadas & Escaneamento do Pé" },
   "svc.customInsolesDesc": { "en-GB": "Digital foot pressure scanning combined with biomechanical assessment to prescribe custom-manufactured orthotics that correct mechanics at the source.", "pt-BR": "Escaneamento digital de pressão do pé combinado com avaliação biomecânica para prescrever palmilhas fabricadas sob medida que corrigem a mecânica na origem." },
 
@@ -583,7 +588,7 @@ const translations: Record<string, Record<Locale, string>> = {
   "home.bioHackTitle2": { "en-GB": "Feel Better. Move Better. Live Longer.", "pt-BR": "Sinta-se Melhor. Mova-se Melhor. Viva Mais." },
   "home.bioHackDesc": { "en-GB": "Biohacking is the systematic use of science, data and lifestyle design to make your body perform at its absolute best — not just heal. Using HRV monitoring, sleep science, gut health protocols and recovery technology, we create a personalised optimisation plan that upgrades every system in your body.", "pt-BR": "Biohacking é o uso sistemático de ciência, dados e design de estilo de vida para fazer seu corpo performar no absoluto melhor — não apenas curar. Usando monitoramento de VFC, ciência do sono, protocolos de saúde intestinal e tecnologia de recuperação, criamos um plano de otimização personalizado que aprimora cada sistema do seu corpo." },
   "home.bioHackDesc2": { "en-GB": "Whether you're an athlete chasing peak performance, a professional fighting chronic fatigue, or a patient who wants to heal faster and stay healthier longer — this is your next level.", "pt-BR": "Seja você um atleta buscando performance máxima, um profissional lutando contra fadiga crônica, ou um paciente que quer se curar mais rápido e manter-se mais saudável — este é o seu próximo nível." },
-  "home.bioHackBadge": { "en-GB": "20+ Years Clinical Experience · IPHM Certified · Science-Backed Protocols", "pt-BR": "20+ Anos de Experiência Clínica · Certificado IPHM · Protocolos Baseados em Ciência" },
+  "home.bioHackBadge": { "en-GB": "15+ Years of Clinical Experience · IPHM Certified · Science-Backed Protocols", "pt-BR": "15+ Anos de Experiência Clínica · Certificado IPHM · Protocolos Baseados em Ciência" },
   "home.bioHackBenefitsTitle": { "en-GB": "What Your Body Gains", "pt-BR": "O Que Seu Corpo Ganha" },
   "home.bioHackBenefit1": { "en-GB": "Faster tissue repair via circadian optimisation", "pt-BR": "Reparação tecidual mais rápida via otimização circadiana" },
   "home.bioHackBenefit2": { "en-GB": "HRV-guided training & recovery load management", "pt-BR": "Gestão de carga de treino e recuperação guiada por VFC" },
@@ -613,26 +618,28 @@ const translations: Record<string, Record<Locale, string>> = {
 
   // Homepage — About
   "home.aboutTitle": { "en-GB": "Bruno Physical Rehabilitation", "pt-BR": "Bruno Physical Rehabilitation" },
-  "home.aboutText1": { "en-GB": "My name is Bruno, and I'm a therapist based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.", "pt-BR": "Meu nome é Bruno, sou terapeuta baseado no UK com uma sólida formação em reabilitação física, recuperação esportiva e performance humana." },
-  "home.aboutText2": { "en-GB": "Before becoming a therapist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.", "pt-BR": "Antes de me tornar terapeuta, vivi a jornada que muitos dos meus clientes enfrentam agora. Fui jogador de futebol profissional por mais de uma década, jogando no Brasil, Alemanha e Suécia. Após três grandes cirurgias no joelho, entendo em primeira mão os desafios físicos e emocionais da reabilitação." },
+  "home.aboutText1": { "en-GB": "My name is Bruno, and I'm based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.", "pt-BR": "Meu nome é Bruno, sou baseado no UK com uma sólida formação em reabilitação física, recuperação esportiva e performance humana." },
+  "home.aboutText2": { "en-GB": "Before becoming a physical rehabilitation specialist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.", "pt-BR": "Antes de me tornar um especialista em reabilitação física, vivi a jornada que muitos dos meus clientes enfrentam agora. Fui jogador de futebol profissional por mais de uma década, jogando no Brasil, Alemanha e Suécia. Após três grandes cirurgias no joelho, entendo em primeira mão os desafios físicos e emocionais da reabilitação." },
   "home.aboutText3": { "en-GB": "This personal experience drives my passion for helping others recover, rebuild, and return to their best selves.", "pt-BR": "Essa experiência pessoal impulsiona minha paixão por ajudar outros a se recuperar, reconstruir e retornar ao seu melhor." },
-  "home.aboutText4": { "en-GB": "As an IPHM Certified Practitioner with 20+ years of clinical practice, Bruno integrates cutting-edge science — from HRV monitoring and sleep optimisation to gut health and photobiomodulation — into every rehabilitation plan. This approach goes beyond treating the injury: it upgrades the entire biological system so patients recover faster and perform at a higher level for longer.", "pt-BR": "Como Praticante Certificado pela IPHM com 20+ anos de prática clínica, Bruno integra ciência de ponta — desde monitoramento de VFC e otimização do sono até saúde intestinal e fotobiomodulação — em cada plano de reabilitação. Esta abordagem vai além do tratamento da lesão: ela aprimora todo o sistema biológico para que os pacientes se recuperem mais rapidamente e performem em um nível superior por mais tempo." },
+  "home.healingWithHeart": { "en-GB": "Healing With Heart", "pt-BR": "Curar com Coração" },
+  "home.healingWithHeartQuote": { "en-GB": "My purpose is simple: treat every person the way I wish I'd been treated during my own recovery — with real attention, not just protocol.", "pt-BR": "O meu propósito é simples: tratar cada pessoa da forma como gostaria de ter sido tratado durante a minha própria recuperação — com atenção verdadeira, não só protocolo." },
+  "home.aboutText4": { "en-GB": "As an IPHM Certified Practitioner with 15+ years of clinical experience, Bruno integrates cutting-edge science — from HRV monitoring and sleep optimisation to gut health and photobiomodulation — into every rehabilitation plan. This approach goes beyond treating the injury: it upgrades the entire biological system so patients recover faster and perform at a higher level for longer.", "pt-BR": "Como Praticante Certificado pela IPHM com 15+ anos de experiência clínica, Bruno integra ciência de ponta — desde monitoramento de VFC e otimização do sono até saúde intestinal e fotobiomodulação — em cada plano de reabilitação. Esta abordagem vai além do tratamento da lesão: ela aprimora todo o sistema biológico para que os pacientes se recuperem mais rapidamente e performem em um nível superior por mais tempo." },
   "home.bookConsultation": { "en-GB": "Book a Consultation", "pt-BR": "Agendar uma Consulta" },
 
   // Homepage — Articles
   "home.articlesLabel": { "en-GB": "Articles", "pt-BR": "Artigos" },
   "home.articlesTitle": { "en-GB": "Latest Articles", "pt-BR": "Últimos Artigos" },
   "home.articlesSubtitle": { "en-GB": "Evidence-based insights to support your rehabilitation journey.", "pt-BR": "Informações baseadas em evidências para apoiar sua jornada de reabilitação." },
-  "home.articlesComing": { "en-GB": "Articles Coming Soon", "pt-BR": "Artigos Em Breve" },
-  "home.articlesComingDesc": { "en-GB": "We're preparing insightful content to support your rehabilitation journey.", "pt-BR": "Estamos preparando conteúdo informativo para apoiar sua jornada de reabilitação." },
+  "home.articlesComing": { "en-GB": "Clinical Insights Coming", "pt-BR": "Conteúdo Clínico Em Breve" },
+  "home.articlesComingDesc": { "en-GB": "We are publishing evidence-based articles on physical rehabilitation, sports injury and performance. Follow us to be the first to know.", "pt-BR": "Estamos a publicar artigos baseados em evidências sobre reabilitação física, lesão desportiva e performance. Segue-nos para saber em primeiro lugar." },
 
   // Homepage — Contact
   "home.contactTitle": { "en-GB": "Get in Touch", "pt-BR": "Entre em Contato" },
-  "home.contactSubtitle": { "en-GB": "Home visit or our clinic — we're open every day, including weekends.", "pt-BR": "Visita domiciliar ou na clínica — estamos abertos todos os dias, incluindo fins de semana." },
+  "home.contactSubtitle": { "en-GB": "Ready to start your rehabilitation programme? Reach out and we'll get back to you within the hour.", "pt-BR": "Pronto para iniciar o teu programa de reabilitação? Entra em contacto e respondemos dentro de uma hora." },
   "home.location": { "en-GB": "Location", "pt-BR": "Localização" },
   "home.hours": { "en-GB": "Hours", "pt-BR": "Horário" },
   "home.email": { "en-GB": "Email", "pt-BR": "E-mail" },
-  "home.openEveryDayWeekends": { "en-GB": "Open every day\nincluding weekends", "pt-BR": "Aberto todos os dias\nincluindo fins de semana" },
+  "home.openEveryDayWeekends": { "en-GB": "Mon–Sat available\nSee full schedule below", "pt-BR": "Seg–Sáb disponível\nConsulte o horário completo" },
   "home.startRecovery": { "en-GB": "Start Your Recovery Journey", "pt-BR": "Comece Sua Jornada de Recuperação" },
 
   // Homepage — Navigation
@@ -675,7 +682,7 @@ const translations: Record<string, Record<Locale, string>> = {
 
   // ─── Exercise Library Admin ───
   "exercises.title": { "en-GB": "Exercise Library", "pt-BR": "Biblioteca de Exercícios" },
-  "exercises.subtitle": { "en-GB": "Upload exercise videos, organize by body region, and prescribe to patients", "pt-BR": "Envie vídeos de exercícios, organize por região do corpo e prescreva para pacientes" },
+  "exercises.subtitle": { "en-GB": "Upload exercise videos, organise by body region, and prescribe to patients", "pt-BR": "Envie vídeos de exercícios, organize por região do corpo e prescreva para pacientes" },
   "exercises.bulkUpload": { "en-GB": "Bulk Upload", "pt-BR": "Envio em Lote" },
   "exercises.addExercise": { "en-GB": "Add Exercise", "pt-BR": "Adicionar Exercício" },
   "exercises.searchPlaceholder": { "en-GB": "Search exercises...", "pt-BR": "Buscar exercícios..." },

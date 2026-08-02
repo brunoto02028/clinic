@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -33,12 +31,10 @@ export function Logo({
   siteName = "BPR",
 }: LogoProps) {
   const h = SIZE_PX[size] || 40;
-  const [imgError, setImgError] = useState(false);
 
-  // Decide which image(s) to render
   const lightSrc = logoUrl || null;
   const darkSrc = darkLogoUrl || null;
-  const hasValidSrc = (lightSrc || darkSrc) && !imgError;
+  const hasValidSrc = !!lightSrc || !!darkSrc;
 
   const content = (
     <div className={cn("inline-flex items-center flex-shrink-0", className)} style={{ height: h }}>
@@ -46,70 +42,50 @@ export function Logo({
         <>
           {variant === "auto" && lightSrc && darkSrc ? (
             <>
-              <div className="relative block dark:hidden" style={{ height: h, width: h * 2.5 }}>
-                <Image
-                  src={lightSrc}
-                  alt="Logo"
-                  fill
-                  className="object-contain"
-                  priority={priority}
-                  quality={100}
-                  sizes={`${h * 2.5}px`}
-                  onError={() => setImgError(true)}
-                />
-              </div>
-              <div className="relative hidden dark:block" style={{ height: h, width: h * 2.5 }}>
-                <Image
-                  src={darkSrc}
-                  alt="Logo"
-                  fill
-                  className="object-contain"
-                  priority={priority}
-                  quality={100}
-                  sizes={`${h * 2.5}px`}
-                  onError={() => setImgError(true)}
-                />
-              </div>
-            </>
-          ) : variant === "dark" && darkSrc ? (
-            <div className="relative" style={{ height: h, width: h * 2.5 }}>
-              <Image
-                src={darkSrc}
-                alt="Logo"
-                fill
-                className="object-contain"
-                priority={priority}
-                quality={100}
-                sizes={`${h * 2.5}px`}
-                onError={() => setImgError(true)}
-              />
-            </div>
-          ) : lightSrc ? (
-            <div className="relative" style={{ height: h, width: h * 2.5 }}>
-              <Image
+              <img
                 src={lightSrc}
                 alt="Logo"
-                fill
-                className="object-contain"
-                priority={priority}
-                quality={100}
-                sizes={`${h * 2.5}px`}
-                onError={() => setImgError(true)}
+                className="h-full w-auto object-contain block dark:hidden"
+                loading={priority ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={priority ? "high" : "auto"}
               />
-            </div>
-          ) : darkSrc ? (
-            <div className="relative" style={{ height: h, width: h * 2.5 }}>
-              <Image
+              <img
                 src={darkSrc}
                 alt="Logo"
-                fill
-                className="object-contain"
-                priority={priority}
-                quality={100}
-                sizes={`${h * 2.5}px`}
-                onError={() => setImgError(true)}
+                className="h-full w-auto object-contain hidden dark:block"
+                loading={priority ? "eager" : "lazy"}
+                decoding="async"
+                fetchPriority={priority ? "high" : "auto"}
               />
-            </div>
+            </>
+          ) : variant === "dark" && darkSrc ? (
+            <img
+              src={darkSrc}
+              alt="Logo"
+              className="h-full w-auto object-contain"
+              loading={priority ? "eager" : "lazy"}
+              decoding="async"
+              fetchPriority={priority ? "high" : "auto"}
+            />
+          ) : lightSrc ? (
+            <img
+              src={lightSrc}
+              alt="Logo"
+              className="h-full w-auto object-contain"
+              loading={priority ? "eager" : "lazy"}
+              decoding="async"
+              fetchPriority={priority ? "high" : "auto"}
+            />
+          ) : darkSrc ? (
+            <img
+              src={darkSrc}
+              alt="Logo"
+              className="h-full w-auto object-contain"
+              loading={priority ? "eager" : "lazy"}
+              decoding="async"
+              fetchPriority={priority ? "high" : "auto"}
+            />
           ) : null}
         </>
       ) : (

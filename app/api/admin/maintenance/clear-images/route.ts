@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db";
 // Report article image URLs
 export async function GET(req: NextRequest) {
   const secret = req.headers.get("x-maintenance-secret");
-  if (secret !== "bpr-clear-2026") {
+  const expectedSecret = process.env.MAINTENANCE_CLEAR_SECRET;
+  if (!expectedSecret || secret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -37,7 +38,8 @@ export async function GET(req: NextRequest) {
 // DELETE after use
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-maintenance-secret");
-  if (secret !== "bpr-clear-2026") {
+  const expectedSecret = process.env.MAINTENANCE_CLEAR_SECRET;
+  if (!expectedSecret || secret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

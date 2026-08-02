@@ -1,24 +1,32 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Script from 'next/script';
+import { hasAnalyticsConsent } from '@/components/cookie-consent';
 
 const HOTJAR_ID = process.env.NEXT_PUBLIC_HOTJAR_ID || '0';
 const HOTJAR_VERSION = 6;
 
 export function Hotjar() {
+  const [consentGranted, setConsentGranted] = useState(false);
+
   useEffect(() => {
-    // Initialize Hotjar
-    if (typeof window !== 'undefined' && HOTJAR_ID !== '0') {
+    const checkConsent = () => setConsentGranted(hasAnalyticsConsent());
+    checkConsent();
+    window.addEventListener('consent-updated', checkConsent);
+    return () => window.removeEventListener('consent-updated', checkConsent);
+  }, []);
+
+  useEffect(() => {
+    if (consentGranted && typeof window !== 'undefined' && HOTJAR_ID !== '0') {
       (window as any).hj = (window as any).hj || function() {
         ((window as any).hj.q = (window as any).hj.q || []).push(arguments);
       };
       (window as any)._hjSettings = { hjid: HOTJAR_ID, hjsv: HOTJAR_VERSION };
     }
-  }, []);
+  }, [consentGranted]);
 
-  // Only load in production
-  if (process.env.NODE_ENV !== 'production' || HOTJAR_ID === '0') {
+  if (process.env.NODE_ENV !== 'production' || HOTJAR_ID === '0' || !consentGranted) {
     return null;
   }
 

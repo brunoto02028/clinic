@@ -376,7 +376,7 @@ export const MOCK_SETTINGS = {
     { id: "6", title: "Therapeutic Ultrasound", description: "Deep tissue treatment with sound waves" },
   ]),
   aboutTitle: "About Bruno",
-  aboutText: "My name is Bruno, and I'm a therapist based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.\n\nBefore becoming a therapist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.\n\nThis personal experience drives my passion for helping others recover, rebuild, and return to their best selves.",
+  aboutText: "My name is Bruno, and I'm based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.\n\nBefore becoming a physical rehabilitation specialist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.\n\nThis personal experience drives my passion for helping others recover, rebuild, and return to their best selves.",
   aboutImageUrl: null,
   aboutImagePath: null,
   articlesTitle: "Stay Informed. Stay Empowered",

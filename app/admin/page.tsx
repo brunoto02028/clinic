@@ -17,7 +17,6 @@ import {
   AlertCircle,
   UserCheck,
   Stethoscope,
-  Footprints,
   ArrowRight,
   Activity,
   CalendarCheck,
@@ -49,7 +48,6 @@ interface AdminStats {
   totalArticles: number;
   publishedArticles: number;
   draftArticles: number;
-  totalFootScans: number;
   recentAppointments: Array<{
     id: string;
     patient: { firstName: string; lastName: string; email?: string };
@@ -283,15 +281,6 @@ export default function AdminDashboard() {
             href="/admin/clinical-notes"
           />
           <StatCard
-            title={T("admin.footScans")}
-            value={stats?.totalFootScans || 0}
-            subtitle={T("admin.biomechanicalAnalyses")}
-            icon={Footprints}
-            color="text-teal-600"
-            bgColor="bg-teal-100"
-            href="/admin/scans"
-          />
-          <StatCard
             title={T("admin.completed")}
             value={stats?.completedAppointments || 0}
             subtitle={`${stats?.cancelledAppointments || 0} ${T("admin.cancelled")}`}
@@ -484,15 +473,6 @@ export default function AdminDashboard() {
             bgColor="bg-violet-100"
             href="/admin/clinical-notes"
           />
-          <StatCard
-            title={T("admin.footScans")}
-            value={stats?.totalFootScans || 0}
-            subtitle={T("admin.scansAnalyses")}
-            icon={Footprints}
-            color="text-teal-600"
-            bgColor="bg-teal-100"
-            href="/admin/scans"
-          />
         </div>
 
         {/* Quick Actions */}
@@ -517,13 +497,6 @@ export default function AdminDashboard() {
                 <div>
                   <p className="font-medium text-sm">{T("admin.clinicalNotes")}</p>
                   <p className="text-[11px] text-muted-foreground">{T("admin.soapAndAssessments")}</p>
-                </div>
-              </Link>
-              <Link href="/admin/scans" className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">
-                <div className="p-2 bg-teal-100 rounded-lg"><Footprints className="h-4 w-4 text-teal-600" /></div>
-                <div>
-                  <p className="font-medium text-sm">{T("admin.footScans")}</p>
-                  <p className="text-[11px] text-muted-foreground">{T("admin.qrScanAnalysis")}</p>
                 </div>
               </Link>
               <Link href="/admin/articles/new" className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">

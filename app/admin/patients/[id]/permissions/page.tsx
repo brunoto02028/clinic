@@ -284,8 +284,8 @@ export default function PatientPermissionsPage() {
     return (
       <div className="text-center py-12">
         <p className="text-slate-500">Paciente não encontrado</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.push("/admin/patients")}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar para Pacientes
+        <Button variant="outline" className="mt-4" onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push(`/admin/patients/${patientId}`); }}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
         </Button>
       </div>
     );
@@ -453,8 +453,8 @@ export default function PatientPermissionsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <Link href="/admin/patients" className="text-xs text-primary hover:underline flex items-center gap-1 mb-2">
-            <ArrowLeft className="h-3 w-3" /> Voltar para Pacientes
+          <Link href={`/admin/patients/${patientId}`} className="text-xs text-primary hover:underline flex items-center gap-1 mb-2">
+            <ArrowLeft className="h-3 w-3" /> Voltar ao Paciente
           </Link>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" /> Permissões do Paciente

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Brain,
@@ -35,6 +35,12 @@ import {
   Edit,
   Save,
   Zap,
+  MessageSquare,
+  Bot,
+  Calendar,
+  Eye,
+  EyeOff,
+  Unlock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MarkdownMessage } from "@/components/ui/markdown-message";
 
 // ─── Types ───
 
@@ -101,34 +108,34 @@ interface Protocol {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  GENERATING: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300",
-  DRAFT: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300",
-  UNDER_REVIEW: "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300",
-  APPROVED: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
-  SENT_TO_PATIENT: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300",
-  ARCHIVED: "bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300",
+  GENERATING: "bg-primary/10 text-primary border-primary/20",
+  DRAFT: "bg-muted text-muted-foreground border-border",
+  UNDER_REVIEW: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  APPROVED: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  SENT_TO_PATIENT: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  ARCHIVED: "bg-muted text-muted-foreground border-border",
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  mild: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
-  moderate: "bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300",
-  severe: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
-  critical: "bg-red-200 dark:bg-red-500/30 text-red-800 dark:text-red-300",
-  low: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300",
-  high: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300",
+  mild: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  moderate: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  severe: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  critical: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+  low: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  high: "bg-rose-500/10 text-rose-400 border-rose-500/20",
 };
 
 const PHASE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
-  SHORT_TERM: { label: "Short-Term (Acute)", color: "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", desc: "Weeks 1-4" },
-  MEDIUM_TERM: { label: "Medium-Term (Rehab)", color: "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800", desc: "Weeks 4-12" },
-  LONG_TERM: { label: "Long-Term (Maintenance)", color: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", desc: "Weeks 12+" },
+  SHORT_TERM: { label: "Short-Term (Acute)", color: "bg-rose-500/10 text-rose-400 border-rose-500/20", desc: "Weeks 1-4" },
+  MEDIUM_TERM: { label: "Medium-Term (Rehab)", color: "bg-amber-500/10 text-amber-400 border-amber-500/20", desc: "Weeks 4-12" },
+  LONG_TERM: { label: "Long-Term (Maintenance)", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", desc: "Weeks 12+" },
 };
 
 const ITEM_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  IN_CLINIC: { label: "In-Clinic", color: "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300" },
-  HOME_EXERCISE: { label: "Home Exercise", color: "bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300" },
-  HOME_CARE: { label: "Home Care", color: "bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300" },
-  ASSESSMENT: { label: "Assessment", color: "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300" },
+  IN_CLINIC: { label: "In-Clinic", color: "bg-primary/10 text-primary border-primary/20" },
+  HOME_EXERCISE: { label: "Home Exercise", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+  HOME_CARE: { label: "Home Care", color: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" },
+  ASSESSMENT: { label: "Assessment", color: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
 };
 
 // ─── Main Page ───
@@ -141,14 +148,15 @@ export default function PatientDiagnosisPage() {
   const [generating, setGenerating] = useState(false);
   const [generatingProtocol, setGeneratingProtocol] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [patient, setPatient] = useState<any>(null);
   const [dataAvail, setDataAvail] = useState<DataAvailability | null>(null);
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [protocols, setProtocols] = useState<Protocol[]>([]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
       const [diagRes, protoRes] = await Promise.all([
         fetch(`/api/admin/patients/${patientId}/diagnosis`),
@@ -169,6 +177,22 @@ export default function PatientDiagnosisPage() {
   }, [patientId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const [sendingReport, setSendingReport] = useState(false);
+  const sendReportToPatient = async () => {
+    setSendingReport(true); setError(""); setSuccess("");
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/report`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSuccess(`Full report sent to ${data.sentTo}`);
+      setTimeout(() => setSuccess(""), 6000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSendingReport(false);
+    }
+  };
 
   const handleGenerateDiagnosis = async () => {
     setGenerating(true);
@@ -201,6 +225,8 @@ export default function PatientDiagnosisPage() {
       try { data = await res.json(); } catch { throw new Error("Invalid server response"); }
       if (!res.ok) throw new Error(data.error);
       setTab("protocol");
+      setSuccess("Protocolo gerado com sucesso! A redirecionar para o tab Protocolo...");
+      setTimeout(() => setSuccess(""), 5000);
       fetchData();
     } catch (err: any) {
       setError(err.message);
@@ -231,9 +257,12 @@ export default function PatientDiagnosisPage() {
         body: JSON.stringify({ protocolId, ...update }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
-      fetchData();
+      // Silent refresh — keeps all local editing state intact (no full-page spinner)
+      await fetchData({ silent: true });
+      return true;
     } catch (err: any) {
       setError(err.message);
+      return false;
     }
   };
 
@@ -264,8 +293,22 @@ export default function PatientDiagnosisPage() {
             </p>
           )}
         </div>
+        <div className="flex gap-2 ml-auto">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.open(`/api/admin/patients/${patientId}/report`, "_blank")}>
+            <FileText className="h-3.5 w-3.5" /> Full Report / PDF
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" disabled={sendingReport} onClick={sendReportToPatient}>
+            {sendingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Send Report to Patient
+          </Button>
+        </div>
       </div>
 
+      {success && (
+        <div className="bg-emerald-500/10 text-emerald-400 text-sm p-3 rounded-lg flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0" /> {success}
+          <Button variant="ghost" size="sm" className="ml-auto h-6 w-6 p-0" onClick={() => setSuccess("")}><X className="h-3 w-3" /></Button>
+        </div>
+      )}
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" /> {error}
@@ -368,6 +411,7 @@ export default function PatientDiagnosisPage() {
             <DiagnosisCard
               key={diag.id}
               diagnosis={diag}
+              patientId={patientId}
               onUpdate={(update) => handleUpdateDiagnosis(diag.id, update)}
               onGenerateProtocol={() => handleGenerateProtocol(diag.id)}
               generatingProtocol={generatingProtocol}
@@ -445,8 +489,9 @@ function DataCard({ icon: Icon, label, available, detail, required }: {
 
 // ─── Assessment Card ───
 
-function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingProtocol }: {
+function DiagnosisCard({ diagnosis: d, patientId, onUpdate, onGenerateProtocol, generatingProtocol }: {
   diagnosis: Diagnosis;
+  patientId: string;
   onUpdate: (update: any) => void;
   onGenerateProtocol: () => void;
   generatingProtocol: boolean;
@@ -454,6 +499,56 @@ function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingP
   const [expanded, setExpanded] = useState(true);
   const [showRefs, setShowRefs] = useState(false);
   const [comment, setComment] = useState(d.therapistComments || "");
+
+  // Atlas inline chat
+  const [showAtlas, setShowAtlas] = useState(false);
+  const [atlasHistory, setAtlasHistory] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [atlasInput, setAtlasInput] = useState("");
+  const [atlasSending, setAtlasSending] = useState(false);
+  const [atlasHistoryLoaded, setAtlasHistoryLoaded] = useState(false);
+  const atlasEndRef = useRef<HTMLDivElement>(null);
+
+  // Load persisted history on first open
+  const handleToggleAtlas = async () => {
+    const opening = !showAtlas;
+    setShowAtlas(opening);
+    if (opening && !atlasHistoryLoaded) {
+      try {
+        const res = await fetch(`/api/admin/patients/${patientId}/atlas-chat`);
+        if (res.ok) {
+          const data = await res.json();
+          setAtlasHistory(data.map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })));
+        }
+      } catch {}
+      setAtlasHistoryLoaded(true);
+    }
+  };
+
+  useEffect(() => {
+    if (showAtlas) atlasEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [atlasHistory, showAtlas]);
+
+  const sendAtlas = async (msg?: string) => {
+    const text = (msg || atlasInput).trim();
+    if (!text) return;
+    setAtlasInput("");
+    setAtlasSending(true);
+    const newHistory = [...atlasHistory, { role: "user" as const, content: text }];
+    setAtlasHistory(newHistory);
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/atlas-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history: newHistory }),
+      });
+      const data = await res.json();
+      setAtlasHistory([...newHistory, { role: "assistant" as const, content: data.reply || data.error }]);
+    } catch (e: any) {
+      setAtlasHistory([...newHistory, { role: "assistant" as const, content: "Error: " + e.message }]);
+    } finally {
+      setAtlasSending(false);
+    }
+  };
 
   return (
     <Card>
@@ -563,13 +658,13 @@ function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingP
 
           {/* Additional Assessments Needed */}
           {d.additionalAssessments?.length > 0 && (
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-lg p-3">
-              <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-amber-700">
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+              <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-amber-400">
                 <AlertTriangle className="h-4 w-4" /> Additional Assessments Recommended
               </h4>
               {d.additionalAssessments.map((a: any, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm mb-1">
-                  <Badge className={`text-[10px] ${a.priority === "required" ? "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300" : "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300"}`}>{a.priority}</Badge>
+                  <Badge className={`text-[10px] ${a.priority === "required" ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"}`}>{a.priority}</Badge>
                   <span className="font-medium">{a.assessmentType?.replace("_", " ")}</span>
                   <span className="text-muted-foreground">— {a.reason}</span>
                 </div>
@@ -607,13 +702,86 @@ function DiagnosisCard({ diagnosis: d, onUpdate, onGenerateProtocol, generatingP
 
           {/* Therapist Comments */}
           <div className="space-y-2 border-t pt-3">
-            <Label className="text-sm font-semibold">Therapist Comments</Label>
+            <Label className="text-sm font-semibold">Therapist Comments / Notes</Label>
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Add your clinical comments, corrections or notes..."
               rows={2}
             />
+          </div>
+
+          {/* Atlas inline chat */}
+          <div className="border border-primary/20 rounded-xl overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-2.5 bg-primary/5 hover:bg-primary/10 transition-colors"
+              onClick={handleToggleAtlas}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <Bot className="h-4 w-4" />
+                Chat with Atlas — Review &amp; Correct this Assessment
+              </span>
+              {showAtlas ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+
+            {showAtlas && (
+              <div className="flex flex-col">
+                <div className="max-h-72 overflow-y-auto p-3 space-y-3 bg-background">
+                  {atlasHistory.length === 0 && atlasSending && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Atlas is reading the assessment...
+                    </div>
+                  )}
+                  {atlasHistory.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+                        m.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted/60 border border-border/50 text-foreground"
+                      }`}>
+                        {m.role === "user"
+                          ? <p className="leading-relaxed">{m.content}</p>
+                          : <MarkdownMessage content={m.content} />}
+                      </div>
+                    </div>
+                  ))}
+                  {atlasSending && atlasHistory.length > 0 && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted/60 border border-border/50 rounded-xl px-3 py-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                      </div>
+                    </div>
+                  )}
+                  {atlasHistoryLoaded && !atlasSending && atlasHistory.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">No conversation yet. Ask Atlas to review this assessment.</p>
+                  )}
+                  <div ref={atlasEndRef} />
+                </div>
+                {atlasHistory.length >= 2 && (
+                  <div className="px-3 py-2 border-t border-border/50 bg-emerald-500/5">
+                    <Button size="sm" className="w-full h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700"
+                      onClick={onGenerateProtocol} disabled={generatingProtocol}>
+                      {generatingProtocol
+                        ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Generating Protocol...</>
+                        : <><Plus className="h-3 w-3 mr-1" /> Generate Treatment Protocol from this Conversation</>}
+                    </Button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50 bg-muted/20">
+                  <input
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    placeholder="Ask Atlas to review, correct or suggest changes..."
+                    value={atlasInput}
+                    onChange={(e) => setAtlasInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAtlas(); } }}
+                    disabled={atlasSending}
+                  />
+                  <Button size="sm" className="h-7 px-2" onClick={() => sendAtlas()} disabled={atlasSending || !atlasInput.trim()}>
+                    <Send className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -669,7 +837,7 @@ const DELIVERY_MODES = [
 
 function ProtocolCard({ protocol: p, onUpdate, patientId }: {
   protocol: Protocol;
-  onUpdate: (update: any) => void;
+  onUpdate: (update: any) => Promise<boolean> | void;
   patientId: string;
 }) {
   const [expanded, setExpanded] = useState(true);
@@ -677,6 +845,15 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
   const [editing, setEditing] = useState(false);
   const [showPackageForm, setShowPackageForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  // Atlas revision panel (conversational)
+  const [showAtlasReview, setShowAtlasReview] = useState(false);
+  const [atlasInput, setAtlasInput] = useState("");
+  const [atlasMsgs, setAtlasMsgs] = useState<{ role: "user" | "assistant"; content: string; proposal?: any }[]>([]);
+  const [atlasBusy, setAtlasBusy] = useState<"" | "chatting" | "applying">("");
+  const [atlasError, setAtlasError] = useState("");
+  const atlasChatEndRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { atlasChatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [atlasMsgs]);
 
   // Editable protocol fields
   const [editTitle, setEditTitle] = useState(p.title);
@@ -686,6 +863,20 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
   const [editSessionsPerWeek, setEditSessionsPerWeek] = useState((p as any).sessionsPerWeek || 2);
   const [editLanguage, setEditLanguage] = useState((p as any).language || "en-GB");
   const [editComment, setEditComment] = useState(p.therapistComments || "");
+
+  // Scheduling fields
+  const [editStartDate, setEditStartDate] = useState<string>(
+    (p as any).startDate ? new Date((p as any).startDate).toISOString().split("T")[0] : ""
+  );
+  const [editSessionTime, setEditSessionTime] = useState<string>((p as any).sessionTime || "09:00");
+  const [editSessionDays, setEditSessionDays] = useState<string[]>(() => {
+    try { return JSON.parse((p as any).sessionDays || "[]"); } catch { return []; }
+  });
+  const [editSessionDuration, setEditSessionDuration] = useState<number>((p as any).sessionDuration || 60);
+
+  const toggleDay = (day: string) => setEditSessionDays(days =>
+    days.includes(day) ? days.filter(d => d !== day) : [...days, day]
+  );
 
   // Package form
   const [pkgForm, setPkgForm] = useState({
@@ -705,19 +896,93 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
 
   const hasElectro = (p as any).includesElectrotherapy || p.items?.some((it: any) => it.treatmentTypeName?.toLowerCase().includes("electro") || it.treatmentTypeName?.toLowerCase().includes("tens") || it.treatmentTypeName?.toLowerCase().includes("ultrasound"));
 
+  // Full form state payload — every save carries EVERYTHING so nothing is ever lost
+  const buildPayload = () => ({
+    title: editTitle,
+    summary: editSummary,
+    deliveryMode: editDelivery,
+    totalSessions: editTotalSessions,
+    sessionsPerWeek: editSessionsPerWeek,
+    sessionDuration: editSessionDuration,
+    language: editLanguage,
+    therapistComments: editComment,
+    includesElectrotherapy: hasElectro,
+    startDate: editStartDate ? new Date(editStartDate).toISOString() : null,
+    sessionTime: editSessionTime,
+    sessionDays: JSON.stringify(editSessionDays),
+  });
+
   const saveEdits = async () => {
     setSaving(true);
-    onUpdate({
-      title: editTitle,
-      summary: editSummary,
-      deliveryMode: editDelivery,
-      totalSessions: editTotalSessions,
-      sessionsPerWeek: editSessionsPerWeek,
-      language: editLanguage,
-      therapistComments: editComment,
-      includesElectrotherapy: hasElectro,
+    setSaveStatus("saving");
+    await onUpdate(buildPayload());
+    setSaving(false);
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus("idle"), 2500);
+  };
+
+  // ── AUTOSAVE: debounce 1.5s after any field change ──
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    setSaveStatus("saving");
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(async () => {
+      await onUpdate(buildPayload());
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2500);
+    }, 1500);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editTitle, editSummary, editDelivery, editTotalSessions, editSessionsPerWeek, editSessionDuration, editLanguage, editComment, editStartDate, editSessionTime, editSessionDays]);
+
+  // Release buttons: include the full current form state so unsaved edits are never lost
+  const setRelease = (week: number | null) => {
+    setSaveStatus("saving");
+    Promise.resolve(onUpdate({ ...buildPayload(), releasedThroughWeek: week })).then(() => {
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2500);
     });
-    setTimeout(() => { setSaving(false); setEditing(false); }, 500);
+  };
+
+  // ── Atlas conversational revision ──
+  const atlasSend = async () => {
+    const msg = atlasInput.trim();
+    if (!msg) return;
+    setAtlasBusy("chatting"); setAtlasError("");
+    setAtlasMsgs((prev) => [...prev, { role: "user", content: msg }]);
+    setAtlasInput("");
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/protocol-revise`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "chat", protocolId: p.id, message: msg,
+          chatHistory: atlasMsgs.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAtlasMsgs((prev) => [...prev, { role: "assistant", content: data.reply, proposal: data.proposal || undefined }]);
+    } catch (err: any) { setAtlasError(err.message); }
+    finally { setAtlasBusy(""); }
+  };
+
+  const atlasApply = async (proposal: any) => {
+    setAtlasBusy("applying"); setAtlasError("");
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/protocol-revise`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "apply", protocolId: p.id, proposal }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAtlasMsgs((prev) => [...prev, { role: "assistant", content: `✅ Revision applied — ${data.applied.updated} modified, ${data.applied.added} added, ${data.applied.removed} removed.` }]);
+      await onUpdate({}); // silent refresh
+    } catch (err: any) { setAtlasError(err.message); }
+    finally { setAtlasBusy(""); }
   };
 
   const createPackage = async () => {
@@ -773,6 +1038,8 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
               {p.estimatedWeeks && <Badge variant="outline" className="text-[10px]"><Clock className="h-2.5 w-2.5 mr-0.5" /> {p.estimatedWeeks} weeks</Badge>}
               {(p as any).totalSessions && <Badge variant="outline" className="text-[10px]">{(p as any).totalSessions} sessions</Badge>}
               {hasElectro && <Badge className="text-[10px] bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300"><Zap className="h-2 w-2 mr-0.5" /> Electro</Badge>}
+              {saveStatus === "saving" && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving…</span>}
+              {saveStatus === "saved" && <span className="text-[10px] text-emerald-500 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> Saved</span>}
             </div>
             <p className="text-xs text-muted-foreground">
               By {p.therapist.firstName} {p.therapist.lastName} · {new Date(p.createdAt).toLocaleString()}
@@ -811,8 +1078,8 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                 return (
                   <button
                     key={dm.value}
-                    disabled={isDisabled || !editing}
-                    onClick={() => editing && setEditDelivery(dm.value)}
+                    disabled={isDisabled}
+                    onClick={() => setEditDelivery(dm.value)}
                     className={`rounded-lg border p-2 text-center transition-all ${isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"} ${isDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     <Icon className={`h-4 w-4 mx-auto mb-1 ${isSelected ? "text-primary" : dm.color}`} />
@@ -834,11 +1101,11 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div>
                 <Label className="text-[10px]">Total Sessions</Label>
-                <Input type="number" value={editTotalSessions} onChange={(e) => setEditTotalSessions(parseInt(e.target.value) || 0)} disabled={!editing} className="h-8 text-sm" />
+                <Input type="number" value={editTotalSessions} onChange={(e) => setEditTotalSessions(parseInt(e.target.value) || 0)} className="h-8 text-sm" />
               </div>
               <div>
                 <Label className="text-[10px]">Sessions/Week</Label>
-                <Input type="number" value={editSessionsPerWeek} onChange={(e) => setEditSessionsPerWeek(parseInt(e.target.value) || 0)} disabled={!editing} className="h-8 text-sm" />
+                <Input type="number" value={editSessionsPerWeek} onChange={(e) => setEditSessionsPerWeek(parseInt(e.target.value) || 0)} className="h-8 text-sm" />
               </div>
               <div className="sm:col-span-2">
                 <Label className="text-[10px] flex items-center gap-1"><Languages className="h-3 w-3" /> Language</Label>
@@ -846,8 +1113,7 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                   {[{ v: "en-GB", l: "English (UK)" }, { v: "pt-BR", l: "Português (BR)" }].map((lang) => (
                     <button
                       key={lang.v}
-                      disabled={!editing}
-                      onClick={() => editing && setEditLanguage(lang.v)}
+                      onClick={() => setEditLanguage(lang.v)}
                       className={`flex-1 text-[10px] font-medium py-1.5 px-2 rounded-md border transition-colors ${editLanguage === lang.v ? "border-primary bg-primary/5 text-primary" : "hover:bg-muted/50"}`}
                     >
                       {lang.l}
@@ -858,23 +1124,156 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
             </div>
           </div>
 
-          {/* Therapist Comments */}
-          {editing && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Therapist Comments</Label>
-              <Textarea value={editComment} onChange={(e) => setEditComment(e.target.value)} placeholder="Add comments, corrections..." rows={2} />
+          {/* ── Schedule ── */}
+          <div className="space-y-2.5 border rounded-lg p-3 bg-muted/10">
+            <p className="text-xs font-semibold flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Treatment Schedule</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="space-y-1">
+                <Label className="text-[10px]">Start date</Label>
+                <Input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px]">Session time</Label>
+                <Input type="time" value={editSessionTime} onChange={e => setEditSessionTime(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px]">Duration (min)</Label>
+                <Input type="number" value={editSessionDuration} onChange={e => setEditSessionDuration(parseInt(e.target.value) || 60)} className="h-8 text-xs" min={15} max={180} step={15} />
+              </div>
             </div>
-          )}
+            <div className="space-y-1">
+              <Label className="text-[10px]">Session days</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {["MON","TUE","WED","THU","FRI","SAT","SUN"].map(d => (
+                  <button key={d} type="button"
+                    onClick={() => toggleDay(d)}
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${editSessionDays.includes(d) ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/50"}`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {editStartDate && editSessionDays.length > 0 && (
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-md p-2">
+                <p className="text-[10px] text-emerald-400 font-medium">
+                  {editTotalSessions} sessions · {editSessionDays.join(", ")} at {editSessionTime} · {editSessionDuration}min each
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Starting {new Date(editStartDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+            )}
+          </div>
 
-          {/* Save Edits Button */}
-          {editing && (
-            <div className="flex gap-2">
-              <Button size="sm" onClick={saveEdits} disabled={saving}>
-                {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />} Save Changes
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+          {/* ── Progressive Release to Patient ── */}
+          <div className="border rounded-lg p-3 bg-violet-500/5 border-violet-500/20 space-y-2">
+            <p className="text-xs font-semibold flex items-center gap-1.5"><Unlock className="h-3.5 w-3.5 text-violet-400" /> Patient Release — what the patient can see</p>
+            <p className="text-[11px] text-muted-foreground">
+              {(p as any).releasedThroughWeek == null
+                ? "Full plan visible to the patient."
+                : `Patient sees items up to week ${(p as any).releasedThroughWeek}. Remaining items stay hidden until you release them.`}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(1)}>Week 1 only</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(((p as any).releasedThroughWeek || 0) + 1)}>+1 week</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(((p as any).releasedThroughWeek || 0) + 2)}>+2 weeks</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(4)}>Short-term phase (wk 4)</Button>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setRelease(12)}>Medium-term (wk 12)</Button>
+              <Button size="sm" className="h-7 text-[11px] bg-violet-600 hover:bg-violet-700" onClick={() => setRelease(null)}>Release everything</Button>
             </div>
-          )}
+          </div>
+
+          {/* Therapist Comments */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Therapist Comments</Label>
+            <Textarea value={editComment} onChange={(e) => setEditComment(e.target.value)} placeholder="Add comments, corrections..." rows={2} />
+          </div>
+
+          {/* Save Edits Button — autosave also runs 1.5s after any change */}
+          <div className="flex items-center gap-2 sticky bottom-2 z-10">
+            <Button size="sm" onClick={saveEdits} disabled={saving} className="shadow-lg">
+              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />} Save Changes
+            </Button>
+            <span className="text-[10px] text-muted-foreground">Autosaves as you edit</span>
+          </div>
+
+          {/* ── Atlas Protocol Review ── */}
+          <div className="border rounded-lg p-3 bg-sky-500/5 border-sky-500/20 space-y-2">
+            <button className="text-xs font-semibold flex items-center gap-1.5 w-full" onClick={() => setShowAtlasReview(!showAtlasReview)}>
+              <Bot className="h-4 w-4 text-sky-400" /> Review with Atlas — correct the whole protocol
+              {showAtlasReview ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
+            </button>
+            {showAtlasReview && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-muted-foreground">Discuss the protocol with Atlas — he knows the full patient record (screening, assessments, SOAP notes, previous Atlas conversations). When you agree, tell him to apply (e.g. “fecha assim”, “pode montar”) and he will build the revision for your approval.</p>
+
+                {atlasMsgs.length > 0 && (
+                  <div className="max-h-96 overflow-y-auto space-y-2 border rounded-lg p-2 bg-card/50">
+                    {atlasMsgs.map((m, i) => (
+                      <div key={i} className={`text-xs rounded-lg p-2 ${m.role === "user" ? "bg-sky-500/15 ml-8" : "bg-muted/50 mr-8"}`}>
+                        <p className="text-[9px] font-semibold text-muted-foreground mb-0.5">{m.role === "user" ? "You" : "Atlas"}</p>
+                        <p className="whitespace-pre-wrap">{m.content}</p>
+                        {m.proposal && (
+                          <div className="border border-sky-500/30 rounded-lg p-2 mt-2 space-y-1.5 bg-card">
+                            <p className="text-[11px] font-semibold text-sky-400">Proposed revision</p>
+                            <p className="text-[11px]">{m.proposal.revisionSummary}</p>
+                            {(m.proposal.updateItems?.length || 0) > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold text-amber-400">Modified ({m.proposal.updateItems.length}):</p>
+                                {m.proposal.updateItems.map((u: any, j: number) => (
+                                  <p key={j} className="text-[11px] ml-2">• <span className="font-medium">{u.currentTitle}</span>{u.changes?.title ? ` → ${u.changes.title}` : ""} <span className="text-muted-foreground">({Object.keys(u.changes || {}).join(", ")})</span></p>
+                                ))}
+                              </div>
+                            )}
+                            {(m.proposal.removeItemTitles?.length || 0) > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold text-red-400">Removed ({m.proposal.removeItemTitles.length}):</p>
+                                {m.proposal.removeItemTitles.map((t: string, j: number) => (
+                                  <p key={j} className="text-[11px] ml-2 line-through text-muted-foreground">• {t}</p>
+                                ))}
+                              </div>
+                            )}
+                            {(m.proposal.newItems?.length || 0) > 0 && (
+                              <div>
+                                <p className="text-[10px] font-semibold text-emerald-400">Added ({m.proposal.newItems.length}):</p>
+                                {m.proposal.newItems.map((n: any, j: number) => (
+                                  <p key={j} className="text-[11px] ml-2">• <span className="font-medium">{n.title}</span> <span className="text-muted-foreground">[{n.phase}/{n.itemType}]</span></p>
+                                ))}
+                              </div>
+                            )}
+                            <Button size="sm" className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 mt-1" onClick={() => atlasApply(m.proposal)} disabled={atlasBusy !== ""}>
+                              {atlasBusy === "applying" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />} Apply revision
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {atlasBusy === "chatting" && (
+                      <div className="text-xs bg-muted/50 mr-8 rounded-lg p-2 flex items-center gap-2">
+                        <Loader2 className="h-3 w-3 animate-spin" /> <span className="text-muted-foreground">Atlas is thinking…</span>
+                      </div>
+                    )}
+                    <div ref={atlasChatEndRef} />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Textarea
+                    value={atlasInput}
+                    onChange={(e) => setAtlasInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); atlasSend(); } }}
+                    rows={2}
+                    className="text-xs flex-1"
+                    placeholder="E.g.: A paciente está normal, quer qualidade de vida — corrente Aussie 3x/semana + alongamentos + isométricos nas primeiras semanas. Concordas?"
+                  />
+                  <Button size="sm" className="h-auto bg-sky-600 hover:bg-sky-700" onClick={atlasSend} disabled={!atlasInput.trim() || atlasBusy !== ""}>
+                    {atlasBusy === "chatting" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+                {atlasError && <p className="text-[11px] text-red-400">{atlasError}</p>}
+              </div>
+            )}
+          </div>
 
           {/* Goals */}
           {p.goals?.length > 0 && (
@@ -917,43 +1316,12 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                   <p className="text-[11px]">{meta.desc} · {items.length} items</p>
                 </div>
                 <div className="space-y-2 ml-2 border-l-2 pl-3">
-                  {items.map((item: any, i: number) => (
-                    <div key={i} className="border rounded-lg p-3">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <Badge className={`text-[10px] ${ITEM_TYPE_LABELS[item.itemType]?.color || ""}`}>
-                          {ITEM_TYPE_LABELS[item.itemType]?.label || item.itemType}
-                        </Badge>
-                        <span className="font-medium text-sm">{item.title}</span>
-                        {item.bodyRegion && <Badge variant="outline" className="text-[10px]">{item.bodyRegion}</Badge>}
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-1">{item.description}</p>
-
-                      <div className="flex flex-wrap gap-2 text-[11px]">
-                        {item.frequency && <span className="bg-muted px-1.5 py-0.5 rounded">{item.frequency}</span>}
-                        {item.sets && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sets} sets</span>}
-                        {item.reps && <span className="bg-muted px-1.5 py-0.5 rounded">{item.reps} reps</span>}
-                        {item.holdSeconds && <span className="bg-muted px-1.5 py-0.5 rounded">Hold {item.holdSeconds}s</span>}
-                        {item.restSeconds && <span className="bg-muted px-1.5 py-0.5 rounded">Rest {item.restSeconds}s</span>}
-                        {item.sessionsPerWeek && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sessionsPerWeek}x/week</span>}
-                        {item.sessionDuration && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sessionDuration}min</span>}
-                        {item.startWeek && <span className="bg-muted px-1.5 py-0.5 rounded">Week {item.startWeek}{item.endWeek ? `-${item.endWeek}` : "+"}</span>}
-                      </div>
-
-                      {item.exercise && (
-                        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-primary">
-                          <Activity className="h-3 w-3" />
-                          <span>{item.exercise.name}</span>
-                          {item.exercise.videoUrl && <Badge variant="outline" className="text-[9px]">Video</Badge>}
-                        </div>
-                      )}
-
-                      {item.references?.map((r: any, j: number) => (
-                        <p key={j} className="text-[10px] text-primary/70 mt-1 italic">
-                          <BookOpen className="h-2.5 w-2.5 inline mr-0.5" /> {r.citation}
-                        </p>
-                      ))}
-                    </div>
+                  {items.map((item: any) => (
+                    <ProtocolItemRow key={item.id} item={item} onUpdate={onUpdate} />
                   ))}
+                  <Button size="sm" variant="outline" className="h-7 text-[11px] border-dashed" onClick={() => onUpdate({ newItem: { phase, title: "New item — edit me", description: "", itemType: "HOME_EXERCISE" } })}>
+                    <Plus className="h-3 w-3 mr-1" /> Add item to this phase
+                  </Button>
                 </div>
               </div>
             );
@@ -1115,5 +1483,148 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
         </CardContent>
       )}
     </Card>
+  );
+}
+
+// ─── Protocol Item Row (inline edit + hide/show from patient) ───
+function ProtocolItemRow({ item, onUpdate }: { item: any; onUpdate: (update: any) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    title: item.title || "",
+    description: item.description || "",
+    instructions: item.instructions || "",
+    frequency: item.frequency || "",
+    sets: item.sets ?? "",
+    reps: item.reps ?? "",
+    holdSeconds: item.holdSeconds ?? "",
+    restSeconds: item.restSeconds ?? "",
+    startWeek: item.startWeek ?? 1,
+    endWeek: item.endWeek ?? "",
+  });
+
+  const hidden = !!item.hiddenFromPatient;
+
+  const saveItem = async () => {
+    setSaving(true);
+    await onUpdate({
+      itemId: item.id,
+      itemUpdate: {
+        title: form.title,
+        description: form.description,
+        instructions: form.instructions || null,
+        frequency: form.frequency || null,
+        sets: form.sets === "" ? null : parseInt(String(form.sets)) || null,
+        reps: form.reps === "" ? null : parseInt(String(form.reps)) || null,
+        holdSeconds: form.holdSeconds === "" ? null : parseInt(String(form.holdSeconds)) || null,
+        restSeconds: form.restSeconds === "" ? null : parseInt(String(form.restSeconds)) || null,
+        startWeek: parseInt(String(form.startWeek)) || 1,
+        endWeek: form.endWeek === "" ? null : parseInt(String(form.endWeek)) || null,
+      },
+    });
+    setSaving(false);
+    setEditing(false);
+  };
+
+  const toggleHidden = () => onUpdate({ itemId: item.id, itemUpdate: { hiddenFromPatient: !hidden } });
+
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteItem = () => {
+    if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return; }
+    onUpdate({ deleteItemId: item.id });
+  };
+
+  const duplicateItem = () => onUpdate({
+    newItem: {
+      phase: item.phase, itemType: item.itemType, sortOrder: (item.sortOrder ?? 0) + 1,
+      title: `${item.title} (copy)`, description: item.description, instructions: item.instructions,
+      bodyRegion: item.bodyRegion, references: item.references, treatmentTypeName: item.treatmentTypeName,
+      sessionDuration: item.sessionDuration, sessionsPerWeek: item.sessionsPerWeek, exerciseId: item.exerciseId,
+      sets: item.sets, reps: item.reps, holdSeconds: item.holdSeconds, restSeconds: item.restSeconds,
+      frequency: item.frequency, startWeek: item.startWeek, endWeek: item.endWeek,
+    },
+  });
+
+  return (
+    <div className={`border rounded-lg p-3 transition-opacity ${hidden ? "opacity-50 border-dashed" : ""}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap mb-1 flex-1">
+          <Badge className={`text-[10px] ${ITEM_TYPE_LABELS[item.itemType]?.color || ""}`}>
+            {ITEM_TYPE_LABELS[item.itemType]?.label || item.itemType}
+          </Badge>
+          {editing ? (
+            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-7 text-sm font-medium flex-1 min-w-[200px]" />
+          ) : (
+            <span className="font-medium text-sm">{item.title}</span>
+          )}
+          {item.bodyRegion && <Badge variant="outline" className="text-[10px]">{item.bodyRegion}</Badge>}
+          {hidden && <Badge variant="outline" className="text-[9px] text-amber-500 border-amber-500/40">Hidden from patient</Badge>}
+        </div>
+        <div className="flex gap-1 shrink-0">
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title={hidden ? "Show to patient" : "Hide from patient"} onClick={toggleHidden}>
+            {hidden ? <EyeOff className="h-3.5 w-3.5 text-amber-500" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Edit item" onClick={() => setEditing(!editing)}>
+            <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Duplicate item" onClick={duplicateItem}>
+            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="sm" className={`h-6 p-0 ${confirmDelete ? "w-auto px-1.5" : "w-6"}`} title="Delete item" onClick={deleteItem}>
+            {confirmDelete ? <span className="text-[9px] text-red-500 font-semibold">Confirm?</span> : <X className="h-3.5 w-3.5 text-red-400" />}
+          </Button>
+        </div>
+      </div>
+
+      {editing ? (
+        <div className="space-y-2 mt-2">
+          <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="text-xs" placeholder="Description" />
+          <Textarea value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} rows={2} className="text-xs" placeholder="Patient instructions (optional)" />
+          <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
+            <div><Label className="text-[9px]">Frequency</Label><Input value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value })} className="h-7 text-[11px]" placeholder="3x/week" /></div>
+            <div><Label className="text-[9px]">Sets</Label><Input type="number" value={form.sets} onChange={(e) => setForm({ ...form, sets: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">Reps</Label><Input type="number" value={form.reps} onChange={(e) => setForm({ ...form, reps: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">Hold (s)</Label><Input type="number" value={form.holdSeconds} onChange={(e) => setForm({ ...form, holdSeconds: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">Rest (s)</Label><Input type="number" value={form.restSeconds} onChange={(e) => setForm({ ...form, restSeconds: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">Start wk</Label><Input type="number" value={form.startWeek} onChange={(e) => setForm({ ...form, startWeek: e.target.value })} className="h-7 text-[11px]" /></div>
+            <div><Label className="text-[9px]">End wk</Label><Input type="number" value={form.endWeek} onChange={(e) => setForm({ ...form, endWeek: e.target.value })} className="h-7 text-[11px]" placeholder="—" /></div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" className="h-7 text-[11px]" onClick={saveItem} disabled={saving}>
+              {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />} Save item
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground mb-1">{item.description}</p>
+          <div className="flex flex-wrap gap-2 text-[11px]">
+            {item.frequency && <span className="bg-muted px-1.5 py-0.5 rounded">{item.frequency}</span>}
+            {item.sets && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sets} sets</span>}
+            {item.reps && <span className="bg-muted px-1.5 py-0.5 rounded">{item.reps} reps</span>}
+            {item.holdSeconds && <span className="bg-muted px-1.5 py-0.5 rounded">Hold {item.holdSeconds}s</span>}
+            {item.restSeconds && <span className="bg-muted px-1.5 py-0.5 rounded">Rest {item.restSeconds}s</span>}
+            {item.sessionsPerWeek && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sessionsPerWeek}x/week</span>}
+            {item.sessionDuration && <span className="bg-muted px-1.5 py-0.5 rounded">{item.sessionDuration}min</span>}
+            {item.startWeek && <span className="bg-muted px-1.5 py-0.5 rounded">Week {item.startWeek}{item.endWeek ? `-${item.endWeek}` : "+"}</span>}
+          </div>
+
+          {item.exercise && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-xs text-primary">
+              <Activity className="h-3 w-3" />
+              <span>{item.exercise.name}</span>
+              {item.exercise.videoUrl && <Badge variant="outline" className="text-[9px]">Video</Badge>}
+            </div>
+          )}
+
+          {item.references?.map((r: any, j: number) => (
+            <p key={j} className="text-[10px] text-primary/70 mt-1 italic">
+              <BookOpen className="h-2.5 w-2.5 inline mr-0.5" /> {r.citation}
+            </p>
+          ))}
+        </>
+      )}
+    </div>
   );
 }

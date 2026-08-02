@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/theme/useTheme";
-import { Platform, View } from "react-native";
+import { Platform } from "react-native";
 
 export default function TabsLayout() {
   const t = useTheme();
@@ -9,11 +9,11 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: t.colors.secondary,
-        tabBarInactiveTintColor: t.colors.textMuted,
+        tabBarActiveTintColor: t.colors.text,
+        tabBarInactiveTintColor: "#9AA0AC",
         tabBarStyle: {
-          backgroundColor: "rgba(13, 21, 32, 0.95)",
-          borderTopColor: "rgba(74, 124, 138, 0.1)",
+          backgroundColor: "#FFFFFF",
+          borderTopColor: t.colors.border,
           borderTopWidth: 1,
           height: Platform.OS === "ios" ? 88 : 64,
           paddingBottom: Platform.OS === "ios" ? 28 : 8,
@@ -21,8 +21,8 @@ export default function TabsLayout() {
           elevation: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
+          fontSize: 8.5,
+          fontFamily: "Inter_600SemiBold",
           marginTop: 2,
         },
       }}
@@ -30,83 +30,70 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Início",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? {
-              shadowColor: "#5dc9c0",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6,
-              shadowRadius: 8,
-            } : undefined}>
-              <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
-            </View>
+          title: "Home",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="appointments"
+        name="work"
         options={{
-          title: "Agenda",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? {
-              shadowColor: "#5dc9c0",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6,
-              shadowRadius: 8,
-            } : undefined}>
-              <Ionicons name={focused ? "calendar" : "calendar-outline"} size={24} color={color} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="exercises"
-        options={{
-          title: "Exercícios",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? {
-              shadowColor: "#5dc9c0",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6,
-              shadowRadius: 8,
-            } : undefined}>
-              <Ionicons name={focused ? "fitness" : "fitness-outline"} size={24} color={color} />
-            </View>
+          title: "Work",
+          tabBarActiveTintColor: t.colors.work,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "briefcase" : "briefcase-outline"}
+              size={size}
+              color={focused ? t.colors.work : color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="health"
         options={{
-          title: "Saúde",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? {
-              shadowColor: "#5dc9c0",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6,
-              shadowRadius: 8,
-            } : undefined}>
-              <Ionicons name={focused ? "heart" : "heart-outline"} size={24} color={color} />
-            </View>
+          title: "Health",
+          tabBarActiveTintColor: t.colors.health,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "medkit" : "medkit-outline"}
+              size={size}
+              color={focused ? t.colors.health : color}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "Community",
+          tabBarActiveTintColor: t.colors.community,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "people" : "people-outline"}
+              size={size}
+              color={focused ? t.colors.community : color}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Perfil",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? {
-              shadowColor: "#5dc9c0",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.6,
-              shadowRadius: 8,
-            } : undefined}>
-              <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
-            </View>
+          title: "Profile",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "menu" : "menu-outline"}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
+      {/* Hidden from tabs but still accessible as screens */}
+      <Tabs.Screen name="appointments" options={{ href: null }} />
+      <Tabs.Screen name="exercises" options={{ href: null }} />
     </Tabs>
   );
 }

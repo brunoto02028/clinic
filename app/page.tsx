@@ -24,6 +24,7 @@ const getCachedHomeData = unstable_cache(
           excerpt: true,
           imageUrl: true,
           createdAt: true,
+          authorName: true,
           author: {
             select: { firstName: true, lastName: true },
           },

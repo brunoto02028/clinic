@@ -26,7 +26,7 @@ export default function TermsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="public-site min-h-screen bg-background flex flex-col">
       <SiteHeader currentPage="other" />
       <main className="flex-1 py-12 sm:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -37,7 +37,7 @@ export default function TermsPage() {
           </Link>
 
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            <h1 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
               {isPt ? "Termos de Uso e Política de Privacidade" : "Terms of Use & Privacy Policy"}
             </h1>
             <p className="text-muted-foreground mt-2 text-sm">

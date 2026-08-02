@@ -54,7 +54,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { patientId, patientScope, name, totalPrice, isFree, isCombo, totalSessions, notes, items, startDate, endDate } = body;
+    const { patientId, patientScope, name, totalPrice, isFree, isCombo, totalSessions, notes, items, startDate, endDate, planType, subscriptionInterval } = body;
+    const resolvedPlanType: string = planType || (isFree ? "FREE" : isCombo ? "COMBO" : "SINGLE");
+    const isSubscription = resolvedPlanType === "SUBSCRIPTION";
+    const stripeInterval: "month" | "week" | "year" =
+      subscriptionInterval === "weekly" ? "week" : subscriptionInterval === "yearly" ? "year" : "month";
 
     if (!name) {
       return NextResponse.json({ error: "Plan name is required" }, { status: 400 });
@@ -82,6 +86,7 @@ export async function POST(request: NextRequest) {
           product: product.id,
           unit_amount: Math.round(finalPrice * 100),
           currency: 'gbp',
+          ...(isSubscription ? { recurring: { interval: stripeInterval } } : {}),
           metadata: { clinicId: clinicId!, patientId: resolvedPatientId || 'none', patientScope: patientScope || 'none' },
         });
         stripePriceId = price.id;
@@ -99,6 +104,9 @@ export async function POST(request: NextRequest) {
         totalPrice: finalPrice,
         isFree: isFree || false,
         isCombo: isCombo || false,
+        planType: resolvedPlanType,
+        patientScope: patientScope || (resolvedPatientId ? "specific" : "none"),
+        subscriptionInterval: isSubscription ? (subscriptionInterval || "monthly") : null,
         totalSessions: totalSessions || 1,
         startDate: startDate ? new Date(startDate) : new Date(),
         endDate: endDate ? new Date(endDate) : null,

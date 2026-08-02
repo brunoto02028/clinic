@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "BPR - Physical Rehabilitation",
     short_name: "BPR",
-    description: "Professional physiotherapy and rehabilitation services",
+    description: "Professional physical rehabilitation and sports therapy services",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

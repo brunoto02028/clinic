@@ -6,11 +6,11 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchEducation, educationList } from "@/api/education";
 import { useTheme } from "@/theme/useTheme";
 
-const TYPE_ICONS: Record<string, { icon: string; color: string }> = {
-  ARTICLE: { icon: "document-text-outline", color: "#60a5fa" },
-  VIDEO: { icon: "videocam-outline", color: "#f87171" },
-  EXERCISE: { icon: "fitness-outline", color: "#5dc9c0" },
-  INFOGRAPHIC: { icon: "image-outline", color: "#8b5cf6" },
+const TYPE_ICONS: Record<string, { icon: string; colorKey: "work" | "bad" | "health" | "community" }> = {
+  ARTICLE: { icon: "document-text-outline", colorKey: "work" },
+  VIDEO: { icon: "videocam-outline", colorKey: "bad" },
+  EXERCISE: { icon: "fitness-outline", colorKey: "health" },
+  INFOGRAPHIC: { icon: "image-outline", colorKey: "community" },
 };
 
 export default function Education() {
@@ -54,7 +54,10 @@ export default function Education() {
           contentContainerStyle={{ gap: 10 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const typeInfo = TYPE_ICONS[item.contentType] ?? { icon: "document-outline", color: "#64748b" };
+            const typeInfo = TYPE_ICONS[item.contentType] ?? { icon: "document-outline", colorKey: "work" as const };
+            const typeColor = t.colors[typeInfo.colorKey];
+            const typeSoftKey = `${typeInfo.colorKey}Soft` as keyof typeof t.colors;
+            const typeSoftColor = t.colors[typeSoftKey] ?? t.colors.surfaceMuted;
             return (
               <Pressable testID={`edu-${item.id}`} onPress={() => router.push(`/education/${item.id}`)}>
                 <Card>
@@ -63,11 +66,11 @@ export default function Education() {
                       width: 44,
                       height: 44,
                       borderRadius: 14,
-                      backgroundColor: `${typeInfo.color}15`,
+                      backgroundColor: typeSoftColor,
                       alignItems: "center",
                       justifyContent: "center",
                     }}>
-                      <Ionicons name={typeInfo.icon as any} size={22} color={typeInfo.color} />
+                      <Ionicons name={typeInfo.icon as any} size={22} color={typeColor} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="label" style={{ fontWeight: "600" }}>{item.title}</Text>
@@ -79,23 +82,23 @@ export default function Education() {
                       <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
                         {item.category?.name ? (
                           <View style={{
-                            backgroundColor: "rgba(74, 124, 138, 0.1)",
+                            backgroundColor: t.colors.healthSoft,
                             paddingHorizontal: 8,
                             paddingVertical: 2,
                             borderRadius: 6,
                           }}>
-                            <Text variant="caption" color={t.colors.secondary} style={{ fontSize: 10 }}>
+                            <Text variant="caption" color={t.colors.textSecondary} style={{ fontSize: 10 }}>
                               {item.category.name}
                             </Text>
                           </View>
                         ) : null}
                         <View style={{
-                          backgroundColor: `${typeInfo.color}12`,
+                          backgroundColor: typeSoftColor,
                           paddingHorizontal: 8,
                           paddingVertical: 2,
                           borderRadius: 6,
                         }}>
-                          <Text variant="caption" color={typeInfo.color} style={{ fontSize: 10 }}>
+                          <Text variant="caption" color={typeColor} style={{ fontSize: 10 }}>
                             {item.contentType}
                           </Text>
                         </View>

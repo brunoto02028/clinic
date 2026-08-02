@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,10 @@ import {
   CreditCard,
   Banknote,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  BanIcon,
+  X,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
@@ -106,12 +111,82 @@ export default function AdminAppointmentsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const isCalendarView = searchParams.get("view") === "calendar";
+
+  // Calendar blocks
+  const [blocks, setBlocks] = useState<Array<{ id: string; startDate: string; endDate: string; reason: string | null; blockType: string }>>([]);
+  const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [blockForm, setBlockForm] = useState({ startDate: "", endDate: "", reason: "", blockType: "ABSENCE" });
+  const [blockSubmitting, setBlockSubmitting] = useState(false);
+
+  // Calendar: current week start (Monday)
+  const [calendarWeekStart, setCalendarWeekStart] = useState<Date>(() => {
+    const d = new Date();
+    const day = d.getDay(); // 0=Sun
+    const diff = day === 0 ? -6 : 1 - day; // shift to Monday
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
 
   useEffect(() => {
     fetchAppointments();
     fetchPatients();
     fetchTreatmentTypes();
+    fetchBlocks();
   }, []);
+
+  const fetchBlocks = async () => {
+    try {
+      const res = await fetch("/api/admin/calendar/blocks");
+      if (res.ok) setBlocks(await res.json());
+    } catch {}
+  };
+
+  const createBlock = async () => {
+    if (!blockForm.startDate || !blockForm.endDate) return;
+    setBlockSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/calendar/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(blockForm),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      await fetchBlocks();
+      setShowBlockDialog(false);
+      setBlockForm({ startDate: "", endDate: "", reason: "", blockType: "ABSENCE" });
+      toast({ title: "Period blocked", description: "Days marked as unavailable." });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "Could not create block.", variant: "destructive" });
+    } finally { setBlockSubmitting(false); }
+  };
+
+  const deleteBlock = async (id: string) => {
+    await fetch("/api/admin/calendar/blocks", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    setBlocks(prev => prev.filter(b => b.id !== id));
+    toast({ title: "Block removed" });
+  };
+
+  const isDayBlocked = (day: Date) => {
+    const d = day.getTime();
+    return blocks.some(b => {
+      const s = new Date(b.startDate); s.setHours(0,0,0,0);
+      const e = new Date(b.endDate);   e.setHours(23,59,59,999);
+      return d >= s.getTime() && d <= e.getTime();
+    });
+  };
+
+  const getBlockForDay = (day: Date) => {
+    const d = day.getTime();
+    return blocks.find(b => {
+      const s = new Date(b.startDate); s.setHours(0,0,0,0);
+      const e = new Date(b.endDate);   e.setHours(23,59,59,999);
+      return d >= s.getTime() && d <= e.getTime();
+    });
+  };
 
   const fetchAppointments = async () => {
     try {
@@ -163,6 +238,7 @@ export default function AdminAppointmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientName: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim(),
+          patientId: createForm.patientId,
           treatmentType: createForm.treatmentType,
           duration: createForm.duration,
           instructions: aiInstructions || "",
@@ -375,6 +451,46 @@ export default function AdminAppointmentsPage() {
     CANCELLED: appointments.filter((a) => a.status === "CANCELLED").length,
   };
 
+  // ── Calendar helpers ──────────────────────────────────────────────────────
+  const calendarDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(calendarWeekStart);
+      d.setDate(d.getDate() + i);
+      return d;
+    });
+  }, [calendarWeekStart]);
+
+  const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 08:00–19:00
+
+  const apptsByDay = useMemo(() => {
+    const map: Record<string, Appointment[]> = {};
+    appointments.forEach((a) => {
+      const key = new Date(a.dateTime).toDateString();
+      if (!map[key]) map[key] = [];
+      map[key].push(a);
+    });
+    return map;
+  }, [appointments]);
+
+  const STATUS_CAL: Record<string, string> = {
+    CONFIRMED: "bg-blue-500/20 border-blue-500/40 text-blue-300",
+    PENDING: "bg-amber-500/20 border-amber-500/40 text-amber-300",
+    PENDING_PATIENT: "bg-orange-500/20 border-orange-500/40 text-orange-300 border-dashed",
+    COMPLETED: "bg-emerald-500/20 border-emerald-500/40 text-emerald-300",
+    CANCELLED: "bg-red-500/20 border-red-500/40 text-red-300 opacity-60",
+  };
+
+  const navWeek = (dir: 1 | -1) => {
+    setCalendarWeekStart((prev) => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + dir * 7);
+      return d;
+    });
+  };
+
+  const DAY_NAMES_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+  const DAY_NAMES_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -389,7 +505,107 @@ export default function AdminAppointmentsPage() {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* ── Calendar View ── */}
+      {isCalendarView && (
+        <div className="space-y-3">
+          {/* Week navigation + Block button */}
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="sm" onClick={() => navWeek(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                {calendarDays[0].toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" })}
+                {" – "}
+                {calendarDays[6].toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+              </span>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-red-500/40 text-red-400 hover:bg-red-500/10" onClick={() => setShowBlockDialog(true)}>
+                <BanIcon className="h-3 w-3" />Block Period
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => navWeek(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Active blocks list (compact) */}
+          {blocks.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {blocks.map(b => (
+                <div key={b.id} className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-md px-2 py-1 text-[10px] text-red-400">
+                  <BanIcon className="h-2.5 w-2.5 shrink-0" />
+                  <span>{new Date(b.startDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span>
+                  {b.startDate !== b.endDate && <><span>→</span><span>{new Date(b.endDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span></>}
+                  {b.reason && <span className="text-muted-foreground">· {b.reason.trim()}</span>}
+                  <button onClick={() => deleteBlock(b.id)} className="ml-0.5 hover:text-red-300"><X className="h-2.5 w-2.5" /></button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Grid */}
+          <div className="overflow-x-auto rounded-lg border">
+            <div className="min-w-[640px]">
+              {/* Day headers */}
+              <div className="grid grid-cols-8 border-b">
+                <div className="p-2 text-xs text-muted-foreground text-center" />
+                {calendarDays.map((day, i) => {
+                  const isToday = day.toDateString() === new Date().toDateString();
+                  const blocked = isDayBlocked(day);
+                  const blk = getBlockForDay(day);
+                  return (
+                    <div key={i} className={`p-2 text-center border-l ${isToday ? "bg-emerald-500/10" : ""} ${blocked ? "bg-red-500/10" : ""}`}>
+                      <p className="text-[10px] text-muted-foreground">{(isPt ? DAY_NAMES_PT : DAY_NAMES_EN)[i]}</p>
+                      <p className={`text-sm font-semibold ${isToday ? "text-emerald-400" : ""} ${blocked ? "text-red-400" : ""}`}>{day.getDate()}</p>
+                      {blocked && <p className="text-[8px] text-red-400/80 leading-tight truncate">{blk?.reason || "Unavailable"}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Time rows */}
+              {HOURS.map((hour) => (
+                <div key={hour} className="grid grid-cols-8 border-b last:border-b-0" style={{ minHeight: 56 }}>
+                  <div className="p-1.5 text-[10px] text-muted-foreground text-right pr-2 border-r pt-1">
+                    {hour.toString().padStart(2, "0")}:00
+                  </div>
+                  {calendarDays.map((day, di) => {
+                    const blocked = isDayBlocked(day);
+                    const dayAppts = (apptsByDay[day.toDateString()] || []).filter((a) => {
+                      const h = new Date(a.dateTime).getHours();
+                      return h === hour;
+                    });
+                    return (
+                      <div key={di} className={`border-l p-0.5 space-y-0.5 relative ${blocked ? "bg-red-500/5" : ""}`}>
+                        {blocked && hour === 8 && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+                            <BanIcon className="h-5 w-5 text-red-500" />
+                          </div>
+                        )}
+                        {dayAppts.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => { setSelectedAppointment(a); setShowEditDialog(true); setEditForm({ dateTime: a.dateTime, duration: a.duration, treatmentType: a.treatmentType, price: a.price, notes: a.notes || "" }); }}
+                            className={`w-full text-left text-[9px] leading-tight p-1 rounded border ${STATUS_CAL[a.status] || "bg-muted"} hover:opacity-80 transition-opacity`}
+                          >
+                            <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
+                            <p className="truncate opacity-80">{a.treatmentType}</p>
+                            <p className="opacity-60">{new Date(a.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters — only in list view */}
+      {!isCalendarView && (
+      <>{/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -538,11 +754,12 @@ export default function AdminAppointmentsPage() {
           })}
         </div>
       )}
+      </> )}
 
       {/* Create Appointment Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-[550px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[550px] max-h-[90vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
               {isPt ? "Nova Consulta" : "New Appointment"}
@@ -551,7 +768,7 @@ export default function AdminAppointmentsPage() {
               {isPt ? "Agende uma consulta para um paciente. O paciente receberá um email de confirmação automaticamente." : "Schedule an appointment for a patient. The patient will receive a confirmation email automatically."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
             <div className="space-y-2">
               <Label>{isPt ? "Paciente *" : "Patient *"}</Label>
               <Select value={createForm.patientId} onValueChange={v => setCreateForm(f => ({ ...f, patientId: v }))}>
@@ -691,7 +908,7 @@ export default function AdminAppointmentsPage() {
               <Textarea value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder={isPt ? "Notas clínicas sobre a consulta..." : "Clinical notes about the appointment..."} />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 pt-2">
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>{isPt ? "Cancelar" : "Cancel"}</Button>
             <Button onClick={handleCreateAppointment} disabled={submitting} className="gap-2">
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -812,6 +1029,61 @@ export default function AdminAppointmentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Block Period Dialog ── */}
+      <Dialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BanIcon className="h-5 w-5 text-red-400" />
+              Block Period
+            </DialogTitle>
+            <DialogDescription>
+              Mark days as unavailable. No bookings will be accepted during this period.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start date</Label>
+                <Input type="date" value={blockForm.startDate} onChange={e => setBlockForm(f => ({ ...f, startDate: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">End date</Label>
+                <Input type="date" value={blockForm.endDate} onChange={e => setBlockForm(f => ({ ...f, endDate: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Reason <span className="text-muted-foreground">(optional)</span></Label>
+              <Input placeholder="e.g. Vacation, Conference, Training..." value={blockForm.reason} onChange={e => setBlockForm(f => ({ ...f, reason: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Type</Label>
+              <Select value={blockForm.blockType} onValueChange={v => setBlockForm(f => ({ ...f, blockType: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ABSENCE">Absence</SelectItem>
+                  <SelectItem value="VACATION">Vacation</SelectItem>
+                  <SelectItem value="TRAINING">Training</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBlockDialog(false)}>Cancel</Button>
+            <Button
+              onClick={createBlock}
+              disabled={!blockForm.startDate || !blockForm.endDate || blockSubmitting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {blockSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <BanIcon className="h-4 w-4 mr-1" />}
+              Block
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

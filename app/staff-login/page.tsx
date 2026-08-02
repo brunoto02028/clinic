@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Logo } from "@/components/ui/logo";
+import { AuthPageHeader } from "@/components/auth/auth-page-header";
 import { useLocale } from "@/hooks/use-locale";
 
 export default function StaffLoginPageWrapper() {
@@ -23,7 +23,7 @@ export default function StaffLoginPageWrapper() {
 function StaffLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { locale, toggleLocale, t: T } = useLocale();
+  const { locale } = useLocale();
   const isPt = locale === "pt-BR";
 
   const [mounted, setMounted] = useState(false);
@@ -96,42 +96,23 @@ function StaffLoginPage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-background bg-grid-pattern flex flex-col">
-      {/* Minimal header with logo + locale toggle */}
-      <header className="p-4 sm:p-6 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <Logo
-          logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
-          darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
-          size="md"
-          linkTo="/"
-          variant="dark"
-        />
-        <div className="flex items-center gap-0.5 bg-white/10 rounded-md p-0.5">
-          <button
-            onClick={() => { if (locale !== "en-GB") toggleLocale(); }}
-            className={`text-[10px] font-medium px-2 py-1 rounded transition-colors ${locale === "en-GB" ? "bg-white/20 text-white" : "text-white/60 hover:text-white"}`}
-          >EN</button>
-          <button
-            onClick={() => { if (locale !== "pt-BR") toggleLocale(); }}
-            className={`text-[10px] font-medium px-2 py-1 rounded transition-colors ${locale === "pt-BR" ? "bg-white/20 text-white" : "text-white/60 hover:text-white"}`}
-          >PT</button>
-        </div>
-      </header>
+    <div className="public-site min-h-screen bg-background flex flex-col">
+      <AuthPageHeader settings={settings} />
 
       {/* Main content */}
       <main className="flex-1 flex items-center justify-center p-4 pb-12">
         <div className="w-full max-w-md">
           {/* Staff badge */}
           <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 backdrop-blur-sm border border-primary/20 animate-neon-pulse">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
               <Shield className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-white/90">
+              <span className="text-sm font-medium text-primary">
                 {isPt ? "Portal da Equipe" : "Staff Portal"}
               </span>
             </div>
           </div>
 
-          <Card className="shadow-2xl neon-glow-cyan">
+          <Card className="shadow-xl border border-slate-200">
             <CardHeader className="space-y-1 text-center">
               <CardTitle className="text-2xl font-bold text-foreground">
                 {isPt ? "Acesso da Equipe" : "Staff Access"}

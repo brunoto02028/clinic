@@ -81,6 +81,13 @@ export const DEFAULT_CONFIGS = [
     isSecret: true,
   },
   {
+    key: "OPENROUTER_API_KEY",
+    label: "OpenRouter API Key",
+    description: "Routes Claude calls through OpenRouter to access claude-sonnet-5 (and other latest models). When set, ALL Claude calls (AI Co-Worker, Study Assistant, Marketing) use Sonnet 5. Get your key at openrouter.ai",
+    category: "ai",
+    isSecret: true,
+  },
+  {
     key: "AI_DEFAULT_PROVIDER",
     label: "Default AI Provider",
     description: "AI provider: 'gemini' (Google Gemini). Only Gemini is supported.",
@@ -88,9 +95,16 @@ export const DEFAULT_CONFIGS = [
     isSecret: false,
   },
   {
+    key: "GEMINI_MODEL",
+    label: "Gemini Text Model",
+    description: "Gemini model for text tasks: gemini-2.5-flash (default, best), gemini-2.5-pro (highest reasoning), gemini-2.0-flash (legacy)",
+    category: "ai",
+    isSecret: false,
+  },
+  {
     key: "AI_IMAGE_MODEL",
     label: "AI Image Generation Model",
-    description: "Gemini model for image generation: gemini-2.5-flash-image (default), gemini-3.1-flash-image-preview, gemini-3-pro-image-preview",
+    description: "Gemini model for image generation: gemini-2.5-flash-preview-image-generation (default), gemini-3.1-flash-image-preview, gemini-3-pro-image-preview",
     category: "ai",
     isSecret: false,
   },

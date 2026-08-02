@@ -18,6 +18,8 @@ import {
   Activity,
   Dumbbell,
   FileUp,
+  ClipboardList,
+  MessageCircleQuestion,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -163,6 +165,8 @@ export default function PatientDashboard() {
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {[
+              { icon: MessageCircleQuestion, label: locale === "pt-BR" ? "Perguntas" : "Questions", href: "/dashboard/questions" },
+              { icon: ClipboardList, label: locale === "pt-BR" ? "Meu Plano" : "My Plan", href: "/dashboard/my-plan" },
               { icon: Calendar, label: locale === "pt-BR" ? "Consultas" : "Appointments", href: "/dashboard/appointments" },
               { icon: Dumbbell, label: locale === "pt-BR" ? "Exercícios" : "Exercises", href: "/dashboard/exercises" },
               { icon: FileText, label: locale === "pt-BR" ? "Documentos" : "Documents", href: "/dashboard/documents" },

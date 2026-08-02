@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Sparkles, Loader2, Mic, MicOff, Languages, Upload, ImageIcon, X, Trash2, Send, Check, Eye, Pencil, MessageSquare, User } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Loader2, Mic, MicOff, Languages, Upload, ImageIcon, X, Trash2, Send, Check, Eye, Pencil, MessageSquare, User, Calendar } from "lucide-react";
 import Link from "next/link";
 import { AIFieldHelper } from "@/components/admin/ai-field-helper";
 import { AIImageGenerator } from "@/components/admin/ai-image-generator";
@@ -27,6 +27,8 @@ export default function NewArticlePage() {
   const [imageUrl, setImageUrl] = useState("");
   const [published, setPublished] = useState(false);
   const [authorName, setAuthorName] = useState("");
+  // Publish date shown on the public site — defaults to today, editable via the calendar picker below
+  const [createdAt, setCreatedAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -269,6 +271,7 @@ export default function NewArticlePage() {
           titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
           publishLanguage,
           imageUrl, published, authorName: authorName || undefined,
+          createdAt: createdAt ? `${createdAt}T12:00:00.000Z` : undefined,
         }),
       });
       if (res.ok) {
@@ -459,7 +462,7 @@ export default function NewArticlePage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="title">Title *</Label>
-                  <AIFieldHelper fieldName="title" fieldLabel="Article Title" currentValue={title} context="Blog article title for a physiotherapy clinic" onApply={(t) => setTitle(t)} />
+                  <AIFieldHelper fieldName="title" fieldLabel="Article Title" currentValue={title} context="Blog article title for a physical rehabilitation clinic" onApply={(t) => setTitle(t)} />
                 </div>
                 <Input id="title" placeholder="Enter article title" value={title} onChange={(e) => setTitle(e.target.value)} required />
               </div>
@@ -472,6 +475,15 @@ export default function NewArticlePage() {
                   <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <Input id="authorName" placeholder="Author name (leave empty to use your account name)" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="createdAt">Publish Date</Label>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Input id="createdAt" type="date" value={createdAt} onChange={(e) => setCreatedAt(e.target.value)} />
+                </div>
+                <p className="text-xs text-muted-foreground">Defaults to today. Change it to backdate or schedule how this article sorts on the public site.</p>
               </div>
             </div>
 
@@ -500,7 +512,7 @@ export default function NewArticlePage() {
                     </Button>
                     <AIImageGenerator
                       section="Article Cover"
-                      defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""}
+                      defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""}
                       aspectRatio="16:9"
                       onApply={(url) => setImageUrl(url)}
                       onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
@@ -519,7 +531,7 @@ export default function NewArticlePage() {
                     </Button>
                     <AIImageGenerator
                       section="Article Cover"
-                      defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""}
+                      defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""}
                       aspectRatio="16:9"
                       onApply={(url) => setImageUrl(url)}
                       onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
@@ -548,7 +560,7 @@ export default function NewArticlePage() {
                     </button>
                   </div>
                 </div>
-                <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physiotherapy clinic website" onApply={(t) => setContent(t)} />
+                <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physical rehabilitation clinic website" onApply={(t) => setContent(t)} />
               </div>
               {showPreview ? (
                 <div className="border rounded-lg p-6 min-h-[350px] bg-white">

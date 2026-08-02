@@ -6,16 +6,19 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchNotifications } from "@/api/notifications";
 import { useTheme } from "@/theme/useTheme";
 
-const ICON_MAP: Record<string, { icon: string; color: string }> = {
-  appointment: { icon: "calendar-outline", color: "#5dc9c0" },
-  screening: { icon: "clipboard-outline", color: "#60a5fa" },
-  profile: { icon: "person-outline", color: "#f59e0b" },
-  payment: { icon: "card-outline", color: "#8b5cf6" },
-  task: { icon: "checkbox-outline", color: "#34d399" },
-};
+function getIconMap(t: ReturnType<typeof useTheme>): Record<string, { icon: string; color: string }> {
+  return {
+    appointment: { icon: "calendar-outline", color: t.colors.health },
+    screening: { icon: "clipboard-outline", color: t.colors.work },
+    profile: { icon: "person-outline", color: t.colors.warn },
+    payment: { icon: "card-outline", color: t.colors.community },
+    task: { icon: "checkbox-outline", color: t.colors.ok },
+  };
+}
 
 export default function Notifications() {
   const t = useTheme();
+  const ICON_MAP = getIconMap(t);
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: fetchNotifications,
@@ -33,8 +36,8 @@ export default function Notifications() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Text variant="title">Notificações</Text>
           {unread > 0 && (
-            <View style={{ backgroundColor: "rgba(239,68,68,0.15)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-              <Text variant="caption" color="#f87171" style={{ fontWeight: "700", fontSize: 11 }}>{unread}</Text>
+            <View style={{ backgroundColor: t.colors.badSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+              <Text variant="caption" color={t.colors.bad} style={{ fontWeight: "700", fontSize: 11 }}>{unread}</Text>
             </View>
           )}
         </View>
@@ -52,17 +55,17 @@ export default function Notifications() {
         ) : (
           <View style={{ gap: 8 }}>
             {notifications.map((notif) => {
-              const iconInfo = ICON_MAP[notif.type] ?? { icon: "notifications-outline", color: "#64748b" };
+              const iconInfo = ICON_MAP[notif.type] ?? { icon: "notifications-outline", color: t.colors.textMuted };
               return (
                 <Pressable
                   key={notif.id}
                   onPress={() => notif.link ? router.push(notif.link) : null}
                   style={({ pressed }) => ({
                     flexDirection: "row", gap: 12, padding: 14,
-                    backgroundColor: pressed ? "rgba(74,124,138,0.12)" : notif.isUrgent ? "rgba(239,68,68,0.04)" : "transparent",
+                    backgroundColor: pressed ? t.colors.surfaceMuted : notif.isUrgent ? t.colors.badSoft : "transparent",
                     borderRadius: 12,
                     borderLeftWidth: notif.isUrgent ? 3 : 0,
-                    borderLeftColor: "#f87171",
+                    borderLeftColor: t.colors.bad,
                   })}
                 >
                   <View style={{
@@ -80,7 +83,7 @@ export default function Notifications() {
                       {notif.messagePt || notif.message}
                     </Text>
                   </View>
-                  {notif.isUrgent && <Ionicons name="alert-circle" size={16} color="#f87171" />}
+                  {notif.isUrgent && <Ionicons name="alert-circle" size={16} color={t.colors.bad} />}
                 </Pressable>
               );
             })}

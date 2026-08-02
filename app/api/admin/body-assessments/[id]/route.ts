@@ -232,7 +232,7 @@ export async function PUT(
           emailVars: {
             assessmentType: "Body Assessment",
             completedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
-            portalUrl: `${process.env.NEXTAUTH_URL || ""}/dashboard/body-assessments`,
+            portalUrl: `${process.env.NEXTAUTH_URL || ""}/dashboard`,
           },
           plainMessage: `Your body assessment report is ready! Log in to your portal to view your results, corrective exercises, and personalised recommendations.`,
           plainMessagePt: `Seu relatório de avaliação corporal está pronto! Acesse seu portal para ver seus resultados, exercícios corretivos e recomendações personalizadas.`,

@@ -87,6 +87,14 @@ All API routes are under `/api/`. Authentication is required unless noted otherw
 |--------|----------|-------------|
 | `GET` | `/api/patient/achievements` | List achievements |
 
+### Waitlist
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/patient/waitlist` | List own waitlist entries |
+| `POST` | `/api/patient/waitlist` | Join the waitlist (treatmentType, preferredFrom, preferredTo, notes, therapistId?) |
+| `DELETE` | `/api/patient/waitlist?id=` | Leave / remove a waitlist entry |
+| `GET` | `/api/patient/treatment-types` | List active treatment types |
+
 ### Scans
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -173,6 +181,18 @@ All API routes are under `/api/`. Authentication is required unless noted otherw
 |--------|----------|-------------|
 | `POST` | `/api/admin/impersonate` | Start impersonating patient |
 | `DELETE` | `/api/admin/impersonate` | Stop impersonation |
+
+### Waitlist
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/waitlist` | List all waitlist entries (filter: status, patientId) |
+| `POST` | `/api/admin/waitlist` | Add entry on behalf of patient or re-notify (action=notify) |
+| `DELETE` | `/api/admin/waitlist?id=` | Remove waitlist entry |
+
+### Pending Counts
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/pending-count` | Lightweight badge counts (unansweredMessages, pendingQuestions, pendingCancellations) |
 
 ---
 

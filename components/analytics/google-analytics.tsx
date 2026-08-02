@@ -1,26 +1,33 @@
 'use client';
 
 import { GoogleAnalytics as GA } from '@next/third-parties/google';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { hasAnalyticsConsent } from '@/components/cookie-consent';
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-XXXXXXXXXX';
 
 export function GoogleAnalytics() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [consentGranted, setConsentGranted] = useState(false);
 
   useEffect(() => {
-    if (pathname) {
-      // Track page views
+    const checkConsent = () => setConsentGranted(hasAnalyticsConsent());
+    checkConsent();
+    window.addEventListener('consent-updated', checkConsent);
+    return () => window.removeEventListener('consent-updated', checkConsent);
+  }, []);
+
+  useEffect(() => {
+    if (consentGranted && pathname) {
       window.gtag?.('config', GA_ID, {
         page_path: pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : ''),
       });
     }
-  }, [pathname, searchParams]);
+  }, [pathname, searchParams, consentGranted]);
 
-  // Only load in production
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' || !consentGranted) {
     return null;
   }
 

@@ -49,14 +49,14 @@ export default function OutcomeMeasuresScreen() {
         {/* VAS Score */}
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <Ionicons name="pulse-outline" size={18} color="#ef4444" />
+            <Ionicons name="pulse-outline" size={18} color={t.colors.bad} />
             <Text variant="label" style={{ fontWeight: "600" }}>Escala de Dor (VAS)</Text>
           </View>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginBottom: 8 }}>
-            0 = Sem dor, 10 = Pior dor imaginável
+            0 = Sem dor, 10 = Pior dor imaginavel
           </Text>
           <View style={{ alignItems: "center", marginBottom: 8 }}>
-            <Text variant="title" color={vasScore > 6 ? "#ef4444" : vasScore > 3 ? "#f59e0b" : "#34d399"} style={{ fontSize: 36 }}>
+            <Text variant="title" color={vasScore > 6 ? t.colors.bad : vasScore > 3 ? t.colors.warn : t.colors.ok} style={{ fontSize: 36 }}>
               {vasScore}
             </Text>
           </View>
@@ -64,8 +64,8 @@ export default function OutcomeMeasuresScreen() {
             <Text variant="caption" color={t.colors.textMuted}>0</Text>
             <View style={{ flex: 1 }}>
               <View style={{ height: 36, justifyContent: "center" }}>
-                <View style={{ height: 6, backgroundColor: "rgba(74,124,138,0.15)", borderRadius: 3, overflow: "hidden" }}>
-                  <View style={{ height: 6, width: `${vasScore * 10}%`, backgroundColor: vasScore > 6 ? "#ef4444" : vasScore > 3 ? "#f59e0b" : "#34d399", borderRadius: 3 }} />
+                <View style={{ height: 6, backgroundColor: t.colors.surfaceMuted, borderRadius: 3, overflow: "hidden" }}>
+                  <View style={{ height: 6, width: `${vasScore * 10}%`, backgroundColor: vasScore > 6 ? t.colors.bad : vasScore > 3 ? t.colors.warn : t.colors.ok, borderRadius: 3 }} />
                 </View>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
@@ -73,9 +73,9 @@ export default function OutcomeMeasuresScreen() {
                   <View
                     key={v}
                     onTouchEnd={() => setVasScore(v)}
-                    style={{ width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: v === vasScore ? "rgba(93,201,192,0.2)" : "transparent" }}
+                    style={{ width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: v === vasScore ? t.colors.okSoft : "transparent" }}
                   >
-                    <Text variant="caption" color={v === vasScore ? "#5dc9c0" : t.colors.textMuted} style={{ fontSize: 10 }}>{v}</Text>
+                    <Text variant="caption" color={v === vasScore ? t.colors.ok : t.colors.textMuted} style={{ fontSize: 10 }}>{v}</Text>
                   </View>
                 ))}
               </View>
@@ -87,19 +87,19 @@ export default function OutcomeMeasuresScreen() {
         {/* Overall function */}
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <Ionicons name="accessibility-outline" size={18} color="#5dc9c0" />
+            <Ionicons name="accessibility-outline" size={18} color={t.colors.ok} />
             <Text variant="label" style={{ fontWeight: "600" }}>Funcionalidade geral</Text>
           </View>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginBottom: 8 }}>
-            0% = Incapacidade total, 100% = Função normal completa
+            0% = Incapacidade total, 100% = Funcao normal completa
           </Text>
           <View style={{ alignItems: "center", marginBottom: 8 }}>
-            <Text variant="title" color="#5dc9c0" style={{ fontSize: 36 }}>{overallFunction}%</Text>
+            <Text variant="title" color={t.colors.ok} style={{ fontSize: 36 }}>{overallFunction}%</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text variant="caption" color={t.colors.textMuted}>0%</Text>
-            <View style={{ flex: 1, height: 6, backgroundColor: "rgba(74,124,138,0.15)", borderRadius: 3, overflow: "hidden" }}>
-              <View style={{ height: 6, width: `${overallFunction}%`, backgroundColor: "#5dc9c0", borderRadius: 3 }} />
+            <View style={{ flex: 1, height: 6, backgroundColor: t.colors.surfaceMuted, borderRadius: 3, overflow: "hidden" }}>
+              <View style={{ height: 6, width: `${overallFunction}%`, backgroundColor: t.colors.ok, borderRadius: 3 }} />
             </View>
             <Text variant="caption" color={t.colors.textMuted}>100%</Text>
           </View>
@@ -108,9 +108,9 @@ export default function OutcomeMeasuresScreen() {
               <View
                 key={v}
                 onTouchEnd={() => setOverallFunction(v)}
-                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: overallFunction === v ? "rgba(93,201,192,0.2)" : "rgba(74,124,138,0.06)" }}
+                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: overallFunction === v ? t.colors.okSoft : t.colors.surfaceMuted }}
               >
-                <Text variant="caption" color={overallFunction === v ? "#5dc9c0" : t.colors.textMuted}>{v}%</Text>
+                <Text variant="caption" color={overallFunction === v ? t.colors.ok : t.colors.textMuted}>{v}%</Text>
               </View>
             ))}
           </View>

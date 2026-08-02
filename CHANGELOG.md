@@ -6,6 +6,100 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.8.0] - 2026-07-06
+
+### Added
+- **Automatic Waitlist for Cancelled Slots** — patients can join a per-clinic waitlist and are notified automatically when a matching appointment is freed.
+  - Prisma `WaitlistEntry` model (`WaitlistStatus` enum: `WAITING | NOTIFIED | BOOKED | REMOVED`)
+  - Patient API: `GET/POST/DELETE /api/patient/waitlist` — list own entries, join, leave
+  - Admin API: `GET/POST/DELETE /api/admin/waitlist` — list all entries, manual re-notify, remove
+  - `lib/waitlist.ts` — `notifyWaitlistForCancelledAppointment()`: matches by clinic + treatment type + optional therapist + date window, notifies up to 5 patients FIFO via `notifyPatient` (email / WhatsApp / SMS / Telegram)
+  - Hook injected into both cancellation flows: `PATCH /api/appointments/[id]` and `POST /api/admin/cancellations` (refund approval)
+  - Email template `WAITLIST_SLOT_AVAILABLE` (EN-GB + PT-BR)
+  - Patient UI page `/dashboard/waitlist` — join with treatment type + date window picker, list active entries, leave
+  - Admin UI page `/admin/waitlist` — filter by status/patient, manual notify button, remove
+  - "Waitlist" button added to patient appointments list header
+  - "Waitlist" tab added to Admin → Schedule section in sidebar
+  - `GET /api/patient/treatment-types` — lists active treatment types (for waitlist + booking pickers)
+- **Pending patient notifications badge** — admin sidebar mini-badge polls `/api/admin/pending-count` every 30 s; patient list shows unread message and answered question badges per row
+
+---
+
+## [2.7.0] - 2026-07-05
+
+### Fixed
+- **Admin patient page — Upload bug (root cause)**: the Upload/Write Clinical History forms were rendered inside the "Resumo" tab only. Clicking "+ Upload" from the "Documentos" tab toggled state but showed nothing. Forms now render above the tabs (visible from any tab); all document buttons switch to the Documentos tab.
+- **`/get-the-app` redirected to login** — added to `publicRoutes` in `middleware.ts`.
+- **MLS Laser service page showed raw i18n keys** (`svc.mlsLaser`, `svc.mlsLaserDesc`) — 4 missing keys added to `lib/i18n.ts` (also `svc.kinesiotherapy` pair).
+- **mls-laser related-link loop** — `laser-shockwave` redirects back to `mls-laser`; replaced in related services.
+
+### Added
+- **Chat attachments (clinic ↔ patient)** — paperclip in both composers (`app/dashboard/questions/page.tsx` patient side, `components/admin/patient-messages-tab.tsx` admin side). Images render inline; other files as download cards.
+  - New fields on `ClinicMessage`: `attachmentUrl`, `attachmentName`, `attachmentType`
+  - Both message APIs accept `multipart/form-data` (with JSON fallback for text-only)
+  - `lib/chat-attachment.ts` — shared helper: saves file + auto-registers it as `PatientDocument` with new `source=CHAT_UPLOAD`, so chat files appear in the patient's Documents section (single source of truth)
+- **Patient language toggle (EN | PT)** — patient sidebar footer; persists to `User.preferredLocale` via `PATCH /api/patient/profile`. `notifyPatient` already sends comms in patient's locale.
+- **Unified documents flow (admin)** — "Documents" header button opens the Documentos tab (no separate page navigation); Resumo quick actions jump to the tab.
+
+### Changed
+- **Upload file types broadened everywhere** (admin docs, patient docs, chat): any `image/*` + PDF, Word, TXT, CSV — 25MB max.
+- **Contextual back navigation** — admin patient detail and permissions pages use real history back (fallback to sensible route) instead of hardcoded `router.push`.
+- **Public service pages audit** — removed all "coach/coaching" wording (→ practitioner/programme/guidance/consultations), "20+ years" → "15+ Years of Clinical Experience" on `/biohacking` (4 spots), fixed self-referencing links. All 17 public footer links verified 200 in production.
+- **Header/footer unification** — all public pages share the homepage `SiteHeader`/`SiteFooter` (from previous session, deployed today).
+
+---
+
+## [2.6.0] - 2026-07-03
+
+### Added
+- **Public Schedule API** — `/api/public/schedule` (no auth required)
+  - Reads live data directly from `TherapistAvailability` DB table
+  - Always returns all 7 days — missing days default to `closed: true`
+  - Cache-Control header: `s-maxage=300` (5 min CDN cache)
+  - Middleware updated: `/api/public` added to public routes list
+  - Any change saved in **Admin → Schedule → Availability** reflects on the public site within 5 minutes
+
+### Changed
+- **Homepage redesign** (`components/landing-page.tsx`)
+  - Terminology: all "physiotherapy / fisioterapia" references replaced with "physical rehabilitation / reabilitação física" throughout text, alt tags, and meta copy
+  - Removed old sections: Portal, Services grid, MLS feature block, Insoles, Bio, Thermo, How It Works
+  - Added **The Method** section — 4-phase patient journey (Assessment → Plan → Treatment → Performance)
+  - Added **Differentiators** section — narrative-driven "We don't sell sessions. We deliver results."
+  - Hero CTA updated to "Start Your Programme / Começar o Programa"
+  - Navigation anchors updated: `#method`, `#equipment`, `#about`, `#contact`
+  - `validImg()` guard added — filters out ephemeral `/uploads/` paths from Render's filesystem
+  - All settings-based images switched from Next.js `<Image>` to plain `<img>` to avoid optimization-layer failures with internal API URLs
+  - MLS fallback paths removed (no longer reference `/uploads/`)
+
+- **Contact Section** (live opening hours)
+  - Fetches from `/api/public/schedule` on mount — replaces static `businessHoursJson` parsing
+  - 7-day table: today highlighted with animated dot + "Today" label, closed days in red
+  - Fallback: Mon–Sat 09:00–18:00, Sunday closed (shown when no DB records exist)
+  - Hint text: "Set hours in Admin → Schedule → Availability"
+
+- **Footer** (4-column rich layout)
+  - Col 1: Brand logo, tagline, social links
+  - Col 2: Navigation links (The Method, Technology, About Bruno, Articles, Contact)
+  - Col 3: Contact details from settings (address, phone, email)
+  - Col 4: Opening hours — same live data as contact section, today highlighted in bold
+  - Bottom bar: copyright + Patient Portal / Staff Portal links
+
+- **Fixed navigation header**
+  - `landing-page.tsx`: changed from `sticky top-0` → `fixed top-0 left-0 right-0` + spacer `div.h-16.md:h-20` after header
+  - `components/site-header.tsx`: same `fixed` treatment + spacer wrapped in React fragment
+
+- **SiteHeader** (`components/site-header.tsx`) — used on `/login`, `/signup`, and all public sub-pages
+  - Old links removed: Services dropdown, Insoles (`/#insoles`), Biohacking (`/biohacking`), Help (`/help`)
+  - New links: The Method (`/#method`), Technology (`/#equipment`), Articles (`/articles`), About (`/#about`), Contact (`/#contact`)
+  - Bilingual labels inline (EN/PT) — no longer depends on `T()` translation function
+  - Removed unused imports: `ChevronDown`, `Shield`, `ServiceLink` interface, `serviceLinks` state, `/api/service-pages` fetch
+
+### Technical
+- Commits: `403b816`, `ba92801`, `442bf64`
+- Files changed: `components/landing-page.tsx`, `components/site-header.tsx`, `middleware.ts`, `app/api/public/schedule/route.ts` (new)
+
+---
+
 ## [2.5.0] - 2026-02-26
 
 ### Fixed

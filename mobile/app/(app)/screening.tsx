@@ -3,7 +3,6 @@ import { View, Pressable, ScrollView } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { fetchScreening, saveScreening, type ScreeningData } from "@/api/screening";
@@ -34,12 +33,12 @@ function ChipSelect({ options, selected, onSelect }: {
             onPress={() => onSelect(o.value)}
             style={{
               paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
-              backgroundColor: active ? "rgba(93, 201, 192, 0.2)" : "rgba(74, 124, 138, 0.08)",
+              backgroundColor: active ? t.colors.healthSoft : t.colors.surfaceMuted,
               borderWidth: 1,
-              borderColor: active ? "rgba(93, 201, 192, 0.4)" : "rgba(74, 124, 138, 0.12)",
+              borderColor: active ? t.colors.health : t.colors.borderSubtle,
             }}
           >
-            <Text variant="label" color={active ? "#5dc9c0" : t.colors.textSecondary}>{o.label}</Text>
+            <Text variant="label" color={active ? t.colors.health : t.colors.textSecondary}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -96,15 +95,15 @@ export default function Screening() {
             <Text variant="subtitle">Avaliação</Text>
             <Text variant="caption" color={t.colors.textSecondary}>{step + 1} / {STEPS.length}</Text>
           </View>
-          <View style={{ height: 4, backgroundColor: "rgba(74, 124, 138, 0.15)", borderRadius: 2 }}>
-            <View style={{ height: 4, width: `${progress}%`, backgroundColor: "#5dc9c0", borderRadius: 2 }} />
+          <View style={{ height: 4, backgroundColor: t.colors.borderSubtle, borderRadius: 2 }}>
+            <View style={{ height: 4, width: `${progress}%`, backgroundColor: t.colors.health, borderRadius: 2 }} />
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {STEPS.map((s, i) => (
               <Pressable key={s.key} onPress={() => { autosave.mutate(); setStep(i); }}
-                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: i === step ? "rgba(93, 201, 192, 0.15)" : "transparent" }}>
-                <Ionicons name={s.icon} size={14} color={i <= step ? "#5dc9c0" : t.colors.textMuted} />
-                <Text variant="caption" color={i === step ? "#5dc9c0" : t.colors.textMuted} style={{ fontSize: 11 }}>{s.label}</Text>
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: i === step ? t.colors.healthSoft : "transparent" }}>
+                <Ionicons name={s.icon} size={14} color={i <= step ? t.colors.health : t.colors.textMuted} />
+                <Text variant="caption" color={i === step ? t.colors.health : t.colors.textMuted} style={{ fontSize: 11 }}>{s.label}</Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -112,7 +111,7 @@ export default function Screening() {
 
         <Card variant="highlight">
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Ionicons name="shield-checkmark-outline" size={18} color="#5dc9c0" />
+            <Ionicons name="shield-checkmark-outline" size={18} color={t.colors.health} />
             <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1 }}>
               Revisado por profissional de saúde. Seus dados são protegidos e salvos automaticamente.
             </Text>
@@ -170,8 +169,8 @@ export default function Screening() {
             ].map(item => (
               <Pressable key={item.key} onPress={() => set(item.key, !form[item.key])}
                 style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 }}>
-                <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: form[item.key] ? "#5dc9c0" : "rgba(74,124,138,0.3)", backgroundColor: form[item.key] ? "rgba(93,201,192,0.2)" : "transparent", alignItems: "center", justifyContent: "center" }}>
-                  {form[item.key] && <Ionicons name="checkmark" size={16} color="#5dc9c0" />}
+                <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: form[item.key] ? t.colors.health : t.colors.border, backgroundColor: form[item.key] ? t.colors.healthSoft : "transparent", alignItems: "center", justifyContent: "center" }}>
+                  {form[item.key] && <Ionicons name="checkmark" size={16} color={t.colors.health} />}
                 </View>
                 <Text variant="body" color={t.colors.textSecondary}>{item.label}</Text>
               </Pressable>
@@ -211,26 +210,22 @@ export default function Screening() {
         <View style={{ flexDirection: "row", gap: 12 }}>
           {step > 0 && (
             <Pressable onPress={() => { autosave.mutate(); setStep(s => s - 1); }}
-              style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "rgba(107,163,176,0.3)" }}>
+              style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: t.colors.border }}>
               <Ionicons name="chevron-back" size={16} color={t.colors.accent} />
               <Text variant="label" color={t.colors.accent}>Anterior</Text>
             </Pressable>
           )}
-          <Pressable
-            onPress={() => {
-              if (step < STEPS.length - 1) { autosave.mutate(); setStep(s => s + 1); }
-              else submit.mutate();
-            }}
-            style={{ flex: 1, borderRadius: 12, overflow: "hidden" }}
-          >
-            <LinearGradient colors={["#4a7c8a", "#2c4f58"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 14, borderRadius: 12 }}>
-              <Text variant="label" color="#fff" style={{ fontWeight: "600" }}>
-                {step < STEPS.length - 1 ? "Próximo" : "Enviar avaliação"}
-              </Text>
-              <Ionicons name={step < STEPS.length - 1 ? "chevron-forward" : "checkmark"} size={16} color="#fff" />
-            </LinearGradient>
-          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Button
+              variant="health"
+              title={step < STEPS.length - 1 ? "Próximo" : "Enviar avaliação"}
+              onPress={() => {
+                if (step < STEPS.length - 1) { autosave.mutate(); setStep(s => s + 1); }
+                else submit.mutate();
+              }}
+              icon={<Ionicons name={step < STEPS.length - 1 ? "chevron-forward" : "checkmark"} size={16} color="#fff" />}
+            />
+          </View>
         </View>
 
         {submit.isError && (

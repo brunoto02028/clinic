@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Sora } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import { DynamicFavicon } from "@/components/dynamic-favicon";
@@ -27,6 +27,14 @@ const inter = Inter({
   adjustFontFallback: true,
 });
 
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: 'swap',
+  preload: false,
+  variable: '--font-sora',
+});
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -37,8 +45,8 @@ export const viewport: Viewport = {
 
 // Dynamic metadata — reads SEO fields from Site Settings in DB
 export async function generateMetadata(): Promise<Metadata> {
-  const FALLBACK_TITLE = "BPR";
-  const FALLBACK_DESC = "Professional physiotherapy and rehabilitation services.";
+  const FALLBACK_TITLE = "BPR — Physical Rehabilitation | Ipswich, Suffolk";
+  const FALLBACK_DESC = "Integrated physical rehabilitation programme in Ipswich, Suffolk. Combining MLS Laser, Biomechanical Analysis, HRV Monitoring and Advanced Electrotherapy into one complete, outcome-focused treatment plan.";
   const BASE_URL = "https://bpr.rehab";
 
   let s: any = null;
@@ -50,11 +58,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const title = s?.metaTitle || FALLBACK_TITLE;
   const description = s?.metaDescription || FALLBACK_DESC;
-  const keywords = s?.metaKeywords || undefined;
+  const FALLBACK_KEYWORDS = "physical rehabilitation Ipswich, sports rehabilitation Suffolk, integrated rehabilitation programme, MLS laser therapy Ipswich, biomechanical assessment Suffolk, sports injury rehabilitation, pain elimination programme, movement restoration Ipswich, physical rehabilitation specialist Suffolk, Bruno Physical Rehabilitation";
+  const keywords = s?.metaKeywords || FALLBACK_KEYWORDS;
   const siteName = s?.ogSiteName || s?.siteName || "BPR";
   const ogImage = s?.ogImageUrl
     ? (s.ogImageUrl.startsWith("http") ? s.ogImageUrl : `${BASE_URL}${s.ogImageUrl}`)
-    : `${BASE_URL}/og-image.png`;
+    : s?.logoUrl
+      ? (s.logoUrl.startsWith("http") ? s.logoUrl : `${BASE_URL}${s.logoUrl}`)
+      : `${BASE_URL}/og-image.png`;
   const canonical = s?.canonicalUrl || BASE_URL;
   const ogType = (s?.ogType as any) || "website";
   const ogLocale = s?.ogLocale || "en_GB";
@@ -139,7 +150,7 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${inter.className} ${sora.variable}`} suppressHydrationWarning>
         <Suspense fallback={null}>
           <SchemaOrgScript />
         </Suspense>

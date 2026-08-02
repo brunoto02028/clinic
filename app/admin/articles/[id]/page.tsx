@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Languages, Loader2, Upload, ImageIcon, Trash2, Mic, MicOff, Send, Check, Eye, Pencil, MessageSquare, User } from "lucide-react";
+import { ArrowLeft, Save, Languages, Loader2, Upload, ImageIcon, Trash2, Mic, MicOff, Send, Check, Eye, Pencil, MessageSquare, User, Sparkles, Calendar } from "lucide-react";
 import Link from "next/link";
 import { AIFieldHelper } from "@/components/admin/ai-field-helper";
 import { AIImageGenerator } from "@/components/admin/ai-image-generator";
+import { ImageLibraryPicker } from "@/components/admin/image-library-picker";
 import { InstagramPostPanel } from "@/components/admin/instagram-post-panel";
 
 const RichTextEditor = dynamic(() => import("@/components/admin/rich-text-editor"), {
@@ -29,11 +30,13 @@ export default function EditArticlePage() {
   const [imageUrl, setImageUrl] = useState("");
   const [published, setPublished] = useState(false);
   const [authorName, setAuthorName] = useState("");
+  const [createdAt, setCreatedAt] = useState(""); // publish date (YYYY-MM-DD) shown on the public site
   // SEO fields
   const [metaDescription, setMetaDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [keyword, setKeyword] = useState("");
   const [generatedBy, setGeneratedBy] = useState<string | null>(null);
+  const [generatingSeo, setGeneratingSeo] = useState(false);
   // ── Bilingual editing ──
   const [editLang, setEditLang] = useState<"en" | "pt">("en");
   const [publishLanguage, setPublishLanguage] = useState<"en" | "pt">("en");
@@ -96,6 +99,7 @@ export default function EditArticlePage() {
         setImageUrl(data.imageUrl || "");
         setPublished(data.published);
         setAuthorName(data.authorName || "");
+        setCreatedAt(data.createdAt ? new Date(data.createdAt).toISOString().slice(0, 10) : "");
         setMetaDescription(data.metaDescription || "");
         setTags(data.tags || []);
         setKeyword(data.keyword || "");
@@ -118,6 +122,29 @@ export default function EditArticlePage() {
     setContent(other.content);
     setShowPreview(false);
     setEditLang(newLang);
+  };
+
+  const generateSeo = async () => {
+    if (!params?.id) return;
+    if (!title || !content) {
+      toast({ title: "Add a title and content first", description: "AI needs the article's content to generate accurate SEO metadata.", variant: "destructive" });
+      return;
+    }
+    setGeneratingSeo(true);
+    try {
+      const res = await fetch(`/api/admin/articles/${params.id}/generate-seo`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate SEO metadata");
+      setMetaDescription(data.metaDescription || "");
+      setKeyword(data.keyword || "");
+      setTags(data.tags || []);
+      setGeneratedBy("AI");
+      toast({ title: "SEO generated!", description: "Review the meta description, keyword and tags below." });
+    } catch (err: any) {
+      toast({ title: "AI generation failed", description: err.message, variant: "destructive" });
+    } finally {
+      setGeneratingSeo(false);
+    }
   };
 
   const handleTranslate = async (targetLang: "en" | "pt") => {
@@ -271,6 +298,7 @@ export default function EditArticlePage() {
           titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
           publishLanguage,
           imageUrl, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, tags, keyword: keyword || undefined,
+          createdAt: createdAt ? `${createdAt}T12:00:00.000Z` : undefined,
         }),
       });
       if (res.ok) {
@@ -394,7 +422,7 @@ export default function EditArticlePage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="title">Title *</Label>
-                  <AIFieldHelper fieldName="title" fieldLabel="Article Title" currentValue={title} context="Blog article title for a physiotherapy clinic" onApply={(t) => setTitle(t)} />
+                  <AIFieldHelper fieldName="title" fieldLabel="Article Title" currentValue={title} context="Blog article title for a physical rehabilitation clinic" onApply={(t) => setTitle(t)} />
                 </div>
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
               </div>
@@ -404,6 +432,14 @@ export default function EditArticlePage() {
                   <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <Input id="authorName" placeholder="Author name (leave empty to use account name)" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="createdAt">Publish Date</Label>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Input id="createdAt" type="date" value={createdAt} onChange={(e) => setCreatedAt(e.target.value)} />
+                </div>
+                <p className="text-xs text-muted-foreground">Date shown on the public site and used for sorting. Change it to backdate or postdate this article.</p>
               </div>
             </div>
 
@@ -428,7 +464,8 @@ export default function EditArticlePage() {
                     <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5">
                       {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Replace
                     </Button>
-                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
+                    <ImageLibraryPicker onSelect={(url) => setImageUrl(url)} />
+                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                 </div>
               ) : (
@@ -440,7 +477,8 @@ export default function EditArticlePage() {
                       {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                       {uploading ? "Uploading..." : "Upload Image"}
                     </Button>
-                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physiotherapy blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
+                    <ImageLibraryPicker onSelect={(url) => setImageUrl(url)} />
+                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                   <div className="pt-2">
                     <Input placeholder="Or paste image URL..." value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="max-w-md mx-auto text-sm" />
@@ -467,14 +505,14 @@ export default function EditArticlePage() {
                 <div className="flex items-center gap-2">
                   <AIImageGenerator
                     section="Article Body Image"
-                    defaultPrompt={title ? `Illustration for physiotherapy article: ${title}` : ""}
+                    defaultPrompt={title ? `Illustration for physical rehabilitation article: ${title}` : ""}
                     aspectRatio="16:9"
                     onApply={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
                     articleContext={{ title, excerpt, content }}
                     buttonLabel="Add Body Image"
                     buttonVariant="outline"
                   />
-                  <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physiotherapy clinic website" onApply={(t) => setContent(t)} />
+                  <AIFieldHelper fieldName="content" fieldLabel="Article Content" currentValue={content} context="Full blog article content for a physical rehabilitation clinic website" onApply={(t) => setContent(t)} />
                 </div>
               </div>
               {showPreview ? (
@@ -487,28 +525,32 @@ export default function EditArticlePage() {
             </div>
 
             {/* SEO Fields */}
-            {(generatedBy || metaDescription || keyword || tags.length > 0) && (
-              <div className="space-y-3 p-4 bg-muted/30 border border-border rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
+            <div className="space-y-3 p-4 bg-muted/30 border border-border rounded-lg">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-foreground">SEO</span>
                   {generatedBy && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">Generated by {generatedBy}</span>}
                 </div>
+                <Button type="button" variant="outline" size="sm" onClick={generateSeo} disabled={generatingSeo} className="gap-1.5">
+                  {generatingSeo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {generatingSeo ? "Generating..." : "Auto-fill with AI"}
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Meta Description</Label>
+                <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} placeholder="SEO meta description..." rows={2} className="text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Meta Description</Label>
-                  <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} placeholder="SEO meta description..." rows={2} className="text-sm" />
+                  <Label className="text-xs">Target Keyword</Label>
+                  <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. rehabilitation Ipswich" className="text-sm" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Target Keyword</Label>
-                    <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. physiotherapy Ipswich" className="text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Tags (comma-separated)</Label>
-                    <Input value={tags.join(', ')} onChange={(e) => setTags(e.target.value.split(',').map(t => t.trim()).filter(Boolean))} placeholder="e.g. physiotherapy, knee pain" className="text-sm" />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Tags (comma-separated)</Label>
+                  <Input value={tags.join(', ')} onChange={(e) => setTags(e.target.value.split(',').map(t => t.trim()).filter(Boolean))} placeholder="e.g. rehabilitation, knee pain" className="text-sm" />
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Primary publish language */}
             <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">

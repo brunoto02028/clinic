@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical } from "@/lib/ai-provider";
 import { extractText } from "@/lib/docling";
+import { patientPseudonym } from "@/lib/pseudonymize";
 import fs from "fs";
 import path from "path";
 
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   // 3. Call AI to parse into structured data
-  const systemPrompt = `You are a clinical data extraction AI for a physiotherapy/rehabilitation clinic.
+  const systemPrompt = `You are a clinical data extraction AI for a physical rehabilitation clinic.
 Given the clinical text and document contents, extract structured patient data.
 
 Return a JSON object with these fields:
@@ -121,7 +122,7 @@ Rules:
 
   try {
     const aiResponse = await callAIClinical(
-      `Patient: ${patient.firstName} ${patient.lastName}\n\n${allText}`,
+      `Patient: ${patientPseudonym(patientId)}\n\n${allText}`,
       {
         systemPrompt,
         temperature: 0.3,

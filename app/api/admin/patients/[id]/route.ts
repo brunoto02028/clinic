@@ -18,7 +18,14 @@ export async function GET(
 
     const patientId = params.id;
 
-    const [patient, screening, footScans, bodyAssessments, soapNotes, documents, diagnoses, protocols, bpReadings] = await Promise.all([
+    const safe = async <T>(promise: Promise<T>, fallback: T): Promise<T> => {
+      try { return await promise; } catch (e: any) {
+        console.error("[patient-profile] sub-query error:", e?.message || e);
+        return fallback;
+      }
+    };
+
+    const [patient, screening, footScans, bodyAssessments, soapNotes, documents, diagnoses, protocols, bpReadings, unreadMessages] = await Promise.all([
       prisma.user.findUnique({
         where: { id: patientId },
         select: {
@@ -28,49 +35,40 @@ export async function GET(
           intakeToken: true, intakeTokenExpiry: true, password: true,
         },
       }),
-      prisma.medicalScreening.findUnique({ where: { userId: patientId } }),
-      prisma.footScan.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
-      }),
-      (prisma as any).bodyAssessment.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
+      safe(prisma.medicalScreening.findUnique({ where: { userId: patientId } }), null),
+      safe(prisma.footScan.findMany({ where: { patientId }, orderBy: { createdAt: "desc" } }), []),
+      safe((prisma as any).bodyAssessment.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
         include: { therapist: { select: { firstName: true, lastName: true } } },
-      }),
-      prisma.sOAPNote.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
-        include: {
-          therapist: { select: { firstName: true, lastName: true } },
-        },
-      }),
-      (prisma as any).patientDocument.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
+      }), []),
+      safe(prisma.sOAPNote.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
+        include: { therapist: { select: { firstName: true, lastName: true } } },
+      }), []),
+      safe((prisma as any).patientDocument.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
         include: { uploadedBy: { select: { firstName: true, lastName: true, role: true } } },
-      }),
-      (prisma as any).aIDiagnosis.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
+      }), []),
+      safe((prisma as any).aIDiagnosis.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
         include: {
           therapist: { select: { firstName: true, lastName: true } },
           _count: { select: { protocols: true } },
         },
-      }),
-      (prisma as any).treatmentProtocol.findMany({
-        where: { patientId },
-        orderBy: { createdAt: "desc" },
+      }), []),
+      safe((prisma as any).treatmentProtocol.findMany({
+        where: { patientId }, orderBy: { createdAt: "desc" },
         include: {
           items: { orderBy: { sortOrder: "asc" } },
           therapist: { select: { firstName: true, lastName: true } },
         },
-      }),
-      (prisma as any).bloodPressureReading.findMany({
-        where: { patientId },
-        orderBy: { measuredAt: "desc" },
-        take: 20,
-      }),
+      }), []),
+      safe((prisma as any).bloodPressureReading.findMany({
+        where: { patientId }, orderBy: { measuredAt: "desc" }, take: 20,
+      }), []),
+      safe((prisma as any).clinicMessage.count({
+        where: { patientId, senderRole: "patient", readAt: null },
+      }), 0),
     ]);
 
     if (!patient) {
@@ -89,6 +87,7 @@ export async function GET(
       diagnoses,
       protocols,
       bpReadings,
+      unreadMessages: unreadMessages ?? 0,
     });
   } catch (err: any) {
     console.error("[patient-profile] GET error:", err);
@@ -112,12 +111,17 @@ export async function PATCH(
     const clinicId = (session.user as any).clinicId;
     const body = await req.json();
 
+    // Resolve clinicId from patient record (avoids FK constraint when session clinicId is null)
+    const patientForClinic = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+    const effectiveClinicId = patientForClinic?.clinicId || clinicId || null;
+    if (!effectiveClinicId) return NextResponse.json({ error: "Clinic not found" }, { status: 400 });
+
     // If adding a manual clinical note / history
     if (body.action === "add_clinical_note") {
       const { subjective, objective, assessment, plan } = body;
       const note = await prisma.sOAPNote.create({
         data: {
-          clinicId: clinicId || "",
+          clinicId: effectiveClinicId,
           patientId,
           therapistId,
           subjective: subjective || null,
@@ -137,7 +141,7 @@ export async function PATCH(
       const { title, content, documentType } = body;
       const doc = await (prisma as any).patientDocument.create({
         data: {
-          clinicId: clinicId || "",
+          clinicId: effectiveClinicId,
           patientId,
           uploadedById: therapistId,
           fileName: `manual-note-${Date.now()}.txt`,
@@ -182,6 +186,13 @@ export async function PATCH(
         include: { therapist: { select: { firstName: true, lastName: true } } },
       });
       return NextResponse.json({ success: true, note: updated });
+    }
+
+    // Delete SOAP note
+    if (body.action === "delete_soap_note") {
+      const { noteId } = body;
+      await prisma.sOAPNote.delete({ where: { id: noteId } });
+      return NextResponse.json({ success: true });
     }
 
     // Edit foot scan

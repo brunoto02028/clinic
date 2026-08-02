@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical } from "@/lib/ai-provider";
+import { patientPseudonym } from "@/lib/pseudonymize";
 
 // Comprehensive physiotherapy & biomechanics knowledge base for the system prompt
 const CLINICAL_KNOWLEDGE_BASE = `
@@ -95,7 +96,7 @@ export async function POST(
       where: { id: params.id },
       include: {
         patient: {
-          select: { firstName: true, lastName: true, dateOfBirth: true, phone: true },
+          select: { dateOfBirth: true, phone: true },
         },
       },
     });
@@ -182,7 +183,7 @@ Patient screening data:
 
     const assessmentDataBlock = `
 Assessment data:
-- Patient: ${assessment.patient?.firstName} ${assessment.patient?.lastName}
+- Patient: ${patientPseudonym(assessment.patientId)}
 - Posture Score: ${assessment.postureScore}/100
 - Symmetry Score: ${assessment.symmetryScore}/100
 - Mobility Score: ${assessment.mobilityScore}/100

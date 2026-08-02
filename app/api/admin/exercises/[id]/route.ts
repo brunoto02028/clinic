@@ -72,6 +72,16 @@ export async function PATCH(
     const instructions = formData.get("instructions");
     if (instructions !== null) updateData.instructions = instructions as string;
 
+    // Portuguese translation fields (optional)
+    const namePt = formData.get("namePt");
+    if (namePt !== null) updateData.namePt = (namePt as string) || null;
+
+    const descriptionPt = formData.get("descriptionPt");
+    if (descriptionPt !== null) updateData.descriptionPt = (descriptionPt as string) || null;
+
+    const instructionsPt = formData.get("instructionsPt");
+    if (instructionsPt !== null) updateData.instructionsPt = (instructionsPt as string) || null;
+
     const bodyRegion = formData.get("bodyRegion") as string | null;
     if (bodyRegion) updateData.bodyRegion = bodyRegion;
 

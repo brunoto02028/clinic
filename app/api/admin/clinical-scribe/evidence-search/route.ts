@@ -18,10 +18,10 @@ export async function POST(req: NextRequest) {
   }
 
   const lang = language === "pt" ? "Portuguese (Brazil)" : "English";
-  const focus = speciality || "musculoskeletal physiotherapy and rehabilitation";
+  const focus = speciality || "musculoskeletal physical rehabilitation";
 
-  const prompt = `You are an evidence-based clinical research assistant for a physiotherapy/rehabilitation clinic. You have deep knowledge of:
-- Musculoskeletal physiotherapy and rehabilitation
+  const prompt = `You are an evidence-based clinical research assistant for a physical rehabilitation clinic. You have deep knowledge of:
+- Musculoskeletal physical rehabilitation
 - Sports medicine and return-to-sport protocols
 - Pain science (including central sensitisation, nociceptive vs neuropathic pain)
 - Electrotherapy (laser therapy, shockwave therapy, ultrasound, TENS)

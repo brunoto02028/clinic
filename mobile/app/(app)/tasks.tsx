@@ -6,23 +6,23 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchTasks, completeTask } from "@/api/tasks";
 import { useTheme } from "@/theme/useTheme";
 
-const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
-  urgent: { bg: "rgba(239,68,68,0.12)", text: "#f87171" },
-  high: { bg: "rgba(245,158,11,0.12)", text: "#fbbf24" },
-  normal: { bg: "rgba(59,130,246,0.12)", text: "#60a5fa" },
-  low: { bg: "rgba(100,116,139,0.12)", text: "#94a3b8" },
-};
-
 export default function Tasks() {
   const t = useTheme();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
 
+  const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
+    urgent: { bg: t.colors.badSoft, text: t.colors.bad },
+    high: { bg: t.colors.warnSoft, text: t.colors.warn },
+    normal: { bg: t.colors.workSoft, text: t.colors.work },
+    low: { bg: t.colors.surfaceMuted, text: t.colors.textMuted },
+  };
+
   const completeMut = useMutation({
     mutationFn: (taskId: string) => completeTask(taskId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
-      Alert.alert("Tarefa concluída!");
+      Alert.alert("Tarefa concluida!");
     },
     onError: (e) => Alert.alert("Erro", (e as Error).message),
   });
@@ -38,8 +38,8 @@ export default function Tasks() {
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text variant="title">Tarefas</Text>
           {pending.length > 0 && (
-            <View style={{ backgroundColor: "rgba(245,158,11,0.12)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-              <Text variant="caption" color="#fbbf24" style={{ fontWeight: "700" }}>{pending.length} pendente{pending.length !== 1 ? "s" : ""}</Text>
+            <View style={{ backgroundColor: t.colors.warnSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+              <Text variant="caption" color={t.colors.warn} style={{ fontWeight: "700" }}>{pending.length} pendente{pending.length !== 1 ? "s" : ""}</Text>
             </View>
           )}
         </View>
@@ -49,7 +49,7 @@ export default function Tasks() {
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="checkbox-outline" size={48} color={t.colors.textMuted} />
               <Text variant="subtitle" color={t.colors.textSecondary}>Nenhuma tarefa</Text>
-              <Text variant="caption" color={t.colors.textMuted}>Tarefas atribuídas pela clínica aparecerão aqui.</Text>
+              <Text variant="caption" color={t.colors.textMuted}>Tarefas atribuidas pela clinica aparecerao aqui.</Text>
             </View>
           </Card>
         ) : (
@@ -67,11 +67,11 @@ export default function Tasks() {
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                       <View style={{
                         width: 28, height: 28, borderRadius: 8,
-                        borderWidth: 1.5, borderColor: isDone ? "#34d399" : "rgba(74,124,138,0.3)",
-                        backgroundColor: isDone ? "rgba(16,185,129,0.15)" : "transparent",
+                        borderWidth: 1.5, borderColor: isDone ? t.colors.ok : t.colors.border,
+                        backgroundColor: isDone ? t.colors.okSoft : "transparent",
                         alignItems: "center", justifyContent: "center",
                       }}>
-                        {isDone && <Ionicons name="checkmark" size={16} color="#34d399" />}
+                        {isDone && <Ionicons name="checkmark" size={16} color={t.colors.ok} />}
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text variant="label" style={{ fontWeight: "600", textDecorationLine: isDone ? "line-through" : "none", color: isDone ? t.colors.textMuted : t.colors.text }}>

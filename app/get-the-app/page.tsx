@@ -71,8 +71,8 @@ export default function GetTheAppPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
-      <SiteHeader currentPage="app" initialSettings={settings} />
+    <div className="public-site min-h-screen bg-background flex flex-col overflow-x-hidden">
+      <SiteHeader currentPage="other" initialSettings={settings} />
 
       <main className="flex-1">
         {/* Hero */}
@@ -98,7 +98,7 @@ export default function GetTheAppPage() {
               {L("Coming Soon — iOS & Android", "Em Breve — iOS e Android")}
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-6">
+            <h1 className="font-sora text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-6 tracking-tight">
               {L("BPR Clinic App", "App BPR Clinic")}
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary text-2xl sm:text-3xl lg:text-4xl font-bold mt-2">
                 {L("Your clinic. In your pocket.", "A sua clínica. No seu bolso.")}
@@ -192,12 +192,12 @@ export default function GetTheAppPage() {
         <section className="py-16 sm:py-20 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">{L("Everything you need, one app", "Tudo o que precisa, num único app")}</h2>
+              <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground mb-3 tracking-tight">{L("Everything you need, one app", "Tudo o que precisa, num único app")}</h2>
               <p className="text-muted-foreground max-w-xl mx-auto">{L("Designed to make your rehabilitation experience seamless — from booking to recovery tracking.", "Concebido para tornar a sua experiência de reabilitação perfeita — desde a marcação ao acompanhamento da recuperação.")}</p>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {features.map((f, i) => (
-                <div key={i} className="flex items-start gap-4 p-5 rounded-2xl bg-card border border-border hover:border-primary/30 transition-colors">
+                <div key={i} className="flex items-start gap-4 p-5 rounded-2xl bg-card border border-border hover:border-primary/30 transition-colors border-t-[3px] border-t-[#4F7361]">
                   <div className={`w-11 h-11 rounded-xl ${f.color} flex items-center justify-center shrink-0`}>
                     <f.icon className="h-5 w-5" />
                   </div>
@@ -217,7 +217,7 @@ export default function GetTheAppPage() {
                 { icon: Star, en_t: "Built for Patients", pt_t: "Construído para Pacientes", en_d: "Designed alongside our patients for simplicity — no technical knowledge required. If you can use a smartphone, you can use BPR.", pt_d: "Concebido ao lado dos nossos pacientes pela simplicidade — sem conhecimento técnico necessário. Se consegue usar um smartphone, consegue usar a BPR." },
                 { icon: Clock, en_t: "Always Available", pt_t: "Sempre Disponível", en_d: "Access your treatment plan, exercise library, and appointment history any time — even offline for saved content.", pt_d: "Aceda ao seu plano de tratamento, biblioteca de exercícios e histórico de consultas a qualquer hora — mesmo offline para conteúdo guardado." },
               ].map((item, i) => (
-                <Card key={i} className="border-0 shadow-sm bg-card">
+                <Card key={i} className="border-0 shadow-sm bg-card border-t-[3px] border-t-[#4F7361]">
                   <CardContent className="p-6">
                     <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                       <item.icon className="h-6 w-6 text-primary" />
@@ -234,14 +234,14 @@ export default function GetTheAppPage() {
         {/* CTA back to site */}
         <section className="py-14 bg-background text-center">
           <div className="max-w-2xl mx-auto px-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-3">{L("Can't wait? Book online now.", "Não pode esperar? Marque online agora.")}</h2>
+            <h2 className="font-sora text-xl sm:text-2xl font-bold text-foreground mb-3 tracking-tight">{L("Can't wait? Book online now.", "Não pode esperar? Marque online agora.")}</h2>
             <p className="text-muted-foreground mb-6 text-sm">{L("Our full booking system is already available on the web.", "O nosso sistema completo de marcações já está disponível na web.")}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/signup">
-                <Button size="lg" className="gap-2 w-full sm:w-auto">{L("Book Appointment", "Marcar Consulta")} <ArrowRight className="h-5 w-5" /></Button>
+                <Button size="lg" variant="ba1Primary" className="gap-2 w-full sm:w-auto">{L("Book Appointment", "Marcar Consulta")} <ArrowRight className="h-5 w-5" /></Button>
               </Link>
               <Link href="/">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto">{L("Back to Clinic", "Voltar à Clínica")}</Button>
+                <Button size="lg" variant="ba1Outline" className="w-full sm:w-auto">{L("Back to Clinic", "Voltar à Clínica")}</Button>
               </Link>
             </div>
           </div>

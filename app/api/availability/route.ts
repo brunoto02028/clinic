@@ -1,16 +1,15 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 
 // GET: Fetch available time slots for a given date
 // Query params: date (YYYY-MM-DD), therapistId (optional), duration (minutes, default 60)
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const effectiveUser = await getEffectiveUser();
+    if (!effectiveUser) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 

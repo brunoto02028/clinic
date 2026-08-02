@@ -54,7 +54,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json();
-    const { name, status, totalPrice, isFree, isCombo, totalSessions, completedSessions, notes, endDate, patientId, patientScope } = body;
+    const { name, status, totalPrice, isFree, isCombo, totalSessions, completedSessions, notes, endDate, patientId, patientScope, planType, subscriptionInterval, items } = body;
 
     // If restoring a CANCELLED plan, reactivate Stripe product/price
     let stripeRestored = false;
@@ -89,6 +89,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
+    // Replace treatment items when the client sends the full list
+    if (Array.isArray(items)) {
+      await (prisma as any).treatmentPlanItem.deleteMany({ where: { treatmentPlanId: params.id } });
+    }
+
     const plan = await (prisma as any).treatmentPlan.update({
       where: { id: params.id },
       data: {
@@ -97,11 +102,25 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(totalPrice !== undefined && { totalPrice }),
         ...(isFree !== undefined && { isFree }),
         ...(isCombo !== undefined && { isCombo }),
+        ...(planType !== undefined && { planType }),
+        ...(patientScope !== undefined && { patientScope }),
+        ...(subscriptionInterval !== undefined && { subscriptionInterval: planType === "SUBSCRIPTION" ? subscriptionInterval : null }),
         ...(totalSessions !== undefined && { totalSessions }),
         ...(completedSessions !== undefined && { completedSessions }),
         ...(notes !== undefined && { notes }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
         ...(resolvedPatientId !== undefined && { patientId: resolvedPatientId }),
+        ...(Array.isArray(items) && {
+          items: {
+            create: items.map((item: any) => ({
+              treatmentName: item.treatmentName,
+              type: item.type || "SINGLE",
+              sessions: item.sessions || 1,
+              unitPrice: item.unitPrice || 0,
+              duration: item.duration || 60,
+            })),
+          },
+        }),
       },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -109,7 +128,35 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       },
     });
 
-    return NextResponse.json({ ...plan, stripeRestored, stripeRestoreError });
+    // Keep Stripe price in sync when the total price changed (prices are immutable — create new, archive old)
+    let stripePriceUpdated = false;
+    if (totalPrice !== undefined && plan.stripeProductId && process.env.STRIPE_SECRET_KEY && !plan.isFree && totalPrice > 0) {
+      try {
+        const currentPrice = plan.stripePriceId
+          ? await stripe.prices.retrieve(plan.stripePriceId).catch(() => null)
+          : null;
+        if (!currentPrice || currentPrice.unit_amount !== Math.round(totalPrice * 100)) {
+          const newPrice = await stripe.prices.create({
+            product: plan.stripeProductId,
+            unit_amount: Math.round(totalPrice * 100),
+            currency: 'gbp',
+            ...(plan.planType === "SUBSCRIPTION" ? {
+              recurring: { interval: plan.subscriptionInterval === "weekly" ? "week" : plan.subscriptionInterval === "yearly" ? "year" : "month" },
+            } : {}),
+          });
+          if (plan.stripePriceId) {
+            await stripe.prices.update(plan.stripePriceId, { active: false }).catch(() => {});
+          }
+          await (prisma as any).treatmentPlan.update({ where: { id: params.id }, data: { stripePriceId: newPrice.id } });
+          plan.stripePriceId = newPrice.id;
+          stripePriceUpdated = true;
+        }
+      } catch (stripeErr: any) {
+        console.error('[treatment-plans PUT] Stripe price sync error (non-fatal):', stripeErr.message);
+      }
+    }
+
+    return NextResponse.json({ ...plan, stripeRestored, stripeRestoreError, stripePriceUpdated });
   } catch (error: any) {
     console.error("Error updating treatment plan:", error);
     return NextResponse.json({ error: "Failed to update treatment plan" }, { status: 500 });

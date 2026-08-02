@@ -6,7 +6,8 @@ import bcrypt from "bcryptjs";
 // DELETE after use
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-maintenance-secret");
-  if (secret !== "bpr-setup-2026") {
+  const expectedSecret = process.env.MAINTENANCE_SETUP_SECRET;
+  if (!expectedSecret || secret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

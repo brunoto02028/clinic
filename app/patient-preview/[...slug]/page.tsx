@@ -7,8 +7,6 @@ import dynamic from "next/dynamic";
 const AppointmentsList = dynamic(() => import("@/components/appointments/appointments-list"));
 const AssessmentScreeningForm = dynamic(() => import("@/components/screening/medical-screening-form"));
 const PatientRecords = dynamic(() => import("@/components/records/patient-records"));
-const PatientScansPage = dynamic(() => import("@/app/dashboard/scans/page"));
-const PatientBodyAssessmentsPage = dynamic(() => import("@/app/dashboard/body-assessments/page"));
 const PatientEducationPage = dynamic(() => import("@/app/dashboard/education/page"));
 const PatientExercisesPage = dynamic(() => import("@/app/dashboard/exercises/page"));
 const PatientTreatmentPage = dynamic(() => import("@/app/dashboard/treatment/page"));
@@ -29,8 +27,6 @@ const ROUTE_MAP: Record<string, React.ComponentType> = {
   appointments: AppointmentsList,
   screening: AssessmentScreeningForm,
   records: PatientRecords,
-  scans: PatientScansPage,
-  "body-assessments": PatientBodyAssessmentsPage,
   education: PatientEducationPage,
   exercises: PatientExercisesPage,
   treatment: PatientTreatmentPage,

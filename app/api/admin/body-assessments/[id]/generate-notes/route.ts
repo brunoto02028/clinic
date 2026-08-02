@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical } from "@/lib/ai-provider";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export async function POST(
   request: NextRequest,
@@ -26,7 +27,7 @@ export async function POST(
     const assessment = await (prisma as any).bodyAssessment.findUnique({
       where: { id: params.id },
       include: {
-        patient: { select: { id: true, firstName: true, lastName: true, dateOfBirth: true } },
+        patient: { select: { id: true, dateOfBirth: true } },
       },
     });
 
@@ -43,11 +44,9 @@ export async function POST(
       });
     } catch {}
 
-    // Build context from all available data
-    const patientName = `${assessment.patient.firstName} ${assessment.patient.lastName}`;
-    const patientAge = assessment.patient.dateOfBirth
-      ? Math.floor((Date.now() - new Date(assessment.patient.dateOfBirth).getTime()) / 31557600000)
-      : null;
+    // Build context from all available data (pseudonymized)
+    const pseudonym = patientPseudonym(assessment.patientId);
+    const band = ageBand(assessment.patient.dateOfBirth);
 
     const pa = assessment.postureAnalysis || {};
     const scores = {
@@ -58,7 +57,7 @@ export async function POST(
     };
 
     const contextParts: string[] = [];
-    contextParts.push(`Patient: ${patientName}${patientAge ? `, ${patientAge} years old` : ""}`);
+    contextParts.push(`Patient: ${pseudonym}${band ? ` (age band: ${band})` : ""}`);
 
     if (screening) {
       if (screening.chiefComplaint) contextParts.push(`Chief Complaint: ${screening.chiefComplaint}`);

@@ -2,10 +2,15 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth-options";
 import LoginForm from "@/components/auth/login-form";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
+import { AuthPageHeader } from "@/components/auth/auth-page-header";
 import { NativeLoginShell } from "@/components/auth/native-login-shell";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
+import type { Metadata } from "next";
+
+// Utility page — keep out of the index so crawl budget goes to content (P4.1)
+export const metadata: Metadata = {
+  robots: { index: false, follow: true },
+};
 
 export default async function LoginPage() {
   const [session, settings] = await Promise.all([
@@ -25,12 +30,16 @@ export default async function LoginPage() {
   return (
     <NativeLoginShell
       webShell={
-        <div className="min-h-screen bg-background bg-grid-pattern flex flex-col">
-          <SiteHeader currentPage="other" initialSettings={settings} />
-          <main className="flex-1 flex items-center justify-center p-4 py-8">
+        <div className="public-site min-h-screen bg-background flex flex-col">
+          <AuthPageHeader settings={settings} />
+          <main className="flex-1 flex items-center justify-center p-4 pb-12">
             <LoginForm />
           </main>
-          <SiteFooter />
+          <footer className="p-4 text-center">
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Bruno Physical Rehabilitation
+            </p>
+          </footer>
         </div>
       }
     >

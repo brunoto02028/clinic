@@ -46,8 +46,8 @@ export default function ChangePassword() {
         {success && (
           <Card variant="highlight">
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="checkmark-circle" size={20} color="#34d399" />
-              <Text variant="label" color="#34d399" style={{ fontWeight: "600" }}>Senha alterada com sucesso!</Text>
+              <Ionicons name="checkmark-circle" size={20} color={t.colors.ok} />
+              <Text variant="label" color={t.colors.ok} style={{ fontWeight: "600" }}>Senha alterada com sucesso!</Text>
             </View>
           </Card>
         )}

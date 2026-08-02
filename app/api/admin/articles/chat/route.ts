@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   };
   const articleLanguage = langMap[language] || "British English";
 
-  const systemInstruction = `You are a specialist physiotherapy and physical rehabilitation content writer for "BPR — Bruno Physical Rehabilitation", a clinic based in Ipswich, Suffolk, UK.
+  const systemInstruction = `You are a specialist physical rehabilitation content writer for "BPR — Bruno Physical Rehabilitation", a clinic based in Ipswich, Suffolk, UK.
 
 ABOUT THE CLINIC & PRACTITIONER:
 - Lead therapist: Bruno Azenha Tonheta

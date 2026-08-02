@@ -34,7 +34,7 @@ RULES:
 - The image should work as a 16:9 blog header/cover
 - DO NOT include any text, letters, words, or typography in the image description
 - Keep the prompt under 200 words
-- Style: professional, clean, modern healthcare/physiotherapy aesthetic
+- Style: professional, clean, modern healthcare/physical rehabilitation aesthetic
 - If the article is about a body part or condition, feature it visually
 - Use warm, inviting tones appropriate for a rehabilitation clinic`;
 

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical, parseAIJson } from "@/lib/ai-provider";
+import { patientPseudonym } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
 
       if (patient) {
         patientContext = `\n\nPATIENT CONTEXT:
-- Name: ${patient.firstName} ${patient.lastName}`;
+- Patient ID: ${patientPseudonym(patientId)}`;
 
         if (patient.medicalScreening?.responses) {
           const screening = patient.medicalScreening.responses as any;
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   const lang = language === "pt" ? "Portuguese (Brazil)" : "English";
 
-  const prompt = `You are an expert clinical documentation AI for a physiotherapy/rehabilitation clinic (Bruno Physical Rehabilitation - BPR).
+  const prompt = `You are an expert clinical documentation AI for a physical rehabilitation clinic (Bruno Physical Rehabilitation - BPR).
 
 Your task: Convert the following consultation audio transcription into a structured SOAP note.
 
@@ -68,7 +69,7 @@ ${transcript}
 """
 ${patientContext}
 
-APPOINTMENT TYPE: ${appointmentType || "General physiotherapy consultation"}
+APPOINTMENT TYPE: ${appointmentType || "General physical rehabilitation consultation"}
 
 INSTRUCTIONS:
 1. Extract and structure the information from the transcription into SOAP format

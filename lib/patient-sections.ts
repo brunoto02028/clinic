@@ -5,6 +5,7 @@ import {
   Dumbbell,
   BookOpen,
   User,
+  MessageCircleQuestion,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ export const PATIENT_SECTIONS: PatientSection[] = [
       "/dashboard/screening",
       "/dashboard/consent",
       "/dashboard/assessment-flow",
+      "/dashboard/waitlist",
     ],
   },
   {
@@ -79,9 +81,16 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     matchRoutes: [
       "/dashboard/education",
       "/dashboard/guide",
-      "/dashboard/insole-guide",
       "/dashboard/community",
     ],
+  },
+  {
+    key: "questions",
+    label: "Messages",
+    labelPt: "Mensagens",
+    icon: MessageCircleQuestion,
+    href: "/dashboard/questions",
+    matchRoutes: ["/dashboard/questions"],
   },
 ];
 

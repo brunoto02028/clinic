@@ -1,20 +1,22 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Plus, Trash2, Play, Pause, Check, X, Settings, Loader2 } from "lucide-react";
+import { Mail, Plus, Trash2, Play, Pause, Check, X, Settings, Loader2, Newspaper, FileText, Eye, Send } from "lucide-react";
 
 export interface EmailCampaign {
   id: string; name: string; subject: string; status: string;
   totalRecipients: number; sentCount: number; failedCount: number;
   batchSize: number; batchIntervalMs: number;
-  groupId?: string; sendToAll: boolean; templateSlug?: string; createdAt: string;
+  groupId?: string; sendToAll: boolean; templateSlug?: string; articleId?: string; createdAt: string;
 }
 export interface EmailGroup { id: string; name: string; _count: { members: number }; }
 export interface EmailTemplate { id: string; slug: string; name: string; }
+interface ArticleOption { id: string; title: string; titleEn?: string | null; titlePt?: string | null; slug: string; }
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-gray-100 dark:bg-muted text-gray-700 dark:text-gray-300",
@@ -33,26 +35,108 @@ interface Props {
   onRefresh: () => void;
 }
 
+const emptyForm = {
+  name: "", subject: "", templateSlug: "", preheader: "",
+  groupId: "", sendToAll: false, batchSize: 10, batchIntervalMs: 300000,
+  articleId: "",
+};
+
 export default function CampaignsTab({ campaigns, groups, templates, contactTotal, loading, onRefresh }: Props) {
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState(false);
   const [dispatchLog, setDispatchLog] = useState<string[]>([]);
-  const [form, setForm] = useState({
-    name: "", subject: "", templateSlug: "", preheader: "",
-    groupId: "", sendToAll: false, batchSize: 10, batchIntervalMs: 300000,
-  });
+  const [source, setSource] = useState<"template" | "article">("template");
+  const [articles, setArticles] = useState<ArticleOption[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [articlePreview, setArticlePreview] = useState<{ subject: string; html: string } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewLocale, setPreviewLocale] = useState<"en" | "pt">("en");
+  const [testEmail, setTestEmail] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testSentMsg, setTestSentMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (source === "article" && articles.length === 0 && !articlesLoading) {
+      setArticlesLoading(true);
+      fetch("/api/articles?published=true")
+        .then(r => r.ok ? r.json() : [])
+        .then(setArticles)
+        .finally(() => setArticlesLoading(false));
+    }
+  }, [source, articles.length, articlesLoading]);
+
+  const pickArticle = (id: string) => {
+    const article = articles.find(a => a.id === id);
+    setForm(f => ({
+      ...f,
+      articleId: id,
+      templateSlug: "",
+      name: f.name || (article ? `Newsletter — ${article.titleEn || article.title}` : f.name),
+      subject: article ? (article.titleEn || article.title) + " — BPR Health News" : f.subject,
+    }));
+    setArticlePreview(null);
+    setTestSentMsg(null);
+    if (id) fetchArticlePreview(id, previewLocale);
+  };
+
+  const fetchArticlePreview = async (articleId: string, locale: "en" | "pt") => {
+    setPreviewLoading(true);
+    try {
+      const res = await fetch(`/api/admin/articles/${articleId}/notify-preview?locale=${locale}`);
+      if (res.ok) setArticlePreview(await res.json());
+    } catch {
+      // preview is best-effort
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const changePreviewLocale = (locale: "en" | "pt") => {
+    setPreviewLocale(locale);
+    if (form.articleId) fetchArticlePreview(form.articleId, locale);
+  };
+
+  const sendArticleTestEmail = async () => {
+    if (!form.articleId || !testEmail.trim()) return;
+    setSendingTest(true);
+    setTestSentMsg(null);
+    try {
+      const res = await fetch(`/api/admin/articles/${form.articleId}/notify-test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: previewLocale, email: testEmail.trim() }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setTestSentMsg({ ok: true, text: `✓ Test email sent to ${d.sentTo}. Check your inbox.` });
+      } else {
+        setTestSentMsg({ ok: false, text: d.error || "Failed to send test email." });
+      }
+    } catch {
+      setTestSentMsg({ ok: false, text: "Failed to send test email." });
+    } finally {
+      setSendingTest(false);
+    }
+  };
 
   const createCampaign = async () => {
     if (!form.name || !form.subject) return;
+    const body = source === "article"
+      ? { ...form, templateSlug: "" }
+      : { ...form, articleId: "" };
     const r = await fetch("/api/admin/email-campaigns", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
     if (r.ok) {
       toast({ title: "Campaign created" });
       setShowNew(false);
-      setForm({ name: "", subject: "", templateSlug: "", preheader: "", groupId: "", sendToAll: false, batchSize: 10, batchIntervalMs: 300000 });
+      setForm(emptyForm);
+      setSource("template");
+      setArticlePreview(null);
+      setTestSentMsg(null);
       onRefresh();
     } else {
       const d = await r.json();
@@ -129,29 +213,118 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
         <Card className="border-primary/30">
           <CardHeader className="pb-3"><CardTitle className="text-base">New Campaign</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Campaign Name</Label>
-                <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="January Newsletter" />
+            {/* Content source */}
+            <div className="space-y-1.5">
+              <Label>What are you sending?</Label>
+              <div className="flex rounded-lg border overflow-hidden w-fit">
+                <button
+                  type="button"
+                  onClick={() => setSource("template")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${source === "template" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50"}`}
+                >
+                  <FileText className="h-3.5 w-3.5" />Custom Template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSource("article")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-l ${source === "article" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50"}`}
+                >
+                  <Newspaper className="h-3.5 w-3.5" />Article Newsletter
+                </button>
               </div>
-              <div className="space-y-1.5">
-                <Label>Email Subject</Label>
-                <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Health tips from BPR" />
-              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {source === "template"
+                  ? "Uses one of your saved email templates. You can also send article newsletters directly from an article's \"Notify\" button."
+                  : "Sends a bilingual copy of a published article (EN/PT, matching each contact's language) — same content your subscribers get when notified from the Articles page."}
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+
+            {source === "article" ? (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Article</Label>
+                  <select
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                    value={form.articleId}
+                    onChange={e => pickArticle(e.target.value)}
+                    disabled={articlesLoading}
+                  >
+                    <option value="">{articlesLoading ? "Loading articles…" : "— Select a published article —"}</option>
+                    {articles.map(a => <option key={a.id} value={a.id}>{a.titleEn || a.title}</option>)}
+                  </select>
+                </div>
+
+                {form.articleId && (
+                  <div className="border rounded-xl overflow-hidden bg-muted/20">
+                    <div className="flex items-center justify-between px-3 py-2 border-b bg-background">
+                      <span className="text-xs font-medium flex items-center gap-1.5"><Eye className="h-3.5 w-3.5" />Preview</span>
+                      <div className="flex rounded-lg border overflow-hidden">
+                        <button type="button" onClick={() => changePreviewLocale("en")} className={`px-2.5 py-1 text-xs font-medium ${previewLocale === "en" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}>EN</button>
+                        <button type="button" onClick={() => changePreviewLocale("pt")} className={`px-2.5 py-1 text-xs font-medium border-l ${previewLocale === "pt" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}>PT-BR</button>
+                      </div>
+                    </div>
+                    {previewLoading ? (
+                      <div className="h-64 flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                    ) : articlePreview ? (
+                      <>
+                        <div className="px-3 py-2 text-xs border-b bg-background">
+                          <span className="font-medium text-foreground">Subject: </span>{articlePreview.subject}
+                        </div>
+                        <iframe title="Article email preview" srcDoc={articlePreview.html} className="w-full h-64 bg-white" />
+                      </>
+                    ) : (
+                      <div className="h-24 flex items-center justify-center text-xs text-muted-foreground">Preview unavailable</div>
+                    )}
+                    <div className="flex items-center gap-2 p-3 border-t bg-background">
+                      <Input type="email" placeholder="you@example.com" value={testEmail} onChange={e => setTestEmail(e.target.value)} className="flex-1 h-8 text-sm" />
+                      <Button variant="outline" size="sm" disabled={sendingTest || !testEmail.trim()} onClick={sendArticleTestEmail} className="gap-1.5 whitespace-nowrap">
+                        {sendingTest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        Send test email
+                      </Button>
+                    </div>
+                    {testSentMsg && (
+                      <p className={`text-xs font-medium px-3 pb-3 ${testSentMsg.ok ? "text-emerald-600" : "text-destructive"}`}>{testSentMsg.text}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
               <div className="space-y-1.5">
-                <Label>Template</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Template</Label>
+                  <Link href="/admin/email-templates" target="_blank" className="text-xs text-primary hover:underline">
+                    Manage templates →
+                  </Link>
+                </div>
                 <select className="w-full border rounded-md px-3 py-2 text-sm bg-background" value={form.templateSlug} onChange={e => setForm({ ...form, templateSlug: e.target.value })}>
                   <option value="">— Select template —</option>
                   {templates.map(t => <option key={t.slug} value={t.slug}>{t.name}</option>)}
                 </select>
+                {templates.length === 0 && (
+                  <p className="text-[11px] text-amber-600">No templates yet — click "Manage templates" above to create one.</p>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Campaign Name <span className="text-muted-foreground font-normal">(internal only)</span></Label>
+                <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="January Newsletter" />
               </div>
               <div className="space-y-1.5">
-                <Label>Preheader</Label>
-                <Input value={form.preheader} onChange={e => setForm({ ...form, preheader: e.target.value })} placeholder="Short preview text..." />
+                <Label>Email Subject <span className="text-muted-foreground font-normal">{source === "article" ? "(shown in the list below only)" : "(what recipients see)"}</span></Label>
+                <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Health tips from BPR" />
+                {source === "article" && (
+                  <p className="text-[11px] text-muted-foreground">Each recipient actually gets the article's own EN or PT title as the subject, matching their language.</p>
+                )}
               </div>
             </div>
+            {source === "template" && (
+              <div className="space-y-1.5">
+                <Label>Preheader <span className="text-muted-foreground font-normal">(optional preview text)</span></Label>
+                <Input value={form.preheader} onChange={e => setForm({ ...form, preheader: e.target.value })} placeholder="Short preview text..." />
+              </div>
+            )}
 
             <div className="p-3 bg-muted/40 rounded-lg space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide">Recipients</p>
@@ -195,8 +368,8 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={createCampaign} disabled={!form.name || !form.subject}><Check className="h-4 w-4 mr-1.5" />Create Campaign</Button>
-              <Button variant="outline" onClick={() => setShowNew(false)}><X className="h-4 w-4 mr-1.5" />Cancel</Button>
+              <Button onClick={createCampaign} disabled={!form.name || !form.subject || (source === "article" && !form.articleId)}><Check className="h-4 w-4 mr-1.5" />Create Campaign</Button>
+              <Button variant="outline" onClick={() => { setShowNew(false); setSource("template"); setForm(emptyForm); setArticlePreview(null); setTestSentMsg(null); }}><X className="h-4 w-4 mr-1.5" />Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -219,6 +392,11 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-semibold text-sm truncate">{c.name}</p>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[c.status] || "bg-muted text-muted-foreground"}`}>{c.status}</span>
+                      {c.articleId && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-primary/10 text-primary flex items-center gap-1">
+                          <Newspaper className="h-2.5 w-2.5" />Article
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate mb-2">{c.subject}</p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">

@@ -5,15 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ClipboardList,
-  Activity,
-  Footprints,
-  FileText,
   CheckCircle2,
   Clock,
   Loader2,
-  ArrowRight,
   ArrowLeft,
-  Camera,
   Brain,
   AlertTriangle,
   Sparkles,
@@ -50,9 +45,6 @@ interface AssessmentProgress {
 const STEP_ICONS: Record<string, any> = {
   screening: ClipboardList,
   outcome_measures: TrendingUp,
-  body_assessment: Activity,
-  foot_scan: Footprints,
-  results: FileText,
 };
 
 const STEP_COLORS: Record<string, string> = {
@@ -100,58 +92,6 @@ export default function AssessmentFlowPage() {
       case "outcome_measures":
         router.push("/dashboard/outcome-measures");
         break;
-
-      case "body_assessment": {
-        const existingBA = progress?.steps.find((s) => s.id === "body_assessment");
-        if (existingBA?.data?.id) {
-          router.push("/dashboard/body-assessments");
-        } else {
-          setCreating("body_assessment");
-          try {
-            const res = await fetch("/api/admin/body-assessments", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ selfInitiated: true }),
-            });
-            if (res.ok) {
-              router.push("/dashboard/body-assessments");
-            }
-          } catch (e) {
-            console.error("Error creating body assessment:", e);
-          } finally {
-            setCreating(null);
-          }
-        }
-        break;
-      }
-
-      case "foot_scan": {
-        const existingFS = progress?.steps.find((s) => s.id === "foot_scan");
-        if (existingFS?.data?.id) {
-          router.push("/dashboard/scans");
-        } else {
-          setCreating("foot_scan");
-          try {
-            const res = await fetch("/api/foot-scans", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({}),
-            });
-            if (res.ok) {
-              router.push("/dashboard/scans");
-            }
-          } catch (e) {
-            console.error("Error creating foot scan:", e);
-          } finally {
-            setCreating(null);
-          }
-        }
-        break;
-      }
-
-      case "results":
-        router.push("/dashboard/body-assessments");
-        break;
     }
   };
 
@@ -197,18 +137,6 @@ export default function AssessmentFlowPage() {
         en: "Rate your pain level (VAS) and complete the FAAM questionnaire to measure your foot and ankle function. These scores track your progress over time.",
         pt: "Avalie o seu nível de dor (VAS) e complete o questionário FAAM para medir a função do pé e tornozelo. Estes scores medem a sua evolução.",
       },
-      body_assessment: {
-        en: "Capture 4 posture photos (front, back, left, right) using your phone camera. Our AI analyses your posture, alignment, and identifies areas of concern.",
-        pt: "Capture 4 fotos posturais (frente, costas, esquerda, direita) com a câmera. A nossa IA analisa postura, alinhamento e identifica áreas de preocupação.",
-      },
-      foot_scan: {
-        en: "Take guided photos of both feet from multiple angles. We analyse arch type, pronation, pressure distribution, and shoe wear patterns.",
-        pt: "Tire fotos guiadas de ambos os pés de múltiplos ângulos. Analisamos tipo de arco, pronação, distribuição de pressão e padrão de desgaste do sapato.",
-      },
-      results: {
-        en: "View your complete biomechanical report with AI insights, corrective exercises, and personalised recommendations from your therapist.",
-        pt: "Veja o seu relatório biomecânico completo com insights de IA, exercícios correctivos e recomendações personalizadas do seu terapeuta.",
-      },
     };
     const desc = descriptions[stepId] || descriptions.screening;
     return isPt ? desc.pt : desc.en;
@@ -227,20 +155,6 @@ export default function AssessmentFlowPage() {
         return step.data?.vasScore !== undefined
           ? `VAS: ${step.data.vasScore}/10${step.data.faamAdlPercent ? ` | FAAM ADL: ${step.data.faamAdlPercent}%` : ""}${step.data.faamSportPercent ? ` | Sport: ${step.data.faamSportPercent}%` : ""}`
           : null;
-
-      case "body_assessment":
-        return step.data.postureScore
-          ? `${isPt ? "Postura" : "Posture"}: ${step.data.postureScore}/100 | ${isPt ? "Simetria" : "Symmetry"}: ${step.data.symmetryScore || "—"}/100`
-          : step.data.frontImageUrl
-            ? isPt ? "Fotos capturadas — a aguardar análise" : "Photos captured — awaiting analysis"
-            : null;
-
-      case "foot_scan":
-        return step.data.archType
-          ? `${isPt ? "Arco" : "Arch"}: ${step.data.archType} | ${isPt ? "Pronação" : "Pronation"}: ${step.data.pronation || "—"}`
-          : step.data.status !== "PENDING_UPLOAD"
-            ? isPt ? "Imagens enviadas — a processar" : "Images uploaded — processing"
-            : null;
 
       default:
         return null;
@@ -278,12 +192,12 @@ export default function AssessmentFlowPage() {
         <div className="flex-1">
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
             <Stethoscope className="h-6 w-6 text-primary" />
-            {isPt ? "Avaliação Completa" : "Complete Assessment"}
+            {isPt ? "Avaliação Inicial" : "Initial Assessment"}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {isPt
-              ? "Siga os passos abaixo para completar a sua avaliação biomecânica"
-              : "Follow the steps below to complete your biomechanical assessment"}
+              ? "Siga os passos abaixo antes da sua primeira consulta"
+              : "Follow the steps below ahead of your first appointment"}
           </p>
         </div>
       </div>
@@ -410,17 +324,13 @@ export default function AssessmentFlowPage() {
               </p>
               <p className="text-muted-foreground mt-1">
                 {isPt
-                  ? "Complete cada passo ao seu ritmo. As suas fotos são analisadas por IA e depois revistas pelo seu terapeuta para garantir precisão. Receberá os resultados no seu email quando a análise estiver pronta."
-                  : "Complete each step at your own pace. Your photos are analysed by AI and then reviewed by your therapist for accuracy. You'll receive results via email when the analysis is ready."}
+                  ? "Complete cada passo ao seu ritmo. As suas respostas são revistas pelo seu terapeuta antes da consulta, para que o tempo em clínica seja usado no tratamento."
+                  : "Complete each step at your own pace. Your answers are reviewed by your therapist ahead of your appointment, so clinic time is spent on treatment."}
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Badge variant="secondary" className="text-xs">
-                  <Camera className="h-3 w-3 mr-1" />
-                  {isPt ? "~10 min total" : "~10 min total"}
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  <Brain className="h-3 w-3 mr-1" />
-                  {isPt ? "Análise IA incluída" : "AI analysis included"}
+                  <Clock className="h-3 w-3 mr-1" />
+                  {isPt ? "~5 min total" : "~5 min total"}
                 </Badge>
                 <Badge variant="secondary" className="text-xs">
                   <Stethoscope className="h-3 w-3 mr-1" />

@@ -6,6 +6,7 @@ import {
   Megaphone,
   DollarSign,
   Settings,
+  BellRing,
   type LucideIcon,
 } from "lucide-react";
 
@@ -59,12 +60,19 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Disponibilidade",
         href: "/admin/appointments/availability",
       },
+      {
+        key: "waitlist",
+        label: "Waitlist",
+        labelPt: "Lista de Espera",
+        href: "/admin/waitlist",
+      },
     ],
     matchRoutes: [
       "/admin",
       "/admin/appointments",
       "/admin/video-consultations",
       "/admin/calls",
+      "/admin/waitlist",
     ],
   },
   {
@@ -118,6 +126,22 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     ],
   },
   {
+    key: "notifications",
+    label: "Notifications",
+    labelPt: "Notificacoes",
+    icon: BellRing,
+    tabs: [
+      {
+        key: "broadcast",
+        label: "Broadcast",
+        labelPt: "Avisos Gerais",
+        href: "/admin/notifications",
+        matchRoutes: ["/admin/notifications"],
+      },
+    ],
+    matchRoutes: ["/admin/notifications"],
+  },
+  {
     key: "clinical",
     label: "Clinical",
     labelPt: "Clinico",
@@ -142,6 +166,25 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Exercicios",
         href: "/admin/exercises",
       },
+      {
+        key: "protocols",
+        label: "Protocols",
+        labelPt: "Protocolos",
+        href: "/admin/protocols",
+        matchRoutes: ["/admin/protocols"],
+      },
+      {
+        key: "equipment",
+        label: "Equipment",
+        labelPt: "Equipamentos",
+        href: "/admin/equipment",
+      },
+      {
+        key: "rehab-agent",
+        label: "Rehab Agent",
+        labelPt: "Agente Rehab",
+        href: "/admin/clinical/rehab",
+      },
     ],
     matchRoutes: [
       "/admin/clinical-notes",
@@ -149,6 +192,9 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/treatment-plans",
       "/admin/treatment-types",
       "/admin/exercises",
+      "/admin/protocols",
+      "/admin/equipment",
+      "/admin/clinical/rehab",
     ],
   },
   {
@@ -192,6 +238,18 @@ export const ADMIN_SECTIONS: AdminSection[] = [
           "/admin/email-templates",
           "/admin/email-marketing",
         ],
+      },
+      {
+        key: "leads",
+        label: "Leads",
+        labelPt: "Contatos",
+        href: "/admin/marketing/leads",
+      },
+      {
+        key: "condition-pages",
+        label: "Conditions (SEO)",
+        labelPt: "Condições (SEO)",
+        href: "/admin/marketing/condition-pages",
       },
       {
         key: "education",

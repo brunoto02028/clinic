@@ -55,15 +55,17 @@ export async function POST(req: NextRequest) {
     for (const c of body.contacts) {
       if (!c.email || !c.email.includes("@")) { results.errors++; continue; }
       try {
+        const language = c.language === "pt" ? "pt" : "en";
         const contact = await (prisma as any).emailContact.upsert({
           where: { email: c.email.toLowerCase().trim() },
-          update: { firstName: c.firstName || undefined, lastName: c.lastName || undefined, source: c.source || "csv" },
+          update: { firstName: c.firstName || undefined, lastName: c.lastName || undefined, source: c.source || "csv", language },
           create: {
             email: c.email.toLowerCase().trim(),
             firstName: c.firstName || null,
             lastName: c.lastName || null,
             source: c.source || "csv",
             subscribed: true,
+            language,
           },
         });
         if (body.groupId) {
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Single contact
-  const { email, firstName, lastName, phone, notes, tags, groupId, source } = body;
+  const { email, firstName, lastName, phone, notes, tags, groupId, source, language } = body;
   if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
   try {
@@ -94,6 +96,7 @@ export async function POST(req: NextRequest) {
         tags: tags || [],
         source: source || "manual",
         subscribed: true,
+        language: language === "pt" ? "pt" : "en",
       },
     });
     if (groupId) {

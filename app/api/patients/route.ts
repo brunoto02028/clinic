@@ -76,13 +76,36 @@ export async function GET(request: NextRequest) {
           },
           take: 5,
         },
+        patientQuestionsReceived: {
+          where: { status: "answered" },
+          select: { id: true },
+        },
+        clinicMessagesReceived: {
+          where: { senderRole: "patient", readAt: null },
+          select: { id: true },
+        },
+        diagnosesAsPatient: {
+          orderBy: { createdAt: "desc" as const },
+          take: 1,
+          select: { status: true },
+        },
       },
       orderBy: {
         createdAt: "desc",
       },
     });
 
-    return NextResponse.json({ patients });
+    const patientsWithCount = patients.map((p: any) => ({
+      ...p,
+      answeredQCount: p.patientQuestionsReceived?.length ?? 0,
+      unreadMessages: p.clinicMessagesReceived?.length ?? 0,
+      latestDiagnosisStatus: p.diagnosesAsPatient?.[0]?.status ?? null,
+      patientQuestionsReceived: undefined,
+      clinicMessagesReceived: undefined,
+      diagnosesAsPatient: undefined,
+    }));
+
+    return NextResponse.json({ patients: patientsWithCount });
   } catch (error) {
     console.error("Error fetching patients:", error);
     if (isDbUnreachableError(error)) {

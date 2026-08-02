@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
-  Mail, Inbox, Send, FileText, AlertOctagon, Trash2, Search,
+  Mail, Inbox, Send, FileText, AlertOctagon, Trash2, Search, LayoutTemplate,
   Loader2, RefreshCw, Star, StarOff, CheckCircle, AlertCircle,
   X, Eye, Reply, PenSquare, MailOpen, MailCheck, ShieldAlert,
   ShieldCheck, ChevronLeft, ChevronRight, User, Settings,
@@ -528,6 +529,16 @@ export default function EmailPage() {
           <p className="text-sm text-muted-foreground mt-1">Send, receive, and manage patient communications</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Link href="/admin/email-templates">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <LayoutTemplate className="h-4 w-4" /> Email Templates
+            </Button>
+          </Link>
+          <Link href="/admin/email-marketing">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Send className="h-4 w-4" /> Email Marketing
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={openAccountConfig} className="gap-1.5">
             <Settings className="h-4 w-4" /> Account
           </Button>

@@ -1,9 +1,15 @@
 // ─── Email i18n — Bilingual templates (EN-GB / PT-BR) ───
 export function isPt(locale: string) { return locale === 'pt-BR' || locale.startsWith('pt'); }
 
+// Brand palette — matches the public site's `.public-site` theme (app/globals.css):
+// health-moss primary, ink text. (Other status colours — red/blue/amber/purple — are
+// passed per-call to C() and are left as-is; they carry distinct semantic meaning.)
+const BRAND_PRIMARY = '#4F7361';       // health moss
+const BRAND_INK = '#20242D';           // foreground/ink
+
 // HTML helpers
 const B = (href: string, label: string) =>
-  `<div style="text-align:center;margin:28px 0;"><a href="${href}" style="display:inline-block;background:linear-gradient(135deg,#5dc9c0 0%,#4db8b0 100%);color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${label}</a></div>`;
+  `<div style="text-align:center;margin:28px 0;"><a href="${href}" style="display:inline-block;background-color:${BRAND_PRIMARY};color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${label}</a></div>`;
 const C = (bg: string, bd: string, inner: string) =>
   `<div style="background:${bg};border:1px solid ${bd};border-radius:12px;padding:20px 24px;margin:0 0 24px;">${inner}</div>`;
 const R = (lbl: string, val: string) =>
@@ -11,7 +17,7 @@ const R = (lbl: string, val: string) =>
 const P = (txt: string, s = '15px', c = '#374151') =>
   `<p style="color:${c};font-size:${s};line-height:1.7;margin:0 0 16px;">${txt}</p>`;
 const H = (txt: string) =>
-  `<h2 style="color:#607d7d;font-size:22px;margin:0 0 16px;">${txt}</h2>`;
+  `<h2 style="color:${BRAND_INK};font-size:22px;margin:0 0 16px;">${txt}</h2>`;
 
 export type EmailContent = { subject: string; body: string };
 
@@ -22,19 +28,19 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
   const T: Record<string, EmailContent> = {
 
     WELCOME: {
-      subject: pt ? 'Bem-vindo(a) à Bruno Physical Rehabilitation, {{patientName}}! 👋' : 'Welcome to Bruno Physical Rehabilitation, {{patientName}}! 👋',
+      subject: pt ? 'Bem-vindo(a) à BPR Physical Rehabilitation, {{patientName}}! 👋' : 'Welcome to BPR Physical Rehabilitation, {{patientName}}! 👋',
       body: pt
         ? H('Bem-vindo(a), {{patientName}}! 👋') +
-          P('Estamos muito felizes em tê-lo(a) connosco. Obrigado(a) por se juntar à <strong>Bruno Physical Rehabilitation</strong>.') +
-          C('#f0fdf9','#d1fae5',
-            '<p style="color:#065f46;font-size:14px;font-weight:600;margin:0 0 10px;">No seu portal pode:</p>' +
+          P('Estamos muito felizes em tê-lo(a) connosco. Obrigado(a) por se juntar à <strong>BPR Physical Rehabilitation</strong>.') +
+          C('#EDF3EF','#CFE0D6',
+            '<p style="color:#3B5A49;font-size:14px;font-weight:600;margin:0 0 10px;">No seu portal pode:</p>' +
             '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">✅ Marcar e gerir consultas<br>✅ Preencher a triagem de avaliação<br>✅ Aceder ao plano de tratamento<br>✅ Ver exercícios e acompanhar progresso<br>✅ Carregar documentos médicos</p>') +
           B('{{portalUrl}}','Aceder ao Portal →') +
           P('Se tiver alguma dúvida, não hesite em contactar-nos. Estamos aqui para apoiar a sua recuperação.','13px','#6b7280')
         : H('Welcome, {{patientName}}! 👋') +
-          P('We\'re so glad you\'re here. Thank you for joining <strong>Bruno Physical Rehabilitation</strong>.') +
-          C('#f0fdf9','#d1fae5',
-            '<p style="color:#065f46;font-size:14px;font-weight:600;margin:0 0 10px;">From your portal you can:</p>' +
+          P('We\'re so glad you\'re here. Thank you for joining <strong>BPR Physical Rehabilitation</strong>.') +
+          C('#EDF3EF','#CFE0D6',
+            '<p style="color:#3B5A49;font-size:14px;font-weight:600;margin:0 0 10px;">From your portal you can:</p>' +
             '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">✅ Book and manage appointments<br>✅ Complete your assessment screening<br>✅ Access your treatment plan<br>✅ View exercises and track progress<br>✅ Upload medical documents</p>') +
           B('{{portalUrl}}','Access Your Portal →') +
           P('If you have any questions, please don\'t hesitate to get in touch. We look forward to supporting your recovery.','13px','#6b7280'),
@@ -45,14 +51,14 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       body: pt
         ? H('Consulta Confirmada ✅') +
           P(`${hi} {{patientName}}, a sua consulta foi marcada com sucesso. Estamos ansiosos por vê-lo(a)!`) +
-          C('#f0fdf9','#d1fae5', R('📅 Data','{{appointmentDate}}')+R('🕐 Hora','{{appointmentTime}}')+R('👨‍⚕️ Terapeuta','{{therapistName}}')+R('💆 Tratamento','{{treatmentType}}')+R('⏱ Duração','{{duration}} min')) +
+          C('#EDF3EF','#CFE0D6', R('📅 Data','{{appointmentDate}}')+R('🕐 Hora','{{appointmentTime}}')+R('👨‍⚕️ Terapeuta','{{therapistName}}')+R('💆 Tratamento','{{treatmentType}}')+R('⏱ Duração','{{duration}} min')) +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Lembre-se de:</p>' +
           '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">• Usar roupa confortável<br>• Chegar 5 minutos antes<br>• Trazer documentos médicos relevantes</p>' +
           B('{{portalUrl}}','Ver no Portal →') +
           P('Precisa de remarcar? Aceda ao portal ou contacte-nos.','12px','#9ca3af')
         : H('Appointment Confirmed ✅') +
           P(`${hi} {{patientName}}, your appointment has been successfully booked. We look forward to seeing you!`) +
-          C('#f0fdf9','#d1fae5', R('📅 Date','{{appointmentDate}}')+R('🕐 Time','{{appointmentTime}}')+R('👨‍⚕️ Therapist','{{therapistName}}')+R('💆 Treatment','{{treatmentType}}')+R('⏱ Duration','{{duration}} min')) +
+          C('#EDF3EF','#CFE0D6', R('📅 Date','{{appointmentDate}}')+R('🕐 Time','{{appointmentTime}}')+R('👨‍⚕️ Therapist','{{therapistName}}')+R('💆 Treatment','{{treatmentType}}')+R('⏱ Duration','{{duration}} min')) +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Please remember to:</p>' +
           '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">• Wear comfortable clothing<br>• Arrive 5 minutes early<br>• Bring any relevant medical documents</p>' +
           B('{{portalUrl}}','View in Portal →') +
@@ -68,7 +74,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px 24px;margin:0 0 24px;">' +
           '<p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 8px;">⚠️ Ação Necessária: Triagem Médica</p>' +
           '<p style="color:#7f1d1d;font-size:14px;line-height:1.6;margin:0 0 12px;">Para que o seu terapeuta possa preparar o melhor plano de tratamento, por favor <strong>complete a sua triagem médica antes da consulta</strong>. Demora apenas 5-10 minutos.</p>' +
-          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Preencher Triagem →</a></div>' +
+          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background-color:#dc2626;color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Preencher Triagem →</a></div>' +
           '</div>' +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Lista de verificação:</p>' +
           '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">✅ Triagem médica preenchida<br>✅ Perfil completo (data de nascimento, endereço)<br>✅ Roupa confortável<br>✅ Chegar 5 minutos mais cedo<br>✅ Documentos médicos<br>✅ Lista de medicamentos</p>' +
@@ -79,7 +85,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:20px 24px;margin:0 0 24px;">' +
           '<p style="color:#991b1b;font-size:15px;font-weight:700;margin:0 0 8px;">⚠️ Action Required: Medical Screening</p>' +
           '<p style="color:#7f1d1d;font-size:14px;line-height:1.6;margin:0 0 12px;">To help your therapist prepare the best treatment plan, please <strong>complete your medical screening before your appointment</strong>. It only takes 5-10 minutes.</p>' +
-          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Complete Screening →</a></div>' +
+          '<div style="text-align:center;"><a href="{{screeningUrl}}" style="display:inline-block;background-color:#dc2626;color:#fff;padding:12px 28px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">Complete Screening →</a></div>' +
           '</div>' +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Quick checklist:</p>' +
           '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">✅ Medical screening completed<br>✅ Profile complete (date of birth, address)<br>✅ Comfortable clothing<br>✅ Arrive 5 minutes early<br>✅ Medical documents<br>✅ List of medications</p>' +
@@ -106,12 +112,12 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       body: pt
         ? H('Pagamento Confirmado ✅') +
           P(`${hi} {{patientName}}, recebemos o seu pagamento. Obrigado — a sua jornada de tratamento está pronta para começar!`) +
-          C('#f0fdf9','#d1fae5', R('Valor','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('Pacote','{{packageName}}')+R('Sessões','{{sessions}}')) +
+          C('#EDF3EF','#CFE0D6', R('Valor','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('Pacote','{{packageName}}')+R('Sessões','{{sessions}}')) +
           B('{{portalUrl}}','Ver Plano de Tratamento →') +
           P('Um recibo foi enviado para o seu email. Para questões de faturação, contacte-nos.','12px','#9ca3af')
         : H('Payment Confirmed ✅') +
           P(`${hi} {{patientName}}, we've received your payment. Thank you — your treatment journey is ready to begin!`) +
-          C('#f0fdf9','#d1fae5', R('Amount','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('Package','{{packageName}}')+R('Sessions','{{sessions}}')) +
+          C('#EDF3EF','#CFE0D6', R('Amount','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('Package','{{packageName}}')+R('Sessions','{{sessions}}')) +
           B('{{portalUrl}}','View Treatment Plan →') +
           P('A receipt has been sent to your email. For billing questions, contact us directly.','12px','#9ca3af'),
     },
@@ -147,7 +153,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
     },
 
     PASSWORD_RESET: {
-      subject: pt ? 'Redefinição de senha — Bruno Physical Rehabilitation 🔒' : 'Reset your password — Bruno Physical Rehabilitation 🔒',
+      subject: pt ? 'Redefinição de senha — BPR Physical Rehabilitation 🔒' : 'Reset your password — BPR Physical Rehabilitation 🔒',
       body: pt
         ? H('Pedido de Redefinição de Senha 🔒') +
           P(`${hi} {{patientName}}, recebemos um pedido para redefinir a sua senha. Clique abaixo para criar uma nova.`) +
@@ -166,15 +172,15 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       body: pt
         ? H('Triagem de Avaliação Recebida 📋') +
           P(`${hi} {{patientName}}, obrigado(a) por preencher o questionário de triagem de avaliação. Recebemo-lo com sucesso.`) +
-          C('#f0fdf9','#d1fae5',
-            '<p style="color:#065f46;font-size:14px;font-weight:600;margin:0 0 10px;">O que acontece a seguir?</p>' +
+          C('#EDF3EF','#CFE0D6',
+            '<p style="color:#3B5A49;font-size:14px;font-weight:600;margin:0 0 10px;">O que acontece a seguir?</p>' +
             '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">1️⃣ O seu terapeuta irá analisar pessoalmente a triagem<br>2️⃣ Alertas de saúde serão avaliados cuidadosamente<br>3️⃣ A informação será usada para personalizar o tratamento<br>4️⃣ O terapeuta discutirá os resultados na primeira consulta</p>') +
           P('Se precisar de atualizar informação ou tiver dúvidas, não hesite em contactar-nos.') +
           B('{{portalUrl}}','Ver o Meu Portal →')
         : H('Assessment Screening Received 📋') +
           P(`${hi} {{patientName}}, thank you for completing your assessment screening form. We've received it successfully.`) +
-          C('#f0fdf9','#d1fae5',
-            '<p style="color:#065f46;font-size:14px;font-weight:600;margin:0 0 10px;">What happens next?</p>' +
+          C('#EDF3EF','#CFE0D6',
+            '<p style="color:#3B5A49;font-size:14px;font-weight:600;margin:0 0 10px;">What happens next?</p>' +
             '<p style="color:#374151;font-size:14px;line-height:1.9;margin:0;">1️⃣ Your therapist will personally review your screening<br>2️⃣ Any health flags will be assessed carefully<br>3️⃣ Your information will be used to tailor your treatment<br>4️⃣ Your therapist will discuss findings at your first appointment</p>') +
           P('If you need to update any information or have questions, please don\'t hesitate to contact us.') +
           B('{{portalUrl}}','View My Portal →'),
@@ -185,12 +191,12 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       body: pt
         ? H('Documento Recebido ✅') +
           P(`${hi} {{patientName}}, o seu documento foi carregado com sucesso e está guardado de forma segura no seu registo.`) +
-          C('#f0fdf9','#d1fae5', R('Documento','{{documentName}}')+R('Tipo','{{documentType}}')) +
+          C('#EDF3EF','#CFE0D6', R('Documento','{{documentName}}')+R('Tipo','{{documentType}}')) +
           P('O seu terapeuta irá analisar este documento. Todos os documentos são armazenados de forma segura e apenas acessíveis pela equipa clínica.') +
           B('{{portalUrl}}','Ver os Meus Documentos →')
         : H('Document Received ✅') +
           P(`${hi} {{patientName}}, your document has been uploaded successfully and is securely stored in your patient record.`) +
-          C('#f0fdf9','#d1fae5', R('Document','{{documentName}}')+R('Type','{{documentType}}')) +
+          C('#EDF3EF','#CFE0D6', R('Document','{{documentName}}')+R('Type','{{documentType}}')) +
           P('Your therapist will review this document as part of your care. All documents are stored securely and only accessible to your clinical team.') +
           B('{{portalUrl}}','View My Documents →'),
     },
@@ -236,13 +242,13 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       body: pt
         ? H('Consentimento GDPR Confirmado ✅') +
           P(`${hi} {{patientName}}, o seu consentimento para o tratamento de dados pessoais foi registado com sucesso. Obrigado(a) por completar este passo.`) +
-          C('#f0fdf9','#d1fae5', R('Data de Consentimento','{{consentDate}}')+R('Versão dos Termos','{{termsVersion}}')+R('Endereço IP','{{ipAddress}}')) +
+          C('#EDF3EF','#CFE0D6', R('Data de Consentimento','{{consentDate}}')+R('Versão dos Termos','{{termsVersion}}')+R('Endereço IP','{{ipAddress}}')) +
           P('Os seus dados são tratados de acordo com o Regulamento Geral de Proteção de Dados (RGPD). Pode rever ou revogar o seu consentimento a qualquer momento através do portal.') +
           B('{{portalUrl}}','Ver o Meu Portal →') +
           P('Este registo foi guardado para fins de auditoria e conformidade legal.','12px','#9ca3af')
         : H('GDPR Consent Confirmed ✅') +
           P(`${hi} {{patientName}}, your consent for personal data processing has been successfully recorded. Thank you for completing this step.`) +
-          C('#f0fdf9','#d1fae5', R('Consent Date','{{consentDate}}')+R('Terms Version','{{termsVersion}}')+R('IP Address','{{ipAddress}}')) +
+          C('#EDF3EF','#CFE0D6', R('Consent Date','{{consentDate}}')+R('Terms Version','{{termsVersion}}')+R('IP Address','{{ipAddress}}')) +
           P('Your data is processed in accordance with the General Data Protection Regulation (GDPR). You may review or withdraw your consent at any time through your portal.') +
           B('{{portalUrl}}','View My Portal →') +
           P('This record has been saved for audit and legal compliance purposes.','12px','#9ca3af'),
@@ -266,7 +272,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
     },
 
     MEMBERSHIP_CREATED: {
-      subject: pt ? 'O seu plano {{planName}} está ativo — Bruno Physical Rehabilitation' : 'Your {{planName}} membership is now active — Bruno Physical Rehabilitation',
+      subject: pt ? 'O seu plano {{planName}} está ativo — BPR Physical Rehabilitation' : 'Your {{planName}} membership is now active — BPR Physical Rehabilitation',
       body: pt
         ? H('Plano de Assinatura Ativado 🎉') +
           P(`${hi} {{patientName}}, o seu plano <strong>{{planName}}</strong> foi ativado com sucesso. Agora tem acesso a todas as funcionalidades incluídas.`) +
@@ -313,12 +319,12 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       body: pt
         ? H('Pagamento Confirmado ✅') +
           P(`${hi} {{patientName}}, o seu pagamento foi recebido. As suas sessões de tratamento estão agora desbloqueadas!`) +
-          C('#f0fdf9','#d1fae5', R('📦 Pacote','{{packageName}}')+R('💷 Pago','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('📅 Sessões','{{sessions}}')) +
+          C('#EDF3EF','#CFE0D6', R('📦 Pacote','{{packageName}}')+R('💷 Pago','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('📅 Sessões','{{sessions}}')) +
           P('Agora pode ver o seu plano de tratamento completo, acompanhar os seus exercícios e marcar as suas sessões.') +
           B('{{portalUrl}}','Ver Plano de Tratamento →')
         : H('Payment Confirmed ✅') +
           P(`${hi} {{patientName}}, your payment has been received. Your treatment sessions are now unlocked!`) +
-          C('#f0fdf9','#d1fae5', R('📦 Package','{{packageName}}')+R('💷 Paid','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('📅 Sessions','{{sessions}}')) +
+          C('#EDF3EF','#CFE0D6', R('📦 Package','{{packageName}}')+R('💷 Paid','<span style="font-size:20px;color:#059669;font-weight:700;">£{{amount}}</span>')+R('📅 Sessions','{{sessions}}')) +
           P('You can now view your full treatment plan, track your exercises, and book your sessions through the portal.') +
           B('{{portalUrl}}','View Treatment Plan →'),
     },
@@ -328,7 +334,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       body: pt
         ? H('Tratamento Concluído! 🎉') +
           P(`${hi} {{patientName}}, parabéns por concluir o seu plano de tratamento <strong>{{protocolTitle}}</strong>!`) +
-          C('#f0fdf9','#d1fae5',
+          C('#EDF3EF','#CFE0D6',
             '<div style="text-align:center;"><p style="font-size:48px;margin:0 0 8px;">🏆</p>' +
             '<p style="font-size:18px;font-weight:700;color:#059669;margin:0 0 4px;">{{completedSessions}} Sessões Concluídas</p>' +
             '<p style="font-size:14px;color:#6b7280;margin:0;">Excelente compromisso com a sua recuperação!</p></div>') +
@@ -336,7 +342,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           B('{{portalUrl}}','Ver Planos de Assinatura →')
         : H('Treatment Complete! 🎉') +
           P(`${hi} {{patientName}}, congratulations on completing your <strong>{{protocolTitle}}</strong> treatment plan!`) +
-          C('#f0fdf9','#d1fae5',
+          C('#EDF3EF','#CFE0D6',
             '<div style="text-align:center;"><p style="font-size:48px;margin:0 0 8px;">🏆</p>' +
             '<p style="font-size:18px;font-weight:700;color:#059669;margin:0 0 4px;">{{completedSessions}} Sessions Completed</p>' +
             '<p style="font-size:14px;color:#6b7280;margin:0;">Well done on your commitment to recovery!</p></div>') +
@@ -403,16 +409,18 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       subject: pt ? '{{articleTitle}} — BPR Notícias de Saúde' : '{{articleTitle}} — BPR Health News',
       body: pt
         ? '<p style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;">BPR Notícias de Saúde &nbsp;·&nbsp; Último Artigo</p>' +
+          '{{articleImageBlock}}' +
           H('{{articleTitle}}') +
           P('{{articleExcerpt}}') +
           B('{{articleUrl}}','Ler Artigo Completo →') +
-          '<hr style="border:none;border-top:1px solid #eef2f5;margin:24px 0;" />' +
+          '<hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />' +
           '<p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;">Está a receber este email porque subscreveu as Notícias de Saúde BPR.<br><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Cancelar subscrição</a></p>'
         : '<p style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;">BPR Health News &nbsp;·&nbsp; Latest Article</p>' +
+          '{{articleImageBlock}}' +
           H('{{articleTitle}}') +
           P('{{articleExcerpt}}') +
           B('{{articleUrl}}','Read Full Article →') +
-          '<hr style="border:none;border-top:1px solid #eef2f5;margin:24px 0;" />' +
+          '<hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />' +
           '<p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;">You are receiving this because you subscribed to BPR Health News.<br><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Unsubscribe</a></p>',
     },
 

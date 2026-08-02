@@ -149,19 +149,19 @@ export default function EmailTemplatesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-[#5dc9c0]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#4F7361]" />
         <span className="ml-2 text-muted-foreground">Loading templates...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 brand-accent">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-[#5dc9c0]" />
+            <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-[#4F7361]" />
             Email Templates
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -201,8 +201,8 @@ export default function EmailTemplatesPage() {
               onClick={() => selectTemplate(t)}
               className={`w-full text-left border rounded-xl p-3 transition-all ${
                 selectedId === t.id
-                  ? "border-[#5dc9c0] bg-[#5dc9c0]/5 shadow-sm"
-                  : "hover:border-[#5dc9c0]/40 hover:bg-muted/30"
+                  ? "border-[#4F7361] bg-[#4F7361]/5 shadow-sm"
+                  : "hover:border-[#4F7361]/40 hover:bg-muted/30"
               }`}
             >
               <div className="flex items-center justify-between gap-2">
@@ -222,7 +222,7 @@ export default function EmailTemplatesPage() {
                     className="p-0.5 hover:bg-muted rounded"
                   >
                     {t.isActive
-                      ? <ToggleRight className="h-4 w-4 text-[#5dc9c0]" />
+                      ? <ToggleRight className="h-4 w-4 text-[#4F7361]" />
                       : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
                   </button>
                 </div>
@@ -262,16 +262,16 @@ export default function EmailTemplatesPage() {
                     onClick={() => loadPreview("en-GB")}
                     className={`px-2 py-1 rounded-md border text-xs font-medium transition-all ${
                       previewLocale === "en-GB" && activeTab === "preview"
-                        ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]"
-                        : "border-gray-200 text-muted-foreground hover:border-[#5dc9c0]/40"
+                        ? "border-[#4F7361] bg-[#4F7361]/10 text-[#3B5A49]"
+                        : "border-gray-200 text-muted-foreground hover:border-[#4F7361]/40"
                     }`}
                   >🇬🇧 EN</button>
                   <button
                     onClick={() => loadPreview("pt-BR")}
                     className={`px-2 py-1 rounded-md border text-xs font-medium transition-all ${
                       previewLocale === "pt-BR" && activeTab === "preview"
-                        ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]"
-                        : "border-gray-200 text-muted-foreground hover:border-[#5dc9c0]/40"
+                        ? "border-[#4F7361] bg-[#4F7361]/10 text-[#3B5A49]"
+                        : "border-gray-200 text-muted-foreground hover:border-[#4F7361]/40"
                     }`}
                   >🇧🇷 PT</button>
 
@@ -279,7 +279,7 @@ export default function EmailTemplatesPage() {
                     onClick={handleSave}
                     disabled={saving}
                     className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-                    style={{ background: "linear-gradient(135deg,#5dc9c0 0%,#1a6b6b 100%)" }}
+                    style={{ background: "linear-gradient(135deg,#4F7361 0%,#3B5A49 100%)" }}
                   >
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                     Save
@@ -354,7 +354,7 @@ export default function EmailTemplatesPage() {
                         onClick={handleSendTest}
                         disabled={sendingTest || !testEmail}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-                        style={{ background: "linear-gradient(135deg,#5dc9c0 0%,#1a6b6b 100%)" }}
+                        style={{ background: "linear-gradient(135deg,#4F7361 0%,#3B5A49 100%)" }}
                       >
                         {sendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                         Send Test
@@ -370,7 +370,7 @@ export default function EmailTemplatesPage() {
                   <CardHeader className="pb-2 pt-4 px-4">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <Globe className="h-4 w-4 text-[#5dc9c0]" />
+                        <Globe className="h-4 w-4 text-[#4F7361]" />
                         Preview — {previewLocale === "en-GB" ? "🇬🇧 English" : "🇧🇷 Português"}
                       </CardTitle>
                       <button onClick={() => setActiveTab("edit")} className="text-muted-foreground hover:text-foreground">

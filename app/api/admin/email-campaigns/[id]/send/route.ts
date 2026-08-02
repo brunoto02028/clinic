@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { wrapInLayout, replaceVariables } from "@/lib/email-templates";
+import { renderArticleNewsletter } from "@/lib/article-newsletter";
 
 function authGuard(session: any) {
   const role = (session?.user as any)?.role;
@@ -99,9 +100,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       include: { contact: true },
     });
 
-    // Render HTML once (with placeholder vars)
+    // Article-linked campaign: content is rendered per-recipient below (bilingual,
+    // one ARTICLE_NEWSLETTER render per contact.language). Otherwise, render the
+    // generic template/htmlBody once and personalise per recipient.
+    const article = campaign.articleId
+      ? await prisma.article.findUnique({ where: { id: campaign.articleId } })
+      : null;
+
     let htmlTemplate = campaign.htmlBody || "";
-    if (campaign.templateSlug) {
+    if (!article && campaign.templateSlug) {
       const tmpl = await (prisma as any).emailTemplate.findUnique({ where: { slug: campaign.templateSlug } });
       if (tmpl) htmlTemplate = tmpl.htmlBody;
     }
@@ -114,16 +121,33 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const recipientName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.email;
       const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(contact.email)}`;
 
-      const personalised = replaceVariables(htmlTemplate, {
-        recipientName,
-        firstName: contact.firstName || "",
-        lastName: contact.lastName || "",
-        email: contact.email,
-        unsubscribeUrl,
-      });
+      let html: string;
+      let subject: string;
 
-      const html = await wrapInLayout(personalised, campaign.preheader || campaign.subject);
-      const subject = replaceVariables(campaign.subject, { recipientName, firstName: contact.firstName || "" });
+      if (article) {
+        const locale: "en" | "pt" = contact.language === "pt" ? "pt" : "en";
+        const rendered = await renderArticleNewsletter(article as any, locale, recipientName, unsubscribeUrl);
+        if (!rendered) {
+          await (prisma as any).emailCampaignJob.update({
+            where: { id: job.id },
+            data: { status: "FAILED", error: "ARTICLE_NEWSLETTER template not available" },
+          });
+          failed++;
+          continue;
+        }
+        html = rendered.html;
+        subject = rendered.subject;
+      } else {
+        const personalised = replaceVariables(htmlTemplate, {
+          recipientName,
+          firstName: contact.firstName || "",
+          lastName: contact.lastName || "",
+          email: contact.email,
+          unsubscribeUrl,
+        });
+        html = await wrapInLayout(personalised, campaign.preheader || campaign.subject);
+        subject = replaceVariables(campaign.subject, { recipientName, firstName: contact.firstName || "" });
+      }
 
       const result = await sendEmail({
         to: contact.email,

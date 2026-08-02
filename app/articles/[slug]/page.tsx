@@ -1,9 +1,25 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
 import { Calendar, User, ChevronLeft, ChevronRight, BookOpen, ArrowLeft, Clock, Share2 } from "lucide-react";
 import type { Metadata } from "next";
 import { LocalizedText, LocalizedHtml } from "./localized";
+import { ArticleAudioPlayer } from "./audio-player";
+import { getSiteSettingsLogo } from "@/lib/get-site-settings";
+import { authOptions } from "@/lib/auth-options";
+import { isTtsEnabled } from "@/lib/eleven-labs";
+import { MedicalDisclaimer } from "@/components/medical-disclaimer";
+import { LeadMagnetCapture } from "@/components/lead-magnet-capture";
+import { extractFaqPairs, buildFaqPageSchema, buildArticleSchema } from "@/lib/article-schema";
+
+const STAFF_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
+
+const BASE_URL = "https://bpr.rehab";
+function absoluteUrl(url?: string | null): string | null {
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${BASE_URL}${url}`;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -11,19 +27,59 @@ interface PageProps {
   params: { slug: string };
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const article = await prisma.article.findUnique({
-    where: { slug: params.slug },
+const slugify = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+/** Resolve an article by slug, with fallback matching against slugified titles
+ *  (handles legacy URLs whose slug changed after a title edit). */
+async function resolveArticle(slug: string) {
+  const direct = await prisma.article.findUnique({
+    where: { slug },
+    include: { author: { select: { firstName: true, lastName: true } } },
   });
+  if (direct) return direct;
+
+  const candidates = await (prisma as any).article.findMany({
+    where: { published: true },
+    select: { id: true, title: true, titleEn: true, titlePt: true },
+  });
+  const match = candidates.find((c: any) =>
+    [c.title, c.titleEn, c.titlePt].filter(Boolean).some((t: string) => slugify(t) === slug)
+  );
+  if (!match) return null;
+
+  return prisma.article.findUnique({
+    where: { id: match.id },
+    include: { author: { select: { firstName: true, lastName: true } } },
+  });
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const article = await resolveArticle(params.slug);
   if (!article) return { title: "Article Not Found" };
+
+  let ogImage = absoluteUrl(article.imageUrl);
+  if (!ogImage) {
+    const logoSettings = await getSiteSettingsLogo();
+    ogImage = absoluteUrl(logoSettings?.logoUrl) || `${BASE_URL}/og-image.png`;
+  }
+
   return {
     title: `${article.title} - Bruno Physical Rehabilitation`,
     description: article.excerpt || undefined,
+    alternates: { canonical: `${BASE_URL}/articles/${article.slug}` },
     openGraph: {
       title: article.title,
       description: article.excerpt || undefined,
       type: "article",
-      images: article.imageUrl ? [{ url: article.imageUrl }] : undefined,
+      url: `${BASE_URL}/articles/${article.slug}`,
+      images: [{ url: ogImage }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.excerpt || undefined,
+      images: [ogImage],
     },
   };
 }
@@ -44,14 +100,34 @@ function sanitizeContent(html: string): string {
 }
 
 export default async function ArticlePage({ params }: PageProps) {
-  const article = await prisma.article.findUnique({
-    where: { slug: params.slug },
-    include: { author: { select: { firstName: true, lastName: true } } },
+  const article = await resolveArticle(params.slug);
+
+  if (!article) notFound();
+
+  if (!article.published) {
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as any)?.role;
+    const isStaffPreview = !!session && STAFF_ROLES.includes(role);
+    if (!isStaffPreview) notFound();
+  }
+
+  const readTime = estimateReadTime(sanitizeContent(article.content || ""));
+
+  // Structured data (P4): Article/MedicalWebPage schema on every article,
+  // plus FAQPage schema when the article has a FAQ section (EN or PT).
+  const articleUrl = `${BASE_URL}/articles/${article.slug}`;
+  const articleSchema = buildArticleSchema({
+    url: articleUrl,
+    title: article.title,
+    description: article.excerpt,
+    imageUrl: absoluteUrl(article.imageUrl),
+    authorName: (article as any).authorName || `${article.author.firstName} ${article.author.lastName}`,
+    datePublished: article.createdAt,
+    dateModified: article.updatedAt,
   });
-
-  if (!article || !article.published) notFound();
-
-  const readTime = estimateReadTime(article.content || "");
+  const faqPairsPrimary = extractFaqPairs(article.contentEn || article.content);
+  const faqPairs = faqPairsPrimary.length ? faqPairsPrimary : extractFaqPairs(article.contentPt);
+  const faqSchema = buildFaqPageSchema(faqPairs);
 
   // Get prev/next articles
   const [prevArticle, nextArticle] = await Promise.all([
@@ -77,6 +153,21 @@ export default async function ArticlePage({ params }: PageProps) {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
+      {!article.published && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 text-amber-700 dark:text-amber-400 text-center text-sm font-semibold py-2.5 px-4">
+          👁️ Draft preview — this article is not published yet. Only visible to staff.
+        </div>
+      )}
       {/* Breadcrumb */}
       <div className="bg-muted/30 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
@@ -101,8 +192,11 @@ export default async function ArticlePage({ params }: PageProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 lg:p-12">
             <div className="max-w-7xl mx-auto">
-              <LocalizedText as="h1" className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight max-w-4xl" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
+              <LocalizedText as="h1" className="font-sora text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-tight max-w-4xl tracking-tight" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
             </div>
+          </div>
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+            <LocalizedText as="span" className="text-[10px] sm:text-xs text-white/70 bg-black/30 backdrop-blur-sm rounded-full px-2.5 py-1" en="Image for illustrative purposes only" pt="Imagem meramente ilustrativa" fallback="Image for illustrative purposes only" />
           </div>
         </div>
       )}
@@ -114,7 +208,7 @@ export default async function ArticlePage({ params }: PageProps) {
           <article className="min-w-0 overflow-hidden">
             {/* Title (if no cover image) */}
             {!article.imageUrl && (
-              <LocalizedText as="h1" className="text-3xl sm:text-4xl font-bold text-foreground mb-6 leading-tight" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
+              <LocalizedText as="h1" className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-6 leading-tight tracking-tight" en={article.titleEn} pt={article.titlePt} fallback={article.title} />
             )}
 
             {/* Meta bar */}
@@ -137,6 +231,14 @@ export default async function ArticlePage({ params }: PageProps) {
               </span>
             </div>
 
+            {/* Listen to article (ElevenLabs TTS, generated + cached on first play) —
+                hidden while ELEVENLABS_TTS_ENABLED is off (free-plan quota exhausted) */}
+            {isTtsEnabled() && (
+              <div className="mb-8">
+                <ArticleAudioPlayer articleId={article.id} />
+              </div>
+            )}
+
             {/* Excerpt */}
             {article.excerpt && (
               <LocalizedText as="p" className="text-lg text-muted-foreground mb-8 leading-relaxed italic border-l-4 border-primary/30 pl-4 block" en={article.excerptEn} pt={article.excerptPt} fallback={article.excerpt} />
@@ -149,6 +251,12 @@ export default async function ArticlePage({ params }: PageProps) {
               pt={article.contentPt}
               fallback={article.content}
             />
+
+            {/* Lead-magnet capture — cluster-matched PDF guide (P1.2) */}
+            <LeadMagnetCapture tags={article.tags || []} articleSlug={article.slug} />
+
+            {/* Medical disclaimer — single source of truth, every article (P1.1) */}
+            <MedicalDisclaimer />
 
             {/* Prev/Next Navigation */}
             <nav className="mt-12 pt-8 border-t border-border">
@@ -202,7 +310,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   <p className="font-semibold text-foreground">
                     {(article as any).authorName || `${article.author.firstName} ${article.author.lastName}`}
                   </p>
-                  <p className="text-sm text-muted-foreground">Physiotherapist</p>
+                  <LocalizedText as="p" className="text-sm text-muted-foreground" en="Physical Rehabilitation Specialist" pt="Especialista em Reabilitação Física" fallback="Physical Rehabilitation Specialist" />
                 </div>
               </div>
             </div>
@@ -276,7 +384,7 @@ export default async function ArticlePage({ params }: PageProps) {
       {relatedArticles.length > 0 && (
         <section className="bg-muted/30 border-t border-border py-12 sm:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-bold text-foreground mb-8">More Articles</h2>
+            <h2 className="font-sora text-2xl font-bold text-foreground mb-8 tracking-tight">More Articles</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {relatedArticles.map((related) => (
                 <Link key={related.id} href={`/articles/${related.slug}`} className="group">

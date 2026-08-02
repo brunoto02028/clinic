@@ -1,5 +1,5 @@
-// API: Returns the patient's progress through the full assessment flow
-// Checks: Screening → Outcome Measures → Body Assessment → Foot Scan
+// API: Returns the patient's progress through the initial assessment flow
+// Checks: Screening → Outcome Measures
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestSession } from "@/lib/dual-auth";
@@ -37,49 +37,6 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  // Check Body Assessment (most recent)
-  const bodyAssessment = await prisma.bodyAssessment.findFirst({
-    where: { patientId: user.id },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      assessmentNumber: true,
-      status: true,
-      frontImageUrl: true,
-      backImageUrl: true,
-      leftImageUrl: true,
-      rightImageUrl: true,
-      postureScore: true,
-      symmetryScore: true,
-      mobilityScore: true,
-      overallScore: true,
-      aiSummary: true,
-      correctiveExercises: true,
-      captureToken: true,
-      captureTokenExpiry: true,
-      createdAt: true,
-    },
-  });
-
-  // Check Foot Scan (most recent)
-  const footScan = await prisma.footScan.findFirst({
-    where: { patientId: user.id },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      scanNumber: true,
-      status: true,
-      archType: true,
-      pronation: true,
-      aiRecommendation: true,
-      leftFootLength: true,
-      rightFootLength: true,
-      scanToken: true,
-      scanTokenExpiry: true,
-      createdAt: true,
-    },
-  });
-
   // Check outcome measures
   let outcomeMeasures = null;
   if (screening) {
@@ -106,44 +63,6 @@ export async function GET(request: NextRequest) {
       labelPt: "Medidas de Dor e Função",
       status: outcomeMeasures?.vasScore !== undefined ? "completed" : "pending",
       data: outcomeMeasures,
-    },
-    {
-      id: "body_assessment",
-      label: "Posture Assessment",
-      labelPt: "Avaliação Postural",
-      status: bodyAssessment?.frontImageUrl
-        ? bodyAssessment.postureScore
-          ? "completed"
-          : "processing"
-        : bodyAssessment
-          ? "in_progress"
-          : "pending",
-      data: bodyAssessment,
-    },
-    {
-      id: "foot_scan",
-      label: "Foot Scan",
-      labelPt: "Scan dos Pés",
-      status: footScan
-        ? footScan.status === "APPROVED" || footScan.status === "DELIVERED"
-          ? "completed"
-          : footScan.status === "PENDING_UPLOAD"
-            ? "in_progress"
-            : "processing"
-        : "pending",
-      data: footScan,
-    },
-    {
-      id: "results",
-      label: "View Results",
-      labelPt: "Ver Resultados",
-      status:
-        bodyAssessment?.postureScore && footScan?.aiRecommendation
-          ? "completed"
-          : bodyAssessment?.postureScore || footScan?.aiRecommendation
-            ? "partial"
-            : "pending",
-      data: null,
     },
   ];
 

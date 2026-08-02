@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     const {
       title, excerpt, content, imageUrl, published, authorName,
       titleEn, excerptEn, contentEn, titlePt, excerptPt, contentPt, publishLanguage,
+      createdAt,
     } = body;
 
     const pubLang = publishLanguage === "pt" ? "pt" : "en";
@@ -77,6 +78,10 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
+    // Publish date shown publicly (used for sorting + display everywhere — see app/articles/*).
+    // Defaults to now() (schema default) unless staff picked a different date in the editor.
+    const parsedCreatedAt = createdAt ? new Date(createdAt) : null;
+
     const article = await prisma.article.create({
       data: {
         title: primaryTitle,
@@ -95,6 +100,7 @@ export async function POST(request: NextRequest) {
         published: published || false,
         authorId: (session.user as { id: string }).id,
         authorName: authorName || null,
+        ...(parsedCreatedAt && !isNaN(parsedCreatedAt.getTime()) ? { createdAt: parsedCreatedAt } : {}),
       },
     });
     

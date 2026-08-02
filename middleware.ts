@@ -59,6 +59,7 @@ const publicRoutes = [
   '/login',
   '/signout',
   '/signup',
+  '/start',
   '/admin-login',
   '/staff-login',
   '/verify',
@@ -75,19 +76,29 @@ const publicRoutes = [
   '/api/client-error',
   '/api/foot-scans/session',
   '/api/webhooks',
+  '/api/wearables/webhook',
   '/clinics',
   '/test',
   '/preview',
   '/preview-3d',
   '/therapies',
-  '/custom-insoles',
-  '/biomechanical-assessment',
+  '/biohacking',
+  '/get-the-app',
+  '/sitemap.xml',
   '/services',
   '/articles',
+  '/conditions', // public SEO bridge pages (P4)
   '/help',
   '/terms',
   '/privacy',
   '/cookies',
+  '/complaints-policy',
+  '/cancellation-policy',
+  '/unsubscribe',
+  '/api/unsubscribe',
+  '/lead-magnet',
+  '/api/lead-magnet',
+  '/api/newsletter', // public footer newsletter signup (P4) — feeds the same EmailContact/Lead list
   '/intake',
   '/api/intake',
   '/api/analytics/track',
@@ -99,8 +110,10 @@ const publicRoutes = [
   '/api/amazon-image',
   '/api/agent', // OpenClaw Agent API - uses Bearer token authentication
   '/api/admin/maintenance', // protected by x-maintenance-secret header, not session
+  '/api/cron', // all cron/* routes verify their own ?key= secret, not session — see each route
   '/api/image-serve', // public image serving from DB (no auth needed to display images)
-  '/api/health', // Render health check — must be public or deploy zero-downtime breaks
+  '/api/health', // Coolify health check — must be public or deploy zero-downtime breaks
+  '/api/public', // public read-only endpoints (clinic schedule, etc.)
 ];
 
 // Routes that require SUPERADMIN access
@@ -275,6 +288,10 @@ export async function middleware(request: NextRequest) {
         '/dashboard/consent': '/admin',
         '/dashboard/profile': '/admin',
         '/dashboard/guide': '/admin',
+        '/dashboard/questions': '/admin/patient-tasks',
+        '/dashboard/clinical-notes': '/admin/patients',
+        '/dashboard/exercises': '/admin/patients',
+        '/dashboard/education': '/admin/articles',
       };
       if (EXACT_MAP[pathname]) {
         return NextResponse.redirect(new URL(EXACT_MAP[pathname], request.url));

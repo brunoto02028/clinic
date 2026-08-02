@@ -10,11 +10,9 @@ import {
   Footprints,
   ScanLine,
   Waves,
-  CircleDot,
   Activity,
   Heart,
   Syringe,
-  Users,
   CheckCircle2,
   Clock,
   Menu,
@@ -67,19 +65,6 @@ const ALL_THERAPIES = [
     ],
   },
   {
-    slug: "laser-shockwave",
-    icon: CircleDot,
-    color: "bg-rose-100 text-rose-700",
-    title: { en: "Laser & Shockwave Therapy", pt: "Terapia a Laser e Ondas de Choque" },
-    desc: { en: "Non-surgical treatment for chronic tendon problems, calcifications, and conditions that haven't responded to conventional treatment.", pt: "Tratamento não cirúrgico para problemas crônicos de tendão, calcificações e condições que não responderam ao tratamento convencional." },
-    benefits: [
-      { en: "Breaks down calcifications and scar tissue", pt: "Quebra calcificações e tecido cicatricial" },
-      { en: "Stimulates natural healing response", pt: "Estimula a resposta natural de cicatrização" },
-      { en: "Proven for plantar fasciitis and tennis elbow", pt: "Comprovado para fascite plantar e epicondilite" },
-      { en: "Non-surgical alternative", pt: "Alternativa não cirúrgica" },
-    ],
-  },
-  {
     slug: "sports-injury",
     icon: Activity,
     color: "bg-orange-100 text-orange-700",
@@ -119,19 +104,6 @@ const ALL_THERAPIES = [
     ],
   },
   {
-    slug: "kinesiotherapy",
-    icon: Users,
-    color: "bg-indigo-100 text-indigo-700",
-    title: { en: "Kinesiotherapy", pt: "Cinesioterapia" },
-    desc: { en: "Therapeutic movement techniques to restore natural movement patterns, improve postural balance, and enhance neuromuscular coordination.", pt: "Técnicas de movimento terapêutico para restaurar padrões naturais de movimento, melhorar o equilíbrio postural e aprimorar a coordenação neuromuscular." },
-    benefits: [
-      { en: "Restore natural movement patterns", pt: "Restaurar padrões naturais de movimento" },
-      { en: "Improve postural balance", pt: "Melhorar equilíbrio postural" },
-      { en: "Functional movement training", pt: "Treinamento de movimento funcional" },
-      { en: "Preventive musculoskeletal health", pt: "Saúde musculoesquelética preventiva" },
-    ],
-  },
-  {
     slug: "microcurrent",
     icon: Zap,
     color: "bg-yellow-100 text-yellow-700",
@@ -157,7 +129,7 @@ export default function TherapiesPage() {
   const L = (obj: { en: string; pt: string }) => locale === "pt-BR" ? obj.pt : obj.en;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="public-site min-h-screen bg-background flex flex-col">
       <SiteHeader currentPage="services" />
 
       {/* Breadcrumb */}
@@ -171,7 +143,7 @@ export default function TherapiesPage() {
       {/* Hero */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 text-center">
         <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground">
+          <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
             {locale === "pt-BR" ? "Nossas Terapias" : "Our Therapies"}
           </h1>
           <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -185,11 +157,11 @@ export default function TherapiesPage() {
       {/* Therapies Grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="space-y-8">
-          {ALL_THERAPIES.map((therapy, i) => {
+          {ALL_THERAPIES.map((therapy) => {
             const Icon = therapy.icon;
             return (
-              <div>
-                <Card className="overflow-hidden border border-border hover:shadow-lg transition-shadow">
+              <div key={therapy.slug}>
+                <Card className="overflow-hidden border border-border hover:shadow-lg transition-shadow border-t-[3px] border-t-[#4F7361]">
                   <CardContent className="p-0">
                     <div className="grid md:grid-cols-[1fr_2fr] gap-0">
                       {/* Left: icon + title */}
@@ -197,9 +169,9 @@ export default function TherapiesPage() {
                         <div className={`w-14 h-14 rounded-2xl ${therapy.color} flex items-center justify-center mb-4`}>
                           <Icon className="h-7 w-7" />
                         </div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">{L(therapy.title)}</h2>
+                        <h2 className="font-sora text-xl sm:text-2xl font-bold text-foreground mb-2 tracking-tight">{L(therapy.title)}</h2>
                         <Link href={`/services/${therapy.slug}`}>
-                          <Button variant="outline" size="sm" className="mt-2 gap-1">
+                          <Button variant="ba1Outline" size="sm" className="mt-2 gap-1">
                             {T("home.learnMore")} <ArrowRight className="h-3.5 w-3.5" />
                           </Button>
                         </Link>
@@ -229,7 +201,7 @@ export default function TherapiesPage() {
       <section className="bg-card py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
+            <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground mb-4 tracking-tight">
               {locale === "pt-BR" ? "Pronto para Começar Sua Recuperação?" : "Ready to Start Your Recovery?"}
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto mb-8">
@@ -239,12 +211,12 @@ export default function TherapiesPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/signup">
-                <Button size="lg" className="gap-2 w-full sm:w-auto">
+                <Button size="lg" variant="ba1Primary" className="gap-2 w-full sm:w-auto">
                   {T("home.bookAppointment")} <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
               <Link href="/">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                <Button size="lg" variant="ba1Outline" className="w-full sm:w-auto">
                   {locale === "pt-BR" ? "Voltar para Início" : "Back to Home"}
                 </Button>
               </Link>

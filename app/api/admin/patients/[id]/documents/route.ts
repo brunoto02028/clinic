@@ -48,6 +48,11 @@ export async function POST(
     const uploaderId = (session.user as any).id;
     const clinicId = (session.user as any).clinicId;
 
+    // Resolve clinicId from patient to avoid FK constraint when session clinicId is null
+    const patientForClinic = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+    const effectiveClinicId = patientForClinic?.clinicId || clinicId || null;
+    if (!effectiveClinicId) return NextResponse.json({ error: "Clinic not found" }, { status: 400 });
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const title = (formData.get("title") as string) || null;
@@ -61,15 +66,15 @@ export async function POST(
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
+    // Validate file type — any image, PDF, and common document formats
     const allowedTypes = [
       "application/pdf",
-      "image/jpeg", "image/jpg", "image/png", "image/webp",
-      "image/heic", "image/heif",
-      "image/tiff", "image/bmp",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain", "text/csv",
     ];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: "Invalid file type. Allowed: PDF, JPEG, PNG, WebP, HEIC" }, { status: 400 });
+    if (!file.type.startsWith("image/") && !allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: "Invalid file type. Allowed: images, PDF, Word, TXT, CSV" }, { status: 400 });
     }
 
     // Max 25MB
@@ -103,7 +108,7 @@ export async function POST(
     // Save to DB
     const document = await (prisma as any).patientDocument.create({
       data: {
-        clinicId: clinicId || "",
+        clinicId: effectiveClinicId,
         patientId,
         uploadedById: uploaderId,
         fileName: file.name,

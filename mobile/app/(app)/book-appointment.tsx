@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { View, Pressable, ScrollView, Alert } from "react-native";
+import { View, Pressable, ScrollView, Alert, TextInput } from "react-native";
 import { Stack, router } from "expo-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { Screen, Text, Card, Input, Button } from "@/components/ui";
-import { bookAppointment } from "@/api/booking";
+import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
+import { bookAppointment, fetchAvailability, fetchSchedule } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
 
 const TYPES = [
@@ -13,24 +12,22 @@ const TYPES = [
   "Biomechanical Assessment", "Foot Scan", "Review",
 ];
 
-function generateDates(): { label: string; value: string; day: string; date: number }[] {
+function generateDates(closedDays: number[]): { label: string; value: string; day: string; date: number }[] {
   const dates = [];
+  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   for (let i = 1; i <= 14; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    if (d.getDay() === 0) continue; // skip sunday
-    const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    if (closedDays.includes(d.getDay())) continue;
     dates.push({
       label: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
       value: d.toISOString().split("T")[0],
-      day: days[d.getDay()],
+      day: dayNames[d.getDay()],
       date: d.getDate(),
     });
   }
   return dates;
 }
-
-const TIMES = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"];
 
 export default function BookAppointment() {
   const t = useTheme();
@@ -39,7 +36,18 @@ export default function BookAppointment() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
-  const dates = generateDates();
+
+  const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
+  const closedDays = (schedule.data ?? []).filter(d => d.closed).map(d => d.dayOfWeek);
+  const dates = generateDates(closedDays);
+
+  const availability = useQuery({
+    queryKey: ["availability", selectedDate],
+    queryFn: () => fetchAvailability(selectedDate!),
+    enabled: !!selectedDate,
+  });
+
+  const slots = availability.data?.slots ?? [];
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -52,9 +60,20 @@ export default function BookAppointment() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
-      Alert.alert("Agendado!", "Sua consulta foi agendada com sucesso.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      const dateObj = new Date(`${selectedDate}T12:00:00`);
+      const weekday = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+      const day = dateObj.getDate();
+      const month = dateObj.toLocaleDateString("en-US", { month: "long" });
+      const formattedDateTime = `${weekday} ${day} ${month} · ${selectedTime}`;
+
+      router.replace({
+        pathname: "/(app)/booking-confirmed",
+        params: {
+          serviceName: type ?? "",
+          dateTime: formattedDateTime,
+          location: "Ipswich clinic",
+        },
+      });
     },
     onError: (e) => Alert.alert("Erro", (e as Error).message || "Não foi possível agendar."),
   });
@@ -73,8 +92,8 @@ export default function BookAppointment() {
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {TYPES.map(t2 => (
               <Pressable key={t2} onPress={() => setType(t2)}
-                style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: type === t2 ? "rgba(93,201,192,0.2)" : "rgba(74,124,138,0.08)", borderWidth: 1, borderColor: type === t2 ? "rgba(93,201,192,0.4)" : "rgba(74,124,138,0.12)" }}>
-                <Text variant="caption" color={type === t2 ? "#5dc9c0" : t.colors.textSecondary}>{t2}</Text>
+                style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: type === t2 ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: type === t2 ? t.colors.health : t.colors.borderSubtle }}>
+                <Text variant="caption" color={type === t2 ? t.colors.health : t.colors.textSecondary}>{t2}</Text>
               </Pressable>
             ))}
           </View>
@@ -85,10 +104,10 @@ export default function BookAppointment() {
           <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>Data</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {dates.map(d => (
-              <Pressable key={d.value} onPress={() => setSelectedDate(d.value)}
-                style={{ alignItems: "center", paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: selectedDate === d.value ? "rgba(93,201,192,0.2)" : "rgba(74,124,138,0.06)", borderWidth: 1, borderColor: selectedDate === d.value ? "rgba(93,201,192,0.4)" : "rgba(74,124,138,0.1)" }}>
+              <Pressable key={d.value} onPress={() => { setSelectedDate(d.value); setSelectedTime(null); }}
+                style={{ alignItems: "center", paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, backgroundColor: selectedDate === d.value ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: selectedDate === d.value ? t.colors.health : t.colors.borderSubtle }}>
                 <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{d.day}</Text>
-                <Text variant="subtitle" color={selectedDate === d.value ? "#5dc9c0" : t.colors.text} style={{ fontSize: 18 }}>{d.date}</Text>
+                <Text variant="subtitle" color={selectedDate === d.value ? t.colors.health : t.colors.text} style={{ fontSize: 18 }}>{d.date}</Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -97,32 +116,39 @@ export default function BookAppointment() {
         {/* Time */}
         <Card>
           <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>Horário</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {TIMES.map(time => (
-              <Pressable key={time} onPress={() => setSelectedTime(time)}
-                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: selectedTime === time ? "rgba(93,201,192,0.2)" : "rgba(74,124,138,0.06)", borderWidth: 1, borderColor: selectedTime === time ? "rgba(93,201,192,0.4)" : "rgba(74,124,138,0.1)" }}>
-                <Text variant="label" color={selectedTime === time ? "#5dc9c0" : t.colors.textSecondary}>{time}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {!selectedDate ? (
+            <Text variant="caption" color={t.colors.textMuted}>Selecione uma data primeiro.</Text>
+          ) : availability.isLoading ? (
+            <Spinner />
+          ) : slots.length === 0 ? (
+            <Text variant="caption" color={t.colors.textMuted}>Sem horários disponíveis nesta data.</Text>
+          ) : (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {slots.map(time => (
+                <Pressable key={time} onPress={() => setSelectedTime(time)}
+                  style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: selectedTime === time ? t.colors.healthSoft : t.colors.surfaceMuted, borderWidth: 1, borderColor: selectedTime === time ? t.colors.health : t.colors.borderSubtle }}>
+                  <Text variant="label" color={selectedTime === time ? t.colors.health : t.colors.textSecondary}>{time}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </Card>
 
         {/* Notes */}
-        <Input label="Observações (opcional)" value={notes} onChangeText={setNotes} placeholder="Alguma informação adicional..." multiline style={{ minHeight: 60, textAlignVertical: "top" }} />
+        <View style={{ gap: 4 }}>
+          <Text variant="label">Observações (opcional)</Text>
+          <TextInput value={notes} onChangeText={setNotes} placeholder="Alguma informação adicional..." placeholderTextColor={t.colors.textMuted} multiline style={{ padding: 12, borderRadius: 12, backgroundColor: t.colors.surfaceMuted, borderWidth: 1, borderColor: t.colors.borderSubtle, color: t.colors.text, fontSize: 14, minHeight: 60, textAlignVertical: "top" }} />
+        </View>
 
         {/* Submit */}
-        <Pressable
+        <Button
+          variant="health"
+          title={mutation.isPending ? "Agendando..." : "Confirmar Agendamento"}
           onPress={() => mutation.mutate()}
-          disabled={mutation.isPending || !type || !selectedDate || !selectedTime}
-          style={{ borderRadius: 14, overflow: "hidden", opacity: (!type || !selectedDate || !selectedTime) ? 0.5 : 1 }}
-        >
-          <LinearGradient colors={["#4a7c8a", "#2c4f58"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={{ paddingVertical: 16, borderRadius: 14, alignItems: "center" }}>
-            <Text variant="label" color="#fff" style={{ fontWeight: "700", fontSize: 16 }}>
-              {mutation.isPending ? "Agendando..." : "Confirmar Agendamento"}
-            </Text>
-          </LinearGradient>
-        </Pressable>
+          disabled={!type || !selectedDate || !selectedTime}
+          loading={mutation.isPending}
+          size="lg"
+        />
       </View>
     </Screen>
   );

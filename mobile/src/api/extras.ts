@@ -45,7 +45,15 @@ export interface SubscribeResult {
 export function subscribeToPlan(planId: string): Promise<SubscribeResult> {
   return apiFetch<SubscribeResult>("/api/patient/membership/subscribe", {
     method: "POST",
+    headers: { "x-platform": "mobile" },
     body: JSON.stringify({ planId }),
+  });
+}
+
+export function cancelSubscription(): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/api/patient/membership/cancel", {
+    method: "POST",
+    body: JSON.stringify({}),
   });
 }
 

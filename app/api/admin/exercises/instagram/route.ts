@@ -2,14 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, readFile, unlink } from "fs/promises";
 import path from "path";
+import { tmpdir } from "os";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import * as cheerio from "cheerio";
+import { callAI } from "@/lib/ai-provider";
+
+const execFileAsync = promisify(execFile);
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min for large profile downloads
 
 // ─── Body region keywords (PT-BR + EN) ──────────────────────────
+const VALID_REGIONS = [
+  "SHOULDER", "ELBOW", "WRIST_HAND", "HIP", "KNEE", "ANKLE_FOOT",
+  "SPINE_LUMBAR", "SPINE_THORACIC", "SPINE_BACK",
+  "NECK_CERVICAL", "CORE_ABDOMEN", "STRETCHING", "MUSCLE_INJURY", "FULL_BODY", "OTHER",
+] as const;
+
 const BODY_REGION_KEYWORDS: Record<string, string[]> = {
   SHOULDER: ["shoulder", "ombro", "deltoid", "deltóide", "rotator cuff", "manguito rotador", "supraespinhoso", "infraespinhoso"],
   ELBOW: ["elbow", "cotovelo", "epicondylitis", "epicondilite", "tennis elbow"],
@@ -17,15 +29,17 @@ const BODY_REGION_KEYWORDS: Record<string, string[]> = {
   HIP: ["hip", "quadril", "glute", "glúteo", "gluteo", "piriformis", "piriforme", "adductor", "adutor"],
   KNEE: ["knee", "joelho", "patella", "patela", "menisco", "meniscus", "acl", "lca", "pcl"],
   ANKLE_FOOT: ["ankle", "tornozelo", "foot", "pé", "pe ", "plantar", "achilles", "aquiles", "calf", "panturrilha"],
-  SPINE_BACK: ["spine", "coluna", "back", "costas", "lombar", "lumbar", "thoracic", "torácica", "disc", "disco", "hernia", "hérnia"],
-  NECK_CERVICAL: ["neck", "pescoço", "cervical", "cervicalgia", "trap", "trapézio", "trapezio"],
+  SPINE_LUMBAR: ["lombar", "lumbar", "low back", "dor lombar", "lower back", "hérnia lombar", "l1", "l2", "l3", "l4", "l5", "sacral", "sacro", "sij", "ciática", "sciatica"],
+  SPINE_THORACIC: ["thoracic", "torácica", "toracica", "dorsal", "mid back", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "cifose", "kyphosis"],
+  SPINE_BACK: ["spine", "coluna", "back", "costas", "disc", "disco", "hernia", "hérnia"],
+  NECK_CERVICAL: ["neck", "pescoço", "cervical", "cervicalgia", "trap", "trapézio", "trapezio", "c1", "c2", "c3", "c4", "c5", "c6", "c7"],
   CORE_ABDOMEN: ["core", "abdomen", "abdominal", "abs", "plank", "prancha", "oblique", "oblíquo"],
   STRETCHING: ["stretch", "alongamento", "flexibility", "flexibilidade", "mobilidade", "mobility"],
   MUSCLE_INJURY: ["injury", "lesão", "lesao", "strain", "distensão", "rupture", "ruptura", "recovery", "recuperação"],
   FULL_BODY: ["full body", "corpo inteiro", "total body", "funcional", "functional", "circuit", "circuito"],
 };
 
-function detectBodyRegion(caption: string): string {
+function detectBodyRegionByKeywords(caption: string): string {
   if (!caption) return "OTHER";
   const lower = caption.toLowerCase();
   let bestRegion = "OTHER";
@@ -41,6 +55,38 @@ function detectBodyRegion(caption: string): string {
     }
   }
   return bestRegion;
+}
+
+async function detectBodyRegion(caption: string): Promise<string> {
+  if (!caption || caption.length < 5) return "OTHER";
+
+  const keywordResult = detectBodyRegionByKeywords(caption);
+  if (keywordResult !== "OTHER") return keywordResult;
+
+  try {
+    const prompt = `You are a physiotherapy assistant. Analyze this social media post caption and classify the primary body region/joint it refers to.
+
+Caption: "${caption.substring(0, 600)}"
+
+Reply with ONLY one of these exact values (nothing else):
+${VALID_REGIONS.join(", ")}
+
+Guidelines:
+- Lower back / lombar / L1-L5 / sciatica → SPINE_LUMBAR
+- Mid back / thoracic / T1-T12 / kyphosis → SPINE_THORACIC  
+- Neck / cervical / C1-C7 → NECK_CERVICAL
+- Generic back/spine → SPINE_BACK
+- Plank / core / abs → CORE_ABDOMEN
+- If uncertain → OTHER`;
+
+    const result = await callAI(prompt, "");
+    const cleaned = result.trim().toUpperCase().replace(/[^A-Z_]/g, "");
+    if ((VALID_REGIONS as readonly string[]).includes(cleaned)) return cleaned;
+  } catch (e) {
+    console.error("AI region detection failed:", e);
+  }
+
+  return "OTHER";
 }
 
 // ─── POST handler ────────────────────────────────────────────────
@@ -115,30 +161,42 @@ export async function POST(req: NextRequest) {
 
     for (const postUrl of expandedUrls) {
       try {
-        const videoData = await extractInstagramVideo(postUrl);
+        let videoBuffer: ArrayBuffer | null = null;
+        let videoCaption: string | undefined;
 
-        if (!videoData) {
-          // Not a video post — skip silently (photos are common)
-          continue;
+        // ── Primary: yt-dlp (handles Instagram natively) ──────────
+        const ytResult = await ytDlpDownload(postUrl);
+        if (ytResult) {
+          videoBuffer = ytResult.buffer.buffer;
+          videoCaption = ytResult.caption;
         }
 
-        // Download the video
-        const videoRes = await fetch(videoData.videoUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Referer": "https://www.instagram.com/",
-          },
-        });
+        // ── Fallback: URL extraction + fetch ──────────────────────
+        if (!videoBuffer) {
+          const videoData = await extractInstagramVideo(postUrl);
+          if (!videoData) {
+            results.push({ url: postUrl, success: false, error: "Could not extract video URL — Instagram may be blocking server-side access to this IP." });
+            continue;
+          }
+          videoCaption = videoData.caption;
 
-        if (!videoRes.ok) {
-          results.push({ url: postUrl, success: false, error: "Failed to download video" });
-          continue;
+          const isCobalt = videoData.videoUrl.includes("cobalt.tools");
+          const videoRes = await fetch(videoData.videoUrl, {
+            headers: isCobalt ? {} : {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Referer": "https://www.instagram.com/",
+            },
+          });
+
+          if (!videoRes.ok) {
+            results.push({ url: postUrl, success: false, error: `Download failed (HTTP ${videoRes.status})` });
+            continue;
+          }
+          videoBuffer = await videoRes.arrayBuffer();
         }
 
-        const videoBuffer = await videoRes.arrayBuffer();
-        // Skip very small files (likely errors)
-        if (videoBuffer.byteLength < 10000) {
-          results.push({ url: postUrl, success: false, error: "Downloaded file too small — likely not a video" });
+        if (!videoBuffer || videoBuffer.byteLength < 10000) {
+          results.push({ url: postUrl, success: false, error: "Downloaded file too small — likely not a valid video" });
           continue;
         }
 
@@ -149,26 +207,10 @@ export async function POST(req: NextRequest) {
         const videoUrl = `/uploads/exercises/${filename}`;
         const fileSize = videoBuffer.byteLength;
 
-        // Download thumbnail
-        let thumbnailUrl: string | null = null;
-        if (videoData.thumbnailUrl) {
-          try {
-            const thumbRes = await fetch(videoData.thumbnailUrl, {
-              headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://www.instagram.com/" },
-            });
-            if (thumbRes.ok) {
-              const thumbBuffer = await thumbRes.arrayBuffer();
-              const thumbFilename = `ig-thumb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`;
-              const thumbPath = path.join(exercisesDir, thumbFilename);
-              await writeFile(thumbPath, new Uint8Array(thumbBuffer));
-              thumbnailUrl = `/uploads/exercises/${thumbFilename}`;
-            }
-          } catch {}
-        }
-
-        // Auto-detect body region from caption
-        const bodyRegion = detectBodyRegion(videoData.caption || "");
-        const regionLabel = BODY_REGION_KEYWORDS[bodyRegion] ? bodyRegion : "OTHER";
+        // Auto-detect body region from caption (AI-powered)
+        const bodyRegion = await detectBodyRegion(videoCaption || "");
+        const regionLabel = (VALID_REGIONS as readonly string[]).includes(bodyRegion) ? bodyRegion : "OTHER";
+        const thumbnailUrl: string | null = null;
 
         // Create exercise — no text from Instagram, only body region
         const exercise = await prisma.exercise.create({
@@ -338,11 +380,66 @@ async function scrapeProfilePostUrls(username: string): Promise<string[]> {
   return postUrls;
 }
 
+// ─── yt-dlp direct download (most reliable) ────────────────────
+
+async function ytDlpDownload(url: string): Promise<{ buffer: Buffer; caption?: string } | null> {
+  const tempPath = path.join(tmpdir(), `ig-${Date.now()}-${Math.random().toString(36).slice(2,6)}.mp4`);
+  try {
+    await execFileAsync("yt-dlp", [
+      "--no-playlist",
+      "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+      "--merge-output-format", "mp4",
+      "-o", tempPath,
+      "--quiet",
+      "--no-warnings",
+      "--no-check-certificates",
+      url,
+    ], { timeout: 90000 });
+    const buffer = await readFile(tempPath);
+    await unlink(tempPath).catch(() => {});
+    if (buffer.byteLength < 10000) return null;
+    console.log("[yt-dlp] Success — %d bytes for %s", buffer.byteLength, url);
+    return { buffer };
+  } catch (e: any) {
+    console.error("[yt-dlp] Failed:", e?.message?.split("\n")[0]);
+    await unlink(tempPath).catch(() => {});
+    return null;
+  }
+}
+
 // ─── Video extraction (individual post) ──────────────────────────
 
 async function extractInstagramVideo(
   url: string
 ): Promise<{ videoUrl: string; thumbnailUrl?: string; caption?: string } | null> {
+  // Method 0: Cobalt API — reliable from cloud environments
+  try {
+    const cobaltRes = await fetch("https://api.cobalt.tools/", {
+      method: "POST",
+      headers: { "Accept": "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ url, videoQuality: "max", downloadMode: "auto" }),
+    });
+    if (cobaltRes.ok) {
+      const cobaltData = await cobaltRes.json();
+      // Handle tunnel or redirect
+      if ((cobaltData.status === "tunnel" || cobaltData.status === "redirect") && cobaltData.url) {
+        console.log("[Instagram] Cobalt success for", url);
+        return { videoUrl: cobaltData.url, caption: undefined };
+      }
+      // Handle picker (multiple quality options — take first video)
+      if (cobaltData.status === "picker" && cobaltData.picker?.length > 0) {
+        const videoItem = cobaltData.picker.find((p: any) => p.type === "video") || cobaltData.picker[0];
+        if (videoItem?.url) {
+          console.log("[Instagram] Cobalt picker success");
+          return { videoUrl: videoItem.url, thumbnailUrl: videoItem.thumb, caption: undefined };
+        }
+      }
+      console.log("[Instagram] Cobalt response:", cobaltData.status, cobaltData.error?.code);
+    }
+  } catch (e) {
+    console.error("[Instagram] Cobalt failed:", e);
+  }
+
   // Method 1: Page scraping with mobile UA
   try {
     const pageRes = await fetch(url, {
@@ -441,9 +538,7 @@ async function extractInstagramVideo(
     if (shortcode) {
       const ddUrl = `https://ddinstagram.com/p/${shortcode}`;
       const ddRes = await fetch(ddUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-        },
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" },
         redirect: "follow",
       });
       if (ddRes.ok) {
@@ -453,7 +548,6 @@ async function extractInstagramVideo(
         const ogVideo = $('meta[property="og:video"]').attr("content");
         const ogDesc = $('meta[property="og:description"]').attr("content") || "";
         const poster = $("video").attr("poster") || $('meta[property="og:image"]').attr("content");
-
         const finalVideo = videoSrc || ogVideo;
         if (finalVideo) {
           return {
@@ -465,9 +559,37 @@ async function extractInstagramVideo(
       }
     }
   } catch (e) {
-    console.error("Method 3 failed:", e);
+    console.error("[Instagram] Method 3 (ddinstagram) failed:", e);
   }
 
+  // Method 4: Instagram embed page (often bypasses login wall)
+  try {
+    const shortcode = extractShortcode(url);
+    if (shortcode) {
+      const embedRes = await fetch(`https://www.instagram.com/p/${shortcode}/embed/captioned/`, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "text/html",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        redirect: "follow",
+      });
+      if (embedRes.ok) {
+        const html = await embedRes.text();
+        const videoMatch = html.match(/"video_url"\s*:\s*"([^"]+)"/)
+          || html.match(/src\s*=\s*"(https:\/\/[^"]+\.mp4[^"]*)"/i);
+        const captionMatch = html.match(/"text"\s*:\s*"([^"]{10,400})"/);
+        if (videoMatch) {
+          const videoUrl = videoMatch[1].replace(/\\u0026/g, "&").replace(/\\\//g, "/");
+          return { videoUrl, caption: captionMatch?.[1] };
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[Instagram] Method 4 (embed) failed:", e);
+  }
+
+  console.log("[Instagram] All methods failed for", url);
   return null;
 }
 

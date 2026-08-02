@@ -311,7 +311,7 @@ export async function PUT(
             patientId: full.patientId,
             emailTemplateSlug: 'BODY_ASSESSMENT_SUBMITTED',
             emailVars: {
-              portalUrl: `${process.env.NEXTAUTH_URL || ''}/dashboard/body-assessments`,
+              portalUrl: `${process.env.NEXTAUTH_URL || ''}/dashboard`,
             },
             plainMessage: 'Your body assessment photos have been submitted and are being analysed. You will be notified when results are ready.',
             plainMessagePt: 'Suas fotos de avaliação corporal foram enviadas e estão sendo analisadas. Você será notificado quando os resultados estiverem prontos.',

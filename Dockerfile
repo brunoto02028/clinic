@@ -27,7 +27,8 @@ RUN --mount=type=cache,target=/app/.next/cache \
     npm run build
 
 FROM base AS runner
-RUN apk add --no-cache openssl su-exec
+RUN apk add --no-cache openssl su-exec python3 py3-pip ffmpeg && \
+    pip3 install --break-system-packages --no-cache-dir yt-dlp
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -46,6 +47,15 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 COPY --from=builder /app/node_modules/@img ./node_modules/@img
+# jsPDF + its runtime deps — needed by scripts/seed-lead-magnet-guides.js,
+# which runs as a plain `node` script (outside the Next.js/webpack bundle),
+# so it can't rely on Next's standalone output tracing to have included them.
+COPY --from=builder /app/node_modules/jspdf ./node_modules/jspdf
+COPY --from=builder /app/node_modules/fflate ./node_modules/fflate
+COPY --from=builder /app/node_modules/fast-png ./node_modules/fast-png
+COPY --from=builder /app/node_modules/@babel/runtime ./node_modules/@babel/runtime
+COPY --from=builder /app/scripts/seed-lead-magnet-guides.js ./scripts/seed-lead-magnet-guides.js
+COPY --from=builder /app/scripts/fix-shockwave-service-pages.js ./scripts/fix-shockwave-service-pages.js
 
 COPY start.sh /start.sh
 RUN chmod +x /start.sh

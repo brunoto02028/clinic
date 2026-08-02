@@ -26,19 +26,19 @@ export async function GET() {
   // Check profile completeness (has phone OR address)
   const profileComplete = !!(user?.phone || user?.address);
 
-  // Check screening
+  // Check screening — only counts when actually submitted (autosave drafts don't count)
   const screening = await prisma.medicalScreening.findUnique({
     where: { userId },
-    select: { id: true },
+    select: { id: true, isSubmitted: true },
   });
-  const screeningComplete = !!screening;
+  const screeningComplete = !!screening?.isSubmitted;
 
   // Check consent
   const consentAccepted = !!user?.consentAcceptedAt;
 
-  // Check if has any appointment
+  // Check if has an active appointment (cancelled/no-show don't count)
   const appointment = await prisma.appointment.findFirst({
-    where: { patientId: userId },
+    where: { patientId: userId, status: { notIn: ["CANCELLED", "NO_SHOW"] } },
     select: { id: true },
   });
   const hasAppointment = !!appointment;

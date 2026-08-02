@@ -106,7 +106,7 @@ export default function ClinicalNotesList() {
   });
 
   const userRole = (session?.user as any)?.role;
-  const isStaff = userRole === "ADMIN" || userRole === "THERAPIST";
+  const isStaff = userRole === "SUPERADMIN" || userRole === "ADMIN" || userRole === "THERAPIST";
 
   useEffect(() => {
     setMounted(true);
@@ -314,7 +314,7 @@ export default function ClinicalNotesList() {
       ) : (
         <div className="space-y-4">
           {filteredNotes.map((note, index) => (
-            <div>
+            <div key={note.id || index}>
               <Card className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
@@ -322,7 +322,7 @@ export default function ClinicalNotesList() {
                       <div className="flex items-center gap-2 flex-wrap mb-2">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-slate-500" />
-                          <Link href={`/dashboard/patients/${note.patient.id ?? ""}`} className="font-semibold text-slate-800 hover:text-primary transition-colors">
+                          <Link href={`/admin/patients/${note.patient?.id ?? ""}`} className="font-semibold text-slate-800 hover:text-primary transition-colors">
                             {note?.patient?.firstName ?? ""} {note?.patient?.lastName ?? ""}
                           </Link>
                         </div>

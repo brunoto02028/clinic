@@ -15,7 +15,7 @@ export default function CookiePolicyPage() {
   const lastUpdated = "26 February 2026";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="public-site min-h-screen bg-background flex flex-col">
       <SiteHeader currentPage="other" />
       <main className="flex-1 py-12 sm:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -27,7 +27,7 @@ export default function CookiePolicyPage() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Cookie className="h-7 w-7 text-primary" />
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+              <h1 className="font-sora text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
                 {isPt ? "Política de Cookies" : "Cookie Policy"}
               </h1>
             </div>
@@ -255,9 +255,10 @@ export default function CookiePolicyPage() {
             </div>
           </div>
 
-          <div className="flex gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <Link href="/privacy" className="text-primary hover:underline">{isPt ? "Política de Privacidade" : "Privacy Policy"}</Link>
             <Link href="/terms" className="text-primary hover:underline">{isPt ? "Termos de Uso" : "Terms of Use"}</Link>
+            <Link href="/complaints-policy" className="text-primary hover:underline">{isPt ? "Política de Reclamações" : "Complaints Policy"}</Link>
           </div>
         </div>
       </main>

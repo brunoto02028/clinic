@@ -53,9 +53,9 @@ export default function Consent() {
         {/* Accepted badge */}
         <Card variant="highlight">
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <Ionicons name="checkmark-circle" size={22} color="#34d399" />
+            <Ionicons name="checkmark-circle" size={22} color={t.colors.ok} />
             <View>
-              <Text variant="label" color="#34d399" style={{ fontWeight: "600" }}>Termos aceitos</Text>
+              <Text variant="label" color={t.colors.ok} style={{ fontWeight: "600" }}>Termos aceitos</Text>
               <Text variant="caption" color={t.colors.textSecondary}>
                 Você pode atualizar abaixo se algo mudou.
               </Text>

@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth-options";
 import { getRequestSession } from "@/lib/dual-auth";
 import { prisma } from "@/lib/db";
 import { analyzeMedicalScreening } from "@/lib/clinical-analysis";
-import { sendEmail, emailTemplates } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 import { getEffectiveUser } from "@/lib/get-effective-user";

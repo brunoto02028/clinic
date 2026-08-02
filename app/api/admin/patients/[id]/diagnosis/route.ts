@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { callAIClinical } from "@/lib/ai-provider";
 import { notifyPatient } from "@/lib/notify-patient";
+import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export async function POST(
     const [patient, screening, footScans, bodyAssessments, soapNotes, patientDocs, treatmentTypes, exercises] = await Promise.all([
       prisma.user.findUnique({
         where: { id: patientId },
-        select: { id: true, firstName: true, lastName: true, email: true, phone: true, createdAt: true },
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true, dateOfBirth: true, createdAt: true, clinicId: true },
       }),
       prisma.medicalScreening.findUnique({ where: { userId: patientId } }),
       prisma.footScan.findMany({
@@ -165,8 +166,10 @@ export async function POST(
     const latestFootScan = footScans[0] || null;
     const latestBodyAssessment = bodyAssessments[0] || null;
 
-    // ─── Build prompt context ───
-    let patientContext = `Patient: ${patient.firstName} ${patient.lastName}\n`;
+    // ─── Build prompt context (pseudonymized) ───
+    const pseudonym = patientPseudonym(patientId);
+    const band = ageBand((patient as any).dateOfBirth || null);
+    let patientContext = `Patient: ${pseudonym}${band ? ` (age band: ${band})` : ""}\n`;
 
     // Medical Screening
     if (screening) {
@@ -263,7 +266,9 @@ export async function POST(
     });
 
     // ─── Call Gemini ───
-    const prompt = `You are a senior physiotherapy clinical AI assistant. Based on the following patient data, generate a comprehensive clinical diagnosis.
+    const prompt = `You are a senior physical rehabilitation clinical AI assistant. Based on the following patient data, generate a comprehensive clinical diagnosis.
+
+TERMINOLOGY RULE: NEVER use the words "physiotherapy", "physiotherapist" or "fisioterapia" in any generated text. Always use "physical rehabilitation" / "reabilitação física" and "physical rehabilitation specialist" instead.
 
 ${patientContext}
 
@@ -350,9 +355,12 @@ Respond in this exact JSON format (no markdown, no code blocks):
     }
 
     // ─── Save to DB ───
+    // Use patient's clinicId as primary source; fall back to session user's clinicId
+    const effectiveClinicId = (patient as any).clinicId || clinicId || null;
+    if (!effectiveClinicId) throw new Error("Clinic ID not found — cannot save diagnosis");
     const diagnosis = await (prisma as any).aIDiagnosis.create({
       data: {
-        clinicId: clinicId || "",
+        clinicId: effectiveClinicId,
         patientId,
         therapistId,
         hasScreening: !!screening,
@@ -377,21 +385,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
       },
     });
 
-    // Notify patient: assessment completed
-    try {
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
-      notifyPatient({
-        patientId: params.id,
-        emailTemplateSlug: 'ASSESSMENT_COMPLETED',
-        emailVars: {
-          assessmentType: 'AI Clinical',
-          portalUrl: `${BASE}/dashboard/treatment`,
-        },
-        plainMessage: 'Your clinical assessment has been completed. Your therapist will review it and prepare your treatment plan.',
-        plainMessagePt: 'Sua avaliação clínica foi concluída. Seu terapeuta irá revisá-la e preparar seu plano de tratamento.',
-      }).catch(err => console.error('[diagnosis] notify error:', err));
-    } catch {}
-
+    // NOTE: No patient notification here — assessment is DRAFT until therapist reviews and sends.
     return NextResponse.json({ success: true, diagnosis }, { status: 201 });
   } catch (err: any) {
     console.error("[diagnosis] POST error:", err);
@@ -434,6 +428,24 @@ export async function PATCH(
         _count: { select: { protocols: true } },
       },
     });
+
+    // Only notify patient when therapist explicitly sends the assessment
+    if (status === "SENT_TO_PATIENT") {
+      try {
+        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+        notifyPatient({
+          patientId: params.id,
+          emailTemplateSlug: 'ASSESSMENT_COMPLETED',
+          emailVars: {
+            assessmentType: 'AI Clinical',
+            completedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
+            portalUrl: `${BASE}/dashboard/treatment`,
+          },
+          plainMessage: 'Your clinical assessment results are now available. Your therapist has reviewed them and they are ready for you to see.',
+          plainMessagePt: 'Os resultados da sua avaliação clínica estão disponíveis. O seu terapeuta já os reviu e estão prontos para ver.',
+        }).catch(err => console.error('[diagnosis] notify error:', err));
+      } catch {}
+    }
 
     return NextResponse.json({ success: true, diagnosis: updated });
   } catch (err: any) {

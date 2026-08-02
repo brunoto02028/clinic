@@ -7,9 +7,9 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { isDbUnreachableError, MOCK_SETTINGS, devFallbackResponse } from "@/lib/dev-fallback";
 
-const DEFAULT_ABOUT_TEXT = `My name is Bruno, and I'm a therapist based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.
+const DEFAULT_ABOUT_TEXT = `My name is Bruno, and I'm based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.
 
-Before becoming a therapist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.
+Before becoming a physical rehabilitation specialist, I lived the journey many of my clients now face. I was a professional footballer for over a decade, playing in Brazil, Germany, and Sweden. After undergoing three major knee surgeries, I understand firsthand the physical and emotional challenges of rehabilitation.
 
 This personal experience drives my passion for helping others recover, rebuild, and return to their best selves.`;
 
@@ -62,7 +62,7 @@ export async function GET() {
           
           // Articles Placeholder
           articlesPlaceholderTitle: "Articles Coming Soon",
-          articlesPlaceholderText: "We're working on bringing you valuable content about physiotherapy, rehabilitation techniques, and wellness tips. Stay tuned!",
+          articlesPlaceholderText: "We're working on bringing you valuable content about physical rehabilitation techniques, and wellness tips. Stay tuned!",
           
           // Contact Section
           contactTitle: "Get in Touch",
@@ -78,9 +78,9 @@ export async function GET() {
           socialLinksJson: JSON.stringify([]),
           
           // SEO
-          metaTitle: "Bruno Physical Rehabilitation - Professional Physiotherapy in Richmond",
-          metaDescription: "Professional physiotherapy and sports rehabilitation services in Richmond, London. Expert treatment for injuries, chronic pain, and optimal physical performance.",
-          metaKeywords: "physiotherapy, sports rehabilitation, Richmond, London, physical therapy, injury treatment, pain management",
+          metaTitle: "Bruno Physical Rehabilitation - Physical Rehabilitation in Ipswich",
+          metaDescription: "Professional physical rehabilitation and sports therapy services in Richmond, London. Expert treatment for injuries, chronic pain, and optimal physical performance.",
+          metaKeywords: "physical rehabilitation, sports therapy, Richmond, London, physical therapy, injury treatment, pain management",
         },
       });
     }

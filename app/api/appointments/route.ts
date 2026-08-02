@@ -11,6 +11,7 @@ import { notifyPatient } from "@/lib/notify-patient";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
 import { getRequestSession } from "@/lib/dual-auth";
+import { logBookedEventForEmail } from "@/lib/lead-magnet";
 
 export async function GET(request: NextRequest) {
   try {
@@ -186,6 +187,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Lead-magnet attribution (P3): log a "booked" event if this patient's
+    // email was previously captured via an article lead-magnet.
+    logBookedEventForEmail(appointment.patient.email).catch(() => {});
+
     // Send confirmation to patient via their preferred channel
     try {
       const appUrl = process.env.NEXTAUTH_URL || '';
@@ -200,12 +205,12 @@ export async function POST(request: NextRequest) {
           appointmentDate: dateStr,
           appointmentTime: timeStr,
           therapistName: `${appointment.therapist.firstName} ${appointment.therapist.lastName}`,
-          treatmentType: treatmentType || '',
+          treatmentType: treatmentType || 'Consultation',
           duration: String(duration || 60),
-          portalUrl: `${appUrl}/dashboard/appointments`,
+          portalUrl: `${appUrl}/dashboard/appointments/${appointment.id}`,
         },
-        plainMessage: `Your appointment is confirmed: ${treatmentType} on ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Duration: ${duration || 60} min.`,
-        plainMessagePt: `Sua consulta está confirmada: ${treatmentType} em ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Duração: ${duration || 60} min.`,
+        plainMessage: `Your appointment request has been received: ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. View details and pay at: ${appUrl}/dashboard/appointments/${appointment.id}`,
+        plainMessagePt: `O seu pedido de consulta foi recebido: ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Veja os detalhes em: ${appUrl}/dashboard/appointments/${appointment.id}`,
       });
     } catch (emailError) {
       console.error('Failed to send patient notification:', emailError);

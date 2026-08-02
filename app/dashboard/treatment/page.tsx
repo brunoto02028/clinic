@@ -28,6 +28,8 @@ import {
   CreditCard,
   Loader2,
   PoundSterling,
+  Calendar,
+  CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,6 +72,13 @@ export default function PatientTreatmentPage() {
   const [videoModal, setVideoModal] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null); // packageId being paid
   const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
+  const [pendingAppointments, setPendingAppointments] = useState<any[]>([]);
+  const [confirmingSchedule, setConfirmingSchedule] = useState(false);
+  const [scheduleConfirmed, setScheduleConfirmed] = useState(false);
+  const [showChangeRequest, setShowChangeRequest] = useState(false);
+  const [changeRequestText, setChangeRequestText] = useState("");
+  const [sendingChangeRequest, setSendingChangeRequest] = useState(false);
+  const [changeRequestSent, setChangeRequestSent] = useState(false);
   const searchParams = useSearchParams();
 
   // Handle Stripe redirect query params
@@ -102,7 +111,59 @@ export default function PatientTreatmentPage() {
     }
   }, []);
 
-  useEffect(() => { fetchProtocols(); }, [fetchProtocols]);
+  const fetchPendingAppointments = useCallback(async () => {
+    try {
+      const res = await fetch("/api/patient/appointments?status=PENDING_PATIENT");
+      if (res.ok) {
+        const data = await res.json();
+        setPendingAppointments(data.appointments || []);
+      }
+    } catch {}
+  }, []);
+
+  const confirmSchedule = async () => {
+    setConfirmingSchedule(true);
+    try {
+      const protocolId = pendingAppointments.find((a: any) => a.protocolId)?.protocolId || null;
+      const res = await fetch("/api/patient/appointments/confirm-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ protocolId }),
+      });
+      if (!res.ok) throw new Error("Failed to confirm");
+      setScheduleConfirmed(true);
+      setPendingAppointments([]);
+      fetchProtocols();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setConfirmingSchedule(false);
+    }
+  };
+
+  const sendChangeRequest = async () => {
+    if (!changeRequestText.trim()) return;
+    setSendingChangeRequest(true);
+    try {
+      const res = await fetch("/api/patient/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: `\ud83d\uddd3\ufe0f ${isPt ? "Pedido de altera\u00e7\u00e3o de hor\u00e1rios do tratamento" : "Treatment schedule change request"}: ${changeRequestText.trim()}`,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to send");
+      setChangeRequestSent(true);
+      setShowChangeRequest(false);
+      setChangeRequestText("");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSendingChangeRequest(false);
+    }
+  };
+
+  useEffect(() => { fetchProtocols(); fetchPendingAppointments(); }, [fetchProtocols, fetchPendingAppointments]);
 
   const handleToggleItem = async (itemId: string, completed: boolean) => {
     try {
@@ -189,6 +250,73 @@ export default function PatientTreatmentPage() {
         </div>
       )}
 
+      {/* ── Proposed Schedule (PENDING_PATIENT) ── */}
+      {pendingAppointments.length > 0 && !scheduleConfirmed && (
+        <div className="border-2 border-orange-500/30 bg-orange-500/5 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-orange-400" />
+            <h3 className="font-semibold text-orange-300">{isPt ? "Agenda Proposta — Aguarda a sua confirmação" : "Proposed Schedule — Awaiting your confirmation"}</h3>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {isPt ? "O seu terapeuta sugeriu os seguintes dias e horários para o seu tratamento. Confirme para bloquear a sua agenda." : "Your therapist has suggested the following days and times for your treatment. Confirm to lock in your schedule."}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
+            {pendingAppointments.slice(0, 20).map((a: any, i: number) => (
+              <div key={a.id} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 text-xs">
+                <span className="text-orange-400 font-bold w-5 text-right shrink-0">{i + 1}</span>
+                <div>
+                  <p className="font-medium">{new Date(a.dateTime).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</p>
+                  <p className="text-muted-foreground">{new Date(a.dateTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · {a.duration}min</p>
+                </div>
+              </div>
+            ))}
+            {pendingAppointments.length > 20 && (
+              <p className="text-xs text-muted-foreground col-span-2 text-center">+{pendingAppointments.length - 20} more sessions</p>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button className="flex-1 bg-orange-600 hover:bg-orange-700 gap-2" onClick={confirmSchedule} disabled={confirmingSchedule}>
+              {confirmingSchedule
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {isPt ? "A confirmar..." : "Confirming..."}</>
+                : <><CalendarCheck className="h-4 w-4" /> {isPt ? "Confirmar Agenda de Tratamento" : "Confirm Treatment Schedule"}</>}
+            </Button>
+            <Button variant="outline" className="gap-2 border-orange-500/40 text-orange-300 hover:bg-orange-500/10" onClick={() => setShowChangeRequest(v => !v)} disabled={confirmingSchedule}>
+              <Clock className="h-4 w-4" /> {isPt ? "Pedir altera\u00e7\u00e3o de hor\u00e1rios" : "Request schedule change"}
+            </Button>
+          </div>
+          {showChangeRequest && (
+            <div className="space-y-2 border-t border-orange-500/20 pt-3">
+              <Textarea
+                value={changeRequestText}
+                onChange={(e) => setChangeRequestText(e.target.value)}
+                rows={3}
+                placeholder={isPt ? "Descreva os dias/hor\u00e1rios que prefere (ex: prefiro ter\u00e7as e quintas \u00e0s 18h)..." : "Describe your preferred days/times (e.g. I prefer Tuesdays and Thursdays at 6pm)..."}
+                className="text-sm"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" className="gap-1.5" onClick={sendChangeRequest} disabled={sendingChangeRequest || !changeRequestText.trim()}>
+                  {sendingChangeRequest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarCheck className="h-3.5 w-3.5" />}
+                  {isPt ? "Enviar pedido \u00e0 cl\u00ednica" : "Send request to clinic"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowChangeRequest(false)}>{isPt ? "Cancelar" : "Cancel"}</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {changeRequestSent && (
+        <div className="bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm p-4 rounded-lg flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+          <p>{isPt ? "Pedido enviado \u00e0 cl\u00ednica! Entraremos em contacto para ajustar os hor\u00e1rios." : "Request sent to the clinic! We will contact you to adjust the schedule."}</p>
+        </div>
+      )}
+      {scheduleConfirmed && (
+        <div className="bg-green-500/10 border border-green-500/20 text-green-300 text-sm p-4 rounded-lg flex items-center gap-3">
+          <CalendarCheck className="h-5 w-5 shrink-0" />
+          <p>{isPt ? "Agenda confirmada! As suas sessões foram marcadas." : "Schedule confirmed! Your sessions have been booked."}</p>
+        </div>
+      )}
+
       {protocols.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -241,6 +369,16 @@ export default function PatientTreatmentPage() {
             <CardContent className="space-y-4 pt-0">
               {/* Summary */}
               <p className="text-sm bg-muted/30 rounded-lg p-3">{proto.summary}</p>
+
+              {/* Progressive release notice */}
+              {proto.hasMoreComing && (
+                <div className="bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs p-3 rounded-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <p>{isPt
+                    ? "O seu especialista liberta o plano progressivamente conforme a sua evolução. Novos exercícios e atividades aparecerão aqui."
+                    : "Your specialist releases the plan progressively as you improve. New exercises and activities will appear here."}</p>
+                </div>
+              )}
 
               {/* ─── Payment Gate ─── */}
               {proto.paymentRequired && proto.activePackage && (

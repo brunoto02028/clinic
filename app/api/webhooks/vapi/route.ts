@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { getVapiWebhookSecret } from "@/lib/vapi";
 import { sendEmail } from "@/lib/email";
 import { getAppName } from "@/lib/utils";
+import { logBookedEventForEmail } from "@/lib/lead-magnet";
 
 export const dynamic = "force-dynamic";
 
@@ -185,6 +186,10 @@ async function handleBookAppointment(
       },
     });
 
+    // Lead-magnet attribution (P3): log a "booked" event if this patient's
+    // email was previously captured via an article lead-magnet.
+    logBookedEventForEmail(appointment.patient.email).catch(() => {});
+
     // Update VapiCall record with appointment ID
     if (vapiCallId) {
       await (prisma as any).vapiCall.updateMany({
@@ -275,14 +280,16 @@ export async function POST(req: NextRequest) {
     const message = body?.message ?? body;
     const msgType: string = message?.type ?? "";
 
-    // Optional webhook secret validation
+    // Webhook secret validation (required)
     const secret = getVapiWebhookSecret();
-    if (secret) {
-      const authHeader = req.headers.get("x-vapi-secret");
-      if (authHeader !== secret) {
-        console.warn("[vapi-webhook] Invalid webhook secret");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (!secret) {
+      console.error("[vapi-webhook] VAPI_WEBHOOK_SECRET not configured — rejecting webhook");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+    }
+    const authHeader = req.headers.get("x-vapi-secret");
+    if (authHeader !== secret) {
+      console.warn("[vapi-webhook] Invalid webhook secret");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // ── Tool calls ────────────────────────────────────────────────────────────

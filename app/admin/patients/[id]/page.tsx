@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, User, FileText, Footprints, Activity, Stethoscope, Brain, Heart, FileUp,
   RefreshCw, AlertCircle, CheckCircle2, X, Loader2, Mic, MicOff, Languages, Plus, Save,
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
-  Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame,
+  Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
+  BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
 } from "lucide-react";
+import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MarkdownMessage } from "@/components/ui/markdown-message";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -141,8 +144,11 @@ export default function PatientProfilePage() {
   const [screeningForm, setScreeningForm] = useState<any>({});
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteForm, setNoteForm] = useState<any>({});
+  const [activeTab, setActiveTab] = useState("resumo");
   const [showNewNote, setShowNewNote] = useState(false);
   const [newNote, setNewNote] = useState({ subjective: "", objective: "", assessment: "", plan: "" });
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [autoSavedNoteId, setAutoSavedNoteId] = useState<string | null>(null);
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
   const [scanForm, setScanForm] = useState<any>({});
   const [editingBAId, setEditingBAId] = useState<string | null>(null);
@@ -153,6 +159,23 @@ export default function PatientProfilePage() {
   const [diagForm, setDiagForm] = useState<any>({});
   const [editingProtoId, setEditingProtoId] = useState<string | null>(null);
   const [protoForm, setProtoForm] = useState<any>({});
+  // Protocol tab full editor
+  const [protoFullEditing, setProtoFullEditing] = useState<string | null>(null);
+  const [protoFullForm, setProtoFullForm] = useState<any>({});
+  const [protoFullSaving, setProtoFullSaving] = useState(false);
+  const [sendingProto, setSendingProto] = useState(false);
+  // Protocol item editor
+  const [protoItemEditId, setProtoItemEditId] = useState<string | null>(null);
+  const [protoItemForm, setProtoItemForm] = useState<any>({});
+  const [protoItemBusy, setProtoItemBusy] = useState<string>("");
+  const [protoItemsExpanded, setProtoItemsExpanded] = useState<Record<string, boolean>>({});
+
+  // Atlas document generator
+  const [showAtlasDoc, setShowAtlasDoc] = useState(false);
+  const [atlasDocForm, setAtlasDocForm] = useState({ instructions: "", docKind: "Carta ao médico assistente", language: "pt" });
+  const [atlasDocBusy, setAtlasDocBusy] = useState(false);
+  const [atlasDocResult, setAtlasDocResult] = useState<{ title: string; content: string } | null>(null);
+  const [atlasDocSaving, setAtlasDocSaving] = useState(false);
 
   // New document/upload/history
   const [showManualDoc, setShowManualDoc] = useState(false);
@@ -166,6 +189,12 @@ export default function PatientProfilePage() {
   const [generating, setGenerating] = useState(false);
   const [genProtocol, setGenProtocol] = useState(false);
 
+  // Atlas SOAP pre-fill
+  const [atlasPrefilling, setAtlasPrefilling] = useState(false);
+  // Atlas treatment plan
+  const [atlasPlanLoading, setAtlasPlanLoading] = useState(false);
+  const [atlasPlan, setAtlasPlan] = useState<any>(null);
+
   // Invite link
   const [inviteUrl, setInviteUrl] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -178,6 +207,16 @@ export default function PatientProfilePage() {
   const [thermoUploading, setThermoUploading] = useState(false);
   const [editingThermoId, setEditingThermoId] = useState<string | null>(null);
   const [thermoEditNotes, setThermoEditNotes] = useState("");
+
+  // Sent questions/reports (shared between Screening tab and Rehab tab)
+  const [sentQuestions, setSentQuestions] = useState<any[]>([]);
+  const fetchSentQuestions = useCallback(() => {
+    fetch(`/api/admin/patients/${patientId}/questions`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: any[]) => setSentQuestions(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [patientId]);
+  useEffect(() => { fetchSentQuestions(); }, [fetchSentQuestions]);
 
   // AI Import
   const [showAIImport, setShowAIImport] = useState(false);
@@ -229,9 +268,55 @@ export default function PatientProfilePage() {
     if (r) { setEditingScreening(false); flash("Screening updated"); fetchData(); }
   };
 
+  // Auto-save SOAP note with 3s debounce
+  useEffect(() => {
+    if (!showNewNote) return;
+    const hasContent = Object.values(newNote).some(v => v.trim().length > 0);
+    if (!hasContent) return;
+    setAutoSaveStatus("idle");
+    const timer = setTimeout(async () => {
+      setAutoSaveStatus("saving");
+      try {
+        if (autoSavedNoteId) {
+          // Update existing auto-saved note
+          await fetch(`/api/admin/patients/${patientId}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "edit_soap_note", noteId: autoSavedNoteId, ...newNote }),
+          });
+        } else {
+          // Create new note and remember its id
+          const res = await fetch(`/api/admin/patients/${patientId}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "add_clinical_note", ...newNote }),
+          });
+          const d = await res.json();
+          if (d?.note?.id) setAutoSavedNoteId(d.note.id);
+        }
+        setAutoSaveStatus("saved");
+      } catch { setAutoSaveStatus("idle"); }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [newNote, showNewNote]);
+
   const saveNewNote = async () => {
-    const r = await apiPatch({ action: "add_clinical_note", ...newNote });
-    if (r) { setShowNewNote(false); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); flash("SOAP note added"); fetchData(); }
+    if (autoSavedNoteId) {
+      // Already auto-saved — just update and close
+      await apiPatch({ action: "edit_soap_note", noteId: autoSavedNoteId, ...newNote });
+    } else {
+      await apiPatch({ action: "add_clinical_note", ...newNote });
+    }
+    setShowNewNote(false);
+    setNewNote({ subjective: "", objective: "", assessment: "", plan: "" });
+    setAutoSavedNoteId(null);
+    setAutoSaveStatus("idle");
+    flash("SOAP note saved");
+    fetchData();
+  };
+
+  const deleteNote = async (noteId: string) => {
+    if (!confirm("Eliminar esta nota SOAP? Esta ação não pode ser desfeita.")) return;
+    await apiPatch({ action: "delete_soap_note", noteId });
+    flash("Nota eliminada"); fetchData();
   };
 
   const saveEditNote = async () => {
@@ -264,10 +349,144 @@ export default function PatientProfilePage() {
     if (r) { setEditingProtoId(null); flash("Protocol updated"); fetchData(); }
   };
 
+  const patchProtocol = async (protocolId: string, body: any) => {
+    const payload: any = { protocolId, ...body };
+    if (Array.isArray(payload.sessionDays)) payload.sessionDays = JSON.stringify(payload.sessionDays);
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/protocol`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      return d;
+    } catch (err: any) { setError(err.message); return null; }
+  };
+
+  const saveProtoFull = async () => {
+    if (!protoFullEditing) return;
+    setProtoFullSaving(true);
+    const r = await patchProtocol(protoFullEditing, protoFullForm);
+    if (r) { setProtoFullEditing(null); flash("Protocolo guardado!"); fetchData(); }
+    setProtoFullSaving(false);
+  };
+
+  const saveProtoItem = async () => {
+    if (!protoItemEditId) return;
+    setProtoItemBusy(protoItemEditId);
+    const upd: any = { ...protoItemForm };
+    // Only convert numeric fields that are present in the form; never inject nulls for absent fields
+    ["sets", "reps", "holdSeconds", "restSeconds", "endWeek"].forEach(k => {
+      if (!(k in upd)) return;
+      if (upd[k] === "" || upd[k] == null) upd[k] = null;
+      else upd[k] = parseInt(upd[k]) || null;
+    });
+    // startWeek is NOT nullable in the schema — only send it when it has a valid value
+    if ("startWeek" in upd) {
+      const sw = parseInt(upd.startWeek);
+      if (Number.isFinite(sw) && sw >= 1) upd.startWeek = sw; else delete upd.startWeek;
+    }
+    const r = await patchProtocol("", { itemId: protoItemEditId, itemUpdate: upd });
+    if (r) { setProtoItemEditId(null); flash("Item atualizado"); fetchData(); }
+    setProtoItemBusy("");
+  };
+
+  const toggleProtoItemHidden = async (item: any) => {
+    setProtoItemBusy(item.id);
+    const r = await patchProtocol("", { itemId: item.id, itemUpdate: { hiddenFromPatient: !item.hiddenFromPatient } });
+    if (r) { flash(item.hiddenFromPatient ? "Item visível ao paciente" : "Item oculto do paciente"); fetchData(); }
+    setProtoItemBusy("");
+  };
+
+  const duplicateProtoItem = async (pr: any, item: any) => {
+    setProtoItemBusy(item.id);
+    const { id, createdAt, updatedAt, protocolId: _p, ...rest } = item;
+    const r = await patchProtocol(pr.id, { newItem: { ...rest, title: `${item.title} (cópia)` } });
+    if (r) { flash("Item duplicado"); fetchData(); }
+    setProtoItemBusy("");
+  };
+
+  const deleteProtoItem = async (item: any) => {
+    if (!confirm(`Apagar "${item.title}"?`)) return;
+    setProtoItemBusy(item.id);
+    const r = await patchProtocol("", { deleteItemId: item.id });
+    if (r) { flash("Item apagado"); fetchData(); }
+    setProtoItemBusy("");
+  };
+
+  const addProtoItem = async (pr: any) => {
+    setProtoItemBusy("new-" + pr.id);
+    const r = await patchProtocol(pr.id, { newItem: { title: "Novo item", phase: "SHORT_TERM", itemType: "HOME_EXERCISE" } });
+    if (r) {
+      flash("Item adicionado");
+      setProtoItemsExpanded(x => ({ ...x, [pr.id]: true }));
+      fetchData();
+      if (r.item?.id) { setProtoItemEditId(r.item.id); setProtoItemForm({ title: r.item.title, phase: r.item.phase, itemType: r.item.itemType, sets: "", reps: "", frequency: "", description: "" }); }
+    }
+    setProtoItemBusy("");
+  };
+
+  const sendProtocol = async (pr: any) => {
+    let days: string[] = [];
+    try { days = JSON.parse(pr.sessionDays || "[]"); } catch {}
+    if (!pr.startDate || days.length === 0 || !pr.sessionTime) {
+      setError("Agendamento incompleto: clique em Editar e defina a data de início, os dias da semana e o horário antes de enviar ao paciente.");
+      return;
+    }
+    if (!confirm(`Enviar protocolo ao paciente?\n\nInício: ${new Date(pr.startDate).toLocaleDateString("pt-PT")}\nDias: ${days.join(", ")}\nHorário: ${pr.sessionTime}\n\nOs slots de calendário serão pré-bloqueados aguardando confirmação do paciente.`)) return;
+    setSendingProto(true);
+    const r = await patchProtocol(pr.id, { status: "SENT_TO_PATIENT" });
+    if (r) { flash("Protocolo enviado ao paciente! Calendário pré-bloqueado."); fetchData(); }
+    setSendingProto(false);
+  };
+
   const saveManualDoc = async () => {
     if (!manualForm.content.trim()) return;
     const r = await apiPatch({ action: "add_manual_document", title: manualForm.title || "Clinical History", content: manualForm.content, documentType: manualForm.documentType });
     if (r) { setShowManualDoc(false); setManualForm({ title: "", content: "", documentType: "OTHER" }); flash("History saved"); fetchData(); }
+  };
+
+  const generateAtlasDoc = async () => {
+    if (!atlasDocForm.instructions.trim()) return;
+    setAtlasDocBusy(true); setError("");
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/documents/generate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(atlasDocForm),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      setAtlasDocResult({ title: d.title, content: d.content });
+    } catch (err: any) { setError(err.message); }
+    finally { setAtlasDocBusy(false); }
+  };
+
+  const saveAtlasDoc = async () => {
+    if (!atlasDocResult) return;
+    setAtlasDocSaving(true);
+    const r = await apiPatch({ action: "add_manual_document", title: atlasDocResult.title, content: atlasDocResult.content, documentType: "MEDICAL_REFERRAL" });
+    if (r) { flash("Documento guardado nos ficheiros do paciente"); fetchData(); }
+    setAtlasDocSaving(false);
+  };
+
+  const printAtlasDoc = () => {
+    if (!atlasDocResult) return;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    w.document.write(`<!DOCTYPE html><html><head><title>${esc(atlasDocResult.title)}</title><style>
+      body { font-family: Georgia, 'Times New Roman', serif; max-width: 720px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.6; font-size: 14px; }
+      h1 { font-size: 18px; border-bottom: 2px solid #607d7d; padding-bottom: 8px; }
+      pre { white-space: pre-wrap; font-family: inherit; font-size: inherit; }
+      .no-print { text-align: right; margin-bottom: 16px; }
+      .no-print button { padding: 8px 16px; cursor: pointer; }
+      @media print { .no-print { display: none; } body { margin: 0; } }
+    </style></head><body>
+      <div class="no-print"><button onclick="window.print()">Print / Save as PDF</button></div>
+      <h1>${esc(atlasDocResult.title)}</h1>
+      <pre>${esc(atlasDocResult.content)}</pre>
+    </body></html>`);
+    w.document.close();
   };
 
   const handleUpload = async () => {
@@ -462,7 +681,9 @@ export default function PatientProfilePage() {
 
   if (!data?.patient) return (
     <div className="text-center py-20 text-muted-foreground">
-      <AlertCircle className="h-8 w-8 mx-auto mb-2" /><p>Patient not found.</p>
+      <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+      <p>Patient not found.</p>
+      {error && <p className="text-sm text-destructive mt-2 max-w-sm mx-auto">{error}</p>}
       <Button variant="outline" className="mt-4" onClick={() => router.push("/admin/patients")}>Back to Patients</Button>
     </div>
   );
@@ -474,7 +695,7 @@ export default function PatientProfilePage() {
     <div className="space-y-5 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-start gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/admin/patients")}><ArrowLeft className="h-4 w-4 mr-1" /> Patients</Button>
+        <Button variant="ghost" size="sm" onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push("/admin/patients"); }}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="h-6 w-6 text-primary" /></div>
@@ -490,8 +711,23 @@ export default function PatientProfilePage() {
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"><Shield className="h-3.5 w-3.5 mr-1" /> Permissões</Button></Link>
-          <Link href={`/admin/patients/${patientId}/documents`}><Button variant="outline" size="sm" className="h-8 text-xs"><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button></Link>
-          <Link href={`/admin/patients/${patientId}/diagnosis`}><Button variant="outline" size="sm" className="h-8 text-xs"><Brain className="h-3.5 w-3.5 mr-1" /> AI Assessment</Button></Link>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setActiveTab("docs")}><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button>
+{(() => {
+            const latestDiag = data.diagnoses?.[0];
+            const diagCls = !latestDiag
+              ? "h-8 text-xs"
+              : latestDiag.status === "APPROVED" || latestDiag.status === "SENT_TO_PATIENT"
+              ? "h-8 text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+              : "h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20";
+            return (
+              <Link href={`/admin/patients/${patientId}/diagnosis`}>
+                <Button variant="outline" size="sm" className={diagCls}>
+                  <Brain className="h-3.5 w-3.5 mr-1" />
+                  {latestDiag ? `AI Assessment · ${latestDiag.status.replace(/_/g, " ")}` : "AI Assessment"}
+                </Button>
+              </Link>
+            );
+          })()}
         </div>
       </div>
 
@@ -577,14 +813,77 @@ export default function PatientProfilePage() {
       {error && <div className="bg-destructive/10 text-destructive text-xs p-2.5 rounded-lg flex items-center gap-2"><AlertCircle className="h-3.5 w-3.5" /> {error} <Button variant="ghost" size="sm" className="ml-auto h-5 w-5 p-0" onClick={() => setError("")}><X className="h-3 w-3" /></Button></div>}
       {success && <div className="bg-emerald-500/10 text-emerald-400 text-xs p-2.5 rounded-lg flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5" /> {success}</div>}
 
+      {/* ─── Document Forms (visible from any tab) ─── */}
+      {showManualDoc && (
+        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileText className="h-4 w-4 inline mr-1" /> Write Clinical History</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <EF label="Title" value={manualForm.title} onChange={(v) => setManualForm({ ...manualForm, title: v })} rows={1} placeholder="e.g. Patient History" />
+              <div className="space-y-0.5"><Label className="text-[10px] font-semibold">Category</Label><select value={manualForm.documentType} onChange={(e) => setManualForm({ ...manualForm, documentType: e.target.value })} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">{DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
+            </div>
+            <EF label="Content" value={manualForm.content} onChange={(v) => setManualForm({ ...manualForm, content: v })} rows={6} placeholder="Type or dictate..." />
+            <div className="flex gap-1.5">
+              <Button size="sm" className="h-7 text-xs" onClick={saveManualDoc} disabled={saving || !manualForm.content.trim()}><Save className="h-3 w-3 mr-1" /> Save</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowManualDoc(false)}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {showUpload && (
+        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileUp className="h-4 w-4 inline mr-1" /> Upload Document</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-0.5"><Label className="text-[10px]">Title</Label><Input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} className="h-8 text-xs" placeholder="Document title" /></div>
+              <div className="space-y-0.5"><Label className="text-[10px]">Type</Label><select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">{DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
+            </div>
+            <Input type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv" multiple onChange={(e) => e.target.files && setUploadFiles(Array.from(e.target.files))} className="text-xs" />
+            <div className="flex gap-1.5">
+              <Button size="sm" className="h-7 text-xs" onClick={handleUpload} disabled={saving || uploadFiles.length === 0}><FileUp className="h-3 w-3 mr-1" /> Upload</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowUpload(false); setUploadFiles([]); }}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ─── Tabs ─── */}
-      <Tabs defaultValue="resumo" className="mt-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
         <TabsList className="w-full justify-start bg-muted/30 p-1 h-auto flex-wrap">
-          <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Resumo</TabsTrigger>
-          <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Screening</TabsTrigger>
-          <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Avaliacoes</TabsTrigger>
-          <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clinicas</TabsTrigger>
-          <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documentos</TabsTrigger>
+  {(() => {
+            const pendingDiag = data.diagnoses?.filter((d: any) => d.status === "DRAFT" || d.status === "UNDER_REVIEW").length ?? 0;
+            const pendingQ = sentQuestions.filter((q: any) => q.status === "answered").length;
+            const unreadMsg = data.unreadMessages ?? 0;
+            return (
+              <>
+                <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Resumo</TabsTrigger>
+                <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                  Screening
+                  {pendingQ > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white px-1">{pendingQ}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                  Avaliações
+                  {pendingDiag > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white px-1">{pendingDiag}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clínicas</TabsTrigger>
+                <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documentos</TabsTrigger>
+                <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
+                  <MessageSquare className="h-3 w-3" />Mensagens
+                  {unreadMsg > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white px-1">{unreadMsg}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="protocolo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                  <ClipboardCheck className="h-3 w-3" />Protocolo
+                  {(data.protocols?.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length ?? 0) > 0 && (
+                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/60 text-[9px] font-bold text-white px-1">
+                      {data.protocols.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
+                  <Bot className="h-3 w-3" />Rehab Agent
+                </TabsTrigger>
+              </>
+            );
+          })()}
         </TabsList>
 
         {/* ── Tab: Resumo ── */}
@@ -610,15 +909,23 @@ export default function PatientProfilePage() {
         <span className="text-[9px] text-blue-500">Send via WhatsApp/SMS so the patient can complete their profile</span>
       </div>
 
-      {/* Quick Actions */}
+{/* Quick Actions */}
       <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-muted/30 rounded-lg border">
         <span className="text-[10px] font-medium text-muted-foreground mr-1">Actions:</span>
-        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setShowNewNote(true); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
-        <Button variant="outline" size="sm" className={btnCls} onClick={() => setShowManualDoc(true)}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
-        <Button variant="outline" size="sm" className={btnCls} onClick={() => setShowUpload(true)}><FileUp className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
-        <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
-          {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Generate AI Assessment
-        </Button>
+        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("notas"); setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
+        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowManualDoc(true); }}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
+        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowUpload(true); }}><FileUp className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
+        {data.diagnoses?.length > 0 ? (
+          <Link href={`/admin/patients/${patientId}/diagnosis`}>
+            <Button variant="outline" size="sm" className={`${btnCls} bg-primary/10 border-primary/30 text-primary hover:bg-primary/20`}>
+              <Brain className="h-2.5 w-2.5 mr-0.5" /> Ver AI Assessment →
+            </Button>
+          </Link>
+        ) : (
+          <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
+            {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Gerar AI Assessment
+          </Button>
+        )}
         <Button variant="outline" size="sm" className={`${btnCls} bg-violet-500/10 border-violet-500/30 text-violet-400 hover:bg-violet-500/20`} onClick={() => setShowAIImport(true)}>
           <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Import
         </Button>
@@ -711,53 +1018,7 @@ export default function PatientProfilePage() {
         </Card>
       )}
 
-      {/* ─── Inline Forms ─── */}
-      {showNewNote && (
-        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Stethoscope className="h-4 w-4" /> New SOAP Note <VB onText={() => {}} className="ml-auto" /></CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <EF label="S — Subjective" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Complaints, symptoms..." />
-            <EF label="O — Objective" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Clinical findings..." />
-            <EF label="A — Assessment" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Diagnosis, assessment..." />
-            <EF label="P — Plan" value={newNote.plan} onChange={(v) => setNewNote({ ...newNote, plan: v })} placeholder="Treatment plan..." />
-            <div className="flex gap-1.5">
-              <Button size="sm" className="h-7 text-xs" onClick={saveNewNote} disabled={saving}>{saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Save</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowNewNote(false)}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {showManualDoc && (
-        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileText className="h-4 w-4 inline mr-1" /> Write Clinical History</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <EF label="Title" value={manualForm.title} onChange={(v) => setManualForm({ ...manualForm, title: v })} rows={1} placeholder="e.g. Patient History" />
-              <div className="space-y-0.5"><Label className="text-[10px] font-semibold">Category</Label><select value={manualForm.documentType} onChange={(e) => setManualForm({ ...manualForm, documentType: e.target.value })} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">{DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
-            </div>
-            <EF label="Content" value={manualForm.content} onChange={(v) => setManualForm({ ...manualForm, content: v })} rows={6} placeholder="Type or dictate..." />
-            <div className="flex gap-1.5">
-              <Button size="sm" className="h-7 text-xs" onClick={saveManualDoc} disabled={saving || !manualForm.content.trim()}><Save className="h-3 w-3 mr-1" /> Save</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowManualDoc(false)}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {showUpload && (
-        <Card className="border-primary"><CardHeader className="pb-2"><CardTitle className="text-sm"><FileUp className="h-4 w-4 inline mr-1" /> Upload Document</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-0.5"><Label className="text-[10px]">Title</Label><Input value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} className="h-8 text-xs" placeholder="Document title" /></div>
-              <div className="space-y-0.5"><Label className="text-[10px]">Type</Label><select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">{DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
-            </div>
-            <Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic" multiple onChange={(e) => e.target.files && setUploadFiles(Array.from(e.target.files))} className="text-xs" />
-            <div className="flex gap-1.5">
-              <Button size="sm" className="h-7 text-xs" onClick={handleUpload} disabled={saving || uploadFiles.length === 0}><FileUp className="h-3 w-3 mr-1" /> Upload</Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowUpload(false); setUploadFiles([]); }}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* ─── Inline Forms ─── (showNewNote moved into Notas tab; upload/write forms moved above Tabs) ─── */}
 
       {/* Red Flags Summary */}
       {data.screening && (() => {
@@ -829,6 +1090,54 @@ export default function PatientProfilePage() {
             </div>
           ) : <p className="text-xs text-muted-foreground">Not completed.</p>}
         </Sec>
+
+        {/* ── Perguntas / Respostas do Paciente ── */}
+        {sentQuestions.length > 0 && (
+          <Sec title="Perguntas & Respostas do Paciente" icon={MessageCircle} badge={`${sentQuestions.length}`} open={true}>
+            <div className="space-y-2">
+              {sentQuestions.map((qs: any) => {
+                const isReport = qs.type === "report";
+                return (
+                  <div key={qs.id} className={`rounded-lg border overflow-hidden ${isReport ? "border-emerald-500/20" : "border-border/50"}`}>
+                    <div className={`flex items-center gap-2 px-2.5 py-1.5 text-[9px] ${isReport ? "bg-emerald-500/10" : "bg-muted/30"}`}>
+                      <span className={`font-semibold ${isReport ? "text-emerald-400" : qs.status === "answered" || qs.status === "reviewed" ? "text-emerald-400" : "text-amber-400"}`}>
+                        {isReport ? "📋 Relatório" : qs.status === "answered" || qs.status === "reviewed" ? "✅ Respondido" : "⏳ Pendente"}
+                      </span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      <button className="ml-auto text-red-400/60 hover:text-red-400 transition-colors" onClick={() => {
+                        if (!confirm("Eliminar esta entrada?")) return;
+                        fetch(`/api/admin/patients/${patientId}/questions`, {
+                          method: "DELETE",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ questionSetId: qs.id }),
+                        }).then(() => setSentQuestions(prev => prev.filter(q => q.id !== qs.id))).catch(() => {});
+                      }}>🗑</button>
+                    </div>
+                    <div className="px-2.5 py-2 space-y-1.5">
+                      {isReport ? (
+                        (qs.questions as string[]).map((p: string, i: number) => (
+                          <p key={i} className="text-[10px] text-foreground leading-relaxed whitespace-pre-wrap">{p}</p>
+                        ))
+                      ) : (
+                        (qs.questions as string[]).map((q: string, i: number) => {
+                          const ans = qs.answers?.find((a: any) => a.index === i);
+                          return (
+                            <div key={i}>
+                              <p className="text-[9px] font-semibold text-muted-foreground">{i + 1}. {q}</p>
+                              {ans ? <p className="text-[10px] text-emerald-300 ml-3 mt-0.5">{ans.answer}</p> : <p className="text-[10px] text-amber-400/60 ml-3 mt-0.5 italic">Sem resposta</p>}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Sec>
+        )}
+
         </div>
         </TabsContent>
 
@@ -1061,9 +1370,150 @@ export default function PatientProfilePage() {
         {/* ── Tab: Notas Clinicas ── */}
         <TabsContent value="notas" className="space-y-4 mt-4">
         <div className="space-y-2.5">
+
+        {/* ── Clinical Scribe (Audio/Video → SOAP) ── */}
+        <ClinicalScribePanel patientId={patientId} onTranscript={(text: string) => {
+          setShowNewNote(true);
+          setNewNote(prev => ({ ...prev, subjective: prev.subjective ? prev.subjective + "\n\n" + text : text }));
+          setActiveTab("notas");
+        }} />
+
         {/* ── SOAP Notes ── */}
+        {/* Header with PDF export */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-muted-foreground">Notas SOAP &amp; Registos Clínicos</p>
+          <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={() => window.print()}>
+            <FileText className="h-3 w-3" /> Exportar PDF
+          </Button>
+        </div>
+
+        {/* ── New SOAP Note inline form ── */}
+        {showNewNote && (
+          <div className="border border-primary/40 rounded-xl p-3 mb-3 space-y-2 bg-primary/5">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-semibold text-primary">Nova Nota SOAP</p>
+                {autoSaveStatus === "saving" && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> A guardar...</span>}
+                {autoSaveStatus === "saved" && <span className="text-[10px] text-emerald-400 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> Guardado automaticamente</span>}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline" size="sm"
+                  className="h-6 px-2 text-[10px] gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                  disabled={atlasPrefilling}
+                  onClick={async () => {
+                    setAtlasPrefilling(true);
+                    try {
+                      const res = await fetch("/api/admin/atlas/soap-prefill", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ patientId }),
+                      });
+                      const d = await res.json();
+                      if (res.ok) {
+                        setNewNote({
+                          subjective: d.subjective || "",
+                          objective: d.objective || "",
+                          assessment: d.assessment || "",
+                          plan: d.plan || "",
+                        });
+                      }
+                    } catch {}
+                    finally { setAtlasPrefilling(false); }
+                  }}
+                >
+                  {atlasPrefilling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                  Pre-fill com Atlas
+                </Button>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowNewNote(false)}><X className="h-3 w-3" /></Button>
+              </div>
+            </div>
+            <EF label="S — Subjetivo (queixas do paciente)" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Queixas, sintomas relatados..." />
+            <EF label="O — Objetivo (achados clínicos)" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Avaliação física, testes..." />
+            <EF label="A — Avaliação / Diagnóstico" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Hipótese diagnóstica, raciocínio clínico..." />
+            <EF label="P — Plano de Tratamento" value={newNote.plan} onChange={(v) => setNewNote({ ...newNote, plan: v })} placeholder="Intervenções, exercícios, próximos passos..." />
+            <div className="flex gap-1.5 flex-wrap">
+              <Button size="sm" className="h-7 text-xs" onClick={saveNewNote} disabled={saving}>{saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar Nota</Button>
+              <Button
+                variant="outline" size="sm"
+                className="h-7 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                disabled={atlasPlanLoading}
+                onClick={async () => {
+                  setAtlasPlanLoading(true);
+                  setAtlasPlan(null);
+                  try {
+                    const res = await fetch("/api/admin/atlas/treatment-plan", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ patientId, soap: newNote }),
+                    });
+                    const d = await res.json();
+                    if (res.ok) setAtlasPlan(d);
+                  } catch {}
+                  finally { setAtlasPlanLoading(false); }
+                }}
+              >
+                {atlasPlanLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bot className="h-3 w-3" />}
+                Plano com Atlas
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowNewNote(false); setAtlasPlan(null); }}>Cancelar</Button>
+            </div>
+
+            {/* Atlas Treatment Plan Output */}
+            {atlasPlan && (
+              <div className="mt-2 border border-primary/30 rounded-lg p-3 bg-primary/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-semibold text-primary flex items-center gap-1"><Bot className="h-3 w-3" /> Plano sugerido por Atlas</p>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setAtlasPlan(null)}><X className="h-2.5 w-2.5" /></Button>
+                </div>
+                {atlasPlan.diagnosis && <p className="text-[10px] font-medium">{atlasPlan.diagnosis}</p>}
+                {atlasPlan.frequency && <p className="text-[10px] text-muted-foreground">📅 {atlasPlan.sessions} sessions · {atlasPlan.frequency}</p>}
+                {atlasPlan.goals?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold mb-0.5">Goals</p>
+                    {atlasPlan.goals.map((g: string, i: number) => <p key={i} className="text-[10px] text-muted-foreground">• {g}</p>)}
+                  </div>
+                )}
+                {atlasPlan.phases?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold mb-1">Phases</p>
+                    {atlasPlan.phases.map((ph: any, i: number) => (
+                      <div key={i} className="border rounded p-2 mb-1.5 space-y-0.5">
+                        <p className="text-[10px] font-medium">{ph.name} <span className="text-muted-foreground font-normal">({ph.weeks})</span></p>
+                        <p className="text-[10px] text-muted-foreground">{ph.focus}</p>
+                        {ph.interventions?.map((v: string, j: number) => <p key={j} className="text-[10px]">• {v}</p>)}
+                        {ph.equipment?.length > 0 && <p className="text-[9px] text-primary">Equipment: {ph.equipment.join(", ")}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {atlasPlan.hep?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold mb-0.5">Home Exercise Programme</p>
+                    {atlasPlan.hep.map((h: string, i: number) => <p key={i} className="text-[10px] text-muted-foreground">• {h}</p>)}
+                  </div>
+                )}
+                {atlasPlan.notes && <p className="text-[10px] text-muted-foreground italic">{atlasPlan.notes}</p>}
+                <Button size="sm" className="h-6 text-[10px] gap-1 w-full" onClick={() => {
+                  const planText = [
+                    atlasPlan.diagnosis ? `Diagnosis: ${atlasPlan.diagnosis}` : "",
+                    atlasPlan.frequency ? `${atlasPlan.sessions} sessions · ${atlasPlan.frequency}` : "",
+                    atlasPlan.phases?.map((ph: any) => `${ph.name} (${ph.weeks}): ${ph.interventions?.join("; ")}`).join("\n"),
+                    atlasPlan.hep?.length > 0 ? `HEP: ${atlasPlan.hep.join("; ")}` : "",
+                    atlasPlan.progressCriteria ? `Progress criteria: ${atlasPlan.progressCriteria}` : "",
+                  ].filter(Boolean).join("\n");
+                  setNewNote(n => ({ ...n, plan: planText }));
+                  setAtlasPlan(null);
+                }}>
+                  <CheckCircle2 className="h-2.5 w-2.5" /> Copiar para campo P
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         <Sec title="Clinical Notes (SOAP)" icon={Stethoscope} badge={data.soapNotes?.length ? `${data.soapNotes.length}` : "None"} open={true}
-          actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowNewNote(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Add</Button>}
+          actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => { setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Plus className="h-2.5 w-2.5 mr-0.5" /> Add</Button>}
         >
           {data.soapNotes?.length > 0 ? data.soapNotes.map((n: any) => (
             <div key={n.id} className="border rounded-lg p-2.5 mb-2 space-y-1">
@@ -1072,22 +1522,23 @@ export default function PatientProfilePage() {
                 <div className="flex items-center gap-1">
                   {n.therapist && <span>by {n.therapist.firstName} {n.therapist.lastName}</span>}
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setNoteForm({ subjective: n.subjective || "", objective: n.objective || "", assessment: n.assessment || "", plan: n.plan || "" }); setEditingNoteId(n.id); }}><Pencil className="h-2.5 w-2.5" /></Button>
+                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-red-400 hover:text-red-500" onClick={() => deleteNote(n.id)}><Trash2 className="h-2.5 w-2.5" /></Button>
                 </div>
               </div>
               {editingNoteId === n.id ? (
                 <div className="space-y-1.5 bg-muted/30 p-2 rounded">
-                  <EF label="S — Subjective" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
-                  <EF label="O — Objective" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
-                  <EF label="A — Assessment" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
-                  <EF label="P — Plan" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
+                  <EF label="S — Subjetivo" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
+                  <EF label="O — Objetivo" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
+                  <EF label="A — Avaliação" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
+                  <EF label="P — Plano" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
                   <div className="flex gap-1"><Button size="sm" className="h-6 text-[10px]" onClick={saveEditNote} disabled={saving}><Save className="h-2.5 w-2.5 mr-0.5" /> Save</Button><Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setEditingNoteId(null)}>Cancel</Button></div>
                 </div>
               ) : (
                 <>
-                  {n.subjective && <div><p className="text-[9px] font-bold text-blue-600">S — Subjective</p><p className="text-[10px]">{n.subjective}</p></div>}
-                  {n.objective && <div><p className="text-[9px] font-bold text-green-600">O — Objective</p><p className="text-[10px]">{n.objective}</p></div>}
-                  {n.assessment && <div><p className="text-[9px] font-bold text-amber-600">A — Assessment</p><p className="text-[10px]">{n.assessment}</p></div>}
-                  {n.plan && <div><p className="text-[9px] font-bold text-purple-600">P — Plan</p><p className="text-[10px]">{n.plan}</p></div>}
+                  {n.subjective && <div><p className="text-[9px] font-bold text-blue-400">S — Subjetivo</p><p className="text-[10px]">{n.subjective}</p></div>}
+                  {n.objective && <div><p className="text-[9px] font-bold text-green-400">O — Objetivo</p><p className="text-[10px]">{n.objective}</p></div>}
+                  {n.assessment && <div><p className="text-[9px] font-bold text-amber-400">A — Avaliação</p><p className="text-[10px]">{n.assessment}</p></div>}
+                  {n.plan && <div><p className="text-[9px] font-bold text-purple-400">P — Plano</p><p className="text-[10px]">{n.plan}</p></div>}
                 </>
               )}
             </div>
@@ -1178,8 +1629,57 @@ export default function PatientProfilePage() {
         <TabsContent value="docs" className="mt-4">
         <div className="space-y-2.5">
         {/* ── Documents ── */}
+        {/* ── Atlas Document Generator ── */}
+        {showAtlasDoc && (
+          <Card className="border-sky-500/40"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Bot className="h-4 w-4 text-sky-400" /> Criar Documento com Atlas</CardTitle></CardHeader>
+            <CardContent className="space-y-2.5">
+              <p className="text-[11px] text-muted-foreground">O Atlas conhece todo o histórico clínico deste paciente e redige documentos profissionais prontos a enviar — cartas ao médico, pedidos de autorização, declarações, relatórios de encaminhamento, etc.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5"><Label className="text-[10px]">Tipo de documento</Label>
+                  <select value={atlasDocForm.docKind} onChange={e => setAtlasDocForm(f => ({ ...f, docKind: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">
+                    {["Carta ao médico assistente", "Pedido de autorização para tratamentos", "Relatório de encaminhamento", "Declaração clínica", "Carta para seguradora", "Resumo clínico para outro profissional", "Outro documento"].map(k => <option key={k} value={k}>{k}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-0.5"><Label className="text-[10px]">Idioma</Label>
+                  <select value={atlasDocForm.language} onChange={e => setAtlasDocForm(f => ({ ...f, language: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">
+                    <option value="pt">Português</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-0.5"><Label className="text-[10px]">O que o documento deve conter / objetivo</Label>
+                <Textarea value={atlasDocForm.instructions} onChange={e => setAtlasDocForm(f => ({ ...f, instructions: e.target.value }))} rows={3} className="text-xs" placeholder="Ex: Carta ao médico da Isabel a solicitar autorização para eletroterapia e treino de resistência leve, considerando as lesões hepáticas e o estado hematológico dela..." />
+              </div>
+              <div className="flex gap-1.5">
+                <Button size="sm" className="h-7 text-xs bg-sky-600 hover:bg-sky-700" onClick={generateAtlasDoc} disabled={atlasDocBusy || !atlasDocForm.instructions.trim()}>
+                  {atlasDocBusy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />} {atlasDocResult ? "Gerar novamente" : "Gerar documento"}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowAtlasDoc(false); setAtlasDocResult(null); }}>Fechar</Button>
+              </div>
+              {atlasDocResult && (
+                <div className="border border-sky-500/30 rounded-lg p-3 space-y-2 bg-card">
+                  <div className="space-y-0.5"><Label className="text-[10px]">Título</Label>
+                    <Input value={atlasDocResult.title} onChange={e => setAtlasDocResult(r => r ? { ...r, title: e.target.value } : r)} className="h-8 text-xs font-medium" />
+                  </div>
+                  <div className="space-y-0.5"><Label className="text-[10px]">Conteúdo (editável)</Label>
+                    <Textarea value={atlasDocResult.content} onChange={e => setAtlasDocResult(r => r ? { ...r, content: e.target.value } : r)} rows={16} className="text-xs font-mono leading-relaxed" />
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <Button size="sm" className="h-7 text-xs" onClick={saveAtlasDoc} disabled={atlasDocSaving}>
+                      {atlasDocSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar nos documentos
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={printAtlasDoc}>
+                      <ExternalLink className="h-3 w-3 mr-1" /> Imprimir / PDF
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
         <Sec title="Documents & Files" icon={FileUp} badge={data.documents?.length ? `${data.documents.length}` : "None"}
           actions={<>
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowAtlasDoc(true)}><Bot className="h-2.5 w-2.5 mr-0.5 text-sky-400" /> Criar com Atlas</Button>
             <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowUpload(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
             <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowManualDoc(true)}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write</Button>
             <Link href={`/admin/patients/${patientId}/documents`}><Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]"><Eye className="h-2.5 w-2.5 mr-0.5" /> Full</Button></Link>
@@ -1219,7 +1719,1372 @@ export default function PatientProfilePage() {
         </div>
         </TabsContent>
 
+        {/* ── Tab: Mensagens ── */}
+        <TabsContent value="mensagens" className="mt-4">
+          <PatientMessagesTab patientId={patientId} />
+        </TabsContent>
+
+        {/* ── Tab: Protocolo ── */}
+        <TabsContent value="protocolo" className="space-y-4 mt-4">
+          {(!data.protocols || data.protocols.length === 0) ? (
+            <div className="border-dashed border rounded-xl p-10 text-center text-muted-foreground space-y-3">
+              <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground/30" />
+              <p className="font-medium text-sm">Nenhum protocolo de tratamento criado</p>
+              <p className="text-xs">Gere uma avaliação AI e depois crie o protocolo a partir da página de diagnóstico.</p>
+              {data.diagnoses?.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => generateProtocol(data.diagnoses[0].id)} disabled={genProtocol}>
+                  {genProtocol ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />} Gerar Protocolo
+                </Button>
+              )}
+              <div><a href={`/admin/patients/${patientId}/diagnosis`} className="text-xs text-primary hover:underline">→ Ir para Avaliações & Diagnóstico</a></div>
+            </div>
+          ) : data.protocols.map((pr: any) => {
+            const STATUS_STEPS = ["DRAFT", "UNDER_REVIEW", "APPROVED", "SENT_TO_PATIENT"];
+            const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", UNDER_REVIEW: "Em Revisão", APPROVED: "Aprovado", SENT_TO_PATIENT: "Enviado" };
+            const currentStep = STATUS_STEPS.indexOf(pr.status);
+            const isEditing = protoFullEditing === pr.id;
+            const sessionDays: string[] = isEditing
+              ? (protoFullForm.sessionDays || [])
+              : (() => { try { return JSON.parse(pr.sessionDays || "[]"); } catch { return []; } })();
+            return (
+              <div key={pr.id} className="border rounded-xl overflow-hidden">
+                {/* Header */}
+                <div className="p-3 bg-muted/20 flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                      <Input value={protoFullForm.title || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, title: e.target.value }))} className="h-8 text-sm font-medium" />
+                    ) : (
+                      <h3 className="text-sm font-semibold truncate">{pr.title}</h3>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{pr.items?.length || 0} itens · {pr.totalSessions || "?"} sessões · {pr.estimatedWeeks || "?"} semanas</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isEditing ? (
+                      <>
+                        <Button size="sm" className="h-7 text-xs" onClick={saveProtoFull} disabled={protoFullSaving}>
+                          {protoFullSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setProtoFullEditing(null)}>Cancelar</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
+                          setProtoFullEditing(pr.id);
+                          setProtoFullForm({
+                            title: pr.title || "",
+                            summary: pr.summary || "",
+                            therapistComments: pr.therapistComments || "",
+                            status: pr.status,
+                            deliveryMode: pr.deliveryMode || "IN_CLINIC",
+                            totalSessions: pr.totalSessions || 12,
+                            sessionsPerWeek: pr.sessionsPerWeek || 2,
+                            sessionDuration: pr.sessionDuration || 60,
+                            startDate: pr.startDate ? new Date(pr.startDate).toISOString().split("T")[0] : "",
+                            sessionTime: pr.sessionTime || "09:00",
+                            sessionDays: (() => { try { return JSON.parse(pr.sessionDays || "[]"); } catch { return []; } })(),
+                          });
+                        }}>
+                          <Pencil className="h-3 w-3 mr-1" /> Editar
+                        </Button>
+                        {pr.status !== "SENT_TO_PATIENT" && (
+                          <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => sendProtocol(pr)} disabled={sendingProto}>
+                            {sendingProto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />} Enviar ao Paciente
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Status stepper */}
+                <div className="px-3 py-2 border-b bg-muted/10 flex items-center">
+                  {STATUS_STEPS.map((s, i) => (
+                    <div key={s} className="flex items-center">
+                      <div className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium ${
+                        i <= currentStep ? "text-primary" : "text-muted-foreground"
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          i < currentStep ? "bg-primary" : i === currentStep ? "bg-primary animate-pulse" : "bg-muted-foreground/30"
+                        }`} />
+                        {STATUS_LABELS[s]}
+                      </div>
+                      {i < STATUS_STEPS.length - 1 && <div className={`h-px w-4 ${i < currentStep ? "bg-primary/50" : "bg-muted-foreground/20"}`} />}
+                    </div>
+                  ))}
+                </div>
+                <div className="p-3 space-y-3">
+                  {/* Summary */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Sumário Clínico</p>
+                    {isEditing ? (
+                      <Textarea value={protoFullForm.summary || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, summary: e.target.value }))} rows={5} className="text-xs" />
+                    ) : (
+                      <p className="text-xs leading-relaxed whitespace-pre-line">{pr.summary || "—"}</p>
+                    )}
+                  </div>
+                  {/* Scheduling */}
+                  <div className="border rounded-lg p-3 bg-muted/10 space-y-2.5">
+                    <p className="text-[10px] font-semibold flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-primary" /> Agendamento</p>
+                    {isEditing ? (
+                      <div className="space-y-2.5">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1"><Label className="text-[10px]">Data início</Label>
+                            <Input type="date" value={protoFullForm.startDate || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, startDate: e.target.value }))} className="h-8 text-xs" />
+                          </div>
+                          <div className="space-y-1"><Label className="text-[10px]">Horário</Label>
+                            <Input type="time" value={protoFullForm.sessionTime || "09:00"} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionTime: e.target.value }))} className="h-8 text-xs" />
+                          </div>
+                          <div className="space-y-1"><Label className="text-[10px]">Duração (min)</Label>
+                            <Input type="number" value={protoFullForm.sessionDuration || 60} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionDuration: parseInt(e.target.value) || 60 }))} className="h-8 text-xs" min={15} max={180} step={15} />
+                          </div>
+                        </div>
+                        <div className="space-y-1"><Label className="text-[10px]">Dias da semana</Label>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {["MON","TUE","WED","THU","FRI","SAT","SUN"].map(d => (
+                              <button key={d} type="button"
+                                onClick={() => setProtoFullForm((f: any) => ({ ...f, sessionDays: f.sessionDays?.includes(d) ? f.sessionDays.filter((x: string) => x !== d) : [...(f.sessionDays || []), d] }))}
+                                className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${
+                                  protoFullForm.sessionDays?.includes(d) ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/50"
+                                }`}>{d}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1"><Label className="text-[10px]">Total sessões</Label>
+                            <Input type="number" value={protoFullForm.totalSessions || 12} onChange={e => setProtoFullForm((f: any) => ({ ...f, totalSessions: parseInt(e.target.value) || 12 }))} className="h-8 text-xs" min={1} />
+                          </div>
+                          <div className="space-y-1"><Label className="text-[10px]">Por semana</Label>
+                            <Input type="number" value={protoFullForm.sessionsPerWeek || 2} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionsPerWeek: parseInt(e.target.value) || 2 }))} className="h-8 text-xs" min={1} max={7} />
+                          </div>
+                          <div className="space-y-1"><Label className="text-[10px]">Modalidade</Label>
+                            <select value={protoFullForm.deliveryMode || "IN_CLINIC"} onChange={e => setProtoFullForm((f: any) => ({ ...f, deliveryMode: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[10px]">
+                              <option value="IN_CLINIC">Presencial</option>
+                              <option value="REMOTE">Remoto</option>
+                              <option value="HYBRID">Híbrido</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div><p className="text-[9px] text-muted-foreground">Data início</p><p className="text-xs font-medium">{pr.startDate ? new Date(pr.startDate).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }) : "Não definida"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Horário</p><p className="text-xs font-medium">{pr.sessionTime || "—"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Duração</p><p className="text-xs font-medium">{pr.sessionDuration ? `${pr.sessionDuration} min` : "—"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Dias</p><p className="text-xs font-medium">{sessionDays.length > 0 ? sessionDays.join(", ") : "—"}</p></div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Therapist comments */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Notas do Terapeuta</p>
+                    {isEditing ? (
+                      <Textarea value={protoFullForm.therapistComments || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, therapistComments: e.target.value }))} rows={3} className="text-xs" placeholder="Correções, observações ou notas adicionais..." />
+                    ) : (
+                      <p className="text-xs text-muted-foreground leading-relaxed">{pr.therapistComments || "—"}</p>
+                    )}
+                  </div>
+                  {/* Status selector in edit mode */}
+                  {isEditing && (
+                    <div className="space-y-1"><Label className="text-[10px]">Estado do Protocolo</Label>
+                      <select value={protoFullForm.status || "DRAFT"} onChange={e => setProtoFullForm((f: any) => ({ ...f, status: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[10px]">
+                        {["DRAFT","UNDER_REVIEW","APPROVED","SENT_TO_PATIENT","ARCHIVED"].map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {/* Items */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Itens do Protocolo ({pr.items?.length || 0})</p>
+                      <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => addProtoItem(pr)} disabled={protoItemBusy === "new-" + pr.id}>
+                        {protoItemBusy === "new-" + pr.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 mr-0.5" />} Adicionar item
+                      </Button>
+                    </div>
+                    <div className="space-y-0.5">
+                      {(protoItemsExpanded[pr.id] ? pr.items : pr.items?.slice(0, 6))?.map((item: any, i: number) => (
+                        protoItemEditId === item.id ? (
+                          <div key={item.id} className="border border-primary/40 rounded-lg p-2 space-y-2 bg-muted/20">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1 col-span-2"><Label className="text-[10px]">Título</Label>
+                                <Input value={protoItemForm.title || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, title: e.target.value }))} className="h-7 text-xs" />
+                              </div>
+                              <div className="space-y-1"><Label className="text-[10px]">Fase</Label>
+                                <select value={protoItemForm.phase || "SHORT_TERM"} onChange={e => setProtoItemForm((f: any) => ({ ...f, phase: e.target.value }))} className="w-full h-7 rounded-md border border-input bg-background px-2 text-[10px]">
+                                  {["IMMEDIATE","SHORT_TERM","MEDIUM_TERM","LONG_TERM","MAINTENANCE"].map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                              </div>
+                              <div className="space-y-1"><Label className="text-[10px]">Frequência</Label>
+                                <Input value={protoItemForm.frequency || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, frequency: e.target.value }))} className="h-7 text-xs" placeholder="ex: 3x/semana" />
+                              </div>
+                              <div className="space-y-1"><Label className="text-[10px]">Séries</Label>
+                                <Input type="number" value={protoItemForm.sets ?? ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, sets: e.target.value }))} className="h-7 text-xs" />
+                              </div>
+                              <div className="space-y-1"><Label className="text-[10px]">Repetições</Label>
+                                <Input type="number" value={protoItemForm.reps ?? ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, reps: e.target.value }))} className="h-7 text-xs" />
+                              </div>
+                              <div className="space-y-1 col-span-2"><Label className="text-[10px]">Descrição</Label>
+                                <Textarea value={protoItemForm.description || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="text-xs" />
+                              </div>
+                            </div>
+                            <div className="flex gap-1.5">
+                              <Button size="sm" className="h-6 text-[10px]" onClick={saveProtoItem} disabled={protoItemBusy === item.id}>
+                                {protoItemBusy === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-0.5" />} Guardar
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setProtoItemEditId(null)}>Cancelar</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div key={item.id || i} className={`group flex items-center gap-2 text-[10px] py-1 border-b border-border/30 last:border-0 ${item.hiddenFromPatient ? "opacity-50" : ""}`}>
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{item.phase || "—"}</Badge>
+                            <span className="truncate flex-1">{item.treatmentTypeName || item.title || "—"}</span>
+                            {item.sets && item.reps && <span className="text-muted-foreground/60 shrink-0">{item.sets}×{item.reps}</span>}
+                            {item.hiddenFromPatient && (
+                              <button title="Oculto do paciente — clique para mostrar" className="shrink-0 p-0.5 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
+                                <EyeOff className="h-3 w-3 text-amber-400" />
+                              </button>
+                            )}
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <button title="Editar" className="p-1 rounded hover:bg-muted" onClick={() => { setProtoItemEditId(item.id); setProtoItemForm({ title: item.title || "", phase: item.phase || "SHORT_TERM", frequency: item.frequency || "", sets: item.sets ?? "", reps: item.reps ?? "", description: item.description || "" }); }}>
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button title={item.hiddenFromPatient ? "Mostrar ao paciente" : "Ocultar do paciente"} className="p-1 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
+                                {item.hiddenFromPatient ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                              </button>
+                              <button title="Duplicar" className="p-1 rounded hover:bg-muted" onClick={() => duplicateProtoItem(pr, item)} disabled={protoItemBusy === item.id}>
+                                <Copy className="h-3 w-3" />
+                              </button>
+                              <button title="Apagar" className="p-1 rounded hover:bg-red-500/20 text-red-400" onClick={() => deleteProtoItem(item)} disabled={protoItemBusy === item.id}>
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      ))}
+                      {(pr.items?.length || 0) > 6 && (
+                        <button className="text-[10px] text-primary hover:underline pt-0.5" onClick={() => setProtoItemsExpanded(x => ({ ...x, [pr.id]: !x[pr.id] }))}>
+                          {protoItemsExpanded[pr.id] ? "Mostrar menos" : `Ver todos os ${pr.items.length} itens`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Sent banner */}
+                  {pr.status === "SENT_TO_PATIENT" && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <p className="text-xs text-emerald-300">Protocolo enviado. Os slots de calendário estão pré-bloqueados aguardando confirmação do paciente.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </TabsContent>
+
+        {/* ── Tab: Rehab Agent ── */}
+        <TabsContent value="rehab" className="mt-4">
+          <RehabAgentTab patientId={patientId} patientData={data} sentQuestions={sentQuestions} setSentQuestions={setSentQuestions} fetchSentQuestions={fetchSentQuestions} />
+        </TabsContent>
+
       </Tabs>
+    </div>
+  );
+}
+
+// ─── Rehab Agent Tab Component ───────────────────────────────────────────────
+
+const ATLAS_AVATAR = "https://randomuser.me/api/portraits/men/52.jpg";
+const ATLAS_NAME   = "Atlas";
+const ATLAS_TITLE  = "Clinical Rehabilitation Specialist";
+
+function AtlasAvatar({ size = "sm" }: { size?: "sm" | "md" | "lg" }) {
+  const sz = size === "lg" ? "w-14 h-14" : size === "md" ? "w-10 h-10" : "w-7 h-7";
+  return (
+    <img src={ATLAS_AVATAR} alt={ATLAS_NAME}
+      className={`${sz} rounded-full object-cover ring-2 ring-emerald-500/30 shrink-0`}
+      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+  );
+}
+
+function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions, fetchSentQuestions }: { patientId: string; patientData: any; sentQuestions: any[]; setSentQuestions: React.Dispatch<React.SetStateAction<any[]>>; fetchSentQuestions: () => void }) {
+  const [plans, setPlans]           = useState<any[]>([]);
+  const [activePlan, setActivePlan] = useState<any>(null);
+  const [view, setView]             = useState<"list" | "assess" | "plan">("list");
+
+  // Pre-assessment state
+  const [preChat, setPreChat]           = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [preInput, setPreInput]         = useState("");
+  const [preLoading, setPreLoading]     = useState(false);
+  const [preStarted, setPreStarted]     = useState(false);
+  const [generating, setGenerating]     = useState(false);
+
+  // Plan chat state
+  const [chatMsg, setChatMsg]           = useState("");
+  const [chatLoading, setChatLoading]   = useState(false);
+  const [error, setError]               = useState("");
+
+  // Send to patient state
+  const [sendNote, setSendNote]         = useState("");
+  const [sending, setSending]           = useState(false);
+  const [sentPlanId, setSentPlanId]     = useState<string | null>(null);
+
+  // Quick free-form chat with Atlas (list view)
+  const [quickHistory, setQuickHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [quickInput, setQuickInput]     = useState("");
+  const [quickLoading, setQuickLoading] = useState(false);
+  const quickEndRef = useRef<HTMLDivElement>(null);
+
+  // ── Treatment Plan (Atlas) ──
+  const [tpView, setTpView]             = useState<"idle" | "generating" | "viewing" | "chat">("idle");
+  const [treatmentPlan, setTreatmentPlan] = useState<any>(null);
+  const [tpChatHistory, setTpChatHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [tpChatInput, setTpChatInput]   = useState("");
+  const [tpChatLoading, setTpChatLoading] = useState(false);
+  const [tpSending, setTpSending]       = useState(false);
+  const [tpSentOk, setTpSentOk]         = useState(false);
+  const tpChatEndRef = useRef<HTMLDivElement>(null);
+
+  const handleGenerateTreatmentPlan = async () => {
+    setTpView("generating");
+    setTreatmentPlan(null);
+    setTpChatHistory([]);
+    setTpSentOk(false);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate" }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setTreatmentPlan(d.plan);
+      setTpView("viewing");
+    } catch (e: any) {
+      setError(e.message || "Failed to generate plan");
+      setTpView("idle");
+    }
+  };
+
+  const handleTpChat = async () => {
+    const msg = tpChatInput.trim();
+    if (!msg || tpChatLoading) return;
+    const newHistory = [...tpChatHistory, { role: "user" as const, content: msg }];
+    setTpChatHistory(newHistory);
+    setTpChatInput("");
+    setTpChatLoading(true);
+    setTimeout(() => tpChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "chat", message: msg, history: tpChatHistory, planData: treatmentPlan }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setTpChatHistory(h => [...h, { role: "assistant", content: d.reply }]);
+    } catch (e: any) { setError(e.message); }
+    finally {
+      setTpChatLoading(false);
+      setTimeout(() => tpChatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
+  };
+
+  const handleShareTreatmentPlan = async () => {
+    if (!treatmentPlan) return;
+    setTpSending(true);
+    try {
+      const planText = [
+        `**Plano de Tratamento — ${treatmentPlan.workingDiagnosis || "Personalizado"}**`,
+        treatmentPlan.clinicalRationale ? `\n${treatmentPlan.clinicalRationale}` : "",
+        treatmentPlan.goals?.shortTerm?.length ? `\n**Objetivos a curto prazo:**\n${treatmentPlan.goals.shortTerm.map((g: string) => `• ${g}`).join("\n")}` : "",
+        treatmentPlan.goals?.longTerm?.length ? `\n**Objetivos a longo prazo:**\n${treatmentPlan.goals.longTerm.map((g: string) => `• ${g}`).join("\n")}` : "",
+        treatmentPlan.phases?.length ? `\n**Fases do tratamento:**\n${treatmentPlan.phases.map((ph: any) => [
+          `\n📌 ${ph.name} (${ph.weeks})`,
+          `Objetivo: ${ph.objective}`,
+          ph.inClinic?.length ? `Em clínica:\n${ph.inClinic.map((i: any) => `  • ${i.intervention}${i.parameters ? ` — ${i.parameters}` : ""}`).join("\n")}` : "",
+          ph.hep?.length ? `Exercícios em casa:\n${ph.hep.map((h: any) => `  • ${h.exercise} — ${h.sets} (${h.frequency})`).join("\n")}` : "",
+        ].filter(Boolean).join("\n")).join("\n")}` : "",
+        treatmentPlan.patientEducation?.length ? `\n**Educação para o Paciente:**\n${treatmentPlan.patientEducation.map((e: string) => `• ${e}`).join("\n")}` : "",
+      ].filter(Boolean).join("\n");
+
+      const r = await fetch(`/api/admin/patients/${patientId}/questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questions: planText.split("\n\n").filter(Boolean),
+          context: "Plano de tratamento Atlas",
+          language: "pt",
+          type: "report",
+        }),
+      });
+      if (!r.ok) throw new Error("Failed to share");
+      setTpSentOk(true);
+      fetchSentQuestions();
+    } catch (e: any) { setError(e.message); }
+    finally { setTpSending(false); }
+  };
+
+  // Send questions to patient
+  const [showQDialog, setShowQDialog]   = useState(false);
+  const [qText, setQText]               = useState("");
+  const [qLang, setQLang]               = useState<"en" | "pt">("en");
+  const [qType, setQType]               = useState<"questions" | "report">("questions");
+  const [sendingQ, setSendingQ]         = useState(false);
+  const [qSentOk, setQSentOk]           = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [expandedQSet, setExpandedQSet] = useState<string | null>(null);
+  const [reformulating, setReformulating] = useState(false);
+
+  const preEndRef  = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const handleReformatQuestions = async () => {
+    const lines = qText.split("\n").map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    setReformulating(true);
+    try {
+      const r = await fetch("/api/admin/reformat-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questions: lines, lang: qLang }),
+      });
+      const d = await r.json();
+      if (d.questions?.length) setQText(d.questions.join("\n"));
+    } catch {}
+    finally { setReformulating(false); }
+  };
+
+  const screening = patientData?.screening;
+  const initialContext = {
+    chiefComplaint:     screening?.chiefComplaint    || "",
+    bodyPart:           "",
+    severity:           "moderate" as const,
+    phase:              "subacute" as const,
+    aggravatingFactors: screening?.aggravatingFactors       || "",
+    relievingFactors:   screening?.relievingFactors         || "",
+    relevantHistory:    screening?.relevantMedicalHistory   || "",
+    age: patientData?.profile?.dateOfBirth
+      ? new Date().getFullYear() - new Date(patientData.profile.dateOfBirth).getFullYear()
+      : undefined,
+    sex:          patientData?.profile?.gender     || "",
+    occupation:   patientData?.profile?.occupation || "",
+  };
+
+  const loadPlans = useCallback(async () => {
+    const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan`);
+    if (r.ok) setPlans(await r.json());
+  }, [patientId]);
+
+  const loadHistory = useCallback(async () => {
+    if (historyLoaded) return;
+    const r = await fetch(`/api/admin/patients/${patientId}/atlas-chat`);
+    if (r.ok) {
+      const data = await r.json();
+      setQuickHistory(data.map((m: any) => ({ role: m.role, content: m.content })));
+      setHistoryLoaded(true);
+    }
+  }, [patientId, historyLoaded]);
+
+  useEffect(() => { loadPlans(); loadHistory(); }, [loadPlans, loadHistory]);
+  useEffect(() => { preEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [preChat]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [activePlan?.messages]);
+
+  // Start pre-assessment: Atlas fires first
+  const startAssessment = async () => {
+    setView("assess");
+    if (preStarted) return;
+    setPreStarted(true);
+    setPreLoading(true);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/pre-assess`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [] }),
+      });
+      const d = await r.json();
+      setPreChat([{ role: "assistant", content: d.reply }]);
+    } catch { setPreChat([{ role: "assistant", content: "Connection error. Please retry." }]); }
+    finally { setPreLoading(false); }
+  };
+
+  const sendPreMessage = async () => {
+    if (!preInput.trim() || preLoading) return;
+    const msg = preInput.trim(); setPreInput("");
+    const next = [...preChat, { role: "user" as const, content: msg }];
+    setPreChat(next);
+    setPreLoading(true);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/pre-assess`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: next }),
+      });
+      const d = await r.json();
+      setPreChat(prev => [...prev, { role: "assistant", content: d.reply }]);
+    } catch { setPreChat(prev => [...prev, { role: "assistant", content: "Error — please retry." }]); }
+    finally { setPreLoading(false); }
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true); setError("");
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...initialContext, preAssessChat: preChat }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      await loadPlans();
+      const pr = await fetch(`/api/admin/patients/${patientId}/rehab-plan/${d.plan.id}`);
+      setActivePlan(await pr.json());
+      setView("plan");
+    } catch (e: any) { setError(e.message); }
+    finally { setGenerating(false); }
+  };
+
+  const loadPlan = async (id: string) => {
+    const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/${id}`);
+    setActivePlan(await r.json()); setView("plan");
+  };
+
+  const handleChat = async () => {
+    if (!chatMsg.trim() || !activePlan) return;
+    const msg = chatMsg; setChatMsg(""); setChatLoading(true);
+    setActivePlan((p: any) => ({ ...p, messages: [...(p.messages || []), { role: "user", content: msg }] }));
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/${activePlan.id}/chat`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setActivePlan((p: any) => ({ ...p, messages: [...(p.messages || []), { role: "assistant", content: d.reply }] }));
+    } catch (e: any) { setError(e.message); }
+    finally { setChatLoading(false); }
+  };
+
+  const handleQuickChat = async () => {
+    const msg = quickInput.trim();
+    if (!msg || quickLoading) return;
+    const newHistory = [...quickHistory, { role: "user" as const, content: msg }];
+    setQuickHistory(newHistory);
+    setQuickInput("");
+    setQuickLoading(true);
+    setTimeout(() => quickEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/atlas-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg, history: quickHistory }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setQuickHistory(h => [...h, { role: "assistant", content: d.reply }]);
+    } catch (e: any) { setError(e.message); }
+    finally {
+      setQuickLoading(false);
+      setTimeout(() => quickEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
+  };
+
+  const handleSendQuestions = async () => {
+    const stripMd = (s: string) => s
+      .replace(/\*\*/g, "").replace(/\*/g, "").replace(/_/g, "")
+      .replace(/^#+\s*/gm, "").replace(/^>\s*/gm, "").replace(/`/g, "").trim();
+    let lines: string[];
+    if (qType === "report") {
+      // For reports, keep paragraphs (split by blank lines) — preserves structure
+      lines = qText.split(/\n\s*\n/).map(p => p.replace(/^[-•–]\s*/gm, "").trim()).filter(Boolean);
+    } else {
+      // For questions, one question per line, strip markdown list syntax
+      lines = qText.split("\n").map(l => stripMd(l.replace(/^[-•–]\s*/gm, "").replace(/^\d+[\.\)]\s*/, ""))).filter(Boolean);
+    }
+    if (!lines.length) return;
+    setSendingQ(true);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questions: lines, context: qType === "report" ? "Relatório/Feedback" : "Pre-assessment questions", language: qLang, type: qType }),
+      });
+      if (!r.ok) throw new Error("Failed");
+      setQSentOk(true);
+      setQText("");
+      fetchSentQuestions();
+      setTimeout(() => { setShowQDialog(false); setQSentOk(false); }, 1500);
+    } catch (e: any) { setError(e.message); }
+    finally { setSendingQ(false); }
+  };
+
+  const handleSend = async () => {
+    if (!activePlan || sending) return;
+    setSending(true);
+    try {
+      const r = await fetch(`/api/admin/patients/${patientId}/rehab-plan/${activePlan.id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ therapistNote: sendNote }),
+      });
+      if (!r.ok) throw new Error("Failed to send");
+      setSentPlanId(activePlan.id);
+      setActivePlan((p: any) => ({ ...p, sentToPatient: true, sentAt: new Date().toISOString(), therapistNote: sendNote }));
+    } catch (e: any) { setError(e.message); }
+    finally { setSending(false); }
+  };
+
+  const handleRevoke = async () => {
+    if (!activePlan) return;
+    await fetch(`/api/admin/patients/${patientId}/rehab-plan/${activePlan.id}/send`, { method: "DELETE" });
+    setSentPlanId(null);
+    setActivePlan((p: any) => ({ ...p, sentToPatient: false, sentAt: null }));
+  };
+
+  const plan: any = activePlan?.planJson;
+
+  // ── List View ──
+  if (view === "list") return (
+    <div className="space-y-3">
+      {/* Atlas header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <AtlasAvatar size="md" />
+          <div>
+            <p className="text-sm font-semibold leading-tight">{ATLAS_NAME}</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">{ATLAS_TITLE}</p>
+          </div>
+          <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400 hidden sm:flex">Claude Sonnet 5</Badge>
+        </div>
+        <Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={startAssessment}>
+          <Plus className="h-3 w-3 mr-1" />New Assessment
+        </Button>
+      </div>
+      {plans.length === 0 ? (
+        <div className="text-center py-4 text-muted-foreground border border-dashed rounded-lg">
+          <p className="text-[10px] mt-1">Nenhum plano gerado. Usa "New Assessment" para criar um plano estruturado.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {plans.map((p: any) => (
+            <div key={p.id} className="flex items-center justify-between p-3 bg-muted/20 border rounded-lg hover:bg-muted/30 cursor-pointer active:opacity-70 transition-opacity" onClick={() => loadPlan(p.id)}>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate">{p.bodyPart} — {p.chiefComplaint}</p>
+                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                  <Badge variant="outline" className="text-[9px] h-4">{p.severity}</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4">{p.phase}</Badge>
+                  <Badge variant="outline" className={`text-[9px] h-4 ${p.status === "active" ? "border-emerald-500/40 text-emerald-400" : ""}`}>{p.status}</Badge>
+                  {p.sentToPatient && <Badge variant="outline" className="text-[9px] h-4 border-emerald-500/40 text-emerald-400">Enviado ✓</Badge>}
+                  <span className="text-[9px] text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("en-GB")}</span>
+                </div>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-2" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Treatment Plan with Atlas ── */}
+      <div className="border border-emerald-500/20 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2 bg-emerald-500/5 border-b border-emerald-500/20">
+          <div className="flex items-center gap-2">
+            <AtlasAvatar size="sm" />
+            <div>
+              <p className="text-xs font-semibold leading-tight">Plano de Tratamento</p>
+              <p className="text-[9px] text-muted-foreground leading-tight">Atlas gera um plano faseado com base em todos os dados do paciente</p>
+            </div>
+          </div>
+          <Button size="sm" className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 shrink-0"
+            onClick={handleGenerateTreatmentPlan}
+            disabled={tpView === "generating"}>
+            {tpView === "generating" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3 mr-1" />}
+            {tpView === "generating" ? "A gerar..." : treatmentPlan ? "Regenerar" : "Gerar Plano"}
+          </Button>
+        </div>
+
+        {tpView === "generating" && (
+          <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+            Atlas está a analisar todos os dados do paciente e a criar o plano...
+          </div>
+        )}
+
+        {tpView !== "generating" && treatmentPlan && (
+          <div className="p-3 space-y-3">
+            {/* Diagnosis + rationale */}
+            <div className="p-2.5 bg-muted/20 rounded-lg">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-0.5">Diagnóstico de trabalho</p>
+              <p className="text-xs font-medium">{treatmentPlan.workingDiagnosis}</p>
+              {treatmentPlan.clinicalRationale && <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{treatmentPlan.clinicalRationale}</p>}
+            </div>
+
+            {/* Red flags */}
+            {treatmentPlan.redFlags?.length > 0 && (
+              <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-[10px] font-semibold text-red-400 uppercase mb-1">⚠ Red Flags</p>
+                {treatmentPlan.redFlags.map((f: string, i: number) => <p key={i} className="text-[10px] text-red-300">• {f}</p>)}
+              </div>
+            )}
+
+            {/* Goals */}
+            {(treatmentPlan.goals?.shortTerm?.length || treatmentPlan.goals?.longTerm?.length) && (
+              <div className="grid grid-cols-2 gap-2">
+                {treatmentPlan.goals?.shortTerm?.length > 0 && (
+                  <div className="p-2 bg-muted/20 rounded-lg">
+                    <p className="text-[9px] font-semibold uppercase text-amber-400 mb-1">Curto Prazo</p>
+                    {treatmentPlan.goals.shortTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
+                  </div>
+                )}
+                {treatmentPlan.goals?.longTerm?.length > 0 && (
+                  <div className="p-2 bg-muted/20 rounded-lg">
+                    <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Longo Prazo</p>
+                    {treatmentPlan.goals.longTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Phases */}
+            {treatmentPlan.phases?.map((ph: any, pi: number) => (
+              <div key={pi} className="border rounded-lg overflow-hidden">
+                <div className="px-3 py-1.5 bg-muted/30 flex items-center justify-between">
+                  <p className="text-[10px] font-semibold">{ph.name} <span className="text-muted-foreground font-normal">({ph.weeks})</span></p>
+                  <p className="text-[9px] text-muted-foreground">{ph.objective}</p>
+                </div>
+                <div className="p-2.5 grid grid-cols-1 gap-2">
+                  {ph.inClinic?.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase text-blue-400 mb-1">Em Clínica</p>
+                      {ph.inClinic.map((ic: any, ii: number) => (
+                        <div key={ii} className="text-[10px] mb-1">
+                          <span className="font-medium">• {ic.intervention}</span>
+                          {ic.equipment && <span className="text-muted-foreground"> [{ic.equipment}]</span>}
+                          {ic.parameters && <span className="text-blue-300/70"> — {ic.parameters}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {ph.hep?.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Casa (HEP)</p>
+                      {ph.hep.map((h: any, hi: number) => (
+                        <p key={hi} className="text-[10px] mb-0.5">• {h.exercise} — {h.sets} <span className="text-muted-foreground">({h.frequency})</span></p>
+                      ))}
+                    </div>
+                  )}
+                  {ph.progressionCriteria && (
+                    <p className="text-[9px] text-muted-foreground border-t pt-1.5 mt-0.5">↗ Progressão: {ph.progressionCriteria}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Chat + Share buttons */}
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" variant="outline" className="h-7 text-[10px] flex-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                onClick={() => setTpView(tpView === "chat" ? "viewing" : "chat")}>
+                <MessageSquare className="h-3 w-3 mr-1" />{tpView === "chat" ? "Fechar Chat" : "Discutir com Atlas"}
+              </Button>
+              <Button size="sm" className="h-7 text-[10px] flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={handleShareTreatmentPlan} disabled={tpSending || tpSentOk}>
+                {tpSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                {tpSentOk ? "Enviado ✓" : "Partilhar com Paciente"}
+              </Button>
+            </div>
+
+            {/* Inline chat for plan refinement */}
+            {tpView === "chat" && (
+              <div className="border rounded-lg overflow-hidden mt-1">
+                {tpChatHistory.length > 0 && (
+                  <div className="max-h-52 overflow-y-auto p-2.5 space-y-2">
+                    {tpChatHistory.map((m, i) => (
+                      <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                        {m.role === "assistant" && <AtlasAvatar size="sm" />}
+                        <div className={`max-w-[90%] text-[10px] rounded-xl px-2.5 py-2 ${
+                          m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 rounded-tl-none"
+                        }`}>{m.role === "user" ? <p className="leading-relaxed">{m.content}</p> : <MarkdownMessage content={m.content} className="text-[10px]" />}</div>
+                      </div>
+                    ))}
+                    {tpChatLoading && (
+                      <div className="flex items-start gap-2">
+                        <AtlasAvatar size="sm" />
+                        <div className="bg-muted/40 rounded-xl rounded-tl-none px-2.5 py-2"><Loader2 className="h-3 w-3 animate-spin text-emerald-400" /></div>
+                      </div>
+                    )}
+                    <div ref={tpChatEndRef} />
+                  </div>
+                )}
+                <div className="p-2 flex gap-2 border-t">
+                  <Input className="text-xs h-8 flex-1" placeholder="Ex: Adiciona uma fase de retorno ao desporto... Altera a frequência da fase 2..."
+                    value={tpChatInput} onChange={e => setTpChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleTpChat(); } }}
+                    disabled={tpChatLoading} />
+                  <Button size="sm" className="h-8 w-8 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0"
+                    onClick={handleTpChat} disabled={tpChatLoading || !tpChatInput.trim()}>
+                    {tpChatLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Chat Livre com Atlas ── */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border-b">
+          <AtlasAvatar size="sm" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold leading-tight">Chat com Atlas</p>
+            <p className="text-[9px] text-muted-foreground leading-tight">Chat persistente — o Atlas lembra-se de cada paciente</p>
+          </div>
+          <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-blue-500/30 text-blue-400 hover:bg-blue-500/10 shrink-0"
+            onClick={() => {
+              const lastAssistant = [...quickHistory].reverse().find(m => m.role === "assistant");
+              if (lastAssistant) {
+                const stripMd = (s: string) => s
+                  .replace(/\*\*/g, "").replace(/\*/g, "").replace(/_/g, "")
+                  .replace(/^#+\s*/gm, "").replace(/^>\s*/gm, "").replace(/`/g, "")
+                  .replace(/^[-•–]\s*/gm, "").trim();
+                const fullText = stripMd(lastAssistant.content).trim();
+                setQText(fullText);
+                // Auto-detect: if all lines are questions (end with ?), use questions mode.
+                // Otherwise (paragraphs, explanations, plans), default to report mode.
+                const lines = fullText.split("\n").map(l => l.trim()).filter(Boolean);
+                const allQuestions = lines.length > 0 && lines.every(l => l.endsWith("?"));
+                setQType(allQuestions ? "questions" : "report");
+              }
+              setShowQDialog(true);
+            }}>
+            <Send className="h-2.5 w-2.5 mr-1" />Enviar ao Paciente
+          </Button>
+        </div>
+
+        {quickHistory.length > 0 && (
+          <div className="max-h-72 overflow-y-auto p-3 space-y-2.5">
+            {quickHistory.map((m, i) => (
+              <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+                {m.role === "assistant" && <AtlasAvatar size="sm" />}
+                <div className={`max-w-[90%] text-[10px] rounded-xl px-2.5 py-2 ${
+                  m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 rounded-tl-none"
+                }`}>{m.role === "user" ? <p className="leading-relaxed">{m.content}</p> : <MarkdownMessage content={m.content} className="text-[10px]" />}</div>
+              </div>
+            ))}
+            {quickLoading && (
+              <div className="flex items-start gap-2">
+                <AtlasAvatar size="sm" />
+                <div className="bg-muted/40 rounded-xl rounded-tl-none px-2.5 py-2">
+                  <Loader2 className="h-3 w-3 animate-spin text-emerald-400" />
+                </div>
+              </div>
+            )}
+            <div ref={quickEndRef} />
+          </div>
+        )}
+
+        <div className="p-2 flex gap-2">
+          <Input
+            className="text-xs h-9 flex-1"
+            placeholder="Ex: 'Que exercícios sugeres para esta fase?' ou 'O que pode causar este padrão de dor?'"
+            value={quickInput}
+            onChange={e => setQuickInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleQuickChat(); } }}
+            disabled={quickLoading}
+          />
+          <Button size="sm" className="h-9 w-9 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={handleQuickChat} disabled={quickLoading || !quickInput.trim()}>
+            {quickLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Questions History ── */}
+      {sentQuestions.length > 0 && (
+        <div className="border rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-blue-500/5 border-b">
+            <p className="text-xs font-semibold text-blue-400">Mensagens Enviadas ao Paciente ({sentQuestions.length})</p>
+            <button onClick={fetchSentQuestions} className="text-[10px] text-muted-foreground hover:text-foreground">↻ Refresh</button>
+          </div>
+          <div className="divide-y">
+            {sentQuestions.map((qs: any) => {
+              const isExpanded = expandedQSet === qs.id;
+              const isReport = qs.type === "report";
+              const statusColor = isReport ? "text-emerald-400" : qs.status === "answered" ? "text-emerald-400" : qs.status === "reviewed" ? "text-blue-400" : "text-amber-400";
+              const statusLabel = isReport ? "📋 Relatório" : qs.status === "answered" ? "✅ Respondido" : qs.status === "reviewed" ? "👁 Revisto" : "⏳ Pendente";
+              return (
+                <div key={qs.id}>
+                  <button
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/20 text-left transition-colors"
+                    onClick={() => {
+                      const newExpanded = isExpanded ? null : qs.id;
+                      setExpandedQSet(newExpanded);
+                      if (newExpanded && qs.status === "answered") {
+                        fetch(`/api/admin/patients/${patientId}/questions`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ questionSetId: qs.id }),
+                        }).then(() => {
+                          setSentQuestions(prev => prev.map(q => q.id === qs.id ? { ...q, status: "reviewed" } : q));
+                        }).catch(() => {});
+                      }
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-semibold ${statusColor}`}>{statusLabel}</span>
+                        <span className="text-[10px] text-muted-foreground">·</span>
+                          <span className="text-[10px] text-muted-foreground">{isReport ? "relatório" : `${(qs.questions as string[]).length} pergunta${(qs.questions as string[]).length !== 1 ? "s" : ""}`}</span>
+                        <span className="text-[10px] text-muted-foreground">·</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                      {qs.context && <p className="text-[9px] text-muted-foreground/60 mt-0.5 truncate">{qs.context}</p>}
+                    </div>
+                    <span className="text-muted-foreground text-xs">{isExpanded ? "▲" : "▼"}</span>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-3 pb-3 space-y-2 bg-muted/10">
+                      {isReport ? (
+                        /* Report: show paragraphs as read-only text */
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-2 space-y-1.5">
+                          {(qs.questions as string[]).map((para: string, i: number) => (
+                            <p key={i} className="text-[10px] text-foreground leading-relaxed whitespace-pre-wrap">{para}</p>
+                          ))}
+                        </div>
+                      ) : (
+                        /* Questions: show each with answer */
+                        (qs.questions as string[]).map((q: string, i: number) => {
+                          const answer = qs.answers?.find((a: any) => a.index === i);
+                          return (
+                            <div key={i} className="rounded-lg border border-border/40 overflow-hidden">
+                              <div className="px-2.5 py-1.5 bg-muted/30">
+                                <p className="text-[10px] font-medium">{i + 1}. {q}</p>
+                              </div>
+                              {answer ? (
+                                <div className="px-2.5 py-1.5 bg-emerald-500/5 border-t border-emerald-500/20">
+                                  <p className="text-[10px] text-emerald-300 leading-relaxed">{answer.answer || <em className="text-muted-foreground">Sem resposta</em>}</p>
+                                </div>
+                              ) : (
+                                <div className="px-2.5 py-1.5 border-t border-amber-500/20 bg-amber-500/5">
+                                  <p className="text-[10px] text-amber-400/70 italic">Ainda não respondido</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                      {qs.answeredAt && !isReport && (
+                        <p className="text-[9px] text-muted-foreground">Respondido a {new Date(qs.answeredAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                      )}
+                      {/* Delete button */}
+                      <button
+                        className="flex items-center gap-1 text-[9px] text-red-400/70 hover:text-red-400 transition-colors mt-1"
+                        onClick={() => {
+                          if (!confirm(isReport ? "Eliminar este relatório? O paciente deixará de o ver." : "Eliminar este conjunto de perguntas? O paciente deixará de as ver.")) return;
+                          fetch(`/api/admin/patients/${patientId}/questions`, {
+                            method: "DELETE",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ questionSetId: qs.id }),
+                          }).then(() => {
+                            setSentQuestions(prev => prev.filter(q => q.id !== qs.id));
+                            setExpandedQSet(null);
+                          }).catch(() => {});
+                        }}
+                      >
+                        🗑 Eliminar {isReport ? "relatório" : "perguntas"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Dialog: Enviar Perguntas ao Paciente ── */}
+      {showQDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowQDialog(false)}>
+          <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-5 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">{qType === "report" ? "Enviar Relatório / Feedback" : "Rever e Enviar Perguntas"}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{qType === "report" ? "O paciente recebe como uma mensagem informativa (só de leitura)." : "Revê cada pergunta antes de enviar — use a 2ª pessoa (você) e tom directo."}</p>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowQDialog(false)}><X className="h-3.5 w-3.5" /></Button>
+            </div>
+
+            {/* Mode toggle */}
+            <div className="flex gap-1.5 p-1 bg-muted/30 rounded-lg">
+              <button
+                onClick={() => setQType("questions")}
+                className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${qType === "questions" ? "bg-blue-600 text-white" : "text-muted-foreground hover:text-foreground"}`}
+              >❓ Perguntas (paciente responde)</button>
+              <button
+                onClick={() => setQType("report")}
+                className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${qType === "report" ? "bg-emerald-600 text-white" : "text-muted-foreground hover:text-foreground"}`}
+              >📋 Relatório / Feedback</button>
+            </div>
+
+            {/* Contextual warning */}
+            {qType === "questions" && (
+              <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <span className="text-amber-400 text-xs mt-0.5">⚠️</span>
+                <p className="text-[10px] text-amber-300 leading-relaxed">
+                  Verifique: perguntas devem ser dirigidas ao paciente em <strong>2ª pessoa ("você")</strong>, em <strong>Português do Brasil</strong>, sem linguagem clínica. Use o botão <strong>✨ Reformular</strong> para corrigir automaticamente.
+                </p>
+              </div>
+            )}
+            {qType === "report" && (
+              <div className="flex items-start gap-2 p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                <span className="text-emerald-400 text-xs mt-0.5">📋</span>
+                <p className="text-[10px] text-emerald-300 leading-relaxed">
+                  O paciente vai ver este texto como um <strong>relatório/mensagem informativa</strong> — sem campos de resposta. Ideal para feedback clínico, resultados ou instruções.
+                </p>
+              </div>
+            )}
+
+            {/* Language + Reformat row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[10px] text-muted-foreground shrink-0">Língua:</p>
+              <Button size="sm" variant={qLang === "pt" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("pt")}>🇧🇷 PT-BR</Button>
+              <Button size="sm" variant={qLang === "en" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("en")}>🇬🇧 EN</Button>
+              {qType === "questions" && (
+                <>
+                  <div className="flex-1" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[10px] px-3 border-purple-500/40 text-purple-400 hover:bg-purple-500/10 gap-1"
+                    onClick={handleReformatQuestions}
+                    disabled={reformulating || !qText.trim()}
+                  >
+                    {reformulating ? <Loader2 className="h-3 w-3 animate-spin" /> : "✨"}
+                    {reformulating ? "A reformular..." : "Reformular para pt-BR"}
+                  </Button>
+                </>
+              )}
+            </div>
+
+            <textarea
+              className="w-full text-xs bg-muted/30 border rounded-lg p-2.5 resize-none h-52 placeholder:text-muted-foreground/50 font-mono leading-relaxed"
+              placeholder={qType === "report"
+                ? (qLang === "pt"
+                  ? "Escreva o relatório ou feedback clínico aqui…\nEx: Após a avaliação, identificámos que a sua dor lombar está relacionada com…"
+                  : "Write the clinical report or feedback here…")
+                : (qLang === "pt"
+                  ? "Escreva uma pergunta por linha, ex:\nHá quanto tempo você sente essa dor?\nA dor irradia para o braço ou a mão?"
+                  : "One question per line, e.g.:\nHow long have you been experiencing this pain?")}
+              value={qText} onChange={e => setQText(e.target.value)}
+            />
+            <p className="text-[9px] text-muted-foreground">
+              {qType === "report"
+                ? "O paciente verá isto como uma mensagem informativa — sem campos de resposta."
+                : "Cada linha = uma pergunta. O paciente responde no portal antes da consulta."}
+            </p>
+
+            {qSentOk ? (
+              <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
+                <CheckCircle2 className="h-4 w-4" />Perguntas enviadas! O paciente será notificado por email.
+              </div>
+            ) : (
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 h-9 text-xs" onClick={handleSendQuestions} disabled={sendingQ || !qText.trim()}>
+                {sendingQ ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />A enviar…</> : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirmar e Enviar ao Paciente</>}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Pre-Assessment Chat ──
+  if (view === "assess") return (
+    <div className="flex flex-col h-full space-y-0">
+      {/* Header */}
+      <div className="flex items-center gap-2 pb-2 mb-2 border-b">
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => setView("list")}><ArrowLeft className="h-3.5 w-3.5" /></Button>
+        <AtlasAvatar size="sm" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold leading-tight">{ATLAS_NAME} — Pre-Assessment</p>
+          <p className="text-[9px] text-muted-foreground">Answer Atlas's questions, then generate the full plan</p>
+        </div>
+      </div>
+
+      {error && <div className="flex items-center gap-2 p-2 mb-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400"><AlertCircle className="h-3.5 w-3.5 shrink-0" />{error}</div>}
+
+      {/* Chat messages */}
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-3 pb-2" style={{ maxHeight: "420px" }}>
+        {preLoading && preChat.length === 0 && (
+          <div className="flex items-start gap-2">
+            <AtlasAvatar size="sm" />
+            <div className="bg-muted/40 rounded-xl rounded-tl-none px-3 py-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
+            </div>
+          </div>
+        )}
+        {preChat.map((m, i) => (
+          <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+            {m.role === "assistant" && <AtlasAvatar size="sm" />}
+            <div className={`max-w-[88%] rounded-xl text-xs px-3 py-2 leading-relaxed whitespace-pre-wrap ${
+              m.role === "user"
+                ? "bg-emerald-600 text-white rounded-tr-none"
+                : "bg-muted/40 text-foreground rounded-tl-none"
+            }`}>{m.role === "user" ? <p className="text-[10px] leading-relaxed">{m.content}</p> : <MarkdownMessage content={m.content} className="text-[10px]" />}</div>
+          </div>
+        ))}
+        {preLoading && preChat.length > 0 && (
+          <div className="flex items-start gap-2">
+            <AtlasAvatar size="sm" />
+            <div className="bg-muted/40 rounded-xl rounded-tl-none px-3 py-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
+            </div>
+          </div>
+        )}
+        <div ref={preEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="flex gap-2 pt-2 border-t">
+        <Input className="text-xs h-9 flex-1" placeholder="Reply to Atlas…"
+          value={preInput} onChange={e => setPreInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendPreMessage(); } }}
+          disabled={preLoading} />
+        <Button size="sm" className="h-9 w-9 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={sendPreMessage} disabled={preLoading || !preInput.trim()}>
+          <Send className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Generate CTA */}
+      {preChat.length >= 2 && (
+        <Button className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-xs h-9" onClick={handleGenerate} disabled={generating}>
+          {generating
+            ? <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />Generating plan…</>
+            : <><Brain className="h-3.5 w-3.5 mr-2" />Generate Full Rehab Plan from this discussion</>}
+        </Button>
+      )}
+    </div>
+  );
+
+  // ── Plan View ──
+  if (view === "plan" && plan) return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => { setActivePlan(null); setView("list"); loadPlans(); }}><ArrowLeft className="h-3.5 w-3.5" /></Button>
+        <AtlasAvatar size="sm" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold truncate">{activePlan.bodyPart} — {activePlan.chiefComplaint}</p>
+          <p className="text-[9px] text-muted-foreground">{ATLAS_NAME} · {new Date(activePlan.createdAt).toLocaleDateString("en-GB")}</p>
+        </div>
+        <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400 shrink-0">{activePlan.status}</Badge>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {[{label:"Diagnosis Hypothesis",val:plan.diagnosisHypothesis,cols:"col-span-2"},{label:"Severity",val:plan.severity},{label:"Phase",val:plan.phase},{label:"Prognosis",val:plan.prognosis,cols:"col-span-2"},{label:"Return to Activity",val:plan.returnToActivityTimeline,cols:"col-span-2"}].map((item,i)=>(
+          <div key={i} className={`${item.cols||""} p-2.5 bg-emerald-500/5 border border-emerald-500/20 rounded-lg`}>
+            <p className="text-[9px] font-semibold text-emerald-400 uppercase mb-0.5">{item.label}</p>
+            <p className="text-xs leading-snug">{item.val}</p>
+          </div>
+        ))}
+      </div>
+
+      {plan.differentialDiagnoses?.length > 0 && (
+        <div className="p-2.5 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+          <p className="text-[9px] font-semibold text-amber-400 uppercase mb-1">Differential Diagnoses</p>
+          <div className="flex flex-wrap gap-1">{plan.differentialDiagnoses.map((d:string,i:number)=><Badge key={i} variant="outline" className="text-[9px] border-amber-500/30 text-amber-400">{d}</Badge>)}</div>
+        </div>
+      )}
+
+      {plan.redFlags?.length > 0 && (
+        <div className="p-2.5 bg-red-500/5 border border-red-500/30 rounded-lg">
+          <div className="flex items-center gap-1 mb-1"><TriangleAlert className="h-3 w-3 text-red-400" /><p className="text-[9px] font-semibold text-red-400 uppercase">Red Flags</p></div>
+          <ul className="space-y-0.5">{plan.redFlags.map((f:string,i:number)=><li key={i} className="text-[10px] text-red-300 flex gap-1"><span>•</span><span>{f}</span></li>)}</ul>
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold flex items-center gap-1"><ClipboardList className="h-3.5 w-3.5" />Rehabilitation Phases</p>
+        {plan.phases?.map((phase: any, i: number) => (
+          <details key={i} className="border rounded-lg" open={i === 0}>
+            <summary className="p-3 text-xs font-medium cursor-pointer flex items-center justify-between list-none">
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="w-5 h-5 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0">{i+1}</span>
+                <span className="truncate">{phase.phase}</span>
+                <span className="text-muted-foreground text-[10px] shrink-0">({phase.duration})</span>
+              </span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-2" />
+            </summary>
+            <div className="px-3 pb-3 space-y-2.5">
+              <div><p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">Goals</p>
+                <ul className="space-y-0.5">{phase.goals?.map((g:string,j:number)=><li key={j} className="text-[10px] flex gap-1"><CheckCircle2 className="h-2.5 w-2.5 text-emerald-400 shrink-0 mt-0.5" /><span>{g}</span></li>)}</ul></div>
+              <div><p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">BPR Treatments</p>
+                <div className="flex flex-wrap gap-1">{phase.bprTreatments?.map((t:string,j:number)=><Badge key={j} variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400">{t}</Badge>)}</div></div>
+              {phase.exercises?.length > 0 && (<div><p className="text-[9px] font-semibold text-muted-foreground uppercase mb-1">Exercises</p>
+                <div className="space-y-1">{phase.exercises.map((ex:any,j:number)=>(
+                  <div key={j} className="text-[10px] flex items-start gap-1.5 p-1.5 bg-muted/20 rounded">
+                    <Activity className="h-2.5 w-2.5 text-blue-400 shrink-0 mt-0.5" />
+                    <span><strong>{ex.name}</strong>{ex.sets&&` — ${ex.sets}`}{ex.reps&&` × ${ex.reps}`}{ex.frequency&&`, ${ex.frequency}`}{ex.notes&&<span className="text-muted-foreground"> ({ex.notes})</span>}</span>
+                  </div>
+                ))}</div></div>)}
+              {phase.precautions?.length > 0 && (<div><p className="text-[9px] font-semibold text-amber-400 uppercase mb-1">Precautions</p>
+                <ul className="space-y-0.5">{phase.precautions.map((p:string,j:number)=><li key={j} className="text-[10px] text-amber-300 flex gap-1"><span>⚠</span><span>{p}</span></li>)}</ul></div>)}
+            </div>
+          </details>
+        ))}
+      </div>
+
+      {plan.references?.length > 0 && (
+        <details className="border rounded-lg">
+          <summary className="p-3 text-xs font-medium cursor-pointer flex items-center gap-2 list-none">
+            <BookOpen className="h-3.5 w-3.5 text-blue-400 shrink-0" />References ({plan.references.length})
+          </summary>
+          <div className="px-3 pb-3"><ol className="space-y-1 list-decimal list-inside">{plan.references.map((ref:string,i:number)=><li key={i} className="text-[10px] text-muted-foreground">{ref}</li>)}</ol></div>
+        </details>
+      )}
+
+      {/* ── Send to Patient ── */}
+      <div className={`p-3 rounded-lg border-2 ${activePlan?.sentToPatient ? "border-emerald-500/40 bg-emerald-500/5" : "border-dashed border-muted-foreground/30"}`}>
+        {activePlan?.sentToPatient ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <p className="text-xs font-semibold text-emerald-400">Plano enviado ao paciente</p>
+              </div>
+              <span className="text-[9px] text-muted-foreground">{activePlan.sentAt ? new Date(activePlan.sentAt).toLocaleDateString("en-GB") : ""}</span>
+            </div>
+            {activePlan.therapistNote && (
+              <p className="text-[10px] text-muted-foreground italic">Nota: {activePlan.therapistNote}</p>
+            )}
+            <Button variant="outline" size="sm" className="h-7 text-[10px] text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={handleRevoke}>
+              Retirar acesso ao paciente
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold flex items-center gap-1.5">
+              <Send className="h-3.5 w-3.5 text-emerald-400" />Enviar plano ao paciente
+            </p>
+            <p className="text-[10px] text-muted-foreground">O paciente verá o plano e os exercícios no app. Podes adicionar uma nota pessoal antes de enviar.</p>
+            <textarea
+              className="w-full text-[10px] bg-muted/30 border rounded-lg p-2 resize-none h-16 placeholder:text-muted-foreground/50"
+              placeholder="Nota para o paciente (opcional)… ex: 'Lembra-te de fazer os exercícios pela manhã. Próxima sessão na 4ª feira.'"
+              value={sendNote} onChange={e => setSendNote(e.target.value)}
+            />
+            <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={handleSend} disabled={sending}>
+              {sending ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />A enviar…</> : <><Send className="h-3 w-3 mr-1.5" />Confirmar e enviar ao paciente</>}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Atlas chat on plan */}
+      <div className="border rounded-lg">
+        <div className="p-2.5 border-b flex items-center gap-2">
+          <AtlasAvatar size="sm" />
+          <div>
+            <p className="text-xs font-semibold leading-tight">{ATLAS_NAME}</p>
+            <p className="text-[9px] text-muted-foreground leading-tight">Follow-up questions · Evidence-based answers</p>
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto p-3 space-y-2">
+          {(activePlan?.messages || []).map((m: any, i: number) => (
+            <div key={i} className={`flex items-start gap-2 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
+              {m.role === "assistant" && <AtlasAvatar size="sm" />}
+              <div className={`max-w-[88%] text-[10px] rounded-xl px-2.5 py-1.5 ${
+                m.role === "user" ? "bg-emerald-600 text-white rounded-tr-none" : "bg-muted/40 rounded-tl-none"
+              }`}>{m.role === "user" ? <p className="leading-relaxed">{m.content}</p> : <MarkdownMessage content={m.content} className="text-[10px]" />}</div>
+            </div>
+          ))}
+          {chatLoading && <div className="flex items-start gap-2"><AtlasAvatar size="sm" /><div className="bg-muted/40 rounded-xl rounded-tl-none px-2.5 py-2"><Loader2 className="h-3 w-3 animate-spin" /></div></div>}
+          <div ref={chatEndRef} />
+        </div>
+        <div className="p-2 border-t flex gap-2">
+          <Input className="text-xs h-9 flex-1" placeholder="Ask Atlas about this plan…"
+            value={chatMsg} onChange={e => setChatMsg(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleChat(); } }} />
+          <Button size="sm" className="h-9 w-9 p-0 bg-emerald-600 hover:bg-emerald-700 shrink-0" onClick={handleChat} disabled={chatLoading || !chatMsg.trim()}>
+            <Send className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
+// ─── Clinical Scribe Panel ─────────────────────────────────────────────────
+
+function ClinicalScribePanel({ patientId, onTranscript }: { patientId: string; onTranscript: (text: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [lang, setLang] = useState("pt");
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [error, setError] = useState("");
+  const [progress, setProgress] = useState("");
+
+  const handle = async () => {
+    if (!file) return;
+    setTranscribing(true); setError(""); setTranscript("");
+    setProgress(file.size > 20 * 1024 * 1024 ? "Ficheiro grande — a dividir em partes..." : "A transcrever...");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("lang", lang);
+      const res = await fetch("/api/admin/transcribe", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Falha na transcrição");
+      setTranscript(data.transcript);
+      setProgress("");
+    } catch (e: any) { setError(e.message); setProgress(""); }
+    finally { setTranscribing(false); }
+  };
+
+  return (
+    <div className="border border-dashed border-violet-500/30 rounded-xl bg-violet-500/5">
+      <button className="w-full flex items-center justify-between p-3 text-left"
+        onClick={() => setOpen(o => !o)}>
+        <div className="flex items-center gap-2">
+          <Mic className="h-4 w-4 text-violet-400" />
+          <span className="text-xs font-semibold text-violet-400">Clinical Scribe — Transcrever Áudio / Vídeo</span>
+        </div>
+        {open ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-3">
+          <p className="text-[11px] text-muted-foreground">Carrega um áudio ou vídeo da sessão (MP3, MP4, WAV, M4A, etc.). O Whisper AI transcreve o conteúdo e insere-o no campo Subjetivo do SOAP.</p>
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Ficheiro (máx 500MB)</label>
+              <input type="file" accept="audio/*,video/*"
+                className="text-[11px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-violet-500/20 file:text-violet-300"
+                onChange={e => { setFile(e.target.files?.[0] || null); setTranscript(""); setError(""); }} />
+            </div>
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Idioma</label>
+              <select className="h-8 rounded border border-input bg-background text-xs px-2" value={lang} onChange={e => setLang(e.target.value)}>
+                <option value="pt">Português</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <Button size="sm" className="h-8 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700" onClick={handle} disabled={!file || transcribing}>
+              {transcribing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress || "A transcrever..."}</> : <><Mic className="h-3.5 w-3.5" /> Transcrever</>}
+            </Button>
+          </div>
+          {error && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3.5 w-3.5" /> {error}</p>}
+          {transcript && (
+            <div className="space-y-2">
+              <div className="bg-muted/40 rounded-lg p-3 max-h-48 overflow-y-auto">
+                <p className="text-[11px] leading-relaxed whitespace-pre-wrap">{transcript}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="h-7 text-xs gap-1" onClick={() => { onTranscript(transcript); setTranscript(""); setFile(null); setOpen(false); }}>
+                  <Save className="h-3 w-3" /> Inserir no SOAP
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => navigator.clipboard.writeText(transcript)}>
+                  <Copy className="h-3 w-3" /> Copiar
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

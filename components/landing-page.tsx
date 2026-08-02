@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
@@ -45,7 +45,10 @@ import {
   Thermometer,
   Eye,
   Flame,
-  Smartphone,
+  Cpu,
+  Moon,
+  HeartPulse,
+  HeartHandshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,8 +57,16 @@ import { t, getLocale, setLocale } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
 import { VapiVoiceWidget } from "@/components/vapi-voice-widget";
+import { NewsletterSignup } from "@/components/newsletter-signup";
 
 // Code splitting - lazy load heavy components
+const ThermographyIllustration = dynamic(
+  () => import("@/components/thermography-illustration").then(mod => ({ default: mod.ThermographyIllustration })),
+  { 
+    ssr: false,
+    loading: () => <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 animate-pulse rounded-2xl" />
+  }
+);
 
 interface ScreenLogoEntry { logoUrl?: string | null; darkLogoUrl?: string | null; }
 interface FooterModules { logo?: boolean; links?: boolean; social?: boolean; contact?: boolean; copyright?: boolean; newsletter?: boolean; }
@@ -126,43 +137,30 @@ interface LandingPageProps {
   initialArticles?: Article[];
 }
 
+interface ClinicScheduleEntry { day: string; dayOfWeek: number; open: string; close: string; closed: boolean; }
+
 export default function LandingPage({ initialSettings = null, initialArticles = [] }: LandingPageProps) {
   const [settings, setSettings] = useState<SiteSettings | null>(initialSettings);
   const [articles, setArticles] = useState<Article[]>(initialArticles);
+  const [clinicSchedule, setClinicSchedule] = useState<ClinicScheduleEntry[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [locale, setCurrentLocale] = useState<Locale>("en-GB");
   const [mounted, setMounted] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState<string>("");
-  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
-  const onImgError = (key: string) => setImgErrors(p => ({ ...p, [key]: true }));
 
   useEffect(() => {
     setMounted(true);
     setCurrentLocale(getLocale());
-    if (!initialSettings) fetchSettings();
-    if (!initialArticles || initialArticles.length === 0) fetchArticles();
-
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    const sectionIds = ["services", "insoles", "biomechanics", "thermography", "biohacking", "about", "contact"];
-    const observers: IntersectionObserver[] = [];
-    sectionIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const obs = new IntersectionObserver(
-        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
-        { rootMargin: "-30% 0px -60% 0px", threshold: 0 }
-      );
-      obs.observe(el);
-      observers.push(obs);
-    });
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      observers.forEach((o) => o.disconnect());
-    };
+    // Only fetch if not provided by SSR
+    if (!initialSettings) {
+      fetchSettings();
+    }
+    if (!initialArticles || initialArticles.length === 0) {
+      fetchArticles();
+    }
+    fetch("/api/public/schedule")
+      .then(r => r.ok ? r.json() : { schedule: [] })
+      .then(data => { if (Array.isArray(data.schedule)) setClinicSchedule(data.schedule); })
+      .catch(() => {});
   }, [initialSettings, initialArticles]);
 
   const toggleLocale = () => {
@@ -176,6 +174,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   const T = (key: string) => t(key, locale);
   // S() reads from settings field when locale is EN (settings are single-language English).
   // When PT is selected, always use the i18n translation to avoid mixed languages.
+  // Returns null for /uploads/ paths (ephemeral on Render) and empty values
+  const validImg = (url: string | null | undefined): string | null => {
+    if (!url || url.startsWith('/uploads/')) return null;
+    return url;
+  };
+
   const S = (settingsField: keyof SiteSettings | undefined, i18nKey: string) => {
     if (locale === "en-GB" && settingsField && settings && settings[settingsField]) return settings[settingsField] as string;
     return T(i18nKey);
@@ -192,21 +196,11 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   };
 
   const navAnchors = [
-    { id: "services", label: T("home.services") },
-    { id: "insoles", label: T("home.navInsoles") },
-    { id: "biomechanics", label: T("home.navBiomechanics") },
-    { id: "thermography", label: T("home.navThermography") },
-    { id: "biohacking", label: T("home.navBiohacking") },
-    { id: "about", label: T("home.about") },
-    { id: "contact", label: T("home.contact") },
+    { id: "method",    label: locale === "pt-BR" ? "O Método"   : "The Method" },
+    { id: "equipment", label: locale === "pt-BR" ? "Tecnologia"  : "Technology" },
+    { id: "about",     label: locale === "pt-BR" ? "Sobre"        : "About" },
+    { id: "contact",   label: locale === "pt-BR" ? "Contacto"    : "Contact" },
   ];
-
-  const navLinkClass = (id: string) =>
-    `text-sm font-medium transition-colors whitespace-nowrap ${
-      activeSection === id
-        ? "text-primary"
-        : "text-muted-foreground hover:text-primary"
-    }`;
 
   const fetchSettings = async () => {
     try {
@@ -232,61 +226,25 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
     }
   };
 
-  const features = [
-    { icon: Calendar, titleKey: "home.featureBooking", descKey: "home.featureBookingDesc" },
-    { icon: ClipboardList, titleKey: "home.featureRecords", descKey: "home.featureRecordsDesc" },
-    { icon: Shield, titleKey: "home.featureScreening", descKey: "home.featureScreeningDesc" },
-    { icon: Zap, titleKey: "home.featureAdvanced", descKey: "home.featureAdvancedDesc" },
-  ];
-
-  const services = [
-    { slug: "electrotherapy", icon: Zap, titleKey: "svc.electrotherapy", descKey: "svc.electrotherapyDesc", color: "bg-amber-500/15 text-amber-400" },
-    { slug: "exercise-therapy", icon: Dumbbell, titleKey: "svc.exerciseTherapy", descKey: "svc.exerciseTherapyDesc", color: "bg-emerald-500/15 text-emerald-400" },
-    { slug: "custom-insoles", icon: Footprints, titleKey: "svc.footScan", descKey: "svc.footScanDesc", color: "bg-blue-500/15 text-blue-400" },
-    { slug: "biomechanical-assessment", icon: ScanLine, titleKey: "svc.biomechanical", descKey: "svc.biomechanicalDesc", color: "bg-purple-500/15 text-purple-400" },
-    { slug: "therapeutic-ultrasound", icon: Waves, titleKey: "svc.ultrasound", descKey: "svc.ultrasoundDesc", color: "bg-cyan-500/15 text-cyan-400" },
-    { slug: "mls-laser", icon: Zap, titleKey: "svc.laserShockwave", descKey: "svc.laserShockwaveDesc", color: "bg-orange-500/15 text-orange-400" },
-    { slug: "sports-injury", icon: Activity, titleKey: "svc.sportsInjury", descKey: "svc.sportsInjuryDesc", color: "bg-orange-500/15 text-orange-400" },
-    { slug: "chronic-pain", icon: Heart, titleKey: "svc.chronicPain", descKey: "svc.chronicPainDesc", color: "bg-red-500/15 text-red-400" },
-    { slug: "pre-post-surgery", icon: Syringe, titleKey: "svc.prePostSurgery", descKey: "svc.prePostSurgeryDesc", color: "bg-teal-500/15 text-teal-400" },
-    { slug: "biohacking", icon: Brain, titleKey: "svc.biohacking", descKey: "svc.biohackingDesc", color: "bg-teal-500/15 text-teal-400" },
-    { slug: "hrv", icon: Activity, titleKey: "svc.hrv", descKey: "svc.hrvDesc", color: "bg-green-500/15 text-green-400" },
-    { slug: "sleep-longevity", icon: Timer, titleKey: "svc.sleepLongevity", descKey: "svc.sleepLongevityDesc", color: "bg-violet-500/15 text-violet-400" },
-  ];
-
-  const steps = [
-    { num: "01", titleKey: "home.step1Title", descKey: "home.step1Desc", icon: Calendar },
-    { num: "02", titleKey: "home.step2Title", descKey: "home.step2Desc", icon: ScanLine },
-    { num: "03", titleKey: "home.step3Title", descKey: "home.step3Desc", icon: Brain },
-    { num: "04", titleKey: "home.step4Title", descKey: "home.step4Desc", icon: Activity },
-  ];
-
   return (
-    <div className="min-h-screen bg-background bg-grid-pattern">
+    <div className="public-site min-h-screen bg-background">
       {/* Header */}
-      <header className={`sticky top-0 z-50 header-futuristic transition-all duration-300 ${scrolled ? "shadow-lg shadow-black/20 border-b border-border/60" : "border-b border-transparent"}`}>
+      <header className="fixed top-0 left-0 right-0 z-50 header-futuristic">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 md:h-20">
             {settings ? (
-              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="md" priority siteName={settings.siteName || "BPR"} />
+              <Logo logoUrl={settings.screenLogos?.landingHeader?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingHeader?.darkLogoUrl || settings.darkLogoUrl} size="lg" priority />
             ) : (
               <div style={{ height: 40, width: 40 }} />
             )}
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-5 xl:gap-6">
+            <nav className="hidden lg:flex items-center gap-5 xl:gap-7">
               {navAnchors.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => scrollTo(a.id)}
-                  className={navLinkClass(a.id)}
-                >
-                  {a.label}
-                  {activeSection === a.id && (
-                    <span className="block h-0.5 mt-0.5 rounded-full bg-primary w-full" />
-                  )}
-                </button>
+                <button key={a.id} onClick={() => scrollTo(a.id)} className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{a.label}</button>
               ))}
+              <Link href="/articles" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{T("home.articlesLabel") || "Articles"}</Link>
+              <Link href="/help" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium whitespace-nowrap">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
             </nav>
 
             {/* WhatsApp button in header */}
@@ -325,8 +283,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   {T("home.staff")}
                 </Button>
               </Link>
-              <Link href="/login"><Button variant="outline" className="text-foreground">{T("home.patientLogin")}</Button></Link>
-              <Link href="/signup"><Button className="bg-primary hover:bg-primary/90">{T("home.getStarted")}</Button></Link>
+              <Link href="/login"><Button variant="ba1Outline">{T("home.patientLogin")}</Button></Link>
+              <Link href="/signup"><Button variant="ba1Primary">{locale === "pt-BR" ? "Começar" : "Start Programme"}</Button></Link>
             </div>
 
             {/* Mobile Menu Button */}
@@ -349,24 +307,16 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <div className="border-t border-border/50 pt-2 pb-4">
-              <nav className="flex flex-col gap-0.5">
+            <div>
+              <nav className="flex flex-col gap-1">
                 {navAnchors.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => { scrollTo(a.id); setMobileMenuOpen(false); }}
-                    className={`text-left rounded-lg px-3 py-2.5 font-medium transition-colors hover:bg-muted/50 ${
-                      activeSection === a.id
-                        ? "text-primary bg-primary/5"
-                        : "text-muted-foreground hover:text-primary"
-                    }`}
-                  >
-                    {a.label}
-                  </button>
+                  <button key={a.id} onClick={() => { scrollTo(a.id); setMobileMenuOpen(false); }} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{a.label}</button>
                 ))}
+                <Link href="/articles" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{T("home.articlesLabel") || "Articles"}</Link>
+                <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="text-left text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-lg px-3 py-2.5 font-medium transition-colors">{locale === "pt-BR" ? "Ajuda" : "Help"}</Link>
                 <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                  <Link href="/login"><Button variant="outline" className="w-full">{T("home.patientLogin")}</Button></Link>
-                  <Link href="/signup"><Button className="w-full">{T("home.getStarted")}</Button></Link>
+                  <Link href="/login"><Button variant="ba1Outline" className="w-full">{T("home.patientLogin")}</Button></Link>
+                  <Link href="/signup"><Button variant="ba1Primary" className="w-full">{T("home.getStarted")}</Button></Link>
                   <div className="space-y-1 pt-2 border-t border-border">
                     <Link href="/staff-login" onClick={() => setMobileMenuOpen(false)}>
                       <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground"><Shield className="h-4 w-4 mr-2" />{T("home.staff")}</Button>
@@ -378,13 +328,27 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           )}
         </div>
       </header>
+      {/* Spacer for fixed header */}
+      <div className="h-16 md:h-20" aria-hidden="true" />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-12 sm:py-16 lg:py-24 bg-dot-pattern">
+      <section className="relative overflow-hidden py-14 sm:py-20 lg:py-28 bg-dot-pattern">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full" />
+                  {locale === "pt-BR" ? "Reabilitação Física & Desportiva" : "Physical & Sports Rehabilitation"}
+                </div>
+              </div>
+              <div className="inline-flex items-center gap-2.5 bg-rose-50 text-rose-600 font-bold pl-2.5 pr-4 py-2 rounded-full border border-rose-200 shadow-sm mb-5">
+                <span className="flex items-center justify-center w-7 h-7 bg-rose-100 rounded-full flex-shrink-0">
+                  <HeartHandshake className="h-4 w-4" />
+                </span>
+                <span className="text-sm sm:text-base">{T("home.healingWithHeart")}</span>
+              </div>
+              <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight tracking-tight">
                 {(() => {
                   const hasSettingsValue = locale === "en-GB" && settings?.heroTitle;
                   const raw = hasSettingsValue || T("home.heroTitle");
@@ -392,101 +356,123 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     const [main, highlight] = raw.split("|").map(s => s.trim());
                     return <>{main}{" "}<span className="text-primary">{highlight}</span></>;
                   }
-                  // If value comes from settings (DB), render as-is — user controls the full title
                   if (hasSettingsValue) return <>{raw}</>;
-                  // Only append i18n part2 when using i18n fallback
                   return <>{raw}{" "}<span className="text-primary">{T("home.heroTitle2")}</span></>;
                 })()}
               </h1>
-              <p className="mt-4 sm:mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed">
+              <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg">
                 {S("heroSubtitle", "home.heroSubtitle")}
               </p>
-              <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="mt-4 flex items-start gap-2 max-w-lg">
+                <HeartHandshake className="h-4 w-4 text-rose-400 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-slate-500 italic leading-relaxed">
+                  &ldquo;{T("home.healingWithHeartQuote")}&rdquo;
+                </p>
+              </div>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
                 <Link href="/signup">
-                  <Button size="lg" className="w-full sm:w-auto gap-2">
-                    {T("home.bookAppointment")}
+                  <Button size="lg" variant="ba1Primary" className="w-full sm:w-auto gap-2 hover:-translate-y-0.5">
+                    {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"}
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
                 <Link href="/login">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto">{T("home.clientPortal")}</Button>
+                  <Button size="lg" variant="ba1Outline" className="w-full sm:w-auto">
+                    {locale === "pt-BR" ? "Portal do Paciente" : "Patient Portal"}
+                  </Button>
                 </Link>
               </div>
-              <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary flex-shrink-0" />
-                  <span className="font-semibold text-foreground">20+</span>
-                  <span>{T("home.yearsExperience")}</span>
+              {/* Trust badges */}
+              <div className="mt-10 flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-slate-700">{T("home.fullyInsured")}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>{T("home.fullyInsured")}</span>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-slate-700">{T("home.openEveryDay")}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>{T("home.openEveryDay")}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-secondary flex-shrink-0" />
-                  <span>Ipswich, Suffolk</span>
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-slate-700">Ipswich, Suffolk</span>
                 </div>
               </div>
             </div>
-            <div>
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl shadow-cyan-500/10 neon-border bg-gradient-to-br from-teal-900/20 to-cyan-900/20">
-                {settings?.heroImageUrl && !imgErrors.hero ? (
-                  <img
-                    src={settings.heroImageUrl}
-                    onError={() => onImgError('hero')}
-                    alt="Professional physiotherapy treatment session - Bruno Physical Rehabilitation"
-                    className="object-cover absolute inset-0 w-full h-full"
-                  />
+            {/* Hero image + floating stat card */}
+            <div className="relative">
+              <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-100">
+                {validImg(settings?.heroImageUrl) ? (
+                  <img src={validImg(settings?.heroImageUrl)!} alt="Professional physical rehabilitation treatment session - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-muted-foreground/30">
+                    <div className="text-center text-slate-300">
+                      <Activity className="h-16 w-16 mx-auto mb-2" />
                       <p className="text-sm font-medium">Hero Image</p>
                     </div>
                   </div>
                 )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+              </div>
+              {/* Floating stat cards */}
+              <div className="hidden sm:block absolute -top-4 -left-4 sm:-top-6 sm:-left-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center"><HeartHandshake className="h-5 w-5 text-rose-600" /></div>
+                  <div><p className="text-base font-bold text-foreground leading-tight">{T("home.healingWithHeart")}</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Atenção real, não protocolo" : "Real care, not protocol"}</p></div>
+                </div>
+              </div>
+              <div className="absolute -bottom-4 -left-4 sm:-bottom-6 sm:-left-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Users className="h-5 w-5 text-primary" /></div>
+                  <div><p className="text-xl font-bold text-foreground">{locale === "pt-BR" ? "Personalizado" : "Personalised"}</p><p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Cuidado 1-para-1" : "1-to-1 Care"}</p></div>
+                </div>
+              </div>
+              <div className="absolute -top-4 -right-4 sm:-top-6 sm:-right-6 bg-white rounded-2xl p-4 shadow-xl border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><CheckCircle2 className="h-5 w-5 text-emerald-600" /></div>
+                  <div><p className="text-xl font-bold text-foreground">15+</p><p className="text-xs text-muted-foreground">{T("home.yearsExperience")}</p></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Accreditation / Trust Bar */}
-      <section className="py-5 sm:py-6 border-y border-border/40 bg-muted/20">
+      {/* Stats Bar */}
+      <section className="py-8 bg-primary">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                {T("home.trustSTO")}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+            {[
+              { value: "15+", label: locale === "pt-BR" ? "Anos de Experiência" : "Years Experience" },
+              { value: locale === "pt-BR" ? "Comprovado" : "Proven", label: locale === "pt-BR" ? "Baseado em Evidências" : "Evidence-Based Care" },
+              { value: locale === "pt-BR" ? "Corpo Inteiro" : "Whole-Body", label: locale === "pt-BR" ? "Abordagem Integrada" : "Integrated Approach" },
+              { value: locale === "pt-BR" ? "1-para-1" : "1-to-1", label: locale === "pt-BR" ? "Cuidado Personalizado" : "Personalised Care" },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p className="text-3xl sm:text-4xl font-bold text-white">{stat.value}</p>
+                <p className="text-primary-foreground/80 text-sm mt-1">{stat.label}</p>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 text-secondary flex-shrink-0" />
-                {T("home.trustIPHM")}
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-400">
-                <Brain className="h-3.5 w-3.5 flex-shrink-0" />
-                {T("home.trustBiohacking")}
-              </div>
+            ))}
           </div>
         </div>
       </section>
 
+
       {/* About Section */}
-      <section id="about" className="py-12 sm:py-16 lg:py-20 bg-background">
+      <section id="about" className="py-14 sm:py-16 lg:py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4 sm:mb-6">
+              <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-5">
+                {locale === "pt-BR" ? "Sobre Mim" : "About Me"}
+              </span>
+              <h2 className="font-sora text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-5 tracking-tight">
                 {(() => {
                   const raw = S("aboutTitle", "home.aboutTitle");
                   if (raw.includes("|")) {
                     const [main, highlight] = raw.split("|").map(s => s.trim());
-                    return <><span className="text-secondary">{main}</span>{" "}{highlight}</>;
+                    return <><span className="text-primary">{main}</span>{" "}{highlight}</>;
                   }
-                  return <><span className="text-secondary">Bruno Physical</span>{" "}Rehabilitation</>;
+                  return <><span className="text-primary">Bruno Physical</span>{" "}Rehabilitation</>;
                 })()}
               </h2>
               <div className="space-y-4 text-muted-foreground leading-relaxed">
@@ -499,18 +485,45 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     <p>{T("home.aboutText3")}</p>
                   </>
                 )}
-                <p className="text-sm text-foreground/90 border-l-2 border-emerald-500/60 pl-3 italic">{T("home.aboutText4")}</p>
               </div>
-              <div className="mt-6 sm:mt-8">
+              {/* Healing With Heart pull-quote */}
+              <div className="mt-6 bg-rose-50 border border-rose-200 rounded-2xl p-5">
+                <div className="inline-flex items-center gap-1.5 text-rose-600 text-xs font-bold uppercase tracking-wider mb-2">
+                  <HeartHandshake className="h-4 w-4" />
+                  {T("home.healingWithHeart")}
+                </div>
+                <p className="text-sm text-slate-700 leading-relaxed italic">
+                  &ldquo;{T("home.healingWithHeartQuote")}&rdquo;
+                </p>
+              </div>
+              {/* Credentials */}
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { icon: ShieldCheck, label: "STO Registered", color: "text-primary bg-primary/10" },
+                  { icon: Sparkles, label: "IPHM Biohacking Practitioner", color: "text-emerald-600 bg-emerald-100" },
+                  { icon: Activity, label: "15+ Years of Clinical Experience", color: "text-orange-600 bg-orange-100" },
+                  { icon: Users, label: "Ex-Professional Footballer", color: "text-blue-600 bg-blue-100" },
+                ].map((c) => (
+                  <div key={c.label} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${c.color}`}><c.icon className="h-4 w-4" /></div>
+                    <span className="text-sm font-medium text-foreground">{c.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-7">
                 <Link href="/signup">
-                  <Button className="gap-2">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
+                  <Button variant="ba1Health" className="gap-2">{T("home.bookConsultation")}<ArrowRight className="h-4 w-4" /></Button>
                 </Link>
               </div>
             </div>
             <div>
-              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-2xl overflow-hidden shadow-xl">
-                {settings?.aboutImageUrl && !imgErrors.about && (
-                  <img src={settings.aboutImageUrl} onError={() => onImgError('about')} alt="Professional physiotherapy treatment session" className="object-cover absolute inset-0 w-full h-full" />
+              <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border border-slate-100">
+                {validImg(settings?.aboutImageUrl) ? (
+                  <img src={validImg(settings?.aboutImageUrl)!} alt="Bruno - Physical Rehabilitation Specialist" className="object-cover absolute inset-0 w-full h-full" />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                    <UserCog className="h-24 w-24 text-primary/20" />
+                  </div>
                 )}
               </div>
             </div>
@@ -518,736 +531,333 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         </div>
       </section>
 
-      {/* Services Section — restructured with individual service cards linking to detail pages */}
-      <section id="services" className="py-12 sm:py-16 lg:py-20 bg-background">
+
+      {/* ═══ THE METHOD ═══ */}
+      <section id="method" className="py-16 sm:py-20 lg:py-28 bg-slate-50 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{S("servicesTitle", "home.servicesTitle")}</h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("servicesSubtitle", "home.servicesSubtitle")}</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {services.map((svc, index) => (
-              <div key={svc.slug}>
-                <Link href={svc.slug === "custom-insoles" ? "/custom-insoles" : svc.slug === "biomechanical-assessment" ? "/biomechanical-assessment" : `/services/${svc.slug}`}>
-                  <Card className="h-full group hover:shadow-lg hover:border-primary/30 transition-all duration-300 cursor-pointer border border-border bg-card">
-                    <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-start gap-4">
-                        <div className={`w-11 h-11 rounded-xl ${svc.color} flex items-center justify-center shrink-0`}>
-                          <svc.icon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground mb-1.5 group-hover:text-primary transition-colors">{T(svc.titleKey)}</h3>
-                          <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">{T(svc.descKey)}</p>
-                          <span className="inline-flex items-center gap-1 text-xs text-primary font-medium mt-3 group-hover:gap-2 transition-all">
-                            {T("home.learnMore")} <ArrowRight className="h-3 w-3" />
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ MLS® LASER THERAPY FEATURED BLOCK ═══ */}
-      {(() => {
-        let mls: any = {};
-        try { mls = settings?.mlsLaserJson ? JSON.parse(settings.mlsLaserJson) : {}; } catch {}
-        const mlsV = (field: string, fallbackKey: string) => mls[field] || T(fallbackKey);
-        let mlsBenefits: string[] = [];
-        try { mlsBenefits = mls.benefitsJson ? JSON.parse(mls.benefitsJson) : []; } catch {}
-        let mlsConditions: string[] = [];
-        try { mlsConditions = mls.conditionsJson ? JSON.parse(mls.conditionsJson) : []; } catch {}
-        let mlsStats: { value: string; label: string }[] = [];
-        try { mlsStats = mls.statsJson ? JSON.parse(mls.statsJson) : []; } catch {}
-
-        const benefitDefaults = ["home.mlsBenefit1", "home.mlsBenefit2", "home.mlsBenefit3", "home.mlsBenefit4", "home.mlsBenefit5", "home.mlsBenefit6"];
-        const condDefaults = ["home.mlsCond1", "home.mlsCond2", "home.mlsCond3", "home.mlsCond4", "home.mlsCond5", "home.mlsCond6", "home.mlsCond7", "home.mlsCond8"];
-        const statDefaults = [
-          { value: "75W", labelKey: "home.mlsStat1" },
-          { value: "3 kg", labelKey: "home.mlsStat2" },
-          { value: "EU MDR", labelKey: "home.mlsStat3" },
-          { value: "2000 Hz", labelKey: "home.mlsStat4" },
-        ];
-
-        const treatmentImg = mls.treatmentImageUrl || "";
-        const deviceImg = mls.deviceImageUrl || "";
-        const ctaLink = mls.ctaLink || "/signup";
-        const learnMoreLink = mls.learnMoreLink || "/services/mls-laser";
-
-        const benefitIcons = [
-          { icon: Zap, color: "text-orange-400 bg-orange-500/15" },
-          { icon: Shield, color: "text-blue-400 bg-blue-500/15" },
-          { icon: Timer, color: "text-emerald-400 bg-emerald-500/15" },
-          { icon: Target, color: "text-violet-400 bg-violet-500/15" },
-          { icon: Activity, color: "text-cyan-400 bg-cyan-500/15" },
-          { icon: Heart, color: "text-rose-400 bg-rose-500/15" },
-        ];
-
-        return (
-      <section id="mls-laser" className="relative py-16 sm:py-20 lg:py-28 bg-background overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-orange-500/[0.03] to-transparent" />
-          <div className="absolute bottom-0 left-0 w-1/3 h-1/2 bg-gradient-to-tr from-blue-600/[0.04] to-transparent" />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-10 sm:mb-14">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-orange-500/15 text-orange-400 text-xs font-semibold uppercase tracking-wider mb-4">
-              {mlsV("label", "home.mlsLabel")}
+          <div className="text-center mb-14">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
+              {locale === "pt-BR" ? "O Método" : "The Method"}
             </span>
-            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight max-w-3xl">
-              {mlsV("title", "home.mlsTitle")} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-blue-500">{mlsV("title2", "home.mlsTitle2")}</span>
+            <h2 className="font-sora text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight">
+              {locale === "pt-BR" ? "Reabilitação completa." : "Complete rehabilitation."}{" "}
+              <span className="text-primary">{locale === "pt-BR" ? "Sem contar sessões." : "We don't count sessions."}</span>
             </h2>
-            <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-              {mlsV("desc", "home.mlsDesc")}
+            <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              {locale === "pt-BR"
+                ? "Cada paciente recebe um programa personalizado, desenhado para tratar a causa raiz — não apenas os sintomas. O tempo que leva é o que for necessário."
+                : "Every patient receives a personalised programme designed to treat the root cause — not just the symptoms. It takes as long as it needs to."}
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
-            <div className="space-y-4">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800" style={{minHeight: 240}}>
-                {treatmentImg && !imgErrors.mlsTreatment && (
-                  <img src={treatmentImg} onError={() => onImgError('mlsTreatment')} alt="MLS Laser Therapy treatment in action" className="w-full h-auto max-h-[420px] object-cover" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
-                    <Zap className="h-5 w-5 text-orange-400" />
-                    <span className="text-sm font-medium text-foreground">{mlsV("badge", "home.mlsBadge")}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="relative rounded-xl overflow-hidden shadow-lg aspect-square bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
-                  {deviceImg && !imgErrors.mlsDevice && (
-                    <img src={deviceImg} onError={() => onImgError('mlsDevice')} alt="MLS Mphi 75 Multiwave Locked System laser device" className="object-contain p-4 absolute inset-0 w-full h-full" />
-                  )}
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-blue-600/10 border border-orange-500/20 p-5 flex flex-col justify-center">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-orange-400 animate-pulse" />
-                      <span className="text-xs font-semibold text-orange-400 uppercase tracking-wider">808 nm</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{mlsV("wave808", "home.mls808")}</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse" />
-                      <span className="text-xs font-semibold text-blue-400 uppercase tracking-wider">905 nm</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{mlsV("wave905", "home.mls905")}</p>
-                    <p className="text-[10px] text-muted-foreground/70 pt-1 border-t border-border/50">{mlsV("dualText", "home.mlsDual")}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-6">{mlsV("benefitsTitle", "home.mlsBenefitsTitle")}</h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                {(mlsBenefits.length > 0 ? mlsBenefits : benefitDefaults.map(k => T(k))).map((text, i) => {
-                  const bi = benefitIcons[i % benefitIcons.length];
-                  const BIcon = bi.icon;
-                  return (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className={`w-9 h-9 rounded-lg ${bi.color} flex items-center justify-center shrink-0`}>
-                        <BIcon className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm text-foreground leading-relaxed pt-1.5">{text}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="rounded-xl bg-card border border-border p-5 mb-8">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-orange-400" />
-                  {mlsV("conditionsTitle", "home.mlsConditionsTitle")}
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {(mlsConditions.length > 0 ? mlsConditions : condDefaults.map(k => T(k))).map((cond, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/60 text-xs font-medium text-foreground">
-                      <CheckCircle2 className="h-3 w-3 text-orange-400" />
-                      {cond}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link href={ctaLink}>
-                  <Button size="lg" className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
-                    {mlsV("ctaText", "home.mlsCta")} <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href={learnMoreLink}>
-                  <Button size="lg" variant="outline">{mlsV("learnMoreText", "home.mlsLearnMore")}</Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-            {(mlsStats.length > 0 ? mlsStats : statDefaults.map(s => ({ value: s.value, label: T(s.labelKey) }))).map((stat, i) => (
-              <div key={i} className="text-center rounded-xl bg-card border border-border p-4 sm:p-5">
-                <p className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-blue-500">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-        );
-      })()}
-
-      {/* ═══ CUSTOM INSOLES / FOOT SCAN BLOCK ═══ */}
-      <section id="insoles" className="py-16 sm:py-20 lg:py-28 bg-card/50 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div>
-            <span className="inline-block px-4 py-1.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-4">{T("home.insolesLabel")}</span>
-            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight">
-              {S("insolesTitle", "home.insolesTitle")} <span className="text-primary">{S("insolesSubtitle", "home.insolesTitle2")}</span>
-            </h2>
-          </div>
-
-          {/* Hero row: image + description */}
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
-            <div>
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-blue-900/20 to-cyan-900/20">
-                {settings?.insolesImageUrl && !imgErrors.insoles ? (
-                  <>
-                    <img src={settings.insolesImageUrl} onError={() => onImgError('insoles')} alt="Custom insoles digital foot pressure scan - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  </>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-muted-foreground/30">
-                      <p className="text-sm font-medium">Insoles Image</p>
-                    </div>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
-                    <Footprints className="h-5 w-5 text-blue-400" />
-                    <span className="text-sm font-medium text-foreground">{T("home.insolesBenefit5")}</span>
-                  </div>
-                </div>
-              </div>
-              {/* floating stat */}
-              <div className="absolute -top-4 right-2 sm:-top-6 sm:-right-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">100%</p>
-                  <p className="text-xs text-muted-foreground">Custom</p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6">{S("insolesDesc", "home.insolesDesc")}</p>
-              {/* Benefits grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <div key={n} className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
-                    <span className="text-sm text-foreground">{T(`home.insolesBenefit${n}`)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link href="/signup"><Button size="lg" className="gap-2">{T("home.insolesOrderCta")} <ArrowRight className="h-4 w-4" /></Button></Link>
-                <Link href="/custom-insoles"><Button size="lg" variant="outline">{T("home.insolesLearnMore")}</Button></Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Process steps */}
-          <div>
-            <h3 className="text-lg sm:text-xl font-bold text-foreground text-center mb-8">{T("home.processTitle")}</h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { num: "01", titleKey: "home.insolesStep1", descKey: "home.insolesStep1Desc", icon: Footprints, color: "bg-blue-500/15 text-blue-400" },
-                { num: "02", titleKey: "home.insolesStep2", descKey: "home.insolesStep2Desc", icon: Activity, color: "bg-indigo-500/15 text-indigo-400" },
-                { num: "03", titleKey: "home.insolesStep3", descKey: "home.insolesStep3Desc", icon: Zap, color: "bg-violet-500/15 text-violet-400" },
-                { num: "04", titleKey: "home.insolesStep4", descKey: "home.insolesStep4Desc", icon: CheckCircle2, color: "bg-emerald-500/15 text-emerald-400" },
-              ].map((step, i) => (
-                <div key={step.titleKey}>
-                  <span className="absolute -top-3 left-5 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">{step.num}</span>
-                  <div className={`w-10 h-10 rounded-lg ${step.color} flex items-center justify-center mb-3 mt-1`}>
-                    <step.icon className="h-5 w-5" />
-                  </div>
-                  <h4 className="font-semibold text-foreground mb-1.5">{T(step.titleKey)}</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{T(step.descKey)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ BIOMECHANICAL ASSESSMENT BLOCK ═══ */}
-      <section id="biomechanics" className="py-16 sm:py-20 lg:py-28 bg-background overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div>
-            <span className="inline-block px-4 py-1.5 rounded-full bg-purple-500/15 text-purple-400 text-xs font-semibold uppercase tracking-wider mb-4">{T("home.bioLabel")}</span>
-            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight">
-              {S("bioTitle", "home.bioTitle")} — <span className="text-primary">{S("bioSubtitle", "home.bioTitle2")}</span>
-            </h2>
-          </div>
-
-          {/* Hero row: description + image (reversed) */}
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-center mb-14 sm:mb-20">
-            <div>
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6">{S("bioDesc", "home.bioDesc")}</p>
-              {/* Benefits grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <div key={n} className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
-                    <span className="text-sm text-foreground">{T(`home.bioBenefit${n}`)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link href="/signup"><Button size="lg" className="gap-2">{T("home.bioOrderCta")} <ArrowRight className="h-4 w-4" /></Button></Link>
-                <Link href="/biomechanical-assessment"><Button size="lg" variant="outline">{T("home.bioLearnMore")}</Button></Link>
-              </div>
-            </div>
-
-            <div>
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-purple-900/20 to-blue-900/20">
-                {settings?.bioImageUrl && !imgErrors.bio ? (
-                  <>
-                    <img src={settings.bioImageUrl} onError={() => onImgError('bio')} alt="Biomechanical posture assessment - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  </>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center text-muted-foreground/30">
-                      <p className="text-sm font-medium">Biomechanics Image</p>
-                    </div>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
-                    <ScanLine className="h-5 w-5 text-purple-400" />
-                    <span className="text-sm font-medium text-foreground">{T("home.bioBenefit5")}</span>
-                  </div>
-                </div>
-              </div>
-              {/* floating stat */}
-              <div className="absolute -top-4 -left-4 sm:-top-6 sm:-left-6 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-400">33</p>
-                  <p className="text-xs text-muted-foreground">Landmarks</p>
-                </div>
-              </div>
-              <div className="absolute -bottom-3 right-2 sm:-bottom-5 sm:-right-5 bg-card rounded-xl p-3 sm:p-4 shadow-lg border border-border">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">100%</p>
-                  <p className="text-xs text-muted-foreground">Precision</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Process steps */}
-          <div>
-            <h3 className="text-lg sm:text-xl font-bold text-foreground text-center mb-8">{T("home.processTitle")}</h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { num: "01", titleKey: "home.bioStep1", descKey: "home.bioStep1Desc", icon: ScanLine, color: "bg-purple-500/15 text-purple-400" },
-                { num: "02", titleKey: "home.bioStep2", descKey: "home.bioStep2Desc", icon: Brain, color: "bg-indigo-500/15 text-indigo-400" },
-                { num: "03", titleKey: "home.bioStep3", descKey: "home.bioStep3Desc", icon: Activity, color: "bg-blue-500/15 text-blue-400" },
-                { num: "04", titleKey: "home.bioStep4", descKey: "home.bioStep4Desc", icon: CheckCircle2, color: "bg-emerald-500/15 text-emerald-400" },
-              ].map((step, i) => (
-                <div key={step.titleKey}>
-                  <span className="absolute -top-3 left-5 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">{step.num}</span>
-                  <div className={`w-10 h-10 rounded-lg ${step.color} flex items-center justify-center mb-3 mt-1`}>
-                    <step.icon className="h-5 w-5" />
-                  </div>
-                  <h4 className="font-semibold text-foreground mb-1.5">{T(step.titleKey)}</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{T(step.descKey)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ INFRARED THERMOGRAPHY BLOCK ═══ */}
-      {(() => {
-        let thm: any = {};
-        try { thm = settings?.thermoJson ? JSON.parse(settings.thermoJson) : {}; } catch {}
-        const thmV = (field: string, fallbackKey: string) => thm[field] || T(fallbackKey);
-        const thmBenefits: string[] = thm.benefits ? thm.benefits.split("\n").map((s: string) => s.trim()).filter(Boolean) : [];
-        const thmConditions: string[] = thm.conditions ? thm.conditions.split("\n").map((s: string) => s.trim()).filter(Boolean) : [];
-
-        const benefitDefaults = ["home.thermoBenefit1", "home.thermoBenefit2", "home.thermoBenefit3", "home.thermoBenefit4", "home.thermoBenefit5", "home.thermoBenefit6"];
-        const condDefaults = ["home.thermoCond1", "home.thermoCond2", "home.thermoCond3", "home.thermoCond4", "home.thermoCond5", "home.thermoCond6"];
-        const ctaLink = thm.ctaLink || "/signup";
-
-        const benefitIcons = [
-          { icon: Flame, color: "text-red-400 bg-red-500/15" },
-          { icon: Thermometer, color: "text-orange-400 bg-orange-500/15" },
-          { icon: Activity, color: "text-amber-400 bg-amber-500/15" },
-          { icon: Timer, color: "text-emerald-400 bg-emerald-500/15" },
-          { icon: Eye, color: "text-cyan-400 bg-cyan-500/15" },
-          { icon: Shield, color: "text-blue-400 bg-blue-500/15" },
-        ];
-
-        return (
-      <section id="thermography" className="relative py-16 sm:py-20 lg:py-28 bg-background overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-red-500/[0.03] to-transparent" />
-          <div className="absolute bottom-0 right-0 w-1/3 h-1/2 bg-gradient-to-tl from-orange-500/[0.04] to-transparent" />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-10 sm:mb-14">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-red-500/15 text-red-400 text-xs font-semibold uppercase tracking-wider mb-4">
-              {thmV("label", "home.thermoLabel")}
-            </span>
-            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight max-w-3xl">
-              {thmV("title", "home.thermoTitle")}{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500">
-                {thmV("title2", "home.thermoTitle2")}
-              </span>
-            </h2>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start">
-            {/* Left: Image + badge */}
-            <div className="space-y-4">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 to-slate-800 aspect-[4/3]">
-                {settings?.thermoImageUrl && !imgErrors.thermo && (
-                  <img src={settings.thermoImageUrl as string} onError={() => onImgError('thermo')} alt="Infrared thermography scan showing heat patterns on body" className="object-cover absolute inset-0 w-full h-full" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
-                    <Thermometer className="h-5 w-5 text-red-400" />
-                    <span className="text-sm font-medium text-foreground">{thmV("badge", "home.thermoBadge")}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Info cards row */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/20 p-4 text-center">
-                  <Flame className="h-6 w-6 text-red-400 mx-auto mb-2" />
-                  <p className="text-xs font-semibold text-foreground">{locale === "pt-BR" ? "Detecção de Calor" : "Heat Detection"}</p>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-500/20 p-4 text-center">
-                  <Eye className="h-6 w-6 text-orange-400 mx-auto mb-2" />
-                  <p className="text-xs font-semibold text-foreground">{locale === "pt-BR" ? "Análise Visual" : "Visual Analysis"}</p>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20 p-4 text-center">
-                  <Activity className="h-6 w-6 text-amber-400 mx-auto mb-2" />
-                  <p className="text-xs font-semibold text-foreground">{locale === "pt-BR" ? "Monitoramento" : "Monitoring"}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Content */}
-            <div>
-              <div className="space-y-4 mb-8">
-                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">{thmV("desc", "home.thermoDesc")}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">{thmV("desc2", "home.thermoDesc2")}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">{thmV("desc3", "home.thermoDesc3")}</p>
-              </div>
-
-              {/* Benefits */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-                {(thmBenefits.length > 0 ? thmBenefits : benefitDefaults.map(k => T(k))).map((text, i) => {
-                  const bi = benefitIcons[i % benefitIcons.length];
-                  const BIcon = bi.icon;
-                  return (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className={`w-9 h-9 rounded-lg ${bi.color} flex items-center justify-center shrink-0`}>
-                        <BIcon className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm text-foreground leading-relaxed pt-1.5">{text}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Conditions tags */}
-              <div className="rounded-xl bg-card border border-border p-5 mb-8">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-red-400" />
-                  {thmV("conditionsTitle", "home.thermoConditionsTitle")}
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {(thmConditions.length > 0 ? thmConditions : condDefaults.map(k => T(k))).map((cond, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/60 text-xs font-medium text-foreground">
-                      <CheckCircle2 className="h-3 w-3 text-red-400" />
-                      {cond}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* CTAs */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link href={ctaLink}>
-                  <Button size="lg" className="gap-2 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white">
-                    {thmV("ctaText", "home.thermoCta")} <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-        );
-      })()}
-
-      {/* ═══ BIOHACKING & HUMAN PERFORMANCE BLOCK ═══ */}
-      <section id="biohacking" className="relative py-16 sm:py-20 lg:py-28 bg-card/50 overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 w-1/2 h-full bg-gradient-to-r from-emerald-500/[0.04] to-transparent" />
-          <div className="absolute bottom-0 right-0 w-1/3 h-1/2 bg-gradient-to-tl from-teal-500/[0.03] to-transparent" />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-10 sm:mb-14">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
-              <Brain className="h-3.5 w-3.5" />
-              {T("home.bioHackLabel")}
-            </span>
-            <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-foreground leading-tight max-w-3xl">
-              {T("home.bioHackTitle")}{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">
-                {T("home.bioHackTitle2")}
-              </span>
-            </h2>
-            <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-              {T("home.bioHackDesc")}
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-14 items-start mb-14 sm:mb-20">
-            {/* Left: Visual card with 3 pillars */}
-            <div className="space-y-4">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-emerald-900/20 to-teal-900/20 border border-emerald-500/20 p-6 sm:p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                    <Brain className="h-5 w-5 text-emerald-400" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-foreground">Biohacking & Performance</p>
-                    <p className="text-xs text-muted-foreground">20+ Years Clinical Experience · IPHM Certified</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
-                    <div className="w-9 h-9 rounded-lg bg-teal-500/20 flex items-center justify-center shrink-0">
-                      <Brain className="h-4 w-4 text-teal-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar1")}</p>
-                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar1Desc")}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                      <Activity className="h-4 w-4 text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar2")}</p>
-                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar2Desc")}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-xl bg-card/60 border border-border p-3">
-                    <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
-                      <Eye className="h-4 w-4 text-violet-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{T("home.bioHackPillar3")}</p>
-                      <p className="text-xs text-muted-foreground">{T("home.bioHackPillar3Desc")}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 glass rounded-lg px-4 py-2.5 shadow-lg">
-                <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                <span className="text-sm font-medium text-foreground">{T("home.bioHackBadge")}</span>
-              </div>
-            </div>
-
-            {/* Right: Benefits + conditions + CTA */}
-            <div>
-              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-6">{T("home.bioHackBenefitsTitle")}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                {([
-                  { icon: Zap, color: "text-emerald-400 bg-emerald-500/15", key: "home.bioHackBenefit1" },
-                  { icon: Activity, color: "text-blue-400 bg-blue-500/15", key: "home.bioHackBenefit2" },
-                  { icon: Brain, color: "text-teal-400 bg-teal-500/15", key: "home.bioHackBenefit3" },
-                  { icon: Shield, color: "text-violet-400 bg-violet-500/15", key: "home.bioHackBenefit4" },
-                  { icon: Flame, color: "text-orange-400 bg-orange-500/15", key: "home.bioHackBenefit5" },
-                  { icon: Sparkles, color: "text-amber-400 bg-amber-500/15", key: "home.bioHackBenefit6" },
-                ] as { icon: React.ElementType; color: string; key: string }[]).map(({ icon: BIcon, color, key }, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center shrink-0`}>
-                      <BIcon className="h-4 w-4" />
-                    </div>
-                    <span className="text-sm text-foreground leading-relaxed pt-1.5">{T(key)}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-xl bg-card border border-border p-5 mb-6">
-                <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-emerald-400" />
-                  {T("home.bioHackConditionsTitle")}
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {(["home.bioHackCond1","home.bioHackCond2","home.bioHackCond3","home.bioHackCond4","home.bioHackCond5","home.bioHackCond6"] as const).map((key, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-muted/60 text-xs font-medium text-foreground">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                      {T(key)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{T("home.bioHackDesc2")}</p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link href="/signup">
-                  <Button size="lg" className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white">
-                    {T("home.bioHackCta")} <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Button size="lg" variant="outline" onClick={() => scrollTo("services")}>{T("home.bioHackLearnMore")}</Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
             {([
-              { value: "20+", key: "home.bioHackStat1" },
-              { value: "IPHM", key: "home.bioHackStat2" },
-              { value: "HRV", key: "home.bioHackStat4" },
-              { value: "1:1", key: "home.bioHackStat3" },
-            ] as { value: string; key: string }[]).map((stat, i) => (
-              <div key={i} className="text-center rounded-xl bg-card border border-border p-4 sm:p-5">
-                <p className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1">{T(stat.key)}</p>
+              {
+                num: "01",
+                icon: ScanLine,
+                color: "from-blue-500 to-cyan-500",
+                bg: "bg-blue-50 text-blue-600",
+                titleEn: "Global Assessment",
+                titlePt: "Avaliação Global",
+                descEn: "Full-body evaluation using infrared thermography and HRV — to identify the true root cause of your condition.",
+                descPt: "Avaliação completa com termografia infravermelha e HRV — para identificar a verdadeira causa do problema.",
+              },
+              {
+                num: "02",
+                icon: Zap,
+                color: "from-orange-500 to-amber-500",
+                bg: "bg-orange-50 text-orange-600",
+                titleEn: "Pain Elimination",
+                titlePt: "Eliminação da Dor",
+                descEn: "MLS® Laser, electrotherapy, microcurrent (MENS) and therapeutic ultrasound accelerate comfort and tissue repair — while movement and re-education deliver the lasting result.",
+                descPt: "Laser MLS®, eletroterapia, microcorrente (MENS) e ultrassom terapêutico aceleram o alívio e a reparação tecidual — enquanto o movimento e a reeducação entregam o resultado duradouro.",
+              },
+              {
+                num: "03",
+                icon: Activity,
+                color: "from-emerald-500 to-teal-500",
+                bg: "bg-emerald-50 text-emerald-600",
+                titleEn: "Movement Restoration",
+                titlePt: "Restauração do Movimento",
+                descEn: "Supervised exercise and movement rehabilitation to restore correct movement patterns, muscle balance, and full range of motion — so you return to the activities you love.",
+                descPt: "Exercício supervisionado e reabilitação do movimento para restaurar padrões corretos, equilíbrio muscular e amplitude total — para voltares às actividades que amas.",
+              },
+              {
+                num: "04",
+                icon: Sparkles,
+                color: "from-violet-500 to-purple-500",
+                bg: "bg-violet-50 text-violet-600",
+                titleEn: "Re-education & Longevity",
+                titlePt: "Reeducação & Longevidade",
+                descEn: "Biohacking protocols, HRV monitoring, sleep optimisation and lifestyle guidance — so you leave with the knowledge and tools to maintain your health for life.",
+                descPt: "Protocolos de biohacking, monitorização de HRV, optimização do sono e orientação de estilo de vida — para saíres com o conhecimento para manter a saúde para sempre.",
+              },
+            ] as const).map((phase) => (
+              <div key={phase.num} className="relative bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md hover:border-primary/20 transition-all">
+                <div className={`w-12 h-12 rounded-xl ${phase.bg} flex items-center justify-center mb-4`}>
+                  <phase.icon className="h-6 w-6" />
+                </div>
+                <div className={`absolute top-5 right-5 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br ${phase.color} opacity-10`}>{phase.num}</div>
+                <h3 className="text-lg font-bold text-foreground mb-2">{locale === "pt-BR" ? phase.titlePt : phase.titleEn}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{locale === "pt-BR" ? phase.descPt : phase.descEn}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* How It Works */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{T("home.howItWorksTitle")}</h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{T("home.howItWorksSubtitle")}</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {steps.map((step, index) => (
-              <div key={step.titleKey || index}>
-                <div className="relative mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                  <step.icon className="h-7 w-7 text-primary" />
-                  <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">{step.num}</span>
-                </div>
-                <h3 className="font-semibold text-foreground mb-2">{T(step.titleKey)}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{T(step.descKey)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* App Pre-Launch Strip */}
-      <section className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-y border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-                <Smartphone className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-bold text-white">{locale === "pt-BR" ? "BPR Clinic App — Em Breve" : "BPR Clinic App — Coming Soon"}</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase tracking-wide">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    {locale === "pt-BR" ? "Em Breve" : "Coming Soon"}
-                  </span>
-                </div>
-                <p className="text-slate-400 text-xs sm:text-sm">{locale === "pt-BR" ? "A lançar para iOS e Android — marque consultas, siga o seu tratamento e muito mais." : "Launching on iOS & Android — book appointments, follow your treatment and more."}</p>
-              </div>
+          <div className="mt-10 bg-white rounded-2xl border border-primary/20 p-6 sm:p-8 flex items-start gap-4 max-w-3xl mx-auto">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Users className="h-5 w-5 text-primary" />
             </div>
-            <Link href="/get-the-app" className="shrink-0">
-              <Button size="sm" variant="outline" className="gap-1.5 border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white whitespace-nowrap">
-                {locale === "pt-BR" ? "Saber Mais" : "Learn More"} <ArrowRight className="h-3.5 w-3.5" />
+            <div>
+              <h4 className="font-semibold text-foreground mb-1">
+                {locale === "pt-BR" ? "Abordagem Multidisciplinar" : "Multidisciplinary Approach"}
+              </h4>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {locale === "pt-BR"
+                  ? "O corpo é um sistema. Quando necessário, integramos outros especialistas — dentista (focos dentários), nutricionista, psicólogo — porque a recuperação completa exige olhar o paciente como um todo."
+                  : "The body is a system. When needed, we integrate other specialists — dentist (dental foci), nutritionist, psychologist — because complete recovery requires seeing the patient as a whole."}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-10 text-center">
+            <Link href="/signup">
+              <Button size="lg" variant="ba1Primary" className="gap-2">
+                {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"} <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Portal Features Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-card/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-              {(() => {
-                const raw = S("portalTitle", "home.portalTitle");
-                if (raw.includes("|")) {
-                  const [main, highlight] = raw.split("|").map(s => s.trim());
-                  return <>{main}{" "}<span className="text-primary">{highlight}</span></>;
-                }
-                // Legacy: try to highlight "Rehabilitation" / "Reabilitação"
-                const keyword = locale === "pt-BR" ? "Reabilitação" : "Rehabilitation";
-                if (raw.includes(keyword)) {
-                  const parts = raw.split(keyword);
-                  return <>{parts[0]}<span className="text-primary">{keyword}</span>{parts[1] || ""}</>;
-                }
-                return raw;
-              })()}
-            </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("portalSubtitle", "home.portalSubtitle")}</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {features.map((feature, index) => (
-              <div key={feature.titleKey}>
-                <Card className="h-full card-hover border-0 bg-muted/50">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
-                      <feature.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+      {/* ═══ PATIENT JOURNEY ═══ */}
+      {(() => {
+        let mls: any = {};
+        try { mls = settings?.mlsLaserJson ? JSON.parse(settings.mlsLaserJson) : {}; } catch {}
+        const mlsTreatImg = validImg(mls.treatmentImageUrl) || validImg(mls.deviceImageUrl);
+        const thermoImg   = validImg(settings?.thermoImageUrl as string | null);
+
+        const phases = [
+          {
+            key: "assess",
+            step: "01",
+            img: thermoImg,
+            fallbackImg: "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800&q=80",
+            gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
+            accent: "bg-blue-400/20 border-blue-300/40 text-blue-200",
+            icon: ScanLine,
+            stepColor: "text-blue-300",
+            tagEn: "Step 01",
+            tagPt: "Passo 01",
+            titleEn: "We understand your body",
+            titlePt: "Percebemos o teu corpo",
+            descEn: "A complete 360° assessment — thermography and HRV — to find the real cause, not just the symptom.",
+            descPt: "Uma avaliação 360° completa — termografia e HRV — para encontrar a causa real, não apenas o sintoma.",
+            techEn: "Thermography · HRV",
+            techPt: "Termografia · HRV",
+          },
+          {
+            key: "treat",
+            img: mlsTreatImg,
+            fallbackImg: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80",
+            step: "02",
+            gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
+            accent: "bg-orange-400/20 border-orange-300/40 text-orange-200",
+            icon: Zap,
+            stepColor: "text-orange-300",
+            tagEn: "Step 02",
+            tagPt: "Passo 02",
+            titleEn: "We eliminate the pain",
+            titlePt: "Eliminamos a dor",
+            descEn: "We apply the most effective clinical technologies available to relieve pain fast and repair the damaged tissue at its source.",
+            descPt: "Aplicamos as tecnologias clínicas mais eficazes disponíveis para aliviar a dor rapidamente e reparar o tecido lesionado na sua origem.",
+            techEn: "MLS® Laser · Electrotherapy · Ultrasound",
+            techPt: "Laser MLS® · Eletroterapia · Ultrassom",
+          },
+          {
+            key: "move",
+            img: null,
+            fallbackImg: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80",
+            step: "03",
+            gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
+            accent: "bg-emerald-400/20 border-emerald-300/40 text-emerald-200",
+            icon: Activity,
+            stepColor: "text-emerald-300",
+            tagEn: "Step 03",
+            tagPt: "Passo 03",
+            titleEn: "We restore your movement",
+            titlePt: "Restauramos o teu movimento",
+            descEn: "Supervised movement rehabilitation and exercise to rebuild correct movement patterns, muscle balance and full range of motion.",
+            descPt: "Reabilitação do movimento supervisionada e exercício para reconstruir padrões corretos, equilíbrio muscular e amplitude total.",
+            techEn: "Movement Rehabilitation · Exercise Therapy",
+            techPt: "Reabilitação do Movimento · Exercício Terapêutico",
+          },
+          {
+            key: "live",
+            img: null,
+            fallbackImg: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&q=80",
+            step: "04",
+            gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
+            accent: "bg-violet-400/20 border-violet-300/40 text-violet-200",
+            icon: Sparkles,
+            stepColor: "text-violet-300",
+            tagEn: "Step 04",
+            tagPt: "Passo 04",
+            titleEn: "We educate for life",
+            titlePt: "Reeducamos para a vida",
+            descEn: "You leave with biohacking protocols, HRV monitoring and lifestyle tools — so you stay healthy for life, not just until the next injury.",
+            descPt: "Sais com protocolos de biohacking, monitorização HRV e ferramentas de estilo de vida — para te manteres saudável para sempre, não só até à próxima lesão.",
+            techEn: "Biohacking · HRV · Sleep Optimisation",
+            techPt: "Biohacking · HRV · Optimização do Sono",
+          },
+        ];
+
+        return (
+          <section id="equipment" className="py-16 sm:py-20 lg:py-28 bg-slate-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-12">
+                <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
+                  {locale === "pt-BR" ? "A Tua Jornada" : "Your Journey"}
+                </span>
+                <h2 className="font-sora text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+                  {locale === "pt-BR"
+                    ? "Não vendemos sessões. Entregamos resultados."
+                    : "We don't sell sessions. We deliver results."}
+                </h2>
+                <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
+                  {locale === "pt-BR"
+                    ? "A tecnologia é o meio. O teu regresso a uma vida plena e saudável é o único objetivo."
+                    : "Technology is the means. Your return to a full, healthy life is the only goal."}
+                </p>
+              </div>
+
+              {/* 4 journey phase cards */}
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+                {phases.map((ph) => {
+                  const imgSrc = ph.img || ph.fallbackImg;
+                  return (
+                    <div key={ph.key} className="relative rounded-2xl overflow-hidden aspect-[3/4] shadow-lg border border-slate-200 group">
+                      <img
+                        src={imgSrc}
+                        alt={locale === "pt-BR" ? ph.titlePt : ph.titleEn}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className={`absolute inset-0 bg-gradient-to-t ${ph.gradient}`} />
+
+                      {/* Step number watermark */}
+                      <div className={`absolute top-4 right-4 text-6xl font-black ${ph.stepColor} opacity-20 leading-none select-none`}>
+                        {ph.step}
+                      </div>
+
+                      <div className="absolute inset-0 flex flex-col justify-end p-5">
+                        <span className={`self-start text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${ph.accent} mb-2`}>
+                          {locale === "pt-BR" ? ph.tagPt : ph.tagEn}
+                        </span>
+                        <h3 className="text-white font-bold text-base leading-tight mb-2">
+                          {locale === "pt-BR" ? ph.titlePt : ph.titleEn}
+                        </h3>
+                        <p className="text-white/80 text-xs leading-relaxed mb-3">
+                          {locale === "pt-BR" ? ph.descPt : ph.descEn}
+                        </p>
+                        <div className="border-t border-white/10 pt-2.5">
+                          <p className="text-white/40 text-[10px] uppercase tracking-wider mb-0.5">
+                            {locale === "pt-BR" ? "Tecnologia utilizada" : "Technology used"}
+                          </p>
+                          <p className="text-white/60 text-[11px] font-medium">
+                            {locale === "pt-BR" ? ph.techPt : ph.techEn}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="font-semibold text-base sm:text-lg text-foreground mb-2">{T(feature.titleKey)}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{T(feature.descKey)}</p>
-                  </CardContent>
-                </Card>
+                  );
+                })}
+              </div>
+
+              {/* Subtle technology note */}
+              <div className="bg-white rounded-2xl border border-slate-100 p-5 sm:p-6">
+                <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold text-center mb-4">
+                  {locale === "pt-BR" ? "Tecnologias clínicas integradas no tratamento" : "Clinical technologies integrated in your treatment"}
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {([
+                    { icon: CircleDot,   en: "MLS® Laser Mphi 75",        pt: "Laser MLS® Mphi 75",        href: "/services/mls-laser" },
+                    { icon: Thermometer, en: "Infrared Thermography",      pt: "Termografia Infravermelha",  href: "/services/mls-laser" },
+                    { icon: HeartPulse,  en: "HRV Monitoring",             pt: "Monitorização HRV",          href: "/services/hrv-recovery-monitoring" },
+                    { icon: Zap,         en: "Advanced Electrotherapy",    pt: "Eletroterapia Avançada",     href: "/services/electrotherapy" },
+                    { icon: Zap,         en: "Microcurrent (MENS)",        pt: "Microcorrente (MENS)",       href: "/services/microcurrent" },
+                    { icon: Waves,       en: "Therapeutic Ultrasound",     pt: "Ultrassom Terapêutico",      href: "/services/therapeutic-ultrasound" },
+                    { icon: Cpu,         en: "Biohacking & Performance",   pt: "Biohacking & Performance",   href: "/services/biohacking-performance" },
+                  ] as const).map((t) => (
+                    <Link key={t.en} href={t.href} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-primary hover:border-primary/30 hover:shadow-sm transition-all">
+                      <t.icon className="h-3 w-3 shrink-0" />
+                      <span>{locale === "pt-BR" ? t.pt : t.en}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* ═══ DIFFERENTIATORS ═══ */}
+      <section className="py-16 sm:py-20 lg:py-28 bg-slate-900 text-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white/10 text-white/80 text-xs font-semibold uppercase tracking-wider mb-4">
+              {locale === "pt-BR" ? "Porque somos diferentes" : "Why we are different"}
+            </span>
+            <h2 className="font-sora text-3xl sm:text-4xl font-bold text-white tracking-tight">
+              {locale === "pt-BR"
+                ? "Um nível de cuidado que poucas clínicas no mundo oferecem"
+                : "A level of care that few clinics in the world offer"}
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+            {([
+              {
+                icon: Clock,
+                accent: "from-amber-400 to-orange-400",
+                titleEn: "No session limits",
+                titlePt: "Sem limite de sessão",
+                descEn: "You don't pay for hours. You invest in a complete result. Every appointment lasts as long as your treatment requires — never rushed, never cut short.",
+                descPt: "Não pagas por horas. Investes num resultado completo. Cada consulta dura o tempo que o teu tratamento necessita — nunca apressado, nunca interrompido.",
+              },
+              {
+                icon: Target,
+                accent: "from-primary to-cyan-400",
+                titleEn: "Root cause, not symptoms",
+                titlePt: "Causa raiz, não sintomas",
+                descEn: "We use thermography and HRV to understand why the problem exists — not just where it hurts. We treat the source.",
+                descPt: "Usamos termografia e HRV para perceber por que o problema existe — não apenas onde dói. Tratamos a origem.",
+              },
+              {
+                icon: Users,
+                accent: "from-emerald-400 to-teal-400",
+                titleEn: "Whole-person care",
+                titlePt: "Cuidado integral",
+                descEn: "When your recovery requires it, we work with dentists, nutritionists, and other specialists. Because your body is a system, and we treat it as one.",
+                descPt: "Quando a tua recuperação o exige, trabalhamos com dentistas, nutricionistas e outros especialistas. Porque o teu corpo é um sistema e tratamo-lo como tal.",
+              },
+            ] as const).map((diff) => (
+              <div key={diff.titleEn} className="bg-white/5 rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-all">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${diff.accent} flex items-center justify-center mb-5`}>
+                  <diff.icon className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{locale === "pt-BR" ? diff.titlePt : diff.titleEn}</h3>
+                <p className="text-white/70 text-sm leading-relaxed">{locale === "pt-BR" ? diff.descPt : diff.descEn}</p>
               </div>
             ))}
-          </div>
-          <div className="mt-8 sm:mt-10 text-center">
-            <Link href="/signup"><Button size="lg" className="gap-2">{T("home.getStarted")} <ArrowRight className="h-5 w-5" /></Button></Link>
           </div>
         </div>
       </section>
 
       {/* Articles Section */}
-      <section id="articles" className="py-12 sm:py-16 lg:py-20 bg-card/50">
+      <section id="articles" className="py-14 sm:py-16 lg:py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8 sm:mb-10">
             <p className="text-secondary font-medium mb-2">{T("home.articlesLabel")}</p>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
+            <h2 className="font-sora text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
               {S("articlesTitle", "home.articlesTitle")}
             </h2>
             <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("articlesSubtitle", "home.articlesSubtitle")}</p>
@@ -1273,8 +883,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                     <Card className="h-full card-hover overflow-hidden border border-border cursor-pointer">
                       {article.imageUrl && (
                         <div className="relative aspect-video bg-muted overflow-hidden">
-                          {article.imageUrl.startsWith('data:') ? (
-                            <img src={article.imageUrl} alt={article.title} className="object-cover absolute inset-0 w-full h-full" />
+                          {article.imageUrl.startsWith('data:') || article.imageUrl.startsWith('/api/') ? (
+                            // Internal API-served images bypass next/image (optimizer can't re-fetch them)
+                            <img src={article.imageUrl} alt={article.title} loading="lazy" className="object-cover absolute inset-0 w-full h-full" />
                           ) : (
                             <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" />
                           )}
@@ -1284,7 +895,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                         <h3 className="font-semibold text-lg text-foreground mb-2 line-clamp-2">{article.title}</h3>
                         <p className="text-muted-foreground text-sm line-clamp-3 mb-4">{article.excerpt}</p>
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>By {article.author.firstName} {article.author.lastName}</span>
+                          <span>By {(article as any).authorName || `${article.author.firstName} ${article.author.lastName}`}</span>
                           <span>{new Date(article.createdAt).toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                         </div>
                       </CardContent>
@@ -1294,111 +905,346 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 ))}
               </div>
               <div className="text-center mt-8">
-                <Link href="/articles"><Button variant="outline" className="gap-2">{T("home.articlesLabel")} <ArrowRight className="h-4 w-4" /></Button></Link>
+                <Link href="/articles"><Button variant="ba1Outline" className="gap-2">{T("home.articlesLabel")} <ArrowRight className="h-4 w-4" /></Button></Link>
               </div>
               </>
             </LazyLoadSection>
           ) : (
-            <div className="text-center py-12 bg-background rounded-2xl border border-border">
-              <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">{T("home.articlesComing")}</h3>
-              <p className="text-muted-foreground">{T("home.articlesComingDesc")}</p>
+            <div className="text-center py-14 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl border border-primary/10">
+              <BookOpen className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-3">{T("home.articlesComing")}</h3>
+              <p className="text-muted-foreground max-w-md mx-auto mb-6">{T("home.articlesComingDesc")}</p>
+              <Link href="/signup">
+                <Button variant="ba1Primary" className="gap-2">
+                  {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           )}
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section id="contact" className="py-12 sm:py-16 lg:py-20 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 sm:mb-10">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">{S("contactTitle", "home.contactTitle")}</h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl">{S("contactSubtitle", "home.contactSubtitle")}</p>
-          </div>
-          {(() => {
-            const allCards: {id:string;icon:string;title:string;content:string;enabled?:boolean;link?:string}[] = settings?.contactCardsJson ? (() => { try { return JSON.parse(settings.contactCardsJson); } catch { return []; }})() : [
-              { id: '1', icon: 'MapPin', title: 'Location', content: settings?.address || 'Ipswich, Suffolk', enabled: true },
-              { id: '2', icon: 'Clock', title: 'Hours', content: 'Open every day including weekends', enabled: true },
-              ...(settings?.email ? [{ id: '3', icon: 'Mail', title: 'Email', content: settings.email, enabled: true, link: `mailto:${settings.email}` }] : []),
-              ...(settings?.phone ? [{ id: '4', icon: 'Phone', title: 'Phone', content: settings.phone, enabled: true, link: `tel:${settings.phone}` }] : []),
-              ...(settings?.whatsappEnabled && settings?.whatsappNumber ? [{ id: '5', icon: 'MessageCircle', title: 'WhatsApp', content: settings.whatsappNumber, enabled: true, link: `https://wa.me/${settings.whatsappNumber.replace(/\D/g,'')}` }] : []),
-            ];
-            const cards = allCards.filter(c => c.enabled !== false);
-            const iconMap: Record<string,any> = { MapPin, Clock, Mail, Phone, Heart, Activity, MessageCircle };
-            return (
-              <div className={`grid sm:grid-cols-2 lg:grid-cols-${Math.min(cards.length, 4)} gap-4 sm:gap-6 max-w-5xl mx-auto`}>
-                {cards.map((card) => {
-                  const Icon = iconMap[card.icon] || MapPin;
-                  const inner = (
-                    <Card key={card.id} className="card-hover border-0 bg-card shadow-sm h-full">
-                      <CardContent className="p-4 sm:p-6 text-center">
-                        <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center mx-auto mb-4"><Icon className="h-6 w-6 text-secondary" /></div>
-                        <h3 className="font-semibold text-foreground mb-3">{card.title}</h3>
-                        <p className="text-muted-foreground text-sm whitespace-pre-line">{card.content}</p>
-                      </CardContent>
-                    </Card>
-                  );
-                  return card.link ? <a key={card.id} href={card.link} target={card.link.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className="block">{inner}</a> : <div key={card.id}>{inner}</div>;
-                })}
-              </div>
-            );
-          })()}
-          <div className="mt-8 sm:mt-12 text-center">
-            <Link href="/signup"><Button size="lg" className="gap-2">{T("home.startRecovery")}<ArrowRight className="h-5 w-5" /></Button></Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer — respects footerModulesJson toggles */}
+      {/* ═══ CONTACT SECTION ═══ */}
       {(() => {
-        const fMods: FooterModules = (() => { try { return settings?.footerModulesJson ? JSON.parse(settings.footerModulesJson) : {}; } catch { return {}; } })();
-        const fShow = (k: keyof FooterModules) => fMods[k] === true;
-        const fLinks: { id: string; title: string; url: string }[] = (() => { try { return settings?.footerLinksJson ? JSON.parse(settings.footerLinksJson) : []; } catch { return []; } })();
-        const fSocial: { id: string; platform: string; url: string }[] = (() => { try { return settings?.socialLinksJson ? JSON.parse(settings.socialLinksJson) : []; } catch { return []; } })();
-        const fHasLogo = fShow("logo");
-        const fHasLinks = fShow("links") && fLinks.length > 0;
-        const fHasContact = fShow("contact") && (settings?.email || settings?.phone);
-        const fHasSocial = fShow("social") && fSocial.length > 0;
-        const fHasCopyright = fShow("copyright");
-        const fHasTopRow = fHasLogo || fHasLinks || fHasContact || fHasSocial;
-        const fHasAny = fHasTopRow || fHasCopyright;
+        const dayOrder = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        const dayPt: Record<string,string> = { Sunday:"Domingo",Monday:"Segunda",Tuesday:"Terça",Wednesday:"Quarta",Thursday:"Quinta",Friday:"Sexta",Saturday:"Sábado" };
+        const sortedHours = clinicSchedule.length > 0
+          ? [...clinicSchedule].sort((a,b) => a.dayOfWeek - b.dayOfWeek)
+          : dayOrder.map((d,i) => ({ day: d, dayOfWeek: i, open: "09:00", close: "18:00", closed: d === "Sunday" }));
+
         return (
-          <footer className="border-t border-white/5 py-4">
+          <section id="contact" className="py-16 sm:py-20 lg:py-24 bg-slate-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {fHasTopRow && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-3">
-                  {fHasLogo && settings && (
+              <div className="text-center mb-12">
+                <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
+                  {locale === "pt-BR" ? "Fala Connosco" : "Get in Touch"}
+                </span>
+                <h2 className="font-sora text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+                  {S("contactTitle", "home.contactTitle")}
+                </h2>
+                <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
+                  {S("contactSubtitle", "home.contactSubtitle")}
+                </p>
+              </div>
+
+              <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start max-w-5xl mx-auto">
+
+                {/* Contact info cards */}
+                <div className="space-y-4">
+                  {settings?.address && (
+                    <div className="flex items-start gap-4 bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <MapPin className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">{locale === "pt-BR" ? "Localização" : "Location"}</p>
+                        <p className="text-sm font-medium text-foreground">{settings.address}</p>
+                      </div>
+                    </div>
+                  )}
+                  {settings?.phone && (
+                    <a href={`tel:${settings.phone}`} className="flex items-start gap-4 bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:border-primary/20 hover:shadow-md transition-all block">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Phone className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">{locale === "pt-BR" ? "Telefone" : "Phone"}</p>
+                        <p className="text-sm font-medium text-foreground">{settings.phone}</p>
+                      </div>
+                    </a>
+                  )}
+                  {settings?.email && (
+                    <a href={`mailto:${settings.email}`} className="flex items-start gap-4 bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:border-primary/20 hover:shadow-md transition-all block">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Mail className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Email</p>
+                        <p className="text-sm font-medium text-foreground">{settings.email}</p>
+                      </div>
+                    </a>
+                  )}
+                  {settings?.whatsappEnabled && settings?.whatsappNumber && (
+                    <a
+                      href={`https://wa.me/${settings.whatsappNumber.replace(/\D/g,'')}${settings.whatsappMessage ? `?text=${encodeURIComponent(settings.whatsappMessage)}` : ''}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-start gap-4 bg-[#25D366]/5 rounded-2xl p-5 border border-[#25D366]/20 shadow-sm hover:bg-[#25D366]/10 transition-all block"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-[#25D366]/20 flex items-center justify-center shrink-0">
+                        <MessageCircle className="h-5 w-5 text-[#25D366]" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">WhatsApp</p>
+                        <p className="text-sm font-medium text-foreground">{settings.whatsappNumber}</p>
+                      </div>
+                    </a>
+                  )}
+                  <div className="mt-6">
+                    <Link href="/signup">
+                      <Button size="lg" variant="ba1Primary" className="w-full gap-2">
+                        {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"} <ArrowRight className="h-5 w-5" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Opening hours */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Clock className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-foreground text-sm">{locale === "pt-BR" ? "Horário de Funcionamento" : "Opening Hours"}</h3>
+                      <p className="text-xs text-muted-foreground">{locale === "pt-BR" ? "Actualizados em tempo real" : "Live from our system"}</p>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-slate-50">
+                    {sortedHours.map((h) => {
+                      const isToday = new Date().toLocaleDateString("en-GB", { weekday: "long" }) === h.day;
+                      return (
+                        <div key={h.day} className={`flex items-center justify-between px-6 py-3 ${isToday ? "bg-primary/5" : ""}`}>
+                          <div className="flex items-center gap-2">
+                            {isToday && <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+                            <span className={`text-sm font-medium ${isToday ? "text-primary" : "text-foreground"}`}>
+                              {locale === "pt-BR" ? dayPt[h.day] ?? h.day : h.day}
+                              {isToday && <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-primary/70">{locale === "pt-BR" ? "Hoje" : "Today"}</span>}
+                            </span>
+                          </div>
+                          {h.closed ? (
+                            <span className="text-xs text-red-400 font-medium">{locale === "pt-BR" ? "Fechado" : "Closed"}</span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground tabular-nums">{h.open} – {h.close}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {clinicSchedule.length === 0 && (
+                    <div className="px-6 py-3 border-t border-slate-50">
+                      <p className="text-xs text-muted-foreground italic text-center">
+                        {locale === "pt-BR" ? "Configure os horários em Admin → Schedule → Availability" : "Set hours in Admin → Schedule → Availability"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* ═══ FOOTER ═══ */}
+      {(() => {
+        const fSocial: { id: string; platform: string; url: string }[] = (() => { try { return settings?.socialLinksJson ? JSON.parse(settings.socialLinksJson) : []; } catch { return []; } })();
+        const dayOrder = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        const dayPt: Record<string,string> = { Sunday:"Domingo",Monday:"Segunda",Tuesday:"Terça",Wednesday:"Quarta",Thursday:"Quinta",Friday:"Sexta",Saturday:"Sábado" };
+        const sortedHours = clinicSchedule.length > 0
+          ? [...clinicSchedule].sort((a,b) => a.dayOfWeek - b.dayOfWeek)
+          : dayOrder.map((d,i) => ({ day: d, dayOfWeek: i, open: "09:00", close: "18:00", closed: d === "Sunday" }));
+        const socialIconMap: Record<string, any> = { instagram: Instagram, facebook: Facebook, twitter: Twitter, linkedin: Linkedin, youtube: Youtube };
+
+        return (
+          <footer className="bg-[#20242D] text-white">
+            {/* Main footer grid */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
+
+                {/* Col 1 — Brand */}
+                <div className="lg:col-span-1">
+                  {settings && (
+                    <div className="mb-4">
+                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="lg" linkTo="/" />
+                    </div>
+                  )}
+                  <p className="text-slate-400 text-sm leading-relaxed mb-5">
+                    {settings?.tagline || (locale === "pt-BR"
+                      ? "Reabilitação física personalizada. A tecnologia ao serviço do teu regresso a uma vida plena."
+                      : "Personalised physical rehabilitation. Technology at the service of your return to a full life.")}
+                  </p>
+                  {fSocial.length > 0 && (
                     <div className="flex items-center gap-3">
-                      <Logo logoUrl={settings.screenLogos?.landingFooter?.logoUrl || settings.logoUrl} darkLogoUrl={settings.screenLogos?.landingFooter?.darkLogoUrl || settings.darkLogoUrl} size="sm" linkTo="/" siteName={settings.siteName || "BPR"} />
-                      {settings.tagline && <p className="text-xs text-muted-foreground">{settings.tagline}</p>}
+                      {fSocial.map(s => {
+                        const SIcon = socialIconMap[s.platform.toLowerCase()] || Globe;
+                        return (
+                          <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer"
+                            className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/20 transition-all"
+                            title={s.platform}>
+                            <SIcon className="h-4 w-4" />
+                          </a>
+                        );
+                      })}
                     </div>
                   )}
-                  {fHasLinks && (
-                    <div className="flex items-center gap-3 flex-wrap justify-center">
-                      {fLinks.map(l => <a key={l.id} href={l.url} target={l.url.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{l.title}</a>)}
-                    </div>
+                  <div className="mt-6">
+                    <NewsletterSignup isPt={locale === "pt-BR"} />
+                  </div>
+                </div>
+
+                {/* Col 2 — Navigation */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-5">{locale === "pt-BR" ? "Navegação" : "Navigation"}</h4>
+                  <ul className="space-y-3">
+                    {[
+                      { labelEn: "The Method",   labelPt: "O Método",    anchor: "method" },
+                      { labelEn: "Technology",   labelPt: "Tecnologia",  anchor: "equipment" },
+                      { labelEn: "About Bruno",  labelPt: "Sobre Bruno", anchor: "about" },
+                      { labelEn: "Articles",     labelPt: "Artigos",     href: "/articles" },
+                      { labelEn: "Contact",      labelPt: "Contacto",    anchor: "contact" },
+                    ].map((item) => (
+                      <li key={item.labelEn}>
+                        {item.href ? (
+                          <Link href={item.href} className="text-slate-400 hover:text-white text-sm transition-colors">
+                            {locale === "pt-BR" ? item.labelPt : item.labelEn}
+                          </Link>
+                        ) : (
+                          <button onClick={() => scrollTo(item.anchor!)} className="text-slate-400 hover:text-white text-sm transition-colors text-left">
+                            {locale === "pt-BR" ? item.labelPt : item.labelEn}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                    <li className="pt-2">
+                      <Link href="/signup" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
+                        {locale === "pt-BR" ? "Começar o Programa" : "Start Programme"} <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Col 3 — Programmes */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-5">{locale === "pt-BR" ? "Programas" : "Programmes"}</h4>
+                  <ul className="space-y-3">
+                    {[
+                      { labelEn: "MLS® Laser Therapy",       labelPt: "Laser MLS®",                 href: "/services/mls-laser" },
+                      { labelEn: "Biohacking & Performance",  labelPt: "Biohacking & Performance",   href: "/services/biohacking-performance" },
+                      { labelEn: "HRV & Recovery",            labelPt: "HRV & Recuperação",          href: "/services/hrv-recovery-monitoring" },
+                      { labelEn: "Sleep & Longevity",         labelPt: "Sono & Longevidade",         href: "/services/sleep-longevity-optimisation" },
+                      { labelEn: "Advanced Electrotherapy",   labelPt: "Eletroterapia Avançada",     href: "/services/electrotherapy" },
+                      { labelEn: "Therapeutic Ultrasound",    labelPt: "Ultrassom Terapêutico",      href: "/services/therapeutic-ultrasound" },
+                      { labelEn: "Exercise Therapy",          labelPt: "Terapia por Exercício",      href: "/services/exercise-therapy" },
+                    ].map((item) => (
+                      <li key={item.href}>
+                        <Link href={item.href} className="text-slate-400 hover:text-white text-sm transition-colors">
+                          {locale === "pt-BR" ? item.labelPt : item.labelEn}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Col 4 — Contact */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-5">{locale === "pt-BR" ? "Contacto" : "Contact"}</h4>
+                  <ul className="space-y-4">
+                    {settings?.address && (
+                      <li className="flex items-start gap-3">
+                        <MapPin className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
+                        <span className="text-slate-400 text-sm leading-relaxed">{settings.address}</span>
+                      </li>
+                    )}
+                    {settings?.phone && (
+                      <li>
+                        <a href={`tel:${settings.phone}`} className="flex items-center gap-3 text-slate-400 hover:text-white text-sm transition-colors">
+                          <Phone className="h-4 w-4 text-slate-500 shrink-0" />
+                          {settings.phone}
+                        </a>
+                      </li>
+                    )}
+                    {settings?.email && (
+                      <li>
+                        <a href={`mailto:${settings.email}`} className="flex items-center gap-3 text-slate-400 hover:text-white text-sm transition-colors">
+                          <Mail className="h-4 w-4 text-slate-500 shrink-0" />
+                          {settings.email}
+                        </a>
+                      </li>
+                    )}
+                    {settings?.whatsappEnabled && settings?.whatsappNumber && (
+                      <li>
+                        <a
+                          href={`https://wa.me/${settings.whatsappNumber.replace(/\D/g,'')}${settings.whatsappMessage ? `?text=${encodeURIComponent(settings.whatsappMessage)}` : ''}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-3 text-[#25D366] hover:text-[#20bd5a] text-sm transition-colors"
+                        >
+                          <MessageCircle className="h-4 w-4 shrink-0" />
+                          WhatsApp
+                        </a>
+                      </li>
+                    )}
+                    {!settings?.address && !settings?.phone && !settings?.email && (
+                      <li className="text-slate-500 text-sm">Ipswich, Suffolk, UK</li>
+                    )}
+                  </ul>
+                </div>
+
+                {/* Col 5 — Opening Hours */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-5">{locale === "pt-BR" ? "Horário" : "Opening Hours"}</h4>
+                  <ul className="space-y-2">
+                    {sortedHours.map((h) => {
+                      const isToday = new Date().toLocaleDateString("en-GB", { weekday: "long" }) === h.day;
+                      return (
+                        <li key={h.day} className={`flex items-center justify-between text-xs ${isToday ? "text-white font-semibold" : "text-slate-400"}`}>
+                          <span className="flex items-center gap-1.5">
+                            {isToday && <span className="w-1 h-1 rounded-full bg-primary inline-block" />}
+                            {locale === "pt-BR" ? dayPt[h.day] ?? h.day : h.day}
+                          </span>
+                          {h.closed ? (
+                            <span className="text-red-400/70">{locale === "pt-BR" ? "Fechado" : "Closed"}</span>
+                          ) : (
+                            <span className="tabular-nums">{h.open} – {h.close}</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {clinicSchedule.length === 0 && (
+                    <p className="text-slate-600 text-xs mt-2 italic">
+                      {locale === "pt-BR" ? "Configure em Admin → Schedule → Availability" : "Set in Admin → Schedule → Availability"}
+                    </p>
                   )}
-                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
-                    {fHasContact && settings?.email && <a href={`mailto:${settings.email}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Mail className="h-3 w-3" />{settings.email}</a>}
-                    {fHasContact && settings?.phone && <a href={`tel:${settings.phone}`} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"><Phone className="h-3 w-3" />{settings.phone}</a>}
-                    {fHasSocial && fSocial.map(s => <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" title={s.platform}><Globe className="h-4 w-4" /></a>)}
-                  </div>
                 </div>
-              )}
-              {fHasCopyright && (
-                <div className={`flex flex-col sm:flex-row items-center justify-between gap-2 ${fHasTopRow ? "border-t border-white/5 pt-3" : ""}`}>
-                  <p className="text-xs text-muted-foreground">{settings?.footerText || `© ${new Date().getFullYear()} BPR. ${T("home.allRightsReserved")}`}</p>
-                  <div className="flex items-center gap-4">
-                    <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{T("home.staffPortal")}</Link>
-                  </div>
+              </div>
+            </div>
+
+            {/* Bottom bar */}
+            <div className="border-t border-slate-800">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-xs text-slate-500">
+                  {settings?.footerText || `© ${new Date().getFullYear()} Bruno Physical Rehabilitation. ${locale === "pt-BR" ? "Todos os direitos reservados." : "All rights reserved."}`}
+                </p>
+                <div className="flex items-center gap-5">
+                  <Link href="/login" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                    {locale === "pt-BR" ? "Portal do Paciente" : "Patient Portal"}
+                  </Link>
+                  <Link href="/staff-login" className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    {locale === "pt-BR" ? "Acesso Staff" : "Staff Portal"}
+                  </Link>
                 </div>
-              )}
-              {!fHasAny && (
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} BPR.</p>
-                  <Link href="/staff-login" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{T("home.staffPortal")}</Link>
-                </div>
-              )}
+              </div>
             </div>
           </footer>
         );

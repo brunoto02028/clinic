@@ -320,6 +320,7 @@ export default function AdminSettingsPage() {
   });
 
   const SCREEN_KEYS = [
+    { key: 'emailHeader', label: '📧 Email Header (white logo for emails)', dark: true },
     { key: 'login', label: 'Patient Login', dark: false },
     { key: 'adminLogin', label: 'Admin Login', dark: true },
     { key: 'signup', label: 'Signup', dark: false },
@@ -1782,7 +1783,7 @@ export default function AdminSettingsPage() {
                     })()}
                   </h3>
                   <div className="text-xs text-muted-foreground leading-relaxed space-y-2">
-                    {(settings.aboutText || "My name is Bruno, and I'm a therapist based in the UK...").split("\n\n").slice(0, 2).map((p, i) => (
+                    {(settings.aboutText || "My name is Bruno, and I'm based in the UK...").split("\n\n").slice(0, 2).map((p, i) => (
                       <p key={i} className="line-clamp-3">{p}</p>
                     ))}
                   </div>

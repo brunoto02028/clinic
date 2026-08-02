@@ -15,7 +15,7 @@ export function Screen({ children, scroll, padded = true, style, testID }: Scree
   const t = useTheme();
   const inner: ViewStyle = {
     flex: scroll ? undefined : 1,
-    padding: padded ? t.spacing.xl : 0,
+    padding: padded ? t.spacing.lg : 0,
     backgroundColor: t.colors.background,
   };
 
