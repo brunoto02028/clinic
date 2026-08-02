@@ -534,6 +534,11 @@ export default function EmailPage() {
               <LayoutTemplate className="h-4 w-4" /> Email Templates
             </Button>
           </Link>
+          <Link href="/admin/email-marketing">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Send className="h-4 w-4" /> Email Marketing
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={openAccountConfig} className="gap-1.5">
             <Settings className="h-4 w-4" /> Account
           </Button>
