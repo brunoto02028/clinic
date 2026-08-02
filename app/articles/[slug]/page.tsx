@@ -11,6 +11,8 @@ import { authOptions } from "@/lib/auth-options";
 import { isTtsEnabled } from "@/lib/eleven-labs";
 import { MedicalDisclaimer } from "@/components/medical-disclaimer";
 import { LeadMagnetCapture } from "@/components/lead-magnet-capture";
+import { BookCta } from "@/components/book-cta";
+import { articleQualifiesForBookCta } from "@/lib/book-cta-config";
 import { extractFaqPairs, buildFaqPageSchema, buildArticleSchema } from "@/lib/article-schema";
 
 const STAFF_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
@@ -254,6 +256,9 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {/* Lead-magnet capture — cluster-matched PDF guide (P1.2) */}
             <LeadMagnetCapture tags={article.tags || []} articleSlug={article.slug} />
+
+            {/* Beyond Pain book CTA — config-flagged by tag, see lib/book-cta-config.ts */}
+            {articleQualifiesForBookCta(article.tags) && <BookCta />}
 
             {/* Medical disclaimer — single source of truth, every article (P1.1) */}
             <MedicalDisclaimer />

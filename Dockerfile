@@ -56,6 +56,8 @@ COPY --from=builder /app/node_modules/fast-png ./node_modules/fast-png
 COPY --from=builder /app/node_modules/@babel/runtime ./node_modules/@babel/runtime
 COPY --from=builder /app/scripts/seed-lead-magnet-guides.js ./scripts/seed-lead-magnet-guides.js
 COPY --from=builder /app/scripts/fix-shockwave-service-pages.js ./scripts/fix-shockwave-service-pages.js
+COPY --from=builder /app/scripts/seed-book-content.js ./scripts/seed-book-content.js
+COPY --from=builder /app/book ./book
 
 COPY start.sh /start.sh
 RUN chmod +x /start.sh

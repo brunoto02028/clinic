@@ -3598,6 +3598,60 @@ model LeadMagnetGuide {
   @@index([isActive])
 }
 
+// ============================================
+// BEYOND PAIN — BOOK LAUNCH MODULE
+// (BPR_Devin_Spec_Beyond_Pain_Book.md)
+// ============================================
+
+enum BookStatus {
+  PRE_LAUNCH // "Join the list / read Chapter One free"
+  WAITLIST // "Join the waitlist for launch-day pricing"
+  ON_SALE // buy options shown (Amazon KDP / direct sale)
+}
+
+// Singleton config row (first record wins) driving the /beyond-pain launch
+// switch (§4) and editable copy — flip `status` without a code deploy.
+model BookConfig {
+  id       String     @id @default(cuid())
+  status   BookStatus @default(PRE_LAUNCH)
+  title    String     @default("Beyond Pain")
+  subtitle String     @default("The science and soul of healing — body, soul and spirit")
+
+  authorName  String? @default("Bruno")
+  authorBio   String? @db.Text
+  authorPhoto String?
+
+  // On-sale purchase links (§4) — only used once status = ON_SALE
+  buyLinkAmazon String?
+  buyLinkDirect String?
+  priceDisplay  String? // e.g. "£9.99" — display-only
+
+  updatedAt DateTime @updatedAt
+}
+
+// Book chapters, published incrementally as BPR writes the book. Chapter
+// content mirrors the Article model's bilingual pattern (English first —
+// §6). `isFree` chapters are gated behind email confirmation only (§2);
+// non-free chapters are reserved for the post-launch paid book.
+model BookChapter {
+  id        String   @id @default(cuid())
+  slug      String   @unique // e.g. "chapter-one"
+  order     Int      @default(0)
+  isFree    Boolean  @default(true)
+  published Boolean  @default(true)
+
+  titleEn   String
+  contentEn String @db.Text // rendered HTML
+  titlePt   String?
+  contentPt String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published])
+  @@index([order])
+}
+
 model EmailGroup {
   id          String   @id @default(cuid())
   name        String

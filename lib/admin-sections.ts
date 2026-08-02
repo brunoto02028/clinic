@@ -246,6 +246,12 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/marketing/leads",
       },
       {
+        key: "book",
+        label: "Beyond Pain (Book)",
+        labelPt: "Beyond Pain (Livro)",
+        href: "/admin/marketing/book",
+      },
+      {
         key: "condition-pages",
         label: "Conditions (SEO)",
         labelPt: "Condições (SEO)",
