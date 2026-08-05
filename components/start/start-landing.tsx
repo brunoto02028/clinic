@@ -485,7 +485,7 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
           <div className="flex justify-center mb-4">
             <Logo logoUrl={settings?.logoUrl} darkLogoUrl={settings?.darkLogoUrl} size="xl" linkTo="/" />
           </div>
-          <p className="text-muted-foreground text-xs">Bruno Physical Rehabilitation · Ipswich, Suffolk, {isPt ? "Reino Unido" : "UK"}</p>
+          <p className="text-muted-foreground text-xs">BPR Physical Rehabilitation · Ipswich, Suffolk, {isPt ? "Reino Unido" : "UK"}</p>
           <p className="text-primary text-[11px] font-bold mt-1">{isPt ? "Curar com Coração" : "Healing With Heart"}</p>
           <Link href="/" className="text-muted-foreground text-xs underline mt-2 inline-block">bpr.rehab</Link>
         </footer>
