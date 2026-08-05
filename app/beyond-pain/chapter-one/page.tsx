@@ -53,6 +53,11 @@ export default async function ChapterOnePage() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
       <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-4 text-center">Beyond Pain · Chapter One</p>
+      <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 mb-8 text-center">
+        <p className="text-sm text-foreground">
+          You're in. Here's Chapter One — enjoy it, and I'll be in touch as the next chapter lands.
+        </p>
+      </div>
       <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-10 text-center tracking-tight">{chapter.titleEn}</h1>
 
       <BookChapterReader html={chapter.contentEn} readerEmail={reader.email} />

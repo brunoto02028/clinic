@@ -48,9 +48,9 @@ export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
     return (
       <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8 text-center">
         <CheckCircle2 className="h-10 w-10 text-primary mx-auto mb-3" />
-        <h3 className="font-sora text-lg font-bold text-foreground mb-2">Check your inbox</h3>
+        <h3 className="font-sora text-lg font-bold text-foreground mb-2">Almost there</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          We've sent a confirmation email. Click the link inside and you'll be taken straight to Chapter One.
+          Check your inbox and confirm your email to unlock Chapter One.
         </p>
       </div>
     );
@@ -71,7 +71,7 @@ export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
             <Input
               type="email"
               required
-              placeholder="Your best email"
+              placeholder="Your email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-9"
@@ -92,12 +92,16 @@ export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
           {status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
           Send me Chapter One
         </Button>
+        <p className="text-xs text-muted-foreground/80 text-center">
+          One writer, occasional emails, no spam. Unsubscribe with one click, anytime.
+        </p>
       </form>
 
       <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
-        <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" />The first chapter — free, today.</li>
-        <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" />Behind-the-scenes insights while the book is written.</li>
-        <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" />Early access and a launch-day discount.</li>
+        <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" />Chapter One, free — straight to your inbox.</li>
+        <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" />New chapters as they're written — follow the book from the very start.</li>
+        <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" />First to know at launch — you'll hear before anyone else.</li>
+        <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" />No spam, ever — unsubscribe anytime.</li>
       </ul>
     </div>
   );

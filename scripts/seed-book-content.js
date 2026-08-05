@@ -80,17 +80,24 @@ function parseChapter(markdown) {
 const DEFAULT_COVER_IMAGE = '/images/book/beyond-pain-cover.webp';
 // Same headshot used on the homepage "About Bruno" section (ImageLibrary row).
 const DEFAULT_AUTHOR_PHOTO = '/api/image-serve/cmqc5v4d40005ok01uxfk2u4w';
+// Short bio — landing-page card (see BPR "Beyond Pain — Landing Page Copy", §4 SHORT).
+const DEFAULT_AUTHOR_BIO = [
+  `Bruno writes about pain from the inside — and not only the kind you can point to on a scan. A former professional footballer, he has lived with physical pain since the age of seventeen, through multiple knee operations and the arthritis they left behind. But he also knows the other pains: losing everything and starting again, being broken and being deceived, and the slow work of being restored and healed on the inside. He came through all of it — and it is the reason this book exists.`,
+  `That long road led him into rehabilitation, and into decades of study across the fields that touch pain, always asking the question he once needed answered himself: how do you truly help a person heal — not just manage a symptom? For more than seventeen years, alongside his clinical work, he has walked with people through the quieter kinds of suffering too — counselling individuals and couples, through marriages and through crises, across several countries, with people of faith and of none.`,
+  `"I don't write as someone observing pain from a distance. I write as someone who has been through it — in the body and in the soul — and came out the other side. My purpose is simple: to treat every person the way I wish I'd been treated during my own recovery — with real attention, not just protocol."`,
+].join('\n\n');
 
 async function seedBookConfig() {
   const existing = await prisma.bookConfig.findFirst();
   if (!existing) {
-    await prisma.bookConfig.create({ data: { coverImage: DEFAULT_COVER_IMAGE, authorPhoto: DEFAULT_AUTHOR_PHOTO } });
-    console.log('[seed-book-content] Created default BookConfig row with cover + author photo.');
+    await prisma.bookConfig.create({ data: { coverImage: DEFAULT_COVER_IMAGE, authorPhoto: DEFAULT_AUTHOR_PHOTO, authorBio: DEFAULT_AUTHOR_BIO } });
+    console.log('[seed-book-content] Created default BookConfig row with cover + author photo + bio.');
     return;
   }
   const data = {};
   if (!existing.coverImage) data.coverImage = DEFAULT_COVER_IMAGE;
   if (!existing.authorPhoto) data.authorPhoto = DEFAULT_AUTHOR_PHOTO;
+  if (!existing.authorBio) data.authorBio = DEFAULT_AUTHOR_BIO;
   if (Object.keys(data).length > 0) {
     await prisma.bookConfig.update({ where: { id: existing.id }, data });
     console.log('[seed-book-content] Set default field(s) on existing BookConfig row:', Object.keys(data).join(', '));

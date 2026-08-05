@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { ArrowRight, BookOpen, Sparkles, HeartHandshake } from "lucide-react";
+import { ArrowRight, BookOpen, Sparkles, HeartHandshake, Activity, Brain, Sun, ShieldCheck } from "lucide-react";
 import { getBookConfig, getBookReaderFromToken } from "@/lib/book";
 import { BookCaptureForm } from "@/components/book-capture-form";
 import { Book3DCover } from "@/components/book-3d-cover";
@@ -59,7 +59,7 @@ export default async function BeyondPainPage() {
               </h1>
               <p className="text-lg sm:text-xl text-muted-foreground mb-4">{config.subtitle}</p>
               <p className="text-base text-muted-foreground leading-relaxed max-w-lg">
-                Most of us are taught that pain lives in the body. The truth is bigger — and far more hopeful.
+                We're taught that pain lives in the body. The truth is bigger — and far more hopeful.
               </p>
               {!reader && config.status !== "ON_SALE" && (
                 <div className="mt-8">
@@ -68,6 +68,9 @@ export default async function BeyondPainPage() {
                       Read the first chapter free <ArrowRight className="h-5 w-5" />
                     </Button>
                   </a>
+                  <p className="text-xs text-muted-foreground mt-3 max-w-sm">
+                    The first chapter, sent straight to your inbox — free. Then follow the book, chapter by chapter, as it's written.
+                  </p>
                 </div>
               )}
             </div>
@@ -97,8 +100,44 @@ export default async function BeyondPainPage() {
           </span>
           <h2 className="font-sora text-2xl sm:text-3xl font-bold text-foreground mb-4 tracking-tight">A guide out of suffering and into wholeness</h2>
           <p className="text-muted-foreground leading-relaxed text-base sm:text-lg">
-            Pain is rarely only physical. It speaks the language of the body, the mind and the spirit — and lasting healing has to meet all three. Drawing on the science of how pain really works, alongside a faith that takes the whole person seriously, <em>{config.title}</em> is being written now, chapter by chapter — and you can follow the journey from the start.
+            Pain is rarely only physical. It speaks the language of the body, the mind and the spirit — and lasting healing has to meet all three. Drawing on the real science of how pain works, alongside a faith that takes the whole person seriously, <em>{config.title}</em> is being written now — chapter by chapter — and you can follow the journey from the very first page.
           </p>
+        </section>
+
+        {/* The three dimensions */}
+        <section className="mb-14">
+          <p className="text-center text-muted-foreground text-sm sm:text-base mb-8">
+            One person, three dimensions — cared for together.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-5">
+            <div className="rounded-2xl border border-border bg-card ba1-card p-6">
+              <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
+                <Activity className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="font-sora text-lg font-bold text-foreground mb-2">Body</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Why pain is an alarm, not a measure of damage — and what that changes about every ache you've ever felt.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-card ba1-card p-6">
+              <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
+                <Brain className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="font-sora text-lg font-bold text-foreground mb-2">Soul</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                How stress, emotion and a hurried world quietly turn into pain in the body — and how they can be turned around.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-card ba1-card p-6">
+              <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
+                <Sun className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="font-sora text-lg font-bold text-foreground mb-2">Spirit</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                The deepest layer of all: meaning, connection and a hope that doesn't depend on the pain going away.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* About the author */}
@@ -107,7 +146,7 @@ export default async function BeyondPainPage() {
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-gradient-to-br from-[#EDF3EF] to-[#E4E3DF] border border-border shrink-0 flex items-center justify-center">
               {config.authorPhoto ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={config.authorPhoto} alt={config.authorName || "Author"} className="object-cover w-full h-full" />
+                <img src={config.authorPhoto} alt={`${config.authorName || "Bruno"} — sports and clinical therapist and author of ${config.title}`} className="object-cover w-full h-full" />
               ) : (
                 <span className="font-sora text-2xl font-bold text-primary">{(config.authorName || "B").charAt(0)}</span>
               )}
@@ -116,10 +155,21 @@ export default async function BeyondPainPage() {
               <span className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-3">
                 About the author
               </span>
-              <p className="text-muted-foreground leading-relaxed">
-                {config.authorBio ||
-                  `Written by ${config.authorName || "Bruno"}, a sports and clinical therapist in Ipswich and a former professional footballer who came back from three knee surgeries. "My purpose is simple: to treat every person the way I wish I'd been treated during my own recovery — with real attention, not just protocol."`}
-              </p>
+              <div className="space-y-3">
+                {(
+                  config.authorBio ||
+                  `Written by ${config.authorName || "Bruno"}, a sports and clinical therapist in Ipswich and a former professional footballer who came back from three knee surgeries. "My purpose is simple: to treat every person the way I wish I'd been treated during my own recovery — with real attention, not just protocol."`
+                )
+                  .split(/\n\s*\n/)
+                  .map((paragraph: string, i: number, arr: string[]) => (
+                    <p
+                      key={i}
+                      className={`text-muted-foreground leading-relaxed ${i === arr.length - 1 && paragraph.trim().startsWith('"') ? "italic" : ""}`}
+                    >
+                      {paragraph.trim()}
+                    </p>
+                  ))}
+              </div>
             </div>
           </div>
         </section>
@@ -159,11 +209,49 @@ export default async function BeyondPainPage() {
                 {config.status === "WAITLIST" ? "Join the waitlist for launch-day pricing" : "Read Chapter One free — and follow the book as it's written"}
               </h2>
               <p className="text-muted-foreground text-center mb-8 max-w-xl mx-auto">
-                Join the list to read the opening chapter today, get behind-the-scenes insights as each chapter is written, and be first to know when the book launches — with a special early-reader price.
+                {config.status === "WAITLIST"
+                  ? "Join the list to read the opening chapter today, get behind-the-scenes insights as each chapter is written, and be first to know when the book launches — with a special early-reader price."
+                  : "Enter your email and I'll send you the first chapter today. As each new chapter is finished, you'll be among the first to read it — and the first to know when Beyond Pain is published."}
               </p>
               <BookCaptureForm compact />
             </div>
           )}
+        </section>
+
+        {/* An honest note */}
+        <section className="mb-14 rounded-2xl border border-border bg-muted/30 p-6 sm:p-8">
+          <div className="flex gap-4 items-start">
+            <ShieldCheck className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-sora text-base font-bold text-foreground mb-2">A note of honesty</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                This book won't promise miracle cures or quick fixes — that wouldn't be true, and it wouldn't be kind. What it offers is something more trustworthy: a clear-eyed look at how pain really works, faith that never blames the person who's suffering, and real hope for the whole person. It's a companion to your care — never a replacement for your doctor or therapist.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="mb-14">
+          <h2 className="font-sora text-2xl font-bold text-foreground mb-6 tracking-tight text-center">Frequently asked questions</h2>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-card ba1-card p-5">
+              <h3 className="font-semibold text-foreground mb-1.5">Is the book finished?</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">It's being written now, chapter by chapter. Subscribers follow along and read each chapter as it's completed.</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card ba1-card p-5">
+              <h3 className="font-semibold text-foreground mb-1.5">What will it cost?</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Chapter One is free. The full book will be available to buy at launch — subscribers hear first.</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card ba1-card p-5">
+              <h3 className="font-semibold text-foreground mb-1.5">Is this a religious book?</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">It takes both science and faith seriously, honestly and without preaching. It's written for people of faith and of none — the science stands on its own, and the deeper questions are offered, never forced.</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card ba1-card p-5">
+              <h3 className="font-semibold text-foreground mb-1.5">English or Portuguese?</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Beyond Pain is being written in English first, with a Portuguese edition to follow.</p>
+            </div>
+          </div>
         </section>
 
         <div className="text-center mb-10">
