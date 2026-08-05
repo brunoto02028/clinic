@@ -64,9 +64,14 @@ export default async function ChapterOnePage() {
 
       <div className="mt-14 rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8 text-center">
         <p className="text-muted-foreground mb-4">Enjoyed this? Follow the journey as the rest of the book is written.</p>
-        <Link href="/signup">
-          <Button variant="ba1Primary" className="gap-2">Book an assessment</Button>
-        </Link>
+        <div className="flex flex-wrap gap-3 justify-center">
+          <Link href="/beyond-pain/chapters">
+            <Button variant="ba1Outline" className="gap-2">All chapters</Button>
+          </Link>
+          <Link href="/signup">
+            <Button variant="ba1Primary" className="gap-2">Book an assessment</Button>
+          </Link>
+        </div>
       </div>
 
       <MedicalDisclaimer />

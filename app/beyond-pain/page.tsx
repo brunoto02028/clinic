@@ -74,6 +74,11 @@ export default async function BeyondPainPage() {
                   </p>
                 </div>
               )}
+              <p className="mt-4">
+                <Link href="/beyond-pain/chapters" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
+                  See the table of contents <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </p>
             </div>
 
             {/* Cover — 3D book mockup */}
@@ -205,9 +210,14 @@ export default async function BeyondPainPage() {
               <BookOpen className="h-12 w-12 text-primary mx-auto mb-4" />
               <h2 className="font-sora text-xl font-bold text-foreground mb-2">Welcome back</h2>
               <p className="text-sm text-muted-foreground mb-6">You've already confirmed your email — jump straight back in.</p>
-              <Link href="/beyond-pain/chapter-one">
-                <Button size="lg" variant="ba1Primary" className="gap-2">Continue reading <ArrowRight className="h-4 w-4" /></Button>
-              </Link>
+              <div className="flex flex-wrap gap-3 justify-center">
+                <Link href="/beyond-pain/chapter-one">
+                  <Button size="lg" variant="ba1Primary" className="gap-2">Continue reading <ArrowRight className="h-4 w-4" /></Button>
+                </Link>
+                <Link href="/beyond-pain/chapters">
+                  <Button size="lg" variant="ba1Outline">All chapters</Button>
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-border bg-card ba1-card p-6 sm:p-10">

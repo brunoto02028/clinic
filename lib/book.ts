@@ -37,6 +37,26 @@ export async function getBookConfig() {
   return (prisma as any).bookConfig.create({ data: {} });
 }
 
+/** All published chapters, in reading order — powers the /beyond-pain/chapters
+ *  table of contents. As chapters are written (seeded or added via admin),
+ *  they simply appear here; no code change needed. */
+export async function getPublishedChapters() {
+  return (prisma as any).bookChapter.findMany({
+    where: { published: true },
+    orderBy: { order: "asc" },
+    select: { slug: true, order: true, isFree: true, titleEn: true, contentEn: true, titlePt: true, contentPt: true },
+  });
+}
+
+/** Plain-text teaser from a chapter's rendered HTML — strips tags and
+ *  truncates at a word boundary near `maxLen` characters. */
+export function chapterTeaser(html: string, maxLen = 160): string {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLen) return text;
+  const cut = text.slice(0, maxLen);
+  return cut.slice(0, cut.lastIndexOf(" ")) + "…";
+}
+
 /** Resolves a confirmed book reader from the `book_access` cookie value
  *  (which stores their EmailContact.confirmToken). Returns null if the
  *  cookie is missing/invalid/unconfirmed — callers must treat that as
