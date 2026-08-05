@@ -135,10 +135,17 @@ function matchesRoute(path: string, routes: string[]): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Force HTTPS redirect in production
+  // Force HTTPS redirect in production — browser page navigations only.
+  // Skip for /api/*: Next's built-in image optimizer (and other server-side
+  // code) fetches API routes like /api/image-serve/[id] via an internal
+  // loopback request that has no x-forwarded-proto header and reports
+  // "host: localhost:<port>". Redirecting that to https://localhost:<port>
+  // fails (no TLS listener there), which made every next/image using an
+  // /api/image-serve source come back as "not a valid image" in production.
   if (
     process.env.NODE_ENV === 'production' &&
-    request.headers.get('x-forwarded-proto') !== 'https'
+    request.headers.get('x-forwarded-proto') !== 'https' &&
+    !pathname.startsWith('/api')
   ) {
     return NextResponse.redirect(
       `https://${request.headers.get('host')}${request.nextUrl.pathname}${request.nextUrl.search}`,
