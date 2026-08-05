@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap, Quote } from "lucide-react";
+import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap, Quote, BookOpen, Stethoscope } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
@@ -31,10 +31,13 @@ const INTRO_VIDEO_URL = "";
 // TODO: replace with 3 real patient testimonials — section stays hidden until filled
 const TESTIMONIALS: { quoteEn: string; quotePt: string; nameEn: string; namePt: string }[] = [];
 
-export function StartLanding({ settings, isGift = false }: { settings: StartPageSettings; isGift?: boolean }) {
+type BookSummary = { title: string; subtitle: string; coverImage: string | null };
+
+export function StartLanding({ settings, isGift = false, book }: { settings: StartPageSettings; isGift?: boolean; book?: BookSummary }) {
   const { locale, setLocale } = useLocale();
   const isPt = locale === "pt-BR";
   const aboutImage = absoluteImageUrl(settings?.aboutImageUrl);
+  const bookCover = absoluteImageUrl(book?.coverImage);
   const viaSuffix = isGift ? "?via=card" : "";
 
   const waHref =
@@ -107,8 +110,59 @@ export function StartLanding({ settings, isGift = false }: { settings: StartPage
       </div>
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6">
+        {/* PATH CHOOSER — clinic vs. book */}
+        <section className="mt-3 grid sm:grid-cols-2 gap-3">
+          <a
+            href="#assessment"
+            className="group flex flex-col rounded-2xl border border-border bg-card ba1-card p-5 hover:border-primary/40 transition-colors"
+          >
+            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+              <Stethoscope className="h-5 w-5 text-primary" />
+            </span>
+            <h2 className="font-sora font-bold text-base text-foreground mb-1">
+              {isPt ? "Marcar avaliação grátis" : "Book a free assessment"}
+            </h2>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3 flex-1">
+              {isPt
+                ? "Encontre a causa real da sua dor — avaliação completa, sem custo, para novos pacientes."
+                : "Find the real cause of your pain — a full assessment, free for new patients."}
+            </p>
+            <span className="text-xs font-bold text-primary inline-flex items-center gap-1">
+              {isPt ? "Ver detalhes" : "See details"} <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </a>
+
+          <Link
+            href="/beyond-pain"
+            className="group flex flex-col rounded-2xl border border-border bg-card ba1-card p-5 hover:border-primary/40 transition-colors"
+          >
+            <div className="flex items-start gap-3 mb-3">
+              {bookCover ? (
+                <div className="relative w-10 h-14 rounded-md overflow-hidden border border-border shrink-0 shadow-sm">
+                  <Image src={bookCover} alt={book?.title || "Beyond Pain"} fill sizes="40px" className="object-cover" />
+                </div>
+              ) : (
+                <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                </span>
+              )}
+              <h2 className="font-sora font-bold text-base text-foreground pt-1">
+                {isPt ? "Ler o livro grátis" : "Read the book free"}
+              </h2>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-3 flex-1">
+              {isPt
+                ? `${book?.title || "Beyond Pain"} — ${book?.subtitle || "a ciência e a alma da cura"}. Leia o primeiro capítulo grátis.`
+                : `${book?.title || "Beyond Pain"} — ${book?.subtitle || "the science and soul of healing"}. Read Chapter One free.`}
+            </p>
+            <span className="text-xs font-bold text-primary inline-flex items-center gap-1">
+              {isPt ? "Começar a ler" : "Start reading"} <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </Link>
+        </section>
+
         {/* HERO */}
-        <header className="relative overflow-hidden bg-foreground text-background rounded-[26px] px-6 sm:px-10 py-10 sm:py-14 mt-3 text-center shadow-xl">
+        <header id="assessment" className="relative overflow-hidden bg-foreground text-background rounded-[26px] px-6 sm:px-10 py-10 sm:py-14 mt-3 text-center shadow-xl scroll-mt-6">
           {/* Decorative glow illustration */}
           <div className="pointer-events-none absolute -top-20 -left-16 w-64 h-64 rounded-full bg-primary/25 blur-[80px]" />
           <div className="pointer-events-none absolute -bottom-24 -right-16 w-72 h-72 rounded-full bg-secondary/20 blur-[90px]" />
