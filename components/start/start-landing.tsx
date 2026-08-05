@@ -111,52 +111,52 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6">
         {/* PATH CHOOSER — clinic vs. book */}
-        <section className="mt-3 grid sm:grid-cols-2 gap-3">
+        <section className="mt-3 grid sm:grid-cols-2 gap-4">
           <a
             href="#assessment"
-            className="group flex flex-col rounded-2xl border border-border bg-card ba1-card p-5 hover:border-primary/40 transition-colors"
+            className="group flex flex-col rounded-3xl border-2 border-border bg-card ba1-card p-7 hover:border-primary/50 hover:shadow-lg transition-all"
           >
-            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-              <Stethoscope className="h-5 w-5 text-primary" />
+            <span className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+              <Stethoscope className="h-7 w-7 text-primary" />
             </span>
-            <h2 className="font-sora font-bold text-base text-foreground mb-1">
+            <h2 className="font-sora font-extrabold text-xl text-foreground mb-2">
               {isPt ? "Marcar avaliação grátis" : "Book a free assessment"}
             </h2>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-3 flex-1">
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1">
               {isPt
                 ? "Encontre a causa real da sua dor — avaliação completa, sem custo, para novos pacientes."
                 : "Find the real cause of your pain — a full assessment, free for new patients."}
             </p>
-            <span className="text-xs font-bold text-primary inline-flex items-center gap-1">
-              {isPt ? "Ver detalhes" : "See details"} <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+            <span className="text-sm font-bold text-primary inline-flex items-center gap-1.5">
+              {isPt ? "Ver detalhes" : "See details"} <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </span>
           </a>
 
           <Link
             href="/beyond-pain"
-            className="group flex flex-col rounded-2xl border border-border bg-card ba1-card p-5 hover:border-primary/40 transition-colors"
+            className="group flex flex-col rounded-3xl border-2 border-border bg-card ba1-card p-7 hover:border-primary/50 hover:shadow-lg transition-all"
           >
-            <div className="flex items-start gap-3 mb-3">
+            <div className="flex items-start gap-4 mb-4">
               {bookCover ? (
-                <div className="relative w-10 h-14 rounded-md overflow-hidden border border-border shrink-0 shadow-sm">
-                  <Image src={bookCover} alt={book?.title || "Beyond Pain"} fill sizes="40px" className="object-cover" />
+                <div className="relative w-14 h-20 rounded-lg overflow-hidden border border-border shrink-0 shadow-md">
+                  <Image src={bookCover} alt={book?.title || "Beyond Pain"} fill sizes="56px" className="object-cover" />
                 </div>
               ) : (
-                <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <BookOpen className="h-5 w-5 text-primary" />
+                <span className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <BookOpen className="h-7 w-7 text-primary" />
                 </span>
               )}
-              <h2 className="font-sora font-bold text-base text-foreground pt-1">
+              <h2 className="font-sora font-extrabold text-xl text-foreground pt-1">
                 {isPt ? "Ler o livro grátis" : "Read the book free"}
               </h2>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-3 flex-1">
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1">
               {isPt
                 ? `${book?.title || "Beyond Pain"} — ${book?.subtitle || "a ciência e a alma da cura"}. Leia o primeiro capítulo grátis.`
                 : `${book?.title || "Beyond Pain"} — ${book?.subtitle || "the science and soul of healing"}. Read Chapter One free.`}
             </p>
-            <span className="text-xs font-bold text-primary inline-flex items-center gap-1">
-              {isPt ? "Começar a ler" : "Start reading"} <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+            <span className="text-sm font-bold text-primary inline-flex items-center gap-1.5">
+              {isPt ? "Começar a ler" : "Start reading"} <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </span>
           </Link>
         </section>
