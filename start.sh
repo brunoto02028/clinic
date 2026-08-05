@@ -50,6 +50,13 @@ node /app/scripts/fix-shockwave-service-pages.js || echo "[start.sh] shockwave c
 echo "[start.sh] Seeding Beyond Pain book content..."
 node /app/scripts/seed-book-content.js || echo "[start.sh] book content seed warning — check logs"
 
+# ONE-OFF: refreshes Chapter One (EN + PT) with the updated, lighter-edited
+# full text from book/Beyond_Pain_Chapter_1_{EN,PT}.md. Remove this block
+# once confirmed live — scripts/update-chapter-one-content.js always
+# overwrites and is meant to be run manually, not on every deploy.
+echo "[start.sh] Refreshing Chapter One content (one-off)..."
+node /app/scripts/update-chapter-one-content.js || echo "[start.sh] chapter-one content refresh warning — check logs"
+
 echo "[start.sh] Startup maintenance tasks done — server already serving traffic."
 
 # Keep the container alive as long as the Next.js server process is running,

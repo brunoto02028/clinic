@@ -39,7 +39,7 @@ function markdownToHtml(md) {
     else if (line.startsWith('> ')) {
       const parts = [];
       while (i < lines.length && lines[i].startsWith('> ')) { parts.push(lines[i].slice(2).trim()); i++; }
-      blocks.push(`<blockquote>\n<p>${inlineHtml(parts.join(' '))}</p>\n</blockquote>`);
+      blocks.push(`<blockquote>\n<p>${parts.map(inlineHtml).join('<br>\n')}</p>\n</blockquote>`);
     } else if (line.startsWith('- ')) {
       const items = [];
       while (i < lines.length && lines[i].startsWith('- ')) { items.push(`  <li>${inlineHtml(lines[i].slice(2).trim())}</li>`); i++; }

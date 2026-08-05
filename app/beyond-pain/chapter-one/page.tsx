@@ -30,7 +30,7 @@ export default async function ChapterOnePage() {
         <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-4 text-center">Beyond Pain · Chapter One</p>
         <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-4 text-center tracking-tight">Pain From the Inside</h1>
         <p className="text-muted-foreground text-center mb-10 leading-relaxed">
-          Two workmen. Two nails. Two opposite fates — and, between them, a lesson that turns almost everything we think we know about pain on its head. Confirm your email to read the full chapter.
+          Two workmen. Two nails. Two opposite fates — and, between them, a lesson that turns almost everything we think we know about pain inside out. Confirm your email to read the full chapter.
         </p>
         <BookCaptureForm />
         <div className="text-center mt-8">
