@@ -47,7 +47,14 @@ export function Book3DCover({
               src={coverImage}
               alt={`${title} — book cover`}
               fill
-              sizes="(min-width: 1024px) 384px, 80vw"
+              // The card sits inside a max-w-xs (320px) / lg:max-w-sm (384px)
+              // wrapper and is itself capped at 80% of that width (see the
+              // `maxWidth: "80%"` above) — so the true rendered width is
+              // ~256px on mobile and ~307px on desktop, not 80vw. Sizing this
+              // accurately lets the browser pick a much smaller srcset
+              // candidate instead of over-fetching a ~1080px image on phones.
+              sizes="(min-width: 1024px) 310px, 260px"
+              quality={65}
               priority
               className="object-cover"
             />
