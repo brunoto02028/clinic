@@ -212,6 +212,7 @@ export default async function BeyondPainPage() {
                   fill
                   sizes="96px"
                   className="object-cover"
+                  priority
                 />
               ) : (
                 <span className="font-sora text-2xl font-bold text-primary">{(config.authorName || "B").charAt(0)}</span>
