@@ -75,20 +75,25 @@ function parseChapter(markdown) {
   return { titleEn, contentEn };
 }
 
-// Default cover — set once, only while no cover has been chosen yet.
-// Never overwrites a cover uploaded/changed via the admin panel.
+// Default cover / author photo — set once, only while unset. Never
+// overwrites values changed via the admin panel (/admin/marketing/book).
 const DEFAULT_COVER_IMAGE = '/images/book/beyond-pain-cover.webp';
+// Same headshot used on the homepage "About Bruno" section (ImageLibrary row).
+const DEFAULT_AUTHOR_PHOTO = '/api/image-serve/cmqc5v4d40005ok01uxfk2u4w';
 
 async function seedBookConfig() {
   const existing = await prisma.bookConfig.findFirst();
   if (!existing) {
-    await prisma.bookConfig.create({ data: { coverImage: DEFAULT_COVER_IMAGE } });
-    console.log('[seed-book-content] Created default BookConfig row with cover image.');
+    await prisma.bookConfig.create({ data: { coverImage: DEFAULT_COVER_IMAGE, authorPhoto: DEFAULT_AUTHOR_PHOTO } });
+    console.log('[seed-book-content] Created default BookConfig row with cover + author photo.');
     return;
   }
-  if (!existing.coverImage) {
-    await prisma.bookConfig.update({ where: { id: existing.id }, data: { coverImage: DEFAULT_COVER_IMAGE } });
-    console.log('[seed-book-content] Set default cover image on existing BookConfig row.');
+  const data = {};
+  if (!existing.coverImage) data.coverImage = DEFAULT_COVER_IMAGE;
+  if (!existing.authorPhoto) data.authorPhoto = DEFAULT_AUTHOR_PHOTO;
+  if (Object.keys(data).length > 0) {
+    await prisma.bookConfig.update({ where: { id: existing.id }, data });
+    console.log('[seed-book-content] Set default field(s) on existing BookConfig row:', Object.keys(data).join(', '));
   }
 }
 
