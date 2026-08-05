@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { generateBookToken, logBookEvent, sendBookConfirmationEmail, BOOK_SOURCE, BOOK_CLUSTER } from "@/lib/book";
+import { generateBookToken, logBookEvent, sendBookConfirmationEmail, sendBookChapterDeliveryEmail, BOOK_SOURCE, BOOK_CLUSTER } from "@/lib/book";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const email = String(body.email || "").trim().toLowerCase();
     const firstName = body.firstName ? String(body.firstName).trim() : null;
+    const language = body.language === "pt" ? "pt" : "en";
     const consent = body.consent === true;
 
     if (!email || !email.includes("@")) {
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       create: {
         email,
         firstName,
-        language: "en",
+        language,
         source: BOOK_SOURCE,
         cluster: BOOK_CLUSTER,
         consent: true,
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
       },
       update: {
         firstName: firstName || undefined,
+        // Always honour their latest language choice — they may resubmit
+        // wanting the other edition of the free chapter.
+        language,
         // Don't overwrite an existing non-book source/cluster — a patient
         // or newsletter contact who also joins the book list keeps their
         // original attribution; the "captured" event below still tags this.
@@ -58,6 +62,7 @@ export async function POST(request: NextRequest) {
     // the confirm route would set.
     if (existing?.confirmed) {
       await logBookEvent(contact.id, "book_unlocked", { skippedConfirm: true });
+      await sendBookChapterDeliveryEmail({ email, firstName, language });
       const res = NextResponse.json({ status: "unlocked" });
       res.cookies.set("book_access", contact.confirmToken, {
         httpOnly: true,

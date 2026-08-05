@@ -74,6 +74,71 @@ export async function sendBookConfirmationEmail(params: {
   return sendEmail({ to: email, subject, html });
 }
 
+/** Delivers the actual free chapter (PDF, in the reader's chosen language)
+ *  right after their email is confirmed — the confirmation email only asks
+ *  them to click a link; this is the "here it is" email, with the
+ *  copyright / no-resale notice and the case for buying the finished book. */
+export async function sendBookChapterDeliveryEmail(params: {
+  email: string;
+  firstName?: string | null;
+  language?: string | null;
+}) {
+  const { email, firstName } = params;
+  const isPt = params.language === "pt";
+  const pdfUrl = `${BASE_URL}/downloads/beyond-pain/chapter-one-${isPt ? "pt" : "en"}.pdf`;
+  const chapterUrl = `${BASE_URL}/beyond-pain/chapter-one`;
+  const bookUrl = `${BASE_URL}/beyond-pain`;
+  const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
+
+  if (isPt) {
+    const greeting = firstName ? `Olá ${firstName},` : "Olá,";
+    const subject = "O seu Capítulo Um chegou — Além da Dor";
+    const body = `
+      <h2 style="color:#20242D;font-size:20px;margin:0 0 16px;">O seu Capítulo Um está pronto</h2>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${greeting}</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Obrigado pelo seu interesse em <strong>Além da Dor</strong>. O seu exemplar do primeiro capítulo está pronto para descarregar abaixo.</p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${pdfUrl}" style="display:inline-block;background-color:${BRAND_PRIMARY};color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Descarregar o Capítulo Um (PDF) →</a>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 24px;text-align:center;">Prefere ler diretamente na página? <a href="${chapterUrl}" style="color:${BRAND_PRIMARY};">Continue a leitura online</a>.</p>
+      <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
+      <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">Um aviso rápido antes de começar</h3>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 16px;">Este capítulo é protegido por direitos de autor — um excerto do livro <em>Além da Dor</em>, partilhado consigo apenas para leitura pessoal. Pedimos que não o copie, revenda ou redistribua, mesmo que seja apenas um capítulo. Foram anos de estudo, prática clínica e recuperação pessoal para o escrever, e os direitos de autor protegem esse trabalho.</p>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Se conhece alguém que também gostaria de o ler, a forma mais generosa de ajudar é enviá-lo a <a href="${bookUrl}" style="color:${BRAND_PRIMARY};">bpr.rehab/beyond-pain</a> para que receba o seu próprio exemplar gratuito — e não um PDF reencaminhado.</p>
+      <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">Porque é que vai importar quando comprar o livro</h3>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Quando <em>Além da Dor</em> for lançado e decidir comprar um exemplar, estará a fazer muito mais do que adquirir um livro. Estará a ajudar a financiar o estudo e a investigação por trás de cada capítulo, a permitir que eu continue disponível para os pacientes que precisam de cuidado presencial, e a levar esta mensagem — de que a cura é possível para o corpo, a alma e o espírito — a mais pessoas que precisam de a ouvir.</p>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;">Obrigado por ser um dos primeiros a lê-lo.</p>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">Bruno</p>
+      <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
+      <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;"><a href="${unsubscribeUrl}" style="color:#9ca3af;">Cancelar subscrição</a></p>`;
+    const html = await wrapInLayout(body, subject, "pt-PT");
+    return sendEmail({ to: email, subject, html });
+  }
+
+  const greeting = firstName ? `Hi ${firstName},` : "Hi,";
+  const subject = "Here's your copy of Chapter One — Beyond Pain";
+  const body = `
+    <h2 style="color:#20242D;font-size:20px;margin:0 0 16px;">Chapter One is ready</h2>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${greeting}</p>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Thank you for your interest in <strong>Beyond Pain</strong>. Your copy of the first chapter is ready to download below.</p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${pdfUrl}" style="display:inline-block;background-color:${BRAND_PRIMARY};color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Download Chapter One (PDF) →</a>
+    </div>
+    <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 24px;text-align:center;">Prefer to read it straight on the page? <a href="${chapterUrl}" style="color:${BRAND_PRIMARY};">Continue reading online</a>.</p>
+    <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
+    <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">A quick note before you dive in</h3>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 16px;">This chapter is copyright-protected — an excerpt from the forthcoming book <em>Beyond Pain</em>, shared with you for personal reading only. Please don't copy, resell or redistribute it, even as a single chapter. It took years of study, clinical practice and personal recovery to write, and copyright protects that work.</p>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">If you know someone else who'd enjoy it, the kindest thing you can do is send them to <a href="${bookUrl}" style="color:${BRAND_PRIMARY};">bpr.rehab/beyond-pain</a> so they can get their own free copy — not a forwarded PDF.</p>
+    <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">Why it will matter when you buy the book</h3>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">When <em>Beyond Pain</em> launches and you choose to buy a copy, you're doing far more than owning a book. You're helping fund the research and study behind every chapter, keeping me available for the patients who need hands-on care, and helping this message — that healing is possible for the body, the soul and the spirit — reach more people who need to hear it.</p>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;">Thank you for being one of the first to read it.</p>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">Bruno</p>
+    <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
+    <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;"><a href="${unsubscribeUrl}" style="color:#9ca3af;">Unsubscribe</a></p>`;
+  const html = await wrapInLayout(body, subject, "en-GB");
+  return sendEmail({ to: email, subject, html });
+}
+
 export async function sendBookNurture3DayEmail(params: { email: string; firstName?: string | null }) {
   const { email, firstName } = params;
   const greeting = firstName ? `Hi ${firstName},` : "Hi,";

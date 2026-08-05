@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { cookies } from "next/headers";
 import { ArrowRight, BookOpen, Sparkles, HeartHandshake, Activity, Brain, Sun, ShieldCheck } from "lucide-react";
 import { getBookConfig, getBookReaderFromToken } from "@/lib/book";
@@ -143,10 +144,15 @@ export default async function BeyondPainPage() {
         {/* About the author */}
         <section className="mb-14 rounded-2xl border border-border bg-card ba1-card p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row gap-6 items-start">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-gradient-to-br from-[#EDF3EF] to-[#E4E3DF] border border-border shrink-0 flex items-center justify-center">
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-gradient-to-br from-[#EDF3EF] to-[#E4E3DF] border border-border shrink-0 flex items-center justify-center">
               {config.authorPhoto ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={config.authorPhoto} alt={`${config.authorName || "Bruno"} — sports and clinical therapist and author of ${config.title}`} className="object-cover w-full h-full" />
+                <Image
+                  src={config.authorPhoto}
+                  alt={`${config.authorName || "Bruno"} — sports and clinical therapist and author of ${config.title}`}
+                  fill
+                  sizes="96px"
+                  className="object-cover"
+                />
               ) : (
                 <span className="font-sora text-2xl font-bold text-primary">{(config.authorName || "B").charAt(0)}</span>
               )}
@@ -249,7 +255,7 @@ export default async function BeyondPainPage() {
             </div>
             <div className="rounded-xl border border-border bg-card ba1-card p-5">
               <h3 className="font-semibold text-foreground mb-1.5">English or Portuguese?</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">Beyond Pain is being written in English first, with a Portuguese edition to follow.</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">Beyond Pain is being written in English first, with a Portuguese edition to follow — but Chapter One is already available in both. Choose your language when you sign up below.</p>
             </div>
           </div>
         </section>

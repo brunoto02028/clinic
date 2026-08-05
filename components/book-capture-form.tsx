@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [language, setLanguage] = useState<"en" | "pt">("en");
   const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "unlocked" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -29,7 +30,7 @@ export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
       const res = await fetch("/api/beyond-pain/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, firstName, consent }),
+        body: JSON.stringify({ email, firstName, language, consent }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
@@ -50,7 +51,7 @@ export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
         <CheckCircle2 className="h-10 w-10 text-primary mx-auto mb-3" />
         <h3 className="font-sora text-lg font-bold text-foreground mb-2">Almost there</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          Check your inbox and confirm your email to unlock Chapter One.
+          Check your inbox and confirm your email — we'll send you Chapter One in {language === "pt" ? "Portuguese" : "English"} right after.
         </p>
       </div>
     );
@@ -59,6 +60,25 @@ export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
   return (
     <div className={compact ? "" : "rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8"}>
       <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground">Send Chapter One in:</span>
+          <div className="inline-flex gap-1 bg-muted/60 border border-border rounded-full p-1">
+            <button
+              type="button"
+              onClick={() => setLanguage("en")}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${language === "en" ? "bg-foreground text-background" : "text-muted-foreground"}`}
+            >
+              English
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage("pt")}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${language === "pt" ? "bg-foreground text-background" : "text-muted-foreground"}`}
+            >
+              Português
+            </button>
+          </div>
+        </div>
         <div className="grid sm:grid-cols-2 gap-3">
           <Input
             type="text"
@@ -88,7 +108,7 @@ export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
 
         {status === "error" && <p className="text-xs text-destructive">{errorMsg}</p>}
 
-        <Button type="submit" disabled={!consent || status === "loading"} className="gap-2">
+        <Button type="submit" disabled={!consent || status === "loading"} className="gap-2 w-full sm:w-auto">
           {status === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
           Send me Chapter One
         </Button>

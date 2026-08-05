@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { BookOpen } from "lucide-react";
 
 /**
@@ -42,11 +43,13 @@ export function Book3DCover({
           }}
         >
           {coverImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={coverImage}
               alt={`${title} — book cover`}
-              className="absolute inset-0 h-full w-full object-cover"
+              fill
+              sizes="(min-width: 1024px) 384px, 80vw"
+              priority
+              className="object-cover"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#EDF3EF] to-[#E4E3DF] p-6">
