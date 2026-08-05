@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { ArrowRight, BookOpen, Sparkles, HeartHandshake } from "lucide-react";
 import { getBookConfig, getBookReaderFromToken } from "@/lib/book";
 import { BookCaptureForm } from "@/components/book-capture-form";
+import { Book3DCover } from "@/components/book-3d-cover";
 import { MedicalDisclaimer } from "@/components/medical-disclaimer";
 import { Button } from "@/components/ui/button";
 
@@ -71,23 +72,10 @@ export default async function BeyondPainPage() {
               )}
             </div>
 
-            {/* Cover image */}
-            <div className="relative mx-auto w-full max-w-xs lg:max-w-sm">
-              <div className="relative aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl shadow-black/10 bg-gradient-to-br from-[#EDF3EF] to-[#E4E3DF] border border-border">
-                {config.coverImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={config.coverImage} alt={`${config.title} — book cover`} className="object-cover absolute inset-0 w-full h-full" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center p-6">
-                    <div className="text-center text-muted-foreground/60">
-                      <BookOpen className="h-14 w-14 mx-auto mb-3" />
-                      <p className="text-sm font-medium">{config.title}</p>
-                      <p className="text-xs mt-1">Cover coming soon</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="hidden sm:block absolute -bottom-5 -left-5 bg-white rounded-2xl p-4 shadow-xl border border-border ba1-card">
+            {/* Cover — 3D book mockup */}
+            <div className="relative mx-auto w-full max-w-xs lg:max-w-sm pb-6">
+              <Book3DCover coverImage={config.coverImage} title={config.title} />
+              <div className="hidden sm:block absolute -bottom-1 -left-5 bg-white rounded-2xl p-4 shadow-xl border border-border ba1-card">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><HeartHandshake className="h-5 w-5 text-primary" /></div>
                   <div>
