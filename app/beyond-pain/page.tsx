@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { cookies } from "next/headers";
-import { ArrowRight, BookOpen, Sparkles, HeartHandshake, Activity, Brain, Sun, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpen, Sparkles, HeartHandshake, HeartPulse, Heart, Flame, ShieldCheck } from "lucide-react";
 import { getBookConfig, getBookReaderFromToken } from "@/lib/book";
 import { BookCaptureForm } from "@/components/book-capture-form";
 import { Book3DCover } from "@/components/book-3d-cover";
@@ -118,7 +118,7 @@ export default async function BeyondPainPage() {
           <div className="grid sm:grid-cols-3 gap-5">
             <div className="rounded-2xl border border-border bg-card ba1-card p-6">
               <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
-                <Activity className="h-5 w-5 text-primary" />
+                <HeartPulse className="h-5 w-5 text-primary" />
               </div>
               <h3 className="font-sora text-lg font-bold text-foreground mb-2">Body</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -127,7 +127,7 @@ export default async function BeyondPainPage() {
             </div>
             <div className="rounded-2xl border border-border bg-card ba1-card p-6">
               <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
-                <Brain className="h-5 w-5 text-primary" />
+                <Heart className="h-5 w-5 text-primary" />
               </div>
               <h3 className="font-sora text-lg font-bold text-foreground mb-2">Soul</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -136,7 +136,7 @@ export default async function BeyondPainPage() {
             </div>
             <div className="rounded-2xl border border-border bg-card ba1-card p-6">
               <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
-                <Sun className="h-5 w-5 text-primary" />
+                <Flame className="h-5 w-5 text-primary" />
               </div>
               <h3 className="font-sora text-lg font-bold text-foreground mb-2">Spirit</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
