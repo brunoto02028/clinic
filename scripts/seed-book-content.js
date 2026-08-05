@@ -75,11 +75,21 @@ function parseChapter(markdown) {
   return { titleEn, contentEn };
 }
 
+// Default cover — set once, only while no cover has been chosen yet.
+// Never overwrites a cover uploaded/changed via the admin panel.
+const DEFAULT_COVER_IMAGE = '/images/book/beyond-pain-cover.webp';
+
 async function seedBookConfig() {
   const existing = await prisma.bookConfig.findFirst();
-  if (existing) return;
-  await prisma.bookConfig.create({ data: {} });
-  console.log('[seed-book-content] Created default BookConfig row.');
+  if (!existing) {
+    await prisma.bookConfig.create({ data: { coverImage: DEFAULT_COVER_IMAGE } });
+    console.log('[seed-book-content] Created default BookConfig row with cover image.');
+    return;
+  }
+  if (!existing.coverImage) {
+    await prisma.bookConfig.update({ where: { id: existing.id }, data: { coverImage: DEFAULT_COVER_IMAGE } });
+    console.log('[seed-book-content] Set default cover image on existing BookConfig row.');
+  }
 }
 
 async function seedChapters() {
