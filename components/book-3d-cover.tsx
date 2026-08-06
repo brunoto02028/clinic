@@ -33,9 +33,13 @@ export function Book3DCover({
           maxWidth: "80%",
         }}
       >
-        {/* Front cover */}
+        {/* Front cover — the gradient background sits underneath the <Image>
+            at all times (not just in the "no cover" fallback state) so
+            there's never a blank/white flash while the cover art is still
+            fetching; the CSS spine/page-edges render instantly, and this
+            keeps the front face visually "attached" to them from frame one. */}
         <div
-          className="absolute inset-0 overflow-hidden rounded-r-md rounded-l-[2px] border border-black/10"
+          className="absolute inset-0 overflow-hidden rounded-r-md rounded-l-[2px] border border-black/10 bg-gradient-to-br from-[#EDF3EF] to-[#E4E3DF]"
           style={{
             transform: `translateZ(${depth}px)`,
             backfaceVisibility: "hidden",
@@ -56,10 +60,11 @@ export function Book3DCover({
               sizes="(min-width: 1024px) 310px, 260px"
               quality={65}
               priority
+              fetchPriority="high"
               className="object-cover"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#EDF3EF] to-[#E4E3DF] p-6">
+            <div className="absolute inset-0 flex items-center justify-center p-6">
               <div className="text-center text-muted-foreground/60">
                 <BookOpen className="mx-auto mb-3 h-14 w-14" />
                 <p className="text-sm font-medium">{title}</p>
