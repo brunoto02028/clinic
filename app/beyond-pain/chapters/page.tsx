@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { Sparkles } from "lucide-react";
 import { getBookReaderFromToken } from "@/lib/book";
 import { BookCaptureForm } from "@/components/book-capture-form";
 import { BookRoadmap } from "@/components/book-roadmap";
@@ -22,15 +23,20 @@ export default async function BeyondPainChaptersPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
       <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-4 text-center">Beyond Pain</p>
+      <div className="flex justify-center mb-4">
+        <span className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full uppercase tracking-wider">
+          <Sparkles className="h-3.5 w-3.5" /><LocalizedText fallback="Book coming soon" en="Book coming soon" pt="Livro em breve" />
+        </span>
+      </div>
       <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-4 text-center tracking-tight">
         <LocalizedText fallback="Table of contents" en="Table of contents" pt="Índice de capítulos" />
       </h1>
       <p className="text-muted-foreground text-center mb-10 leading-relaxed max-w-lg mx-auto">
         <LocalizedText
           as="span"
-          fallback="Beyond Pain is being written now, chapter by chapter. Here's everything published so far — new chapters are added as they're finished, and subscribers get an email the moment each one lands."
-          en="Beyond Pain is being written now, chapter by chapter. Here's everything published so far — new chapters are added as they're finished, and subscribers get an email the moment each one lands."
-          pt="Além da Dor está sendo escrito agora, capítulo por capítulo. Aqui está tudo o que já foi publicado — novos capítulos são adicionados à medida que ficam prontos, e os inscritos recebem um email no momento em que cada um chega."
+          fallback="Beyond Pain hasn't launched yet — it's being written now, chapter by chapter. Here's everything published so far — new chapters are added as they're finished, and subscribers get an email the moment each one lands, plus the first news when the full book launches."
+          en="Beyond Pain hasn't launched yet — it's being written now, chapter by chapter. Here's everything published so far — new chapters are added as they're finished, and subscribers get an email the moment each one lands, plus the first news when the full book launches."
+          pt="Além da Dor ainda não foi lançado — está sendo escrito agora, capítulo por capítulo. Aqui está tudo o que já foi publicado — novos capítulos são adicionados à medida que ficam prontos, e os inscritos recebem um email no momento em que cada um chega, além de serem os primeiros a saber quando o livro completo for lançado."
         />
       </p>
 
@@ -55,9 +61,9 @@ export default async function BeyondPainChaptersPage() {
 
       <div className="mt-10 rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
         <LocalizedText
-          fallback="More chapters are on the way. Subscribers are the first to know — and the first to read."
-          en="More chapters are on the way. Subscribers are the first to know — and the first to read."
-          pt="Mais capítulos estão a caminho. Os inscritos são os primeiros a saber — e os primeiros a ler."
+          fallback="The full book hasn't launched yet — more chapters are on the way, and subscribers are the first to know when it does."
+          en="The full book hasn't launched yet — more chapters are on the way, and subscribers are the first to know when it does."
+          pt="O livro completo ainda não foi lançado — mais capítulos estão a caminho, e os inscritos são os primeiros a saber quando ele for lançado."
         />
       </div>
 
