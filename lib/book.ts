@@ -5,6 +5,8 @@
 // "book", cluster = "book") rather than a separate list — see
 // app/api/beyond-pain/* routes for the actual endpoints.
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { wrapInLayout } from "@/lib/email-templates";
@@ -105,10 +107,21 @@ export async function sendBookChapterDeliveryEmail(params: {
 }) {
   const { email, firstName } = params;
   const isPt = params.language === "pt";
-  const pdfUrl = `${BASE_URL}/downloads/beyond-pain/chapter-one-${isPt ? "pt" : "en"}.pdf`;
+  const pdfFilename = `chapter-one-${isPt ? "pt" : "en"}.pdf`;
+  const pdfUrl = `${BASE_URL}/downloads/beyond-pain/${pdfFilename}`;
   const chapterUrl = `${BASE_URL}/beyond-pain/chapter-one`;
   const bookUrl = `${BASE_URL}/beyond-pain`;
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
+
+  // Attach the actual PDF (not just a link) — best-effort: if the file is
+  // missing for any reason, we still send the email with the download link.
+  let attachments: { filename: string; content: Buffer }[] | undefined;
+  try {
+    const pdfPath = path.join(process.cwd(), "public", "downloads", "beyond-pain", pdfFilename);
+    attachments = [{ filename: pdfFilename, content: fs.readFileSync(pdfPath) }];
+  } catch (err) {
+    console.error("[book] Could not read Chapter One PDF for attachment:", err);
+  }
 
   if (isPt) {
     const greeting = firstName ? `Olá ${firstName},` : "Olá,";
@@ -132,7 +145,7 @@ export async function sendBookChapterDeliveryEmail(params: {
       <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
       <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;"><a href="${unsubscribeUrl}" style="color:#9ca3af;">Cancelar subscrição</a></p>`;
     const html = await wrapInLayout(body, subject, "pt-PT");
-    return sendEmail({ to: email, subject, html });
+    return sendEmail({ to: email, subject, html, attachments });
   }
 
   const greeting = firstName ? `Hi ${firstName},` : "Hi,";
@@ -156,7 +169,7 @@ export async function sendBookChapterDeliveryEmail(params: {
     <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;"><a href="${unsubscribeUrl}" style="color:#9ca3af;">Unsubscribe</a></p>`;
   const html = await wrapInLayout(body, subject, "en-GB");
-  return sendEmail({ to: email, subject, html });
+  return sendEmail({ to: email, subject, html, attachments });
 }
 
 export async function sendBookNurture3DayEmail(params: { email: string; firstName?: string | null }) {

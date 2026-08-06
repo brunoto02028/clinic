@@ -7,6 +7,7 @@ import { BookCaptureForm } from "@/components/book-capture-form";
 import { BookChapterReader } from "@/components/book-chapter-reader";
 import { MedicalDisclaimer } from "@/components/medical-disclaimer";
 import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 // Gated HTML chapter reader (§2 of BPR_Devin_Spec_Beyond_Pain_Book.md).
 // Server-side gate — the chapter body is only ever included in the render
@@ -50,6 +51,9 @@ export default async function ChapterOnePage() {
     );
   }
 
+  const isPt = reader.language === "pt";
+  const pdfUrl = `/downloads/beyond-pain/chapter-one-${isPt ? "pt" : "en"}.pdf`;
+
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
       <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-4 text-center">Beyond Pain · Chapter One</p>
@@ -58,13 +62,26 @@ export default async function ChapterOnePage() {
           You're in. Here's Chapter One — enjoy it, and I'll be in touch as the next chapter lands.
         </p>
       </div>
-      <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-10 text-center tracking-tight">{chapter.titleEn}</h1>
+      <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-6 text-center tracking-tight">{chapter.titleEn}</h1>
+
+      <div className="text-center mb-10">
+        <a href={pdfUrl} download>
+          <Button variant="ba1Outline" size="sm" className="gap-2">
+            <Download className="h-4 w-4" /> Download as PDF
+          </Button>
+        </a>
+      </div>
 
       <BookChapterReader html={chapter.contentEn} readerEmail={reader.email} />
 
       <div className="mt-14 rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8 text-center">
         <p className="text-muted-foreground mb-4">Enjoyed this? Follow the journey as the rest of the book is written.</p>
         <div className="flex flex-wrap gap-3 justify-center">
+          <a href={pdfUrl} download>
+            <Button variant="ba1Outline" className="gap-2">
+              <Download className="h-4 w-4" /> Download PDF
+            </Button>
+          </a>
           <Link href="/beyond-pain/chapters">
             <Button variant="ba1Outline" className="gap-2">All chapters</Button>
           </Link>
@@ -72,6 +89,9 @@ export default async function ChapterOnePage() {
             <Button variant="ba1Primary" className="gap-2">Book an assessment</Button>
           </Link>
         </div>
+        <p className="text-[11px] text-muted-foreground/70 mt-6 leading-relaxed">
+          This chapter is copyright-protected — an excerpt from the forthcoming book <em>Beyond Pain</em>, shared with you for personal reading only. Please don't copy, resell or redistribute it, even as a single chapter.
+        </p>
       </div>
 
       <MedicalDisclaimer />

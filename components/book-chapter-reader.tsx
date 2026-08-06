@@ -39,7 +39,7 @@ export function BookChapterReader({ html, readerEmail }: { html: string; readerE
       />
       <div
         ref={ref}
-        className="relative select-none prose prose-lg max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-blockquote:border-primary/40"
+        className="book-content relative select-none"
         dangerouslySetInnerHTML={{ __html: html }}
       />
       <p className="relative mt-8 text-center text-[11px] text-muted-foreground/70">
