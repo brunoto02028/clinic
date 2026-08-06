@@ -3552,6 +3552,7 @@ model EmailContact {
   confirmed    Boolean   @default(false) // double opt-in — true once they've clicked the confirmation email link
   confirmedAt  DateTime?
   confirmToken String?   @unique // single-use-ish token for the confirm link + gated PDF download link
+  chapterOnePdfDownloadedAt DateTime? // set the first time the Chapter One PDF link is used — the download route (/api/beyond-pain/download) rejects any further request once this is set, so a leaked/forwarded email link stops working after one download
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

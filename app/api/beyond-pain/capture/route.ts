@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // the confirm route would set.
     if (existing?.confirmed) {
       await logBookEvent(contact.id, "book_unlocked", { skippedConfirm: true });
-      await sendBookChapterDeliveryEmail({ email, firstName, language });
+      await sendBookChapterDeliveryEmail({ email, firstName, language, confirmToken: contact.confirmToken });
       const res = NextResponse.json({ status: "unlocked" });
       res.cookies.set("book_access", contact.confirmToken, {
         httpOnly: true,

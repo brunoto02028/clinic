@@ -104,11 +104,17 @@ export async function sendBookChapterDeliveryEmail(params: {
   email: string;
   firstName?: string | null;
   language?: string | null;
+  confirmToken?: string | null;
 }) {
-  const { email, firstName } = params;
+  const { email, firstName, confirmToken } = params;
   const isPt = params.language === "pt";
   const pdfFilename = `chapter-one-${isPt ? "pt" : "en"}.pdf`;
-  const pdfUrl = `${BASE_URL}/downloads/beyond-pain/${pdfFilename}`;
+  // Single-use, tokenised download link (see app/api/beyond-pain/download) —
+  // not a static /public URL, so it can't just be forwarded/leaked and
+  // re-downloaded indefinitely; it stops working after the first download.
+  const pdfUrl = confirmToken
+    ? `${BASE_URL}/api/beyond-pain/download?token=${confirmToken}&lang=${isPt ? "pt" : "en"}`
+    : `${BASE_URL}/beyond-pain/chapter-one`;
   const chapterUrl = `${BASE_URL}/beyond-pain/chapter-one`;
   const bookUrl = `${BASE_URL}/beyond-pain`;
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
@@ -117,7 +123,7 @@ export async function sendBookChapterDeliveryEmail(params: {
   // missing for any reason, we still send the email with the download link.
   let attachments: { filename: string; content: Buffer }[] | undefined;
   try {
-    const pdfPath = path.join(process.cwd(), "public", "downloads", "beyond-pain", pdfFilename);
+    const pdfPath = path.join(process.cwd(), "book", "pdf", pdfFilename);
     attachments = [{ filename: pdfFilename, content: fs.readFileSync(pdfPath) }];
   } catch (err) {
     console.error("[book] Could not read Chapter One PDF for attachment:", err);

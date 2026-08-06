@@ -52,7 +52,7 @@ export default async function ChapterOnePage() {
   }
 
   const isPt = reader.language === "pt";
-  const pdfUrl = `/downloads/beyond-pain/chapter-one-${isPt ? "pt" : "en"}.pdf`;
+  const pdfUrl = `/api/beyond-pain/download?lang=${isPt ? "pt" : "en"}`;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">

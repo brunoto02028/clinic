@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
         email: contact.email,
         firstName: contact.firstName,
         language: contact.language,
+        confirmToken: contact.confirmToken,
       });
     }
     await logBookEvent(contact.id, "book_unlocked");
