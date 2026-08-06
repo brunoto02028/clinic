@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { BookOpen } from "lucide-react";
+import { useLocale } from "@/hooks/use-locale";
 
 /**
  * Realistic 3D book mockup — pure CSS 3D transforms (no image assets beyond
@@ -11,13 +12,18 @@ import { BookOpen } from "lucide-react";
  */
 export function Book3DCover({
   coverImage,
+  coverImagePt,
   title,
   className = "",
 }: {
   coverImage: string | null;
+  /** Portuguese-language cover art — falls back to `coverImage` when unset. */
+  coverImagePt?: string | null;
   title: string;
   className?: string;
 }) {
+  const { locale } = useLocale();
+  const resolvedCover = locale.startsWith("pt") ? (coverImagePt || coverImage) : coverImage;
   const depth = 26; // px — spine/page thickness
 
   return (
@@ -46,9 +52,9 @@ export function Book3DCover({
             boxShadow: "0 25px 50px -12px rgba(0,0,0,0.45)",
           }}
         >
-          {coverImage ? (
+          {resolvedCover ? (
             <Image
-              src={coverImage}
+              src={resolvedCover}
               alt={`${title} — book cover`}
               fill
               // The card sits inside a max-w-xs (320px) / lg:max-w-sm (384px)

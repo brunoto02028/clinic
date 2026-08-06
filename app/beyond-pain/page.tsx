@@ -58,9 +58,11 @@ export default async function BeyondPainPage() {
                 <Sparkles className="h-3.5 w-3.5" /><LocalizedText fallback="A new book · coming soon" en="A new book · coming soon" pt="Um novo livro · em breve" />
               </span>
               <h1 className="font-sora text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight mb-5">
-                {config.title}
+                <LocalizedText fallback={config.title} en={config.title} pt={config.titlePt || config.title} />
               </h1>
-              <p className="text-lg sm:text-xl text-muted-foreground mb-4">{config.subtitle}</p>
+              <p className="text-lg sm:text-xl text-muted-foreground mb-4">
+                <LocalizedText fallback={config.subtitle} en={config.subtitle} pt={config.subtitlePt || config.subtitle} />
+              </p>
               <p className="text-base text-muted-foreground leading-relaxed max-w-lg">
                 <LocalizedText
                   fallback="We're taught that pain lives in the body. The truth is bigger — and far more hopeful."
@@ -93,7 +95,7 @@ export default async function BeyondPainPage() {
 
             {/* Cover — 3D book mockup */}
             <div className="relative mx-auto w-full max-w-xs lg:max-w-sm pb-6">
-              <Book3DCover coverImage={config.coverImage} title={config.title} />
+              <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} />
               <div className="hidden sm:block absolute -bottom-1 -left-5 bg-white rounded-2xl p-4 shadow-xl border border-border ba1-card">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><HeartHandshake className="h-5 w-5 text-primary" /></div>

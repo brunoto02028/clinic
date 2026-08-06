@@ -31,7 +31,7 @@ export default async function ChapterOnePage() {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
         <div className="w-[110px] sm:w-[130px] mx-auto mb-8">
-          <Book3DCover coverImage={config.coverImage} title={config.title} />
+          <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} />
         </div>
         <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-4 text-center">Beyond Pain · Chapter One</p>
         <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-4 text-center tracking-tight">Pain From the Inside</h1>
@@ -62,7 +62,7 @@ export default async function ChapterOnePage() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
       <div className="w-[90px] mx-auto mb-6">
-        <Book3DCover coverImage={config.coverImage} title={config.title} />
+        <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} />
       </div>
       <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-4 text-center">Beyond Pain · Chapter One</p>
       <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 mb-8 text-center">

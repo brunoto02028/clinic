@@ -3617,11 +3617,14 @@ model BookConfig {
   status   BookStatus @default(PRE_LAUNCH)
   title    String     @default("Beyond Pain")
   subtitle String     @default("The science and soul of healing — body, soul and spirit")
+  titlePt    String? // Portuguese title — falls back to `title` on the public page if unset
+  subtitlePt String? // Portuguese subtitle — falls back to `subtitle` if unset
 
   authorName  String? @default("Bruno")
   authorBio   String? @db.Text
   authorPhoto String?
-  coverImage  String? // book cover artwork shown in the hero
+  coverImage  String? // book cover artwork shown in the hero (English)
+  coverImagePt String? // Portuguese-language cover artwork — falls back to `coverImage` if unset
 
   // On-sale purchase links (§4) — only used once status = ON_SALE
   buyLinkAmazon String?
