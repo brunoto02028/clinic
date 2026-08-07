@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { refreshInstagramToken } from '@/lib/instagram';
+import { resolveClinicId } from '@/lib/resolve-clinic-id';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +14,7 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const user = session.user as any;
-    const clinicId = user.clinicId;
+    const clinicId = await resolveClinicId(session);
     if (!clinicId) return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
 
     // Find active Instagram accounts for this clinic
@@ -42,8 +42,7 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const user = session.user as any;
-    const clinicId = user.clinicId;
+    const clinicId = await resolveClinicId(session);
     if (!clinicId) return NextResponse.json({ refreshed: 0 }, { status: 200 });
 
     // Find accounts expiring in less than 10 days

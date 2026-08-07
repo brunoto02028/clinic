@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { resolveClinicId } from '@/lib/resolve-clinic-id';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +20,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const user = session.user as any;
-    const clinicId = user.clinicId;
+    const clinicId = await resolveClinicId(session);
 
     const where: any = {};
     if (clinicId) where.clinicId = clinicId;
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = session.user as any;
-    const clinicId = user.clinicId;
+    const clinicId = await resolveClinicId(session);
     if (!clinicId) {
       return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
     }

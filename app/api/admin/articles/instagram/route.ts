@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { callAI, callAIChat } from '@/lib/ai-provider';
 import { publishPhoto, publishCarousel } from '@/lib/instagram';
+import { resolveClinicId } from '@/lib/resolve-clinic-id';
 
 // ─── POST: publish or schedule an article to Instagram ───
 export async function POST(req: NextRequest) {
@@ -105,7 +106,7 @@ Write ONLY the caption text, nothing else.`;
     // ── Instagram credentials required for publish/schedule — same connected
     // account used by Instagram Studio (see /admin/marketing/instagram-connect),
     // not a separately configured token. ──
-    const clinicId = (session.user as any).clinicId;
+    const clinicId = await resolveClinicId(session);
     const igAccount = clinicId
       ? await (prisma as any).socialAccount.findFirst({
           where: { clinicId, platform: 'INSTAGRAM', isActive: true },
