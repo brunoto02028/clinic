@@ -87,7 +87,7 @@ ${preheader ? `<span style="display:none!important;visibility:hidden;mso-hide:al
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${BRAND_BONE}" style="background-color:${BRAND_BONE};">
 <tr><td align="center" style="padding:30px 15px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
-  <tr><td bgcolor="${BRAND_PRIMARY}" style="background-color:${BRAND_PRIMARY};background:linear-gradient(135deg,${BRAND_PRIMARY} 0%,${BRAND_PRIMARY_DARK} 100%);padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
+  <tr><td bgcolor="${BRAND_PRIMARY}" style="background-color:${BRAND_PRIMARY};padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
   <tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:36px 32px 24px;">${content}</td></tr>
   <tr><td bgcolor="${BRAND_HEALTH_SOFT}" style="padding:24px 32px 28px;border-top:1px solid ${BRAND_LINE};background-color:${BRAND_HEALTH_SOFT};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">

@@ -16,6 +16,7 @@ export async function sendEmail({
     from,
     replyTo,
     bcc,
+    attachments,
 }: {
     to: string | string[];
     subject: string;
@@ -23,6 +24,7 @@ export async function sendEmail({
     from?: string;
     replyTo?: string;
     bcc?: string | string[];
+    attachments?: { filename: string; content: Buffer }[];
 }) {
     try {
         const resend = getResend();
@@ -33,6 +35,7 @@ export async function sendEmail({
             subject,
             html,
             ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
+            ...(attachments ? { attachments } : {}),
         });
         console.log('[EMAIL] Sent via Resend to', to);
         return { success: true, data };

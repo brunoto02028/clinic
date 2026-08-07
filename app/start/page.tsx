@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { getStartPageSettings } from "@/lib/get-site-settings";
+import { getBookConfig } from "@/lib/book";
 import { StartLanding } from "@/components/start/start-landing";
 
 const BASE_URL = "https://bpr.rehab";
@@ -45,7 +46,14 @@ export default async function StartPage({
   searchParams?: { via?: string };
 }) {
   const settings = await getStartPageSettings();
+  const bookConfig = await getBookConfig();
   const isGift = searchParams?.via === "card";
 
-  return <StartLanding settings={settings} isGift={isGift} />;
+  return (
+    <StartLanding
+      settings={settings}
+      isGift={isGift}
+      book={{ title: bookConfig.title, subtitle: bookConfig.subtitle, coverImage: bookConfig.coverImage }}
+    />
+  );
 }

@@ -46,8 +46,8 @@ export async function PATCH(req: NextRequest) {
     const config = await getBookConfig();
 
     const allowed = [
-      "status", "title", "subtitle", "authorName", "authorBio", "authorPhoto",
-      "coverImage", "buyLinkAmazon", "buyLinkDirect", "priceDisplay",
+      "status", "title", "subtitle", "titlePt", "subtitlePt", "authorName", "authorBio", "authorPhoto",
+      "coverImage", "coverImagePt", "buyLinkAmazon", "buyLinkDirect", "priceDisplay",
     ];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {

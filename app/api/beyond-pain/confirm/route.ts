@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { logBookEvent, BOOK_SOURCE } from "@/lib/book";
+import { logBookEvent, sendBookChapterDeliveryEmail, BOOK_SOURCE } from "@/lib/book";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,14 @@ export async function GET(request: NextRequest) {
         data: { confirmed: true, confirmedAt: new Date(), subscribed: true },
       });
       await logBookEvent(contact.id, "book_confirmed");
+      // First confirmation only — deliver the actual chapter PDF by email
+      // (copyright notice + case for buying the finished book included).
+      await sendBookChapterDeliveryEmail({
+        email: contact.email,
+        firstName: contact.firstName,
+        language: contact.language,
+        confirmToken: contact.confirmToken,
+      });
     }
     await logBookEvent(contact.id, "book_unlocked");
 

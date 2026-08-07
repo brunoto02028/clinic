@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap, Quote } from "lucide-react";
+import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap, Quote, BookOpen, Stethoscope } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
@@ -31,10 +31,13 @@ const INTRO_VIDEO_URL = "";
 // TODO: replace with 3 real patient testimonials — section stays hidden until filled
 const TESTIMONIALS: { quoteEn: string; quotePt: string; nameEn: string; namePt: string }[] = [];
 
-export function StartLanding({ settings, isGift = false }: { settings: StartPageSettings; isGift?: boolean }) {
+type BookSummary = { title: string; subtitle: string; coverImage: string | null };
+
+export function StartLanding({ settings, isGift = false, book }: { settings: StartPageSettings; isGift?: boolean; book?: BookSummary }) {
   const { locale, setLocale } = useLocale();
   const isPt = locale === "pt-BR";
   const aboutImage = absoluteImageUrl(settings?.aboutImageUrl);
+  const bookCover = absoluteImageUrl(book?.coverImage);
   const viaSuffix = isGift ? "?via=card" : "";
 
   const waHref =
@@ -107,8 +110,59 @@ export function StartLanding({ settings, isGift = false }: { settings: StartPage
       </div>
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6">
+        {/* PATH CHOOSER — clinic vs. book */}
+        <section className="mt-3 grid sm:grid-cols-2 gap-4">
+          <a
+            href="#assessment"
+            className="group flex flex-col rounded-3xl border-2 border-border bg-card ba1-card p-7 hover:border-primary/50 hover:shadow-lg transition-all"
+          >
+            <span className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+              <Stethoscope className="h-7 w-7 text-primary" />
+            </span>
+            <h2 className="font-sora font-extrabold text-xl text-foreground mb-2">
+              {isPt ? "Marcar avaliação grátis" : "Book a free assessment"}
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1">
+              {isPt
+                ? "Encontre a causa real da sua dor — avaliação completa, sem custo, para novos pacientes."
+                : "Find the real cause of your pain — a full assessment, free for new patients."}
+            </p>
+            <span className="text-sm font-bold text-primary inline-flex items-center gap-1.5">
+              {isPt ? "Ver detalhes" : "See details"} <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </a>
+
+          <Link
+            href="/beyond-pain"
+            className="group flex flex-col rounded-3xl border-2 border-border bg-card ba1-card p-7 hover:border-primary/50 hover:shadow-lg transition-all"
+          >
+            <div className="flex items-start gap-4 mb-4">
+              {bookCover ? (
+                <div className="relative w-14 h-20 rounded-lg overflow-hidden border border-border shrink-0 shadow-md">
+                  <Image src={bookCover} alt={book?.title || "Beyond Pain"} fill sizes="56px" className="object-cover" />
+                </div>
+              ) : (
+                <span className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <BookOpen className="h-7 w-7 text-primary" />
+                </span>
+              )}
+              <h2 className="font-sora font-extrabold text-xl text-foreground pt-1">
+                {isPt ? "Ler o livro grátis" : "Read the book free"}
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1">
+              {isPt
+                ? `${book?.title || "Beyond Pain"} — ${book?.subtitle || "a ciência e a alma da cura"}. Leia o primeiro capítulo grátis.`
+                : `${book?.title || "Beyond Pain"} — ${book?.subtitle || "the science and soul of healing"}. Read Chapter One free.`}
+            </p>
+            <span className="text-sm font-bold text-primary inline-flex items-center gap-1.5">
+              {isPt ? "Começar a ler" : "Start reading"} <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+            </span>
+          </Link>
+        </section>
+
         {/* HERO */}
-        <header className="relative overflow-hidden bg-foreground text-background rounded-[26px] px-6 sm:px-10 py-10 sm:py-14 mt-3 text-center shadow-xl">
+        <header id="assessment" className="relative overflow-hidden bg-foreground text-background rounded-[26px] px-6 sm:px-10 py-10 sm:py-14 mt-3 text-center shadow-xl scroll-mt-6">
           {/* Decorative glow illustration */}
           <div className="pointer-events-none absolute -top-20 -left-16 w-64 h-64 rounded-full bg-primary/25 blur-[80px]" />
           <div className="pointer-events-none absolute -bottom-24 -right-16 w-72 h-72 rounded-full bg-secondary/20 blur-[90px]" />
@@ -431,7 +485,7 @@ export function StartLanding({ settings, isGift = false }: { settings: StartPage
           <div className="flex justify-center mb-4">
             <Logo logoUrl={settings?.logoUrl} darkLogoUrl={settings?.darkLogoUrl} size="xl" linkTo="/" />
           </div>
-          <p className="text-muted-foreground text-xs">Bruno Physical Rehabilitation · Ipswich, Suffolk, {isPt ? "Reino Unido" : "UK"}</p>
+          <p className="text-muted-foreground text-xs">BPR Physical Rehabilitation · Ipswich, Suffolk, {isPt ? "Reino Unido" : "UK"}</p>
           <p className="text-primary text-[11px] font-bold mt-1">{isPt ? "Curar com Coração" : "Healing With Heart"}</p>
           <Link href="/" className="text-muted-foreground text-xs underline mt-2 inline-block">bpr.rehab</Link>
         </footer>

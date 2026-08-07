@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Inter, Sora } from "next/font/google";
+import { Inter, Sora, Lora } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import { DynamicFavicon } from "@/components/dynamic-favicon";
@@ -33,6 +33,17 @@ const sora = Sora({
   display: 'swap',
   preload: false,
   variable: '--font-sora',
+});
+
+// Serif reading font — used only for the Beyond Pain book chapter reader
+// (.book-content, see app/globals.css) to give it a proper "book" feel.
+const lora = Lora({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  display: 'swap',
+  preload: false,
+  variable: '--font-lora',
 });
 
 export const viewport: Viewport = {
@@ -150,7 +161,7 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className={`${inter.className} ${sora.variable}`} suppressHydrationWarning>
+      <body className={`${inter.className} ${sora.variable} ${lora.variable}`} suppressHydrationWarning>
         <Suspense fallback={null}>
           <SchemaOrgScript />
         </Suspense>

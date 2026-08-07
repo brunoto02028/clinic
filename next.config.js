@@ -40,6 +40,14 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
         ],
       },
+      {
+        // Lead-magnet PDF downloads (e.g. Beyond Pain Chapter One) — not
+        // linked from any indexed page, keep them out of search results.
+        source: '/downloads/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
     ];
   },
 };

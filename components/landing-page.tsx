@@ -398,11 +398,20 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 </div>
               </div>
             </div>
-            {/* Hero image + floating stat card */}
-            <div className="relative">
+            {/* Hero image + floating stat card — shown first on mobile (order-first),
+                back to normal source order (text first) from lg up. */}
+            <div className="relative order-first lg:order-none">
               <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-100">
                 {validImg(settings?.heroImageUrl) ? (
-                  <img src={validImg(settings?.heroImageUrl)!} alt="Professional physical rehabilitation treatment session - Bruno Physical Rehabilitation" className="object-cover absolute inset-0 w-full h-full" />
+                  <Image
+                    src={validImg(settings?.heroImageUrl)!}
+                    alt="Professional physical rehabilitation treatment session - Bruno Physical Rehabilitation"
+                    fill
+                    sizes="(min-width: 1024px) 50vw, 100vw"
+                    quality={70}
+                    priority
+                    className="object-cover"
+                  />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center text-slate-300">

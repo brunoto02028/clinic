@@ -14,10 +14,13 @@ interface BookConfig {
   status: "PRE_LAUNCH" | "WAITLIST" | "ON_SALE";
   title: string;
   subtitle: string;
+  titlePt: string | null;
+  subtitlePt: string | null;
   authorName: string | null;
   authorBio: string | null;
   authorPhoto: string | null;
   coverImage: string | null;
+  coverImagePt: string | null;
   buyLinkAmazon: string | null;
   buyLinkDirect: string | null;
   priceDisplay: string | null;
@@ -55,10 +58,10 @@ export default function BookAdminPage() {
     }
   };
 
-  const uploadImage = async (file: File, field: "coverImage" | "authorPhoto") => {
+  const uploadImage = async (file: File, field: "coverImage" | "coverImagePt" | "authorPhoto") => {
     const fd = new FormData();
     fd.append("file", file);
-    fd.append("category", field === "coverImage" ? "hero" : "about");
+    fd.append("category", field === "authorPhoto" ? "about" : "hero");
     try {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json();
@@ -141,35 +144,68 @@ export default function BookAdminPage() {
         <CardContent className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <Label>Title</Label>
+              <Label>Title (English)</Label>
               <Input value={config.title} onChange={(e) => setConfig({ ...config, title: e.target.value })} />
             </div>
             <div>
-              <Label>Subtitle</Label>
+              <Label>Subtitle (English)</Label>
               <Input value={config.subtitle} onChange={(e) => setConfig({ ...config, subtitle: e.target.value })} />
+            </div>
+            <div>
+              <Label>Title (Português)</Label>
+              <Input placeholder={config.title} value={config.titlePt || ""} onChange={(e) => setConfig({ ...config, titlePt: e.target.value })} />
+            </div>
+            <div>
+              <Label>Subtitle (Português)</Label>
+              <Input placeholder={config.subtitle} value={config.subtitlePt || ""} onChange={(e) => setConfig({ ...config, subtitlePt: e.target.value })} />
             </div>
           </div>
 
-          {/* Cover image */}
-          <div>
-            <Label>Book cover</Label>
-            <div className="flex items-center gap-3 mt-1.5">
-              {config.coverImage ? (
-                <div className="relative w-20 h-28 rounded-lg overflow-hidden border shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={config.coverImage} alt="Cover" className="object-cover w-full h-full" />
-                  <button type="button" onClick={() => setConfig({ ...config, coverImage: null })} className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5"><X className="h-3 w-3" /></button>
+          {/* Cover images — English + Portuguese */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <Label>Book cover (English)</Label>
+              <div className="flex items-center gap-3 mt-1.5">
+                {config.coverImage ? (
+                  <div className="relative w-20 h-28 rounded-lg overflow-hidden border shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={config.coverImage} alt="Cover" className="object-cover w-full h-full" />
+                    <button type="button" onClick={() => setConfig({ ...config, coverImage: null })} className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5"><X className="h-3 w-3" /></button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-28 rounded-lg border border-dashed flex items-center justify-center text-muted-foreground shrink-0">
+                    <BookOpen className="h-6 w-6" />
+                  </div>
+                )}
+                <div>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => document.getElementById("cover-upload")?.click()}>
+                    <Upload className="h-3.5 w-3.5" />Upload cover
+                  </Button>
+                  <input id="cover-upload" type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "coverImage"); e.target.value = ""; }} />
                 </div>
-              ) : (
-                <div className="w-20 h-28 rounded-lg border border-dashed flex items-center justify-center text-muted-foreground shrink-0">
-                  <BookOpen className="h-6 w-6" />
+              </div>
+            </div>
+            <div>
+              <Label>Book cover (Português)</Label>
+              <p className="text-xs text-muted-foreground mb-1.5">Falls back to the English cover if left empty.</p>
+              <div className="flex items-center gap-3">
+                {config.coverImagePt ? (
+                  <div className="relative w-20 h-28 rounded-lg overflow-hidden border shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={config.coverImagePt} alt="Capa (PT)" className="object-cover w-full h-full" />
+                    <button type="button" onClick={() => setConfig({ ...config, coverImagePt: null })} className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5"><X className="h-3 w-3" /></button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-28 rounded-lg border border-dashed flex items-center justify-center text-muted-foreground shrink-0">
+                    <BookOpen className="h-6 w-6" />
+                  </div>
+                )}
+                <div>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => document.getElementById("cover-upload-pt")?.click()}>
+                    <Upload className="h-3.5 w-3.5" />Upload capa
+                  </Button>
+                  <input id="cover-upload-pt" type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "coverImagePt"); e.target.value = ""; }} />
                 </div>
-              )}
-              <div>
-                <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => document.getElementById("cover-upload")?.click()}>
-                  <Upload className="h-3.5 w-3.5" />Upload cover
-                </Button>
-                <input id="cover-upload" type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "coverImage"); e.target.value = ""; }} />
               </div>
             </div>
           </div>
