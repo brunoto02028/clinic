@@ -284,7 +284,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/email-templates",
       "/admin/email-marketing",
       "/admin/education",
-      "/admin/social",
       "/admin/sales",
     ],
   },
