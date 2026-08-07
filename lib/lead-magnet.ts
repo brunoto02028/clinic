@@ -16,6 +16,20 @@ export function generateConfirmToken(): string {
   return crypto.randomBytes(24).toString("hex");
 }
 
+// firstName comes straight from an unauthenticated public form and the
+// target email doesn't have to belong to whoever submitted it (that's how
+// double opt-in works) — escape it before interpolating into email HTML so
+// it can't be used to inject arbitrary markup/scripts into mail sent to a
+// third party's inbox under the clinic's sending domain.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /** Picks the best-matching active guide for a set of article tags, falling
  *  back to any active guide if nothing matches (never show nothing). */
 export async function matchGuideForTags(tags: string[]): Promise<{ id: string; slug: string; cluster: string; titleEn: string; titlePt: string } | null> {
@@ -69,7 +83,7 @@ export async function sendConfirmationEmail(params: {
   const { email, firstName, locale, confirmToken, guideTitle } = params;
   const isPt = locale === "pt";
   const confirmUrl = `${BASE_URL}/lead-magnet/confirm?token=${confirmToken}`;
-  const greeting = firstName ? `${isPt ? "Olá" : "Hi"} ${firstName},` : isPt ? "Olá," : "Hi,";
+  const greeting = firstName ? `${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},` : isPt ? "Olá," : "Hi,";
 
   const subject = isPt
     ? `Confirme seu e-mail para receber: ${guideTitle}`
@@ -110,7 +124,7 @@ export async function sendDeliveryEmail(params: {
   const isPt = locale === "pt";
   const downloadUrl = `${BASE_URL}/api/lead-magnet/download?token=${confirmToken}&guide=${guideSlug}`;
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
-  const greeting = firstName ? `${isPt ? "Olá" : "Hi"} ${firstName},` : isPt ? "Olá," : "Hi,";
+  const greeting = firstName ? `${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},` : isPt ? "Olá," : "Hi,";
 
   const subject = isPt ? `Aqui está o seu guia: ${guideTitle}` : `Here's your guide: ${guideTitle}`;
 
@@ -173,7 +187,7 @@ export async function sendNurture2DayEmail(params: {
   const { email, firstName, locale, cluster, articleUrl, articleTitle } = params;
   const isPt = locale === "pt";
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
-  const greeting = firstName ? `${isPt ? "Olá" : "Hi"} ${firstName},` : isPt ? "Olá," : "Hi,";
+  const greeting = firstName ? `${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},` : isPt ? "Olá," : "Hi,";
   const message = NURTURE_MESSAGE[cluster] || NURTURE_MESSAGE.pain;
 
   const subject = isPt ? "Uma coisa que vale saber" : "One thing worth knowing";
@@ -203,7 +217,7 @@ export async function sendNurture5DayEmail(params: {
   const isPt = locale === "pt";
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
   const bookUrl = `${BASE_URL}/start`;
-  const greeting = firstName ? `${isPt ? "Olá" : "Hi"} ${firstName},` : isPt ? "Olá," : "Hi,";
+  const greeting = firstName ? `${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},` : isPt ? "Olá," : "Hi,";
 
   const subject = isPt ? "Ainda com dúvidas sobre o seu caso?" : "Still unsure about your situation?";
 

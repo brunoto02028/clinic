@@ -22,6 +22,20 @@ export function generateBookToken(): string {
   return crypto.randomBytes(24).toString("hex");
 }
 
+// firstName comes straight from an unauthenticated public form and the
+// target email doesn't have to belong to whoever submitted it (that's how
+// double opt-in works) — escape it before interpolating into email HTML so
+// it can't be used to inject arbitrary markup/scripts into mail sent to a
+// third party's inbox under the clinic's sending domain.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function logEvent(contactId: string, type: string, meta?: Record<string, unknown>) {
   try {
     await (prisma as any).emailContactEvent.create({ data: { contactId, type, meta: meta || undefined } });
@@ -80,7 +94,7 @@ export async function sendBookConfirmationEmail(params: {
 }) {
   const { email, firstName, token } = params;
   const confirmUrl = `${BASE_URL}/api/beyond-pain/confirm?token=${token}`;
-  const greeting = firstName ? `Hi ${firstName},` : "Hi,";
+  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,";
 
   const subject = "Confirm your email to read Chapter One of Beyond Pain";
   const body = `
@@ -130,7 +144,7 @@ export async function sendBookChapterDeliveryEmail(params: {
   }
 
   if (isPt) {
-    const greeting = firstName ? `Olá ${firstName},` : "Olá,";
+    const greeting = firstName ? `Olá ${escapeHtml(firstName)},` : "Olá,";
     const subject = "O seu Capítulo Um chegou — Além da Dor";
     const body = `
       <h2 style="color:#20242D;font-size:20px;margin:0 0 16px;">O seu Capítulo Um está pronto</h2>
@@ -154,7 +168,7 @@ export async function sendBookChapterDeliveryEmail(params: {
     return sendEmail({ to: email, subject, html, attachments });
   }
 
-  const greeting = firstName ? `Hi ${firstName},` : "Hi,";
+  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,";
   const subject = "Here's your copy of Chapter One — Beyond Pain";
   const body = `
     <h2 style="color:#20242D;font-size:20px;margin:0 0 16px;">Chapter One is ready</h2>
@@ -180,7 +194,7 @@ export async function sendBookChapterDeliveryEmail(params: {
 
 export async function sendBookNurture3DayEmail(params: { email: string; firstName?: string | null }) {
   const { email, firstName } = params;
-  const greeting = firstName ? `Hi ${firstName},` : "Hi,";
+  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,";
   const chapterUrl = `${BASE_URL}/beyond-pain/chapter-one`;
   const subject = "Behind the scenes of Beyond Pain";
   const body = `
@@ -200,7 +214,7 @@ export async function sendBookNurture3DayEmail(params: { email: string; firstNam
 export async function sendBookNurture7DayEmail(params: { email: string; firstName?: string | null }) {
   const { email, firstName } = params;
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
-  const greeting = firstName ? `Hi ${firstName},` : "Hi,";
+  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,";
   const subject = "Body, soul and spirit — the idea behind Beyond Pain";
   const body = `
     <h2 style="color:#20242D;font-size:20px;margin:0 0 16px;">The idea underneath it all</h2>

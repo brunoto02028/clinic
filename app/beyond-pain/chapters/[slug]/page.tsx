@@ -35,6 +35,9 @@ export default async function BeyondPainChapterPage({ params }: { params: Promis
 
   const cookieStore = cookies();
   const reader = await getBookReaderFromToken(cookieStore.get("book_access")?.value);
+  const isPt = reader?.language === "pt";
+  const chapterTitle = (isPt && chapter.titlePt) || chapter.titleEn;
+  const chapterContent = (isPt && chapter.contentPt) || chapter.contentEn;
 
   if (!reader) {
     return (
@@ -55,9 +58,9 @@ export default async function BeyondPainChapterPage({ params }: { params: Promis
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
       <p className="text-xs font-semibold text-primary uppercase tracking-widest mb-4 text-center">Beyond Pain</p>
-      <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-10 text-center tracking-tight">{chapter.titleEn}</h1>
+      <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-10 text-center tracking-tight">{chapterTitle}</h1>
 
-      <BookChapterReader html={chapter.contentEn} readerEmail={reader.email} />
+      <BookChapterReader html={chapterContent} readerEmail={reader.email} />
 
       <div className="mt-14 rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8 text-center">
         <p className="text-muted-foreground mb-4">Enjoyed this? Follow the journey as the rest of the book is written.</p>

@@ -58,6 +58,8 @@ export default async function ChapterOnePage() {
 
   const isPt = reader.language === "pt";
   const pdfUrl = `/api/beyond-pain/download?lang=${isPt ? "pt" : "en"}`;
+  const chapterTitle = (isPt && chapter.titlePt) || chapter.titleEn;
+  const chapterContent = (isPt && chapter.contentPt) || chapter.contentEn;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
@@ -70,7 +72,7 @@ export default async function ChapterOnePage() {
           You're in. Here's Chapter One — enjoy it, and I'll be in touch as the next chapter lands.
         </p>
       </div>
-      <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-6 text-center tracking-tight">{chapter.titleEn}</h1>
+      <h1 className="font-sora text-3xl sm:text-4xl font-bold text-foreground mb-6 text-center tracking-tight">{chapterTitle}</h1>
 
       <div className="text-center mb-10">
         <a href={pdfUrl} download>
@@ -80,7 +82,7 @@ export default async function ChapterOnePage() {
         </a>
       </div>
 
-      <BookChapterReader html={chapter.contentEn} readerEmail={reader.email} />
+      <BookChapterReader html={chapterContent} readerEmail={reader.email} />
 
       <div className="mt-14 rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8 text-center">
         <p className="text-muted-foreground mb-4">Enjoyed this? Follow the journey as the rest of the book is written.</p>

@@ -57,10 +57,15 @@ export async function POST(request: NextRequest) {
 
     await logBookEvent(contact.id, "book_captured");
 
-    // Already confirmed elsewhere (e.g. existing newsletter subscriber) —
-    // skip the double opt-in step and unlock immediately via the same cookie
-    // the confirm route would set.
-    if (existing?.confirmed) {
+    // Already confirmed for the book specifically — skip the double opt-in
+    // step and unlock immediately via the same cookie the confirm route
+    // would set. Gated on source === BOOK_SOURCE (matches the check every
+    // other route in this module makes): EmailContact is shared across
+    // funnels (newsletter, lead-magnet, intake...), so without this check
+    // anyone who knows an email already confirmed *anywhere else* on the
+    // site could submit it here and receive that contact's confirmToken
+    // cookie in the response — a cross-funnel identity/token leak.
+    if (existing?.confirmed && existing.source === BOOK_SOURCE) {
       await logBookEvent(contact.id, "book_unlocked", { skippedConfirm: true });
       await sendBookChapterDeliveryEmail({ email, firstName, language, confirmToken: contact.confirmToken });
       const res = NextResponse.json({ status: "unlocked" });

@@ -32,9 +32,16 @@ export async function POST(request: NextRequest) {
 
     const existing = await (prisma as any).emailContact.findUnique({ where: { email } });
 
-    // Already confirmed (e.g. an existing newsletter subscriber) — skip the
-    // double opt-in step entirely and deliver immediately.
-    if (existing?.confirmed) {
+    // Already confirmed for a lead-magnet guide specifically — skip the
+    // double opt-in step and deliver immediately. Gated on source starting
+    // with "guide-" (how this route tags its own contacts): EmailContact is
+    // shared across funnels (newsletter, book, intake...), so without this
+    // check anyone who knows an email already confirmed *anywhere else* on
+    // the site could submit it here and trigger an unsolicited guide-delivery
+    // email to that address, plus use the delivered/pending_confirmation
+    // response as an oracle for whether that email is a confirmed contact
+    // (same class of issue fixed in app/api/beyond-pain/capture/route.ts).
+    if (existing?.confirmed && existing.source?.startsWith("guide-")) {
       const confirmToken = existing.confirmToken || generateConfirmToken();
       await (prisma as any).emailContact.update({
         where: { id: existing.id },
