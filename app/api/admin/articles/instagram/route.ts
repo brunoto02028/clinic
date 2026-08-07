@@ -5,7 +5,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { callAI, callAIChat } from '@/lib/ai-provider';
-import { getConfigValue } from '@/lib/system-config';
 import { publishPhoto, publishCarousel } from '@/lib/instagram';
 
 // ─── POST: publish or schedule an article to Instagram ───
@@ -103,15 +102,23 @@ Write ONLY the caption text, nothing else.`;
       }
     }
 
-    // ── Instagram credentials required for publish/schedule ──
-    const accessToken = await getConfigValue('INSTAGRAM_ACCESS_TOKEN');
-    const igAccountId = await getConfigValue('INSTAGRAM_BUSINESS_ACCOUNT_ID');
+    // ── Instagram credentials required for publish/schedule — same connected
+    // account used by Instagram Studio (see /admin/marketing/instagram-connect),
+    // not a separately configured token. ──
+    const clinicId = (session.user as any).clinicId;
+    const igAccount = clinicId
+      ? await (prisma as any).socialAccount.findFirst({
+          where: { clinicId, platform: 'INSTAGRAM', isActive: true },
+        })
+      : null;
 
-    if (!accessToken || !igAccountId) {
+    if (!igAccount) {
       return NextResponse.json({
-        error: 'Instagram not configured. Please add INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID in Admin → API & AI Settings.',
+        error: 'No connected Instagram account. Connect it at Admin → Marketing → Instagram Connect.',
       }, { status: 400 });
     }
+    const accessToken = igAccount.accessToken;
+    const igAccountId = igAccount.accountId;
 
     // ── action: publish ──
     if (action === 'publish') {

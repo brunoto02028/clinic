@@ -577,24 +577,6 @@ export default function InstagramConnectPage() {
         </StepCard>
       )}
 
-      {/* ─── Credentials Vault ─── */}
-      <Card>
-        <CardContent className="p-5 space-y-3">
-          <h3 className="font-semibold text-sm flex items-center gap-2">
-            <Key className="h-4 w-4 text-amber-500" /> Credenciais Meta / Instagram — Vault
-          </h3>
-          <p className="text-xs text-muted-foreground">Todos os IDs e chaves associadas ao teu app Meta e Instagram. Guardados no servidor (.env).</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <CredentialItem label="Facebook App ID" value="94530663455902" />
-            <CredentialItem label="Facebook App Secret" value="5e704f16a726e0b...fe4290" secret />
-            <CredentialItem label="Config ID (FB Login for Business)" value="791665240649206" />
-            <CredentialItem label="Instagram App ID" value="2275652729596451" />
-            <CredentialItem label="Instagram App Secret" value="966604ebab29...0223" secret />
-            <CredentialItem label="Redirect URI" value="https://bpr.rehab/api/admin/social/callback" />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* ─── AI Map ─── */}
       <Card>
         <CardContent className="p-5 space-y-3">
@@ -723,33 +705,6 @@ function FinalCheck({ ok, label, invert }: { ok: boolean; label: string; invert?
         : <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
       }
       {label}
-    </div>
-  );
-}
-
-function CredentialItem({ label, value, secret }: { label: string; value: string; secret?: boolean }) {
-  const [copied, setCopied] = useState(false);
-  const [show, setShow] = useState(false);
-  const displayValue = secret && !show ? value.replace(/[a-zA-Z0-9]/g, "•") : value;
-  return (
-    <div className="bg-background border border-border rounded-xl p-3">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</span>
-        <div className="flex items-center gap-1.5">
-          {secret && (
-            <button onClick={() => setShow(!show)} className="text-muted-foreground hover:text-foreground text-[10px]">
-              {show ? "Ocultar" : "Mostrar"}
-            </button>
-          )}
-          <button
-            onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-          </button>
-        </div>
-      </div>
-      <code className="text-xs text-cyan-400 font-mono break-all">{displayValue}</code>
     </div>
   );
 }

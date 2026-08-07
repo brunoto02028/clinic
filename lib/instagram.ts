@@ -549,6 +549,48 @@ export async function getMediaInsights(
   return defaults;
 }
 
+// ─── Token Refresh ───
+
+/** Refreshes a single Instagram long-lived token and persists the new value.
+ *  Shared by the manual "Renovar token" button, the on-page-load auto-refresh,
+ *  and the daily cron (see app/api/cron/social-token-refresh). */
+export async function refreshInstagramToken(account: {
+  id: string;
+  accessToken: string;
+  accountName: string;
+}): Promise<{ accountName: string; success: boolean; error?: string; expiresAt?: string; daysLeft?: number }> {
+  try {
+    const res = await fetch(
+      `${IG_GRAPH_API_BASE}/refresh_access_token?grant_type=ig_refresh_token&access_token=${account.accessToken}`
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[IG TOKEN REFRESH] Failed for ${account.accountName}:`, err);
+      return { accountName: account.accountName, success: false, error: err };
+    }
+
+    const data = await res.json();
+    const expiresIn = data.expires_in || 5184000;
+    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+
+    await prisma.socialAccount.update({
+      where: { id: account.id },
+      data: { accessToken: data.access_token, tokenExpiresAt },
+    });
+
+    console.log(`[IG TOKEN REFRESH] Refreshed token for ${account.accountName}, new expiry: ${tokenExpiresAt.toISOString()}`);
+    return {
+      accountName: account.accountName,
+      success: true,
+      expiresAt: tokenExpiresAt.toISOString(),
+      daysLeft: Math.floor(expiresIn / 86400),
+    };
+  } catch (e: any) {
+    return { accountName: account.accountName, success: false, error: e?.message };
+  }
+}
+
 // ─── Helpers ───
 
 async function waitForMediaReady(

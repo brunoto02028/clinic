@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { refreshInstagramToken } from '@/lib/instagram';
 
 export const dynamic = 'force-dynamic';
-
-const IG_GRAPH_API_BASE = 'https://graph.instagram.com';
 
 // POST /api/admin/social/refresh-token
 // Refreshes an Instagram long-lived token (can be done every 60 days, must be done before expiry)
@@ -27,43 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No connected Instagram accounts' }, { status: 404 });
     }
 
-    const results = [];
-
-    for (const account of accounts) {
-      try {
-        const igAppSecret = process.env.INSTAGRAM_APP_SECRET;
-        const res = await fetch(
-          `${IG_GRAPH_API_BASE}/refresh_access_token?grant_type=ig_refresh_token&access_token=${account.accessToken}`
-        );
-
-        if (!res.ok) {
-          const err = await res.text();
-          console.error(`[TOKEN REFRESH] Failed for ${account.accountName}:`, err);
-          results.push({ accountName: account.accountName, success: false, error: err });
-          continue;
-        }
-
-        const data = await res.json();
-        const newToken = data.access_token;
-        const expiresIn = data.expires_in || 5184000;
-        const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
-
-        await prisma.socialAccount.update({
-          where: { id: account.id },
-          data: { accessToken: newToken, tokenExpiresAt },
-        });
-
-        console.log(`[TOKEN REFRESH] Refreshed token for ${account.accountName}, new expiry: ${tokenExpiresAt.toISOString()}`);
-        results.push({
-          accountName: account.accountName,
-          success: true,
-          expiresAt: tokenExpiresAt.toISOString(),
-          daysLeft: Math.floor(expiresIn / 86400),
-        });
-      } catch (e: any) {
-        results.push({ accountName: account.accountName, success: false, error: e?.message });
-      }
-    }
+    const results = await Promise.all(accounts.map((account) => refreshInstagramToken(account)));
 
     return NextResponse.json({ results });
   } catch (error: any) {
@@ -100,24 +63,8 @@ export async function GET(req: NextRequest) {
 
     let refreshed = 0;
     for (const account of expiringAccounts) {
-      try {
-        const res = await fetch(
-          `${IG_GRAPH_API_BASE}/refresh_access_token?grant_type=ig_refresh_token&access_token=${account.accessToken}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const expiresIn = data.expires_in || 5184000;
-          await prisma.socialAccount.update({
-            where: { id: account.id },
-            data: {
-              accessToken: data.access_token,
-              tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
-            },
-          });
-          refreshed++;
-          console.log(`[TOKEN AUTO-REFRESH] Refreshed ${account.accountName}`);
-        }
-      } catch {}
+      const result = await refreshInstagramToken(account);
+      if (result.success) refreshed++;
     }
 
     return NextResponse.json({ refreshed, message: `Auto-refreshed ${refreshed} token(s)` });
