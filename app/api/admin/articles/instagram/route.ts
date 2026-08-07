@@ -5,7 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { callAI, callAIChat } from '@/lib/ai-provider';
-import { publishPhoto, publishCarousel } from '@/lib/instagram';
+import { publishPhoto, publishCarousel, publishToFacebookPage } from '@/lib/instagram';
 import { resolveClinicId } from '@/lib/resolve-clinic-id';
 
 // ─── POST: publish or schedule an article to Instagram ───
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { action, articleId, caption, imageUrls, scheduledAt } = body;
+    const { action, articleId, caption, imageUrls, scheduledAt, publishToFacebook } = body;
 
     // ── action: generate_caption ── (no Instagram credentials needed)
     if (action === 'generate_caption') {
@@ -137,39 +137,65 @@ Write ONLY the caption text, nothing else.`;
         result = await publishCarousel({ igAccountId, accessToken, imageUrls: absoluteUrls, caption });
       }
 
-      // Save post record
-      await (prisma as any).instagramPost.create({
+      // Cross-post to the connected Facebook Page too, if requested and available.
+      let facebookPostId: string | null = null;
+      let facebookError: string | null = null;
+      if (publishToFacebook) {
+        try {
+          const fbResult = await publishToFacebookPage({ clinicId, imageUrl: absoluteUrls[0], caption });
+          if (fbResult) facebookPostId = fbResult.id;
+          else facebookError = 'No Facebook Page connected. Reconnect via Instagram Connect using the OAuth button (not the manual token).';
+        } catch (fbErr: any) {
+          facebookError = fbErr?.message || 'Facebook publish failed';
+        }
+      }
+
+      // Save post record — feeds the same Marketing → Calendar history as
+      // every other publish path (SocialPost; the older `instagramPost`
+      // model this used to reference doesn't exist in the schema, which
+      // made every article publish crash with a 500 after already posting).
+      await prisma.socialPost.create({
         data: {
-          articleId: articleId || null,
-          igMediaId: result.id,
-          permalink: result.permalink || null,
+          clinicId,
+          accountId: igAccount.id,
           caption,
-          imageUrls: absoluteUrls,
+          postType: absoluteUrls.length > 1 ? 'CAROUSEL' : 'IMAGE',
+          mediaUrls: absoluteUrls,
+          mediaPaths: [],
           status: 'PUBLISHED',
           publishedAt: new Date(),
+          platformPostId: result.id,
+          publishError: facebookError ? `Facebook: ${facebookError}` : null,
           createdById: (session.user as any).id,
         },
-      }).catch(() => {}); // Ignore if table doesn't exist yet
+      }).catch((err) => console.error('[instagram-articles] Failed to save SocialPost record:', err));
 
-      return NextResponse.json({ success: true, mediaId: result.id, permalink: result.permalink });
+      return NextResponse.json({
+        success: true,
+        mediaId: result.id,
+        permalink: result.permalink,
+        facebook_post_id: facebookPostId,
+        facebook_error: facebookError,
+      });
     }
 
     // ── action: schedule ──
     if (action === 'schedule') {
       if (!caption || !scheduledAt) return NextResponse.json({ error: 'Caption and scheduledAt are required' }, { status: 400 });
 
-      await (prisma as any).instagramPost.create({
+      await prisma.socialPost.create({
         data: {
-          articleId: articleId || null,
-          igMediaId: null,
-          permalink: null,
+          clinicId,
+          accountId: igAccount.id,
           caption,
-          imageUrls: imageUrls || [],
+          postType: (imageUrls?.length || 0) > 1 ? 'CAROUSEL' : 'IMAGE',
+          mediaUrls: imageUrls || [],
+          mediaPaths: [],
           status: 'SCHEDULED',
           scheduledAt: new Date(scheduledAt),
           createdById: (session.user as any).id,
         },
-      }).catch(() => {});
+      });
 
       return NextResponse.json({ success: true, message: `Post scheduled for ${new Date(scheduledAt).toLocaleString()}` });
     }
@@ -181,7 +207,7 @@ Write ONLY the caption text, nothing else.`;
   }
 }
 
-// ─── GET: list published/scheduled posts for an article ───
+// ─── GET: list recent Instagram/Facebook posts published from articles ───
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -189,14 +215,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const articleId = searchParams.get('articleId');
+    const clinicId = await resolveClinicId(session);
 
-    const posts = await (prisma as any).instagramPost.findMany({
-      where: articleId ? { articleId } : {},
+    const posts = await prisma.socialPost.findMany({
+      where: { clinicId: clinicId || undefined },
       orderBy: { createdAt: 'desc' },
       take: 20,
-    }).catch(() => []);
+    });
 
     return NextResponse.json({ posts });
   } catch (err: any) {

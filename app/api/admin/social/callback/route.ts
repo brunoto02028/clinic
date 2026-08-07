@@ -68,6 +68,37 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // Step 5: Save the linked Facebook Page as its own connected account —
+    // this is what makes "also post to Facebook" actually work (see
+    // lib/instagram.ts publishToFacebookPage). Only present when connected
+    // via Facebook Login for Business; the Instagram Login API path has no
+    // Page/pageAccessToken and cross-posting isn't possible there.
+    if (igInfo.pageId && igInfo.pageAccessToken) {
+      await prisma.socialAccount.upsert({
+        where: {
+          clinicId_platform_accountId: {
+            clinicId,
+            platform: 'FACEBOOK',
+            accountId: igInfo.pageId,
+          },
+        },
+        update: {
+          accessToken: igInfo.pageAccessToken,
+          tokenExpiresAt,
+          accountName: igInfo.pageName,
+          isActive: true,
+        },
+        create: {
+          clinicId,
+          platform: 'FACEBOOK',
+          accountId: igInfo.pageId,
+          accountName: igInfo.pageName,
+          accessToken: igInfo.pageAccessToken,
+          tokenExpiresAt,
+        },
+      });
+    }
+
     return NextResponse.redirect(
       `${baseUrl}/admin/marketing/instagram-connect?success=connected&account=${igInfo.igUsername}`
     );

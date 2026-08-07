@@ -182,6 +182,7 @@ export async function getInstagramBusinessAccount(accessToken: string): Promise<
   igAccountId: string;
   pageId: string;
   pageName: string;
+  pageAccessToken: string;
   igUsername: string;
   igProfilePic: string;
 }> {
@@ -201,8 +202,9 @@ export async function getInstagramBusinessAccount(accessToken: string): Promise<
 
     return {
       igAccountId: String(meData.user_id || meData.id),
-      pageId: '', // No Facebook Page needed with Instagram Login
+      pageId: '', // No Facebook Page needed with Instagram Login — no Facebook cross-posting possible via this path
       pageName: meData.name || meData.username || '',
+      pageAccessToken: '',
       igUsername: meData.username || '',
       igProfilePic: meData.profile_picture_url || '',
     };
@@ -241,9 +243,47 @@ export async function getInstagramBusinessAccount(accessToken: string): Promise<
     igAccountId: igData.id,
     pageId: pageWithIg.id,
     pageName: pageWithIg.name,
+    // The Page's own access token — required to post to the Facebook Page
+    // itself (different scope/token than the IG business account token).
+    pageAccessToken: pageWithIg.access_token || '',
     igUsername: igData.username,
     igProfilePic: igData.profile_picture_url || '',
   };
+}
+
+// ─── Facebook Page cross-posting ───
+
+/** Looks up the connected Facebook Page for a clinic (created alongside the
+ *  Instagram business account during OAuth — see app/api/admin/social/callback)
+ *  and posts the same photo/caption there. Returns null (not an error) when
+ *  no Facebook Page is connected, e.g. the account was connected via the
+ *  Instagram Login API (manual token) instead of Facebook Login for Business,
+ *  or was connected before this cross-posting support existed. */
+export async function publishToFacebookPage(params: {
+  clinicId: string;
+  imageUrl: string;
+  caption: string;
+}): Promise<PublishResult | null> {
+  const { clinicId, imageUrl, caption } = params;
+
+  const fbAccount = await prisma.socialAccount.findFirst({
+    where: { clinicId, platform: SocialPlatform.FACEBOOK, isActive: true },
+  });
+  if (!fbAccount) return null;
+
+  const res = await fetch(
+    `${GRAPH_API_BASE}/${fbAccount.accountId}/photos`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: imageUrl, caption, access_token: fbAccount.accessToken }),
+    }
+  );
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    throw new Error(data.error?.message || 'Facebook Page publish failed');
+  }
+  return { id: data.id };
 }
 
 // ─── Publishing ───

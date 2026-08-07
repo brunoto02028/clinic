@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
+import { publishToFacebookPage } from '@/lib/instagram'
+import { resolveClinicId } from '@/lib/resolve-clinic-id'
 
 export const dynamic = 'force-dynamic';
 
@@ -27,8 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get token from DB
-    const user = session.user as any
-    const clinicId = user.clinicId
+    const clinicId = await resolveClinicId(session)
     const igAccount = await prisma.socialAccount.findFirst({
       where: { clinicId, platform: 'INSTAGRAM', isActive: true },
     })
@@ -116,37 +117,19 @@ export async function POST(req: NextRequest) {
       }).catch(() => null)
     }
 
-    // STEP 5: Optionally publish to Facebook Page too
+    // STEP 5: Optionally publish to Facebook Page too — uses the Page's own
+    // connected SocialAccount (saved during OAuth, see app/api/admin/social/
+    // callback). Not available for accounts connected via the manual-token
+    // "Conexão Rápida" box (Instagram Login API has no Facebook Page).
     let fbPostId: string | null = null
     let fbError: string | null = null
     if (publishToFacebook) {
       try {
-        // Get Facebook Page access token from DB (stored during OAuth)
-        const fbAccount = await prisma.socialAccount.findFirst({
-          where: { clinicId, platform: 'FACEBOOK', isActive: true },
-        })
-        const fbPageId = fbAccount?.accountId || igAccount?.metadata && (igAccount.metadata as any)?.pageId
-        const fbToken = fbAccount?.accessToken || igAccount?.accessToken
-
-        if (fbPageId && fbToken) {
-          // Post photo to Facebook Page
-          const fbRes = await fetch(
-            `https://graph.facebook.com/v21.0/${fbPageId}/photos`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                url: imageUrl,
-                caption: fullCaption,
-                access_token: fbToken,
-              }),
-            }
-          )
-          const fbData = await fbRes.json()
-          if (fbData.id) fbPostId = fbData.id
-          else fbError = fbData.error?.message || 'Facebook publish failed'
+        const fbResult = await publishToFacebookPage({ clinicId, imageUrl, caption: fullCaption })
+        if (fbResult) {
+          fbPostId = fbResult.id
         } else {
-          fbError = 'No Facebook Page connected. Connect via Instagram Connect page.'
+          fbError = 'No Facebook Page connected. Reconnect via Instagram Connect using the "Conectar Instagram" OAuth button (not the manual token).'
         }
       } catch (e: any) {
         fbError = e?.message || 'Facebook publish error'
