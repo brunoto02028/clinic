@@ -61,6 +61,14 @@ interface SocialLink {
   url: string;
 }
 
+interface StartTestimonial {
+  id: string;
+  quoteEn: string;
+  quotePt: string;
+  nameEn: string;
+  namePt: string;
+}
+
 // Inline articles list for Settings page Articles tab
 function ArticlesListInline() {
   const [articles, setArticles] = useState<any[]>([]);
@@ -227,6 +235,8 @@ export default function AdminSettingsPage() {
     whatsappNumber: "",
     whatsappEnabled: false,
     whatsappMessage: "",
+    startIntroVideoUrl: "",
+    startTestimonialsJson: "",
 
     // Footer (Block 9)
     footerText: "",
@@ -337,6 +347,8 @@ export default function AdminSettingsPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [footerLinks, setFooterLinks] = useState<FooterLink[]>([]);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [startTestimonials, setStartTestimonials] = useState<StartTestimonial[]>([]);
+  const [uploadingStartVideo, setUploadingStartVideo] = useState(false);
   const [portalFeatures, setPortalFeatures] = useState<PortalFeature[]>([]);
   const [contactCards, setContactCards] = useState<ContactCard[]>([]);
 
@@ -386,6 +398,8 @@ export default function AdminSettingsPage() {
           whatsappNumber: data.whatsappNumber || "",
           whatsappEnabled: data.whatsappEnabled ?? false,
           whatsappMessage: data.whatsappMessage || "",
+          startIntroVideoUrl: data.startIntroVideoUrl || "",
+          startTestimonialsJson: data.startTestimonialsJson || "",
           footerText: data.footerText || "",
           footerLinksJson: data.footerLinksJson || "",
           socialLinksJson: data.socialLinksJson || "",
@@ -481,6 +495,13 @@ export default function AdminSettingsPage() {
             console.error("Failed to parse social links JSON:", e);
           }
         }
+        if (data.startTestimonialsJson) {
+          try {
+            setStartTestimonials(JSON.parse(data.startTestimonialsJson));
+          } catch (e) {
+            console.error("Failed to parse start testimonials JSON:", e);
+          }
+        }
         if (data.portalFeaturesJson) {
           try {
             setPortalFeatures(JSON.parse(data.portalFeaturesJson));
@@ -528,6 +549,7 @@ export default function AdminSettingsPage() {
         servicesJson: JSON.stringify(services),
         footerLinksJson: JSON.stringify(footerLinks),
         socialLinksJson: JSON.stringify(socialLinks),
+        startTestimonialsJson: JSON.stringify(startTestimonials),
         portalFeaturesJson: JSON.stringify(portalFeatures),
         contactCardsJson: JSON.stringify(contactCards),
         screenLogos: Object.keys(screenLogos).length > 0 ? screenLogos : null,
@@ -664,6 +686,24 @@ export default function AdminSettingsPage() {
 
   const removeSocialLink = (id: string) => {
     setSocialLinks(socialLinks.filter((l) => l.id !== id));
+  };
+
+  // /start page testimonials management
+  const addStartTestimonial = () => {
+    setStartTestimonials([
+      ...startTestimonials,
+      { id: Date.now().toString(), quoteEn: "", quotePt: "", nameEn: "", namePt: "" },
+    ]);
+  };
+
+  const updateStartTestimonial = (id: string, field: keyof StartTestimonial, value: string) => {
+    setStartTestimonials(
+      startTestimonials.map((t) => (t.id === id ? { ...t, [field]: value } : t))
+    );
+  };
+
+  const removeStartTestimonial = (id: string) => {
+    setStartTestimonials(startTestimonials.filter((t) => t.id !== id));
   };
 
   // Helper: Label with AI + Voice buttons
@@ -2083,6 +2123,89 @@ export default function AdminSettingsPage() {
                         <Textarea value={card.content} onChange={(e) => updateContactCard(card.id, "content", e.target.value)} placeholder="Card content..." rows={2} />
                       </div>
                     </div>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* /start page — QR code / business card landing */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Start Page (QR Code Landing)</CardTitle>
+              <CardDescription>bpr.rehab/start — where your business card QR code goes. A short personal video and real testimonials make the biggest difference here.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Intro Video</Label>
+                <p className="text-xs text-muted-foreground">A short (15-30s) personal video shown right under the hero. Hidden until set.</p>
+                {settings.startIntroVideoUrl ? (
+                  <div className="space-y-2">
+                    <video src={settings.startIntroVideoUrl} controls className="w-full max-w-xs rounded-lg border" />
+                    <Button size="sm" variant="destructive" onClick={() => setSettings({ ...settings, startIntroVideoUrl: "" })}><X className="h-4 w-4 mr-1.5" />Remove video</Button>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      id="start-video-upload"
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file) return;
+                        setUploadingStartVideo(true);
+                        try {
+                          const fd = new FormData();
+                          fd.append("files", file);
+                          const res = await fetch("/api/admin/social/upload", { method: "POST", body: fd });
+                          const data = await res.json();
+                          if (data.files?.[0]?.url) {
+                            setSettings({ ...settings, startIntroVideoUrl: data.files[0].url });
+                            toast({ title: "Video uploaded" });
+                          } else {
+                            toast({ title: "Upload failed", description: data.error, variant: "destructive" });
+                          }
+                        } catch {
+                          toast({ title: "Upload failed", variant: "destructive" });
+                        } finally {
+                          setUploadingStartVideo(false);
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="outline" size="sm" disabled={uploadingStartVideo} onClick={() => document.getElementById("start-video-upload")?.click()}>
+                      <Upload className="h-4 w-4 mr-1.5" />{uploadingStartVideo ? "Uploading…" : "Upload video"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 pt-2 border-t">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Testimonials</Label>
+                    <p className="text-xs text-muted-foreground">Real patients only — the section stays hidden until at least one is added.</p>
+                  </div>
+                  <Button size="sm" onClick={addStartTestimonial}><Plus className="h-4 w-4 mr-1.5" />Add</Button>
+                </div>
+                {startTestimonials.map((t) => (
+                  <Card key={t.id} className="p-4 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Quote (English)</Label>
+                        <Textarea rows={2} value={t.quoteEn} onChange={(e) => updateStartTestimonial(t.id, "quoteEn", e.target.value)} placeholder="What the patient said..." />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Quote (Português)</Label>
+                        <Textarea rows={2} value={t.quotePt} onChange={(e) => updateStartTestimonial(t.id, "quotePt", e.target.value)} placeholder="O que o paciente disse..." />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input value={t.nameEn} onChange={(e) => updateStartTestimonial(t.id, "nameEn", e.target.value)} placeholder="Name (e.g. Sarah T.)" />
+                      <Input value={t.namePt} onChange={(e) => updateStartTestimonial(t.id, "namePt", e.target.value)} placeholder="Nome (ex: Sarah T.)" />
+                    </div>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => removeStartTestimonial(t.id)}><Trash2 className="h-4 w-4 mr-1.5" />Remove</Button>
                   </Card>
                 ))}
               </div>

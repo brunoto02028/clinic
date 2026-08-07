@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Sparkles, Instagram, FileText, BookOpen, MessageSquare, Loader2, CheckCircle, XCircle, Zap, Megaphone, CreditCard } from 'lucide-react'
+import { Sparkles, Instagram, FileText, BookOpen, MessageSquare, Loader2, CheckCircle, XCircle, Zap, Megaphone } from 'lucide-react'
 
 interface AIStatus {
   available: boolean
@@ -55,15 +55,6 @@ const MODULES = [
     href: '/admin/marketing/flyers',
     color: 'from-rose-500 to-pink-600',
     stats: 'Templates + AI design',
-  },
-  {
-    id: 'business-cards',
-    icon: CreditCard,
-    title: 'Business Cards',
-    subtitle: 'Front & back card designer',
-    href: '/admin/marketing/business-cards',
-    color: 'from-indigo-500 to-violet-600',
-    stats: 'Print-ready PDF + PNG',
   },
 ]
 

@@ -271,7 +271,6 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/marketing",
         matchRoutes: [
           "/admin/marketing/flyers",
-          "/admin/marketing/business-cards",
           "/admin/marketing/ebooks",
           "/admin/marketing/feedback",
         ],

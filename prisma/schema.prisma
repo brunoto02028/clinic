@@ -1234,6 +1234,10 @@ model SiteSettings {
   whatsappEnabled Boolean @default(false) // Show WhatsApp button in header/site
   whatsappMessage String? // Pre-filled message e.g. "Hello, I'd like to book an appointment"
 
+  // /start page (QR-code / business-card landing — see components/start/start-landing.tsx)
+  startIntroVideoUrl    String? // short personal intro video shown at the top of /start
+  startTestimonialsJson String? @db.Text // JSON array of {quoteEn,quotePt,nameEn,namePt}
+
   // Footer (Block 9)
   footerText        String? @db.Text
   footerLinksJson   String? @db.Text // JSON array of footer links

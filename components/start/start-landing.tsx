@@ -25,12 +25,6 @@ function absoluteImageUrl(url?: string | null): string | undefined {
   return url.startsWith("http") ? url : `https://bpr.rehab${url}`;
 }
 
-// TODO: add Bruno's short intro video URL here once recorded (direct .mp4 link) — hidden until set
-const INTRO_VIDEO_URL = "";
-
-// TODO: replace with 3 real patient testimonials — section stays hidden until filled
-const TESTIMONIALS: { quoteEn: string; quotePt: string; nameEn: string; namePt: string }[] = [];
-
 type BookSummary = { title: string; subtitle: string; coverImage: string | null };
 
 export function StartLanding({ settings, isGift = false, book }: { settings: StartPageSettings; isGift?: boolean; book?: BookSummary }) {
@@ -39,6 +33,10 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
   const aboutImage = absoluteImageUrl(settings?.aboutImageUrl);
   const bookCover = absoluteImageUrl(book?.coverImage);
   const viaSuffix = isGift ? "?via=card" : "";
+  // Editable from Admin → Settings → Contact Section — see lib/get-site-settings.ts.
+  // Both sections stay hidden (as before) until filled in.
+  const introVideoUrl = settings?.startIntroVideoUrl || "";
+  const testimonials = settings?.startTestimonials || [];
 
   const waHref =
     settings?.whatsappEnabled && settings?.whatsappNumber
@@ -257,7 +255,7 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
         </header>
 
         {/* INTRO VIDEO */}
-        {INTRO_VIDEO_URL && (
+        {introVideoUrl && (
           <section className="mt-8">
             <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
               <video
@@ -265,7 +263,7 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
                 playsInline
                 poster={aboutImage}
                 className="w-full aspect-video bg-black"
-                src={INTRO_VIDEO_URL}
+                src={introVideoUrl}
               />
             </div>
             <p className="text-center text-xs text-muted-foreground mt-2">
@@ -418,14 +416,14 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
         </section>
 
         {/* TESTIMONIALS */}
-        {TESTIMONIALS.length > 0 && (
+        {testimonials.length > 0 && (
           <section className="mt-14">
             <div className="text-center mb-6">
               <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary mb-2">{isPt ? "O que dizem os pacientes" : "What patients say"}</p>
               <h2 className="font-sora text-2xl sm:text-3xl font-extrabold">{isPt ? "Resultados reais, pessoas reais" : "Real results, real people"}</h2>
             </div>
             <div className="space-y-2.5">
-              {TESTIMONIALS.map((t, i) => (
+              {testimonials.map((t, i) => (
                 <div key={i} className="bg-card border border-border rounded-2xl p-5">
                   <Quote className="h-5 w-5 text-primary/40 mb-2" />
                   <p className="text-sm text-foreground/90 italic leading-relaxed mb-3">

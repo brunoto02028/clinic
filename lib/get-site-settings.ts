@@ -15,6 +15,8 @@ export async function getSiteSettingsLogo(): Promise<SiteSettingsLogo> {
     .catch(() => null);
 }
 
+export type StartTestimonial = { quoteEn: string; quotePt: string; nameEn: string; namePt: string };
+
 export type StartPageSettings = {
   logoUrl?: string | null;
   darkLogoUrl?: string | null;
@@ -23,10 +25,12 @@ export type StartPageSettings = {
   whatsappEnabled?: boolean;
   whatsappNumber?: string | null;
   whatsappMessage?: string | null;
+  startIntroVideoUrl?: string | null;
+  startTestimonials?: StartTestimonial[];
 } | null;
 
 export async function getStartPageSettings(): Promise<StartPageSettings> {
-  return prisma.siteSettings
+  const row = await prisma.siteSettings
     .findFirst({
       select: {
         logoUrl: true,
@@ -36,7 +40,22 @@ export async function getStartPageSettings(): Promise<StartPageSettings> {
         whatsappEnabled: true,
         whatsappNumber: true,
         whatsappMessage: true,
+        startIntroVideoUrl: true,
+        startTestimonialsJson: true,
       },
     })
     .catch(() => null);
+  if (!row) return null;
+
+  let startTestimonials: StartTestimonial[] = [];
+  if (row.startTestimonialsJson) {
+    try {
+      startTestimonials = JSON.parse(row.startTestimonialsJson);
+    } catch {
+      startTestimonials = [];
+    }
+  }
+
+  const { startTestimonialsJson: _startTestimonialsJson, ...rest } = row;
+  return { ...rest, startTestimonials };
 }
