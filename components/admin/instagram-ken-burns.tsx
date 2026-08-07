@@ -31,7 +31,7 @@ interface Props {
   imageUrl: string;
   overlay: TextOverlay;
   logoUrl?: string;
-  onVideoReady?: (blobUrl: string) => void;
+  onVideoReady?: (blobUrl: string, blob: Blob) => void;
 }
 
 const PRESETS: { label: string; effect: KenBurnsEffect }[] = [
@@ -239,7 +239,7 @@ export default function InstagramKenBurns({ imageUrl, overlay, logoUrl, onVideoR
       setVideoUrl(url);
       setIsRecording(false);
       setRecordProgress(100);
-      if (onVideoReady) onVideoReady(url);
+      if (onVideoReady) onVideoReady(url, blob);
     };
 
     recorder.start(100); // collect data every 100ms
@@ -464,7 +464,7 @@ export default function InstagramKenBurns({ imageUrl, overlay, logoUrl, onVideoR
             style={{ maxHeight: "280px" }}
           />
           <p className="text-[10px] text-muted-foreground">
-            Download the .webm file and convert to MP4 if needed (e.g. via <a href="https://cloudconvert.com/webm-to-mp4" target="_blank" rel="noopener noreferrer" className="underline text-[#5dc9c0]">CloudConvert</a>), or upload directly to Instagram Reels.
+            Ready to publish as a Reel, or download the .webm to upload manually.
           </p>
         </div>
       )}

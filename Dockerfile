@@ -47,6 +47,14 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 COPY --from=builder /app/node_modules/@img ./node_modules/@img
+# fluent-ffmpeg — used by app/api/admin/social/publish-reel to transcode
+# Reel videos (webm -> mp4) before publishing. It requires() its `async`/
+# `which` deps dynamically, which Next's standalone output tracer can't
+# follow statically, so it's dropped from the traced bundle unless copied
+# explicitly. Copying the whole folder also brings its own nested
+# node_modules/{async,which} (pinned to versions this package needs,
+# different from the top-level ones).
+COPY --from=builder /app/node_modules/fluent-ffmpeg ./node_modules/fluent-ffmpeg
 # jsPDF + its runtime deps — needed by scripts/seed-lead-magnet-guides.js,
 # which runs as a plain `node` script (outside the Next.js/webpack bundle),
 # so it can't rely on Next's standalone output tracing to have included them.

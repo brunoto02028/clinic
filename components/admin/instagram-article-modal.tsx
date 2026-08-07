@@ -59,6 +59,9 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   const [igPublishing, setIgPublishing] = useState(false);
   const [igResult, setIgResult] = useState<{ success?: boolean; error?: string; permalink?: string; facebook_post_id?: string; facebook_error?: string } | null>(null);
   const [publishFacebook, setPublishFacebook] = useState(true);
+  const [reelBlob, setReelBlob] = useState<Blob | null>(null);
+  const [reelPublishing, setReelPublishing] = useState(false);
+  const [reelResult, setReelResult] = useState<{ success?: boolean; error?: string; permalink?: string } | null>(null);
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -174,6 +177,24 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
     finally { setIgPublishing(false); }
   };
 
+  const publishAsReel = async () => {
+    if (!reelBlob) { toast({ title: "Export the video first", variant: "destructive" }); return; }
+    if (!caption.trim()) { toast({ title: "Caption required", variant: "destructive" }); return; }
+    setReelPublishing(true); setReelResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("video", reelBlob, "reel.webm");
+      fd.append("caption", caption);
+      const res = await fetch("/api/admin/social/publish-reel", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.success) {
+        setReelResult({ success: true, permalink: data.permalink });
+        toast({ title: "Published as Reel! 🎬" });
+      } else setReelResult({ error: data.error || "Failed" });
+    } catch { setReelResult({ error: "Failed to publish Reel" }); }
+    finally { setReelPublishing(false); }
+  };
+
   const previewImage = composedImage || currentImage;
 
   return (
@@ -238,11 +259,37 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
               </div>
 
               {imageTab === "animation" && (
-                <InstagramKenBurns
-                  imageUrl={composedImage || currentImage}
-                  overlay={overlay}
-                  logoUrl="/logo.png"
-                />
+                <div className="space-y-3">
+                  <InstagramKenBurns
+                    imageUrl={composedImage || currentImage}
+                    overlay={overlay}
+                    logoUrl="/logo.png"
+                    onVideoReady={(_url, blob) => { setReelBlob(blob); setReelResult(null); }}
+                  />
+                  {reelBlob && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <button
+                        onClick={publishAsReel}
+                        disabled={reelPublishing || !caption.trim()}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+                        style={{ background: "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)" }}
+                      >
+                        {reelPublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Film className="h-4 w-4" />}
+                        {reelPublishing ? "Converting & publishing…" : "Publish as Reel"}
+                      </button>
+                      {!caption.trim() && <p className="text-[11px] text-muted-foreground text-center">Write a caption below first.</p>}
+                      {reelResult?.success && (
+                        <p className="text-xs text-green-700 flex items-center gap-1.5 justify-center">
+                          <CheckCircle className="h-3.5 w-3.5" /> Published!{" "}
+                          {reelResult.permalink && <a href={reelResult.permalink} target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-0.5">View <ExternalLink className="h-3 w-3" /></a>}
+                        </p>
+                      )}
+                      {reelResult?.error && (
+                        <p className="text-xs text-red-600 flex items-center gap-1.5 justify-center"><AlertCircle className="h-3.5 w-3.5" /> {reelResult.error}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
 
               {imageTab === "photo" && (<>
