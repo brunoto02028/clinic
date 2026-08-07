@@ -44,6 +44,12 @@ node /app/scripts/seed-lead-magnet-guides.js || echo "[start.sh] guide seed warn
 echo "[start.sh] Checking for shockwave service pages to remove..."
 node /app/scripts/fix-shockwave-service-pages.js || echo "[start.sh] shockwave cleanup warning — check logs"
 
+# Seed the Beyond Pain book config + chapter content — idempotent, skips
+# chapters that already exist by slug (see scripts/seed-book-content.js).
+# BPR_Devin_Spec_Beyond_Pain_Book.md.
+echo "[start.sh] Seeding Beyond Pain book content..."
+node /app/scripts/seed-book-content.js || echo "[start.sh] book content seed warning — check logs"
+
 echo "[start.sh] Startup maintenance tasks done — server already serving traffic."
 
 # Keep the container alive as long as the Next.js server process is running,

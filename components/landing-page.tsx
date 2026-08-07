@@ -1111,6 +1111,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                       { labelEn: "Technology",   labelPt: "Tecnologia",  anchor: "equipment" },
                       { labelEn: "About Bruno",  labelPt: "Sobre Bruno", anchor: "about" },
                       { labelEn: "Articles",     labelPt: "Artigos",     href: "/articles" },
+                      { labelEn: "Beyond Pain (book)", labelPt: "Beyond Pain (livro)", href: "/beyond-pain" },
                       { labelEn: "Contact",      labelPt: "Contacto",    anchor: "contact" },
                     ].map((item) => (
                       <li key={item.labelEn}>

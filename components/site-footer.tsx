@@ -103,6 +103,7 @@ export function SiteFooter() {
                 { labelEn: "Technology",   labelPt: "Tecnologia",  href: "/#equipment" },
                 { labelEn: "About Bruno",  labelPt: "Sobre Bruno", href: "/#about" },
                 { labelEn: "Articles",     labelPt: "Artigos",     href: "/articles" },
+                { labelEn: "Beyond Pain (book)", labelPt: "Beyond Pain (livro)", href: "/beyond-pain" },
                 { labelEn: "Contact",      labelPt: "Contacto",    href: "/#contact" },
               ].map((item) => (
                 <li key={item.labelEn}>

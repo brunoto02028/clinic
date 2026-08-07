@@ -88,6 +88,8 @@ const publicRoutes = [
   '/services',
   '/articles',
   '/conditions', // public SEO bridge pages (P4)
+  '/beyond-pain', // Beyond Pain book landing + gated chapter reader
+  '/api/beyond-pain', // book email capture + magic-link confirm
   '/help',
   '/terms',
   '/privacy',
