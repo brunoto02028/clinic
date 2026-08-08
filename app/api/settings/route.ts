@@ -35,8 +35,8 @@ export async function GET() {
           tagline: "Where Innovation Meets Care",
           
           // Hero Section
-          heroTitle: "Adjust Your Body Get A Perfect Balance",
-          heroSubtitle: "Expert physical rehabilitation and sports therapy in Richmond, UK. Helping you move better, feel stronger, and live pain-free through evidence-based treatments and personalised care.",
+          heroTitle: "Find the Real Cause of Your Pain — Not Just Where It Hurts",
+          heroSubtitle: "Expert physical rehabilitation and sports therapy in Ipswich, Suffolk. Helping you move better, feel stronger, and live pain-free through evidence-based treatments and personalised care.",
           heroImageUrl: null,
           heroCTA: "Book Appointment",
           heroCTALink: "/signup",
@@ -68,9 +68,9 @@ export async function GET() {
           contactTitle: "Get in Touch",
           contactSubtitle: "Home visit or our clinic — we're open every day, including weekends.",
           contactText: "Have questions about our services? Ready to book your first appointment? Feel free to reach out to us.",
-          phone: "+44 7XXX XXXXXX",
+          phone: "",
           email: "admin@bpr.rehab",
-          address: "The Vineyard, Richmond TW10 6AQ",
+          address: "Ipswich, Suffolk, UK",
           
           // Footer
           footerText: "© 2026 Bruno Physical Rehabilitation. All rights reserved.",
@@ -79,8 +79,8 @@ export async function GET() {
           
           // SEO
           metaTitle: "Bruno Physical Rehabilitation - Physical Rehabilitation in Ipswich",
-          metaDescription: "Professional physical rehabilitation and sports therapy services in Richmond, London. Expert treatment for injuries, chronic pain, and optimal physical performance.",
-          metaKeywords: "physical rehabilitation, sports therapy, Richmond, London, physical therapy, injury treatment, pain management",
+          metaDescription: "Professional physical rehabilitation and sports therapy services in Ipswich, Suffolk. Expert treatment for injuries, chronic pain, and optimal physical performance.",
+          metaKeywords: "physical rehabilitation, sports therapy, Ipswich, Suffolk, physical therapy, injury treatment, pain management",
         },
       });
     }

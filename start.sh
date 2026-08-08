@@ -63,6 +63,13 @@ node /app/scripts/seed-recovered-articles.js || echo "[start.sh] recovered-artic
 echo "[start.sh] Seeding default logo/favicon..."
 node /app/scripts/seed-site-logo.js || echo "[start.sh] logo seed warning — check logs"
 
+# Corrects generic template placeholder content (wrong city, fake address,
+# placeholder phone) that app/api/settings/route.ts's auto-create used to
+# fill in on a fresh DB — idempotent, only touches fields still matching the
+# known-bad text (see scripts/fix-generic-site-defaults.js).
+echo "[start.sh] Fixing generic site-settings placeholders..."
+node /app/scripts/fix-generic-site-defaults.js || echo "[start.sh] site-defaults fix warning — check logs"
+
 echo "[start.sh] Startup maintenance tasks done — server already serving traffic."
 
 # Keep the container alive as long as the Next.js server process is running,

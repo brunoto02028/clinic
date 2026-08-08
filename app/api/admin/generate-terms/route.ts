@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
     const prompt = `Generate comprehensive Terms of Use and Privacy Policy for a physical rehabilitation clinic with the following details:
 
 Business Name: ${businessInfo.name || "BPR Physical Rehabilitation"}
-Location: ${businessInfo.location || "Richmond, UK"}
+Location: ${businessInfo.location || "Ipswich, Suffolk, UK"}
 Services: ${businessInfo.services || "Physical therapy, sports rehabilitation, MLS Laser therapy, thermography, biomechanics, insoles"}
 Contact Email: ${businessInfo.email || "info@bpr.rehab"}
-Contact Phone: ${businessInfo.phone || "+44 (0) 20 XXXX XXXX"}
-Address: ${businessInfo.address || "Richmond, TW10 6AQ, UK"}
+Contact Phone: ${businessInfo.phone || "+44 (0) XXXX XXXXXX"}
+Address: ${businessInfo.address || "Ipswich, Suffolk, UK"}
 
 Requirements:
 1. Create in PLAIN TEXT format (no HTML tags)

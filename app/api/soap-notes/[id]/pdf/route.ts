@@ -168,7 +168,7 @@ export async function GET(
         <div class="header">
           <h1>Bruno Physical Rehabilitation</h1>
           <p>Clinical SOAP Note</p>
-          <p>The Vineyard, Richmond TW10 6AQ</p>
+          <p>Ipswich, Suffolk, UK</p>
         </div>
 
         <div class="patient-info">

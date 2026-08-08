@@ -180,7 +180,7 @@ ${printBar}
     <h1>Clinical Report</h1>
     <p class="meta">Generated ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</p>
   </div>
-  <div class="brand">Bruno Physical Rehabilitation<small>Richmond, UK · bpr.rehab</small></div>
+  <div class="brand">Bruno Physical Rehabilitation<small>Ipswich, Suffolk · bpr.rehab</small></div>
 </div>
 
 <div class="section">

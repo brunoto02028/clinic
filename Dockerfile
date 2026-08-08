@@ -77,6 +77,7 @@ COPY --from=builder /app/scripts/seed-book-content.js ./scripts/seed-book-conten
 COPY --from=builder /app/scripts/update-chapter-one-content.js ./scripts/update-chapter-one-content.js
 COPY --from=builder /app/scripts/seed-recovered-articles.js ./scripts/seed-recovered-articles.js
 COPY --from=builder /app/scripts/seed-site-logo.js ./scripts/seed-site-logo.js
+COPY --from=builder /app/scripts/fix-generic-site-defaults.js ./scripts/fix-generic-site-defaults.js
 COPY --from=builder /app/book ./book
 COPY --from=builder /app/recovered-content ./recovered-content
 

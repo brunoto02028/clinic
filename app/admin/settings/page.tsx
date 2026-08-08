@@ -2533,7 +2533,7 @@ export default function AdminSettingsPage() {
                   id="termsContentHtml"
                   value={(settings as any).termsContentHtml || ""}
                   onChange={(e) => setSettings({ ...settings, termsContentHtml: e.target.value } as any)}
-                  placeholder="TERMS OF USE & PRIVACY POLICY\n\nLast Updated: April 2, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n1. TERMS OF USE\n\n1.1 Section Title\nYour content here...\n\n• Bullet point\n• Bullet point"
+                  placeholder={"TERMS OF USE & PRIVACY POLICY\n\nLast Updated: April 2, 2026\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n1. TERMS OF USE\n\n1.1 Section Title\nYour content here...\n\n• Bullet point\n• Bullet point"}
                   rows={20}
                   className="font-mono text-xs"
                 />
