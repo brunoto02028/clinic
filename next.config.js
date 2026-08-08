@@ -7,6 +7,7 @@ const nextConfig = {
   experimental: {
     outputFileTracingRoot: path.join(__dirname),
     serverComponentsExternalPackages: ['pdf-parse'],
+    instrumentationHook: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
