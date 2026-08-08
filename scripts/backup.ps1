@@ -52,39 +52,28 @@ if (-not $SkipLocal) {
 # called the Render API for a Postgres instance that's no longer in use
 # after migrating to Coolify/VPS — that's why prior backups here silently
 # never actually captured the real production database. See BACKUP_GUIDE.md.
+#
+# Uses a disposable postgres:18-alpine container just for the pg_dump/psql
+# client tools (pulled automatically on first run) — pg_dump must be >= the
+# server's major version, and production runs Postgres 18 while the local
+# dev container ($DockerLocal) runs 16. This also means the prod backup no
+# longer depends on the local dev container being up at all.
 if (-not $SkipProd) {
   Write-Step "Production database (Coolify VPS)"
-  $outFile   = Join-Path $BackupDir "prod-db.sql"
-  $tmpScript = Join-Path $env:TEMP "bpr_pg_dump.sh"
+  $outFile  = Join-Path $BackupDir "prod-db.sql"
+  $errFile  = Join-Path $env:TEMP "bpr_pg_dump_err.log"
   try {
     $prodUrl = if ($ProdDatabaseUrl) { $ProdDatabaseUrl } else { $env:PROD_DATABASE_URL }
     if (-not $prodUrl) {
       throw "No production DATABASE_URL configured. Set `$env:PROD_DATABASE_URL (e.g. in your PowerShell profile) or pass -ProdDatabaseUrl 'postgresql://user:pass@host:5432/dbname'."
     }
 
-    $running = docker inspect $DockerLocal --format "{{.State.Running}}" 2>$null
-    if ($running -ne "true") { throw "Docker container '$DockerLocal' must be running for pg_dump" }
-
-    # Write shell script to temp file (avoids PowerShell quoting issues with env vars)
-    $shScript = "#!/bin/sh`npg_dump '$prodUrl' --no-owner --no-acl -f /tmp/prod_backup.sql 2>/tmp/pg_dump_err.log`necho exit:`$?"
-    [System.IO.File]::WriteAllText($tmpScript, $shScript)
-
-    docker cp $tmpScript "${DockerLocal}:/tmp/bpr_pg_dump.sh" 2>&1 | Out-Null
-
-    # Run script — disable Stop temporarily so docker non-zero exit doesn't throw
     $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-    docker exec $DockerLocal sh /tmp/bpr_pg_dump.sh 2>&1 | Out-Null
+    docker run --rm postgres:18-alpine pg_dump $prodUrl --no-owner --no-acl 1>$outFile 2>$errFile
     $ErrorActionPreference = $prev
 
-    # Check for pg_dump errors
-    $dumpErr = docker exec $DockerLocal sh -c "cat /tmp/pg_dump_err.log 2>/dev/null" 2>&1
+    $dumpErr = Get-Content $errFile -Raw -ErrorAction SilentlyContinue
     if ($dumpErr -match "error|fatal") { throw "pg_dump error: $dumpErr" }
-
-    # Copy result back to Windows
-    $ErrorActionPreference = "Continue"
-    docker cp "${DockerLocal}:/tmp/prod_backup.sql" $outFile 2>&1 | Out-Null
-    docker exec $DockerLocal sh -c "rm -f /tmp/prod_backup.sql /tmp/bpr_pg_dump.sh /tmp/pg_dump_err.log" 2>&1 | Out-Null
-    $ErrorActionPreference = "Stop"
 
     if (-not (Test-Path $outFile) -or (Get-Item $outFile).Length -lt 1024) {
       throw "prod-db.sql missing or too small - backup may have failed"
@@ -94,7 +83,7 @@ if (-not $SkipProd) {
   } catch {
     Write-Fail "Production DB backup failed: $_"
   } finally {
-    if (Test-Path $tmpScript) { Remove-Item $tmpScript -Force }
+    if (Test-Path $errFile) { Remove-Item $errFile -Force }
   }
 }
 

@@ -498,20 +498,20 @@ function InstagramContent() {
               <div className="px-3 py-2 border-b border-border">
                 <p className="text-xs font-medium text-muted-foreground">Instagram Preview</p>
               </div>
-              <div className="bg-white dark:bg-zinc-950">
+              <div className="bg-neutral-900">
                 {/* IG Header */}
-                <div className="flex items-center gap-2.5 px-3 py-2.5">
+                <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-neutral-800">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
-                    <div className="w-full h-full rounded-full bg-white dark:bg-zinc-950 flex items-center justify-center overflow-hidden">
+                    <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center overflow-hidden">
                       {igProfilePic ? (
                         <img src={igProfilePic} alt="" className="w-full h-full object-cover rounded-full" />
                       ) : (
-                        <Instagram className="h-3.5 w-3.5 text-zinc-800 dark:text-zinc-200" />
+                        <Instagram className="h-3.5 w-3.5 text-white" />
                       )}
                     </div>
                   </div>
-                  <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex-1 truncate">{igUsername}</p>
-                  <svg className="w-4 h-4 text-zinc-900 dark:text-zinc-100" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                  <p className="text-xs font-semibold text-white flex-1 truncate">{igUsername}</p>
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                 </div>
                 {/* Image */}
                 {allImages.length > 0 ? (
@@ -524,27 +524,27 @@ function InstagramContent() {
                     )}
                   </div>
                 ) : (
-                  <div className="w-full aspect-square bg-gradient-to-br from-slate-100 to-slate-200 dark:from-zinc-800 dark:to-zinc-900 flex flex-col items-center justify-center gap-2">
-                    <ImageIcon className="h-10 w-10 text-slate-300 dark:text-zinc-600" />
-                    <p className="text-[10px] text-slate-400 dark:text-zinc-500">Upload an image</p>
+                  <div className="w-full aspect-square bg-neutral-800 flex flex-col items-center justify-center gap-2">
+                    <ImageIcon className="h-10 w-10 text-neutral-600" />
+                    <p className="text-[10px] text-neutral-500">Upload an image</p>
                   </div>
                 )}
                 {/* Action icons */}
                 <div className="flex items-center justify-between px-3 py-2">
                   <div className="flex items-center gap-4">
-                    <Heart className="h-5 w-5 text-zinc-900 dark:text-zinc-100" />
-                    <MessageCircle className="h-5 w-5 text-zinc-900 dark:text-zinc-100 scale-x-[-1]" />
-                    <Send className="h-5 w-5 text-zinc-900 dark:text-zinc-100 -rotate-[20deg]" />
+                    <Heart className="h-5 w-5 text-white" />
+                    <MessageCircle className="h-5 w-5 text-white scale-x-[-1]" />
+                    <Send className="h-5 w-5 text-white -rotate-[20deg]" />
                   </div>
-                  <svg className="w-5 h-5 text-zinc-900 dark:text-zinc-100" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 </div>
                 {/* Caption */}
                 <div className="px-3 pb-3">
-                  <p className="text-xs text-zinc-900 dark:text-zinc-100">
+                  <p className="text-xs text-white">
                     <span className="font-semibold mr-1">{igUsername}</span>
-                    <span className="whitespace-pre-wrap">{previewCaption.length > 140 ? previewCaption.slice(0, 140) + '... more' : previewCaption}</span>
+                    <span className="whitespace-pre-wrap text-neutral-300">{previewCaption.length > 140 ? previewCaption.slice(0, 140) + '... more' : previewCaption}</span>
                   </p>
-                  {previewHashtags && <p className="text-xs text-blue-500 mt-1">{previewHashtags}</p>}
+                  {previewHashtags && <p className="text-xs text-blue-400 mt-1">{previewHashtags}</p>}
                 </div>
               </div>
             </div>

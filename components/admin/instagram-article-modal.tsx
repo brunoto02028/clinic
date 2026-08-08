@@ -373,22 +373,22 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
 
         <div className="p-5 space-y-5">
           {igResult?.success && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
               <div className="space-y-1">
-                <p className="font-semibold text-green-800">
+                <p className="font-semibold text-emerald-400">
                   {igResult.facebook_post_id ? 'Published to Instagram + Facebook! 🎉' : igMode === "now" ? "Published to Instagram! 🎉" : "Scheduled! ✅"}
                 </p>
-                {igResult.permalink && <a href={igResult.permalink} target="_blank" rel="noopener noreferrer" className="text-sm text-green-700 underline block">View on Instagram →</a>}
-                {igResult.facebook_post_id && <p className="text-xs text-blue-700">✓ Also posted to Facebook Page</p>}
-                {igResult.facebook_error && <p className="text-xs text-amber-600">⚠ Facebook: {igResult.facebook_error}</p>}
+                {igResult.permalink && <a href={igResult.permalink} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-400 underline block">View on Instagram →</a>}
+                {igResult.facebook_post_id && <p className="text-xs text-blue-400">✓ Also posted to Facebook Page</p>}
+                {igResult.facebook_error && <p className="text-xs text-amber-400">⚠ Facebook: {igResult.facebook_error}</p>}
               </div>
             </div>
           )}
           {igResult?.error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
-              <p className="text-sm text-red-700">{igResult.error}</p>
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+              <p className="text-sm text-red-400">{igResult.error}</p>
             </div>
           )}
 
@@ -400,7 +400,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                 <button
                   onClick={() => setImageTab("photo")}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    imageTab === "photo" ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+                    imageTab === "photo" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <ImageIcon className="h-3.5 w-3.5" /> Photo / Image
@@ -408,7 +408,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                 <button
                   onClick={() => setImageTab("animation")}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    imageTab === "animation" ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+                    imageTab === "animation" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Film className="h-3.5 w-3.5" /> Ken Burns Video
@@ -436,7 +436,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                       </button>
                       {!caption.trim() && <p className="text-[11px] text-muted-foreground text-center">Write a caption below first.</p>}
                       {reelResult?.success && (
-                        <p className="text-xs text-green-700 flex items-center gap-1.5 justify-center">
+                        <p className="text-xs text-emerald-400 flex items-center gap-1.5 justify-center">
                           <CheckCircle className="h-3.5 w-3.5" /> Published!{" "}
                           {reelResult.permalink && <a href={reelResult.permalink} target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-0.5">View <ExternalLink className="h-3 w-3" /></a>}
                         </p>
@@ -487,7 +487,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border hover:bg-muted transition-colors font-medium">
                   <ImageIcon className="h-3.5 w-3.5" /> Upload
                 </button>
-                <button onClick={generateAiImage} disabled={aiImageGenerating} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 disabled:opacity-50 transition-colors font-medium">
+                <button onClick={generateAiImage} disabled={aiImageGenerating} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-violet-500/30 text-violet-400 bg-violet-500/10 hover:bg-violet-500/20 disabled:opacity-50 transition-colors font-medium">
                   {aiImageGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} AI Image
                 </button>
                 <button onClick={() => { const opening = !showImageEditor; setShowImageEditor(opening); if (opening && !overlay.text) setOverlay(o => ({ ...o, text: article.title })); }} className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors font-medium ${showImageEditor ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "hover:bg-muted"}`}>
@@ -497,7 +497,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                   {logoEnabled ? "✓" : ""} Logo Watermark
                 </button>
                 {composedImage && (
-                  <button onClick={() => { const a = document.createElement("a"); a.href = composedImage; a.download = `ig-${article.slug}.jpg`; a.click(); }} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition-colors font-medium">
+                  <button onClick={() => { const a = document.createElement("a"); a.href = composedImage; a.download = `ig-${article.slug}.jpg`; a.click(); }} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-emerald-500/30 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors font-medium">
                     <Download className="h-3.5 w-3.5" /> Download
                   </button>
                 )}
@@ -543,7 +543,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                     ))}
                     <div className="flex gap-1 ml-auto">
                       {(["left", "center", "right"] as const).map(a => (
-                        <button key={a} onClick={() => setOverlay(o => ({ ...o, align: a }))} className={`text-[10px] px-2 py-1 rounded border font-medium ${overlay.align === a ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "border-gray-200"}`}>{a[0].toUpperCase()}</button>
+                        <button key={a} onClick={() => setOverlay(o => ({ ...o, align: a }))} className={`text-[10px] px-2 py-1 rounded border font-medium ${overlay.align === a ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "border-border"}`}>{a[0].toUpperCase()}</button>
                       ))}
                     </div>
                   </div>
@@ -560,13 +560,13 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                   <label className="text-sm font-semibold">Caption</label>
                   <div className="flex gap-1">
                     {(["en-GB", "pt-BR"] as const).map(lang => (
-                      <button key={lang} onClick={() => setIgLocale(lang)} className={`text-[10px] px-2 py-0.5 rounded border font-medium transition-all ${igLocale === lang ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "border-gray-200 text-muted-foreground"}`}>
+                      <button key={lang} onClick={() => setIgLocale(lang)} className={`text-[10px] px-2 py-0.5 rounded border font-medium transition-all ${igLocale === lang ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "border-border text-muted-foreground"}`}>
                         {lang === "en-GB" ? "🇬🇧 EN" : "🇧🇷 PT"}
                       </button>
                     ))}
                   </div>
                 </div>
-                <button onClick={generateCaption} disabled={igGenerating} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium text-violet-700 border-violet-200 bg-violet-50 hover:bg-violet-100 disabled:opacity-50 transition-colors">
+                <button onClick={generateCaption} disabled={igGenerating} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium text-violet-400 border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 disabled:opacity-50 transition-colors">
                   {igGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                   {igGenerating ? "Reading full article & generating..." : "AI Generate Caption"}
                 </button>
@@ -576,26 +576,26 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
 
               {/* AI Chat */}
               <div className="border rounded-xl overflow-hidden">
-                <button onClick={() => setChatOpen(!chatOpen)} className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 hover:from-violet-100 hover:to-purple-100 transition-colors">
-                  <span className="flex items-center gap-2 text-sm font-semibold text-violet-800 dark:text-violet-300">
+                <button onClick={() => setChatOpen(!chatOpen)} className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-500/10 to-purple-500/10 hover:from-violet-500/20 hover:to-purple-500/20 transition-colors">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-violet-400">
                     <MessageSquare className="h-4 w-4" /> AI Chat Assistant
-                    <span className="text-[10px] font-normal text-violet-500">refine your caption</span>
+                    <span className="text-[10px] font-normal text-violet-400/70">refine your caption</span>
                   </span>
-                  {chatOpen ? <ChevronUp className="h-4 w-4 text-violet-600" /> : <ChevronDown className="h-4 w-4 text-violet-600" />}
+                  {chatOpen ? <ChevronUp className="h-4 w-4 text-violet-400" /> : <ChevronDown className="h-4 w-4 text-violet-400" />}
                 </button>
                 {chatOpen && (
                   <div>
                     <div className="h-48 overflow-y-auto p-3 space-y-2 bg-muted/10">
                       {chatMessages.map((msg, i) => (
                         <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                          <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${msg.role === "user" ? "bg-[#5dc9c0] text-white" : "bg-white dark:bg-muted border text-foreground"}`}>
+                          <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${msg.role === "user" ? "bg-[#5dc9c0] text-white" : "bg-muted border border-border text-foreground"}`}>
                             {msg.content}
                           </div>
                         </div>
                       ))}
                       {chatLoading && (
                         <div className="flex justify-start">
-                          <div className="bg-white dark:bg-muted border rounded-xl px-3 py-2">
+                          <div className="bg-muted border border-border rounded-xl px-3 py-2">
                             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                           </div>
                         </div>
@@ -624,10 +624,10 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
 
               {/* Publish mode */}
               <div className="flex gap-2">
-                <button onClick={() => setIgMode("now")} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm font-medium transition-all ${igMode === "now" ? "border-[#e1306c] bg-[#e1306c]/5 text-[#e1306c]" : "border-gray-200 text-muted-foreground hover:border-gray-300"}`}>
+                <button onClick={() => setIgMode("now")} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm font-medium transition-all ${igMode === "now" ? "border-[#e1306c] bg-[#e1306c]/5 text-[#e1306c]" : "border-border text-muted-foreground hover:border-border/60"}`}>
                   <Send className="h-3.5 w-3.5" /> Publish Now
                 </button>
-                <button onClick={() => setIgMode("schedule")} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm font-medium transition-all ${igMode === "schedule" ? "border-[#5dc9c0] bg-[#5dc9c0]/5 text-[#1a6b6b]" : "border-gray-200 text-muted-foreground hover:border-gray-300"}`}>
+                <button onClick={() => setIgMode("schedule")} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm font-medium transition-all ${igMode === "schedule" ? "border-[#5dc9c0] bg-[#5dc9c0]/5 text-[#1a6b6b]" : "border-border text-muted-foreground hover:border-border/60"}`}>
                   <Clock className="h-3.5 w-3.5" /> Schedule
                 </button>
               </div>
@@ -655,7 +655,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                 {storyPublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
                 {storyPublishing ? "Publishing Story..." : "Publish as Instagram Story"}
               </button>
-              {storyResult?.success && <p className="text-xs text-green-700 flex items-center gap-1.5 justify-center"><CheckCircle className="h-3.5 w-3.5" /> Story published!</p>}
+              {storyResult?.success && <p className="text-xs text-emerald-400 flex items-center gap-1.5 justify-center"><CheckCircle className="h-3.5 w-3.5" /> Story published!</p>}
               {storyResult?.error && <p className="text-xs text-red-600 flex items-center gap-1.5 justify-center"><AlertCircle className="h-3.5 w-3.5" /> {storyResult.error}</p>}
               <p className="text-[10px] text-muted-foreground text-center">💡 Want text on the Story? Use "Add Text" above first — it carries over automatically.</p>
 
