@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Instagram, X, Wand2, Send, Clock, Loader2, CheckCircle,
   AlertCircle, MessageSquare, Image as ImageIcon, Type,
-  Download, RefreshCw, Sparkles, ChevronDown, ChevronUp, Film, ExternalLink, Facebook,
+  Download, Sparkles, ChevronDown, ChevronUp, Film, ExternalLink, Facebook,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,8 @@ interface TextOverlay {
 }
 
 const FONTS = [
+  { label: "Poppins Bold", value: "'Poppins', sans-serif" },
+  { label: "Playfair Display", value: "'Playfair Display', serif" },
   { label: "Sans Serif", value: "Arial, sans-serif" },
   { label: "Serif", value: "Georgia, serif" },
   { label: "Bold Block", value: "Impact, sans-serif" },
@@ -30,9 +32,102 @@ const FONTS = [
   { label: "Mono", value: "'Courier New', monospace" },
 ];
 
+type ImageFormat = "square" | "portrait" | "story";
+const FORMAT_DIMS: Record<ImageFormat, [number, number]> = {
+  square: [1080, 1080],   // Feed 1:1
+  portrait: [1080, 1350], // Feed 4:5 — Instagram's recommended, taller feed format
+  story: [1080, 1920],    // Stories/Reels 9:16
+};
+const FORMAT_ASPECT: Record<ImageFormat, string> = {
+  square: "aspect-square",
+  portrait: "aspect-[4/5]",
+  story: "aspect-[9/16]",
+};
+
+// Renders `src` into the target format, cover-cropped (fills the frame,
+// centred overflow trimmed — no letterboxing), with the clinic logo
+// watermark (unless disabled) and any text overlay baked in. Self-contained
+// (creates its own offscreen canvas) so it can be called for a different
+// format than whatever the live preview is showing — e.g. Stories always
+// render at 9:16 even if the visible preview is set to Square.
+async function renderComposedImage(
+  fmt: ImageFormat,
+  src: string,
+  ov: TextOverlay,
+  withLogo: boolean
+): Promise<string> {
+  const [W, H] = FORMAT_DIMS[fmt];
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext("2d")!;
+
+      // Cover-fit crop: fill the target frame, trim overflow from centre
+      const srcRatio = img.width / img.height;
+      const dstRatio = W / H;
+      let sx = 0, sy = 0, sw = img.width, sh = img.height;
+      if (srcRatio > dstRatio) {
+        sw = img.height * dstRatio;
+        sx = (img.width - sw) / 2;
+      } else {
+        sh = img.width / dstRatio;
+        sy = (img.height - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+
+      const finish = () => {
+        if (ov.text) {
+          ctx.font = `${ov.italic ? "italic " : ""}${ov.bold ? "bold " : ""}${ov.size}px ${ov.font}`;
+          ctx.textAlign = ov.align;
+          ctx.fillStyle = ov.color;
+          if (ov.shadow) { ctx.shadowColor = "rgba(0,0,0,0.85)"; ctx.shadowBlur = 10; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2; }
+          const xPx = (ov.x / 100) * W;
+          const centreY = (ov.y / 100) * H;
+          const maxWidth = W * 0.85;
+          const words = ov.text.split(" ");
+          const lines: string[] = [];
+          let line = "";
+          for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + " ";
+            if (ctx.measureText(testLine).width > maxWidth && n > 0) { lines.push(line.trim()); line = words[n] + " "; }
+            else line = testLine;
+          }
+          lines.push(line.trim());
+          const lineHeight = ov.size * 1.3;
+          const startY = centreY - ((lines.length - 1) * lineHeight) / 2;
+          lines.forEach((l, i) => ctx.fillText(l, xPx, startY + i * lineHeight));
+          ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+        }
+        resolve(canvas.toDataURL("image/jpeg", 0.92));
+      };
+
+      if (withLogo) {
+        const logo = new window.Image();
+        logo.crossOrigin = "anonymous";
+        logo.onload = () => {
+          const lw = W * 0.15;
+          const lh = (logo.height / logo.width) * lw;
+          ctx.globalAlpha = 0.85;
+          ctx.drawImage(logo, W - lw - W * 0.02, H - lh - W * 0.02, lw, lh);
+          ctx.globalAlpha = 1;
+          finish();
+        };
+        logo.onerror = finish;
+        logo.src = "/logo.png";
+      } else {
+        finish();
+      }
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = src;
+  });
+}
+
 export default function InstagramArticleModal({ article, onClose }: { article: Article; onClose: () => void }) {
   const { toast } = useToast();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -43,10 +138,12 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   const [aiImageGenerating, setAiImageGenerating] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [overlay, setOverlay] = useState<TextOverlay>({
-    text: "", font: "Arial, sans-serif", size: 36, color: "#ffffff",
+    text: "", font: "'Poppins', sans-serif", size: 40, color: "#ffffff",
     x: 50, y: 80, bold: true, italic: false, shadow: true, align: "center",
   });
   const [composedImage, setComposedImage] = useState<string>("");
+  const [format, setFormat] = useState<ImageFormat>("portrait");
+  const [logoEnabled, setLogoEnabled] = useState(true);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: `Hi! I've read the full article "${article.title}". Ask me to improve the caption, suggest hashtags, change tone, or anything else!` },
@@ -115,85 +212,32 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
     return url.startsWith("http") ? url : `${window.location.origin}${url}`;
   }
 
-  // Converts any image (square feed crop, with or without text baked in) into
-  // a proper 9:16 Stories canvas — centred on a dark background — instead of
-  // letting Instagram's own auto-fit crop/stretch a square image.
-  async function createStoryCanvas(srcUrl: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const img = new window.Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const W = 1080, H = 1920;
-        const canvas = document.createElement("canvas");
-        canvas.width = W; canvas.height = H;
-        const ctx = canvas.getContext("2d")!;
-        const grad = ctx.createLinearGradient(0, 0, 0, H);
-        grad.addColorStop(0, "#0f172a");
-        grad.addColorStop(1, "#1e1b4b");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, W, H);
-        const padding = 60;
-        const drawW = W - padding * 2;
-        const drawH = drawW;
-        const drawX = padding;
-        const drawY = (H - drawH) / 2;
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(drawX, drawY, drawW, drawH, 24);
-        ctx.clip();
-        ctx.drawImage(img, drawX, drawY, drawW, drawH);
-        ctx.restore();
-        resolve(canvas.toDataURL("image/jpeg", 0.92));
-      };
-      img.onerror = () => reject(new Error("Failed to load image for Story conversion"));
-      img.src = srcUrl;
+  // Load the display fonts once (canvas text needs the font actually loaded
+  // before it can render it — a plain <link> in <head> isn't enough timing-
+  // wise for a canvas draw that can happen immediately on mount).
+  useEffect(() => {
+    if (document.getElementById("ig-composer-fonts")) return;
+    const link = document.createElement("link");
+    link.id = "ig-composer-fonts";
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&family=Playfair+Display:wght@700&display=swap";
+    document.head.appendChild(link);
+  }, []);
+
+  // Recompose whenever the image, chosen format, text overlay or watermark
+  // toggle change — the logo watermark is always baked in (unless turned
+  // off), not just when the "Add Text" panel happens to be open.
+  useEffect(() => {
+    if (!currentImage) { setComposedImage(""); return; }
+    let cancelled = false;
+    document.fonts?.load?.(`700 40px ${overlay.font}`).catch(() => {}).finally(() => {
+      renderComposedImage(format, currentImage, overlay, logoEnabled)
+        .then((url) => { if (!cancelled) setComposedImage(url); })
+        .catch(() => { if (!cancelled) setComposedImage(""); });
     });
-  }
+    return () => { cancelled = true; };
+  }, [currentImage, format, overlay, logoEnabled]);
 
-  const drawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !currentImage) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      canvas.width = 1080; canvas.height = 1080;
-      ctx.drawImage(img, 0, 0, 1080, 1080);
-      const drawText = () => {
-        if (overlay.text) {
-          ctx.font = `${overlay.italic ? "italic " : ""}${overlay.bold ? "bold " : ""}${overlay.size}px ${overlay.font}`;
-          ctx.textAlign = overlay.align;
-          ctx.fillStyle = overlay.color;
-          if (overlay.shadow) { ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 8; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2; }
-          const xPx = (overlay.x / 100) * 1080;
-          let yPx = (overlay.y / 100) * 1080;
-          const words = overlay.text.split(" "); let line = "";
-          for (let n = 0; n < words.length; n++) {
-            const testLine = line + words[n] + " ";
-            if (ctx.measureText(testLine).width > 900 && n > 0) { ctx.fillText(line.trim(), xPx, yPx); line = words[n] + " "; yPx += overlay.size * 1.3; }
-            else line = testLine;
-          }
-          ctx.fillText(line.trim(), xPx, yPx);
-          ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
-        }
-        setComposedImage(canvas.toDataURL("image/jpeg", 0.92));
-      };
-      const logo = new window.Image();
-      logo.crossOrigin = "anonymous";
-      logo.onload = () => {
-        const lw = 160; const lh = (logo.height / logo.width) * lw;
-        ctx.globalAlpha = 0.85; ctx.drawImage(logo, 1080 - lw - 20, 1080 - lh - 20, lw, lh); ctx.globalAlpha = 1;
-        drawText();
-      };
-      logo.onerror = drawText;
-      logo.src = "/logo.png";
-    };
-    img.onerror = () => setComposedImage("");
-    img.src = currentImage;
-  }, [currentImage, overlay]);
-
-  useEffect(() => { if (showImageEditor) drawCanvas(); }, [showImageEditor, drawCanvas]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
   const generateCaption = async () => {
@@ -269,15 +313,15 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   };
 
   const publishAsStory = async () => {
-    const rawImage = composedImage || currentImage || "";
-    if (!rawImage) { toast({ title: "Select an image first", variant: "destructive" }); return; }
+    if (!currentImage) { toast({ title: "Select an image first", variant: "destructive" }); return; }
     setStoryPublishing(true); setStoryResult(null);
     try {
-      // Render onto a proper 9:16 canvas first (carries over any text/logo
-      // already baked into composedImage from "Add Text"), then upload —
-      // sending the raw square image let Instagram auto-crop it, and a
-      // data:/blob: URL was never fetchable by Instagram at all.
-      const storyCanvasDataUrl = await createStoryCanvas(rawImage);
+      // Always render at true 9:16 from the source image — regardless of
+      // whichever format is currently selected for the feed preview — with
+      // the same text/logo overlay settings baked in, then upload. Sending
+      // the raw square image let Instagram auto-crop it, and a data:/blob:
+      // URL was never fetchable by Instagram at all.
+      const storyCanvasDataUrl = await renderComposedImage("story", currentImage, overlay, logoEnabled);
       const hostedStoryUrl = await uploadDataUrl(storyCanvasDataUrl, "ig-story");
       const res = await fetch("/api/admin/articles/instagram", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -406,6 +450,19 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
               )}
 
               {imageTab === "photo" && (<>
+              {/* Format picker — the image is cropped to fill whichever frame is picked, no letterboxing */}
+              <div className="flex gap-1.5">
+                {([
+                  { key: "square", label: "Square 1:1" },
+                  { key: "portrait", label: "Portrait 4:5" },
+                  { key: "story", label: "Story 9:16" },
+                ] as const).map(f => (
+                  <button key={f.key} onClick={() => setFormat(f.key)}
+                    className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all ${format === f.key ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "border-border text-muted-foreground hover:border-[#5dc9c0]/40"}`}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
               <div className="border rounded-2xl overflow-hidden bg-neutral-900 shadow-sm">
                 <div className="flex items-center gap-2 p-3 border-b border-neutral-800">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#f09433] to-[#bc1888] flex items-center justify-center">
@@ -414,9 +471,9 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                   <span className="text-sm font-semibold text-white">{igUsername}</span>
                 </div>
                 {previewImage ? (
-                  <img src={previewImage} alt="" className="w-full aspect-square object-cover" />
+                  <img src={previewImage} alt="" className={`w-full ${FORMAT_ASPECT[format]} object-cover`} />
                 ) : (
-                  <div className="w-full aspect-square bg-neutral-800 flex flex-col items-center justify-center gap-2">
+                  <div className={`w-full ${FORMAT_ASPECT[format]} bg-neutral-800 flex flex-col items-center justify-center gap-2`}>
                     <ImageIcon className="h-14 w-14 text-neutral-600" />
                     <p className="text-xs text-neutral-500">No image selected</p>
                   </div>
@@ -433,8 +490,11 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                 <button onClick={generateAiImage} disabled={aiImageGenerating} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-violet-200 text-violet-700 bg-violet-50 hover:bg-violet-100 disabled:opacity-50 transition-colors font-medium">
                   {aiImageGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} AI Image
                 </button>
-                <button onClick={() => { setShowImageEditor(!showImageEditor); if (!showImageEditor && currentImage) setTimeout(drawCanvas, 100); }} className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors font-medium ${showImageEditor ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "hover:bg-muted"}`}>
+                <button onClick={() => { const opening = !showImageEditor; setShowImageEditor(opening); if (opening && !overlay.text) setOverlay(o => ({ ...o, text: article.title })); }} className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors font-medium ${showImageEditor ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "hover:bg-muted"}`}>
                   <Type className="h-3.5 w-3.5" /> Add Text {showImageEditor ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </button>
+                <button onClick={() => setLogoEnabled(!logoEnabled)} className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors font-medium ${logoEnabled ? "border-[#5dc9c0] bg-[#5dc9c0]/10 text-[#1a6b6b]" : "hover:bg-muted text-muted-foreground"}`}>
+                  {logoEnabled ? "✓" : ""} Logo Watermark
                 </button>
                 {composedImage && (
                   <button onClick={() => { const a = document.createElement("a"); a.href = composedImage; a.download = `ig-${article.slug}.jpg`; a.click(); }} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-green-200 text-green-700 bg-green-50 hover:bg-green-100 transition-colors font-medium">
@@ -487,10 +547,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                       ))}
                     </div>
                   </div>
-                  <button onClick={drawCanvas} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium text-white hover:opacity-90" style={{ background: "linear-gradient(135deg,#5dc9c0 0%,#1a6b6b 100%)" }}>
-                    <RefreshCw className="h-3.5 w-3.5" /> Apply to Image
-                  </button>
-                  <canvas ref={canvasRef} className="hidden" />
+                  <p className="text-[10px] text-muted-foreground text-center">Updates live as you type.</p>
                 </div>
               )}
               </>)}
