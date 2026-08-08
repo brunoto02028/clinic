@@ -76,6 +76,7 @@ COPY --from=builder /app/scripts/fix-shockwave-service-pages.js ./scripts/fix-sh
 COPY --from=builder /app/scripts/seed-book-content.js ./scripts/seed-book-content.js
 COPY --from=builder /app/scripts/update-chapter-one-content.js ./scripts/update-chapter-one-content.js
 COPY --from=builder /app/scripts/seed-recovered-articles.js ./scripts/seed-recovered-articles.js
+COPY --from=builder /app/scripts/seed-site-logo.js ./scripts/seed-site-logo.js
 COPY --from=builder /app/book ./book
 COPY --from=builder /app/recovered-content ./recovered-content
 

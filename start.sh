@@ -58,6 +58,11 @@ node /app/scripts/seed-book-content.js || echo "[start.sh] book content seed war
 echo "[start.sh] Seeding recovered article content..."
 node /app/scripts/seed-recovered-articles.js || echo "[start.sh] recovered-articles seed warning — check logs"
 
+# Default logo/favicon recovered after the same VPS reinstall — idempotent,
+# only fills in fields still empty (see scripts/seed-site-logo.js).
+echo "[start.sh] Seeding default logo/favicon..."
+node /app/scripts/seed-site-logo.js || echo "[start.sh] logo seed warning — check logs"
+
 echo "[start.sh] Startup maintenance tasks done — server already serving traffic."
 
 # Keep the container alive as long as the Next.js server process is running,
