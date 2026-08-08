@@ -54,7 +54,8 @@ async function renderComposedImage(
   fmt: ImageFormat,
   src: string,
   ov: TextOverlay,
-  withLogo: boolean
+  withLogo: boolean,
+  logoPos: { x: number; y: number } = { x: 90, y: 90 }
 ): Promise<string> {
   const [W, H] = FORMAT_DIMS[fmt];
   return new Promise((resolve, reject) => {
@@ -110,8 +111,10 @@ async function renderComposedImage(
         logo.onload = () => {
           const lw = W * 0.15;
           const lh = (logo.height / logo.width) * lw;
+          const lx = (logoPos.x / 100) * W - lw / 2;
+          const ly = (logoPos.y / 100) * H - lh / 2;
           ctx.globalAlpha = 0.85;
-          ctx.drawImage(logo, W - lw - W * 0.02, H - lh - W * 0.02, lw, lh);
+          ctx.drawImage(logo, lx, ly, lw, lh);
           ctx.globalAlpha = 1;
           finish();
         };
@@ -144,6 +147,9 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   const [composedImage, setComposedImage] = useState<string>("");
   const [format, setFormat] = useState<ImageFormat>("portrait");
   const [logoEnabled, setLogoEnabled] = useState(true);
+  const [logoPos, setLogoPos] = useState({ x: 90, y: 90 });
+  const [dragTarget, setDragTarget] = useState<"text" | "logo" | null>(null);
+  const previewBoxRef = useRef<HTMLDivElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: `Hi! I've read the full article "${article.title}". Ask me to improve the caption, suggest hashtags, change tone, or anything else!` },
@@ -162,6 +168,8 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   const [storyPublishing, setStoryPublishing] = useState(false);
   const [storyResult, setStoryResult] = useState<{ success?: boolean; error?: string } | null>(null);
   const [igUsername, setIgUsername] = useState<string>("your_instagram");
+  const [linkCopied, setLinkCopied] = useState(false);
+  const articleUrl = typeof window !== "undefined" ? `${window.location.origin}/articles/${article.slug}` : `/articles/${article.slug}`;
 
   useEffect(() => {
     fetch("/api/admin/social/accounts")
@@ -231,12 +239,44 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
     if (!currentImage) { setComposedImage(""); return; }
     let cancelled = false;
     document.fonts?.load?.(`700 40px ${overlay.font}`).catch(() => {}).finally(() => {
-      renderComposedImage(format, currentImage, overlay, logoEnabled)
+      renderComposedImage(format, currentImage, overlay, logoEnabled, logoPos)
         .then((url) => { if (!cancelled) setComposedImage(url); })
         .catch(() => { if (!cancelled) setComposedImage(""); });
     });
     return () => { cancelled = true; };
-  }, [currentImage, format, overlay, logoEnabled]);
+  }, [currentImage, format, overlay, logoEnabled, logoPos]);
+
+  // ── Drag-to-position for the text overlay and logo watermark ──
+  // While dragging, the interactive HTML layer (rendered in the preview
+  // below) moves instantly; the canvas-composed preview above catches up
+  // via the effect once overlay/logoPos settle.
+  useEffect(() => {
+    if (!dragTarget) return;
+    const box = previewBoxRef.current;
+    if (!box) return;
+
+    const move = (clientX: number, clientY: number) => {
+      const rect = box.getBoundingClientRect();
+      const xPct = Math.min(97, Math.max(3, ((clientX - rect.left) / rect.width) * 100));
+      const yPct = Math.min(97, Math.max(3, ((clientY - rect.top) / rect.height) * 100));
+      if (dragTarget === "text") setOverlay(o => ({ ...o, x: xPct, y: yPct }));
+      else setLogoPos({ x: xPct, y: yPct });
+    };
+    const onMouseMove = (e: MouseEvent) => move(e.clientX, e.clientY);
+    const onTouchMove = (e: TouchEvent) => { if (e.touches[0]) move(e.touches[0].clientX, e.touches[0].clientY); };
+    const stop = () => setDragTarget(null);
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("touchmove", onTouchMove);
+    window.addEventListener("mouseup", stop);
+    window.addEventListener("touchend", stop);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("mouseup", stop);
+      window.removeEventListener("touchend", stop);
+    };
+  }, [dragTarget]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
@@ -321,7 +361,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
       // the same text/logo overlay settings baked in, then upload. Sending
       // the raw square image let Instagram auto-crop it, and a data:/blob:
       // URL was never fetchable by Instagram at all.
-      const storyCanvasDataUrl = await renderComposedImage("story", currentImage, overlay, logoEnabled);
+      const storyCanvasDataUrl = await renderComposedImage("story", currentImage, overlay, logoEnabled, logoPos);
       const hostedStoryUrl = await uploadDataUrl(storyCanvasDataUrl, "ig-story");
       const res = await fetch("/api/admin/articles/instagram", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -470,18 +510,45 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                   </div>
                   <span className="text-sm font-semibold text-white">{igUsername}</span>
                 </div>
-                {previewImage ? (
-                  <img src={previewImage} alt="" className={`w-full ${FORMAT_ASPECT[format]} object-cover`} />
-                ) : (
-                  <div className={`w-full ${FORMAT_ASPECT[format]} bg-neutral-800 flex flex-col items-center justify-center gap-2`}>
-                    <ImageIcon className="h-14 w-14 text-neutral-600" />
-                    <p className="text-xs text-neutral-500">No image selected</p>
-                  </div>
-                )}
+                <div ref={previewBoxRef} className="relative select-none">
+                  {previewImage ? (
+                    <img src={previewImage} alt="" className={`w-full ${FORMAT_ASPECT[format]} object-cover`} draggable={false} />
+                  ) : (
+                    <div className={`w-full ${FORMAT_ASPECT[format]} bg-neutral-800 flex flex-col items-center justify-center gap-2`}>
+                      <ImageIcon className="h-14 w-14 text-neutral-600" />
+                      <p className="text-xs text-neutral-500">No image selected</p>
+                    </div>
+                  )}
+                  {showImageEditor && previewImage && overlay.text && (
+                    <div
+                      onMouseDown={() => setDragTarget("text")}
+                      onTouchStart={() => setDragTarget("text")}
+                      className={`absolute w-8 h-8 -ml-4 -mt-4 rounded-full bg-[#5dc9c0] border-2 border-white shadow-lg flex items-center justify-center touch-none ${dragTarget === "text" ? "cursor-grabbing scale-110" : "cursor-grab"} transition-transform`}
+                      style={{ left: `${overlay.x}%`, top: `${overlay.y}%` }}
+                      title="Drag to move the text"
+                    >
+                      <Type className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                  {showImageEditor && previewImage && logoEnabled && (
+                    <div
+                      onMouseDown={() => setDragTarget("logo")}
+                      onTouchStart={() => setDragTarget("logo")}
+                      className={`absolute w-8 h-8 -ml-4 -mt-4 rounded-full bg-amber-500 border-2 border-white shadow-lg flex items-center justify-center touch-none ${dragTarget === "logo" ? "cursor-grabbing scale-110" : "cursor-grab"} transition-transform`}
+                      style={{ left: `${logoPos.x}%`, top: `${logoPos.y}%` }}
+                      title="Drag to move the logo"
+                    >
+                      <ImageIcon className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                </div>
                 <div className="p-3 bg-neutral-900">
                   <p className="text-[11px] text-neutral-300 line-clamp-3 whitespace-pre-wrap">{caption || "Caption will appear here..."}</p>
                 </div>
               </div>
+              {showImageEditor && (overlay.text || logoEnabled) && (
+                <p className="text-[10px] text-muted-foreground text-center">🖱️ Drag the teal (text) and amber (logo) handles on the image to reposition them.</p>
+              )}
 
               <div className="flex gap-2 flex-wrap">
                 <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border hover:bg-muted transition-colors font-medium">
@@ -565,6 +632,17 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                       </button>
                     ))}
                   </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/50 border border-border rounded-lg px-2.5 py-1.5">
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  <a href={articleUrl} target="_blank" rel="noopener noreferrer" className="truncate hover:text-foreground hover:underline flex-1" title={articleUrl}>{articleUrl}</a>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(articleUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
+                    className="shrink-0 px-1.5 py-0.5 rounded border border-border hover:bg-muted font-medium text-foreground"
+                  >
+                    {linkCopied ? "Copied!" : "Copy link"}
+                  </button>
                 </div>
                 <button onClick={generateCaption} disabled={igGenerating} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm font-medium text-violet-400 border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 disabled:opacity-50 transition-colors">
                   {igGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
