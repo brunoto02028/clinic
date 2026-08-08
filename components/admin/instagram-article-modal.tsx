@@ -62,6 +62,8 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   const [reelBlob, setReelBlob] = useState<Blob | null>(null);
   const [reelPublishing, setReelPublishing] = useState(false);
   const [reelResult, setReelResult] = useState<{ success?: boolean; error?: string; permalink?: string } | null>(null);
+  const [storyPublishing, setStoryPublishing] = useState(false);
+  const [storyResult, setStoryResult] = useState<{ success?: boolean; error?: string } | null>(null);
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -175,6 +177,22 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
       } else setIgResult({ error: data.error || "Failed" });
     } catch { setIgResult({ error: "Failed to publish" }); }
     finally { setIgPublishing(false); }
+  };
+
+  const publishAsStory = async () => {
+    const imageToUse = composedImage || currentImage || "";
+    if (!imageToUse) { toast({ title: "Select an image first", variant: "destructive" }); return; }
+    setStoryPublishing(true); setStoryResult(null);
+    try {
+      const res = await fetch("/api/admin/articles/instagram", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "publish", articleId: article.id, postType: "STORY", imageUrls: [imageToUse] }),
+      });
+      const data = await res.json();
+      if (data.success) { setStoryResult({ success: true }); toast({ title: "Published to Instagram Stories! 🎉" }); }
+      else setStoryResult({ error: data.error || "Failed" });
+    } catch { setStoryResult({ error: "Failed to publish Story" }); }
+    finally { setStoryPublishing(false); }
   };
 
   const publishAsReel = async () => {
@@ -479,6 +497,14 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                 {igPublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : igMode === "now" ? <Send className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                 {igPublishing ? "Publishing..." : igMode === "now" ? `Publish${publishFacebook ? ' to Instagram + Facebook' : ' to Instagram'}` : "Schedule Post"}
               </button>
+
+              {/* Story publish (immediate only — no captions on Stories) */}
+              <button onClick={publishAsStory} disabled={storyPublishing || !(composedImage || currentImage)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-purple-400/40 text-purple-500 hover:bg-purple-500/10 disabled:opacity-50 transition-colors">
+                {storyPublishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Instagram className="h-4 w-4" />}
+                {storyPublishing ? "Publishing Story..." : "Publish as Instagram Story"}
+              </button>
+              {storyResult?.success && <p className="text-xs text-green-700 flex items-center gap-1.5 justify-center"><CheckCircle className="h-3.5 w-3.5" /> Story published!</p>}
+              {storyResult?.error && <p className="text-xs text-red-600 flex items-center gap-1.5 justify-center"><AlertCircle className="h-3.5 w-3.5" /> {storyResult.error}</p>}
 
               {/* Open in Studio button */}
               <button

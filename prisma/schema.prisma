@@ -1342,9 +1342,8 @@ model SiteSettings {
   // SEO - Social Profiles (for schema.org sameAs)
   socialProfilesJson String? @db.Text // JSON array of social profile URLs
 
-  // Marketing defaults (Business Card Creator / Flyer Creator)
-  marketingBusinessCardDefaultsJson String? @db.Text
-  marketingFlyerDefaultsJson        String? @db.Text
+  // Marketing defaults (Flyer Creator)
+  marketingFlyerDefaultsJson String? @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

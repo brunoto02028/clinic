@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getInstagramAuthUrl } from '@/lib/instagram';
 import { resolveClinicId } from '@/lib/resolve-clinic-id';
+import { getConfigValue } from '@/lib/system-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,12 +42,16 @@ export async function POST(req: NextRequest) {
     const { platform } = body;
 
     if (platform === 'INSTAGRAM') {
-      if (!process.env.FACEBOOK_APP_ID || !process.env.FACEBOOK_APP_SECRET) {
+      const [fbAppId, fbAppSecret] = await Promise.all([
+        getConfigValue('FACEBOOK_APP_ID'),
+        getConfigValue('FACEBOOK_APP_SECRET'),
+      ]);
+      if (!fbAppId || !fbAppSecret) {
         return NextResponse.json({
-          error: 'Facebook App not configured. Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET to your environment variables.',
+          error: 'Facebook App not configured. Set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in Admin → AI Settings.',
         }, { status: 500 });
       }
-      const authUrl = getInstagramAuthUrl(clinicId);
+      const authUrl = await getInstagramAuthUrl(clinicId);
       return NextResponse.json({ authUrl });
     }
 

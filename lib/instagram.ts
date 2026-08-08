@@ -7,6 +7,7 @@ const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 const IG_GRAPH_API_BASE = `https://graph.instagram.com`;
 import { prisma } from './db';
 import { SocialPlatform } from '@prisma/client';
+import { getConfigValue } from './system-config';
 
 // ─── Types ───
 
@@ -45,14 +46,14 @@ export function useInstagramLogin(): boolean {
   return false;
 }
 
-export function getInstagramAuthUrl(clinicId: string): string {
+export async function getInstagramAuthUrl(clinicId: string): Promise<string> {
   const redirectUri = `${getBaseUrl()}/api/admin/social/callback`;
   const state = clinicId;
 
   // Prefer Instagram Login API (direct, no Facebook Pages needed)
   // client_id must be the Facebook App ID (not the internal Instagram App ID)
   if (useInstagramLogin()) {
-    const appId = process.env.FACEBOOK_APP_ID;
+    const appId = await getConfigValue('FACEBOOK_APP_ID');
     const scopes = [
       'instagram_business_basic',
       'instagram_business_content_publish',
@@ -63,8 +64,8 @@ export function getInstagramAuthUrl(clinicId: string): string {
   }
 
   // Fallback: Facebook Login for Business with config_id
-  const appId = process.env.FACEBOOK_APP_ID;
-  const configId = process.env.FACEBOOK_LOGIN_CONFIG_ID;
+  const appId = await getConfigValue('FACEBOOK_APP_ID');
+  const configId = await getConfigValue('FACEBOOK_LOGIN_CONFIG_ID');
   if (configId) {
     return `https://www.facebook.com/${GRAPH_API_VERSION}/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${configId}&state=${state}&response_type=code`;
   }
@@ -89,8 +90,8 @@ export async function exchangeCodeForToken(code: string): Promise<{
 
   // Instagram Login API token exchange
   if (useInstagramLogin()) {
-    const igAppId = process.env.INSTAGRAM_APP_ID;
-    const igAppSecret = process.env.INSTAGRAM_APP_SECRET;
+    const igAppId = await getConfigValue('INSTAGRAM_APP_ID');
+    const igAppSecret = await getConfigValue('INSTAGRAM_APP_SECRET');
 
     const formData = new URLSearchParams();
     formData.append('client_id', igAppId!);
@@ -120,8 +121,8 @@ export async function exchangeCodeForToken(code: string): Promise<{
   }
 
   // Facebook Login token exchange
-  const appId = process.env.FACEBOOK_APP_ID;
-  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  const appId = await getConfigValue('FACEBOOK_APP_ID');
+  const appSecret = await getConfigValue('FACEBOOK_APP_SECRET');
 
   const res = await fetch(
     `${GRAPH_API_BASE}/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`
@@ -145,7 +146,7 @@ export async function getLongLivedToken(shortLivedToken: string): Promise<{
 }> {
   // Instagram Login API long-lived token
   if (useInstagramLogin()) {
-    const igAppSecret = process.env.INSTAGRAM_APP_SECRET;
+    const igAppSecret = await getConfigValue('INSTAGRAM_APP_SECRET');
     const res = await fetch(
       `${IG_GRAPH_API_BASE}/access_token?grant_type=ig_exchange_token&client_secret=${igAppSecret}&access_token=${shortLivedToken}`
     );
@@ -163,9 +164,10 @@ export async function getLongLivedToken(shortLivedToken: string): Promise<{
   }
 
   // Facebook Login long-lived token
-  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  const appId = await getConfigValue('FACEBOOK_APP_ID');
+  const appSecret = await getConfigValue('FACEBOOK_APP_SECRET');
   const res = await fetch(
-    `${GRAPH_API_BASE}/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.FACEBOOK_APP_ID}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`
+    `${GRAPH_API_BASE}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`
   );
 
   if (!res.ok) throw new Error('Failed to get long-lived token');

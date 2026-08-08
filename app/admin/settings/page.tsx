@@ -325,7 +325,6 @@ export default function AdminSettingsPage() {
     mlsLaserJson: "",
 
     // Marketing defaults
-    marketingBusinessCardDefaultsJson: "",
     marketingFlyerDefaultsJson: "",
   });
 
@@ -465,7 +464,6 @@ export default function AdminSettingsPage() {
           portalFeaturesJson: data.portalFeaturesJson || "",
           contactCardsJson: data.contactCardsJson || "",
           mlsLaserJson: data.mlsLaserJson || "",
-          marketingBusinessCardDefaultsJson: data.marketingBusinessCardDefaultsJson || "",
           marketingFlyerDefaultsJson: data.marketingFlyerDefaultsJson || "",
         });
         // Load per-screen logos
@@ -2568,39 +2566,6 @@ export default function AdminSettingsPage() {
 
         {/* Marketing Tab */}
         <TabsContent value="marketing" className="space-y-4">
-          {/* Business Card Defaults */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Business Card Defaults</CardTitle>
-              <CardDescription>
-                Default settings for Business Card Creator. These values will pre-fill the card generator.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="marketingBusinessCardDefaultsJson">Business Card Configuration (JSON)</Label>
-                  <AIFieldHelper
-                    fieldName="marketingBusinessCardDefaultsJson"
-                    fieldLabel="Business Card Defaults"
-                    currentValue={(settings as any).marketingBusinessCardDefaultsJson || ""}
-                    context={`Generate a complete JSON configuration for business cards. Include: templateId (bpr-teal), colors (primary: #4a7c8a, secondary: #2c4f58, accent: #6ba3b0, bg: #ffffff, text: #1a2332, backBg: #4a7c8a), logoUrl from site settings, logoText: "BPR", name: "Bruno Toaz", title: "Physical Rehabilitation Specialist", qualifications: "BSc Sports Therapy, STO Registered", phone: "${settings.businessPhone || '+44 1473 000000'}", email: "${settings.businessEmail || 'info@bpr.rehab'}", website: "bpr.rehab", address: "${settings.businessStreet || ''} ${settings.businessCity || 'Ipswich'}, ${settings.businessPostcode || ''}". Output ONLY valid JSON, no markdown.`}
-                    onApply={(text) => setSettings({ ...settings, marketingBusinessCardDefaultsJson: text } as any)}
-                  />
-                </div>
-                <Textarea
-                  id="marketingBusinessCardDefaultsJson"
-                  value={(settings as any).marketingBusinessCardDefaultsJson || ""}
-                  onChange={(e) => setSettings({ ...settings, marketingBusinessCardDefaultsJson: e.target.value } as any)}
-                  placeholder='{"templateId":"bpr-teal","colors":{"primary":"#4a7c8a","secondary":"#2c4f58","accent":"#6ba3b0","bg":"#ffffff","text":"#1a2332","backBg":"#4a7c8a"},"logoUrl":"","logoText":"BPR","name":"Bruno Toaz","title":"Physical Rehabilitation Specialist","qualifications":"BSc Sports Therapy, STO Registered","phone":"+44 1473 000000","email":"info@bpr.rehab","website":"bpr.rehab","address":"Ipswich, Suffolk"}'
-                  rows={6}
-                  className="font-mono text-xs"
-                />
-                <p className="text-xs text-muted-foreground">💡 Click AI button to auto-generate from your business details. If empty, card creator will use site branding.</p>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Flyer Defaults */}
           <Card>
             <CardHeader>

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Loader2, Instagram, Copy, Send, RefreshCw, Check, Sparkles,
   Mic, MicOff, ImageIcon, Calendar, Clock, FileText, Trash2, Eye,
-  Heart, MessageCircle, ChevronDown, X, Save, PenSquare, CheckCircle, AlertCircle
+  Heart, MessageCircle, ChevronDown, X, Save, PenSquare, CheckCircle, AlertCircle, Wifi
 } from 'lucide-react'
 import { useVoiceInput } from '@/hooks/use-voice-input'
 
@@ -279,12 +279,20 @@ function InstagramContent() {
               </p>
             </div>
           </div>
-          <div className="flex bg-muted/50 rounded-lg p-0.5">
-            {(['create', 'posts'] as const).map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === tab ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                {tab === 'create' ? 'Create' : 'Posts'}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <div className="flex bg-muted/50 rounded-lg p-0.5">
+              {(['create', 'posts'] as const).map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === tab ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {tab === 'create' ? 'Create' : 'Posts'}
+                </button>
+              ))}
+            </div>
+            <Link
+              href="/admin/marketing/instagram-connect"
+              className="text-xs text-muted-foreground hover:text-primary border border-border rounded-md px-3 py-1.5 flex items-center gap-1.5"
+            >
+              <Wifi className="h-3.5 w-3.5" /> Connection
+            </Link>
           </div>
         </div>
       </div>

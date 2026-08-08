@@ -179,6 +179,27 @@ export const DEFAULT_CONFIGS = [
     isSecret: true,
   },
   {
+    key: "FACEBOOK_LOGIN_CONFIG_ID",
+    label: "Facebook Login Config ID",
+    description: "Required for the OAuth connect button to work. Facebook app → Facebook Login for Business → Configurations → Configuration ID.",
+    category: "integration",
+    isSecret: false,
+  },
+  {
+    key: "INSTAGRAM_APP_ID",
+    label: "Instagram App ID (Instagram Login API)",
+    description: "Only needed for the alternate Instagram Login API flow (currently disabled — see useInstagramLogin() in lib/instagram.ts). Leave empty when using Facebook Login for Business.",
+    category: "integration",
+    isSecret: false,
+  },
+  {
+    key: "INSTAGRAM_APP_SECRET",
+    label: "Instagram App Secret (Instagram Login API)",
+    description: "Only needed for the alternate Instagram Login API flow (currently disabled — see useInstagramLogin() in lib/instagram.ts). Leave empty when using Facebook Login for Business.",
+    category: "integration",
+    isSecret: true,
+  },
+  {
     key: "INSTAGRAM_ACCESS_TOKEN",
     label: "Instagram Access Token",
     description: "Long-lived access token for Instagram Graph API. Generate at developers.facebook.com → your app → Instagram → Generate Token.",

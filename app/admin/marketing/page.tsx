@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Sparkles, Instagram, FileText, BookOpen, MessageSquare, Loader2, CheckCircle, XCircle, Zap, Megaphone } from 'lucide-react'
+import { Sparkles, Instagram, FileText, BookOpen, MessageSquare, Loader2, CheckCircle, XCircle, Zap, Megaphone, Link2 } from 'lucide-react'
 
 interface AIStatus {
   available: boolean
@@ -19,6 +19,15 @@ const MODULES = [
     href: '/admin/marketing/instagram',
     color: 'from-pink-500 to-purple-600',
     stats: 'Claude caption + Gemini image',
+  },
+  {
+    id: 'instagram-connect',
+    icon: Link2,
+    title: 'Instagram Connect',
+    subtitle: 'Manage Meta API connection & tokens',
+    href: '/admin/marketing/instagram-connect',
+    color: 'from-purple-500 to-pink-600',
+    stats: 'Facebook + Instagram OAuth',
   },
   {
     id: 'articles',

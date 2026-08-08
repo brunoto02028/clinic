@@ -5,7 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { callAI, callAIChat } from '@/lib/ai-provider';
-import { publishPhoto, publishCarousel, publishToFacebookPage } from '@/lib/instagram';
+import { publishPhoto, publishCarousel, publishStory, publishToFacebookPage } from '@/lib/instagram';
 import { resolveClinicId } from '@/lib/resolve-clinic-id';
 
 // ─── POST: publish or schedule an article to Instagram ───
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { action, articleId, caption, imageUrls, scheduledAt, publishToFacebook } = body;
+    const { action, articleId, caption, imageUrls, scheduledAt, publishToFacebook, postType } = body;
 
     // ── action: generate_caption ── (no Instagram credentials needed)
     if (action === 'generate_caption') {
@@ -123,7 +123,8 @@ Write ONLY the caption text, nothing else.`;
 
     // ── action: publish ──
     if (action === 'publish') {
-      if (!caption) return NextResponse.json({ error: 'Caption is required' }, { status: 400 });
+      const isStory = postType === 'STORY';
+      if (!isStory && !caption) return NextResponse.json({ error: 'Caption is required' }, { status: 400 });
       if (!imageUrls || imageUrls.length === 0) return NextResponse.json({ error: 'At least one image URL is required' }, { status: 400 });
 
       // Make image URLs absolute
@@ -131,16 +132,20 @@ Write ONLY the caption text, nothing else.`;
       const absoluteUrls = imageUrls.map((u: string) => u.startsWith('http') ? u : `${BASE}${u}`);
 
       let result;
-      if (absoluteUrls.length === 1) {
+      if (isStory) {
+        // Stories don't support captions on the Graph API — just the image.
+        result = await publishStory({ igAccountId, accessToken, imageUrl: absoluteUrls[0] });
+      } else if (absoluteUrls.length === 1) {
         result = await publishPhoto({ igAccountId, accessToken, imageUrl: absoluteUrls[0], caption });
       } else {
         result = await publishCarousel({ igAccountId, accessToken, imageUrls: absoluteUrls, caption });
       }
 
       // Cross-post to the connected Facebook Page too, if requested and available.
+      // (Facebook Stories aren't supported here — Page feed post only.)
       let facebookPostId: string | null = null;
       let facebookError: string | null = null;
-      if (publishToFacebook) {
+      if (publishToFacebook && !isStory) {
         try {
           const fbResult = await publishToFacebookPage({ clinicId, imageUrl: absoluteUrls[0], caption });
           if (fbResult) facebookPostId = fbResult.id;
@@ -158,8 +163,8 @@ Write ONLY the caption text, nothing else.`;
         data: {
           clinicId,
           accountId: igAccount.id,
-          caption,
-          postType: absoluteUrls.length > 1 ? 'CAROUSEL' : 'IMAGE',
+          caption: caption || '',
+          postType: isStory ? 'STORY' : absoluteUrls.length > 1 ? 'CAROUSEL' : 'IMAGE',
           mediaUrls: absoluteUrls,
           mediaPaths: [],
           status: 'PUBLISHED',

@@ -266,7 +266,6 @@ export async function PUT(request: NextRequest) {
       businessPriceRange: body.businessPriceRange || null,
       businessCurrency: body.businessCurrency || null,
 
-      marketingBusinessCardDefaultsJson: body.marketingBusinessCardDefaultsJson !== undefined ? (body.marketingBusinessCardDefaultsJson || null) : undefined,
       marketingFlyerDefaultsJson: body.marketingFlyerDefaultsJson !== undefined ? (body.marketingFlyerDefaultsJson || null) : undefined,
     };
     

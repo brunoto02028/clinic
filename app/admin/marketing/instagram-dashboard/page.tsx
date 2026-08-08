@@ -151,6 +151,11 @@ export default function InstagramDashboardPage() {
           </h1>
           <p className="text-sm text-muted-foreground">Feed, estatísticas e gestão da conta</p>
         </div>
+        <Link href="/admin/marketing/instagram-connect">
+          <Button variant="outline" size="sm">
+            <Wifi className="h-4 w-4 mr-1" /> Conexão
+          </Button>
+        </Link>
         <Button variant="outline" size="sm" onClick={fetchOverview} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
           Atualizar
