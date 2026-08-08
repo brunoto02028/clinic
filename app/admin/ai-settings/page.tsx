@@ -61,6 +61,8 @@ const CATEGORY_META: Record<string, { label: string; icon: any; color: string }>
 const HELP_LINKS: Record<string, string> = {
   GEMINI_API_KEY: "https://aistudio.google.com/apikey",
   OPENAI_API_KEY: "https://platform.openai.com/api-keys",
+  OPENROUTER_API_KEY: "https://openrouter.ai/keys",
+  ANTHROPIC_API_KEY: "https://console.anthropic.com/settings/keys",
   RESEND_API_KEY: "https://resend.com/api-keys",
   FACEBOOK_APP_ID: "https://developers.facebook.com/apps",
   FACEBOOK_APP_SECRET: "https://developers.facebook.com/apps",

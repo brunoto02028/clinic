@@ -64,6 +64,10 @@ async function getOpenAIKey(): Promise<string | null> {
   return getConfigValue("OPENAI_API_KEY");
 }
 
+async function getOpenRouterKey(): Promise<string | null> {
+  return getConfigValue("OPENROUTER_API_KEY");
+}
+
 async function getGeminiModel(): Promise<string> {
   return (await getConfigValue("GEMINI_MODEL")) || "gemini-2.5-flash";
 }
@@ -474,7 +478,7 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
   };
 
   // 0. OpenRouter / Claude Sonnet 5 — PRIMARY for all text when key is configured
-  if (process.env.OPENROUTER_API_KEY || opts?.model?.startsWith('claude')) {
+  if ((await getOpenRouterKey()) || opts?.model?.startsWith('claude')) {
     try {
       return await claudeGenerateWithFallback(
         [{ role: 'user', content: prompt }],
@@ -547,7 +551,7 @@ export async function analyzeImage(
   };
 
   // 0. OpenRouter vision — PRIMARY when key is configured
-  if (process.env.OPENROUTER_API_KEY) {
+  if (await getOpenRouterKey()) {
     try {
       return await claudeVision([{ url: imageUrl }], prompt, callOpts);
     } catch (err: any) {
@@ -594,7 +598,7 @@ export async function analyzeMultipleImages(
   };
 
   // 0. OpenRouter vision — PRIMARY when key is configured
-  if (process.env.OPENROUTER_API_KEY) {
+  if (await getOpenRouterKey()) {
     try {
       return await claudeVision(images, prompt, callOpts);
     } catch (err: any) {
@@ -657,7 +661,7 @@ export async function callAIChat(
   };
 
   // 0. OpenRouter / Claude Sonnet 5 — PRIMARY for all text when key is configured
-  if (process.env.OPENROUTER_API_KEY || opts?.model?.startsWith('claude')) {
+  if ((await getOpenRouterKey()) || opts?.model?.startsWith('claude')) {
     const claudeMessages = messages
       .filter(m => m.role !== 'system')
       .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
@@ -877,11 +881,12 @@ export async function getActiveProviderInfo(): Promise<{
   defaultProvider: string;
   fallbackChain: string[];
 }> {
+  const openRouterKey = await getOpenRouterKey();
   const groqKey = await getGroqKey();
   const minimaxKey = await getMinimaxKey();
   const geminiKey = await getGeminiKey();
   const openaiKey = await getOpenAIKey();
-  
+
   let provider = "none";
   if (minimaxKey) provider = "minimax";
   else if (groqKey) provider = "groq";
@@ -889,18 +894,18 @@ export async function getActiveProviderInfo(): Promise<{
   else if (openaiKey) provider = "openai";
 
   const chain: string[] = [];
-  if (process.env.OPENROUTER_API_KEY) chain.push("openrouter (claude-sonnet-5 → gemini-2.5-flash)");
+  if (openRouterKey) chain.push("openrouter (claude-sonnet-5 → gemini-2.5-flash)");
   if (minimaxKey) chain.push("minimax (MiniMax-M3)");
   if (groqKey) chain.push("groq");
   if (geminiKey) chain.push("gemini");
-  
+
   return {
     provider,
     hasGroq: !!groqKey,
     hasMinimax: !!minimaxKey,
     hasGemini: !!geminiKey,
     hasOpenAI: !!openaiKey,
-    defaultProvider: process.env.OPENROUTER_API_KEY ? "openrouter" : "minimax",
+    defaultProvider: openRouterKey ? "openrouter" : "minimax",
     fallbackChain: chain,
   };
 }

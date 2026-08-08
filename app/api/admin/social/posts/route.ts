@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       accountId,
       campaignId,
       scheduledAt,
-      status = 'DRAFT',
+      status,
       aiGenerated = false,
       aiPrompt,
       musicUrl,
@@ -84,6 +84,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Caption is required' }, { status: 400 });
     }
 
+    // Auto-resolve the clinic's connected Instagram account when the caller
+    // doesn't pass one — without this, posts saved without an explicit
+    // accountId (e.g. the Content Calendar generator) could never be found
+    // by the publish cron (which requires accountId to be set) or by the
+    // manual publish button (which requires post.account to exist).
+    let resolvedAccountId = accountId || null;
+    if (!resolvedAccountId) {
+      const account = await prisma.socialAccount.findFirst({
+        where: { clinicId, platform: 'INSTAGRAM', isActive: true },
+        select: { id: true },
+      });
+      resolvedAccountId = account?.id || null;
+    }
+
+    // A post with no media can never actually publish (Instagram requires an
+    // image/video). Only auto-promote to SCHEDULED when the caller didn't
+    // pin a status AND there's media to publish — otherwise force DRAFT so
+    // it never gets silently picked up (and silently failed) by the cron.
+    const hasMedia = mediaUrls.length > 0;
+    const resolvedStatus = status || (scheduledAt && hasMedia ? 'SCHEDULED' : 'DRAFT');
+
     const post = await prisma.socialPost.create({
       data: {
         clinicId,
@@ -92,11 +113,11 @@ export async function POST(req: NextRequest) {
         postType,
         mediaUrls,
         mediaPaths,
-        accountId: accountId || null,
+        accountId: resolvedAccountId,
         campaignId: campaignId || null,
         createdById: user.id,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        status: scheduledAt ? 'SCHEDULED' : status,
+        status: resolvedStatus,
         aiGenerated,
         aiPrompt: aiPrompt || null,
         musicUrl: musicUrl || null,

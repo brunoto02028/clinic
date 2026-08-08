@@ -83,7 +83,14 @@ export const DEFAULT_CONFIGS = [
   {
     key: "OPENROUTER_API_KEY",
     label: "OpenRouter API Key",
-    description: "Routes Claude calls through OpenRouter to access claude-sonnet-5 (and other latest models). When set, ALL Claude calls (AI Co-Worker, Study Assistant, Marketing) use Sonnet 5. Get your key at openrouter.ai",
+    description: "Primary AI gateway — routes ALL Claude calls (AI Co-Worker, Study Assistant, Marketing) through OpenRouter to claude-sonnet-5. Set this first; it takes priority over ANTHROPIC_API_KEY. Get your key at openrouter.ai",
+    category: "ai",
+    isSecret: true,
+  },
+  {
+    key: "ANTHROPIC_API_KEY",
+    label: "Anthropic API Key (direct, fallback)",
+    description: "Only used when OPENROUTER_API_KEY is not set. Direct Anthropic API access. Get your key at console.anthropic.com",
     category: "ai",
     isSecret: true,
   },

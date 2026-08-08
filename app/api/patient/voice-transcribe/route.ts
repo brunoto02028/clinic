@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from '@/lib/get-effective-user';
+import { getConfigValue } from '@/lib/system-config';
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,11 @@ async function transcribeWithGroqAndClaude(
 
   // Step 2: Claude via OpenRouter — raw transcript → structured JSON extraction
   const { claudeGenerateWithFallback } = await import("@/lib/claude");
-  if (!process.env.OPENROUTER_API_KEY && !process.env.ANTHROPIC_API_KEY) return rawTranscript;
+  const [hasOpenRouter, hasAnthropic] = await Promise.all([
+    getConfigValue('OPENROUTER_API_KEY'),
+    getConfigValue('ANTHROPIC_API_KEY'),
+  ]);
+  if (!hasOpenRouter && !hasAnthropic) return rawTranscript;
 
   try {
     const extracted = await claudeGenerateWithFallback(

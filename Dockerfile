@@ -73,6 +73,7 @@ COPY --from=builder /app/node_modules/extend-shallow ./node_modules/extend-shall
 COPY --from=builder /app/node_modules/is-extendable ./node_modules/is-extendable
 COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
 COPY --from=builder /app/scripts/seed-admin-user.js ./scripts/seed-admin-user.js
+COPY --from=builder /app/scripts/seed-clinic.js ./scripts/seed-clinic.js
 COPY --from=builder /app/scripts/seed-lead-magnet-guides.js ./scripts/seed-lead-magnet-guides.js
 COPY --from=builder /app/scripts/fix-shockwave-service-pages.js ./scripts/fix-shockwave-service-pages.js
 COPY --from=builder /app/scripts/seed-book-content.js ./scripts/seed-book-content.js

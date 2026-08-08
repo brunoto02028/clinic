@@ -2,18 +2,36 @@
 // Claude API client — Claude Sonnet 5 (via OpenRouter or direct Anthropic)
 // Priority: OpenRouter (claude-sonnet-5 slug) → Direct Anthropic (claude-sonnet-4-20250514 fallback)
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || ''
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || ''
+import { getConfigValue } from './system-config'
+
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 
-// Use OpenRouter if key is set (gives access to claude-sonnet-5 + other latest models)
-// Otherwise fall back to direct Anthropic API
-const USE_OPENROUTER = Boolean(OPENROUTER_API_KEY)
-const DEFAULT_MODEL = USE_OPENROUTER ? 'anthropic/claude-sonnet-5' : 'claude-sonnet-4-20250514'
-
 // When OpenRouter primary model fails, try this fallback within OpenRouter
 export const OPENROUTER_FALLBACK_MODEL = 'google/gemini-2.5-flash'
+
+// Resolves keys from the DB-backed SystemConfig store first (set via Admin →
+// AI Settings), falling back to .env — same pattern as lib/system-config.ts.
+// Read fresh on every call instead of once at module load, so saving a key
+// in the admin UI takes effect immediately without a redeploy.
+async function resolveClaudeConfig(): Promise<{
+  useOpenRouter: boolean
+  openRouterKey: string
+  anthropicKey: string
+  defaultModel: string
+}> {
+  const [openRouterKey, anthropicKey] = await Promise.all([
+    getConfigValue('OPENROUTER_API_KEY'),
+    getConfigValue('ANTHROPIC_API_KEY'),
+  ])
+  const useOpenRouter = Boolean(openRouterKey)
+  return {
+    useOpenRouter,
+    openRouterKey: openRouterKey || '',
+    anthropicKey: anthropicKey || '',
+    defaultModel: useOpenRouter ? 'anthropic/claude-sonnet-5' : 'claude-sonnet-4-20250514',
+  }
+}
 
 // AI_STRICT_MODE: when true, never fall back to direct Minimax/Groq/Gemini calls.
 // Only OpenRouter is used for text + vision. STT/image-gen fail hard if their
@@ -51,15 +69,16 @@ export async function claudeGenerate(
   messages: ClaudeMessage[],
   options: GenerateOptions = {}
 ): Promise<string> {
+  const { useOpenRouter, openRouterKey, anthropicKey, defaultModel } = await resolveClaudeConfig()
   const {
-    model = DEFAULT_MODEL,
+    model = defaultModel,
     temperature = 0.7,
     maxTokens = 4096,
     systemPrompt,
   } = options
 
   // ── OpenRouter path (OpenAI-compatible) ────────────────────────────────────
-  if (USE_OPENROUTER) {
+  if (useOpenRouter) {
     const openRouterMessages: any[] = []
     if (systemPrompt) openRouterMessages.push({ role: 'system', content: systemPrompt })
     for (const m of messages) openRouterMessages.push(m)
@@ -67,7 +86,7 @@ export async function claudeGenerate(
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://bpr.rehab',
         'X-Title': 'BPR Clinic AI',
@@ -85,8 +104,8 @@ export async function claudeGenerate(
   }
 
   // ── Direct Anthropic path ──────────────────────────────────────────────────
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error('ANTHROPIC_API_KEY not configured in .env')
+  if (!anthropicKey) {
+    throw new Error('No AI key configured — set OPENROUTER_API_KEY or ANTHROPIC_API_KEY in Admin → AI Settings')
   }
 
   const body: Record<string, unknown> = {
@@ -103,7 +122,7 @@ export async function claudeGenerate(
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
     headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
+      'x-api-key': anthropicKey,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
@@ -128,15 +147,16 @@ export async function claudeStream(
   onChunk: (text: string) => void,
   options: GenerateOptions = {}
 ): Promise<string> {
+  const { useOpenRouter, openRouterKey, anthropicKey, defaultModel } = await resolveClaudeConfig()
   const {
-    model = DEFAULT_MODEL,
+    model = defaultModel,
     temperature = 0.7,
     maxTokens = 4096,
     systemPrompt,
   } = options
 
   // ── OpenRouter streaming path ──────────────────────────────────────────────
-  if (USE_OPENROUTER) {
+  if (useOpenRouter) {
     const openRouterMessages: any[] = []
     if (systemPrompt) openRouterMessages.push({ role: 'system', content: systemPrompt })
     for (const m of messages) openRouterMessages.push(m)
@@ -144,7 +164,7 @@ export async function claudeStream(
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://bpr.rehab',
         'X-Title': 'BPR Clinic AI',
@@ -178,8 +198,8 @@ export async function claudeStream(
   }
 
   // ── Direct Anthropic streaming path ───────────────────────────────────────
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error('ANTHROPIC_API_KEY not configured in .env')
+  if (!anthropicKey) {
+    throw new Error('No AI key configured — set OPENROUTER_API_KEY or ANTHROPIC_API_KEY in Admin → AI Settings')
   }
 
   const body: Record<string, unknown> = {
@@ -197,7 +217,7 @@ export async function claudeStream(
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
     headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
+      'x-api-key': anthropicKey,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
@@ -246,44 +266,45 @@ export async function checkClaudeHealth(): Promise<{
   gateway: string
   error?: string
 }> {
-  const gateway = USE_OPENROUTER ? 'OpenRouter' : 'Anthropic Direct'
+  const { useOpenRouter, openRouterKey, anthropicKey, defaultModel } = await resolveClaudeConfig()
+  const gateway = useOpenRouter ? 'OpenRouter' : 'Anthropic Direct'
 
-  if (USE_OPENROUTER) {
+  if (useOpenRouter) {
     try {
       const response = await fetch(OPENROUTER_API_URL, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Authorization': `Bearer ${openRouterKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://bpr.rehab',
           'X-Title': 'BPR Clinic AI',
         },
-        body: JSON.stringify({ model: DEFAULT_MODEL, max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] }),
+        body: JSON.stringify({ model: defaultModel, max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] }),
       })
       if (!response.ok) {
         const err = await response.text()
-        return { available: false, model: DEFAULT_MODEL, gateway, error: `API error: ${err.substring(0, 100)}` }
+        return { available: false, model: defaultModel, gateway, error: `API error: ${err.substring(0, 100)}` }
       }
-      return { available: true, model: DEFAULT_MODEL, gateway }
+      return { available: true, model: defaultModel, gateway }
     } catch (err) {
-      return { available: false, model: DEFAULT_MODEL, gateway, error: err instanceof Error ? err.message : 'Unknown error' }
+      return { available: false, model: defaultModel, gateway, error: err instanceof Error ? err.message : 'Unknown error' }
     }
   }
 
-  if (!ANTHROPIC_API_KEY) {
-    return { available: false, model: DEFAULT_MODEL, gateway, error: 'ANTHROPIC_API_KEY not set in .env' }
+  if (!anthropicKey) {
+    return { available: false, model: defaultModel, gateway, error: 'No AI key configured — set OPENROUTER_API_KEY or ANTHROPIC_API_KEY in Admin → AI Settings' }
   }
 
   try {
     const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
-        'x-api-key': ANTHROPIC_API_KEY,
+        'x-api-key': anthropicKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
+        model: defaultModel,
         max_tokens: 10,
         messages: [{ role: 'user', content: 'ping' }],
       }),
@@ -291,12 +312,12 @@ export async function checkClaudeHealth(): Promise<{
 
     if (!response.ok) {
       const err = await response.text()
-      return { available: false, model: DEFAULT_MODEL, gateway, error: `API error: ${err.substring(0, 100)}` }
+      return { available: false, model: defaultModel, gateway, error: `API error: ${err.substring(0, 100)}` }
     }
 
-    return { available: true, model: DEFAULT_MODEL, gateway }
+    return { available: true, model: defaultModel, gateway }
   } catch (err) {
-    return { available: false, model: DEFAULT_MODEL, gateway, error: err instanceof Error ? err.message : 'Unknown error' }
+    return { available: false, model: defaultModel, gateway, error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }
 
@@ -309,7 +330,8 @@ export async function claudeGenerateWithFallback(
   messages: ClaudeMessage[],
   options: GenerateOptions = {}
 ): Promise<string> {
-  if (!USE_OPENROUTER) {
+  const { useOpenRouter } = await resolveClaudeConfig();
+  if (!useOpenRouter) {
     return claudeGenerate(messages, options);
   }
 
@@ -331,8 +353,9 @@ export async function claudeVision(
   prompt: string,
   options: GenerateOptions = {}
 ): Promise<string> {
-  if (!USE_OPENROUTER) {
-    throw new Error('claudeVision requires OPENROUTER_API_KEY to be configured');
+  const { useOpenRouter, openRouterKey, defaultModel } = await resolveClaudeConfig();
+  if (!useOpenRouter) {
+    throw new Error('claudeVision requires OPENROUTER_API_KEY to be configured (Admin → AI Settings or .env)');
   }
 
   const contentParts: any[] = [];

@@ -39,6 +39,13 @@ npx prisma@6.7.0 db push --skip-generate --accept-data-loss || echo "[start.sh] 
 echo "[start.sh] Checking for bootstrap admin user..."
 node /app/scripts/seed-admin-user.js || echo "[start.sh] admin bootstrap warning — check logs"
 
+# Emergency bootstrap: creates the single BPR Clinic row if the Clinic table
+# is completely empty — permanently a no-op after the first successful run.
+# See scripts/seed-clinic.js. Without this, every clinic-scoped feature
+# (Instagram/Facebook connect included) fails with "No clinic context".
+echo "[start.sh] Checking for bootstrap clinic..."
+node /app/scripts/seed-clinic.js || echo "[start.sh] clinic bootstrap warning — check logs"
+
 # Seed the lead-magnet PDF guides (idempotent — skips guides that already
 # exist by slug, see scripts/seed-lead-magnet-guides.js). P1.2/P3 of
 # BPR_Devin_Spec_Website_Improvements.md.

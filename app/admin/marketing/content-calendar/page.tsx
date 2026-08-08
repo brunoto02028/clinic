@@ -50,6 +50,7 @@ interface CalendarPost {
   service?: string;
   saved?: boolean;
   saving?: boolean;
+  error?: string;
 }
 
 export default function ContentCalendarPage() {
@@ -93,6 +94,9 @@ export default function ContentCalendarPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setPosts(data.posts || []);
+      if (data.partial) {
+        setError(`Gerados ${data.totalPosts} de ${data.requestedPosts} posts pedidos — ${data.failedBatches} lote(s) falharam mesmo após nova tentativa. Podes clicar "Regenerar" para tentar de novo.`);
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -100,46 +104,58 @@ export default function ContentCalendarPage() {
     }
   }
 
-  async function savePost(idx: number) {
-    const post = posts[idx];
-    setPosts(prev => prev.map((p, i) => i === idx ? { ...p, saving: true } : p));
-    try {
-      const scheduledAt = post.date && post.post_time
-        ? new Date(`${post.date}T${post.post_time}:00`).toISOString()
-        : null;
+  function updatePost(idx: number, patch: Partial<CalendarPost>) {
+    setPosts(prev => prev.map((p, i) => i === idx ? { ...p, ...patch, saved: false } : p));
+  }
 
-      await fetch("/api/admin/social/posts", {
+  async function savePost(idx: number): Promise<boolean> {
+    const post = posts[idx];
+    setPosts(prev => prev.map((p, i) => i === idx ? { ...p, saving: true, error: undefined } : p));
+
+    // No image is generated at this stage, so this can never be scheduled
+    // for auto-publish yet (Instagram requires media) — always save as a
+    // draft. The date/time are kept on the caption as a plan; open the post
+    // in Instagram Studio to attach an image and actually schedule/publish.
+    try {
+      const res = await fetch("/api/admin/social/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          caption: post.caption,
+          caption: `${post.caption}${post.date ? `\n\n[Plano: ${post.date} ${post.post_time || ""}]` : ""}`,
           hashtags: post.hashtags?.join(", ") || null,
           postType: post.content_type,
           mediaUrls: [],
           mediaPaths: [],
-          accountId: null,
-          scheduledAt,
-          status: scheduledAt ? "SCHEDULED" : "DRAFT",
+          status: "DRAFT",
           aiGenerated: true,
           aiPrompt: post.topic,
         }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Falhou ao guardar");
       setPosts(prev => prev.map((p, i) => i === idx ? { ...p, saved: true, saving: false } : p));
-    } catch {
-      setPosts(prev => prev.map((p, i) => i === idx ? { ...p, saving: false } : p));
+      return true;
+    } catch (e: any) {
+      setPosts(prev => prev.map((p, i) => i === idx ? { ...p, saving: false, error: e.message } : p));
+      return false;
     }
   }
 
   async function saveAllPosts() {
     setSavingAll(true);
     const unsaved = posts.map((_, i) => i).filter(i => !posts[i].saved);
+    let successCount = 0;
     for (const idx of unsaved) {
-      await savePost(idx);
+      const ok = await savePost(idx);
+      if (ok) successCount++;
       await new Promise(r => setTimeout(r, 200));
     }
     setSavingAll(false);
-    setSuccess(`${unsaved.length} posts guardados/agendados!`);
-    setTimeout(() => setSuccess(null), 4000);
+    const failedCount = unsaved.length - successCount;
+    setSuccess(failedCount > 0
+      ? `${successCount} guardados, ${failedCount} falharam — verifica os cards marcados em vermelho.`
+      : `${successCount} posts guardados como rascunho!`);
+    setTimeout(() => setSuccess(null), 5000);
   }
 
   function toggleTheme(t: string) {
@@ -304,7 +320,7 @@ export default function ContentCalendarPage() {
           {/* Posts List */}
           <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "space-y-3"}>
             {posts.map((post, idx) => (
-              <Card key={idx} className={`transition-colors ${post.saved ? "border-emerald-500/30 bg-emerald-500/5" : "border-border"}`}>
+              <Card key={idx} className={`transition-colors ${post.error ? "border-red-500/40 bg-red-500/5" : post.saved ? "border-emerald-500/30 bg-emerald-500/5" : "border-border"}`}>
                 <CardContent className="p-0">
                   {/* Post Header */}
                   <button
@@ -354,25 +370,42 @@ export default function ContentCalendarPage() {
 
                   {/* Expanded content */}
                   {expanded === idx && (
-                    <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+                    <div className="border-t border-border px-4 pb-4 pt-3 space-y-3" onClick={e => e.stopPropagation()}>
+                      {post.error && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg px-3 py-2 text-xs flex items-center gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {post.error}
+                        </div>
+                      )}
                       {/* Hook */}
                       <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
                         <p className="text-[10px] text-amber-400 font-semibold mb-0.5">🎣 HOOK</p>
                         <p className="text-xs font-semibold text-foreground">"{post.hook}"</p>
                       </div>
-                      {/* Caption */}
+                      {/* Date / time (editable) */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold block mb-1">Data planeada</label>
+                          <input type="date" value={post.date || ""} onChange={e => updatePost(idx, { date: e.target.value })}
+                            className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold block mb-1">Hora</label>
+                          <input type="time" value={post.post_time || ""} onChange={e => updatePost(idx, { post_time: e.target.value })}
+                            className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary" />
+                        </div>
+                      </div>
+                      {/* Caption (editable) */}
                       <div>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-1">Legenda</p>
-                        <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{post.caption}</p>
+                        <textarea value={post.caption} onChange={e => updatePost(idx, { caption: e.target.value })} rows={5}
+                          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-xs text-foreground outline-none focus:border-primary resize-none leading-relaxed" />
                       </div>
-                      {/* Hashtags */}
-                      <div className="flex flex-wrap gap-1">
-                        {post.hashtags?.slice(0, 10).map((h, i) => (
-                          <span key={i} className="text-[10px] bg-muted/40 text-muted-foreground rounded px-1.5 py-0.5">#{h.replace(/^#/, "")}</span>
-                        ))}
-                        {(post.hashtags?.length || 0) > 10 && (
-                          <span className="text-[10px] text-muted-foreground">+{(post.hashtags?.length || 0) - 10} mais</span>
-                        )}
+                      {/* Hashtags (editable) */}
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-1">Hashtags (separadas por vírgula)</p>
+                        <input type="text" value={post.hashtags?.join(", ") || ""}
+                          onChange={e => updatePost(idx, { hashtags: e.target.value.split(",").map(h => h.trim()).filter(Boolean) })}
+                          className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary" />
                       </div>
                       {/* Visual + BPR connection */}
                       <div className="grid grid-cols-2 gap-2 text-xs">
@@ -389,6 +422,7 @@ export default function ContentCalendarPage() {
                           </div>
                         )}
                       </div>
+                      <p className="text-[10px] text-muted-foreground">💡 Isto guarda como rascunho — sem imagem ainda não publica sozinho. Abre "Criar no Studio" para adicionar imagem e agendar/publicar de verdade.</p>
                       {/* Actions */}
                       <div className="flex gap-2">
                         <Link href={`/admin/marketing/instagram-studio?topic=${encodeURIComponent(post.topic)}`} className="flex-1">
@@ -400,7 +434,7 @@ export default function ContentCalendarPage() {
                           <Button size="sm" onClick={() => savePost(idx)} disabled={post.saving}
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
                             {post.saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-                            {post.post_time ? "Agendar" : "Guardar Draft"}
+                            Guardar rascunho
                           </Button>
                         )}
                       </div>

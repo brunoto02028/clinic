@@ -4,6 +4,7 @@
 // In AI_STRICT_MODE: only OpenRouter is used.
 
 import { NextRequest, NextResponse } from "next/server";
+import { getConfigValue } from "@/lib/system-config";
 
 export const dynamic = "force-dynamic";
 
@@ -17,17 +18,17 @@ function stripThink(text: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const useOpenRouter = process.env.AI_STRICT_MODE === 'true' || !!process.env.OPENROUTER_API_KEY;
+  const orKey = await getConfigValue("OPENROUTER_API_KEY");
+  const useOpenRouter = process.env.AI_STRICT_MODE === 'true' || !!orKey;
 
   if (useOpenRouter) {
-    const orKey = process.env.OPENROUTER_API_KEY;
     if (!orKey) {
       return NextResponse.json({ error: "OPENROUTER_API_KEY not configured" }, { status: 503 });
     }
     return handleOpenRouter(req, orKey);
   }
 
-  const apiKey = process.env.MINIMAX_API_KEY;
+  const apiKey = await getConfigValue("MINIMAX_API_KEY");
   if (!apiKey) {
     return NextResponse.json({ error: "MINIMAX_API_KEY not configured" }, { status: 503 });
   }
