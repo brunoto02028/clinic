@@ -40,15 +40,44 @@ export async function GET() {
     result.rawQueryError = e.message;
   }
 
+  let resolvedKey = '';
   try {
     const viaGetConfigValue = await getConfigValue('OPENROUTER_API_KEY');
+    resolvedKey = viaGetConfigValue || '';
     result.getConfigValueResult = viaGetConfigValue ? `truthy, length=${viaGetConfigValue.length}, suffix=${viaGetConfigValue.slice(-6)}` : `falsy: ${JSON.stringify(viaGetConfigValue)}`;
+    // Reveal hidden whitespace/newlines without exposing the full secret
+    result.firstCharsJson = JSON.stringify(viaGetConfigValue?.slice(0, 8));
+    result.lastCharsJson = JSON.stringify(viaGetConfigValue?.slice(-8));
+    result.trimmedLength = viaGetConfigValue?.trim().length;
   } catch (e: any) {
     result.getConfigValueError = e.message;
   }
 
   result.envHasKey = !!process.env.OPENROUTER_API_KEY;
   result.nextAuthSecretSet = !!process.env.NEXTAUTH_SECRET;
+
+  // Live test call to OpenRouter with the resolved key, mirroring checkClaudeHealth's request exactly
+  if (resolvedKey) {
+    try {
+      const headerValue = `Bearer ${resolvedKey}`;
+      result.authHeaderLength = headerValue.length;
+      result.authHeaderJson = JSON.stringify(headerValue.slice(0, 15) + '...' + headerValue.slice(-8));
+      const testRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': headerValue,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://bpr.rehab',
+          'X-Title': 'BPR Clinic AI',
+        },
+        body: JSON.stringify({ model: 'anthropic/claude-sonnet-5', max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] }),
+      });
+      result.liveTestStatus = testRes.status;
+      result.liveTestBody = (await testRes.text()).slice(0, 300);
+    } catch (e: any) {
+      result.liveTestError = e.message;
+    }
+  }
 
   return NextResponse.json(result);
 }
