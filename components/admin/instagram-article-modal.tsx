@@ -76,6 +76,80 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
       .catch(() => {});
   }, []);
 
+  // Uploads a data:/blob: URL (canvas output, local file picker) to the
+  // server and returns a real hosted URL. Without this, sending a
+  // composedImage (from "Add Text") or a locally-picked file straight to
+  // the publish endpoint sent Instagram an unfetchable data:/blob: URL —
+  // the post/story would either fail or silently fall back to no image.
+  async function uploadDataUrl(dataUrl: string, filename: string): Promise<string> {
+    const arr = dataUrl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    const blob = new Blob([u8arr], { type: mime });
+    const form = new FormData();
+    form.append("file", blob, filename);
+    form.append("category", "article");
+    const uploadRes = await fetch("/api/upload", { method: "POST", body: form });
+    const uploadData = await uploadRes.json();
+    const uploaded = uploadData.image?.imageUrl || uploadData.url;
+    if (!uploaded) throw new Error("Failed to upload image");
+    return uploaded.startsWith("http") ? uploaded : `${window.location.origin}${uploaded}`;
+  }
+
+  async function ensureHostedUrl(url: string, filenamePrefix: string): Promise<string> {
+    if (!url) return url;
+    if (url.startsWith("data:")) return uploadDataUrl(url, `${filenamePrefix}-${Date.now()}.jpg`);
+    if (url.startsWith("blob:")) {
+      const blobData = await fetch(url).then(r => r.blob());
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blobData);
+      });
+      return uploadDataUrl(dataUrl, `${filenamePrefix}-${Date.now()}.jpg`);
+    }
+    return url.startsWith("http") ? url : `${window.location.origin}${url}`;
+  }
+
+  // Converts any image (square feed crop, with or without text baked in) into
+  // a proper 9:16 Stories canvas — centred on a dark background — instead of
+  // letting Instagram's own auto-fit crop/stretch a square image.
+  async function createStoryCanvas(srcUrl: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const W = 1080, H = 1920;
+        const canvas = document.createElement("canvas");
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext("2d")!;
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, "#0f172a");
+        grad.addColorStop(1, "#1e1b4b");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+        const padding = 60;
+        const drawW = W - padding * 2;
+        const drawH = drawW;
+        const drawX = padding;
+        const drawY = (H - drawH) / 2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(drawX, drawY, drawW, drawH, 24);
+        ctx.clip();
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        ctx.restore();
+        resolve(canvas.toDataURL("image/jpeg", 0.92));
+      };
+      img.onerror = () => reject(new Error("Failed to load image for Story conversion"));
+      img.src = srcUrl;
+    });
+  }
+
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !currentImage) return;
@@ -180,7 +254,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
     if (!caption.trim()) { toast({ title: "Caption required", variant: "destructive" }); return; }
     setIgPublishing(true); setIgResult(null);
     try {
-      const imageToUse = composedImage || currentImage || "";
+      const imageToUse = await ensureHostedUrl(composedImage || currentImage || "", "ig-post");
       const res = await fetch("/api/admin/articles/instagram", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: igMode === "now" ? "publish" : "schedule", articleId: article.id, caption, imageUrls: imageToUse ? [imageToUse] : [], scheduledAt: igMode === "schedule" ? igScheduledAt : undefined, publishToFacebook: publishFacebook }),
@@ -195,18 +269,24 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   };
 
   const publishAsStory = async () => {
-    const imageToUse = composedImage || currentImage || "";
-    if (!imageToUse) { toast({ title: "Select an image first", variant: "destructive" }); return; }
+    const rawImage = composedImage || currentImage || "";
+    if (!rawImage) { toast({ title: "Select an image first", variant: "destructive" }); return; }
     setStoryPublishing(true); setStoryResult(null);
     try {
+      // Render onto a proper 9:16 canvas first (carries over any text/logo
+      // already baked into composedImage from "Add Text"), then upload —
+      // sending the raw square image let Instagram auto-crop it, and a
+      // data:/blob: URL was never fetchable by Instagram at all.
+      const storyCanvasDataUrl = await createStoryCanvas(rawImage);
+      const hostedStoryUrl = await uploadDataUrl(storyCanvasDataUrl, "ig-story");
       const res = await fetch("/api/admin/articles/instagram", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "publish", articleId: article.id, postType: "STORY", imageUrls: [imageToUse] }),
+        body: JSON.stringify({ action: "publish", articleId: article.id, postType: "STORY", imageUrls: [hostedStoryUrl] }),
       });
       const data = await res.json();
       if (data.success) { setStoryResult({ success: true }); toast({ title: "Published to Instagram Stories! 🎉" }); }
       else setStoryResult({ error: data.error || "Failed" });
-    } catch { setStoryResult({ error: "Failed to publish Story" }); }
+    } catch (e: any) { setStoryResult({ error: e?.message || "Failed to publish Story" }); }
     finally { setStoryPublishing(false); }
   };
 
@@ -520,6 +600,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
               </button>
               {storyResult?.success && <p className="text-xs text-green-700 flex items-center gap-1.5 justify-center"><CheckCircle className="h-3.5 w-3.5" /> Story published!</p>}
               {storyResult?.error && <p className="text-xs text-red-600 flex items-center gap-1.5 justify-center"><AlertCircle className="h-3.5 w-3.5" /> {storyResult.error}</p>}
+              <p className="text-[10px] text-muted-foreground text-center">💡 Want text on the Story? Use "Add Text" above first — it carries over automatically.</p>
 
               {/* Open in Studio button */}
               <button
