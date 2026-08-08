@@ -1,8 +1,8 @@
-// One-off, idempotent: sets the default BPR logo/favicon recovered after
-// the Aug 2026 VPS reinstall wiped SiteSettings. Run automatically on every
-// deploy via start.sh, same pattern as scripts/seed-book-content.js — only
-// fills in fields that are still empty, never overwrites an admin's choice
-// made later via /admin/settings.
+// One-off, idempotent: sets default branding recovered after the Aug 2026
+// VPS reinstall wiped SiteSettings (logo/favicon/homepage About photo). Run
+// automatically on every deploy via start.sh, same pattern as
+// scripts/seed-book-content.js — only fills in fields that are still empty,
+// never overwrites an admin's choice made later via /admin/settings.
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -10,6 +10,7 @@ const DEFAULTS = {
   logoUrl: '/logo.png', // full-colour "bpr" mark — light backgrounds
   darkLogoUrl: '/logo-dark.png', // cream/white version — dark backgrounds
   faviconUrl: '/favicon.png', // cropped icon-only mark (no wordmark), square
+  aboutImageUrl: '/images/team/bruno.png', // homepage "About Bruno" section photo
 };
 
 async function main() {
