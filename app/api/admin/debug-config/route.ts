@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getConfigValue, decryptValue } from '@/lib/system-config';
+import { checkClaudeHealth } from '@/lib/claude';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +78,14 @@ export async function GET() {
     } catch (e: any) {
       result.liveTestError = e.message;
     }
+  }
+
+  // Call the real checkClaudeHealth() right after, in the same request/process,
+  // to compare against the manual test above.
+  try {
+    result.checkClaudeHealthResult = await checkClaudeHealth();
+  } catch (e: any) {
+    result.checkClaudeHealthError = e.message;
   }
 
   return NextResponse.json(result);

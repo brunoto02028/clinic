@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
         accessToken: igAccount.accessToken,
         imageUrl,
         caption: fullCaption,
+        pageId: igAccount.pageId,
       });
       igPostId = result.id;
     } catch (e: any) {
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
           igAccountId: igAccount.accountId,
           accessToken: igAccount.accessToken,
           imageUrl: storyImageUrl || imageUrl,
+          pageId: igAccount.pageId,
         });
         storyId = storyResult.id
       } catch (e: any) {

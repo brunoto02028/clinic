@@ -134,11 +134,11 @@ Write ONLY the caption text, nothing else.`;
       let result;
       if (isStory) {
         // Stories don't support captions on the Graph API — just the image.
-        result = await publishStory({ igAccountId, accessToken, imageUrl: absoluteUrls[0] });
+        result = await publishStory({ igAccountId, accessToken, imageUrl: absoluteUrls[0], pageId: igAccount.pageId });
       } else if (absoluteUrls.length === 1) {
-        result = await publishPhoto({ igAccountId, accessToken, imageUrl: absoluteUrls[0], caption });
+        result = await publishPhoto({ igAccountId, accessToken, imageUrl: absoluteUrls[0], caption, pageId: igAccount.pageId });
       } else {
-        result = await publishCarousel({ igAccountId, accessToken, imageUrls: absoluteUrls, caption });
+        result = await publishCarousel({ igAccountId, accessToken, imageUrls: absoluteUrls, caption, pageId: igAccount.pageId });
       }
 
       // Cross-post to the connected Facebook Page too, if requested and available.

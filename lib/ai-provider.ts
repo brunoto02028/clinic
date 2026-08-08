@@ -337,6 +337,47 @@ async function callGeminiDirect(
   return text.trim();
 }
 
+// ─── OpenRouter image generation ───
+// Dedicated images endpoint (different from the chat-completions endpoint
+// used for text) — see https://openrouter.ai/docs/features/multimodal/image-generation.
+// Response images come back as base64 in data[].b64_json, not a hosted URL.
+async function generateImageOpenRouter(
+  prompt: string,
+  opts: { aspectRatio?: string; numImages?: number }
+): Promise<string[]> {
+  const apiKey = await getOpenRouterKey();
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured for image generation.");
+
+  const model = (await getConfigValue("OPENROUTER_IMAGE_MODEL")) || "google/gemini-2.5-flash-image";
+
+  const res = await fetch("https://openrouter.ai/api/v1/images", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://bpr.rehab",
+      "X-Title": "BPR Clinic AI",
+    },
+    body: JSON.stringify({
+      model,
+      prompt,
+      n: opts.numImages || 1,
+      aspect_ratio: opts.aspectRatio || "1:1",
+      output_format: "png",
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenRouter image generation error (${res.status}): ${err.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const images = data.data || [];
+  if (images.length === 0) throw new Error("OpenRouter returned no images");
+  return images.map((img: any) => `data:${img.media_type || "image/png"};base64,${img.b64_json}`);
+}
+
 // ─── Gemini image generation ───
 
 async function generateImageGemini(
@@ -524,14 +565,13 @@ export async function callAI(prompt: string, opts?: AICallOptions): Promise<stri
 export const callAIClinical = callAI;
 
 /**
- * Generate images using Gemini (gemini-2.5-flash-preview-image-generation by default).
+ * Generate images using the best available provider (DALL-E > OpenRouter >
+ * Gemini direct — see generateImageSmart). Used to just call generateImageGemini
+ * directly, which meant every caller here failed outright when only
+ * OPENROUTER_API_KEY was configured (no GEMINI_API_KEY).
  */
 export async function generateImage(prompt: string, opts?: AIImageOptions): Promise<string[]> {
-  return generateImageGemini(prompt, {
-    model: opts?.model,
-    aspectRatio: opts?.aspectRatio,
-    numImages: opts?.numImages,
-  });
+  return generateImageSmart(prompt, opts);
 }
 
 /**
@@ -943,12 +983,24 @@ export async function generateImageSmart(prompt: string, opts?: AIImageOptions):
     }
   }
   
-  // In strict mode, only DALL-E is approved for image gen (no Gemini/HuggingFace)
+  // In strict mode, only DALL-E is approved for image gen (no Gemini/HuggingFace/OpenRouter)
   if (AI_STRICT_MODE) {
     throw new Error('Image generation failed (strict mode): DALL-E 3 unavailable, no fallback to Gemini/HuggingFace');
   }
 
-  // Fallback to Gemini
+  // Try OpenRouter next — the one key some setups configure (routes to
+  // google/gemini-2.5-flash-image by default), works without a separate
+  // GEMINI_API_KEY.
+  const openRouterKey = await getOpenRouterKey();
+  if (openRouterKey) {
+    try {
+      return await generateImageOpenRouter(prompt, { aspectRatio: opts?.aspectRatio, numImages: opts?.numImages });
+    } catch (err: any) {
+      console.warn("[ai-provider] OpenRouter image generation failed, falling back to Gemini:", err.message);
+    }
+  }
+
+  // Fallback to direct Gemini API
   return generateImageGemini(prompt, {
     model: opts?.model,
     aspectRatio: opts?.aspectRatio,

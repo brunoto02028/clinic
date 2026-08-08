@@ -1,11 +1,16 @@
 import { Resend } from 'resend';
+import { getConfigValue } from '@/lib/system-config';
 
 const FROM_ADDRESS = 'BPR Physical Rehabilitation <noreply@bpr.rehab>';
 const REPLY_TO     = 'admin@bpr.rehab';
 
-function getResend(): Resend {
-    const key = process.env.RESEND_API_KEY;
-    if (!key) throw new Error('[EMAIL] RESEND_API_KEY not set in environment variables.');
+async function getResend(): Promise<Resend> {
+    // DB-backed (Admin -> AI Settings) first, falls back to .env — same
+    // pattern as everywhere else, see lib/system-config.ts. This used to
+    // read process.env.RESEND_API_KEY directly, so saving/rotating the key
+    // via the admin UI silently had no effect.
+    const key = await getConfigValue('RESEND_API_KEY');
+    if (!key) throw new Error('[EMAIL] RESEND_API_KEY not configured — set it in Admin → AI Settings.');
     return new Resend(key);
 }
 
@@ -27,7 +32,7 @@ export async function sendEmail({
     attachments?: { filename: string; content: Buffer }[];
 }) {
     try {
-        const resend = getResend();
+        const resend = await getResend();
         const data = await resend.emails.send({
             from:     from    || FROM_ADDRESS,
             replyTo:  replyTo || REPLY_TO,

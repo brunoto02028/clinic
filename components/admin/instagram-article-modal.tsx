@@ -64,6 +64,17 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   const [reelResult, setReelResult] = useState<{ success?: boolean; error?: string; permalink?: string } | null>(null);
   const [storyPublishing, setStoryPublishing] = useState(false);
   const [storyResult, setStoryResult] = useState<{ success?: boolean; error?: string } | null>(null);
+  const [igUsername, setIgUsername] = useState<string>("your_instagram");
+
+  useEffect(() => {
+    fetch("/api/admin/social/accounts")
+      .then(res => res.json())
+      .then(data => {
+        const ig = (data.accounts || []).find((a: any) => a.platform === "INSTAGRAM");
+        if (ig?.accountName) setIgUsername(ig.accountName);
+      })
+      .catch(() => {});
+  }, []);
 
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -320,7 +331,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#f09433] to-[#bc1888] flex items-center justify-center">
                     <Instagram className="h-4 w-4 text-white" />
                   </div>
-                  <span className="text-sm font-semibold text-white">brunophysicalrehab</span>
+                  <span className="text-sm font-semibold text-white">{igUsername}</span>
                 </div>
                 {previewImage ? (
                   <img src={previewImage} alt="" className="w-full aspect-square object-cover" />

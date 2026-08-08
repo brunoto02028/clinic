@@ -110,8 +110,15 @@ export const DEFAULT_CONFIGS = [
   },
   {
     key: "AI_IMAGE_MODEL",
-    label: "AI Image Generation Model",
-    description: "Gemini model for image generation: gemini-2.5-flash-preview-image-generation (default), gemini-3.1-flash-image-preview, gemini-3-pro-image-preview",
+    label: "AI Image Generation Model (direct Gemini)",
+    description: "Gemini model for image generation via the direct Google API: gemini-2.5-flash-preview-image-generation (default), gemini-3.1-flash-image-preview, gemini-3-pro-image-preview. Only used when GEMINI_API_KEY is set.",
+    category: "ai",
+    isSecret: false,
+  },
+  {
+    key: "OPENROUTER_IMAGE_MODEL",
+    label: "AI Image Generation Model (via OpenRouter)",
+    description: "Image model routed through OpenRouter: google/gemini-2.5-flash-image (default). Used automatically when only OPENROUTER_API_KEY is set (no separate GEMINI_API_KEY needed).",
     category: "ai",
     isSecret: false,
   },

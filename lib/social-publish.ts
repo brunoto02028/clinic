@@ -43,6 +43,7 @@ export async function publishSocialPost(postId: string): Promise<{
         accessToken: post.account.accessToken,
         videoUrl: absolute(videoUrl),
         caption: fullCaption,
+        pageId: post.account.pageId,
       });
     } else if (post.postType === 'STORY') {
       const imageUrl = post.mediaUrls[0];
@@ -51,6 +52,7 @@ export async function publishSocialPost(postId: string): Promise<{
         igAccountId: post.account.accountId,
         accessToken: post.account.accessToken,
         imageUrl: absolute(imageUrl),
+        pageId: post.account.pageId,
       });
     } else if (post.postType === 'CAROUSEL' && post.mediaUrls.length > 1) {
       result = await publishCarousel({
@@ -58,6 +60,7 @@ export async function publishSocialPost(postId: string): Promise<{
         accessToken: post.account.accessToken,
         imageUrls: post.mediaUrls.map(absolute),
         caption: fullCaption,
+        pageId: post.account.pageId,
       });
     } else {
       const imageUrl = post.mediaUrls[0];
@@ -67,6 +70,7 @@ export async function publishSocialPost(postId: string): Promise<{
         accessToken: post.account.accessToken,
         imageUrl: absolute(imageUrl),
         caption: fullCaption,
+        pageId: post.account.pageId,
       });
     }
 

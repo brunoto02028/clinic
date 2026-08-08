@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       accessToken: igAccount.accessToken,
       videoUrl,
       caption,
+      pageId: igAccount.pageId,
     });
 
     await prisma.socialPost.create({

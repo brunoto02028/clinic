@@ -5,9 +5,23 @@
 const GRAPH_API_VERSION = 'v21.0';
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 const IG_GRAPH_API_BASE = `https://graph.instagram.com`;
+const IG_GRAPH_API_BASE_V = `${IG_GRAPH_API_BASE}/${GRAPH_API_VERSION}`;
 import { prisma } from './db';
 import { SocialPlatform } from '@prisma/client';
 import { getConfigValue } from './system-config';
+
+// Accounts connected via the OAuth "Conectar Instagram" button (Facebook
+// Login for Business) always get a real Facebook pageId and a Facebook-
+// namespaced token — those only work against graph.facebook.com. Accounts
+// connected via the "Conexão Rápida via Token" manual-paste box (Instagram
+// Login API, tokens usually prefixed IGAA/IGQV) have no pageId and their
+// tokens only work against graph.instagram.com. Sending either token type
+// to the wrong host fails with "Invalid OAuth access token — Cannot parse
+// access token" (error code 190) — this mismatch was silently breaking
+// Stories/Reels/refresh for manually-connected accounts.
+function apiBaseFor(pageId?: string | null): string {
+  return pageId ? GRAPH_API_BASE : IG_GRAPH_API_BASE_V;
+}
 
 // ─── Types ───
 
@@ -295,12 +309,14 @@ export async function publishPhoto(params: {
   accessToken: string;
   imageUrl: string;
   caption: string;
+  pageId?: string | null;
 }): Promise<PublishResult> {
-  const { igAccountId, accessToken, imageUrl, caption } = params;
+  const { igAccountId, accessToken, imageUrl, caption, pageId } = params;
+  const apiBase = apiBaseFor(pageId);
 
   // Step 1: Create media container
   const containerRes = await fetch(
-    `${GRAPH_API_BASE}/${igAccountId}/media`,
+    `${apiBase}/${igAccountId}/media`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -321,11 +337,11 @@ export async function publishPhoto(params: {
   const containerId = container.id;
 
   // Step 2: Wait for container to be ready (poll status)
-  await waitForMediaReady(containerId, accessToken);
+  await waitForMediaReady(containerId, accessToken, apiBase);
 
   // Step 3: Publish the container
   const publishRes = await fetch(
-    `${GRAPH_API_BASE}/${igAccountId}/media_publish`,
+    `${apiBase}/${igAccountId}/media_publish`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -347,7 +363,7 @@ export async function publishPhoto(params: {
   let permalink: string | undefined;
   try {
     const mediaRes = await fetch(
-      `${GRAPH_API_BASE}/${published.id}?fields=permalink&access_token=${accessToken}`
+      `${apiBase}/${published.id}?fields=permalink&access_token=${accessToken}`
     );
     if (mediaRes.ok) {
       const mediaData = await mediaRes.json();
@@ -363,14 +379,16 @@ export async function publishCarousel(params: {
   accessToken: string;
   imageUrls: string[];
   caption: string;
+  pageId?: string | null;
 }): Promise<PublishResult> {
-  const { igAccountId, accessToken, imageUrls, caption } = params;
+  const { igAccountId, accessToken, imageUrls, caption, pageId } = params;
+  const apiBase = apiBaseFor(pageId);
 
   // Step 1: Create individual media containers
   const childIds: string[] = [];
   for (const url of imageUrls) {
     const res = await fetch(
-      `${GRAPH_API_BASE}/${igAccountId}/media`,
+      `${apiBase}/${igAccountId}/media`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -388,12 +406,12 @@ export async function publishCarousel(params: {
 
   // Wait for all children to be ready
   for (const id of childIds) {
-    await waitForMediaReady(id, accessToken);
+    await waitForMediaReady(id, accessToken, apiBase);
   }
 
   // Step 2: Create carousel container
   const containerRes = await fetch(
-    `${GRAPH_API_BASE}/${igAccountId}/media`,
+    `${apiBase}/${igAccountId}/media`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -409,11 +427,11 @@ export async function publishCarousel(params: {
   if (!containerRes.ok) throw new Error('Failed to create carousel container');
   const container = await containerRes.json();
 
-  await waitForMediaReady(container.id, accessToken);
+  await waitForMediaReady(container.id, accessToken, apiBase);
 
   // Step 3: Publish
   const publishRes = await fetch(
-    `${GRAPH_API_BASE}/${igAccountId}/media_publish`,
+    `${apiBase}/${igAccountId}/media_publish`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -438,8 +456,10 @@ export async function publishReel(params: {
   caption: string;
   coverUrl?: string;
   shareToFeed?: boolean;
+  pageId?: string | null;
 }): Promise<PublishResult> {
-  const { igAccountId, accessToken, videoUrl, caption, coverUrl, shareToFeed = true } = params;
+  const { igAccountId, accessToken, videoUrl, caption, coverUrl, shareToFeed = true, pageId } = params;
+  const apiBase = apiBaseFor(pageId);
 
   // Step 1: Create reel container
   const containerBody: any = {
@@ -452,7 +472,7 @@ export async function publishReel(params: {
   if (coverUrl) containerBody.cover_url = coverUrl;
 
   const containerRes = await fetch(
-    `${GRAPH_API_BASE}/${igAccountId}/media`,
+    `${apiBase}/${igAccountId}/media`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -468,11 +488,11 @@ export async function publishReel(params: {
   const container = await containerRes.json();
 
   // Step 2: Wait for video processing (may take longer than photos)
-  await waitForMediaReady(container.id, accessToken, 60, 3000);
+  await waitForMediaReady(container.id, accessToken, apiBase, 60, 3000);
 
   // Step 3: Publish
   const publishRes = await fetch(
-    `${GRAPH_API_BASE}/${igAccountId}/media_publish`,
+    `${apiBase}/${igAccountId}/media_publish`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -493,7 +513,7 @@ export async function publishReel(params: {
   let permalink: string | undefined;
   try {
     const mediaRes = await fetch(
-      `${GRAPH_API_BASE}/${published.id}?fields=permalink&access_token=${accessToken}`
+      `${apiBase}/${published.id}?fields=permalink&access_token=${accessToken}`
     );
     if (mediaRes.ok) {
       const mediaData = await mediaRes.json();
@@ -510,12 +530,14 @@ export async function publishStory(params: {
   igAccountId: string;
   accessToken: string;
   imageUrl: string;
+  pageId?: string | null;
 }): Promise<PublishResult> {
-  const { igAccountId, accessToken, imageUrl } = params;
+  const { igAccountId, accessToken, imageUrl, pageId } = params;
+  const apiBase = apiBaseFor(pageId);
 
   // Step 1: Create Stories media container
   const containerRes = await fetch(
-    `${GRAPH_API_BASE}/${igAccountId}/media`,
+    `${apiBase}/${igAccountId}/media`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -535,11 +557,11 @@ export async function publishStory(params: {
   const container = await containerRes.json();
 
   // Step 2: Wait for ready
-  await waitForMediaReady(container.id, accessToken);
+  await waitForMediaReady(container.id, accessToken, apiBase);
 
   // Step 3: Publish
   const publishRes = await fetch(
-    `${GRAPH_API_BASE}/${igAccountId}/media_publish`,
+    `${apiBase}/${igAccountId}/media_publish`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -563,10 +585,11 @@ export async function publishStory(params: {
 
 export async function getMediaInsights(
   mediaId: string,
-  accessToken: string
+  accessToken: string,
+  pageId?: string | null
 ): Promise<InstagramMediaInsights> {
   const res = await fetch(
-    `${GRAPH_API_BASE}/${mediaId}/insights?metric=likes,comments,shares,reach,impressions&access_token=${accessToken}`
+    `${apiBaseFor(pageId)}/${mediaId}/insights?metric=likes,comments,shares,reach,impressions&access_token=${accessToken}`
   );
 
   const defaults: InstagramMediaInsights = {
@@ -600,11 +623,28 @@ export async function refreshInstagramToken(account: {
   id: string;
   accessToken: string;
   accountName: string;
+  pageId?: string | null;
 }): Promise<{ accountName: string; success: boolean; error?: string; expiresAt?: string; daysLeft?: number }> {
   try {
-    const res = await fetch(
-      `${IG_GRAPH_API_BASE}/refresh_access_token?grant_type=ig_refresh_token&access_token=${account.accessToken}`
-    );
+    // Accounts connected via OAuth (Facebook Login for Business, has a real
+    // pageId) hold a Facebook-namespaced token — those refresh via the same
+    // fb_exchange_token grant used in getLongLivedToken, not ig_refresh_token
+    // (which only works for Instagram Login API / manual-token accounts and
+    // fails with "cannot parse access token" on a Facebook-namespaced one).
+    let res: Response;
+    if (account.pageId) {
+      const [appId, appSecret] = await Promise.all([
+        getConfigValue('FACEBOOK_APP_ID'),
+        getConfigValue('FACEBOOK_APP_SECRET'),
+      ]);
+      res = await fetch(
+        `${GRAPH_API_BASE}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${account.accessToken}`
+      );
+    } else {
+      res = await fetch(
+        `${IG_GRAPH_API_BASE}/refresh_access_token?grant_type=ig_refresh_token&access_token=${account.accessToken}`
+      );
+    }
 
     if (!res.ok) {
       const err = await res.text();
@@ -638,12 +678,13 @@ export async function refreshInstagramToken(account: {
 async function waitForMediaReady(
   containerId: string,
   accessToken: string,
+  apiBase: string = GRAPH_API_BASE,
   maxAttempts = 20,
   delayMs = 2000
 ): Promise<void> {
   for (let i = 0; i < maxAttempts; i++) {
     const res = await fetch(
-      `${GRAPH_API_BASE}/${containerId}?fields=status_code&access_token=${accessToken}`
+      `${apiBase}/${containerId}?fields=status_code&access_token=${accessToken}`
     );
     if (res.ok) {
       const data = await res.json();
