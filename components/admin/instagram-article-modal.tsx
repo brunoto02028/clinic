@@ -152,7 +152,11 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
     try {
       const res = await fetch("/api/admin/settings/generate-image", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: `Professional physiotherapy clinic Instagram post for: "${article.title}". Clean, modern, medical setting.`, aspectRatio: "1:1", section: "instagram-article" }),
+        body: JSON.stringify({
+          prompt: `Professional physiotherapy clinic Instagram post about "${article.title}". Context: ${article.excerpt || "physical rehabilitation and recovery"}. Photorealistic, clean, modern medical/wellness setting relevant to this specific topic, no text overlay.`,
+          aspectRatio: "1:1",
+          section: "instagram-article",
+        }),
       });
       const data = await res.json();
       if (data.imageUrl) { setCurrentImage(data.imageUrl); toast({ title: "AI image generated!" }); }
