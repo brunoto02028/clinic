@@ -46,24 +46,27 @@ if (-not $SkipLocal) {
 }
 
 # 2. PRODUCTION DATABASE
+# Reads the connection string from $env:PROD_DATABASE_URL (set this in your
+# shell profile or pass -ProdDatabaseUrl — it is NOT the app's local .env,
+# to avoid ever needing this script to read that file). Previously this
+# called the Render API for a Postgres instance that's no longer in use
+# after migrating to Coolify/VPS — that's why prior backups here silently
+# never actually captured the real production database. See BACKUP_GUIDE.md.
 if (-not $SkipProd) {
-  Write-Step "Production database (Render - bpr_clinic)"
+  Write-Step "Production database (Coolify VPS)"
   $outFile   = Join-Path $BackupDir "prod-db.sql"
   $tmpScript = Join-Path $env:TEMP "bpr_pg_dump.sh"
   try {
-    if (-not (Test-Path $RenderYaml)) { throw "Render CLI not configured ($RenderYaml not found)" }
-
-    $apiKey   = (Get-Content $RenderYaml | Select-String "^\s+key:").Line.Split(":")[1].Trim()
-    $connInfo = Invoke-RestMethod "https://api.render.com/v1/postgres/dpg-d8mgpurbc2fs73dvc160-a/connection-info" `
-      -Headers @{ Authorization = "Bearer $apiKey" }
-    $pgPass = $connInfo.password
-    $pgHost = "dpg-d8mgpurbc2fs73dvc160-a.frankfurt-postgres.render.com"
+    $prodUrl = if ($ProdDatabaseUrl) { $ProdDatabaseUrl } else { $env:PROD_DATABASE_URL }
+    if (-not $prodUrl) {
+      throw "No production DATABASE_URL configured. Set `$env:PROD_DATABASE_URL (e.g. in your PowerShell profile) or pass -ProdDatabaseUrl 'postgresql://user:pass@host:5432/dbname'."
+    }
 
     $running = docker inspect $DockerLocal --format "{{.State.Running}}" 2>$null
     if ($running -ne "true") { throw "Docker container '$DockerLocal' must be running for pg_dump" }
 
     # Write shell script to temp file (avoids PowerShell quoting issues with env vars)
-    $shScript = "#!/bin/sh`nPGPASSWORD='$pgPass' pg_dump -h $pgHost -p 5432 -U bpr_clinic --no-owner --no-acl -f /tmp/prod_backup.sql bpr_clinic 2>/tmp/pg_dump_err.log`necho exit:`$?"
+    $shScript = "#!/bin/sh`npg_dump '$prodUrl' --no-owner --no-acl -f /tmp/prod_backup.sql 2>/tmp/pg_dump_err.log`necho exit:`$?"
     [System.IO.File]::WriteAllText($tmpScript, $shScript)
 
     docker cp $tmpScript "${DockerLocal}:/tmp/bpr_pg_dump.sh" 2>&1 | Out-Null

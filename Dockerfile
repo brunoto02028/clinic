@@ -62,11 +62,22 @@ COPY --from=builder /app/node_modules/jspdf ./node_modules/jspdf
 COPY --from=builder /app/node_modules/fflate ./node_modules/fflate
 COPY --from=builder /app/node_modules/fast-png ./node_modules/fast-png
 COPY --from=builder /app/node_modules/@babel/runtime ./node_modules/@babel/runtime
+# gray-matter (+ its deps not nested inside its own node_modules) — used by
+# scripts/seed-recovered-articles.js to parse article frontmatter. Same
+# "not traced because no app/ code imports it" situation as jspdf below.
+COPY --from=builder /app/node_modules/gray-matter ./node_modules/gray-matter
+COPY --from=builder /app/node_modules/kind-of ./node_modules/kind-of
+COPY --from=builder /app/node_modules/section-matter ./node_modules/section-matter
+COPY --from=builder /app/node_modules/strip-bom-string ./node_modules/strip-bom-string
+COPY --from=builder /app/node_modules/extend-shallow ./node_modules/extend-shallow
+COPY --from=builder /app/node_modules/is-extendable ./node_modules/is-extendable
 COPY --from=builder /app/scripts/seed-lead-magnet-guides.js ./scripts/seed-lead-magnet-guides.js
 COPY --from=builder /app/scripts/fix-shockwave-service-pages.js ./scripts/fix-shockwave-service-pages.js
 COPY --from=builder /app/scripts/seed-book-content.js ./scripts/seed-book-content.js
 COPY --from=builder /app/scripts/update-chapter-one-content.js ./scripts/update-chapter-one-content.js
+COPY --from=builder /app/scripts/seed-recovered-articles.js ./scripts/seed-recovered-articles.js
 COPY --from=builder /app/book ./book
+COPY --from=builder /app/recovered-content ./recovered-content
 
 COPY start.sh /start.sh
 RUN chmod +x /start.sh

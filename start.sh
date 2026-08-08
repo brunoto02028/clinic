@@ -50,6 +50,14 @@ node /app/scripts/fix-shockwave-service-pages.js || echo "[start.sh] shockwave c
 echo "[start.sh] Seeding Beyond Pain book content..."
 node /app/scripts/seed-book-content.js || echo "[start.sh] book content seed warning — check logs"
 
+
+# Re-import article content recovered after the Aug 2026 VPS reinstall wiped
+# the database — idempotent, skips slugs that already exist, no-ops until a
+# SUPERADMIN/ADMIN user exists to attribute authorship to (see
+# scripts/seed-recovered-articles.js). Imports as drafts for manual review.
+echo "[start.sh] Seeding recovered article content..."
+node /app/scripts/seed-recovered-articles.js || echo "[start.sh] recovered-articles seed warning — check logs"
+
 echo "[start.sh] Startup maintenance tasks done — server already serving traffic."
 
 # Keep the container alive as long as the Next.js server process is running,
