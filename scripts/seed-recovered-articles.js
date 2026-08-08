@@ -14,6 +14,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const ARTICLES_DIR = path.join(__dirname, '..', 'recovered-content', 'articles');
+const PROTOCOLS_DIR = path.join(__dirname, '..', 'recovered-content', 'protocols');
 
 // slug -> tags. Matches condition names used elsewhere (see
 // lib/book-cta-config.ts BOOK_CTA_TAGS, app/conditions pages).
@@ -94,9 +95,10 @@ function markdownToHtml(md) {
 
 function slugify(str) {
   return str.toLowerCase().trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+    .replace(/[_\s]+/g, '-') // underscores and whitespace -> hyphen
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 function parseArticle(filePath) {
@@ -127,6 +129,32 @@ function parseArticle(filePath) {
   return { title, slug, excerpt, contentHtml, tags: TAG_MAP[slug] || [], imageUrl: hasImage ? `/images/articles/${imageFile}` : null };
 }
 
+// Treatment protocols (recovered-content/protocols/protocol_*.md) use a
+// different frontmatter shape — clinical reference docs (ICD-10, red flags,
+// contraindications, special tests) rather than patient-education articles.
+// Imported as drafts too, at Bruno's request — review the tone/wording
+// before publishing, this content reads more clinical than the rest.
+function titleCase(str) {
+  return str.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+function parseProtocol(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const { data, content } = matter(raw);
+  const filename = path.basename(filePath, '.md');
+
+  const title = data.name || data.clinical_name || titleCase(filename.replace(/^protocol_\d+_/, ''));
+  const slug = slugify(filename.replace(/^protocol_\d+_/, ''));
+
+  const summaryMatch = content.match(/^## Summary\s*\n+([\s\S]+?)(?=\n##\s|\n$)/m);
+  const excerpt = (summaryMatch ? summaryMatch[1].trim().split('\n')[0] : data.clinical_name || title).slice(0, 300);
+
+  const contentHtml = markdownToHtml(content);
+  const tags = Array.isArray(data.tags) ? data.tags.map(titleCase) : [];
+
+  return { title, slug, excerpt, contentHtml, tags, imageUrl: null };
+}
+
 async function main() {
   const author = await prisma.user.findFirst({
     where: { role: { in: ['SUPERADMIN', 'ADMIN'] } },
@@ -137,10 +165,18 @@ async function main() {
     return;
   }
 
-  const files = fs.readdirSync(ARTICLES_DIR).filter((f) => f.endsWith('.md'));
+  const articleFiles = fs.readdirSync(ARTICLES_DIR).filter((f) => f.endsWith('.md'));
+  const protocolFiles = fs.existsSync(PROTOCOLS_DIR)
+    ? fs.readdirSync(PROTOCOLS_DIR).filter((f) => f.startsWith('protocol_') && f.endsWith('.md'))
+    : [];
+
+  const parsed = [
+    ...articleFiles.map((f) => parseArticle(path.join(ARTICLES_DIR, f))),
+    ...protocolFiles.map((f) => parseProtocol(path.join(PROTOCOLS_DIR, f))),
+  ];
+
   let created = 0;
-  for (const file of files) {
-    const { title, slug, excerpt, contentHtml, tags, imageUrl } = parseArticle(path.join(ARTICLES_DIR, file));
+  for (const { title, slug, excerpt, contentHtml, tags, imageUrl } of parsed) {
     const existing = await prisma.article.findUnique({ where: { slug } });
     if (existing) continue; // never overwrite — admin may have edited it
 
