@@ -1,5 +1,9 @@
 node_modules
 .next
+
+# Raw disaster-recovery source dump (has its own nested .git + large video
+# files) — the curated, git-safe subset lives in recovered-content/ instead.
+/reconstruir
 tsconfig.tsbuildinfo
 .env
 .env.*
