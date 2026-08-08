@@ -32,6 +32,13 @@ trap 'echo "[start.sh] Received stop signal, forwarding to server..."; kill -TER
 echo "[start.sh] Syncing database schema..."
 npx prisma@6.7.0 db push --skip-generate --accept-data-loss || echo "[start.sh] DB sync warning — check logs"
 
+# Emergency bootstrap: creates Bruno's SUPERADMIN account if the User table
+# is completely empty — permanently a no-op after the first successful run.
+# See scripts/seed-admin-user.js for the full story (Aug 2026 VPS reinstall
+# wiped auth with no other way back in).
+echo "[start.sh] Checking for bootstrap admin user..."
+node /app/scripts/seed-admin-user.js || echo "[start.sh] admin bootstrap warning — check logs"
+
 # Seed the lead-magnet PDF guides (idempotent — skips guides that already
 # exist by slug, see scripts/seed-lead-magnet-guides.js). P1.2/P3 of
 # BPR_Devin_Spec_Website_Improvements.md.
