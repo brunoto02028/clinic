@@ -3,8 +3,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { cookies } from "next/headers";
 import { ArrowRight, BookOpen, Sparkles, HeartHandshake, HeartPulse, Heart, Flame, ShieldCheck } from "lucide-react";
-import { getBookConfig, getBookReaderFromToken } from "@/lib/book";
+import { getBookConfig, getBookReaderFromToken, resolveReferrerContact } from "@/lib/book";
 import { BookCaptureForm } from "@/components/book-capture-form";
+import { BookReferForm } from "@/components/book-refer-form";
 import { Book3DCover } from "@/components/book-3d-cover";
 import { BookRoadmap } from "@/components/book-roadmap";
 import { MedicalDisclaimer } from "@/components/medical-disclaimer";
@@ -27,10 +28,25 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function BeyondPainPage() {
+export default async function BeyondPainPage({
+  searchParams,
+}: {
+  searchParams: { refFrom?: string; ref?: string };
+}) {
   const config = await getBookConfig();
   const cookieStore = cookies();
   const reader = await getBookReaderFromToken(cookieStore.get("book_access")?.value);
+
+  // refFrom = a known EmailContact referring a friend (arrived via a link in
+  // a marketing email) — pre-identifies them in the refer form below.
+  // ref = a friend who was referred (arrived via the invite email) — passed
+  // through to BookCaptureForm so a successful signup gets attributed.
+  const refFrom = searchParams?.refFrom;
+  const referralId = searchParams?.ref;
+  const referrerContact = await resolveReferrerContact(refFrom);
+  // Only forward the id once it's actually confirmed to resolve to a real
+  // contact — never hand an unverified URL param to the refer API.
+  const verifiedRefFrom = referrerContact ? refFrom : undefined;
 
   const pageUrl = `${BASE_URL}/beyond-pain`;
   const schema = {
@@ -303,9 +319,14 @@ export default async function BeyondPainPage() {
                   />
                 )}
               </p>
-              <BookCaptureForm compact />
+              <BookCaptureForm compact referralId={referralId} />
             </div>
           )}
+        </section>
+
+        {/* Refer a friend */}
+        <section className="mb-14">
+          <BookReferForm referrerContactId={verifiedRefFrom} referrerName={referrerContact?.firstName || undefined} />
         </section>
 
         {/* An honest note */}

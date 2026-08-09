@@ -6,6 +6,7 @@
 import { prisma } from '@/lib/db';
 import { renderTemplate } from '@/lib/email-templates';
 import { sendEmail } from '@/lib/email';
+import { buildReferBlock } from '@/lib/book';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
 
@@ -58,7 +59,8 @@ function buildVariables(
   article: NewsletterArticle,
   locale: 'en' | 'pt',
   recipientName: string,
-  unsubscribeUrl: string
+  unsubscribeUrl: string,
+  contactId?: string
 ): Record<string, string> {
   const { title, excerpt } = contentForLocale(article, locale);
   return {
@@ -69,19 +71,22 @@ function buildVariables(
     articleImageUrl: article.imageUrl ? absoluteImageUrl(article.imageUrl) : '',
     articleImageBlock: buildImageBlock(article, title),
     articleUrl: articleUrl(article),
+    referBlock: contactId ? buildReferBlock(contactId, locale) : '',
     unsubscribeUrl,
   };
 }
 
 /** Renders the ARTICLE_NEWSLETTER template for one recipient — shared by preview, test-send,
- *  fire-and-forget notify, and DB-tracked EmailCampaign dispatch (see email-campaigns/[id]/send). */
+ *  fire-and-forget notify, and DB-tracked EmailCampaign dispatch (see email-campaigns/[id]/send).
+ *  contactId (when known) powers the "refer a friend" link — see lib/book.ts buildReferBlock. */
 export async function renderArticleNewsletter(
   article: NewsletterArticle,
   locale: 'en' | 'pt',
   recipientName: string,
-  unsubscribeUrl: string
+  unsubscribeUrl: string,
+  contactId?: string
 ): Promise<{ subject: string; html: string } | null> {
-  return renderTemplate('ARTICLE_NEWSLETTER', buildVariables(article, locale, recipientName, unsubscribeUrl));
+  return renderTemplate('ARTICLE_NEWSLETTER', buildVariables(article, locale, recipientName, unsubscribeUrl, contactId));
 }
 
 /** Renders a preview of the newsletter email for a given locale, without sending. */
@@ -91,7 +96,7 @@ export async function previewArticleNewsletter(
 ): Promise<{ subject: string; html: string } | null> {
   const recipientName = locale === 'pt' ? 'Leitor' : 'Reader';
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=preview@example.com`;
-  return renderArticleNewsletter(article, locale, recipientName, unsubscribeUrl);
+  return renderArticleNewsletter(article, locale, recipientName, unsubscribeUrl, 'preview');
 }
 
 /** Counts subscribed contacts by preferred language (for the confirmation UI). */
@@ -113,7 +118,7 @@ export async function sendTestArticleNewsletter(
 ): Promise<{ success: boolean; error?: string }> {
   const recipientName = locale === 'pt' ? 'Leitor' : 'Reader';
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(toEmail)}`;
-  const rendered = await renderTemplate('ARTICLE_NEWSLETTER', buildVariables(article, locale, recipientName, unsubscribeUrl));
+  const rendered = await renderTemplate('ARTICLE_NEWSLETTER', buildVariables(article, locale, recipientName, unsubscribeUrl, 'preview'));
   if (!rendered) return { success: false, error: 'Template not available' };
 
   const result = await sendEmail({
@@ -147,7 +152,7 @@ export async function sendArticleNewsletter(article: NewsletterArticle): Promise
         const locale: 'en' | 'pt' = contact.language === 'pt' ? 'pt' : 'en';
         const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(contact.email)}`;
         const recipientName = contact.firstName || (locale === 'pt' ? 'Leitor' : 'Reader');
-        const rendered = await renderTemplate('ARTICLE_NEWSLETTER', buildVariables(article, locale, recipientName, unsubscribeUrl));
+        const rendered = await renderTemplate('ARTICLE_NEWSLETTER', buildVariables(article, locale, recipientName, unsubscribeUrl, contact.id));
         if (!rendered) continue;
         await sendEmail({ to: contact.email, subject: rendered.subject, html: rendered.html });
       } catch (err) {

@@ -14,7 +14,7 @@ import { useLocale } from "@/hooks/use-locale";
  * unlocks the chapter directly: submitting only queues a double opt-in
  * confirmation email whose magic link unlocks Chapter One.
  */
-export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
+export function BookCaptureForm({ compact = false, referralId }: { compact?: boolean; referralId?: string }) {
   const { locale } = useLocale();
   const isPt = locale.startsWith("pt");
   const [email, setEmail] = useState("");
@@ -37,7 +37,7 @@ export function BookCaptureForm({ compact = false }: { compact?: boolean }) {
       const res = await fetch("/api/beyond-pain/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, firstName, language, consent }),
+        body: JSON.stringify({ email, firstName, language, consent, ref: referralId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");

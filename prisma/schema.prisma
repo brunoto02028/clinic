@@ -3665,6 +3665,28 @@ model BookChapter {
   @@index([order])
 }
 
+// Refer-a-friend tracking for the book funnel — a one-off invite email, never
+// an auto-subscribe. referrerContactId/friendContactId are loose links to
+// EmailContact (same pattern as EmailContact.patientId), not enforced FKs,
+// since the referrer may be an anonymous /beyond-pain visitor with no
+// EmailContact row at all. See specs/1-book-referral-and-homepage-cta/.
+model BookReferral {
+  id                String    @id @default(cuid())
+  referrerContactId String? // EmailContact.id, when they arrived via a ?refFrom= email link
+  referrerName      String? // self-typed name, when there's no known referrerContactId
+  friendEmail       String
+  friendName        String?
+  locale            String    @default("en")
+  ipHash            String? // sha256 of the referrer's IP, used only for the anti-abuse rate limit
+  sentAt            DateTime  @default(now())
+  convertedAt       DateTime? // set once the friend actually completes their own capture (?ref=)
+  friendContactId   String? // EmailContact.id of the friend, set at conversion
+
+  @@index([referrerContactId])
+  @@index([friendEmail])
+  @@index([sentAt])
+}
+
 model EmailGroup {
   id          String   @id @default(cuid())
   name        String

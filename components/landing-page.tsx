@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import { LazyLoadSection } from "@/components/lazy-load-section";
+import { Book3DCover } from "@/components/book-3d-cover";
 import {
   Calendar,
   ClipboardList,
@@ -134,14 +135,24 @@ interface Article {
   author: { firstName: string; lastName: string };
 }
 
+interface BookPreview {
+  title: string;
+  subtitle: string;
+  titlePt?: string | null;
+  subtitlePt?: string | null;
+  coverImage: string | null;
+  coverImagePt?: string | null;
+}
+
 interface LandingPageProps {
   initialSettings?: SiteSettings | null;
   initialArticles?: Article[];
+  book?: BookPreview | null;
 }
 
 interface ClinicScheduleEntry { day: string; dayOfWeek: number; open: string; close: string; closed: boolean; }
 
-export default function LandingPage({ initialSettings = null, initialArticles = [] }: LandingPageProps) {
+export default function LandingPage({ initialSettings = null, initialArticles = [], book = null }: LandingPageProps) {
   const [settings, setSettings] = useState<SiteSettings | null>(initialSettings);
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [clinicSchedule, setClinicSchedule] = useState<ClinicScheduleEntry[]>([]);
@@ -862,6 +873,46 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           </div>
         </div>
       </section>
+
+      {/* Book Highlight — "Beyond Pain" */}
+      {book && (
+        <section className="py-16 sm:py-20 lg:py-24 bg-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/5 via-white to-primary/10 p-8 sm:p-12 lg:p-16">
+              <div className="grid lg:grid-cols-[280px,1fr] gap-10 lg:gap-16 items-center">
+                <div className="mx-auto w-full max-w-[220px] lg:max-w-none">
+                  <Book3DCover
+                    coverImage={book.coverImage}
+                    coverImagePt={book.coverImagePt}
+                    title={locale === "pt-BR" ? (book.titlePt || book.title) : book.title}
+                  />
+                </div>
+                <div className="text-center lg:text-left">
+                  <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
+                    {locale === "pt-BR" ? "Um novo livro, escrito por Bruno" : "A new book, written by Bruno"}
+                  </span>
+                  <h2 className="font-sora text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-4">
+                    {locale === "pt-BR" ? (book.titlePt || book.title) : book.title}
+                  </h2>
+                  <p className="text-lg text-slate-600 mb-6 max-w-xl mx-auto lg:mx-0">
+                    {locale === "pt-BR" ? (book.subtitlePt || book.subtitle) : book.subtitle}
+                  </p>
+                  <p className="text-slate-500 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                    {locale === "pt-BR"
+                      ? "Baseado em mais de quinze anos de prática clínica e recuperação pessoal, um guia sobre a cura do corpo, da alma e do espírito."
+                      : "Drawing on more than fifteen years of clinical practice and personal recovery, a guide to healing — body, soul and spirit."}
+                  </p>
+                  <Link href="/beyond-pain/chapter-one">
+                    <Button size="lg" variant="ba1Primary" className="gap-2">
+                      {locale === "pt-BR" ? "Leia o Capítulo 1 Grátis" : "Read Chapter One Free"} <ArrowRight className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Articles Section */}
       <section id="articles" className="py-14 sm:py-16 lg:py-20 bg-slate-50">

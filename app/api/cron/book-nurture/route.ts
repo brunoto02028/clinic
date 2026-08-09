@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     for (const contact of threeDayCandidates) {
       if (contact.events.some((e: any) => e.type === "book_nurture_3d_sent")) continue;
       try {
-        await sendBookNurture3DayEmail({ email: contact.email, firstName: contact.firstName });
+        await sendBookNurture3DayEmail({ email: contact.email, firstName: contact.firstName, contactId: contact.id });
         await logBookEvent(contact.id, "book_nurture_3d_sent");
         sent3d++;
       } catch (err) {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     for (const contact of sevenDayCandidates) {
       if (contact.events.some((e: any) => e.type === "book_nurture_7d_sent")) continue;
       try {
-        await sendBookNurture7DayEmail({ email: contact.email, firstName: contact.firstName });
+        await sendBookNurture7DayEmail({ email: contact.email, firstName: contact.firstName, contactId: contact.id });
         await logBookEvent(contact.id, "book_nurture_7d_sent");
         sent7d++;
       } catch (err) {

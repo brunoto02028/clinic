@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { getBookConfig, getBookReaderFromToken } from "@/lib/book";
+import { getBookConfig, getBookReaderFromToken, resolveReferrerContact } from "@/lib/book";
 import { BookCaptureForm } from "@/components/book-capture-form";
+import { BookReferForm } from "@/components/book-refer-form";
 import { BookChapterReader } from "@/components/book-chapter-reader";
 import { Book3DCover } from "@/components/book-3d-cover";
 import { MedicalDisclaimer } from "@/components/medical-disclaimer";
@@ -22,10 +23,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function ChapterOnePage() {
+export default async function ChapterOnePage({
+  searchParams,
+}: {
+  searchParams: { refFrom?: string; ref?: string };
+}) {
   const config = await getBookConfig();
   const cookieStore = cookies();
   const reader = await getBookReaderFromToken(cookieStore.get("book_access")?.value);
+  const refFrom = searchParams?.refFrom;
+  const referralId = searchParams?.ref;
 
   if (!reader) {
     return (
@@ -38,13 +45,16 @@ export default async function ChapterOnePage() {
         <p className="text-muted-foreground text-center mb-10 leading-relaxed">
           Two workmen. Two nails. Two opposite fates — and, between them, a lesson that turns almost everything we think we know about pain inside out. Confirm your email to read the full chapter.
         </p>
-        <BookCaptureForm />
+        <BookCaptureForm referralId={referralId} />
         <div className="text-center mt-8">
           <Link href="/beyond-pain" className="text-sm text-primary hover:underline">← Back to Beyond Pain</Link>
         </div>
       </div>
     );
   }
+
+  const referrerContact = await resolveReferrerContact(refFrom);
+  const verifiedRefFrom = referrerContact ? refFrom : undefined;
 
   const chapter = await (prisma as any).bookChapter.findUnique({ where: { slug: "chapter-one" } });
 
@@ -102,6 +112,10 @@ export default async function ChapterOnePage() {
         <p className="text-[11px] text-muted-foreground/70 mt-6 leading-relaxed">
           This chapter is copyright-protected — an excerpt from the forthcoming book <em>Beyond Pain</em>, shared with you for personal reading only. Please don't copy, resell or redistribute it, even as a single chapter.
         </p>
+      </div>
+
+      <div className="mt-8">
+        <BookReferForm referrerContactId={verifiedRefFrom} referrerName={referrerContact?.firstName || undefined} />
       </div>
 
       <MedicalDisclaimer />

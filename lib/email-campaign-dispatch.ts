@@ -108,7 +108,7 @@ export async function dispatchCampaignBatch(campaignId: string) {
 
     if (article) {
       const locale: 'en' | 'pt' = contact.language === 'pt' ? 'pt' : 'en';
-      const rendered = await renderArticleNewsletter(article as any, locale, recipientName, unsubscribeUrl);
+      const rendered = await renderArticleNewsletter(article as any, locale, recipientName, unsubscribeUrl, contact.id);
       if (!rendered) {
         await (prisma as any).emailCampaignJob.update({
           where: { id: job.id },
@@ -127,6 +127,10 @@ export async function dispatchCampaignBatch(campaignId: string) {
         email: contact.email,
         unsubscribeUrl,
       });
+      // Deliberately no referBlock here — this branch sends whatever the admin
+      // wrote for a custom/non-article campaign (e.g. an hours-change notice),
+      // which the "refer this book" CTA has nothing to do with, and the admin
+      // never sees it added in the campaign preview.
       html = await wrapInLayout(personalised, campaign.preheader || campaign.subject);
       subject = replaceVariables(campaign.subject, { recipientName, firstName: contact.firstName || '' });
     }

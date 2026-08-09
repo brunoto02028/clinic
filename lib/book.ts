@@ -84,6 +84,17 @@ export async function getBookReaderFromToken(token: string | undefined | null) {
   return contact;
 }
 
+/** Resolves the first name of a contact referring a friend, from the
+ *  `?refFrom={contactId}` query param used on /beyond-pain and
+ *  /beyond-pain/chapter-one. Returns null (never throws) for a missing or
+ *  unknown id — callers must treat that as "anonymous referrer". */
+export async function resolveReferrerContact(refFrom: string | undefined | null) {
+  if (!refFrom) return null;
+  return (prisma as any).emailContact
+    .findUnique({ where: { id: refFrom }, select: { firstName: true } })
+    .catch(() => null);
+}
+
 /** Double opt-in confirmation email — a magic link that both verifies the
  *  address AND unlocks the chapter (GET /api/beyond-pain/confirm), unlike
  *  the guide flow which just triggers a follow-up delivery email. */
@@ -119,8 +130,9 @@ export async function sendBookChapterDeliveryEmail(params: {
   firstName?: string | null;
   language?: string | null;
   confirmToken?: string | null;
+  contactId?: string | null;
 }) {
-  const { email, firstName, confirmToken } = params;
+  const { email, firstName, confirmToken, contactId } = params;
   const isPt = params.language === "pt";
   const pdfFilename = `chapter-one-${isPt ? "pt" : "en"}.pdf`;
   // Single-use, tokenised download link (see app/api/beyond-pain/download) —
@@ -162,6 +174,7 @@ export async function sendBookChapterDeliveryEmail(params: {
       <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Quando <em>Além da Dor</em> for lançado e decidir comprar um exemplar, estará a fazer muito mais do que adquirir um livro. Estará a ajudar a financiar o estudo e a investigação por trás de cada capítulo, a permitir que eu continue disponível para os pacientes que precisam de cuidado presencial, e a levar esta mensagem — de que a cura é possível para o corpo, a alma e o espírito — a mais pessoas que precisam de a ouvir.</p>
       <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;">Obrigado por ser um dos primeiros a lê-lo.</p>
       <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">Bruno</p>
+      ${contactId ? buildReferBlock(contactId, "pt") : ""}
       <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
       <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;"><a href="${unsubscribeUrl}" style="color:#9ca3af;">Cancelar subscrição</a></p>`;
     const html = await wrapInLayout(body, subject, "pt-PT");
@@ -186,14 +199,84 @@ export async function sendBookChapterDeliveryEmail(params: {
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">When <em>Beyond Pain</em> launches and you choose to buy a copy, you're doing far more than owning a book. You're helping fund the research and study behind every chapter, keeping me available for the patients who need hands-on care, and helping this message — that healing is possible for the body, the soul and the spirit — reach more people who need to hear it.</p>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;">Thank you for being one of the first to read it.</p>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">Bruno</p>
+    ${contactId ? buildReferBlock(contactId, "en") : ""}
     <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;"><a href="${unsubscribeUrl}" style="color:#9ca3af;">Unsubscribe</a></p>`;
   const html = await wrapInLayout(body, subject, "en-GB");
   return sendEmail({ to: email, subject, html, attachments });
 }
 
-export async function sendBookNurture3DayEmail(params: { email: string; firstName?: string | null }) {
-  const { email, firstName } = params;
+/** One-off "a friend recommended this" invite — never auto-subscribes the
+ *  recipient. They land on /beyond-pain?ref={referralId} and go through the
+ *  exact same consent-gated capture form as any other visitor; the ref id
+ *  only gets used server-side to mark the referral as converted if/when they
+ *  do sign up (see app/api/beyond-pain/capture — attribution, not auto-opt-in). */
+export async function sendBookReferralEmail(params: {
+  friendEmail: string;
+  friendName?: string | null;
+  referrerName?: string | null;
+  locale?: string | null;
+  referralId: string;
+}) {
+  const { friendEmail, friendName, referrerName, referralId } = params;
+  const isPt = params.locale === "pt";
+  const referUrl = `${BASE_URL}/beyond-pain?ref=${referralId}`;
+
+  if (isPt) {
+    const greeting = friendName ? `Olá ${escapeHtml(friendName)},` : "Olá,";
+    const fromLine = referrerName
+      ? `<strong>${escapeHtml(referrerName)}</strong> achou que você ia gostar deste livro.`
+      : "Um amigo achou que você ia gostar deste livro.";
+    const subject = referrerName ? `${referrerName} indicou um livro pra você` : "Alguém indicou um livro pra você";
+    const body = `
+      <h2 style="color:#20242D;font-size:20px;margin:0 0 16px;">Uma indicação especial pra você</h2>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${greeting}</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">${fromLine} <strong>Além da Dor</strong> é um guia sobre recuperação física, alma e espírito — o primeiro capítulo é gratuito.</p>
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${referUrl}" style="display:inline-block;background-color:${BRAND_PRIMARY};color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Ler o Capítulo 1 Grátis →</a>
+      </div>
+      <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
+      <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0;text-align:center;">Você recebeu este e-mail avulso porque alguém usou nossa ferramenta de indicação para compartilhar este livro com você. Não vamos enviar mais nada, a menos que você se inscreva.</p>`;
+    const html = await wrapInLayout(body, subject, "pt-PT");
+    return sendEmail({ to: friendEmail, subject, html });
+  }
+
+  const greeting = friendName ? `Hi ${escapeHtml(friendName)},` : "Hi,";
+  const fromLine = referrerName
+    ? `<strong>${escapeHtml(referrerName)}</strong> thought you'd enjoy this book.`
+    : "A friend thought you'd enjoy this book.";
+  const subject = referrerName ? `${referrerName} sent you a free book` : "Someone sent you a free book";
+  const body = `
+    <h2 style="color:#20242D;font-size:20px;margin:0 0 16px;">Someone thought of you</h2>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${greeting}</p>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">${fromLine} <strong>Beyond Pain</strong> is a guide to healing — body, soul and spirit — and the first chapter is free.</p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${referUrl}" style="display:inline-block;background-color:${BRAND_PRIMARY};color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Read Chapter One Free →</a>
+    </div>
+    <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
+    <p style="color:#9ca3af;font-size:11px;line-height:1.6;margin:0;text-align:center;">You're receiving this one-off email because someone used our referral tool to share this book with you. We won't send anything further unless you choose to sign up.</p>`;
+  const html = await wrapInLayout(body, subject, "en-GB");
+  return sendEmail({ to: friendEmail, subject, html });
+}
+
+/** Small, discreet CTA line for marketing emails (article newsletter, book
+ *  nurture/delivery, campaigns) linking to the refer-a-friend form,
+ *  pre-identifying the recipient as the referrer via ?refFrom=. Deliberately
+ *  NOT wired into wrapInLayout() itself — that's shared by transactional
+ *  emails (password reset etc.) where this would make no sense; callers
+ *  that want it insert this block into their own template content. */
+export function buildReferBlock(contactId: string, locale?: string | null): string {
+  const isPt = locale === "pt";
+  const referUrl = `${BASE_URL}/beyond-pain?refFrom=${contactId}`;
+  const text = isPt
+    ? `📖 Conhece alguém que ia gostar de um capítulo grátis do livro <em>Além da Dor</em>?`
+    : `📖 Know someone who'd love a free chapter of <em>Beyond Pain</em>?`;
+  const cta = isPt ? "Indicar um amigo →" : "Refer a friend →";
+  return `<p style="text-align:center;font-size:12px;color:#6b7280;margin:20px 0 0;">${text}<br/><a href="${referUrl}" style="color:${BRAND_PRIMARY};font-weight:600;text-decoration:none;">${cta}</a></p>`;
+}
+
+export async function sendBookNurture3DayEmail(params: { email: string; firstName?: string | null; contactId?: string | null }) {
+  const { email, firstName, contactId } = params;
   const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,";
   const chapterUrl = `${BASE_URL}/beyond-pain/chapter-one`;
   const subject = "Behind the scenes of Beyond Pain";
@@ -205,14 +288,15 @@ export async function sendBookNurture3DayEmail(params: { email: string; firstNam
     <div style="text-align:center;margin:28px 0;">
       <a href="${chapterUrl}" style="display:inline-block;background-color:${BRAND_PRIMARY};color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Continue reading →</a>
     </div>
-    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">Reply to this email any time — I read every one, and I'd love to hear your own story with pain.</p>`;
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">Reply to this email any time — I read every one, and I'd love to hear your own story with pain.</p>
+    ${contactId ? buildReferBlock(contactId, "en") : ""}`;
 
   const html = await wrapInLayout(body, subject, "en-GB");
   return sendEmail({ to: email, subject, html });
 }
 
-export async function sendBookNurture7DayEmail(params: { email: string; firstName?: string | null }) {
-  const { email, firstName } = params;
+export async function sendBookNurture7DayEmail(params: { email: string; firstName?: string | null; contactId?: string | null }) {
+  const { email, firstName, contactId } = params;
   const unsubscribeUrl = `${BASE_URL}/unsubscribe?email=${encodeURIComponent(email)}`;
   const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,";
   const subject = "Body, soul and spirit — the idea behind Beyond Pain";
@@ -221,6 +305,7 @@ export async function sendBookNurture7DayEmail(params: { email: string; firstNam
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${greeting}</p>
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">Pain is rarely only physical. It speaks the language of the body, the soul and the spirit — and lasting healing has to meet all three. That's the thread running through every chapter of <strong>Beyond Pain</strong>, grounded in the science of how pain works and a faith that takes the whole person seriously.</p>
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">I'll send occasional updates as new chapters are written — and you'll be first to know when the book launches, with an early-reader price.</p>
+    ${contactId ? buildReferBlock(contactId, "en") : ""}
     <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;"><a href="${unsubscribeUrl}" style="color:#9ca3af;">Unsubscribe</a></p>`;
 
