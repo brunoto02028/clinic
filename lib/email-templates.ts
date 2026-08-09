@@ -26,10 +26,14 @@ async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: str
       if (url.startsWith('http')) return url;
       return `${BASE_URL}${url}`;
     };
-    // Try to get a real white logo (from screenLogos.landingHeader.darkLogoUrl or similar)
+    // Logo for the email header's dark green background — must be the WHITE
+    // logo variant (screenLogos.*.darkLogoUrl = "logo for a dark background",
+    // e.g. /logo-dark.png), never the coloured logoUrl (invisible/low-contrast
+    // on a dark background). Was previously reading emailHeader.logoUrl by
+    // mistake, showing the coloured logo on the green header.
     const sl = (s as any)?.screenLogos as Record<string, { logoUrl?: string; darkLogoUrl?: string }> | undefined;
     const whiteLogoUrl = toAbs(
-      sl?.emailHeader?.logoUrl ||
+      sl?.emailHeader?.darkLogoUrl ||
       sl?.landingHeader?.darkLogoUrl ||
       sl?.dashboard?.darkLogoUrl ||
       sl?.login?.darkLogoUrl ||
@@ -607,7 +611,7 @@ export const DEFAULT_TEMPLATES = [
     name: 'Article Newsletter',
     subject: '{{articleTitle}} — BPR Health News',
     description: 'Sent when a new article is published — newsletter format',
-    variables: ['recipientName', 'articleTitle', 'articleExcerpt', 'articleImageUrl', 'articleImageBlock', 'articleUrl', 'unsubscribeUrl'],
+    variables: ['recipientName', 'articleTitle', 'articleExcerpt', 'articleImageUrl', 'articleImageBlock', 'articleUrl', 'referBlock', 'unsubscribeUrl'],
     htmlBody: `
     <p style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;">BPR Health News &nbsp;·&nbsp; Latest Article</p>
     {{articleImageBlock}}
@@ -616,6 +620,7 @@ export const DEFAULT_TEMPLATES = [
     <div style="text-align:center;margin:28px 0;">
       <a href="{{articleUrl}}" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Read Full Article →</a>
     </div>
+    {{referBlock}}
     <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;">You are receiving this because you subscribed to BPR Health News.<br><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Unsubscribe</a></p>`,
   },

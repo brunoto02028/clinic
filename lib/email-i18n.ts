@@ -413,6 +413,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           H('{{articleTitle}}') +
           P('{{articleExcerpt}}') +
           B('{{articleUrl}}','Ler Artigo Completo →') +
+          '{{referBlock}}' +
           '<hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />' +
           '<p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;">Está a receber este email porque subscreveu as Notícias de Saúde BPR.<br><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Cancelar subscrição</a></p>'
         : '<p style="color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 20px;">BPR Health News &nbsp;·&nbsp; Latest Article</p>' +
@@ -420,6 +421,7 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
           H('{{articleTitle}}') +
           P('{{articleExcerpt}}') +
           B('{{articleUrl}}','Read Full Article →') +
+          '{{referBlock}}' +
           '<hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />' +
           '<p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;">You are receiving this because you subscribed to BPR Health News.<br><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Unsubscribe</a></p>',
     },
