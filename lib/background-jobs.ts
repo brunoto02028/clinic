@@ -12,9 +12,11 @@
 import { prisma } from './db';
 import { refreshInstagramToken } from './instagram';
 import { publishSocialPost } from './social-publish';
+import { dispatchCampaignBatch } from './email-campaign-dispatch';
 
 const TOKEN_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
 const POST_PUBLISH_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes
+const EMAIL_CAMPAIGN_INTERVAL_MS = 60 * 1000; // every 1 minute
 
 async function refreshExpiringTokens() {
   try {
@@ -53,6 +55,30 @@ async function publishDuePosts() {
   }
 }
 
+// Continues any EmailCampaign that's mid-send (status SENDING) whose next
+// batch is due — this is what lets the admin close their browser tab (or
+// survive a deploy restart) partway through emailing hundreds of contacts;
+// previously the whole multi-hour batch sequence only kept going while the
+// admin's own browser tab stayed open running a client-side setTimeout loop.
+async function dispatchDueEmailCampaigns() {
+  try {
+    const due = await prisma.emailCampaign.findMany({
+      where: { status: 'SENDING', OR: [{ nextDispatchAt: null }, { nextDispatchAt: { lte: new Date() } }] },
+      select: { id: true },
+    });
+    if (due.length === 0) return;
+
+    let dispatched = 0;
+    for (const campaign of due) {
+      const result = await dispatchCampaignBatch(campaign.id);
+      if (!('error' in result)) dispatched++;
+    }
+    console.log(`[background-jobs] Email campaigns: checked ${due.length}, dispatched ${dispatched} batch(es)`);
+  } catch (err: any) {
+    console.error('[background-jobs] Email campaign dispatch failed:', err.message);
+  }
+}
+
 // Guards against double-registration (e.g. dev-mode hot reload calling
 // register() more than once in the same process).
 declare global {
@@ -64,12 +90,14 @@ export function startBackgroundJobs() {
   if (global.__bprBackgroundJobsStarted) return;
   global.__bprBackgroundJobsStarted = true;
 
-  console.log('[background-jobs] Starting in-process scheduler (token refresh every 6h, post publish every 15min)');
+  console.log('[background-jobs] Starting in-process scheduler (token refresh every 6h, post publish every 15min, email campaigns every 1min)');
 
   setInterval(refreshExpiringTokens, TOKEN_REFRESH_INTERVAL_MS);
   setInterval(publishDuePosts, POST_PUBLISH_INTERVAL_MS);
+  setInterval(dispatchDueEmailCampaigns, EMAIL_CAMPAIGN_INTERVAL_MS);
 
   // Run once shortly after boot too, instead of waiting a full interval.
   setTimeout(refreshExpiringTokens, 30_000);
   setTimeout(publishDuePosts, 60_000);
+  setTimeout(dispatchDueEmailCampaigns, 45_000);
 }

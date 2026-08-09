@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const {
     name, subject, templateSlug, htmlBody, preheader,
     fromName, fromEmail, replyTo,
-    groupId, sendToAll,
+    groupId, sendToAll, contactIds,
     batchSize, batchIntervalMs,
     scheduledAt, articleId,
   } = body;
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       replyTo: replyTo || null,
       groupId: groupId || null,
       sendToAll: sendToAll ?? false,
+      contactIds: Array.isArray(contactIds) ? contactIds : [],
       batchSize: batchSize || 10,
       batchIntervalMs: batchIntervalMs || 300000,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,

@@ -12,8 +12,9 @@ export interface EmailCampaign {
   id: string; name: string; subject: string; status: string;
   totalRecipients: number; sentCount: number; failedCount: number;
   batchSize: number; batchIntervalMs: number;
-  groupId?: string; sendToAll: boolean; templateSlug?: string; articleId?: string; createdAt: string;
+  groupId?: string; sendToAll: boolean; contactIds?: string[]; templateSlug?: string; articleId?: string; createdAt: string;
 }
+interface ContactOption { id: string; email: string; firstName?: string | null; lastName?: string | null; }
 export interface EmailGroup { id: string; name: string; _count: { members: number }; }
 export interface EmailTemplate { id: string; slug: string; name: string; }
 interface ArticleOption { id: string; title: string; titleEn?: string | null; titlePt?: string | null; slug: string; }
@@ -40,6 +41,7 @@ const emptyForm = {
   groupId: "", sendToAll: false, batchSize: 10, batchIntervalMs: 300000,
   articleId: "",
 };
+type RecipientMode = "all" | "group" | "contacts";
 
 export default function CampaignsTab({ campaigns, groups, templates, contactTotal, loading, onRefresh }: Props) {
   const { toast } = useToast();
@@ -57,6 +59,11 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
   const [testEmail, setTestEmail] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
   const [testSentMsg, setTestSentMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>("all");
+  const [selectedContacts, setSelectedContacts] = useState<ContactOption[]>([]);
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactResults, setContactResults] = useState<ContactOption[]>([]);
+  const [contactSearchLoading, setContactSearchLoading] = useState(false);
 
   useEffect(() => {
     if (source === "article" && articles.length === 0 && !articlesLoading) {
@@ -122,11 +129,39 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
     }
   };
 
+  // Live search-as-you-type for the "selected contacts" recipient picker.
+  useEffect(() => {
+    if (recipientMode !== "contacts") return;
+    const handle = setTimeout(async () => {
+      setContactSearchLoading(true);
+      try {
+        const r = await fetch(`/api/admin/email-contacts?search=${encodeURIComponent(contactSearch)}&limit=20`);
+        if (r.ok) { const d = await r.json(); setContactResults(d.contacts || []); }
+      } finally {
+        setContactSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [contactSearch, recipientMode]);
+
+  const toggleContact = (c: ContactOption) => {
+    setSelectedContacts(prev =>
+      prev.some(x => x.id === c.id) ? prev.filter(x => x.id !== c.id) : [...prev, c]
+    );
+  };
+
   const createCampaign = async () => {
     if (!form.name || !form.subject) return;
+    if (recipientMode === "group" && !form.groupId) return;
+    if (recipientMode === "contacts" && selectedContacts.length === 0) return;
+    const recipients = {
+      sendToAll: recipientMode === "all",
+      groupId: recipientMode === "group" ? form.groupId : "",
+      contactIds: recipientMode === "contacts" ? selectedContacts.map(c => c.id) : [],
+    };
     const body = source === "article"
-      ? { ...form, templateSlug: "" }
-      : { ...form, articleId: "" };
+      ? { ...form, ...recipients, templateSlug: "" }
+      : { ...form, ...recipients, articleId: "" };
     const r = await fetch("/api/admin/email-campaigns", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
@@ -137,6 +172,9 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
       setSource("template");
       setArticlePreview(null);
       setTestSentMsg(null);
+      setRecipientMode("all");
+      setSelectedContacts([]);
+      setContactSearch("");
       onRefresh();
     } else {
       const d = await r.json();
@@ -159,6 +197,11 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
     onRefresh();
   };
 
+  // Prepares the job queue and fires the first batch immediately for instant
+  // feedback. Every batch after that is picked up automatically by the
+  // server-side scheduler (lib/background-jobs.ts) roughly once a minute —
+  // this tab (and this browser) can be closed right after this call returns
+  // and the remaining batches still go out on schedule.
   const startCampaign = async (campaign: EmailCampaign) => {
     setActiveCampaignId(campaign.id);
     setDispatchLog([]);
@@ -175,32 +218,26 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
     }
     setDispatchLog(prev => [...prev, `✅ Prepared ${prepData.prepared} recipients in ${prepData.batches} batches`]);
 
-    const dispatchBatch = async (): Promise<void> => {
-      const res = await fetch(`/api/admin/email-campaigns/${campaign.id}/send`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "dispatch" }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setDispatchLog(prev => [...prev, `❌ Error: ${data.error}`]);
-        setDispatching(false);
-        return;
-      }
-      if (data.done) {
-        setDispatchLog(prev => [...prev, `🎉 Campaign completed! All emails sent.`]);
-        setDispatching(false);
-        onRefresh();
-        return;
-      }
+    const res = await fetch(`/api/admin/email-campaigns/${campaign.id}/send`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "dispatch" }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setDispatchLog(prev => [...prev, `❌ Error: ${data.error}`]);
+    } else if (data.done) {
+      setDispatchLog(prev => [...prev, `🎉 Campaign completed! All emails sent.`]);
+    } else {
       setDispatchLog(prev => [...prev, `📤 Batch ${data.batchNumber + 1}: ${data.sent} sent, ${data.failed} failed — ${data.remaining} remaining`]);
-      const ms = data.nextDispatchMs || campaign.batchIntervalMs;
-      setDispatchLog(prev => [...prev, `⏳ Waiting ${Math.round(ms / 1000)}s before next batch...`]);
-      setTimeout(dispatchBatch, ms);
-    };
-
-    await dispatchBatch();
+      setDispatchLog(prev => [...prev, `✅ Remaining batches continue automatically on the server — you can close this tab.`]);
+    }
+    setDispatching(false);
+    onRefresh();
   };
 
-  const estimatedMin = Math.ceil(contactTotal / form.batchSize) * (form.batchIntervalMs / 60000);
+  const recipientCount = recipientMode === "all" ? contactTotal
+    : recipientMode === "group" ? (groups.find(g => g.id === form.groupId)?._count.members ?? 0)
+    : selectedContacts.length;
+  const estimatedMin = Math.ceil(recipientCount / form.batchSize) * (form.batchIntervalMs / 60000);
 
   return (
     <div className="space-y-4 mt-4">
@@ -328,15 +365,65 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
 
             <div className="p-3 bg-muted/40 rounded-lg space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide">Recipients</p>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={form.sendToAll} onChange={e => setForm({ ...form, sendToAll: e.target.checked, groupId: "" })} className="rounded" />
-                Send to ALL subscribed contacts ({contactTotal})
-              </label>
-              {!form.sendToAll && (
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="recipientMode" checked={recipientMode === "all"} onChange={() => setRecipientMode("all")} className="rounded" />
+                  Send to ALL subscribed contacts ({contactTotal})
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="recipientMode" checked={recipientMode === "group"} onChange={() => setRecipientMode("group")} className="rounded" />
+                  Send to a group
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" name="recipientMode" checked={recipientMode === "contacts"} onChange={() => setRecipientMode("contacts")} className="rounded" />
+                  Pick specific contacts / patients
+                </label>
+              </div>
+
+              {recipientMode === "group" && (
                 <select className="w-full border rounded-md px-3 py-2 text-sm bg-background" value={form.groupId} onChange={e => setForm({ ...form, groupId: e.target.value })}>
                   <option value="">— Select group —</option>
                   {groups.map(g => <option key={g.id} value={g.id}>{g.name} ({g._count.members})</option>)}
                 </select>
+              )}
+
+              {recipientMode === "contacts" && (
+                <div className="space-y-2">
+                  {selectedContacts.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedContacts.map(c => (
+                        <span key={c.id} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded-full px-2.5 py-1">
+                          {[c.firstName, c.lastName].filter(Boolean).join(" ") || c.email}
+                          <button type="button" onClick={() => toggleContact(c)} className="hover:text-destructive"><X className="h-3 w-3" /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <Input
+                    placeholder="Search contacts by name or email..."
+                    value={contactSearch}
+                    onChange={e => setContactSearch(e.target.value)}
+                    className="text-sm"
+                  />
+                  <div className="border rounded-md max-h-48 overflow-y-auto bg-background">
+                    {contactSearchLoading ? (
+                      <div className="p-3 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                    ) : contactResults.length === 0 ? (
+                      <p className="p-3 text-xs text-muted-foreground text-center">{contactSearch ? "No contacts found." : "Type to search contacts."}</p>
+                    ) : (
+                      contactResults.map(c => {
+                        const checked = selectedContacts.some(x => x.id === c.id);
+                        return (
+                          <label key={c.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted/50 border-b last:border-b-0">
+                            <input type="checkbox" checked={checked} onChange={() => toggleContact(c)} className="rounded" />
+                            <span className="truncate">{[c.firstName, c.lastName].filter(Boolean).join(" ") || "—"} <span className="text-muted-foreground">({c.email})</span></span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{selectedContacts.length} selected</p>
+                </div>
               )}
             </div>
 
@@ -363,13 +450,16 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
                 </div>
               </div>
               <p className="text-[10px] text-amber-700">
-                Estimated: ~{estimatedMin} min for {contactTotal} contacts
+                Estimated: ~{estimatedMin} min for {recipientCount} contacts
               </p>
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={createCampaign} disabled={!form.name || !form.subject || (source === "article" && !form.articleId)}><Check className="h-4 w-4 mr-1.5" />Create Campaign</Button>
-              <Button variant="outline" onClick={() => { setShowNew(false); setSource("template"); setForm(emptyForm); setArticlePreview(null); setTestSentMsg(null); }}><X className="h-4 w-4 mr-1.5" />Cancel</Button>
+              <Button
+                onClick={createCampaign}
+                disabled={!form.name || !form.subject || (source === "article" && !form.articleId) || (recipientMode === "group" && !form.groupId) || (recipientMode === "contacts" && selectedContacts.length === 0)}
+              ><Check className="h-4 w-4 mr-1.5" />Create Campaign</Button>
+              <Button variant="outline" onClick={() => { setShowNew(false); setSource("template"); setForm(emptyForm); setArticlePreview(null); setTestSentMsg(null); setRecipientMode("all"); setSelectedContacts([]); setContactSearch(""); }}><X className="h-4 w-4 mr-1.5" />Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -400,7 +490,7 @@ export default function CampaignsTab({ campaigns, groups, templates, contactTota
                     </div>
                     <p className="text-xs text-muted-foreground truncate mb-2">{c.subject}</p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                      <span>👥 {c.sendToAll ? "All contacts" : groups.find(g => g.id === c.groupId)?.name || "No group"}</span>
+                      <span>👥 {c.sendToAll ? "All contacts" : c.groupId ? (groups.find(g => g.id === c.groupId)?.name || "Group") : `${c.contactIds?.length || 0} selected contact(s)`}</span>
                       <span>📦 {c.batchSize}/batch · {c.batchIntervalMs / 60000}min interval</span>
                       {c.totalRecipients > 0 && <span>📤 {c.sentCount}/{c.totalRecipients} sent</span>}
                       {c.failedCount > 0 && <span className="text-red-500">❌ {c.failedCount} failed</span>}
