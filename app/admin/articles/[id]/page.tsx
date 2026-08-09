@@ -15,6 +15,7 @@ import Link from "next/link";
 import { AIFieldHelper } from "@/components/admin/ai-field-helper";
 import { AIImageGenerator } from "@/components/admin/ai-image-generator";
 import { ImageLibraryPicker } from "@/components/admin/image-library-picker";
+import { ImageFocalPointPicker } from "@/components/admin/image-focal-point-picker";
 import { InstagramPostPanel } from "@/components/admin/instagram-post-panel";
 
 const RichTextEditor = dynamic(() => import("@/components/admin/rich-text-editor"), {
@@ -28,6 +29,8 @@ export default function EditArticlePage() {
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [imageFocalX, setImageFocalX] = useState(50);
+  const [imageFocalY, setImageFocalY] = useState(50);
   const [published, setPublished] = useState(false);
   const [authorName, setAuthorName] = useState("");
   const [createdAt, setCreatedAt] = useState(""); // publish date (YYYY-MM-DD) shown on the public site
@@ -97,6 +100,8 @@ export default function EditArticlePage() {
         setExcerpt(active.excerpt);
         setContent(active.content);
         setImageUrl(data.imageUrl || "");
+        setImageFocalX(typeof data.imageFocalX === "number" ? data.imageFocalX : 50);
+        setImageFocalY(typeof data.imageFocalY === "number" ? data.imageFocalY : 50);
         setPublished(data.published);
         setAuthorName(data.authorName || "");
         setCreatedAt(data.createdAt ? new Date(data.createdAt).toISOString().slice(0, 10) : "");
@@ -192,6 +197,7 @@ export default function EditArticlePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
       setImageUrl(data.image.imageUrl);
+      setImageFocalX(50); setImageFocalY(50);
       toast({ title: "Image uploaded!" });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
@@ -297,7 +303,7 @@ export default function EditArticlePage() {
           titleEn: en.title || null, excerptEn: en.excerpt || null, contentEn: en.content || null,
           titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
           publishLanguage,
-          imageUrl, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, tags, keyword: keyword || undefined,
+          imageUrl, imageFocalX, imageFocalY, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, tags, keyword: keyword || undefined,
           createdAt: createdAt ? `${createdAt}T12:00:00.000Z` : undefined,
         }),
       });
@@ -456,16 +462,14 @@ export default function EditArticlePage() {
               <Label>Cover Image</Label>
               {imageUrl ? (
                 <div className="relative group">
-                  <div className="relative w-full max-w-lg aspect-video bg-muted rounded-lg overflow-hidden border border-border">
-                    <img src={imageUrl} alt="Cover" className="w-full h-full object-cover" />
-                  </div>
+                  <ImageFocalPointPicker imageUrl={imageUrl} x={imageFocalX} y={imageFocalY} onChange={(x, y) => { setImageFocalX(x); setImageFocalY(y); }} />
                   <div className="flex gap-2 mt-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => setImageUrl("")} className="gap-1.5 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Remove</Button>
                     <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5">
                       {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} Replace
                     </Button>
-                    <ImageLibraryPicker onSelect={(url) => setImageUrl(url)} />
-                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => setImageUrl(url)} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
+                    <ImageLibraryPicker onSelect={(url) => { setImageUrl(url); setImageFocalX(50); setImageFocalY(50); }} />
+                    <AIImageGenerator section="Article Cover" defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""} aspectRatio="16:9" onApply={(url) => { setImageUrl(url); setImageFocalX(50); setImageFocalY(50); }} onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)} articleContext={{ title, excerpt, content }} />
                   </div>
                 </div>
               ) : (

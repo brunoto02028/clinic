@@ -128,6 +128,8 @@ interface Article {
   slug: string;
   excerpt: string;
   imageUrl?: string;
+  imageFocalX?: number | null;
+  imageFocalY?: number | null;
   createdAt: string;
   author: { firstName: string; lastName: string };
 }
@@ -894,9 +896,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                         <div className="relative aspect-video bg-muted overflow-hidden">
                           {article.imageUrl.startsWith('data:') || article.imageUrl.startsWith('/api/') ? (
                             // Internal API-served images bypass next/image (optimizer can't re-fetch them)
-                            <img src={article.imageUrl} alt={article.title} loading="lazy" className="object-cover absolute inset-0 w-full h-full" />
+                            <img src={article.imageUrl} alt={article.title} loading="lazy" className="object-cover absolute inset-0 w-full h-full" style={{ objectPosition: `${article.imageFocalX ?? 50}% ${article.imageFocalY ?? 50}%` }} />
                           ) : (
-                            <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" />
+                            <Image src={article.imageUrl} alt={article.title} fill className="object-cover" loading="lazy" quality={55} sizes="(max-width: 768px) 100vw, 33vw" style={{ objectPosition: `${article.imageFocalX ?? 50}% ${article.imageFocalY ?? 50}%` }} />
                           )}
                         </div>
                       )}

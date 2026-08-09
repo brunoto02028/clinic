@@ -1085,6 +1085,11 @@ model Article {
   contentPt       String?        @db.Text
   publishLanguage String?        @default("en") // primary/default language shown publicly ("en" | "pt")
   imageUrl        String?
+  // Focal point (% from top-left) used as CSS object-position wherever
+  // imageUrl is shown inside a fixed-aspect crop, so a wide/off-centre
+  // photo doesn't lose its important subject to a centred crop.
+  imageFocalX     Float          @default(50)
+  imageFocalY     Float          @default(50)
   published       Boolean        @default(false)
   scheduledAt     DateTime? // if set and published=false, a cron job auto-publishes once this time has passed
   authorId        String
@@ -3701,16 +3706,21 @@ model EmailCampaign {
   // Throttle settings
   batchSize       Int            @default(10) // emails per batch
   batchIntervalMs Int            @default(300000) // 5 min in ms
-  // Targeting
+  // Targeting — precedence when preparing the job queue: sendToAll > groupId > contactIds
   groupId         String?
   group           EmailGroup?    @relation(fields: [groupId], references: [id])
   sendToAll       Boolean        @default(false)
+  contactIds      String[]       @default([]) // individually hand-picked recipients (no group)
   // Stats
   totalRecipients Int            @default(0)
   sentCount       Int            @default(0)
   failedCount     Int            @default(0)
   // Article link (for newsletter campaigns)
   articleId       String?
+  // Server-side batch scheduling — checked by the in-process background
+  // scheduler (lib/background-jobs.ts) so sends survive the admin closing
+  // their browser tab or a deploy happening mid-send. Null/past = due now.
+  nextDispatchAt  DateTime?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 

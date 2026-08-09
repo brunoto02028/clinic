@@ -48,7 +48,7 @@ export async function PUT(
 
     const body = await request.json();
     const {
-      title, excerpt, content, imageUrl, published, authorName, metaDescription, tags, keyword,
+      title, excerpt, content, imageUrl, imageFocalX, imageFocalY, published, authorName, metaDescription, tags, keyword,
       titleEn, excerptEn, contentEn, titlePt, excerptPt, contentPt, publishLanguage,
       notifySubscribers, scheduledAt, createdAt,
     } = body;
@@ -99,6 +99,8 @@ export async function PUT(
     }
 
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+    if (imageFocalX !== undefined) updateData.imageFocalX = imageFocalX;
+    if (imageFocalY !== undefined) updateData.imageFocalY = imageFocalY;
     if (published !== undefined) updateData.published = published;
     if (authorName !== undefined) updateData.authorName = authorName || null;
     if (metaDescription !== undefined) updateData.metaDescription = metaDescription;

@@ -14,6 +14,7 @@ import { ArrowLeft, Save, Sparkles, Loader2, Mic, MicOff, Languages, Upload, Ima
 import Link from "next/link";
 import { AIFieldHelper } from "@/components/admin/ai-field-helper";
 import { AIImageGenerator } from "@/components/admin/ai-image-generator";
+import { ImageFocalPointPicker } from "@/components/admin/image-focal-point-picker";
 
 const RichTextEditor = dynamic(() => import("@/components/admin/rich-text-editor"), {
   ssr: false,
@@ -25,6 +26,8 @@ export default function NewArticlePage() {
   const [excerpt, setExcerpt] = useState("");
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [imageFocalX, setImageFocalX] = useState(50);
+  const [imageFocalY, setImageFocalY] = useState(50);
   const [published, setPublished] = useState(false);
   const [authorName, setAuthorName] = useState("");
   // Publish date shown on the public site — defaults to today, editable via the calendar picker below
@@ -182,6 +185,7 @@ export default function NewArticlePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
       setImageUrl(data.image.imageUrl);
+      setImageFocalX(50); setImageFocalY(50);
       toast({ title: "Image uploaded!" });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
@@ -270,7 +274,7 @@ export default function NewArticlePage() {
           titleEn: en.title || null, excerptEn: en.excerpt || null, contentEn: en.content || null,
           titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
           publishLanguage,
-          imageUrl, published, authorName: authorName || undefined,
+          imageUrl, imageFocalX, imageFocalY, published, authorName: authorName || undefined,
           createdAt: createdAt ? `${createdAt}T12:00:00.000Z` : undefined,
         }),
       });
@@ -500,9 +504,7 @@ export default function NewArticlePage() {
               <Label>Cover Image</Label>
               {imageUrl ? (
                 <div className="relative group">
-                  <div className="relative w-full max-w-lg aspect-video bg-muted rounded-lg overflow-hidden border border-border">
-                    <img src={imageUrl} alt="Cover preview" className="w-full h-full object-cover" />
-                  </div>
+                  <ImageFocalPointPicker imageUrl={imageUrl} x={imageFocalX} y={imageFocalY} onChange={(x, y) => { setImageFocalX(x); setImageFocalY(y); }} />
                   <div className="flex gap-2 mt-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => setImageUrl("")} className="gap-1.5 text-destructive">
                       <Trash2 className="h-3.5 w-3.5" /> Remove
@@ -514,7 +516,7 @@ export default function NewArticlePage() {
                       section="Article Cover"
                       defaultPrompt={title ? `Professional physical rehabilitation blog cover image for: ${title}` : ""}
                       aspectRatio="16:9"
-                      onApply={(url) => setImageUrl(url)}
+                      onApply={(url) => { setImageUrl(url); setImageFocalX(50); setImageFocalY(50); }}
                       onInsertInBody={(url) => setContent(prev => prev + `\n<figure class="my-6"><img src="${url}" alt="${title}" class="rounded-xl shadow-md w-full" /><figcaption class="text-sm text-center text-gray-500 mt-2">AI-generated illustration</figcaption></figure>\n`)}
                       articleContext={{ title, excerpt, content }}
                     />

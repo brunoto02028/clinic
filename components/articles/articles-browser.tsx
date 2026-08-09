@@ -40,6 +40,8 @@ export interface ArticleListItem {
   excerptEn?: string | null;
   excerptPt?: string | null;
   imageUrl?: string | null;
+  imageFocalX?: number | null;
+  imageFocalY?: number | null;
   createdAt: Date | string;
   tags: string[];
   authorName?: string | null;
@@ -149,6 +151,7 @@ export function ArticlesBrowser({ articles }: { articles: ArticleListItem[] }) {
                       src={featured.imageUrl}
                       alt={featured.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      style={{ objectPosition: `${featured.imageFocalX ?? 50}% ${featured.imageFocalY ?? 50}%` }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-primary/5">
@@ -199,6 +202,7 @@ export function ArticlesBrowser({ articles }: { articles: ArticleListItem[] }) {
                             src={article.imageUrl}
                             alt={article.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            style={{ objectPosition: `${article.imageFocalX ?? 50}% ${article.imageFocalY ?? 50}%` }}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-primary/5">

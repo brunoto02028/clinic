@@ -47,6 +47,8 @@ interface Article {
   slug: string;
   excerpt: string;
   imageUrl?: string;
+  imageFocalX?: number;
+  imageFocalY?: number;
   published: boolean;
   createdAt: string;
   author: { firstName: string; lastName: string };
@@ -640,7 +642,7 @@ export default function AdminArticlesPage() {
               </div>
             </div>
             {previewArticle.imageUrl && (
-              <img src={previewArticle.imageUrl} alt={previewArticle.title} className="w-full h-56 object-cover" />
+              <img src={previewArticle.imageUrl} alt={previewArticle.title} className="w-full h-56 object-cover" style={{ objectPosition: `${previewArticle.imageFocalX ?? 50}% ${previewArticle.imageFocalY ?? 50}%` }} />
             )}
             <div className="p-6">
               <p className="text-muted-foreground text-sm leading-relaxed">{previewArticle.excerpt}</p>

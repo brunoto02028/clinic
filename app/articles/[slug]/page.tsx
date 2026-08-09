@@ -150,7 +150,7 @@ export default async function ArticlePage({ params }: PageProps) {
     where: { published: true, id: { not: article.id } },
     orderBy: { createdAt: "desc" },
     take: 4,
-    select: { id: true, slug: true, title: true, excerpt: true, imageUrl: true, createdAt: true },
+    select: { id: true, slug: true, title: true, excerpt: true, imageUrl: true, imageFocalX: true, imageFocalY: true, createdAt: true },
   });
 
   return (
@@ -190,6 +190,7 @@ export default async function ArticlePage({ params }: PageProps) {
             src={article.imageUrl}
             alt={article.title}
             className="w-full h-full object-cover"
+            style={{ objectPosition: `${article.imageFocalX ?? 50}% ${article.imageFocalY ?? 50}%` }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 lg:p-12">
@@ -346,7 +347,7 @@ export default async function ArticlePage({ params }: PageProps) {
                     <Link key={related.id} href={`/articles/${related.slug}`} className="group flex gap-3">
                       {related.imageUrl ? (
                         <div className="w-16 h-12 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                          <img src={related.imageUrl} alt="" className="w-full h-full object-cover" />
+                          <img src={related.imageUrl} alt="" className="w-full h-full object-cover" style={{ objectPosition: `${related.imageFocalX ?? 50}% ${related.imageFocalY ?? 50}%` }} />
                         </div>
                       ) : (
                         <div className="w-16 h-12 rounded-md bg-primary/5 flex items-center justify-center flex-shrink-0">
@@ -396,7 +397,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
                     <div className="relative aspect-video bg-muted overflow-hidden">
                       {related.imageUrl ? (
-                        <img src={related.imageUrl} alt={related.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <img src={related.imageUrl} alt={related.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" style={{ objectPosition: `${related.imageFocalX ?? 50}% ${related.imageFocalY ?? 50}%` }} />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-primary/5">
                           <BookOpen className="h-8 w-8 text-primary/20" />

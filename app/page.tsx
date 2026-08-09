@@ -23,6 +23,8 @@ const getCachedHomeData = unstable_cache(
           slug: true,
           excerpt: true,
           imageUrl: true,
+          imageFocalX: true,
+          imageFocalY: true,
           createdAt: true,
           authorName: true,
           author: {

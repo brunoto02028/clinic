@@ -25,6 +25,8 @@ export default async function ArticlesPage() {
       excerptEn: true,
       excerptPt: true,
       imageUrl: true,
+      imageFocalX: true,
+      imageFocalY: true,
       createdAt: true,
       tags: true,
       authorName: true,

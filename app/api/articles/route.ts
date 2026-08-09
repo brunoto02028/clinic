@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     const {
-      title, excerpt, content, imageUrl, published, authorName,
+      title, excerpt, content, imageUrl, imageFocalX, imageFocalY, published, authorName,
       titleEn, excerptEn, contentEn, titlePt, excerptPt, contentPt, publishLanguage,
       createdAt,
     } = body;
@@ -97,6 +97,8 @@ export async function POST(request: NextRequest) {
         publishLanguage: pubLang,
         language: pubLang,
         imageUrl,
+        imageFocalX: typeof imageFocalX === "number" ? imageFocalX : 50,
+        imageFocalY: typeof imageFocalY === "number" ? imageFocalY : 50,
         published: published || false,
         authorId: (session.user as { id: string }).id,
         authorName: authorName || null,

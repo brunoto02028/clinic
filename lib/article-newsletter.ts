@@ -15,6 +15,8 @@ export interface NewsletterArticle {
   title: string;
   excerpt?: string | null;
   imageUrl?: string | null;
+  imageFocalX?: number | null;
+  imageFocalY?: number | null;
   titleEn?: string | null;
   excerptEn?: string | null;
   titlePt?: string | null;
@@ -48,7 +50,8 @@ function contentForLocale(article: NewsletterArticle, locale: 'en' | 'pt') {
 function buildImageBlock(article: NewsletterArticle, title: string): string {
   if (!article.imageUrl) return '';
   const src = absoluteImageUrl(article.imageUrl);
-  return `<a href="${articleUrl(article)}" style="display:block;margin:0 0 24px;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,0.08);"><img src="${src}" alt="${title}" style="width:100%;max-height:300px;object-fit:cover;display:block;" /></a>`;
+  const objectPosition = `${article.imageFocalX ?? 50}% ${article.imageFocalY ?? 50}%`;
+  return `<a href="${articleUrl(article)}" style="display:block;margin:0 0 24px;border-radius:14px;overflow:hidden;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,0.08);"><img src="${src}" alt="${title}" style="width:100%;max-height:300px;object-fit:cover;object-position:${objectPosition};display:block;" /></a>`;
 }
 
 function buildVariables(
