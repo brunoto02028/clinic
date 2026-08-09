@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   Instagram, X, Wand2, Send, Clock, Loader2, CheckCircle,
   AlertCircle, MessageSquare, Image as ImageIcon, Type,
-  Download, Sparkles, ChevronDown, ChevronUp, Film, ExternalLink, Facebook,
+  Download, Sparkles, ChevronDown, ChevronUp, Film, ExternalLink, Facebook, ZoomIn,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -55,7 +55,9 @@ async function renderComposedImage(
   src: string,
   ov: TextOverlay,
   withLogo: boolean,
-  logoPos: { x: number; y: number } = { x: 90, y: 90 }
+  logoPos: { x: number; y: number } = { x: 90, y: 90 },
+  zoom: number = 1,
+  pan: { x: number; y: number } = { x: 50, y: 50 }
 ): Promise<string> {
   const [W, H] = FORMAT_DIMS[fmt];
   return new Promise((resolve, reject) => {
@@ -66,17 +68,19 @@ async function renderComposedImage(
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext("2d")!;
 
-      // Cover-fit crop: fill the target frame, trim overflow from centre
+      // Cover-fit crop: fill the target frame, then let zoom/pan pick which
+      // part of the source shows through. pan 50/50 + zoom 1 reproduces the
+      // old always-centred behaviour exactly.
       const srcRatio = img.width / img.height;
       const dstRatio = W / H;
-      let sx = 0, sy = 0, sw = img.width, sh = img.height;
-      if (srcRatio > dstRatio) {
-        sw = img.height * dstRatio;
-        sx = (img.width - sw) / 2;
-      } else {
-        sh = img.width / dstRatio;
-        sy = (img.height - sh) / 2;
-      }
+      let baseSw = img.width, baseSh = img.height;
+      if (srcRatio > dstRatio) baseSw = img.height * dstRatio;
+      else baseSh = img.width / dstRatio;
+      const z = Math.max(1, zoom);
+      const sw = baseSw / z, sh = baseSh / z;
+      const maxX = img.width - sw, maxY = img.height - sh;
+      const sx = maxX * (pan.x / 100);
+      const sy = maxY * (pan.y / 100);
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
 
       const finish = () => {
@@ -148,7 +152,11 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
   const [format, setFormat] = useState<ImageFormat>("portrait");
   const [logoEnabled, setLogoEnabled] = useState(true);
   const [logoPos, setLogoPos] = useState({ x: 90, y: 90 });
-  const [dragTarget, setDragTarget] = useState<"text" | "logo" | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [imagePan, setImagePan] = useState({ x: 50, y: 50 });
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+  const [dragTarget, setDragTarget] = useState<"text" | "logo" | "image" | null>(null);
+  const dragStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const previewBoxRef = useRef<HTMLDivElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -232,19 +240,34 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
     document.head.appendChild(link);
   }, []);
 
-  // Recompose whenever the image, chosen format, text overlay or watermark
-  // toggle change — the logo watermark is always baked in (unless turned
-  // off), not just when the "Add Text" panel happens to be open.
+  // Recompose whenever the image, chosen format, text overlay, watermark
+  // toggle, or the photo's own zoom/pan change — the logo watermark is
+  // always baked in (unless turned off), not just when the "Add Text"
+  // panel happens to be open.
   useEffect(() => {
     if (!currentImage) { setComposedImage(""); return; }
     let cancelled = false;
     document.fonts?.load?.(`700 40px ${overlay.font}`).catch(() => {}).finally(() => {
-      renderComposedImage(format, currentImage, overlay, logoEnabled, logoPos)
+      renderComposedImage(format, currentImage, overlay, logoEnabled, logoPos, zoom, imagePan)
         .then((url) => { if (!cancelled) setComposedImage(url); })
         .catch(() => { if (!cancelled) setComposedImage(""); });
     });
     return () => { cancelled = true; };
-  }, [currentImage, format, overlay, logoEnabled, logoPos]);
+  }, [currentImage, format, overlay, logoEnabled, logoPos, zoom, imagePan]);
+
+  // Track the raw photo's natural pixel size (needed to convert on-screen
+  // drag distance into an accurate pan offset) whenever the source photo
+  // changes — also reset zoom/pan back to centred defaults for the new photo.
+  useEffect(() => {
+    setZoom(1);
+    setImagePan({ x: 50, y: 50 });
+    if (!currentImage) { setNaturalSize(null); return; }
+    let cancelled = false;
+    const img = new window.Image();
+    img.onload = () => { if (!cancelled) setNaturalSize({ w: img.width, h: img.height }); };
+    img.src = currentImage;
+    return () => { cancelled = true; };
+  }, [currentImage]);
 
   // ── Drag-to-position for the text overlay and logo watermark ──
   // While dragging, the interactive HTML layer (rendered in the preview
@@ -257,6 +280,29 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
 
     const move = (clientX: number, clientY: number) => {
       const rect = box.getBoundingClientRect();
+      if (dragTarget === "image") {
+        if (!dragStartRef.current || !naturalSize) return;
+        // Convert screen-pixel drag distance into a pan-percent delta using
+        // the same cover-fit math as renderComposedImage, so 1px of drag
+        // moves the photo by exactly 1 displayed pixel.
+        const [Wf, Hf] = FORMAT_DIMS[format];
+        const dstRatio = Wf / Hf;
+        const srcRatio = naturalSize.w / naturalSize.h;
+        let baseSw = naturalSize.w, baseSh = naturalSize.h;
+        if (srcRatio > dstRatio) baseSw = naturalSize.h * dstRatio;
+        else baseSh = naturalSize.w / dstRatio;
+        const z = Math.max(1, zoom);
+        const sw = baseSw / z, sh = baseSh / z;
+        const maxX = naturalSize.w - sw, maxY = naturalSize.h - sh;
+        const dxSourcePx = (clientX - dragStartRef.current.x) * (sw / rect.width);
+        const dySourcePx = (clientY - dragStartRef.current.y) * (sh / rect.height);
+        const dxPct = maxX > 0 ? (dxSourcePx / maxX) * 100 : 0;
+        const dyPct = maxY > 0 ? (dySourcePx / maxY) * 100 : 0;
+        const newX = Math.min(100, Math.max(0, dragStartRef.current.panX - dxPct));
+        const newY = Math.min(100, Math.max(0, dragStartRef.current.panY - dyPct));
+        setImagePan({ x: newX, y: newY });
+        return;
+      }
       const xPct = Math.min(97, Math.max(3, ((clientX - rect.left) / rect.width) * 100));
       const yPct = Math.min(97, Math.max(3, ((clientY - rect.top) / rect.height) * 100));
       if (dragTarget === "text") setOverlay(o => ({ ...o, x: xPct, y: yPct }));
@@ -361,7 +407,7 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
       // the same text/logo overlay settings baked in, then upload. Sending
       // the raw square image let Instagram auto-crop it, and a data:/blob:
       // URL was never fetchable by Instagram at all.
-      const storyCanvasDataUrl = await renderComposedImage("story", currentImage, overlay, logoEnabled, logoPos);
+      const storyCanvasDataUrl = await renderComposedImage("story", currentImage, overlay, logoEnabled, logoPos, zoom, imagePan);
       const hostedStoryUrl = await uploadDataUrl(storyCanvasDataUrl, "ig-story");
       const res = await fetch("/api/admin/articles/instagram", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -512,7 +558,14 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                 </div>
                 <div ref={previewBoxRef} className="relative select-none">
                   {previewImage ? (
-                    <img src={previewImage} alt="" className={`w-full ${FORMAT_ASPECT[format]} object-cover`} draggable={false} />
+                    <img
+                      src={previewImage} alt=""
+                      className={`w-full ${FORMAT_ASPECT[format]} object-cover ${naturalSize ? (dragTarget === "image" ? "cursor-grabbing" : "cursor-grab") : ""}`}
+                      draggable={false}
+                      onMouseDown={e => { dragStartRef.current = { x: e.clientX, y: e.clientY, panX: imagePan.x, panY: imagePan.y }; setDragTarget("image"); }}
+                      onTouchStart={e => { const t = e.touches[0]; if (!t) return; dragStartRef.current = { x: t.clientX, y: t.clientY, panX: imagePan.x, panY: imagePan.y }; setDragTarget("image"); }}
+                      title="Drag to reposition the photo"
+                    />
                   ) : (
                     <div className={`w-full ${FORMAT_ASPECT[format]} bg-neutral-800 flex flex-col items-center justify-center gap-2`}>
                       <ImageIcon className="h-14 w-14 text-neutral-600" />
@@ -521,8 +574,8 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                   )}
                   {showImageEditor && previewImage && overlay.text && (
                     <div
-                      onMouseDown={() => setDragTarget("text")}
-                      onTouchStart={() => setDragTarget("text")}
+                      onMouseDown={e => { e.stopPropagation(); setDragTarget("text"); }}
+                      onTouchStart={e => { e.stopPropagation(); setDragTarget("text"); }}
                       className={`absolute w-8 h-8 -ml-4 -mt-4 rounded-full bg-[#5dc9c0] border-2 border-white shadow-lg flex items-center justify-center touch-none ${dragTarget === "text" ? "cursor-grabbing scale-110" : "cursor-grab"} transition-transform`}
                       style={{ left: `${overlay.x}%`, top: `${overlay.y}%` }}
                       title="Drag to move the text"
@@ -532,8 +585,8 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                   )}
                   {showImageEditor && previewImage && logoEnabled && (
                     <div
-                      onMouseDown={() => setDragTarget("logo")}
-                      onTouchStart={() => setDragTarget("logo")}
+                      onMouseDown={e => { e.stopPropagation(); setDragTarget("logo"); }}
+                      onTouchStart={e => { e.stopPropagation(); setDragTarget("logo"); }}
                       className={`absolute w-8 h-8 -ml-4 -mt-4 rounded-full bg-amber-500 border-2 border-white shadow-lg flex items-center justify-center touch-none ${dragTarget === "logo" ? "cursor-grabbing scale-110" : "cursor-grab"} transition-transform`}
                       style={{ left: `${logoPos.x}%`, top: `${logoPos.y}%` }}
                       title="Drag to move the logo"
@@ -546,6 +599,22 @@ export default function InstagramArticleModal({ article, onClose }: { article: A
                   <p className="text-[11px] text-neutral-300 line-clamp-3 whitespace-pre-wrap">{caption || "Caption will appear here..."}</p>
                 </div>
               </div>
+
+              {previewImage && (
+                <div className="flex items-center gap-2 border rounded-xl px-3 py-2 bg-muted/20">
+                  <ZoomIn className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <input type="range" min="1" max="2.5" step="0.05" value={zoom} onChange={e => setZoom(parseFloat(e.target.value))} className="w-full" />
+                  <span className="text-[10px] text-muted-foreground w-9 text-right shrink-0">{Math.round(zoom * 100)}%</span>
+                  {(zoom !== 1 || imagePan.x !== 50 || imagePan.y !== 50) && (
+                    <button onClick={() => { setZoom(1); setImagePan({ x: 50, y: 50 }); }} className="text-[10px] px-2 py-1 rounded border hover:bg-muted transition-colors font-medium shrink-0">
+                      Reset
+                    </button>
+                  )}
+                </div>
+              )}
+              {previewImage && (
+                <p className="text-[10px] text-muted-foreground text-center">🖐️ Drag the photo itself to reposition it, or use the zoom slider — this only changes the crop, not the original file.</p>
+              )}
               {showImageEditor && (overlay.text || logoEnabled) && (
                 <p className="text-[10px] text-muted-foreground text-center">🖱️ Drag the teal (text) and amber (logo) handles on the image to reposition them.</p>
               )}
