@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   });
 
   const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient";
-  const appUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+  const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
   // 1. Notify admin by email
   try {

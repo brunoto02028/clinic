@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { shopMetadata, shopJsonLd } from './metadata';
 import { getSiteSettingsLogo } from '@/lib/get-site-settings';
 
-const BASE_URL = 'https://bpr.rehab';
+const BASE_URL = 'https://bpr.clinic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const logoSettings = await getSiteSettingsLogo();

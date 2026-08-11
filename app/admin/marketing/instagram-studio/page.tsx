@@ -1280,7 +1280,7 @@ export default function InstagramStudioPage() {
     const uploadData = await uploadRes.json();
     const uploaded = uploadData.url || uploadData.imageUrl || uploadData.image?.imageUrl;
     if (!uploaded) throw new Error("Falha ao fazer upload da imagem");
-    return uploaded.startsWith("http") ? uploaded : `https://bpr.rehab${uploaded}`;
+    return uploaded.startsWith("http") ? uploaded : `https://bpr.clinic${uploaded}`;
   }
 
   async function publishNow() {
@@ -1307,7 +1307,7 @@ export default function InstagramStudioPage() {
         }
         imgUrl = await uploadDataUrl(imgUrl, `ig-post-${Date.now()}.jpg`);
       } else if (imgUrl.startsWith("/")) {
-        imgUrl = `https://bpr.rehab${imgUrl}`;
+        imgUrl = `https://bpr.clinic${imgUrl}`;
       }
 
       // For Stories: generate a 9:16 version of the image (avoids cropping)
@@ -1370,9 +1370,9 @@ export default function InstagramStudioPage() {
         const uploadData = await uploadRes.json();
         const uploaded = uploadData.url || uploadData.imageUrl || uploadData.image?.imageUrl;
         if (!uploaded) throw new Error("Falha ao fazer upload da imagem");
-        publicUrl = uploaded.startsWith("http") ? uploaded : `https://bpr.rehab${uploaded}`;
+        publicUrl = uploaded.startsWith("http") ? uploaded : `https://bpr.clinic${uploaded}`;
       } else if (publicUrl.startsWith("/")) {
-        publicUrl = `https://bpr.rehab${publicUrl}`;
+        publicUrl = `https://bpr.clinic${publicUrl}`;
       }
       const res = await fetch("/api/admin/marketing/publish-facebook", {
         method: "POST",
@@ -2086,7 +2086,7 @@ export default function InstagramStudioPage() {
                                 { text: "REHABILITATION", font: "Montserrat", size: 5, color: "#14b8a6", bold: true, align: "center" as const, x: 0.5, y: 0.13, shadow: false, shadowColor: "#000000" },
                                 { text: t ? t.toUpperCase().slice(0, 22) : "FISIOTERAPIA & SAÚDE", font: "Oswald", size: 13, color: "#ffffff", bold: true, align: "center" as const, x: 0.5, y: 0.46, shadow: true, shadowColor: "#000000" },
                                 { text: t ? `Descobre como tratamos ${t.toLowerCase().slice(0, 30)}` : "A tua recuperação começa aqui", font: "Georgia", size: 5, color: "#f0d080", bold: false, align: "center" as const, x: 0.5, y: 0.60, shadow: true, shadowColor: "#000000" },
-                                { text: "BPR · BRUNO PHYSICAL REHABILITATION · bpr.rehab", font: "Montserrat", size: 3, color: "#aaaaaa", bold: false, align: "center" as const, x: 0.5, y: 0.93, shadow: false, shadowColor: "#000000" },
+                                { text: "BPR · BRUNO PHYSICAL REHABILITATION · bpr.clinic", font: "Montserrat", size: 3, color: "#aaaaaa", bold: false, align: "center" as const, x: 0.5, y: 0.93, shadow: false, shadowColor: "#000000" },
                               ]
                             },
                             {
@@ -2098,7 +2098,7 @@ export default function InstagramStudioPage() {
                                 { text: t ? t.toUpperCase().slice(0, 20) : "RECUPERAÇÃO TOTAL", font: "Impact", size: 12, color: "#ffffff", bold: true, align: "center" as const, x: 0.5, y: 0.18, shadow: true, shadowColor: "#000000" },
                                 { text: "——————————", font: "Montserrat", size: 4, color: "#14b8a6", bold: false, align: "center" as const, x: 0.5, y: 0.25, shadow: false, shadowColor: "#000000" },
                                 { text: t ? `A solução para ${t.toLowerCase().slice(0, 28)} está aqui` : "A história da tua recuperação começa aqui", font: "Georgia", size: 5, color: "#e8e8e8", bold: false, align: "center" as const, x: 0.5, y: 0.82, shadow: true, shadowColor: "#000000" },
-                                { text: "bpr.rehab", font: "Montserrat", size: 4, color: "#14b8a6", bold: true, align: "center" as const, x: 0.5, y: 0.90, shadow: false, shadowColor: "#000000" },
+                                { text: "bpr.clinic", font: "Montserrat", size: 4, color: "#14b8a6", bold: true, align: "center" as const, x: 0.5, y: 0.90, shadow: false, shadowColor: "#000000" },
                               ]
                             },
                             {
@@ -2111,7 +2111,7 @@ export default function InstagramStudioPage() {
                                 { text: "——", font: "Montserrat", size: 6, color: "#c9a84c", bold: false, align: "center" as const, x: 0.5, y: 0.50, shadow: false, shadowColor: "#000000" },
                                 { text: t ? t.toUpperCase().slice(0, 18) : "EXCELÊNCIA EM SAÚDE", font: "Playfair Display", size: 9, color: "#ffffff", bold: true, align: "center" as const, x: 0.5, y: 0.62, shadow: true, shadowColor: "#111111" },
                                 { text: t ? `Especialistas em ${t.toLowerCase().slice(0, 26)}` : "A sua frase de impacto aqui", font: "Georgia", size: 4.5, color: "#d4d4d4", bold: false, align: "center" as const, x: 0.5, y: 0.72, shadow: false, shadowColor: "#000000" },
-                                { text: "bpr.rehab  ·  UK", font: "Montserrat", size: 3, color: "#c9a84c", bold: false, align: "center" as const, x: 0.5, y: 0.95, shadow: false, shadowColor: "#000000" },
+                                { text: "bpr.clinic  ·  UK", font: "Montserrat", size: 3, color: "#c9a84c", bold: false, align: "center" as const, x: 0.5, y: 0.95, shadow: false, shadowColor: "#000000" },
                               ]
                             },
                             {
@@ -2122,7 +2122,7 @@ export default function InstagramStudioPage() {
                                 { text: "BREAKING", font: "Impact", size: 7, color: "#ff3333", bold: true, align: "center" as const, x: 0.5, y: 0.06, shadow: true, shadowColor: "#000000" },
                                 { text: t ? t.toUpperCase().slice(0, 20) : "NOVA ABORDAGEM", font: "Impact", size: 11, color: "#ffffff", bold: true, align: "center" as const, x: 0.5, y: 0.45, shadow: true, shadowColor: "#000000" },
                                 { text: t ? `Tudo o que precisas saber sobre ${t.toLowerCase().slice(0, 22)}` : "Descobre o que está a mudar", font: "Montserrat", size: 4.5, color: "#ffee88", bold: false, align: "center" as const, x: 0.5, y: 0.57, shadow: true, shadowColor: "#000000" },
-                                { text: "BPR PHYSIOTHERAPY  ·  bpr.rehab", font: "Montserrat", size: 3.5, color: "#ffffff", bold: true, align: "center" as const, x: 0.5, y: 0.93, shadow: false, shadowColor: "#000000" },
+                                { text: "BPR PHYSIOTHERAPY  ·  bpr.clinic", font: "Montserrat", size: 3.5, color: "#ffffff", bold: true, align: "center" as const, x: 0.5, y: 0.93, shadow: false, shadowColor: "#000000" },
                               ]
                             },
                             {
@@ -2134,7 +2134,7 @@ export default function InstagramStudioPage() {
                                 { text: "DOCUMENTARY", font: "Montserrat", size: 3.5, color: "#aaaaaa", bold: false, align: "left" as const, x: 0.07, y: 0.14, shadow: false, shadowColor: "#000000" },
                                 { text: t ? t.toUpperCase().slice(0, 16) : "SAÚDE & MOVIMENTO", font: "Oswald", size: 13, color: "#ffffff", bold: true, align: "left" as const, x: 0.07, y: 0.50, shadow: true, shadowColor: "#000000" },
                                 { text: t ? `A verdade sobre ${t.toLowerCase().slice(0, 28)}` : "Uma história de superação", font: "Georgia", size: 4.5, color: "#cccccc", bold: false, align: "left" as const, x: 0.07, y: 0.62, shadow: true, shadowColor: "#000000" },
-                                { text: "bpr.rehab  ·  2026", font: "Montserrat", size: 3, color: "#14b8a6", bold: false, align: "left" as const, x: 0.07, y: 0.93, shadow: false, shadowColor: "#000000" },
+                                { text: "bpr.clinic  ·  2026", font: "Montserrat", size: 3, color: "#14b8a6", bold: false, align: "left" as const, x: 0.07, y: 0.93, shadow: false, shadowColor: "#000000" },
                               ]
                             },
                             {
@@ -2145,7 +2145,7 @@ export default function InstagramStudioPage() {
                                 { text: t ? `"${t.toUpperCase().slice(0, 14)}` : '"A FRASE MAIS', font: "Playfair Display", size: 10, color: "#ffffff", bold: true, align: "center" as const, x: 0.5, y: 0.32, shadow: true, shadowColor: "#000000" },
                                 { text: t ? `${t.toUpperCase().slice(14, 28)}"` : 'IMPACTANTE"', font: "Playfair Display", size: 10, color: "#f0d080", bold: true, align: "center" as const, x: 0.5, y: 0.44, shadow: true, shadowColor: "#000000" },
                                 { text: "— Bruno Physical Rehabilitation", font: "Georgia", size: 4, color: "#cccccc", bold: false, align: "center" as const, x: 0.5, y: 0.58, shadow: true, shadowColor: "#000000" },
-                                { text: "bpr.rehab", font: "Montserrat", size: 3.5, color: "#14b8a6", bold: true, align: "center" as const, x: 0.5, y: 0.92, shadow: false, shadowColor: "#000000" },
+                                { text: "bpr.clinic", font: "Montserrat", size: 3.5, color: "#14b8a6", bold: true, align: "center" as const, x: 0.5, y: 0.92, shadow: false, shadowColor: "#000000" },
                               ]
                             },
                           ].map((tpl, ti) => (

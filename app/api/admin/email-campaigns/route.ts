@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       htmlBody: htmlBody || null,
       preheader: preheader || null,
       fromName: fromName || "BPR Physical Rehabilitation",
-      fromEmail: fromEmail || "noreply@bpr.rehab",
+      fromEmail: fromEmail || "noreply@bpr.clinic",
       replyTo: replyTo || null,
       groupId: groupId || null,
       sendToAll: sendToAll ?? false,

@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { ArrowRight, BookOpen, Stethoscope, CalendarCheck } from "lucide-react";
 import { MedicalDisclaimer } from "@/components/medical-disclaimer";
 
-const BASE_URL = "https://bpr.rehab";
+const BASE_URL = "https://bpr.clinic";
 
 export const dynamic = "force-dynamic";
 

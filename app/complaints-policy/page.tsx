@@ -70,7 +70,7 @@ export default function ComplaintsPolicyPage() {
                     {isPt
                       ? "Se preferir apresentar uma reclamação formal, ou se a conversa informal não resolveu a questão, escreva-nos para "
                       : "If you'd rather raise a formal complaint, or the informal conversation hasn't resolved things, please write to us at "}
-                    <a href="mailto:admin@bpr.rehab" className="text-primary hover:underline">admin@bpr.rehab</a>
+                    <a href="mailto:admin@bpr.clinic" className="text-primary hover:underline">admin@bpr.clinic</a>
                     {isPt
                       ? ", através do seu portal do paciente (secção Mensagens), ou por telefone."
                       : ", through your patient portal (Messages section), or by phone."}
@@ -183,7 +183,7 @@ export default function ComplaintsPolicyPage() {
             <p className="font-semibold text-foreground">{isPt ? "Contacte-nos sobre uma reclamação" : "Contact us about a complaint"}</p>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Mail className="h-4 w-4 flex-shrink-0" />
-              <a href="mailto:admin@bpr.rehab" className="text-primary hover:underline">admin@bpr.rehab</a>
+              <a href="mailto:admin@bpr.clinic" className="text-primary hover:underline">admin@bpr.clinic</a>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Phone className="h-4 w-4 flex-shrink-0" />

@@ -432,7 +432,7 @@ export async function PATCH(
     // Only notify patient when therapist explicitly sends the assessment
     if (status === "SENT_TO_PATIENT") {
       try {
-        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
         notifyPatient({
           patientId: params.id,
           emailTemplateSlug: 'ASSESSMENT_COMPLETED',

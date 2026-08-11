@@ -19,13 +19,13 @@ export function getAppName(): string {
 export function getSenderEmail(): string {
   const appUrl = process.env.NEXTAUTH_URL || "";
   if (!appUrl) {
-    return "noreply@bpr.rehab";
+    return "noreply@bpr.clinic";
   }
   try {
     const hostname = new URL(appUrl).hostname;
     return `noreply@${hostname}`;
   } catch {
-    return "noreply@bpr.rehab";
+    return "noreply@bpr.clinic";
   }
 }
 

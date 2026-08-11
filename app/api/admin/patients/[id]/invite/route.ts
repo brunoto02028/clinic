@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
 
   // Build the intake URL
-  const baseUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+  const baseUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
   const intakeUrl = `${baseUrl}/intake/${token}`;
 
   return NextResponse.json({
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "Patient not found" }, { status: 404 });
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+  const baseUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
   const intakeUrl = patient.intakeToken ? `${baseUrl}/intake/${patient.intakeToken}` : null;
   const expired = patient.intakeTokenExpiry ? new Date(patient.intakeTokenExpiry) < new Date() : true;
 

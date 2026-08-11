@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Send cancellation confirmation via preferred channel
-    const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+    const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
     notifyPatient({
       patientId,
       emailTemplateSlug: 'APPOINTMENT_CANCELLED',

@@ -219,7 +219,7 @@ export async function GET(
         <div class="footer">
           <p>This document is confidential and intended only for the patient named above.</p>
           <p>Generated on ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })} at ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</p>
-          <p>Bruno Physical Rehabilitation | admin@bpr.rehab</p>
+          <p>Bruno Physical Rehabilitation | admin@bpr.clinic</p>
         </div>
       </body>
       </html>

@@ -465,7 +465,7 @@ export async function PATCH(
     });
 
     if (releaseExpanded) {
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
       notifyPatient({
         patientId: params.id,
         plainMessage: `New exercises and activities from your plan "${updated.title}" are now available. Log in to see them: ${BASE}/dashboard/treatment`,
@@ -476,7 +476,7 @@ export async function PATCH(
     // Notify patient when treatment is completed
     if (status === "COMPLETED") {
       try {
-        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
         const patientId = params.id;
 
         // Send treatment completed notification
@@ -555,7 +555,7 @@ export async function PATCH(
     // Notify patient when protocol is sent to them
     if (status === "SENT_TO_PATIENT") {
       try {
-        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
         notifyPatient({
           patientId: params.id,
           emailTemplateSlug: 'TREATMENT_PROTOCOL',

@@ -47,7 +47,7 @@ export async function POST(
       });
     }
 
-    const baseUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+    const baseUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
     const captureUrl = `${baseUrl}/capture/${captureToken}`;
     const isPt = (assessment.patient?.preferredLocale || language) === "pt-BR";
     const clinicName = assessment.clinic?.name || "BPR Rehab";

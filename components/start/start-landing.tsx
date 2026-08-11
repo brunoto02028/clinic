@@ -22,7 +22,7 @@ const GHOST_DARK = "w-full bg-transparent border-white/25 text-background hover:
 // fail ("not a valid image") behind Render's reverse proxy in production.
 function absoluteImageUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
-  return url.startsWith("http") ? url : `https://bpr.rehab${url}`;
+  return url.startsWith("http") ? url : `https://bpr.clinic${url}`;
 }
 
 type BookSummary = { title: string; subtitle: string; coverImage: string | null };
@@ -485,7 +485,7 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
           </div>
           <p className="text-muted-foreground text-xs">BPR Physical Rehabilitation · Ipswich, Suffolk, {isPt ? "Reino Unido" : "UK"}</p>
           <p className="text-primary text-[11px] font-bold mt-1">{isPt ? "Curar com Coração" : "Healing With Heart"}</p>
-          <Link href="/" className="text-muted-foreground text-xs underline mt-2 inline-block">bpr.rehab</Link>
+          <Link href="/" className="text-muted-foreground text-xs underline mt-2 inline-block">bpr.clinic</Link>
         </footer>
       </main>
 

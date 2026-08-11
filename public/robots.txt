@@ -3,4 +3,4 @@ User-agent: *
 Allow: /
 Disallow: /shop
 
-Sitemap: https://bpr.rehab/sitemap.xml
+Sitemap: https://bpr.clinic/sitemap.xml

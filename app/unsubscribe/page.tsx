@@ -32,7 +32,7 @@ function UnsubscribeContent() {
           {status === "done"
             ? `${email} has been removed from our mailing list. You will no longer receive marketing emails from us.`
             : status === "error"
-            ? "We could not process your request. Please contact support@bpr.rehab."
+            ? "We could not process your request. Please contact support@bpr.clinic."
             : "Please wait..."}
         </p>
         {status === "done" && (

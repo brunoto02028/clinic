@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         .save(outputMp4Path as string);
     });
 
-    const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+    const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
     const videoUrl = `${BASE}/uploads/social/${outputFilename}`;
 
     const result = await publishReel({

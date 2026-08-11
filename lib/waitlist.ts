@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 import { seedDefaultTemplates } from "@/lib/email-templates";
 
-const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 const MAX_NOTIFIED_PER_SLOT = 5;
 
 /**

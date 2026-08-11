@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendNurture2DayEmail, sendNurture5DayEmail, logLeadMagnetEvent } from "@/lib/lead-magnet";
 
-const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
 // POST /api/cron/lead-nurture?key=SECRET
 // Run daily. Sends the +2 day and +5 day lead-magnet nurture emails (P3 of

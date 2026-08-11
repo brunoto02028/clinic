@@ -248,7 +248,7 @@ function buildPdfHtml(content: {
   <p class="cover-subtitle">${content.subtitle || 'Expert guidance for your recovery journey'}</p>
   <div class="cover-author">
     <div class="cover-logo">BPR</div>
-    <p>Bruno Physical Rehabilitation<br>Richmond · Ipswich · bpr.rehab</p>
+    <p>Bruno Physical Rehabilitation<br>Richmond · Ipswich · bpr.clinic</p>
   </div>
 </div>
 <div class="content">
@@ -257,10 +257,10 @@ function buildPdfHtml(content: {
   <div class="section-cta">
     <h2>Ready to Start Your Recovery?</h2>
     <p>Book your personalised assessment at BPR. We're open every day, including weekends.</p>
-    <div class="cta-url">bpr.rehab/signup</div>
+    <div class="cta-url">bpr.clinic/signup</div>
   </div>
   <div class="footer">
-    &copy; BPR Bruno Physical Rehabilitation · bpr.rehab · Richmond TW10 6AQ &amp; Ipswich, Suffolk<br>
+    &copy; BPR Bruno Physical Rehabilitation · bpr.clinic · Richmond TW10 6AQ &amp; Ipswich, Suffolk<br>
     This guide is for educational purposes only. Always consult a qualified professional for medical advice.
   </div>
 </div>

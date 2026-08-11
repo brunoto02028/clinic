@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Articles - Bruno Physical Rehabilitation",
   description: "Evidence-based articles about physical rehabilitation and wellness from Bruno Physical Rehabilitation.",
-  alternates: { canonical: "https://bpr.rehab/articles" },
+  alternates: { canonical: "https://bpr.clinic/articles" },
 };
 
 export default async function ArticlesPage() {

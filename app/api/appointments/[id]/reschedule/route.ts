@@ -64,7 +64,7 @@ export async function POST(
 
     if (!isStaff && !isFree) {
       // Patient has exceeded free reschedules — need to charge
-      const origin = request.headers.get("origin") || process.env.NEXTAUTH_URL || "https://bpr.rehab";
+      const origin = request.headers.get("origin") || process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
       // Create a Stripe checkout session for the reschedule fee
       const checkoutSession = await stripe.checkout.sessions.create({
@@ -121,7 +121,7 @@ export async function POST(
     });
 
     // Notify patient
-    const BASE = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+    const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
     const newDateStr = newDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const newTimeStr = newDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
     const oldDateStr = oldDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });

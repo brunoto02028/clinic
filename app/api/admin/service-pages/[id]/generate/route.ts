@@ -24,7 +24,7 @@ Generate professional, compelling content for service/treatment pages on the cli
 ## ABOUT BPR
 - Digital-first physiotherapy clinic in London
 - Services: kinesiotherapy, electrotherapy, microcurrent therapy (MENS), laser & shockwave, therapeutic ultrasound, EMS, sports injury treatment, chronic pain management, pre/post surgery rehab, biomechanical assessment, foot scanning
-- Website: https://bpr.rehab | Currency: GBP
+- Website: https://bpr.clinic | Currency: GBP
 
 ## CONTENT RULES
 - Professional, empathetic, patient-focused tone

@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
             // Notify patient: membership activated
             const plan = await (prisma as any).membershipPlan.findUnique({ where: { id: planId } });
             if (plan) {
-              const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+              const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
               notifyPatient({
                 patientId,
                 emailTemplateSlug: 'MEMBERSHIP_ACTIVATED',
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
             // Notify patient
             if (order.patient?.id) {
-              const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+              const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
               const hasDigital = digitalItems.length > 0;
               notifyPatient({
                 patientId: order.patient.id,
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
 
           // Notify patient: package payment confirmed
           if (pkg?.patient?.id) {
-            const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+            const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
             const amount = ((session.amount_total || 0) / 100).toFixed(2);
             notifyPatient({
               patientId: pkg.patient.id,

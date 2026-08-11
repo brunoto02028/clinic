@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
           data: {
             direction: 'OUTBOUND',
             folder: 'SENT',
-            fromAddress: (session.user as any).email || 'admin@bpr.rehab',
+            fromAddress: (session.user as any).email || 'admin@bpr.clinic',
             fromName: `${(session.user as any).firstName || ''} ${(session.user as any).lastName || ''}`.trim() || 'Admin',
             toAddress: to,
             subject,

@@ -8,7 +8,7 @@ import { renderTemplate } from '@/lib/email-templates';
 import { sendEmail } from '@/lib/email';
 import { buildReferBlock } from '@/lib/book';
 
-const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
 export interface NewsletterArticle {
   id: string;

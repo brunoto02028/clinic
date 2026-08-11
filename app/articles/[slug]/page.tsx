@@ -19,7 +19,7 @@ import { extractFaqPairs, buildFaqPageSchema, buildArticleSchema } from "@/lib/a
 
 const STAFF_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
-const BASE_URL = "https://bpr.rehab";
+const BASE_URL = "https://bpr.clinic";
 function absoluteUrl(url?: string | null): string | null {
   if (!url) return null;
   return url.startsWith("http") ? url : `${BASE_URL}${url}`;

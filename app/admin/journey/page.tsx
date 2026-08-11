@@ -619,12 +619,12 @@ export default function AdminJourneyPage() {
               <p className="text-xs text-slate-500 mb-2">Add these to your cron scheduler (e.g. Vercel Cron, pm2 cron):</p>
               <div className="space-y-1 font-mono text-xs text-slate-600 bg-white p-3 rounded border">
                 <p># Every Monday at 6am — Generate Missions</p>
-                <p>0 6 * * 1 curl -X POST https://bpr.rehab/api/notifications/trigger -H &quot;Authorization: Bearer $CRON_SECRET&quot; -d &apos;{`{"type":"generate_missions"}`}&apos;</p>
+                <p>0 6 * * 1 curl -X POST https://bpr.clinic/api/notifications/trigger -H &quot;Authorization: Bearer $CRON_SECRET&quot; -d &apos;{`{"type":"generate_missions"}`}&apos;</p>
                 <p className="mt-2"># Daily at 9am — Streak + Stagnation</p>
-                <p>0 9 * * * curl -X POST https://bpr.rehab/api/notifications/trigger -H &quot;Authorization: Bearer $CRON_SECRET&quot; -d &apos;{`{"type":"streak_check"}`}&apos;</p>
-                <p>5 9 * * * curl -X POST https://bpr.rehab/api/notifications/trigger -H &quot;Authorization: Bearer $CRON_SECRET&quot; -d &apos;{`{"type":"stagnation_check"}`}&apos;</p>
+                <p>0 9 * * * curl -X POST https://bpr.clinic/api/notifications/trigger -H &quot;Authorization: Bearer $CRON_SECRET&quot; -d &apos;{`{"type":"streak_check"}`}&apos;</p>
+                <p>5 9 * * * curl -X POST https://bpr.clinic/api/notifications/trigger -H &quot;Authorization: Bearer $CRON_SECRET&quot; -d &apos;{`{"type":"stagnation_check"}`}&apos;</p>
                 <p className="mt-2"># Wednesday + Friday — Challenge Reminder</p>
-                <p>0 12 * * 3,5 curl -X POST https://bpr.rehab/api/notifications/trigger -H &quot;Authorization: Bearer $CRON_SECRET&quot; -d &apos;{`{"type":"challenge_reminder"}`}&apos;</p>
+                <p>0 12 * * 3,5 curl -X POST https://bpr.clinic/api/notifications/trigger -H &quot;Authorization: Bearer $CRON_SECRET&quot; -d &apos;{`{"type":"challenge_reminder"}`}&apos;</p>
               </div>
             </CardContent>
           </Card>

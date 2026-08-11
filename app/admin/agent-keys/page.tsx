@@ -342,7 +342,7 @@ export default function AgentKeysPage() {
           <div>
             <h4 className="font-semibold mb-2">Base URL</h4>
             <code className="bg-muted px-3 py-1 rounded block">
-              https://bpr.rehab/api/agent
+              https://bpr.clinic/api/agent
             </code>
           </div>
 
@@ -383,7 +383,7 @@ export default function AgentKeysPage() {
 {`import requests
 
 API_KEY = "bpr_agent_..."
-BASE_URL = "https://bpr.rehab/api/agent"
+BASE_URL = "https://bpr.clinic/api/agent"
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",

@@ -55,7 +55,7 @@ export async function POST(
   ]);
 
   if (patient) {
-    const appUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+    const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
     const isPt = language === "pt";
     try {
       await notifyPatient({

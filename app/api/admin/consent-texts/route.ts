@@ -32,7 +32,7 @@ const DEFAULT_CONSENT_TEXTS = {
     { number: 15, title: "Payments & Cancellations", body: "Service packages and appointments are subject to our cancellation policy. Refunds are processed in accordance with the Consumer Rights Act 2015. You have 14 days to cancel a service package from the date of purchase if no services have been used (cooling-off period under the Consumer Contracts Regulations 2013)." },
     { number: 16, title: "Governing Law", body: "These terms are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales." },
     { number: 17, title: "Changes to Terms", body: "We reserve the right to update these terms. Material changes will be notified to you via email or Platform notification. Continued use after changes constitutes acceptance of the updated terms." },
-    { number: 18, title: "Contact", body: "For data protection queries or to exercise your rights, contact: Bruno Physical Rehabilitation, Email: admin@bpr.rehab. To report a data breach or complaint: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk." },
+    { number: 18, title: "Contact", body: "For data protection queries or to exercise your rights, contact: Bruno Physical Rehabilitation, Email: admin@bpr.clinic. To report a data breach or complaint: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk." },
   ],
 };
 

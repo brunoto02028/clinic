@@ -146,7 +146,7 @@ export async function GET() {
           id: "dev-clinic-local",
           name: "Bruno Physical Rehabilitation",
           slug: "bruno-physical-rehabilitation",
-          email: "admin@bpr.rehab",
+          email: "admin@bpr.clinic",
           phone: "+44 7XXX XXXXXX",
           status: "ACTIVE",
           plan: "ENTERPRISE",

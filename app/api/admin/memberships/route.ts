@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     // Send membership notification via patient's preferred channel
     if (plan.patient?.id) {
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
       const intervalLabels: Record<string, string> = { MONTHLY: 'Monthly', WEEKLY: 'Weekly', YEARLY: 'Yearly' };
       notifyPatient({
         patientId: plan.patient.id,

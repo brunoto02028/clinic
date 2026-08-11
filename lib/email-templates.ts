@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/db';
 import { getEmailContent, isPt } from '@/lib/email-i18n';
 
-const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
-const CONTACT_EMAIL = 'admin@bpr.rehab';
+const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
+const CONTACT_EMAIL = 'admin@bpr.clinic';
 const CONTACT_PHONE = '';
 const EMAIL_LOGO_URL = `${BASE_URL}/uploads/email-logo.png`;
 // Bundled white logo (see .dockerignore exceptions) — email clients need a hosted PNG, not a data URI
@@ -98,7 +98,7 @@ ${preheader ? `<span style="display:none!important;visibility:hidden;mso-hide:al
     <tr><td style="text-align:center;">
       ${footerLogoHtml}
       <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">${locationText}</p>
-      <p style="margin:0 0 8px;font-size:11px;color:#6b7280;">&#128231; <a href="mailto:admin@bpr.rehab" style="color:${BRAND_PRIMARY};text-decoration:none;">admin@bpr.rehab</a></p>
+      <p style="margin:0 0 8px;font-size:11px;color:#6b7280;">&#128231; <a href="mailto:admin@bpr.clinic" style="color:${BRAND_PRIMARY};text-decoration:none;">admin@bpr.clinic</a></p>
       <p style="margin:10px 0 0;font-size:10px;color:#d1d5db;line-height:1.5;">${noReplyText}</p>
     </td></tr>
     </table>
@@ -162,7 +162,7 @@ export const DEFAULT_TEMPLATES = [
     <div style="text-align:center;margin:24px 0;">
       <a href="{{portalUrl}}" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View & Pay →</a>
     </div>
-    <p style="color:#6b7280;font-size:13px;margin:0;">Need to reschedule or have questions? Contact us at <a href="mailto:admin@bpr.rehab" style="color:#4F7361;">admin@bpr.rehab</a></p>`,
+    <p style="color:#6b7280;font-size:13px;margin:0;">Need to reschedule or have questions? Contact us at <a href="mailto:admin@bpr.clinic" style="color:#4F7361;">admin@bpr.clinic</a></p>`,
   },
   {
     slug: 'APPOINTMENT_REMINDER' as const,
@@ -383,7 +383,7 @@ export const DEFAULT_TEMPLATES = [
         <tr><td style="padding:6px 0;font-size:14px;color:#6b7280;">📋 Version</td><td style="padding:6px 0;font-size:15px;color:#111827;font-weight:600;">{{termsVersion}}</td></tr>
       </table>
     </div>
-    <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 20px;">You can withdraw your consent at any time by contacting us at <a href="mailto:admin@bpr.rehab" style="color:#4F7361;">admin@bpr.rehab</a> or through your patient portal.</p>
+    <p style="color:#6b7280;font-size:13px;line-height:1.6;margin:0 0 20px;">You can withdraw your consent at any time by contacting us at <a href="mailto:admin@bpr.clinic" style="color:#4F7361;">admin@bpr.clinic</a> or through your patient portal.</p>
     <div style="text-align:center;margin:24px 0;">
       <a href="{{portalUrl}}" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View Your Portal →</a>
     </div>`,
@@ -585,7 +585,7 @@ export const DEFAULT_TEMPLATES = [
     <div style="text-align:center;margin:24px 0;">
       <a href="{{portalUrl}}" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Answer Questions →</a>
     </div>
-    <p style="color:#6b7280;font-size:13px;margin:0;">Questions? Contact us at <a href="mailto:admin@bpr.rehab" style="color:#4F7361;">admin@bpr.rehab</a></p>`,
+    <p style="color:#6b7280;font-size:13px;margin:0;">Questions? Contact us at <a href="mailto:admin@bpr.clinic" style="color:#4F7361;">admin@bpr.clinic</a></p>`,
   },
   // ── EXERCISE REMINDER ──
   {
@@ -638,7 +638,7 @@ export const DEFAULT_TEMPLATES = [
       <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">Use this box to highlight a key message, offer, or call to action.</p>
     </div>
     <div style="text-align:center;margin:28px 0;">
-      <a href="https://bpr.rehab" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Call to Action →</a>
+      <a href="https://bpr.clinic" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Call to Action →</a>
     </div>
     <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
     <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0;"><a href="{{unsubscribeUrl}}" style="color:#9ca3af;">Unsubscribe</a></p>`,
@@ -713,7 +713,7 @@ export async function sendTemplatedEmail(
       data: {
         direction: 'OUTBOUND',
         folder: 'SENT',
-        fromAddress: process.env.EMAIL_FROM || 'admin@bpr.rehab',
+        fromAddress: process.env.EMAIL_FROM || 'admin@bpr.clinic',
         fromName: 'BPR Physical Rehabilitation',
         toAddress: to,
         toName: variables.patientName || null,

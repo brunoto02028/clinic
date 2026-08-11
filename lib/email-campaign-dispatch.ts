@@ -9,7 +9,7 @@ import { sendEmail } from './email';
 import { wrapInLayout, replaceVariables } from './email-templates';
 import { renderArticleNewsletter } from './article-newsletter';
 
-const BASE_URL = process.env.NEXTAUTH_URL || 'https://clinic.bpr.rehab';
+const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
 export async function prepareCampaign(campaignId: string) {
   const campaign = await (prisma as any).emailCampaign.findUnique({

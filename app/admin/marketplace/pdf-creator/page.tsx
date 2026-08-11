@@ -838,7 +838,7 @@ function buildPreviewHtml(content: PdfContent): string {
 ${sectionsHtml}
 ${refsHtml}
 <div style="text-align: center; padding: 2rem; font-size: 0.75rem; color: #555; border-top: 1px solid #e0e0e0; margin-top: 2rem;">
-  <p>© ${new Date().getFullYear()} Bruno Physical Rehabilitation (BPR) — bpr.rehab</p>
+  <p>© ${new Date().getFullYear()} Bruno Physical Rehabilitation (BPR) — bpr.clinic</p>
 </div>
 </body></html>`;
 }

@@ -157,7 +157,7 @@ GUIDE TITLE: "${meta.title}"
 SECTION TITLE: "${sec.title}"
 SECTION FOCUS: ${sec.focus}
 LANGUAGE: ${lang}
-${isLast ? 'This is the LAST section — include a call-to-action to book at BPR (bpr.rehab).' : ''}
+${isLast ? 'This is the LAST section — include a call-to-action to book at BPR (bpr.clinic).' : ''}
 
 Respond ONLY with valid JSON (no markdown):
 {
@@ -686,7 +686,7 @@ function buildPdfHtml(opts: {
       <p style="color: var(--text-light); max-width: 400px; margin: 0 auto 2rem;">
         Purchase the full guide to access all chapters, exercises, and references.
       </p>
-      <a href="https://bpr.rehab/dashboard/marketplace" 
+      <a href="https://bpr.clinic/dashboard/marketplace" 
          style="display: inline-block; background: var(--brand); color: white; padding: 0.8rem 2rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
         Get Full Guide →
       </a>
@@ -698,7 +698,7 @@ function buildPdfHtml(opts: {
 
   <!-- Footer -->
   <div class="page-footer">
-    <p>© ${new Date().getFullYear()} Bruno Physical Rehabilitation (BPR) — <a href="https://bpr.rehab">bpr.rehab</a></p>
+    <p>© ${new Date().getFullYear()} Bruno Physical Rehabilitation (BPR) — <a href="https://bpr.clinic">bpr.clinic</a></p>
     <p>Richmond TW10 6AQ & Ipswich, Suffolk, UK</p>
     <p style="margin-top: 0.5rem; font-size: 0.65rem;">
       This guide is for informational purposes only and does not replace professional medical advice.

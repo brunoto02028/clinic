@@ -18,7 +18,7 @@ IMPORTANT RULES:
 4. For analysis, include: { "action": "analysis", "findings": [...], "recommendations": [...] }
 5. Be professional, empathetic with patients, and data-driven
 6. Clinic location: Ipswich, Suffolk
-7. Website: bpr.rehab
+7. Website: bpr.clinic
 8. Never share patient data externally
 9. Use British English for UK patients, Portuguese for Brazilian patients
 `
@@ -360,7 +360,7 @@ Currently active AI tasks: ${existingTasks.length} (${existingTasks.map(t => t.n
 
 CLINIC SERVICES: MLS Laser Therapy, Custom Insoles, Biomechanical Assessment, Thermography, Sports Recovery, Exercise Therapy, Shockwave, Foot Scans
 LOCATION: Ipswich (Suffolk)
-WEBSITE: bpr.rehab`
+WEBSITE: bpr.clinic`
 
   const suggestPrompt = `Based on the system data above, suggest 4-6 NEW automated tasks that would benefit this clinic.
 Consider what's NOT already being done by existing tasks.
@@ -473,7 +473,7 @@ export function getTaskTemplates(): Array<{
       name: 'Daily Patient Follow-Up',
       type: 'EMAIL_FOLLOWUP',
       description: 'Send personalized follow-up emails to patients who haven\'t visited in 30+ days',
-      prompt: 'Review the list of inactive patients and draft personalized follow-up emails for each. Consider their last treatment type and language preference. The email should be warm, caring, and encourage them to book a follow-up appointment. Include a link to bpr.rehab/signup to book.',
+      prompt: 'Review the list of inactive patients and draft personalized follow-up emails for each. Consider their last treatment type and language preference. The email should be warm, caring, and encourage them to book a follow-up appointment. Include a link to bpr.clinic/signup to book.',
       schedule: '0 9 * * 1-5',
       config: { targetDays: 30, maxPatients: 10 },
       requiresApproval: true,

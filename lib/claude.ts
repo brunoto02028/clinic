@@ -88,7 +88,7 @@ export async function claudeGenerate(
       headers: {
         'Authorization': `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://bpr.rehab',
+        'HTTP-Referer': 'https://bpr.clinic',
         'X-Title': 'BPR Clinic AI',
       },
       body: JSON.stringify({ model, messages: openRouterMessages, temperature, max_tokens: maxTokens }),
@@ -166,7 +166,7 @@ export async function claudeStream(
       headers: {
         'Authorization': `Bearer ${openRouterKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://bpr.rehab',
+        'HTTP-Referer': 'https://bpr.clinic',
         'X-Title': 'BPR Clinic AI',
       },
       body: JSON.stringify({ model, messages: openRouterMessages, temperature, max_tokens: maxTokens, stream: true }),
@@ -276,7 +276,7 @@ export async function checkClaudeHealth(): Promise<{
         headers: {
           'Authorization': `Bearer ${openRouterKey}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://bpr.rehab',
+          'HTTP-Referer': 'https://bpr.clinic',
           'X-Title': 'BPR Clinic AI',
         },
         body: JSON.stringify({ model: defaultModel, max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] }),
@@ -386,7 +386,7 @@ export async function claudeVision(
       headers: {
         Authorization: `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://bpr.rehab',
+        'HTTP-Referer': 'https://bpr.clinic',
         'X-Title': 'BPR Clinic AI',
       },
       body: JSON.stringify({

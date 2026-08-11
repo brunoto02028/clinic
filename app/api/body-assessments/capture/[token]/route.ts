@@ -32,7 +32,7 @@ async function blurFaceOnFile(filePath: string, patientId?: string, token?: stri
     // Notify admin about face blur failure
     try {
       const adminEmail = process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com';
-      await fetch(`${process.env.NEXTAUTH_URL || 'https://bpr.rehab'}/api/admin/notify`, {
+      await fetch(`${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/api/admin/notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'face-blur-failure', patientId, token, error: err?.message, adminEmail }),

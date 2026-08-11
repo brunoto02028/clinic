@@ -276,7 +276,7 @@ export async function generateSuperAutomacao(params: {
 CLINIC CONTEXT:
 - Owner: Bruno, ex-professional footballer (played in Brazil, Germany, Sweden), had 3 major knee surgeries, now a physiotherapist in the UK
 - Location: Ipswich (Suffolk), home visits available, open every day including weekends
-- Website: bpr.rehab
+- Website: bpr.clinic
 - Bilingual: Portuguese and English
 - Services: Electrotherapy, Exercise Therapy, Foot Scan Analysis, Biomechanical Assessment (AI-powered with 33 landmarks), Therapeutic Ultrasound, MLS® Laser Therapy (Mphi 75 — £30k machine), Shockwave Therapy, Sports Injury Treatment, Chronic Pain Management, Pre & Post-Surgery Rehabilitation, Kinesiotherapy, Microcurrent Therapy (MENS), Infrared Thermography, Custom-Made Insoles (3D foot scanning)
 - Differentiators: AI biomechanical analysis, MLS Laser, infrared thermography, 3D foot scanning, digital patient portal with video exercises
@@ -301,7 +301,7 @@ Requirements:
 - Mark viral potential (high for controversial/emotional/visual wow content)
 - Alternate content pillars throughout the week
 - Include at least 2 Portuguese-only posts per week for Brazilian audience
-- End every caption with a CTA directing to bpr.rehab or "link na bio"
+- End every caption with a CTA directing to bpr.clinic or "link na bio"
 - Use emojis naturally but not excessively
 - Week 1: Build connection ("Who is Bruno?")
 - Week 2: Show technology differentials

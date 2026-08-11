@@ -9,7 +9,7 @@ import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { wrapInLayout } from "@/lib/email-templates";
 
-const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 const BRAND_PRIMARY = "#4F7361";
 
 export function generateConfirmToken(): string {

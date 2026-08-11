@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 Business Name: ${businessInfo.name || "BPR Physical Rehabilitation"}
 Location: ${businessInfo.location || "Ipswich, Suffolk, UK"}
 Services: ${businessInfo.services || "Physical therapy, sports rehabilitation, MLS Laser therapy, thermography, biomechanics, insoles"}
-Contact Email: ${businessInfo.email || "info@bpr.rehab"}
+Contact Email: ${businessInfo.email || "info@bpr.clinic"}
 Contact Phone: ${businessInfo.phone || "+44 (0) XXXX XXXXXX"}
 Address: ${businessInfo.address || "Ipswich, Suffolk, UK"}
 

@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
 
   // Notify each patient (email/WhatsApp per preference) — fire-and-forget batches
   if (notify) {
-    const appUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+    const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
     const preview = content.trim().slice(0, 100);
     Promise.allSettled(
       patients.map((p) =>

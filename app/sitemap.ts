@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 
-const BASE_URL = "https://bpr.rehab";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
 export const dynamic = "force-dynamic";
 

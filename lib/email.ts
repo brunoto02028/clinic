@@ -1,8 +1,8 @@
 import { Resend } from 'resend';
 import { getConfigValue } from '@/lib/system-config';
 
-const FROM_ADDRESS = 'BPR Physical Rehabilitation <noreply@bpr.rehab>';
-const REPLY_TO     = 'admin@bpr.rehab';
+const FROM_ADDRESS = 'BPR Physical Rehabilitation <noreply@bpr.clinic>';
+const REPLY_TO     = 'admin@bpr.clinic';
 
 async function getResend(): Promise<Resend> {
     // DB-backed (Admin -> AI Settings) first, falls back to .env — same

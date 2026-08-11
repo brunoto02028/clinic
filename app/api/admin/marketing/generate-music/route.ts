@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       const lyricPrompt = type === 'spoken'
         ? `Write a short spoken-word narration (${duration} seconds when read aloud) for an Instagram Reel about: "${context}".
            Sound like Bruno, a physiotherapist from Brazil living in the UK. Professional, warm, motivational.
-           End with a call to action mentioning bpr.rehab.
+           End with a call to action mentioning bpr.clinic.
            ${language === 'pt' ? 'Write in Portuguese (PT-BR).' : 'Write in English (UK).'}
            Return ONLY the spoken text, no stage directions.`
         : `Write short song lyrics (fits ${duration} seconds) for a ${style} song about: "${context}".
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     // Build a richer style description incorporating the post context
     const contextStyle = `${style}, background music for a physiotherapy clinic Instagram Reel about ${context.slice(0, 80)}, ${duration <= 30 ? 'short punchy' : 'full'} track`
     // callBackUrl is required by Suno — we use our own endpoint (ignores the callback, we poll instead)
-    const SITE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab'
+    const SITE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic'
     const sunoPayload = isInstrumental
       ? {
           customMode: true,

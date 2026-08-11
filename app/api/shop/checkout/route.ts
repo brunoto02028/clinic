@@ -132,8 +132,8 @@ export async function POST(req: NextRequest) {
           mode: "payment",
           line_items: lineItems,
           customer_email: contactEmail,
-          success_url: `${process.env.NEXTAUTH_URL || "https://bpr.rehab"}/shop?order=${order.id}&success=true`,
-          cancel_url: `${process.env.NEXTAUTH_URL || "https://bpr.rehab"}/shop?cancelled=true`,
+          success_url: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/shop?order=${order.id}&success=true`,
+          cancel_url: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/shop?cancelled=true`,
           metadata: { orderId: order.id, orderNumber },
         });
         await (prisma as any).marketplaceOrder.update({

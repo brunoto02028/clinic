@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
 export async function GET(request: NextRequest) {
   const provider = request.nextUrl.searchParams.get('provider') || '';

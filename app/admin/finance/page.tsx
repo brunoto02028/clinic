@@ -795,7 +795,7 @@ export default function FinancePage() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" />{T("finance.apiDocs")}</CardTitle></CardHeader>
             <CardContent className="text-xs space-y-2">
-              <p className="text-muted-foreground">Base URL: <code className="bg-muted px-1.5 py-0.5 rounded">https://bpr.rehab/api/external/finance</code></p>
+              <p className="text-muted-foreground">Base URL: <code className="bg-muted px-1.5 py-0.5 rounded">https://bpr.clinic/api/external/finance</code></p>
               <p className="text-muted-foreground">Auth Header: <code className="bg-muted px-1.5 py-0.5 rounded">X-API-Key: bpr_k_your_key_here</code></p>
               <div className="space-y-1 mt-2">
                 <p className="font-medium">Endpoints:</p>

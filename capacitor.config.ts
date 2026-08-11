@@ -1,12 +1,12 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.bpr.rehab',
-  appName: 'BPR Rehab',
+  appId: 'com.bpr.clinic',
+  appName: 'BPR Clinic',
   // PRODUCTION — app connects to live site
   // For local dev: url: 'http://localhost:3000', cleartext: true  (browser only, not native auth)
   server: {
-    url: 'https://bpr.rehab',
+    url: 'https://bpr.clinic',
     cleartext: false,
   },
   // Native splash & status bar

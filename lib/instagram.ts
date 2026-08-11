@@ -50,7 +50,7 @@ export interface PublishResult {
 // ─── OAuth Helpers ───
 
 function getBaseUrl(): string {
-  return process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+  return process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 }
 
 // Detect which OAuth flow to use
