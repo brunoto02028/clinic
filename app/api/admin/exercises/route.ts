@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { generateVideoThumbnail } from "@/lib/video-thumbnail";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +138,8 @@ export async function POST(req: NextRequest) {
     const videoFile = formData.get("video") as File | null;
     const externalVideoUrl = formData.get("videoUrl") as string | null;
 
+    let savedVideoPath: string | null = null;
+
     if (videoFile && videoFile.size > 0) {
       // Validate video file
       const allowedTypes = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/mpeg"];
@@ -161,6 +164,7 @@ export async function POST(req: NextRequest) {
 
       videoUrl = `/uploads/exercises/${uniqueName}`;
       videoFileName = videoFile.name;
+      savedVideoPath = filePath;
     } else if (externalVideoUrl) {
       videoUrl = externalVideoUrl;
     }
@@ -183,6 +187,17 @@ export async function POST(req: NextRequest) {
       await writeFile(filePath, new Uint8Array(bytes));
 
       thumbnailUrl = `/uploads/exercises/thumbnails/${uniqueName}`;
+    } else if (savedVideoPath) {
+      // No manual thumbnail — auto-extract the first frame via ffmpeg.
+      try {
+        const thumbDir = path.join(process.cwd(), "public", "uploads", "exercises", "thumbnails");
+        await mkdir(thumbDir, { recursive: true });
+        const thumbName = `${Date.now()}-thumb.jpg`;
+        await generateVideoThumbnail(savedVideoPath, path.join(thumbDir, thumbName));
+        thumbnailUrl = `/uploads/exercises/thumbnails/${thumbName}`;
+      } catch (thumbErr: any) {
+        console.error("Auto-thumbnail generation failed:", thumbErr.message);
+      }
     }
 
     const durationRaw = formData.get("duration");
