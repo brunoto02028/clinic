@@ -1,18 +1,36 @@
 import { useState } from "react";
-import { View, FlatList, Pressable, ScrollView } from "react-native";
+import { View, FlatList, Pressable, ScrollView, TextInput } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Input, Spinner, Chip } from "@/components/ui";
+import { Screen, Text, Spinner } from "@/components/ui";
 import { fetchLabCatalog, LabProduct } from "@/api/labs";
-import { useTheme } from "@/theme/useTheme";
 
-const CATEGORIES = ["All", "Hormones", "Vitamins", "Thyroid", "Liver", "Kidney", "Heart", "Diabetes"];
+const INK = "#20242D";
+const INK_80 = "#3A3E48";
+const INK_60 = "#6B6F78";
+const INK_40 = "#A5A8AE";
+const INK_20 = "#DDE0E4";
+const BONE = "#F5F4F1";
+const SAGE_DARK = "#4F6864";
+const SAGE_FOG = "#E4EDE7";
+const HAIR = "rgba(32,36,45,0.08)";
+const CARD_BORDER = "rgba(32,36,45,0.05)";
 
-export default function LabsHub() {
-  const t = useTheme();
-  const [searchText, setSearchText] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+const CATEGORIES = [
+  "All",
+  "Hormones",
+  "Vitamins",
+  "Thyroid",
+  "Liver",
+  "Kidney",
+  "Heart",
+  "General",
+];
+
+export default function LabCatalog() {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["lab-catalog"],
@@ -20,107 +38,264 @@ export default function LabsHub() {
   });
 
   const filtered = (data ?? []).filter((p: LabProduct) => {
-    const matchesSearch = !searchText || p.name.toLowerCase().includes(searchText.toLowerCase());
-    const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchSearch =
+      !search || p.name.toLowerCase().includes(search.toLowerCase());
+    const matchCat =
+      category === "All" ||
+      p.category?.toLowerCase() === category.toLowerCase();
+    return matchSearch && matchCat;
   });
 
+  // Group by category for display
+  const grouped = filtered.reduce<Record<string, LabProduct[]>>((acc, p) => {
+    const cat = p.category || "General";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(p);
+    return acc;
+  }, {});
+
   return (
-    <Screen testID="labs-hub">
+    <Screen testID="labs-catalog" style={{ backgroundColor: BONE }}>
       <Stack.Screen
         options={{
           headerShown: true,
           title: "Blood Tests",
-          headerStyle: { backgroundColor: t.colors.background },
-          headerTintColor: t.colors.text,
+          headerStyle: { backgroundColor: BONE },
+          headerTintColor: INK,
           headerShadowVisible: false,
+          headerTitleStyle: {
+            fontFamily: "Sora_600SemiBold",
+            fontSize: 14,
+          },
         }}
       />
-      <View style={{ gap: 16, flex: 1 }}>
-        <View>
-          <Text variant="title">Blood Tests</Text>
-          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-            Browse available tests
-          </Text>
+
+      <View style={{ flex: 1, gap: 10 }}>
+        {/* Search bar */}
+        <View
+          style={{
+            backgroundColor: "#FFFFFF",
+            borderWidth: 1,
+            borderColor: HAIR,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <Ionicons name="search" size={14} color={INK_40} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search tests..."
+            placeholderTextColor={INK_60}
+            style={{
+              flex: 1,
+              fontSize: 11.5,
+              fontFamily: "Inter_400Regular",
+              color: INK,
+              padding: 0,
+            }}
+          />
         </View>
 
-        <Input
-          placeholder="Search tests..."
-          value={searchText}
-          onChangeText={setSearchText}
-          icon={<Ionicons name="search-outline" size={18} color={t.colors.textMuted} />}
-        />
-
+        {/* Category chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8 }}
+          contentContainerStyle={{ gap: 6, paddingVertical: 2 }}
         >
-          {CATEGORIES.map((cat) => (
-            <Chip
-              key={cat}
-              label={cat}
-              selected={selectedCategory === cat}
-              onPress={() => setSelectedCategory(cat)}
-              accentColor={t.colors.work}
-            />
-          ))}
+          {CATEGORIES.map((cat) => {
+            const active = category === cat;
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setCategory(cat)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  backgroundColor: active ? INK : "#FFFFFF",
+                  borderWidth: active ? 0 : 1,
+                  borderColor: HAIR,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: "Sora_700Bold",
+                    fontSize: 10,
+                    color: active ? BONE : INK_60,
+                  }}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
 
+        {/* Content */}
         {isLoading ? (
-          <Spinner center />
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <Spinner />
+          </View>
         ) : isError ? (
-          <Card>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="alert-circle" size={20} color={t.colors.bad} />
-              <Text color={t.colors.bad}>Failed to load tests.</Text>
-            </View>
-          </Card>
+          <View
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: 14,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: CARD_BORDER,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <Ionicons name="alert-circle" size={18} color="#A24738" />
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: "Inter_400Regular",
+                color: "#A24738",
+              }}
+            >
+              Could not load tests. Pull down to retry.
+            </Text>
+          </View>
         ) : filtered.length === 0 ? (
-          <View style={{ alignItems: "center", gap: 12, paddingVertical: 40 }}>
-            <Ionicons name="flask-outline" size={48} color={t.colors.textMuted} />
-            <Text variant="subtitle" color={t.colors.textSecondary}>No tests found</Text>
-            <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
+          <View style={{ alignItems: "center", gap: 10, paddingVertical: 48 }}>
+            <Ionicons name="flask-outline" size={40} color={INK_40} />
+            <Text
+              style={{
+                fontFamily: "Sora_600SemiBold",
+                fontSize: 14,
+                color: INK_60,
+              }}
+            >
+              No tests found
+            </Text>
+            <Text
+              style={{
+                fontSize: 11,
+                fontFamily: "Inter_400Regular",
+                color: INK_40,
+                textAlign: "center",
+              }}
+            >
               Try adjusting your search or filters
             </Text>
           </View>
         ) : (
           <FlatList
-            data={filtered}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ gap: 10 }}
+            data={Object.entries(grouped)}
+            keyExtractor={([cat]) => cat}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <Pressable onPress={() => router.push(`/(app)/(lab)/${item.id}`)}>
-                <Card>
-                  <View style={{ gap: 8 }}>
-                    <Text variant="label" style={{ fontWeight: "600" }}>{item.name}</Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <View
-                        style={{
-                          backgroundColor: t.colors.workSoft,
-                          paddingHorizontal: 10,
-                          paddingVertical: 3,
-                          borderRadius: 10,
-                        }}
-                      >
-                        <Text variant="caption" color={t.colors.work} style={{ fontSize: 11 }}>
-                          {item.category}
-                        </Text>
-                      </View>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <Ionicons name="time-outline" size={13} color={t.colors.textMuted} />
-                        <Text variant="caption" color={t.colors.textMuted}>
-                          Results in {item.turnaroundDays} days
-                        </Text>
-                      </View>
+            contentContainerStyle={{ paddingBottom: 20 }}
+            renderItem={({ item: [cat, products] }) => (
+              <View
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: 14,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: CARD_BORDER,
+                  marginBottom: 10,
+                }}
+              >
+                {/* Category label */}
+                <Text
+                  style={{
+                    fontFamily: "Sora_600SemiBold",
+                    fontSize: 9.5,
+                    letterSpacing: 0.8,
+                    textTransform: "uppercase",
+                    color: SAGE_DARK,
+                    opacity: 0.65,
+                    marginBottom: 4,
+                  }}
+                >
+                  {category === "All" ? cat : category}
+                </Text>
+
+                {/* Test items */}
+                {products.map((item, idx) => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => router.push(`/(app)/(lab)/${item.id}`)}
+                    style={{
+                      flexDirection: "row",
+                      gap: 10,
+                      paddingVertical: 10,
+                      borderBottomWidth:
+                        idx < products.length - 1 ? 1 : 0,
+                      borderBottomColor: HAIR,
+                    }}
+                  >
+                    {/* Test icon */}
+                    <View
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
+                        backgroundColor: SAGE_FOG,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Ionicons name="flask" size={17} color={SAGE_DARK} />
                     </View>
-                    <Text variant="subtitle" color={t.colors.work} style={{ fontWeight: "700" }}>
+
+                    {/* Test info */}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        style={{
+                          fontFamily: "Sora_600SemiBold",
+                          fontSize: 11.5,
+                          color: INK,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 9.5,
+                          fontFamily: "Inter_400Regular",
+                          color: INK_60,
+                          marginTop: 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {item.biomarkers?.length
+                          ? `${item.biomarkers.length} biomarkers`
+                          : item.category || "General"}
+                        {item.turnaroundDays
+                          ? ` · ${item.turnaroundDays} days`
+                          : ""}
+                      </Text>
+                    </View>
+
+                    {/* Test price */}
+                    <Text
+                      style={{
+                        fontFamily: "Sora_600SemiBold",
+                        fontSize: 11.5,
+                        color: INK,
+                        alignSelf: "center",
+                        flexShrink: 0,
+                      }}
+                    >
                       £{item.price.toFixed(2)}
                     </Text>
-                  </View>
-                </Card>
-              </Pressable>
+                  </Pressable>
+                ))}
+              </View>
             )}
           />
         )}

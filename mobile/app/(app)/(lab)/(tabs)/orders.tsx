@@ -2,66 +2,123 @@ import { View, FlatList, Pressable } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Spinner, Pill } from "@/components/ui";
+import { Screen, Text, Spinner } from "@/components/ui";
 import { fetchLabOrders, LabOrder } from "@/api/labs";
-import { useTheme } from "@/theme/useTheme";
 
-const STATUS_PILL: Record<string, "warn" | "work" | "ok" | "bad" | "muted"> = {
-  BASKET: "muted",
-  CONFIRMED: "work",
-  KIT_DISPATCHED: "work",
-  SAMPLE_RECEIVED: "work",
-  PROCESSING_LAB: "work",
-  RESULTS_READY: "ok",
-  CANCELLED_LAB: "bad",
+const INK = "#20242D";
+const INK_60 = "#6B6F78";
+const INK_40 = "#A5A8AE";
+const INK_80 = "#3A3E48";
+const BONE = "#F5F4F1";
+const SAGE = "#65807B";
+const SAGE_DARK = "#4F6864";
+const SAGE_FOG = "#E4EDE7";
+const WARN = "#B8823A";
+const WARN_BG = "#F5EFDD";
+const HAIR = "rgba(32,36,45,0.08)";
+const CARD_BORDER = "rgba(32,36,45,0.05)";
+
+type PillVariant = "ok" | "sage" | "warn" | "ghost";
+
+const STATUS_PILL: Record<string, { variant: PillVariant; label: string }> = {
+  BASKET: { variant: "ghost", label: "Draft" },
+  CONFIRMED: { variant: "ok", label: "Confirmed" },
+  KIT_DISPATCHED: { variant: "sage", label: "Kit dispatched" },
+  SAMPLE_RECEIVED: { variant: "sage", label: "Sample received" },
+  PROCESSING_LAB: { variant: "sage", label: "Processing" },
+  RESULTS_READY: { variant: "warn", label: "Results ready" },
+  CANCELLED_LAB: { variant: "ghost", label: "Cancelled" },
+};
+
+const PILL_STYLES: Record<PillVariant, { bg: string; color: string }> = {
+  ok: { bg: SAGE_FOG, color: SAGE_DARK },
+  sage: { bg: SAGE, color: "#FFFFFF" },
+  warn: { bg: WARN_BG, color: WARN },
+  ghost: { bg: "#DDE0E4", color: INK_80 },
 };
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export default function LabOrders() {
-  const t = useTheme();
-
   const { data, isLoading, isError } = useQuery({
     queryKey: ["lab-orders"],
     queryFn: fetchLabOrders,
   });
 
   return (
-    <Screen testID="lab-orders">
+    <Screen testID="lab-orders" style={{ backgroundColor: BONE }}>
       <Stack.Screen
         options={{
           headerShown: true,
           title: "My Orders",
-          headerStyle: { backgroundColor: t.colors.background },
-          headerTintColor: t.colors.text,
+          headerStyle: { backgroundColor: BONE },
+          headerTintColor: INK,
           headerShadowVisible: false,
+          headerTitleStyle: {
+            fontFamily: "Sora_600SemiBold",
+            fontSize: 14,
+          },
         }}
       />
-      <View style={{ gap: 16, flex: 1 }}>
-        <View>
-          <Text variant="title">My Orders</Text>
-          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-            Track your lab test orders
-          </Text>
-        </View>
 
+      <View style={{ flex: 1, gap: 10 }}>
         {isLoading ? (
-          <Spinner center />
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <Spinner />
+          </View>
         ) : isError ? (
-          <Card>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Ionicons name="alert-circle" size={20} color={t.colors.bad} />
-              <Text color={t.colors.bad}>Failed to load orders.</Text>
-            </View>
-          </Card>
+          <View
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: 14,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: CARD_BORDER,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <Ionicons name="alert-circle" size={18} color="#A24738" />
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: "Inter_400Regular",
+                color: "#A24738",
+              }}
+            >
+              Failed to load orders.
+            </Text>
+          </View>
         ) : (data ?? []).length === 0 ? (
           <View style={{ alignItems: "center", gap: 12, paddingVertical: 40 }}>
-            <Ionicons name="clipboard-outline" size={48} color={t.colors.textMuted} />
-            <Text variant="subtitle" color={t.colors.textSecondary}>No orders yet</Text>
-            <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
+            <Ionicons name="clipboard-outline" size={48} color={INK_40} />
+            <Text
+              style={{
+                fontFamily: "Sora_600SemiBold",
+                fontSize: 14,
+                color: INK_60,
+              }}
+            >
+              No orders yet
+            </Text>
+            <Text
+              style={{
+                fontSize: 11,
+                fontFamily: "Inter_400Regular",
+                color: INK_40,
+                textAlign: "center",
+              }}
+            >
               Your lab test orders will appear here
             </Text>
           </View>
@@ -69,33 +126,111 @@ export default function LabOrders() {
           <FlatList
             data={data}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ gap: 10 }}
+            contentContainerStyle={{ gap: 10, paddingBottom: 20 }}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item }: { item: LabOrder }) => (
-              <Pressable onPress={() => router.push(`/(app)/(lab)/order/${item.id}`)}>
-                <Card>
-                  <View style={{ gap: 8 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                      <Text variant="label" style={{ fontWeight: "600" }}>
+            renderItem={({ item }: { item: LabOrder }) => {
+              const pill =
+                STATUS_PILL[item.status] ?? STATUS_PILL.BASKET;
+              const pillStyle = PILL_STYLES[pill.variant];
+              const testName =
+                item.items?.[0]?.productName || "Lab order";
+
+              return (
+                <Pressable
+                  onPress={() =>
+                    router.push(`/(app)/(lab)/order/${item.id}`)
+                  }
+                >
+                  <View
+                    style={{
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 14,
+                      padding: 14,
+                      borderWidth: 1,
+                      borderColor: CARD_BORDER,
+                      gap: 10,
+                    }}
+                  >
+                    {/* Top row: order number + status pill */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: "Sora_600SemiBold",
+                          fontSize: 11.5,
+                          color: INK,
+                        }}
+                      >
                         #{item.orderNumber}
                       </Text>
-                      <Pill
-                        label={item.status.replace(/_/g, " ")}
-                        variant={STATUS_PILL[item.status] ?? "muted"}
-                      />
+                      <View
+                        style={{
+                          paddingHorizontal: 9,
+                          paddingVertical: 4,
+                          borderRadius: 20,
+                          backgroundColor: pillStyle.bg,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: "Sora_700Bold",
+                            fontSize: 9.5,
+                            color: pillStyle.color,
+                          }}
+                        >
+                          {pill.label}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                      <Text variant="caption" color={t.colors.textMuted}>
+
+                    {/* Test name */}
+                    <Text
+                      style={{
+                        fontFamily: "Sora_600SemiBold",
+                        fontSize: 12,
+                        color: INK,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {testName}
+                    </Text>
+
+                    {/* Bottom row: date + total */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontFamily: "Inter_400Regular",
+                          color: INK_40,
+                        }}
+                      >
                         {formatDate(item.createdAt)}
                       </Text>
-                      <Text variant="subtitle" color={t.colors.text} style={{ fontWeight: "700" }}>
-                        £{item.total.toFixed(2)}
+                      <Text
+                        style={{
+                          fontFamily: "Sora_600SemiBold",
+                          fontSize: 11.5,
+                          color: INK,
+                        }}
+                      >
+                        {"£"}{item.total.toFixed(2)}
                       </Text>
                     </View>
                   </View>
-                </Card>
-              </Pressable>
-            )}
+                </Pressable>
+              );
+            }}
           />
         )}
       </View>
