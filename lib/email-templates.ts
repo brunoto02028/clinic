@@ -258,6 +258,14 @@ export const DEFAULT_TEMPLATES = [
     htmlBody: `<h2 style="color:#20242D;font-size:22px;margin:0 0 16px;">Password Reset Request 🔒</h2><p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, we received a request to reset your password.</p><div style="text-align:center;margin:28px 0;"><a href="{{resetUrl}}" style="display:inline-block;background-color:#4F7361;color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;">Reset Password →</a></div><p style="color:#9ca3af;font-size:12px;margin:0;">This link will expire in 1 hour.</p>`,
   },
   {
+    slug: 'EMAIL_CHANGE_CONFIRMATION' as const,
+    name: 'Email Change Confirmation',
+    subject: 'Confirm Your New Email — Bruno Rehab',
+    description: 'Sent to a patient\'s new email address to confirm an email change request',
+    variables: ['patientName', 'confirmUrl'],
+    htmlBody: `<h2 style="color:#20242D;font-size:22px;margin:0 0 16px;">Confirm Your New Email ✉️</h2><p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, we received a request to change the email address on your account to this one. Click below to confirm.</p><div style="text-align:center;margin:28px 0;"><a href="{{confirmUrl}}" style="display:inline-block;background-color:#4F7361;color:#fff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;">Confirm New Email →</a></div><p style="color:#9ca3af;font-size:12px;margin:0;">This link will expire in 1 hour. If you didn't request this, you can safely ignore this email — your account email won't change.</p>`,
+  },
+  {
     slug: 'APPOINTMENT_CANCELLED' as const,
     name: 'Appointment Cancelled',
     subject: 'Appointment Cancelled — {{appointmentDate}}',

@@ -32,14 +32,16 @@ export function AuthPageHeader({ settings }: AuthPageHeaderProps) {
           >PT</button>
         </div>
       </div>
-      <div className="flex justify-center pt-2 pb-8 sm:pb-10">
-        <Logo
-          logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
-          darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
-          size="xl"
-          linkTo="/"
-          priority
-        />
+      <div className="flex justify-center pt-2 pb-8 sm:pb-10" style={{ height: 64 }}>
+        {settings !== undefined && settings !== null ? (
+          <Logo
+            logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
+            darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
+            size="xl"
+            linkTo="/"
+            priority
+          />
+        ) : null}
       </div>
     </div>
   );

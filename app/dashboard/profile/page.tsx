@@ -23,6 +23,14 @@ export default function PatientProfilePage() {
   const [locale, setLocale] = useState('en-GB');
   const [commPref, setCommPref] = useState('EMAIL');
 
+  // Email change
+  const [showEmailSection, setShowEmailSection] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+
   // Password change
   const [showPwSection, setShowPwSection] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
@@ -75,6 +83,41 @@ export default function PatientProfilePage() {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleEmailChange() {
+    setEmailError('');
+    setEmailSuccess('');
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      setEmailError(isPt ? 'Digite um email válido.' : 'Enter a valid email address.');
+      return;
+    }
+    if (!emailPassword) {
+      setEmailError(isPt ? 'Digite sua senha atual pra confirmar.' : 'Enter your current password to confirm.');
+      return;
+    }
+    setEmailSaving(true);
+    try {
+      const res = await fetch('/api/patient/change-email/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newEmail, currentPassword: emailPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEmailError(data.error || (isPt ? 'Erro ao solicitar troca de email.' : 'Failed to request email change.'));
+      } else {
+        setEmailSuccess(isPt
+          ? `Enviamos um link de confirmação para ${newEmail}. Clique nele para concluir a troca.`
+          : `We sent a confirmation link to ${newEmail}. Click it to complete the change.`);
+        setNewEmail('');
+        setEmailPassword('');
+      }
+    } catch {
+      setEmailError(isPt ? 'Erro de conexão.' : 'Connection error.');
+    } finally {
+      setEmailSaving(false);
     }
   }
 
@@ -391,6 +434,75 @@ export default function PatientProfilePage() {
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
         </Link>
+      </div>
+
+      {/* Email Change card */}
+      <div className="bg-card rounded-2xl shadow-sm border border-white/10 overflow-hidden">
+        <button
+          onClick={() => setShowEmailSection(!showEmailSection)}
+          className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/10 rounded-xl">
+              <Mail className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">{isPt ? 'Alterar Email' : 'Change Email'}</p>
+              <p className="text-xs text-muted-foreground">{isPt ? 'Atualize seu email de acesso' : 'Update your login email'}</p>
+            </div>
+          </div>
+          <span className={`text-muted-foreground transition-transform ${showEmailSection ? 'rotate-180' : ''}`}>▼</span>
+        </button>
+
+        {showEmailSection && (
+          <div className="px-6 pb-6 space-y-4 border-t border-white/10 pt-4">
+            {emailError && (
+              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {emailError}
+              </div>
+            )}
+            {emailSuccess && (
+              <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                {emailSuccess}
+              </div>
+            )}
+            <input
+              type="email"
+              value={newEmail}
+              onChange={e => setNewEmail(e.target.value)}
+              placeholder={isPt ? 'Novo email' : 'New email address'}
+              className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+            />
+            <input
+              type="password"
+              value={emailPassword}
+              onChange={e => setEmailPassword(e.target.value)}
+              placeholder={isPt ? 'Senha atual (pra confirmar)' : 'Current password (to confirm)'}
+              className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+            />
+            <p className="text-xs text-muted-foreground">
+              {isPt
+                ? 'Vamos enviar um link de confirmação pro email novo — sua conta só muda depois que você clicar nele.'
+                : "We'll send a confirmation link to the new address — your account only changes once you click it."}
+            </p>
+            <button
+              onClick={handleEmailChange}
+              disabled={emailSaving || !newEmail || !emailPassword}
+              className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60"
+            >
+              {emailSaving ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              ) : (
+                <>
+                  <Mail className="h-4 w-4" />
+                  {isPt ? 'Enviar Confirmação' : 'Send Confirmation'}
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Password Change card */}

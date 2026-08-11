@@ -65,6 +65,8 @@ const publicRoutes = [
   '/verify',
   '/forgot-password',
   '/reset-password',
+  '/confirm-email',
+  '/api/patient/change-email/confirm',
   '/scan',
   '/api/auth',
   '/api/auth/check-phone',
