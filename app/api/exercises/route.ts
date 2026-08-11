@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest) {
   const userId = (session.user as any)?.id;
 
   try {
-    const { prescriptionId } = await req.json();
+    const { prescriptionId, action } = await req.json();
 
     if (!prescriptionId) {
       return NextResponse.json({ error: "Prescription ID required" }, { status: 400 });
@@ -75,6 +75,20 @@ export async function PATCH(req: NextRequest) {
 
     if (!prescription) {
       return NextResponse.json({ error: "Prescription not found" }, { status: 404 });
+    }
+
+    // "undo" reverts an accidental tap — decrements the counter (never below 0)
+    // and clears the completed timestamp once back at 0.
+    if (action === "undo") {
+      const nextCount = Math.max(0, prescription.completedCount - 1);
+      const updated = await prisma.exercisePrescription.update({
+        where: { id: prescriptionId },
+        data: {
+          completedCount: nextCount,
+          lastCompletedAt: nextCount === 0 ? null : prescription.lastCompletedAt,
+        },
+      });
+      return NextResponse.json({ prescription: updated });
     }
 
     const updated = await prisma.exercisePrescription.update({

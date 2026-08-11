@@ -774,6 +774,8 @@ const translations: Record<string, Record<Locale, string>> = {
   "exercises.completedCount": { "en-GB": "Completed", "pt-BR": "Concluído" },
   "exercises.instructions": { "en-GB": "Instructions", "pt-BR": "Instruções" },
   "exercises.therapistNotes": { "en-GB": "Therapist Notes", "pt-BR": "Notas do Terapeuta" },
+  "exercises.markedComplete": { "en-GB": "Marked as complete", "pt-BR": "Marcado como concluído" },
+  "exercises.undo": { "en-GB": "Undo", "pt-BR": "Desfazer" },
 
   // ─── Patient Body Assessments Page ───
   "bodyAssessment.title": { "en-GB": "Body Assessments", "pt-BR": "Avaliações Corporais" },

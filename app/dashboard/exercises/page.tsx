@@ -23,6 +23,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ToastAction } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
 
@@ -110,6 +112,7 @@ interface Prescription {
 
 export default function PatientExercisesPage() {
   const { locale } = useLocale();
+  const { toast } = useToast();
   const isPt = locale === "pt-BR";
   const T = (key: string) => i18nT(key, locale);
   const BODY_REGIONS = isPt ? BODY_REGIONS_PT : BODY_REGIONS_EN;
@@ -158,10 +161,39 @@ export default function PatientExercisesPage() {
             : p
         )
       );
+
+      const { dismiss } = toast({
+        description: T("exercises.markedComplete"),
+        action: (
+          <ToastAction altText={T("exercises.undo")} onClick={() => handleUndo(prescriptionId)}>
+            {T("exercises.undo")}
+          </ToastAction>
+        ),
+      });
+      setTimeout(dismiss, 6000);
     } catch (err) {
       console.error("Failed to mark complete:", err);
     } finally {
       setTimeout(() => setCompletingId(null), 1000);
+    }
+  };
+
+  const handleUndo = async (prescriptionId: string) => {
+    try {
+      await fetch("/api/exercises", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prescriptionId, action: "undo" }),
+      });
+      setPrescriptions((prev) =>
+        prev.map((p) =>
+          p.id === prescriptionId
+            ? { ...p, completedCount: Math.max(0, p.completedCount - 1) }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error("Failed to undo:", err);
     }
   };
 
@@ -420,7 +452,7 @@ function ExerciseRow({
         <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <User className="h-3 w-3" />
-            Dr. {prescription.therapist.firstName} {prescription.therapist.lastName}
+            {prescription.therapist.firstName}
           </span>
           {prescription.completedCount > 0 && (
             <span className="flex items-center gap-1 text-green-400">
