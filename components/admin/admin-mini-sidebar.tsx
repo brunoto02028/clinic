@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, X, UserCog } from "lucide-react";
 import { ADMIN_SECTIONS, getActiveAdminNav, type AdminSection } from "@/lib/admin-sections";
 import { Logo } from "@/components/ui/logo";
 import { ClinicSelector } from "./clinic-selector";
@@ -208,6 +209,13 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
               <span className="text-[12px] text-[hsl(195,20%,80%)] truncate leading-tight">
                 {user.firstName} {user.lastName}
               </span>
+              <Link
+                href="/admin/my-account"
+                className="text-[11px] text-[hsl(195,20%,50%)] hover:text-primary text-left leading-tight transition-colors flex items-center gap-1"
+              >
+                <UserCog className="h-2.5 w-2.5" />
+                {isPt ? "Minha Conta" : "My Account"}
+              </Link>
               <button
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 className="text-[11px] text-[hsl(195,20%,50%)] hover:text-red-400 text-left leading-tight transition-colors"

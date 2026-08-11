@@ -1539,9 +1539,36 @@ interface BulkFile {
   name: string;
   bodyRegion: string;
   difficulty: string;
+  tags: string;
+  folder: string | null;
   status: "pending" | "uploading" | "done" | "error";
   error?: string;
 }
+
+// Best-effort folder-name -> body region guess, since real folder taxonomies
+// (e.g. "Tennis Elbow", "Sit a Lot", "Plantar Faciit") rarely match the enum
+// exactly. Always falls back to the bulk-upload's default region — the raw
+// folder name is kept as a tag regardless, so nothing is lost if this misses.
+const FOLDER_REGION_HINTS: [RegExp, string][] = [
+  [/shoulder/i, "SHOULDER"],
+  [/elbow/i, "ELBOW"],
+  [/wrist|hand/i, "WRIST_HAND"],
+  [/hip/i, "HIP"],
+  [/knee/i, "KNEE"],
+  [/ankle|foot|feet|plantar/i, "ANKLE_FOOT"],
+  [/lumbar/i, "SPINE_LUMBAR"],
+  [/thoracic/i, "SPINE_THORACIC"],
+  [/spine|back|posture/i, "SPINE_BACK"],
+  [/neck|cervical/i, "NECK_CERVICAL"],
+  [/core|abdomen|abs\b/i, "CORE_ABDOMEN"],
+  [/stretch/i, "STRETCHING"],
+  [/injury|strain|sprain/i, "MUSCLE_INJURY"],
+  [/full body|total body/i, "FULL_BODY"],
+];
+const guessRegionFromFolder = (folder: string): string | null => {
+  const hit = FOLDER_REGION_HINTS.find(([re]) => re.test(folder));
+  return hit ? hit[1] : null;
+};
 
 function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const [files, setFiles] = useState<BulkFile[]>([]);
@@ -1551,18 +1578,28 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
   const [defaultDifficulty, setDefaultDifficulty] = useState("BEGINNER");
   const [results, setResults] = useState<{ total: number; successCount: number; failCount: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = (fileList: FileList | null) => {
     if (!fileList) return;
     const newFiles: BulkFile[] = Array.from(fileList)
       .filter(f => f.type.startsWith("video/"))
-      .map(f => ({
-        file: f,
-        name: f.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "),
-        bodyRegion: defaultRegion,
-        difficulty: defaultDifficulty,
-        status: "pending" as const,
-      }));
+      .map(f => {
+        // webkitdirectory gives a relative path like "Thoracic/011.mp4" —
+        // the first segment is the folder the file was organised into.
+        const relPath = (f as any).webkitRelativePath as string | undefined;
+        const folder = relPath && relPath.includes("/") ? relPath.split("/")[0] : null;
+        const baseName = f.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        return {
+          file: f,
+          name: folder ? `${folder} ${baseName}` : baseName,
+          bodyRegion: (folder && guessRegionFromFolder(folder)) || defaultRegion,
+          difficulty: defaultDifficulty,
+          tags: folder ? folder.toLowerCase() : "",
+          folder,
+          status: "pending" as const,
+        };
+      });
     setFiles(prev => [...prev, ...newFiles]);
   };
 
@@ -1588,6 +1625,7 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
       name: f.name,
       bodyRegion: f.bodyRegion,
       difficulty: f.difficulty,
+      tags: f.tags,
       fileKey: `video_${i}`,
     }));
 
@@ -1688,11 +1726,28 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
                 <FolderUp className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
                 <p className="font-medium text-sm">Click or drag video files here</p>
                 <p className="text-xs text-muted-foreground mt-1">MP4, WebM, MOV — up to 500MB each</p>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
+                  className="text-xs text-primary hover:underline mt-2"
+                >
+                  or select a whole folder — subfolder names auto-fill region &amp; tags
+                </button>
               </div>
               <input
                 ref={inputRef}
                 type="file"
                 accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                multiple
+                className="hidden"
+                onChange={(e) => handleFiles(e.target.files)}
+              />
+              <input
+                ref={folderInputRef}
+                type="file"
+                // @ts-ignore — non-standard but supported by all major browsers
+                webkitdirectory=""
+                directory=""
                 multiple
                 className="hidden"
                 onChange={(e) => handleFiles(e.target.files)}
@@ -1735,6 +1790,11 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
                                 <SelectItem value="ADVANCED">Advanced</SelectItem>
                               </SelectContent>
                             </Select>
+                            {f.folder && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0" title="Auto-tagged from folder name">
+                                📁 {f.folder}
+                              </span>
+                            )}
                             <span className="text-[10px] text-muted-foreground ml-auto">
                               {(f.file.size / 1024 / 1024).toFixed(1)}MB
                             </span>
