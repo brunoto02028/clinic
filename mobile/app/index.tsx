@@ -12,7 +12,7 @@ export default function Welcome() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/(app)/(tabs)");
+      router.replace("/(app)/module-select");
     }
   }, [status]);
 
@@ -64,7 +64,7 @@ export default function Welcome() {
             title="Get started"
             variant="greige"
             size="lg"
-            onPress={() => router.push("/login")}
+            onPress={() => router.push("/register")}
           />
           <Pressable
             onPress={() => router.push("/login")}

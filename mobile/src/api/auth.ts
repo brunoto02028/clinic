@@ -20,6 +20,20 @@ export function loginRequest(email: string, password: string): Promise<AuthRespo
   return postJson<AuthResponse>("/api/mobile/login", { email, password });
 }
 
+export function registerRequest(
+  firstName: string,
+  lastName: string,
+  email: string,
+  password: string
+): Promise<AuthResponse> {
+  return postJson<AuthResponse>("/api/mobile/register", {
+    firstName,
+    lastName,
+    email,
+    password,
+  });
+}
+
 export function refreshRequest(refreshToken: string): Promise<AuthResponse> {
   return postJson<AuthResponse>("/api/mobile/refresh", { refreshToken });
 }
