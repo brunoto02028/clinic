@@ -2117,6 +2117,16 @@ model PasswordResetToken {
   @@index([email])
 }
 
+model EmailChangeToken {
+  id      String   @id @default(cuid())
+  userId  String
+  newEmail String
+  token   String   @unique
+  expires DateTime
+
+  @@index([userId])
+}
+
 enum VerificationChannel {
   EMAIL
   SMS
@@ -3225,6 +3235,7 @@ enum EmailTemplateSlug {
   TREATMENT_PROTOCOL
   ASSESSMENT_COMPLETED
   PASSWORD_RESET
+  EMAIL_CHANGE_CONFIRMATION
   SCREENING_RECEIVED
   APPOINTMENT_CANCELLED
   DOCUMENT_RECEIVED
