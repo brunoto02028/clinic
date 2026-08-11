@@ -135,6 +135,22 @@ function matchesRoute(path: string, routes: string[]): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Permanent redirect from the retired bpr.rehab domain to bpr.clinic —
+  // .rehab reads as an addiction-recovery clinic, which isn't this practice.
+  // One hop straight to https://bpr.clinic regardless of the old domain's
+  // protocol, so we don't chain this with the HTTPS-upgrade redirect below.
+  // Excludes /api/*: third-party webhooks (Stripe, Terra, VAPI...) that may
+  // still be registered against the old domain don't follow redirects on
+  // POST, so redirecting them would silently break payments/integrations
+  // instead of just re-registering the callback URL with each provider.
+  const host = request.headers.get('host') || '';
+  if ((host === 'bpr.rehab' || host === 'www.bpr.rehab') && !pathname.startsWith('/api')) {
+    return NextResponse.redirect(
+      `https://bpr.clinic${pathname}${request.nextUrl.search}`,
+      301
+    );
+  }
+
   // Force HTTPS redirect in production — browser page navigations only.
   // Skip for /api/*: Next's built-in image optimizer (and other server-side
   // code) fetches API routes like /api/image-serve/[id] via an internal
