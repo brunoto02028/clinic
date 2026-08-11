@@ -1,9 +1,5 @@
-import { Screen, Text } from "@/components/ui";
+import { ModuleProfile } from "@/components/ModuleProfile";
 
 export default function Profile() {
-  return (
-    <Screen>
-      <Text variant="title">Profile</Text>
-    </Screen>
-  );
+  return <ModuleProfile />;
 }
