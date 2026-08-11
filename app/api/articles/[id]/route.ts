@@ -48,7 +48,7 @@ export async function PUT(
 
     const body = await request.json();
     const {
-      title, excerpt, content, imageUrl, imageFocalX, imageFocalY, published, authorName, metaDescription, tags, keyword,
+      title, excerpt, content, imageUrl, imageFocalX, imageFocalY, published, authorName, metaDescription, metaDescriptionPt, tags, keyword,
       titleEn, excerptEn, contentEn, titlePt, excerptPt, contentPt, publishLanguage,
       notifySubscribers, scheduledAt, createdAt,
     } = body;
@@ -104,6 +104,7 @@ export async function PUT(
     if (published !== undefined) updateData.published = published;
     if (authorName !== undefined) updateData.authorName = authorName || null;
     if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
+    if (metaDescriptionPt !== undefined) updateData.metaDescriptionPt = metaDescriptionPt;
     if (tags !== undefined) updateData.tags = tags;
     if (keyword !== undefined) updateData.keyword = keyword;
     if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;

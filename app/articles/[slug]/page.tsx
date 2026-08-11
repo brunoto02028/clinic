@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { Calendar, User, ChevronLeft, ChevronRight, BookOpen, ArrowLeft, Clock, Share2 } from "lucide-react";
@@ -66,13 +67,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ogImage = absoluteUrl(logoSettings?.logoUrl) || `${BASE_URL}/og-image.png`;
   }
 
+  // No separate PT/EN URLs exist for an article (the language toggle is
+  // client-side only) — Accept-Language is the only server-side signal
+  // available to decide which meta description a search engine or social
+  // crawler should see. Falls back to the English fields whenever a PT one
+  // hasn't been written yet.
+  const acceptLanguage = headers().get("accept-language") || "";
+  const prefersPt = (acceptLanguage.split(",")[0] || "").trim().toLowerCase().startsWith("pt");
+  const description =
+    (prefersPt && ((article as any).metaDescriptionPt || (article as any).excerptPt)) ||
+    article.metaDescription ||
+    article.excerpt ||
+    undefined;
+
   return {
     title: `${article.title} - Bruno Physical Rehabilitation`,
-    description: article.excerpt || undefined,
+    description,
     alternates: { canonical: `${BASE_URL}/articles/${article.slug}` },
     openGraph: {
       title: article.title,
-      description: article.excerpt || undefined,
+      description,
       type: "article",
       url: `${BASE_URL}/articles/${article.slug}`,
       images: [{ url: ogImage }],
@@ -80,7 +94,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     twitter: {
       card: "summary_large_image",
       title: article.title,
-      description: article.excerpt || undefined,
+      description,
       images: [ogImage],
     },
   };

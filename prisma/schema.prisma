@@ -1096,8 +1096,9 @@ model Article {
   author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorName      String? // Optional override for displayed author name
   // SEO fields (used by AI Article Generator)
-  metaDescription String?
-  tags            String[]
+  metaDescription   String?
+  metaDescriptionPt String? // Portuguese SEO description — generateMetadata() picks between this and metaDescription based on the request's Accept-Language
+  tags              String[]
   keyword         String?
   generatedBy     String? // e.g. "CLAUDE", "GEMINI", null for manual
   language        String?        @default("en")

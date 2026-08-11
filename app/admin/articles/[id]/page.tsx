@@ -36,6 +36,7 @@ export default function EditArticlePage() {
   const [createdAt, setCreatedAt] = useState(""); // publish date (YYYY-MM-DD) shown on the public site
   // SEO fields
   const [metaDescription, setMetaDescription] = useState("");
+  const [metaDescriptionPt, setMetaDescriptionPt] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [keyword, setKeyword] = useState("");
   const [generatedBy, setGeneratedBy] = useState<string | null>(null);
@@ -106,6 +107,7 @@ export default function EditArticlePage() {
         setAuthorName(data.authorName || "");
         setCreatedAt(data.createdAt ? new Date(data.createdAt).toISOString().slice(0, 10) : "");
         setMetaDescription(data.metaDescription || "");
+        setMetaDescriptionPt(data.metaDescriptionPt || "");
         setTags(data.tags || []);
         setKeyword(data.keyword || "");
         setGeneratedBy(data.generatedBy || null);
@@ -141,6 +143,7 @@ export default function EditArticlePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to generate SEO metadata");
       setMetaDescription(data.metaDescription || "");
+      setMetaDescriptionPt(data.metaDescriptionPt || "");
       setKeyword(data.keyword || "");
       setTags(data.tags || []);
       setGeneratedBy("AI");
@@ -303,7 +306,7 @@ export default function EditArticlePage() {
           titleEn: en.title || null, excerptEn: en.excerpt || null, contentEn: en.content || null,
           titlePt: pt.title || null, excerptPt: pt.excerpt || null, contentPt: pt.content || null,
           publishLanguage,
-          imageUrl, imageFocalX, imageFocalY, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, tags, keyword: keyword || undefined,
+          imageUrl, imageFocalX, imageFocalY, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, metaDescriptionPt: metaDescriptionPt || undefined, tags, keyword: keyword || undefined,
           createdAt: createdAt ? `${createdAt}T12:00:00.000Z` : undefined,
         }),
       });
@@ -541,8 +544,13 @@ export default function EditArticlePage() {
                 </Button>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Meta Description</Label>
+                <Label className="text-xs">Meta Description (EN)</Label>
                 <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} placeholder="SEO meta description..." rows={2} className="text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Meta Description (PT-BR)</Label>
+                <Textarea value={metaDescriptionPt} onChange={(e) => setMetaDescriptionPt(e.target.value)} placeholder="Descrição SEO em português..." rows={2} className="text-sm" />
+                <p className="text-[10px] text-muted-foreground">Shown to Portuguese-language visitors and search results when set — falls back to the English one above if left blank.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

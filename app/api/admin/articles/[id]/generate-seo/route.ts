@@ -37,27 +37,31 @@ export async function POST(
   const title = article.titleEn || article.title;
   const excerpt = article.excerptEn || article.excerpt;
   const contentText = stripHtml(article.contentEn || article.content || "").slice(0, 6000);
+  const titlePt = article.titlePt;
+  const excerptPt = article.excerptPt;
 
-  const prompt = `You are an SEO specialist for a UK sports & clinical physiotherapy clinic (BPR) based in Ipswich, Suffolk. Given the article below, produce locally-optimised SEO metadata that will help this exact article rank and be found by people searching for this condition/topic, ideally combined with local intent (e.g. "physio Ipswich", "[condition] Suffolk") where it makes sense.
+  const prompt = `You are an SEO specialist for a UK sports & clinical physiotherapy clinic (BPR) based in Ipswich, Suffolk, whose site is read by both English and Brazilian Portuguese speakers. Given the article below, produce locally-optimised SEO metadata that will help this exact article rank and be found by people searching for this condition/topic, ideally combined with local intent (e.g. "physio Ipswich", "[condition] Suffolk") where it makes sense.
 
-ARTICLE TITLE:
+ARTICLE TITLE (EN):
 ${title}
 
-EXCERPT:
+EXCERPT (EN):
 ${excerpt}
+${titlePt ? `\nARTICLE TITLE (PT-BR):\n${titlePt}\n\nEXCERPT (PT-BR):\n${excerptPt || ""}` : ""}
 
 CONTENT (plain text, may be truncated):
 ${contentText}
 
 Return ONLY a valid JSON object with exactly these keys, no markdown fences, no commentary:
 {
-  "metaDescription": "under 155 characters, compelling, includes the primary keyword naturally",
+  "metaDescription": "under 155 characters, compelling, includes the primary keyword naturally, in English",
+  "metaDescriptionPt": "${titlePt ? "under 155 characters, compelling, includes the primary keyword naturally, in natural Brazilian Portuguese (pt-BR)" : "empty string — no PT-BR title/excerpt was supplied above"}",
   "keyword": "the single best target search keyword/phrase for this article (2-5 words)",
   "tags": ["3 to 6 short topical tags, Title Case, e.g. Knee, Osteoarthritis, Injury Prevention"]
 }`;
 
   try {
-    const raw = await callAI(prompt, { maxTokens: 600 });
+    const raw = await callAI(prompt, { maxTokens: 700 });
     let cleaned = raw.trim();
     if (cleaned.startsWith("```")) {
       cleaned = cleaned.replace(/^```[a-z]*\n?/i, "").replace(/```\s*$/, "");
@@ -65,10 +69,11 @@ Return ONLY a valid JSON object with exactly these keys, no markdown fences, no 
     const parsed = JSON.parse(cleaned);
 
     const metaDescription = String(parsed.metaDescription || "").slice(0, 200);
+    const metaDescriptionPt = String(parsed.metaDescriptionPt || "").slice(0, 200) || undefined;
     const keyword = String(parsed.keyword || "");
     const tags = Array.isArray(parsed.tags) ? parsed.tags.map((t: any) => String(t)).filter(Boolean) : [];
 
-    return NextResponse.json({ metaDescription, keyword, tags });
+    return NextResponse.json({ metaDescription, metaDescriptionPt, keyword, tags });
   } catch (error: any) {
     console.error("[generate-seo] error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate SEO metadata" }, { status: 500 });
