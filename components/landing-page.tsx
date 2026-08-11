@@ -699,7 +699,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           {
             key: "move",
             img: null,
-            fallbackImg: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80",
+            fallbackImg: "/images/method/movement.webp",
             step: "03",
             gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
             accent: "bg-emerald-400/20 border-emerald-300/40 text-emerald-200",
@@ -717,7 +717,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           {
             key: "live",
             img: null,
-            fallbackImg: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&q=80",
+            fallbackImg: "/images/method/lifestyle.webp",
             step: "04",
             gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
             accent: "bg-violet-400/20 border-violet-300/40 text-violet-200",
@@ -759,10 +759,14 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   const imgSrc = ph.img || ph.fallbackImg;
                   return (
                     <div key={ph.key} className="relative rounded-2xl overflow-hidden aspect-[3/4] shadow-lg border border-slate-200 group">
-                      <img
+                      <Image
                         src={imgSrc}
                         alt={locale === "pt-BR" ? ph.titlePt : ph.titleEn}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        fill
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                        loading="lazy"
+                        quality={70}
+                        className="object-cover group-hover:scale-105 transition-transform duration-700"
                       />
                       <div className={`absolute inset-0 bg-gradient-to-t ${ph.gradient}`} />
 
