@@ -74,7 +74,7 @@ export default function Onboarding() {
   }
 
   function handleCreate() {
-    router.replace("/(app)/(tabs)");
+    router.replace("/(app)/(ba)/(tabs)");
   }
 
   return (

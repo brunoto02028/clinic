@@ -91,7 +91,7 @@ export default function LabsHub() {
             contentContainerStyle={{ gap: 10 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
-              <Pressable onPress={() => router.push(`/(app)/labs/${item.id}`)}>
+              <Pressable onPress={() => router.push(`/(app)/(lab)/${item.id}`)}>
                 <Card>
                   <View style={{ gap: 8 }}>
                     <Text variant="label" style={{ fontWeight: "600" }}>{item.name}</Text>

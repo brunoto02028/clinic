@@ -164,7 +164,7 @@ export default function Community() {
 
             <Pressable
               accessibilityLabel="Groups"
-              onPress={() => router.push("/(app)/community/groups")}
+              onPress={() => router.push("/(app)/(ba)/community/groups")}
               style={({ pressed }) => [
                 styles.iconBtn,
                 {
@@ -207,7 +207,7 @@ export default function Community() {
       {/* FAB */}
       <Pressable
         accessibilityLabel="New post"
-        onPress={() => router.push("/(app)/community/new-post")}
+        onPress={() => router.push("/(app)/(ba)/community/new-post")}
         style={({ pressed }) => [
           styles.fab,
           {

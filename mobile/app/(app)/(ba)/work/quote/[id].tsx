@@ -305,7 +305,7 @@ export default function QuoteDetail() {
             variant="ghost"
             onPress={() =>
               router.push({
-                pathname: "/(app)/work/quote-preview" as any,
+                pathname: "/(app)/(ba)/work/quote-preview" as any,
                 params: { id: data.id },
               })
             }
@@ -327,7 +327,7 @@ export default function QuoteDetail() {
               variant="primary"
               onPress={() =>
                 router.push({
-                  pathname: "/(app)/work/invoice-new" as any,
+                  pathname: "/(app)/(ba)/work/invoice-new" as any,
                   params: { quoteId: data.id },
                 })
               }

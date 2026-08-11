@@ -70,7 +70,7 @@ export default function QuotePreview() {
           headerRight: () => (
             <Pressable
               onPress={() =>
-                router.push(`/work/quote/${id}` as any)
+                router.push(`/(app)/(ba)/work/quote/${id}` as any)
               }
               style={{
                 width: 36,

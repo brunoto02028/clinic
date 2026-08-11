@@ -7,12 +7,13 @@ import { fetchLabOrders, LabOrder } from "@/api/labs";
 import { useTheme } from "@/theme/useTheme";
 
 const STATUS_PILL: Record<string, "warn" | "work" | "ok" | "bad" | "muted"> = {
-  pending: "warn",
-  confirmed: "work",
-  processing: "work",
-  results_ready: "ok",
-  completed: "ok",
-  cancelled: "bad",
+  BASKET: "muted",
+  CONFIRMED: "work",
+  KIT_DISPATCHED: "work",
+  SAMPLE_RECEIVED: "work",
+  PROCESSING_LAB: "work",
+  RESULTS_READY: "ok",
+  CANCELLED_LAB: "bad",
 };
 
 function formatDate(iso: string): string {
@@ -71,7 +72,7 @@ export default function LabOrders() {
             contentContainerStyle={{ gap: 10 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }: { item: LabOrder }) => (
-              <Pressable onPress={() => router.push(`/(app)/labs/order/${item.id}`)}>
+              <Pressable onPress={() => router.push(`/(app)/(lab)/order/${item.id}`)}>
                 <Card>
                   <View style={{ gap: 8 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>

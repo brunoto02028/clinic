@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { tokenStorage } from "@/lib/secure-storage";
 import { setOnAuthFailure, refreshSession, pendingRefresh } from "@/api/client";
-import { loginRequest, logoutRequest } from "@/api/auth";
+import { loginRequest, logoutRequest, registerRequest } from "@/api/auth";
 import type { AuthUser } from "@/api/types";
 
 type Status = "loading" | "authenticated" | "unauthenticated";
@@ -11,6 +11,7 @@ interface AuthState {
   user: AuthUser | null;
   bootstrap: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -36,6 +37,12 @@ export const useAuth = create<AuthState>((set) => ({
 
   login: async (email, password) => {
     const res = await loginRequest(email, password);
+    await tokenStorage.save(res.accessToken, res.refreshToken);
+    set({ status: "authenticated", user: res.user });
+  },
+
+  register: async (firstName, lastName, email, password) => {
+    const res = await registerRequest(firstName, lastName, email, password);
     await tokenStorage.save(res.accessToken, res.refreshToken);
     set({ status: "authenticated", user: res.user });
   },

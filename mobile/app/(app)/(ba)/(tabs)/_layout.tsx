@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/theme/useTheme";
 import { Platform } from "react-native";
 
-export default function TabsLayout() {
+export default function BATabsLayout() {
   const t = useTheme();
   return (
     <Tabs
@@ -31,9 +31,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -42,25 +40,8 @@ export default function TabsLayout() {
           title: "Work",
           tabBarActiveTintColor: t.colors.work,
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "briefcase" : "briefcase-outline"}
-              size={size}
-              color={focused ? t.colors.work : color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="health"
-        options={{
-          title: "Health",
-          tabBarActiveTintColor: t.colors.health,
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "medkit" : "medkit-outline"}
-              size={size}
-              color={focused ? t.colors.health : color}
-            />
+            <Ionicons name={focused ? "briefcase" : "briefcase-outline"} size={size}
+              color={focused ? t.colors.work : color} />
           ),
         }}
       />
@@ -70,11 +51,8 @@ export default function TabsLayout() {
           title: "Community",
           tabBarActiveTintColor: t.colors.community,
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "people" : "people-outline"}
-              size={size}
-              color={focused ? t.colors.community : color}
-            />
+            <Ionicons name={focused ? "people" : "people-outline"} size={size}
+              color={focused ? t.colors.community : color} />
           ),
         }}
       />
@@ -83,17 +61,10 @@ export default function TabsLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "menu" : "menu-outline"}
-              size={size}
-              color={color}
-            />
+            <Ionicons name={focused ? "menu" : "menu-outline"} size={size} color={color} />
           ),
         }}
       />
-      {/* Hidden from tabs but still accessible as screens */}
-      <Tabs.Screen name="appointments" options={{ href: null }} />
-      <Tabs.Screen name="exercises" options={{ href: null }} />
     </Tabs>
   );
 }

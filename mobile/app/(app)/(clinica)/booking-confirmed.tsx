@@ -143,7 +143,7 @@ export default function BookingConfirmed() {
         <Button
           title="Back to Health"
           variant="health"
-          onPress={() => router.replace("/(app)/(tabs)/health")}
+          onPress={() => router.replace("/(app)/(clinica)/(tabs)")}
           style={{ marginTop: 8, width: "100%" }}
         />
       </View>

@@ -252,6 +252,7 @@ enum ClinicModule {
   SOCIAL_MEDIA
   EDUCATION
   BIOMECHANICAL_ASSESSMENT
+  LABORATORY
 }
 
 enum SocialPlatform {

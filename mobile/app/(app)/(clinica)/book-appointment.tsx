@@ -2,7 +2,6 @@ import { useState } from "react";
 import { View, Pressable, ScrollView, Alert, TextInput } from "react-native";
 import { Stack, router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { bookAppointment, fetchAvailability, fetchSchedule } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
@@ -67,7 +66,7 @@ export default function BookAppointment() {
       const formattedDateTime = `${weekday} ${day} ${month} · ${selectedTime}`;
 
       router.replace({
-        pathname: "/(app)/booking-confirmed",
+        pathname: "/(app)/(clinica)/booking-confirmed",
         params: {
           serviceName: type ?? "",
           dateTime: formattedDateTime,
