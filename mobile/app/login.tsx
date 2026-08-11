@@ -20,7 +20,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      router.replace("/");
+      router.replace("/(app)/module-select");
     } catch (e) {
       setError(
         e instanceof AuthError ? e.message : "Unable to sign in. Please try again."
