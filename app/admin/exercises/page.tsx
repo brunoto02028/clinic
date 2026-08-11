@@ -1726,14 +1726,16 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
                 <FolderUp className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
                 <p className="font-medium text-sm">Click or drag video files here</p>
                 <p className="text-xs text-muted-foreground mt-1">MP4, WebM, MOV — up to 500MB each</p>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); folderInputRef.current?.click(); }}
-                  className="text-xs text-primary hover:underline mt-2"
-                >
-                  or select a whole folder — subfolder names auto-fill region &amp; tags
-                </button>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => folderInputRef.current?.click()}
+              >
+                <FolderUp className="h-4 w-4 mr-2" />
+                Select a Whole Folder (auto-fills region &amp; tags from subfolder names)
+              </Button>
               <input
                 ref={inputRef}
                 type="file"
