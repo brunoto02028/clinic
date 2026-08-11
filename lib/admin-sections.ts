@@ -236,8 +236,14 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         matchRoutes: [
           "/admin/email",
           "/admin/email-templates",
-          "/admin/email-marketing",
         ],
+      },
+      {
+        key: "email-marketing",
+        label: "Email Marketing",
+        labelPt: "Email Marketing",
+        href: "/admin/email-marketing",
+        matchRoutes: ["/admin/email-marketing"],
       },
       {
         key: "leads",
