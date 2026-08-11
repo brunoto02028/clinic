@@ -202,6 +202,73 @@ export default function Health() {
           />
         </Card>
 
+        {/* ── Lab tests entry (ink card from UX mock) ── */}
+        <Pressable
+          onPress={() => router.push("/(app)/(lab)/(tabs)" as any)}
+          style={({ pressed }) => ({
+            backgroundColor: pressed ? "#2A2E38" : "#20242D",
+            borderRadius: 14,
+            padding: 14,
+          })}
+        >
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontFamily: "Sora_600SemiBold",
+                  fontSize: 9.5,
+                  letterSpacing: 0.8,
+                  textTransform: "uppercase",
+                  color: "#B8CEC2",
+                  marginBottom: 5,
+                }}
+              >
+                New
+              </Text>
+              <Text
+                style={{
+                  fontFamily: "Sora_700Bold",
+                  fontSize: 13,
+                  color: "#F5F4F1",
+                }}
+              >
+                Blood tests
+              </Text>
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 10,
+                  color: "rgba(245,244,241,0.65)",
+                  marginTop: 3,
+                  lineHeight: 14,
+                }}
+              >
+                Complete your assessment with blood tests — home kit or collect at the clinic.
+              </Text>
+            </View>
+            <Ionicons name="flask-outline" size={22} color="#B8CEC2" style={{ marginTop: 4 }} />
+          </View>
+          <View
+            style={{
+              marginTop: 10,
+              backgroundColor: "#B8CEC2",
+              borderRadius: 12,
+              paddingVertical: 9,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: "Sora_600SemiBold",
+                fontSize: 12,
+                color: "#20242D",
+              }}
+            >
+              View tests →
+            </Text>
+          </View>
+        </Pressable>
+
         {/* ── Quick links ── */}
         <Card>
           <ListItem
