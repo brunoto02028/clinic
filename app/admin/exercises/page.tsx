@@ -1286,8 +1286,8 @@ function PrescribeModal({
   const [selectedPatientsData, setSelectedPatientsData] = useState<Patient[]>([]);
   const [patientSearch, setPatientSearch] = useState("");
   const [letterFilter, setLetterFilter] = useState("");
-  const [sets, setSets] = useState(exercise.defaultSets?.toString() || "");
-  const [reps, setReps] = useState(exercise.defaultReps?.toString() || "");
+  const [sets, setSets] = useState(exercise.defaultSets?.toString() || "3");
+  const [reps, setReps] = useState(exercise.defaultReps?.toString() || "12");
   const [holdSeconds, setHoldSeconds] = useState(exercise.defaultHoldSec?.toString() || "");
   const [restSeconds, setRestSeconds] = useState(exercise.defaultRestSec?.toString() || "");
   const [frequency, setFrequency] = useState("");
