@@ -82,7 +82,7 @@ const DEFAULT_COVER_IMAGE = '/images/book/beyond-pain-cover.webp';
 // an ImageLibrary DB row (/api/image-serve/...) — that table is empty after
 // the Aug 2026 DB wipe, so it's now a git-tracked static file instead (see
 // scripts/seed-site-logo.js for the homepage About-section counterpart).
-const DEFAULT_AUTHOR_PHOTO = '/images/team/bruno.png';
+const DEFAULT_AUTHOR_PHOTO = '/images/team/bruno.webp';
 // Short bio — landing-page card (see BPR "Beyond Pain — Landing Page Copy", §4 SHORT).
 const DEFAULT_AUTHOR_BIO = [
   `Bruno writes about pain from the inside — and not only the kind you can point to on a scan. A former professional footballer, he has lived with physical pain since the age of seventeen, through multiple knee operations and the arthritis they left behind. But he also knows the other pains: losing everything and starting again, being broken and being deceived, and the slow work of being restored and healed on the inside. He came through all of it — and it is the reason this book exists.`,

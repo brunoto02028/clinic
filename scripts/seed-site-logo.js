@@ -10,7 +10,7 @@ const DEFAULTS = {
   logoUrl: '/logo.png', // full-colour "bpr" mark — light backgrounds
   darkLogoUrl: '/logo-dark.png', // cream/white version — dark backgrounds
   faviconUrl: '/favicon.png', // cropped icon-only mark (no wordmark), square
-  aboutImageUrl: '/images/team/bruno.png', // homepage "About Bruno" section photo
+  aboutImageUrl: '/images/team/bruno.webp', // homepage "About Bruno" section photo
 };
 
 async function main() {

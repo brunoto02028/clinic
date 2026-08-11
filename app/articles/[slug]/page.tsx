@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
+import Image from "next/image";
 import { getServerSession } from "next-auth";
 import { Calendar, User, ChevronLeft, ChevronRight, BookOpen, ArrowLeft, Clock, Share2 } from "lucide-react";
 import type { Metadata } from "next";
@@ -200,10 +201,14 @@ export default async function ArticlePage({ params }: PageProps) {
       {/* Cover Image — Full Width */}
       {article.imageUrl && (
         <div className="relative w-full h-[300px] sm:h-[400px] lg:h-[480px] bg-muted overflow-hidden">
-          <img
+          <Image
             src={article.imageUrl}
             alt={article.title}
-            className="w-full h-full object-cover"
+            fill
+            priority
+            sizes="100vw"
+            quality={75}
+            className="object-cover"
             style={{ objectPosition: `${article.imageFocalX ?? 50}% ${article.imageFocalY ?? 50}%` }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -360,8 +365,8 @@ export default async function ArticlePage({ params }: PageProps) {
                   {relatedArticles.slice(0, 4).map((related) => (
                     <Link key={related.id} href={`/articles/${related.slug}`} className="group flex gap-3">
                       {related.imageUrl ? (
-                        <div className="w-16 h-12 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                          <img src={related.imageUrl} alt="" className="w-full h-full object-cover" style={{ objectPosition: `${related.imageFocalX ?? 50}% ${related.imageFocalY ?? 50}%` }} />
+                        <div className="relative w-16 h-12 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                          <Image src={related.imageUrl} alt="" fill sizes="64px" loading="lazy" quality={60} className="object-cover" style={{ objectPosition: `${related.imageFocalX ?? 50}% ${related.imageFocalY ?? 50}%` }} />
                         </div>
                       ) : (
                         <div className="w-16 h-12 rounded-md bg-primary/5 flex items-center justify-center flex-shrink-0">
@@ -411,7 +416,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
                     <div className="relative aspect-video bg-muted overflow-hidden">
                       {related.imageUrl ? (
-                        <img src={related.imageUrl} alt={related.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" style={{ objectPosition: `${related.imageFocalX ?? 50}% ${related.imageFocalY ?? 50}%` }} />
+                        <Image src={related.imageUrl} alt={related.title} fill sizes="(min-width: 1280px) 300px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" loading="lazy" quality={65} className="object-cover group-hover:scale-105 transition-transform duration-300" style={{ objectPosition: `${related.imageFocalX ?? 50}% ${related.imageFocalY ?? 50}%` }} />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-primary/5">
                           <BookOpen className="h-8 w-8 text-primary/20" />

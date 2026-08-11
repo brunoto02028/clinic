@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Zap, Dumbbell, Footprints, ScanLine, Waves,
@@ -611,8 +612,8 @@ export default function ServiceDetailPage() {
         </div>
         {heroImage && (
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-0">
-            <div className="rounded-2xl overflow-hidden mb-0 max-h-72">
-              <img src={heroImage} alt={title} className="w-full h-72 object-cover opacity-70" />
+            <div className="relative rounded-2xl overflow-hidden mb-0 h-72">
+              <Image src={heroImage} alt={title} fill priority sizes="100vw" quality={70} className="object-cover opacity-70" />
             </div>
           </div>
         )}

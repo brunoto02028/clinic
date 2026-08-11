@@ -541,7 +541,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <div>
               <div className="relative aspect-square max-w-md mx-auto lg:max-w-none rounded-3xl overflow-hidden shadow-2xl shadow-slate-200 border border-slate-100">
                 {validImg(settings?.aboutImageUrl) ? (
-                  <img src={validImg(settings?.aboutImageUrl)!} alt="Bruno - Physical Rehabilitation Specialist" className="object-cover absolute inset-0 w-full h-full" />
+                  <Image src={validImg(settings?.aboutImageUrl)!} alt="Bruno - Physical Rehabilitation Specialist" fill sizes="(min-width: 1024px) 448px, 90vw" className="object-cover" loading="lazy" quality={70} />
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
                     <UserCog className="h-24 w-24 text-primary/20" />
