@@ -308,19 +308,19 @@ export default function ExercisesPage() {
                   )}
                 </Button>
                 {igResult?.downloaded > 0 && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
-                    <p className="text-sm font-medium text-green-700 flex items-center gap-1.5">
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 space-y-2">
+                    <p className="text-sm font-medium text-emerald-400 flex items-center gap-1.5">
                       <CheckCircle className="h-4 w-4" /> {igResult.downloaded} video{igResult.downloaded > 1 ? "s" : ""} downloaded!
                     </p>
                     {igResult.results?.filter((r: any) => r.success).map((r: any, i: number) => (
-                      <p key={i} className="text-xs text-green-600">
+                      <p key={i} className="text-xs text-emerald-400/80">
                         {r.exercise?.name} → {r.exercise?.bodyRegion?.replace(/_/g, " ")}
                       </p>
                     ))}
                     {igResult.results?.filter((r: any) => !r.success).length > 0 && (
-                      <div className="border-t border-green-200 pt-1 mt-1">
+                      <div className="border-t border-emerald-500/20 pt-1 mt-1">
                         {igResult.results?.filter((r: any) => !r.success).map((r: any, i: number) => (
-                          <p key={i} className="text-xs text-red-600">Failed: {r.error}</p>
+                          <p key={i} className="text-xs text-destructive">Failed: {r.error}</p>
                         ))}
                       </div>
                     )}
@@ -332,7 +332,7 @@ export default function ExercisesPage() {
                   </div>
                 )}
                 {igResult && igResult.downloaded === 0 && !igResult.error && (
-                  <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3 rounded-md">
+                  <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm p-3 rounded-md">
                     No videos could be downloaded. Posts may be private or not contain videos.
                   </div>
                 )}
@@ -1684,13 +1684,18 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
         <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
           {results ? (
             <div className="space-y-3">
-              <div className={`rounded-lg p-4 text-center ${results.failCount === 0 ? "bg-green-50 border border-green-200" : "bg-amber-50 border border-amber-200"}`}>
-                <CheckCircle2 className={`h-8 w-8 mx-auto mb-2 ${results.failCount === 0 ? "text-green-600" : "text-amber-600"}`} />
-                <p className="font-semibold">{results.successCount} of {results.total} uploaded successfully</p>
-                {results.failCount > 0 && <p className="text-sm text-amber-700 mt-1">{results.failCount} failed</p>}
+              <div className={`rounded-lg p-6 text-center border ${results.failCount === 0 ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
+                <div className={`h-14 w-14 rounded-full mx-auto mb-3 flex items-center justify-center ${results.failCount === 0 ? "bg-emerald-500/15" : "bg-amber-500/15"}`}>
+                  <CheckCircle2 className={`h-8 w-8 ${results.failCount === 0 ? "text-emerald-400" : "text-amber-400"}`} />
+                </div>
+                <p className={`font-semibold text-lg ${results.failCount === 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                  {results.successCount} of {results.total} uploaded successfully
+                </p>
+                {results.failCount > 0 && <p className="text-sm text-amber-400/80 mt-1">{results.failCount} failed — see details below</p>}
+                {results.failCount === 0 && <p className="text-sm text-muted-foreground mt-1">Ready to prescribe to your patients</p>}
               </div>
               {files.filter(f => f.status === "error").map((f, i) => (
-                <div key={i} className="text-sm text-destructive bg-destructive/10 rounded p-2">
+                <div key={i} className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
                   <strong>{f.name}:</strong> {f.error}
                 </div>
               ))}
