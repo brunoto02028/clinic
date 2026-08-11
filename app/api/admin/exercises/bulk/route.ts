@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { generateVideoThumbnail } from "@/lib/video-thumbnail";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,15 @@ export async function POST(req: NextRequest) {
         const videoUrl = `/uploads/exercises/${uniqueName}`;
         const tags = meta.tags ? meta.tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean) : [];
 
+        let thumbnailUrl: string | null = null;
+        try {
+          const thumbName = `${Date.now()}-thumb.jpg`;
+          await generateVideoThumbnail(filePath, path.join(thumbDir, thumbName));
+          thumbnailUrl = `/uploads/exercises/thumbnails/${thumbName}`;
+        } catch (thumbErr: any) {
+          console.error(`Auto-thumbnail generation failed for ${meta.name}:`, thumbErr.message);
+        }
+
         const exercise = await (prisma as any).exercise.create({
           data: {
             clinicId,
@@ -89,6 +99,7 @@ export async function POST(req: NextRequest) {
             tags,
             videoUrl,
             videoFileName: videoFile.name,
+            thumbnailUrl,
             createdById: userId,
           },
         });
