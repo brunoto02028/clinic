@@ -376,6 +376,7 @@ function ExerciseRow({
   const reps = prescription.reps || ex.defaultReps;
   const holdSec = prescription.holdSeconds || ex.defaultHoldSec;
   const restSec = prescription.restSeconds || ex.defaultRestSec;
+  const [hoverPlaying, setHoverPlaying] = useState(false);
 
   return (
     <div className="relative px-3 sm:px-5 py-3 sm:py-4 pb-10 sm:pb-4 flex items-start gap-3 sm:gap-4">
@@ -385,15 +386,19 @@ function ExerciseRow({
           ex.videoUrl ? "cursor-pointer group" : ""
         }`}
         onClick={ex.videoUrl ? onPlay : undefined}
+        onMouseEnter={() => ex.videoUrl && setHoverPlaying(true)}
+        onMouseLeave={() => setHoverPlaying(false)}
       >
-        {ex.thumbnailUrl ? (
+        {hoverPlaying && ex.videoUrl ? (
+          <video src={ex.videoUrl} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+        ) : ex.thumbnailUrl ? (
           <img src={ex.thumbnailUrl} alt={ex.name} className="w-full h-full object-cover" />
         ) : ex.videoUrl ? (
           <FileVideo className="h-8 w-8 text-muted-foreground/50" />
         ) : (
           <Dumbbell className="h-8 w-8 text-muted-foreground/30" />
         )}
-        {ex.videoUrl && (
+        {ex.videoUrl && !hoverPlaying && (
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
             <Play className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
           </div>

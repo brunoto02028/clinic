@@ -535,6 +535,7 @@ function ExerciseCard({
   onPreview: () => void;
 }) {
   const diff = DIFFICULTIES[exercise.difficulty] || DIFFICULTIES.BEGINNER;
+  const [hoverPlaying, setHoverPlaying] = useState(false);
 
   return (
     <Card className="group overflow-hidden hover:shadow-md transition-shadow">
@@ -542,8 +543,19 @@ function ExerciseCard({
       <div
         className="relative h-40 bg-muted flex items-center justify-center cursor-pointer"
         onClick={exercise.videoUrl ? onPreview : undefined}
+        onMouseEnter={() => exercise.videoUrl && setHoverPlaying(true)}
+        onMouseLeave={() => setHoverPlaying(false)}
       >
-        {exercise.thumbnailUrl ? (
+        {hoverPlaying && exercise.videoUrl ? (
+          <video
+            src={exercise.videoUrl}
+            className="w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        ) : exercise.thumbnailUrl ? (
           <img
             src={exercise.thumbnailUrl}
             alt={exercise.name}
@@ -560,7 +572,7 @@ function ExerciseCard({
             <span className="text-xs">No video</span>
           </div>
         )}
-        {exercise.videoUrl && (
+        {exercise.videoUrl && !hoverPlaying && (
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
             <Play className="h-10 w-10 text-white opacity-0 group-hover:opacity-90 transition-opacity drop-shadow-lg" />
           </div>
