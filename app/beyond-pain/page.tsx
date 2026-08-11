@@ -143,7 +143,7 @@ export default async function BeyondPainPage({
             <LocalizedText
               fallback={`Pain is rarely only physical. It speaks the language of the body, the mind and the spirit — and lasting healing has to meet all three. Drawing on the real science of how pain works, alongside a faith that takes the whole person seriously, ${config.title} is being written now — chapter by chapter — and you can follow the journey from the very first page.`}
               en={`Pain is rarely only physical. It speaks the language of the body, the mind and the spirit — and lasting healing has to meet all three. Drawing on the real science of how pain works, alongside a faith that takes the whole person seriously, ${config.title} is being written now — chapter by chapter — and you can follow the journey from the very first page.`}
-              pt={`A dor raramente é apenas física. Ela fala a língua do corpo, da mente e do espírito — e a cura duradoura precisa alcançar os três. Baseado na ciência real de como a dor funciona, ao lado de uma fé que leva a pessoa inteira a sério, ${config.title} está sendo escrito agora — capítulo por capítulo — e você pode acompanhar a jornada desde a primeira página.`}
+              pt={`A dor raramente é só física. Ela fala a língua do corpo, da mente e do espírito, e a cura duradoura precisa alcançar os três. Baseado na ciência real de como a dor funciona, e também numa fé que leva a pessoa inteira a sério, ${config.title} está sendo escrito agora, capítulo por capítulo, e você pode acompanhar essa jornada desde a primeira página.`}
             />
           </p>
         </section>
