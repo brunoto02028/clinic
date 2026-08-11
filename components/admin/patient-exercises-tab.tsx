@@ -173,10 +173,14 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
             {editingId === p.id ? (
               <div className="mt-2 space-y-2">
                 <div className="grid grid-cols-4 gap-1.5">
-                  <Input type="number" min="0" placeholder="Sets" value={edit.sets} onChange={(e) => setEdit((s) => ({ ...s, sets: e.target.value }))} className="h-7 text-xs" />
-                  <Input type="number" min="0" placeholder="Reps" value={edit.reps} onChange={(e) => setEdit((s) => ({ ...s, reps: e.target.value }))} className="h-7 text-xs" />
-                  <Input type="number" min="0" placeholder="Hold(s)" value={edit.holdSeconds} onChange={(e) => setEdit((s) => ({ ...s, holdSeconds: e.target.value }))} className="h-7 text-xs" />
-                  <Input type="number" min="0" placeholder="Rest(s)" value={edit.restSeconds} onChange={(e) => setEdit((s) => ({ ...s, restSeconds: e.target.value }))} className="h-7 text-xs" />
+                  <Input type="number" min="0" list="edit-sets-options" placeholder="Sets" value={edit.sets} onChange={(e) => setEdit((s) => ({ ...s, sets: e.target.value }))} className="h-7 text-xs" />
+                  <Input type="number" min="0" list="edit-reps-options" placeholder="Reps" value={edit.reps} onChange={(e) => setEdit((s) => ({ ...s, reps: e.target.value }))} className="h-7 text-xs" />
+                  <Input type="number" min="0" list="edit-hold-options" placeholder="Hold(s)" value={edit.holdSeconds} onChange={(e) => setEdit((s) => ({ ...s, holdSeconds: e.target.value }))} className="h-7 text-xs" />
+                  <Input type="number" min="0" list="edit-rest-options" placeholder="Rest(s)" value={edit.restSeconds} onChange={(e) => setEdit((s) => ({ ...s, restSeconds: e.target.value }))} className="h-7 text-xs" />
+                  <datalist id="edit-sets-options">{["1", "2", "3", "4", "5"].map((v) => <option key={v} value={v} />)}</datalist>
+                  <datalist id="edit-reps-options">{["5", "8", "10", "12", "15", "20"].map((v) => <option key={v} value={v} />)}</datalist>
+                  <datalist id="edit-hold-options">{["5", "10", "15", "20", "30", "45", "60"].map((v) => <option key={v} value={v} />)}</datalist>
+                  <datalist id="edit-rest-options">{["15", "30", "45", "60", "90", "120"].map((v) => <option key={v} value={v} />)}</datalist>
                 </div>
                 <Input placeholder="Frequency (e.g. 3x per week)" value={edit.frequency} onChange={(e) => setEdit((s) => ({ ...s, frequency: e.target.value }))} className="h-7 text-xs" />
                 <Textarea placeholder="Notes for patient..." value={edit.notes} onChange={(e) => setEdit((s) => ({ ...s, notes: e.target.value }))} className="text-xs min-h-14" />

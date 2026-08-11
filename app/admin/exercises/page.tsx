@@ -1462,23 +1462,35 @@ function PrescribeModal({
             )}
           </div>
 
-          {/* Parameters */}
+          {/* Parameters — type a custom number or pick a common value */}
           <div className="grid grid-cols-4 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Sets</Label>
-              <Input type="number" min="0" value={sets} onChange={(e) => setSets(e.target.value)} placeholder="3" />
+              <Input type="number" min="0" list="sets-options" value={sets} onChange={(e) => setSets(e.target.value)} placeholder="3" />
+              <datalist id="sets-options">
+                {["1", "2", "3", "4", "5"].map((v) => <option key={v} value={v} />)}
+              </datalist>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Reps</Label>
-              <Input type="number" min="0" value={reps} onChange={(e) => setReps(e.target.value)} placeholder="12" />
+              <Input type="number" min="0" list="reps-options" value={reps} onChange={(e) => setReps(e.target.value)} placeholder="12" />
+              <datalist id="reps-options">
+                {["5", "8", "10", "12", "15", "20"].map((v) => <option key={v} value={v} />)}
+              </datalist>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Hold (s)</Label>
-              <Input type="number" min="0" value={holdSeconds} onChange={(e) => setHoldSeconds(e.target.value)} />
+              <Input type="number" min="0" list="hold-options" value={holdSeconds} onChange={(e) => setHoldSeconds(e.target.value)} />
+              <datalist id="hold-options">
+                {["5", "10", "15", "20", "30", "45", "60"].map((v) => <option key={v} value={v} />)}
+              </datalist>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Rest (s)</Label>
-              <Input type="number" min="0" value={restSeconds} onChange={(e) => setRestSeconds(e.target.value)} />
+              <Input type="number" min="0" list="rest-options" value={restSeconds} onChange={(e) => setRestSeconds(e.target.value)} />
+              <datalist id="rest-options">
+                {["15", "30", "45", "60", "90", "120"].map((v) => <option key={v} value={v} />)}
+              </datalist>
             </div>
           </div>
 
