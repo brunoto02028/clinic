@@ -16,8 +16,8 @@ import { useLocale } from "@/hooks/use-locale";
 
 // App Store URLs — update these when the app launches
 const APP_STORE_URL = ""; // e.g. "https://apps.apple.com/app/bpr-clinic/id..."
-const PLAY_STORE_URL = ""; // e.g. "https://play.google.com/store/apps/details?id=com.bpr.rehab"
-const QR_URL = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://bpr.rehab/get-the-app&color=ffffff&bgcolor=0f172a&qzone=2";
+const PLAY_STORE_URL = ""; // e.g. "https://play.google.com/store/apps/details?id=com.bpr.clinic"
+const QR_URL = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://bpr.clinic/get-the-app&color=ffffff&bgcolor=0f172a&qzone=2";
 
 export default function GetTheAppPage() {
   const [mounted, setMounted] = useState(false);
@@ -148,7 +148,7 @@ export default function GetTheAppPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={QR_URL}
-                    alt="QR Code — bpr.rehab/get-the-app"
+                    alt="QR Code — bpr.clinic/get-the-app"
                     width={90}
                     height={90}
                     className="rounded-xl"

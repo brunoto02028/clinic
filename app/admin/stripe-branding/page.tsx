@@ -29,7 +29,7 @@ export default function StripeBrandingPage() {
     businessName: "Bruno Physical Rehabilitation",
     supportEmail: "",
     supportPhone: "",
-    websiteUrl: "https://bpr.rehab",
+    websiteUrl: "https://bpr.clinic",
     logoUrl: "",
   });
 
@@ -230,7 +230,7 @@ export default function StripeBrandingPage() {
                   value={branding.websiteUrl}
                   onChange={e => setBranding(b => ({ ...b, websiteUrl: e.target.value }))}
                   className="w-full mt-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#5dc9c0]"
-                  placeholder="https://bpr.rehab"
+                  placeholder="https://bpr.clinic"
                 />
               </div>
             </div>

@@ -10,7 +10,7 @@ export async function dispatchDueBroadcasts(): Promise<number> {
   if (!due.length) return 0;
 
   let dispatched = 0;
-  const appUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+  const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
   for (const b of due) {
     // Claim atomically to avoid double dispatch from concurrent calls

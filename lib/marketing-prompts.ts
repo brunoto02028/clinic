@@ -12,7 +12,7 @@ CLINIC IDENTITY:
 - Tone: Expert but approachable. Evidence-based. Human. Never salesy or generic.
 - Target audience: Active adults 25-60, athletes, post-surgery patients, chronic pain sufferers, sports clubs
 - Location: Ipswich, Suffolk, UK
-- Website: bpr.rehab
+- Website: bpr.clinic
 - Open every day including weekends
 
 Always write content that feels personal, expert, and genuine. Reference Bruno's story when relevant.
@@ -63,7 +63,7 @@ REQUIREMENTS:
 - Caption: 150-220 words max
 - Start with a strong hook (first line must stop scrolling)
 - Include 1-2 emojis max (professional, not childish)
-- End with a clear but soft call to action (book at bpr.rehab or link in bio)
+- End with a clear but soft call to action (book at bpr.clinic or link in bio)
 - ${includeHashtags ? 'Include 15-20 relevant hashtags at the end (mix broad and niche)' : 'No hashtags'}
 - Never use generic phrases like "Are you suffering?" or "Don't let pain hold you back"
 - Feel like it was written by Bruno himself, not a marketing agency
@@ -110,7 +110,7 @@ export function buildSeoArticlePrompt(params: {
   return `
 ${BPR_SYSTEM_CONTEXT}
 
-TASK: Write a comprehensive SEO blog article for bpr.rehab
+TASK: Write a comprehensive SEO blog article for bpr.clinic
 
 LANGUAGE: ALWAYS write the article in ENGLISH (UK spelling). Even if the keyword or title is in another language, translate it and write the full article in English. The website handles translations separately.
 
@@ -177,7 +177,7 @@ export function buildPdfContentPrompt(params: {
   return `
 ${BPR_SYSTEM_CONTEXT}
 
-TASK: Create content for a professional educational PDF guide/eBook to sell on bpr.rehab
+TASK: Create content for a professional educational PDF guide/eBook to sell on bpr.clinic
 
 Title: "${title}"
 Topic: ${topic}
@@ -280,7 +280,7 @@ Requirements:
 - Warm and personal (from Bruno)
 - Check how they're feeling
 - Soft nudge to rebook if they haven't
-- End with bpr.rehab/signup link
+- End with bpr.clinic/signup link
 - Never sound automated or generic
 - UK English
 

@@ -160,7 +160,7 @@ export const DEFAULT_CONFIGS = [
   {
     key: "SMTP_USER",
     label: "SMTP Username / Email",
-    description: "Your email address (e.g. admin@bpr.rehab)",
+    description: "Your email address (e.g. admin@bpr.clinic)",
     category: "email",
     isSecret: false,
   },
@@ -174,7 +174,7 @@ export const DEFAULT_CONFIGS = [
   {
     key: "EMAIL_FROM",
     label: "Email From Address",
-    description: "Sender name and email (e.g. Bruno Physical Rehabilitation <admin@bpr.rehab>)",
+    description: "Sender name and email (e.g. Bruno Physical Rehabilitation <admin@bpr.clinic>)",
     category: "email",
     isSecret: false,
   },
@@ -324,7 +324,7 @@ export const DEFAULT_CONFIGS = [
   {
     key: "COMPANIES_HOUSE_OAUTH_REDIRECT_URI",
     label: "Companies House OAuth Redirect URI",
-    description: "Callback URL for Companies House OAuth flow (e.g. https://bpr.rehab/api/government/callback/companies-house).",
+    description: "Callback URL for Companies House OAuth flow (e.g. https://bpr.clinic/api/government/callback/companies-house).",
     category: "integration",
     isSecret: false,
   },

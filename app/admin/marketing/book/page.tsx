@@ -101,7 +101,7 @@ export default function BookAdminPage() {
         <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />Beyond Pain — Book
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">Launch switch, copy and the mailing-list funnel for the book (bpr.rehab/beyond-pain)</p>
+        <p className="text-sm text-muted-foreground mt-1">Launch switch, copy and the mailing-list funnel for the book (bpr.clinic/beyond-pain)</p>
       </div>
 
       {/* Funnel */}
@@ -255,7 +255,7 @@ export default function BookAdminPage() {
         <CardContent className="space-y-3">
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <Label>Direct sale link (bpr.rehab)</Label>
+              <Label>Direct sale link (bpr.clinic)</Label>
               <Input value={config.buyLinkDirect || ""} onChange={(e) => setConfig({ ...config, buyLinkDirect: e.target.value })} />
             </div>
             <div>

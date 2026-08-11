@@ -133,7 +133,7 @@ export default function CancellationPolicyPage() {
             </div>
             <div className="bg-muted/30 rounded-lg p-3 space-y-1">
               <p className="font-semibold text-foreground text-xs uppercase tracking-wide">Email</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> support@bpr.rehab</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> support@bpr.clinic</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">{isPt ? "Todas as solicitações de cancelamento serão confirmadas em até 1 dia útil. Reembolsos são processados em 5–10 dias úteis para o método de pagamento original." : "All cancellation requests will be acknowledged within 1 working day. Refunds are processed within 5–10 working days to the original payment method."}</p>

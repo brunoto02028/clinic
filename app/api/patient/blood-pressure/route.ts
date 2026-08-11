@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         ? 'Stage 2 Hypertension'
         : 'Stage 1 Hypertension';
       const isCrisis = sys >= 180 || dia >= 120;
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
       notifyPatient({
         patientId: userId,
         emailTemplateSlug: 'BP_HIGH_ALERT',

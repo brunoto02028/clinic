@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe Checkout Session for recurring subscription
-    const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+    const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
     const isMobile = request.headers.get("x-platform") === "mobile"
       || request.nextUrl.searchParams.get("platform") === "mobile";
 

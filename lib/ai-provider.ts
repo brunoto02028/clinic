@@ -355,7 +355,7 @@ async function generateImageOpenRouter(
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://bpr.rehab",
+      "HTTP-Referer": "https://bpr.clinic",
       "X-Title": "BPR Clinic AI",
     },
     body: JSON.stringify({

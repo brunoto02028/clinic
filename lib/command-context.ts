@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 // ─── Static Business Knowledge ───
 const BUSINESS_KNOWLEDGE = `
 ## ABOUT BRUNO PHYSICAL REHABILITATION (BPR)
-- **URL**: https://bpr.rehab
+- **URL**: https://bpr.clinic
 - **Location**: London, United Kingdom
 - **Currency**: GBP (£)
 - **Languages**: English (en-GB) primary, Portuguese (pt-BR) secondary

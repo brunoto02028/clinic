@@ -83,7 +83,7 @@ export async function POST(
           </ul>
           <p>Acesse sua área de paciente para ver o relatório completo:</p>
           <p style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.NEXTAUTH_URL || 'https://bpr.rehab'}/dashboard" 
+            <a href="${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/dashboard" 
                style="background-color: #7C3AED; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">
               Ver Avaliação Completa
             </a>
@@ -100,7 +100,7 @@ export async function POST(
           </ul>
           <p>Access your patient portal to view the full report:</p>
           <p style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.NEXTAUTH_URL || 'https://bpr.rehab'}/dashboard" 
+            <a href="${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/dashboard" 
                style="background-color: #7C3AED; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">
               View Full Assessment
             </a>

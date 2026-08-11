@@ -4,7 +4,7 @@ import { logBookEvent, sendBookChapterDeliveryEmail, BOOK_SOURCE } from "@/lib/b
 
 export const dynamic = "force-dynamic";
 
-const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
 // GET /api/beyond-pain/confirm?token=...
 // The magic link from the confirmation email. Verifies the address,

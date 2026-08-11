@@ -65,7 +65,7 @@ Return as JSON:
       scriptData = {
         hook: raw.split('\n')[0] || 'Hook not generated',
         script: [{ time: '0-30s', visual: 'Film clinic environment', audio: raw, text_overlay: '' }],
-        cta: 'Book your assessment at bpr.rehab',
+        cta: 'Book your assessment at bpr.clinic',
         caption: raw,
         hashtags: ['#physiotherapy', '#rehabilitation', '#BPR', '#London', '#sportsinjury'],
         music_mood: 'motivational',

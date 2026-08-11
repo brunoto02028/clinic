@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
 
-const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
 export async function GET(
   request: NextRequest,
@@ -28,7 +28,7 @@ export async function GET(
 
   if (!owUserId) {
     const owUser = await owCreateUser(
-      session.user.email || `${userId}@bpr.rehab`,
+      session.user.email || `${userId}@bpr.clinic`,
       userId
     );
     owUserId = owUser.id;

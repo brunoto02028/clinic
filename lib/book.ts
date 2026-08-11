@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { wrapInLayout } from "@/lib/email-templates";
 
-const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 const BRAND_PRIMARY = "#4F7361";
 
 export const BOOK_ACCESS_COOKIE = "book_access";
@@ -169,7 +169,7 @@ export async function sendBookChapterDeliveryEmail(params: {
       <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
       <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">Um aviso rápido antes de começar</h3>
       <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 16px;">Este capítulo é protegido por direitos de autor — um excerto do livro <em>Além da Dor</em>, partilhado consigo apenas para leitura pessoal. Pedimos que não o copie, revenda ou redistribua, mesmo que seja apenas um capítulo. Foram anos de estudo, prática clínica e recuperação pessoal para o escrever, e os direitos de autor protegem esse trabalho.</p>
-      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Se conhece alguém que também gostaria de o ler, a forma mais generosa de ajudar é enviá-lo a <a href="${bookUrl}" style="color:${BRAND_PRIMARY};">bpr.rehab/beyond-pain</a> para que receba o seu próprio exemplar gratuito — e não um PDF reencaminhado.</p>
+      <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Se conhece alguém que também gostaria de o ler, a forma mais generosa de ajudar é enviá-lo a <a href="${bookUrl}" style="color:${BRAND_PRIMARY};">bpr.clinic/beyond-pain</a> para que receba o seu próprio exemplar gratuito — e não um PDF reencaminhado.</p>
       <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">Porque é que vai importar quando comprar o livro</h3>
       <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">Quando <em>Além da Dor</em> for lançado e decidir comprar um exemplar, estará a fazer muito mais do que adquirir um livro. Estará a ajudar a financiar o estudo e a investigação por trás de cada capítulo, a permitir que eu continue disponível para os pacientes que precisam de cuidado presencial, e a levar esta mensagem — de que a cura é possível para o corpo, a alma e o espírito — a mais pessoas que precisam de a ouvir.</p>
       <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;">Obrigado por ser um dos primeiros a lê-lo.</p>
@@ -194,7 +194,7 @@ export async function sendBookChapterDeliveryEmail(params: {
     <hr style="border:none;border-top:1px solid #E4E3DF;margin:24px 0;" />
     <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">A quick note before you dive in</h3>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 16px;">This chapter is copyright-protected — an excerpt from the forthcoming book <em>Beyond Pain</em>, shared with you for personal reading only. Please don't copy, resell or redistribute it, even as a single chapter. It took years of study, clinical practice and personal recovery to write, and copyright protects that work.</p>
-    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">If you know someone else who'd enjoy it, the kindest thing you can do is send them to <a href="${bookUrl}" style="color:${BRAND_PRIMARY};">bpr.rehab/beyond-pain</a> so they can get their own free copy — not a forwarded PDF.</p>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">If you know someone else who'd enjoy it, the kindest thing you can do is send them to <a href="${bookUrl}" style="color:${BRAND_PRIMARY};">bpr.clinic/beyond-pain</a> so they can get their own free copy — not a forwarded PDF.</p>
     <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">Why it will matter when you buy the book</h3>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;">When <em>Beyond Pain</em> launches and you choose to buy a copy, you're doing far more than owning a book. You're helping fund the research and study behind every chapter, keeping me available for the patients who need hands-on care, and helping this message — that healing is possible for the body, the soul and the spirit — reach more people who need to hear it.</p>
     <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;">Thank you for being one of the first to read it.</p>

@@ -1329,7 +1329,7 @@ model SiteSettings {
   businessPostcode   String? // e.g. "IP1 1AA"
   businessCountry    String? // e.g. "GB"
   businessPhone      String? // e.g. "+44 1473 000000"
-  businessEmail      String? // e.g. "admin@bpr.rehab"
+  businessEmail      String? // e.g. "admin@bpr.clinic"
   businessHoursJson  String? @db.Text // JSON: opening hours per day
   businessPriceRange String? // e.g. "££"
   businessCurrency   String? // e.g. "GBP"
@@ -3317,12 +3317,12 @@ model EmailMessage {
 model EmailAccount {
   id         String    @id @default(cuid())
   label      String // e.g. "BPR Rehab", "Bruno Physical Rehabilitation"
-  email      String    @unique // e.g. admin@bpr.rehab
+  email      String    @unique // e.g. admin@bpr.clinic
   smtpHost   String // e.g. smtp.hostinger.com
   smtpPort   String    @default("465")
   smtpUser   String // Usually same as email
   smtpPass   String    @db.Text // Encrypted
-  emailFrom  String // e.g. "Bruno Physical Rehabilitation <admin@bpr.rehab>"
+  emailFrom  String // e.g. "Bruno Physical Rehabilitation <admin@bpr.clinic>"
   isPrimary  Boolean   @default(false) // Primary account for sending
   isActive   Boolean   @default(true) // Can be deactivated without deleting
   lastSyncAt DateTime?
@@ -3721,7 +3721,7 @@ model EmailCampaign {
   htmlBody        String?        @db.Text
   preheader       String?
   fromName        String         @default("Bruno Physical Rehabilitation")
-  fromEmail       String         @default("support@bpr.rehab")
+  fromEmail       String         @default("support@bpr.clinic")
   replyTo         String?
   status          CampaignStatus @default(DRAFT)
   scheduledAt     DateTime?

@@ -30,7 +30,7 @@ type SetupStep =
   | "set-env"
   | "connect";
 
-const REDIRECT_URI = "https://bpr.rehab/api/admin/social/callback";
+const REDIRECT_URI = "https://bpr.clinic/api/admin/social/callback";
 
 export default function InstagramConnectPage() {
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
@@ -381,8 +381,8 @@ export default function InstagramConnectPage() {
         <StepCard title="Configurar permissões do App" icon={<Key className="h-5 w-5 text-purple-500" />}>
           <ol className="space-y-3 text-sm text-muted-foreground">
             <Step n={1} text="No painel do App, clica em App Settings → Basic no menu lateral esquerdo" />
-            <Step n={2} text='Preenche o "Privacy Policy URL": https://bpr.rehab/privacy' />
-            <Step n={3} text='Em "App Domains" adiciona: bpr.rehab' />
+            <Step n={2} text='Preenche o "Privacy Policy URL": https://bpr.clinic/privacy' />
+            <Step n={3} text='Em "App Domains" adiciona: bpr.clinic' />
             <Step n={4} text="Anota o App ID e o App Secret (clica 'Show' no campo App Secret)" />
             <Step n={5} text='Clica em App Review → Permissions and Features e verifica que tens: instagram_basic, instagram_content_publish' />
           </ol>

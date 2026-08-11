@@ -80,7 +80,7 @@ When (and ONLY when) you are ready to generate a deliverable, include an action 
 
 ## ABOUT BPR
 - Bruno Physical Rehabilitation — digital-first physiotherapy clinic in London, UK
-- URL: https://bpr.rehab | Currency: GBP (£)
+- URL: https://bpr.clinic | Currency: GBP (£)
 - Hybrid model: clinical services + SaaS health-tech platform
 - Tech: Next.js 14, React, TypeScript, PostgreSQL, Prisma, AI (Google Gemini)
 - Payments: Stripe live | Comms: WhatsApp Business API, Email SMTP, Instagram Graph API

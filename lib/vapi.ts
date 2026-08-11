@@ -27,7 +27,7 @@ export const BPR_SYSTEM_PROMPT = `You are Amy, the virtual receptionist for BPR 
 CLINIC DETAILS:
 - Name: BPR Bruno Physical Rehabilitation
 - Address: Ipswich, Suffolk (full address TBC)
-- Website: bpr.rehab
+- Website: bpr.clinic
 - Lead Therapist: Bruno Azenha Tonheta (Physical Rehabilitation Specialist)
 - Specialisms: Musculoskeletal physical rehabilitation, sports rehabilitation, dry needling, electrotherapy, ultrasound therapy, myofascial cupping, custom orthotics/insoles
 

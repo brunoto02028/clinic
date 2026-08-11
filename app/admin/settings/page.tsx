@@ -2131,7 +2131,7 @@ export default function AdminSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Start Page (QR Code Landing)</CardTitle>
-              <CardDescription>bpr.rehab/start — where your business card QR code goes. A short personal video and real testimonials make the biggest difference here.</CardDescription>
+              <CardDescription>bpr.clinic/start — where your business card QR code goes. A short personal video and real testimonials make the biggest difference here.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -2365,7 +2365,7 @@ export default function AdminSettingsPage() {
                   type="email"
                   value={settings.email}
                   onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                  placeholder="admin@bpr.rehab"
+                  placeholder="admin@bpr.clinic"
                 />
               </div>
               <div className="space-y-2">
@@ -2489,7 +2489,7 @@ export default function AdminSettingsPage() {
                               name: (settings as any).siteName || "BPR Physical Rehabilitation",
                               location: "Ipswich, Suffolk, UK",
                               services: "Physical therapy, sports rehabilitation, MLS Laser therapy, thermography, biomechanics, insoles",
-                              email: (settings as any).businessEmail || "info@bpr.rehab",
+                              email: (settings as any).businessEmail || "info@bpr.clinic",
                               phone: (settings as any).businessPhone || "+44 (0) 20 XXXX XXXX",
                               address: (settings as any).businessStreet && (settings as any).businessCity
                                 ? `${(settings as any).businessStreet}, ${(settings as any).businessCity}, ${(settings as any).businessPostcode}`
@@ -2582,7 +2582,7 @@ export default function AdminSettingsPage() {
                     fieldName="marketingFlyerDefaultsJson"
                     fieldLabel="Flyer Defaults"
                     currentValue={(settings as any).marketingFlyerDefaultsJson || ""}
-                    context={`Generate a complete JSON configuration for marketing flyers. Include: templateId (modern), colors (primary: #4a7c8a, secondary: #2c4f58, accent: #6ba3b0, bg: #ffffff, text: #1a2332), logoUrl from site settings, logoText: "BPR", headline: "Expert Physical Rehabilitation", subheadline: "Move Better, Feel Stronger, Live Pain-Free", cta: "Book Your Free Consultation Today", services: ["Physiotherapy", "Sports Rehabilitation", "Biomechanical Assessment", "Custom Insoles", "Electrotherapy", "Shockwave Therapy"], phone: "${settings.businessPhone || '+44 1473 000000'}", email: "${settings.businessEmail || 'info@bpr.rehab'}", website: "bpr.rehab", address: "${settings.businessStreet || ''} ${settings.businessCity || 'Ipswich'}, ${settings.businessPostcode || ''}". Output ONLY valid JSON, no markdown.`}
+                    context={`Generate a complete JSON configuration for marketing flyers. Include: templateId (modern), colors (primary: #4a7c8a, secondary: #2c4f58, accent: #6ba3b0, bg: #ffffff, text: #1a2332), logoUrl from site settings, logoText: "BPR", headline: "Expert Physical Rehabilitation", subheadline: "Move Better, Feel Stronger, Live Pain-Free", cta: "Book Your Free Consultation Today", services: ["Physiotherapy", "Sports Rehabilitation", "Biomechanical Assessment", "Custom Insoles", "Electrotherapy", "Shockwave Therapy"], phone: "${settings.businessPhone || '+44 1473 000000'}", email: "${settings.businessEmail || 'info@bpr.clinic'}", website: "bpr.clinic", address: "${settings.businessStreet || ''} ${settings.businessCity || 'Ipswich'}, ${settings.businessPostcode || ''}". Output ONLY valid JSON, no markdown.`}
                     onApply={(text) => setSettings({ ...settings, marketingFlyerDefaultsJson: text } as any)}
                   />
                 </div>
@@ -2590,7 +2590,7 @@ export default function AdminSettingsPage() {
                   id="marketingFlyerDefaultsJson"
                   value={(settings as any).marketingFlyerDefaultsJson || ""}
                   onChange={(e) => setSettings({ ...settings, marketingFlyerDefaultsJson: e.target.value } as any)}
-                  placeholder='{"templateId":"modern","colors":{"primary":"#4a7c8a","secondary":"#2c4f58","accent":"#6ba3b0","bg":"#ffffff","text":"#1a2332"},"logoUrl":"","logoText":"BPR","headline":"Expert Physical Rehabilitation","subheadline":"Move Better, Feel Stronger, Live Pain-Free","cta":"Book Your Free Consultation Today","services":["Physiotherapy","Sports Rehabilitation","Biomechanical Assessment","Custom Insoles"],"phone":"+44 1473 000000","email":"info@bpr.rehab","website":"bpr.rehab","address":"Ipswich, Suffolk"}'
+                  placeholder='{"templateId":"modern","colors":{"primary":"#4a7c8a","secondary":"#2c4f58","accent":"#6ba3b0","bg":"#ffffff","text":"#1a2332"},"logoUrl":"","logoText":"BPR","headline":"Expert Physical Rehabilitation","subheadline":"Move Better, Feel Stronger, Live Pain-Free","cta":"Book Your Free Consultation Today","services":["Physiotherapy","Sports Rehabilitation","Biomechanical Assessment","Custom Insoles"],"phone":"+44 1473 000000","email":"info@bpr.clinic","website":"bpr.clinic","address":"Ipswich, Suffolk"}'
                   rows={6}
                   className="font-mono text-xs"
                 />
@@ -2624,7 +2624,7 @@ export default function AdminSettingsPage() {
                     id="marketingEmailFromAddress"
                     value={(settings as any).marketingEmailFromAddress || ""}
                     onChange={(e) => setSettings({ ...settings, marketingEmailFromAddress: e.target.value } as any)}
-                    placeholder="info@bpr.rehab"
+                    placeholder="info@bpr.clinic"
                   />
                 </div>
               </div>
@@ -2635,7 +2635,7 @@ export default function AdminSettingsPage() {
                     id="marketingEmailReplyTo"
                     value={(settings as any).marketingEmailReplyTo || ""}
                     onChange={(e) => setSettings({ ...settings, marketingEmailReplyTo: e.target.value } as any)}
-                    placeholder="bruno@bpr.rehab"
+                    placeholder="bruno@bpr.clinic"
                   />
                 </div>
                 <div className="space-y-2">
@@ -2712,7 +2712,7 @@ export default function AdminSettingsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="canonicalUrl">Canonical URL</Label>
-                  <Input id="canonicalUrl" value={settings.canonicalUrl} onChange={(e) => setSettings({ ...settings, canonicalUrl: e.target.value })} placeholder="https://bpr.rehab" />
+                  <Input id="canonicalUrl" value={settings.canonicalUrl} onChange={(e) => setSettings({ ...settings, canonicalUrl: e.target.value })} placeholder="https://bpr.clinic" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="robotsMeta">Robots Meta</Label>
@@ -2851,7 +2851,7 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="businessEmail">Business Email</Label>
-                  <Input id="businessEmail" value={settings.businessEmail} onChange={(e) => setSettings({ ...settings, businessEmail: e.target.value })} placeholder="admin@bpr.rehab" />
+                  <Input id="businessEmail" value={settings.businessEmail} onChange={(e) => setSettings({ ...settings, businessEmail: e.target.value })} placeholder="admin@bpr.clinic" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -2912,7 +2912,7 @@ export default function AdminSettingsPage() {
                     fieldName="schemaOrgJson"
                     fieldLabel="Schema.org JSON-LD"
                     currentValue={settings.schemaOrgJson}
-                    context={`Generate a complete Schema.org JSON-LD for a PhysicalTherapist / LocalBusiness. Business name: ${settings.businessName || "BPR - Bruno Physical Rehabilitation"}. Address: ${settings.businessStreet || ""} ${settings.businessCity || "Ipswich"}, ${settings.businessRegion || "Suffolk"} ${settings.businessPostcode || ""}. Phone: ${settings.businessPhone || ""}. Email: ${settings.businessEmail || "admin@bpr.rehab"}. Website: https://bpr.rehab. Services: physiotherapy, sports rehabilitation, biomechanical assessment, custom insoles, electrotherapy, shockwave therapy, remote consultations. Open every day including weekends. Output ONLY valid JSON-LD, no markdown, no explanation.`}
+                    context={`Generate a complete Schema.org JSON-LD for a PhysicalTherapist / LocalBusiness. Business name: ${settings.businessName || "BPR - Bruno Physical Rehabilitation"}. Address: ${settings.businessStreet || ""} ${settings.businessCity || "Ipswich"}, ${settings.businessRegion || "Suffolk"} ${settings.businessPostcode || ""}. Phone: ${settings.businessPhone || ""}. Email: ${settings.businessEmail || "admin@bpr.clinic"}. Website: https://bpr.clinic. Services: physiotherapy, sports rehabilitation, biomechanical assessment, custom insoles, electrotherapy, shockwave therapy, remote consultations. Open every day including weekends. Output ONLY valid JSON-LD, no markdown, no explanation.`}
                     onApply={(text) => setSettings({ ...settings, schemaOrgJson: text })}
                   />
                 </div>

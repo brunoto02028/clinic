@@ -24,7 +24,7 @@ Platform: Instagram
 ${langNote}
 
 BPR has these connected assets to promote:
-- Website: bpr.rehab (booking, services, blog)
+- Website: bpr.clinic (booking, services, blog)
 - Marketplace: digital health guides/PDFs for sale
 - SEO Blog Articles (educational long-form content)
 - Services: MLS Laser, Custom Insoles, Biomechanical Assessment, Thermography, Sports Recovery, Shockwave, Exercise Therapy
@@ -41,7 +41,7 @@ For each idea provide:
 6. Full caption ready to post
 7. 15-20 hashtags
 8. Visual direction (what to film/show)
-9. BPR asset connection: which BPR asset to connect (e.g. "Link to PDF guide on knee pain in bio", "Book assessment at bpr.rehab", "Mention marketplace guide", "Link to blog article")
+9. BPR asset connection: which BPR asset to connect (e.g. "Link to PDF guide on knee pain in bio", "Book assessment at bpr.clinic", "Mention marketplace guide", "Link to blog article")
 10. Viral score 1-10
 11. Best day/time to post (e.g. "Tuesday 7am" or "Saturday 9am")
 

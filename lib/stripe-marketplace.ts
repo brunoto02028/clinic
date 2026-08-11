@@ -45,7 +45,7 @@ export async function syncProductToStripe(product: {
       name: product.name,
       description: product.description || undefined,
       active: product.isActive !== false,
-      images: product.imageUrl ? [product.imageUrl.startsWith('http') ? product.imageUrl : `https://bpr.rehab${product.imageUrl}`] : undefined,
+      images: product.imageUrl ? [product.imageUrl.startsWith('http') ? product.imageUrl : `https://bpr.clinic${product.imageUrl}`] : undefined,
       metadata: {
         marketplace_product_id: product.id,
         is_digital: product.isDigital ? 'true' : 'false',
@@ -57,7 +57,7 @@ export async function syncProductToStripe(product: {
       name: product.name,
       description: product.description || undefined,
       active: product.isActive !== false,
-      images: product.imageUrl ? [product.imageUrl.startsWith('http') ? product.imageUrl : `https://bpr.rehab${product.imageUrl}`] : [],
+      images: product.imageUrl ? [product.imageUrl.startsWith('http') ? product.imageUrl : `https://bpr.clinic${product.imageUrl}`] : [],
       metadata: {
         marketplace_product_id: product.id,
         is_digital: product.isDigital ? 'true' : 'false',

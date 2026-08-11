@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       }
       const rendered = await renderTemplate(slug, variables || {
         patientName: 'Test Patient',
-        portalUrl: process.env.NEXTAUTH_URL || 'https://bpr.rehab',
+        portalUrl: process.env.NEXTAUTH_URL || 'https://bpr.clinic',
         appointmentDate: '15 February 2026',
         appointmentTime: '10:00 AM',
         therapistName: 'Dr. Bruno',

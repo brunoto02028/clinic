@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 
 // POST /api/cron/appointment-reminders — Send reminders 24h before appointments
-// Call via cron: curl -X POST https://bpr.rehab/api/cron/appointment-reminders?key=SECRET
+// Call via cron: curl -X POST https://bpr.clinic/api/cron/appointment-reminders?key=SECRET
 export async function POST(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
   const cronSecret = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET;
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         const apptDate = new Date(appt.dateTime);
         const dateStr = apptDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         const timeStr = apptDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-        const BASE = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+        const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
         await notifyPatient({
           patientId: appt.patient.id,

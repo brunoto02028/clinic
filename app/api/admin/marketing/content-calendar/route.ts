@@ -71,7 +71,7 @@ ${langNote}
 ${themesNote}
 
 BPR Assets: MLS Laser, Custom Insoles, Biomechanics, Thermography, Shockwave, Sports Recovery, Foot Scan, Posture.
-Website: bpr.rehab
+Website: bpr.clinic
 ${includeMarketplace ? 'Include marketplace/PDF product mentions.' : ''}
 ${includeArticles ? 'Include blog article promotions.' : ''}
 

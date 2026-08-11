@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 
 export async function SchemaOrgScript() {
-  const BASE_URL = "https://bpr.rehab";
+  const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
   let s: any = null;
   try {

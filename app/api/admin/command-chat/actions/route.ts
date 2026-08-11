@@ -80,7 +80,7 @@ async function generatePDF(params: { title?: string; sections?: { heading: strin
   doc.setFontSize(10);
   doc.text("BRUNO PHYSICAL REHABILITATION", margin, 11);
   doc.setFontSize(7);
-  doc.text("bpr.rehab | Command Center Report", pageWidth - margin, 11, { align: "right" });
+  doc.text("bpr.clinic | Command Center Report", pageWidth - margin, 11, { align: "right" });
 
   // Title
   y = 30;
@@ -191,7 +191,7 @@ async function generatePPTX(params: { title?: string; slides?: { title: string; 
     x: 0.8, y: 1.8, w: "80%", fontSize: 36, color: TEXT_LIGHT,
     fontFace: "Arial", bold: true,
   });
-  titleSlide.addText(`${new Date().toLocaleDateString("en-GB")} | bpr.rehab`, {
+  titleSlide.addText(`${new Date().toLocaleDateString("en-GB")} | bpr.clinic`, {
     x: 0.8, y: 4.5, w: "80%", fontSize: 11, color: SUBTLE,
     fontFace: "Arial",
   });
@@ -242,7 +242,7 @@ async function generatePPTX(params: { title?: string; slides?: { title: string; 
     });
 
     // Footer
-    slide.addText("Bruno Physical Rehabilitation | bpr.rehab", {
+    slide.addText("Bruno Physical Rehabilitation | bpr.clinic", {
       x: 0.8, y: "92%", w: "60%", fontSize: 7, color: SUBTLE,
       fontFace: "Arial",
     });
@@ -735,7 +735,7 @@ Be specific with actual content suggestions, hashtags, email subjects, and artic
     doc.text(`Target: ${campaign.targetAudience}`, mg, 115);
   }
   doc.setFontSize(8); doc.setTextColor(100, 116, 139);
-  doc.text("bpr.rehab | Confidential", mg, 270);
+  doc.text("bpr.clinic | Confidential", mg, 270);
 
   // Week pages
   const weeks = campaign?.weeks || [];
@@ -1326,7 +1326,7 @@ Content: ${totalArticles} articles (${publishedArticles} published), ${socialPos
   let cy = 150;
   for (const s of coverStats) { doc.text(`   ${s}`, m, cy); cy += 8; }
   doc.setFontSize(8); doc.setTextColor(100, 116, 139);
-  doc.text("bpr.rehab | Confidential", m, 270);
+  doc.text("bpr.clinic | Confidential", m, 270);
 
   // ── PAGE 2: KPI Dashboard ──
   doc.addPage(); addPageHeader(lang === "pt" ? "Painel de KPIs" : "KPI Dashboard"); y = 22;
@@ -1690,7 +1690,7 @@ Be thorough, realistic, and data-driven. Use actual numbers from the data above.
 
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  doc.text("bpr.rehab | Confidential — For Internal Use Only", margin, 275);
+  doc.text("bpr.clinic | Confidential — For Internal Use Only", margin, 275);
 
   // Content pages
   doc.addPage();

@@ -7,7 +7,7 @@ import { renderTemplate } from '@/lib/email-templates';
 import { sendEmail } from '@/lib/email';
 
 const TEST_EMAIL = 'brunotoaz@gmail.com';
-const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
 const TEST_CASES: { slug: string; vars: Record<string, string>; locale: string }[] = [
   {

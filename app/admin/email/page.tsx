@@ -78,7 +78,7 @@ const DEFAULT_SIGNATURES: EmailSignature[] = [{
   enabled: true,
   name: 'Bruno Toaz',
   title: 'Physical Rehabilitation Specialist',
-  email: 'admin@bpr.rehab',
+  email: 'admin@bpr.clinic',
   phone: '+44 7XXX XXXXXX',
   logoUrl: '',
 }];
@@ -634,7 +634,7 @@ export default function EmailPage() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Email Address</Label>
-                    <Input type="email" value={acctForm.email} onChange={(e) => setAcctForm(f => ({ ...f, email: e.target.value, smtpUser: e.target.value }))} placeholder="admin@bpr.rehab" />
+                    <Input type="email" value={acctForm.email} onChange={(e) => setAcctForm(f => ({ ...f, email: e.target.value, smtpUser: e.target.value }))} placeholder="admin@bpr.clinic" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">SMTP Host</Label>
@@ -646,7 +646,7 @@ export default function EmailPage() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">SMTP User</Label>
-                    <Input value={acctForm.smtpUser} onChange={(e) => setAcctForm(f => ({ ...f, smtpUser: e.target.value }))} placeholder="admin@bpr.rehab" />
+                    <Input value={acctForm.smtpUser} onChange={(e) => setAcctForm(f => ({ ...f, smtpUser: e.target.value }))} placeholder="admin@bpr.clinic" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Password</Label>
@@ -654,7 +654,7 @@ export default function EmailPage() {
                   </div>
                   <div className="sm:col-span-2 space-y-1">
                     <Label className="text-xs">From Display</Label>
-                    <Input value={acctForm.emailFrom} onChange={(e) => setAcctForm(f => ({ ...f, emailFrom: e.target.value }))} placeholder="Bruno Physical Rehabilitation <admin@bpr.rehab>" />
+                    <Input value={acctForm.emailFrom} onChange={(e) => setAcctForm(f => ({ ...f, emailFrom: e.target.value }))} placeholder="Bruno Physical Rehabilitation <admin@bpr.clinic>" />
                     <p className="text-[10px] text-muted-foreground">Format: Display Name &lt;email@domain.com&gt;</p>
                   </div>
                 </div>
@@ -732,7 +732,7 @@ export default function EmailPage() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs flex items-center gap-1"><AtSign className="h-3 w-3" /> Email</Label>
-                    <Input value={editingSig.email} onChange={(e) => updateSig(editingSig.id, { email: e.target.value })} placeholder="admin@bpr.rehab" />
+                    <Input value={editingSig.email} onChange={(e) => updateSig(editingSig.id, { email: e.target.value })} placeholder="admin@bpr.clinic" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" /> Phone</Label>
@@ -936,8 +936,8 @@ export default function EmailPage() {
                         const acctAddr = selectedMsg.direction === "INBOUND" ? selectedMsg.toAddress : selectedMsg.fromAddress;
                         if (!acctAddr) return null;
                         const domain = acctAddr.split("@")[1] || "";
-                        const short = domain.includes("bpr.rehab") ? "bpr.rehab" : domain.length > 25 ? domain.slice(0, 20) + "…" : domain;
-                        const color = domain.includes("bpr.rehab") ? "bg-teal-100 text-teal-700" : "bg-purple-100 text-purple-700";
+                        const short = domain.includes("bpr.clinic") ? "bpr.clinic" : domain.length > 25 ? domain.slice(0, 20) + "…" : domain;
+                        const color = domain.includes("bpr.clinic") ? "bg-teal-100 text-teal-700" : "bg-purple-100 text-purple-700";
                         return <><span>·</span><Badge className={`text-[10px] ${color}`}>{short}</Badge></>;
                       })()}
                       {selectedMsg.isSpam && (
@@ -1077,8 +1077,8 @@ export default function EmailPage() {
                                 const acctAddr = msg.direction === "INBOUND" ? msg.toAddress : msg.fromAddress;
                                 if (!acctAddr) return null;
                                 const domain = acctAddr.split("@")[1] || "";
-                                const short = domain.includes("bpr.rehab") ? "bpr.rehab" : domain.length > 20 ? domain.slice(0, 16) + "…" : domain;
-                                const color = domain.includes("bpr.rehab") ? "bg-teal-100 text-teal-700 border-teal-200" : "bg-purple-100 text-purple-700 border-purple-200";
+                                const short = domain.includes("bpr.clinic") ? "bpr.clinic" : domain.length > 20 ? domain.slice(0, 16) + "…" : domain;
+                                const color = domain.includes("bpr.clinic") ? "bg-teal-100 text-teal-700 border-teal-200" : "bg-purple-100 text-purple-700 border-purple-200";
                                 return <Badge variant="outline" className={`text-[9px] px-1 py-0 ${color}`}>{short}</Badge>;
                               })()}
                             </div>

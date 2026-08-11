@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
         const patient = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true } });
         const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (session.user?.name || 'Patient');
         const adminEmail = process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com';
-        const adminUrl = `${process.env.NEXTAUTH_URL || 'https://bpr.rehab'}/admin/patients/${userId}`;
+        const adminUrl = `${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/admin/patients/${userId}`;
         const complaint = body?.chiefComplaint || 'Not specified';
         const painScore = body?.painScore != null ? `${body.painScore}/10` : 'N/A';
 
@@ -276,7 +276,7 @@ export async function POST(request: NextRequest) {
       const patient = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true } });
       const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (session.user?.name || 'Patient');
       const adminEmail = process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com';
-      const adminUrl = `${process.env.NEXTAUTH_URL || 'https://bpr.rehab'}/admin/patients/${userId}`;
+      const adminUrl = `${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/admin/patients/${userId}`;
       const complaint = body?.chiefComplaint || 'Not specified';
       const painScore = body?.painScore != null ? `${body.painScore}/10` : 'N/A';
       const hasRedFlags = analysis.redFlagAssessment.status === 'urgent_red_flags';

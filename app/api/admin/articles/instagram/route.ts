@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       });
       if (!article) return NextResponse.json({ error: 'Article not found' }, { status: 404 });
 
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
       const articleUrl = `${BASE}/articles/${article.slug}`;
 
       // Strip HTML from content for AI context
@@ -128,7 +128,7 @@ Write ONLY the caption text, nothing else.`;
       if (!imageUrls || imageUrls.length === 0) return NextResponse.json({ error: 'At least one image URL is required' }, { status: 400 });
 
       // Make image URLs absolute
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
       const absoluteUrls = imageUrls.map((u: string) => u.startsWith('http') ? u : `${BASE}${u}`);
 
       let result;

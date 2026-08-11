@@ -138,7 +138,7 @@ export const MOCK_PATIENTS = [
 export const MOCK_USERS = [
   {
     id: "dev-admin-local",
-    email: "admin@bpr.rehab",
+    email: "admin@bpr.clinic",
     firstName: "Bruno",
     lastName: "Admin",
     phone: "07700 900000",
@@ -158,7 +158,7 @@ export const MOCK_USERS = [
   },
   {
     id: "dev-therapist-01",
-    email: "therapist@bpr.rehab",
+    email: "therapist@bpr.clinic",
     firstName: "Sarah",
     lastName: "Johnson",
     phone: "07700 900001",
@@ -387,7 +387,7 @@ export const MOCK_SETTINGS = {
   contactSubtitle: "We're here to help",
   contactText: "Have questions about our services? Ready to book your first appointment? Feel free to reach out to us.",
   phone: "+44 7XXX XXXXXX",
-  email: "admin@bpr.rehab",
+  email: "admin@bpr.clinic",
   address: "Ipswich, Suffolk, UK",
   footerText: "© 2026 Bruno Physical Rehabilitation. All rights reserved.",
   footerLinksJson: JSON.stringify([]),

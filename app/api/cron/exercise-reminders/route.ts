@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 
 // POST /api/cron/exercise-reminders — Send exercise reminders to patients with active protocols
-// Call via cron: curl -X POST https://bpr.rehab/api/cron/exercise-reminders?key=SECRET
+// Call via cron: curl -X POST https://bpr.clinic/api/cron/exercise-reminders?key=SECRET
 export async function POST(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
   const cronSecret = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET;
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     let sent = 0;
     let failed = 0;
-    const BASE = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+    const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
     for (const protocol of protocols) {
       if (!protocol.patientId) continue;

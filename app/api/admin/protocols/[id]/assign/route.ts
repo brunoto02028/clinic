@@ -110,7 +110,7 @@ export async function POST(
   }
 
   // Notify patient
-  const appUrl = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+  const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
   try {
     await notifyPatient({
       patientId,

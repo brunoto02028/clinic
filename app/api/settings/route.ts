@@ -69,7 +69,7 @@ export async function GET() {
           contactSubtitle: "Home visit or our clinic — we're open every day, including weekends.",
           contactText: "Have questions about our services? Ready to book your first appointment? Feel free to reach out to us.",
           phone: "",
-          email: "admin@bpr.rehab",
+          email: "admin@bpr.clinic",
           address: "Ipswich, Suffolk, UK",
           
           // Footer

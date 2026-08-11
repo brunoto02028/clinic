@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       consentDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
       termsVersion: 'v1.0',
       ipAddress: '',
-      portalUrl: `${process.env.NEXTAUTH_URL || 'https://bpr.rehab'}/dashboard`,
+      portalUrl: `${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/dashboard`,
     },
     plainMessage: 'Your consent has been recorded. You can now access all features of your patient portal.',
     plainMessagePt: 'Seu consentimento foi registrado. Agora você pode acessar todos os recursos do seu portal do paciente.',

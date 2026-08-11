@@ -3,7 +3,7 @@ import { getStartPageSettings } from "@/lib/get-site-settings";
 import { getBookConfig } from "@/lib/book";
 import { StartLanding } from "@/components/start/start-landing";
 
-const BASE_URL = "https://bpr.rehab";
+const BASE_URL = "https://bpr.clinic";
 const TITLE = "Start Your Recovery — Bruno Physical Rehabilitation";
 const DESCRIPTION =
   "Free first consultation for new patients in Ipswich, Suffolk. Discover the real cause of your pain — not just where it hurts. Healing With Heart.";

@@ -51,7 +51,7 @@ async function handleOpenRouter(req: NextRequest, apiKey: string): Promise<Respo
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://bpr.rehab",
+        "HTTP-Referer": "https://bpr.clinic",
         "X-Title": "BPR Vapi Proxy",
       },
       body: JSON.stringify(payload),

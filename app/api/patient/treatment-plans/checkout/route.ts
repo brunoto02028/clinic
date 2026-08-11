@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     if (plan.patientId !== patientId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     if (plan.isFree || plan.totalPrice === 0) return NextResponse.json({ error: 'This plan is free — no payment required' }, { status: 400 });
 
-    const origin = req.headers.get('origin') || process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+    const origin = req.headers.get('origin') || process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
     // Build line items description
     const itemsDesc = plan.items

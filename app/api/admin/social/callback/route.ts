@@ -5,7 +5,7 @@ import { exchangeCodeForToken, getLongLivedToken, getInstagramBusinessAccount } 
 export const dynamic = 'force-dynamic';
 
 function getSiteUrl(): string {
-  return process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+  return process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 }
 
 // GET /api/admin/social/callback - Facebook OAuth callback

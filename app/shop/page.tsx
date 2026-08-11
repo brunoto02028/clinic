@@ -224,7 +224,7 @@ export default function ShopPage() {
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
-          <a href="https://bpr.rehab" className="flex items-center gap-2.5 shrink-0">
+          <a href="https://bpr.clinic" className="flex items-center gap-2.5 shrink-0">
             <Logo
               logoUrl={settings?.screenLogos?.landingHeader?.logoUrl || settings?.logoUrl}
               darkLogoUrl={settings?.screenLogos?.landingHeader?.darkLogoUrl || settings?.darkLogoUrl}
@@ -573,8 +573,8 @@ export default function ShopPage() {
                   onClick={() => document.getElementById("products")?.scrollIntoView({ behavior: "smooth" })}>
                   <ShoppingCart className="h-4 w-4" /> Explore Products
                 </Button>
-                <a href="https://bpr.rehab" className="flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors">
-                  Visit bpr.rehab <ChevronRight className="h-3.5 w-3.5" />
+                <a href="https://bpr.clinic" className="flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors">
+                  Visit bpr.clinic <ChevronRight className="h-3.5 w-3.5" />
                 </a>
               </div>
             </div>
@@ -894,8 +894,8 @@ export default function ShopPage() {
               <div>
                 <h4 className="font-bold text-sm text-foreground mb-3">Support</h4>
                 <ul className="space-y-2 text-xs text-muted-foreground">
-                  <li><a href="https://bpr.rehab/contact" className="hover:text-foreground transition-colors">Contact Us</a></li>
-                  <li><a href="https://bpr.rehab" className="hover:text-foreground transition-colors">About BPR</a></li>
+                  <li><a href="https://bpr.clinic/contact" className="hover:text-foreground transition-colors">Contact Us</a></li>
+                  <li><a href="https://bpr.clinic" className="hover:text-foreground transition-colors">About BPR</a></li>
                   <li><a href="/shop?help=shipping" className="hover:text-foreground transition-colors">Shipping Info</a></li>
                   <li><a href="/shop?help=returns" className="hover:text-foreground transition-colors">Returns & Refunds</a></li>
                   <li><a href="/shop?help=faq" className="hover:text-foreground transition-colors">FAQ</a></li>
@@ -906,9 +906,9 @@ export default function ShopPage() {
               <div>
                 <h4 className="font-bold text-sm text-foreground mb-3">Legal</h4>
                 <ul className="space-y-2 text-xs text-muted-foreground">
-                  <li><a href="https://bpr.rehab/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
-                  <li><a href="https://bpr.rehab/terms" className="hover:text-foreground transition-colors">Terms of Service</a></li>
-                  <li><a href="https://bpr.rehab/cookies" className="hover:text-foreground transition-colors">Cookie Policy</a></li>
+                  <li><a href="https://bpr.clinic/privacy" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
+                  <li><a href="https://bpr.clinic/terms" className="hover:text-foreground transition-colors">Terms of Service</a></li>
+                  <li><a href="https://bpr.clinic/cookies" className="hover:text-foreground transition-colors">Cookie Policy</a></li>
                   <li><a href="/shop?help=copyright" className="hover:text-foreground transition-colors">Copyright Notice</a></li>
                 </ul>
               </div>

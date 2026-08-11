@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { t } from "@/lib/i18n";
 
-const BASE_URL = "https://bpr.rehab";
+const BASE_URL = "https://bpr.clinic";
 
 // Mirrors the hardcoded SERVICE_DATA slugs in ./page.tsx (a client component,
 // which can't export its own metadata) — kept in sync manually since the

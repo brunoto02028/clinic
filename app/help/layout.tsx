@@ -8,7 +8,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "Help Centre | Bruno Physical Rehabilitation",
   description: "Answers to common questions about appointments, the patient portal, treatment programmes and billing at Bruno Physical Rehabilitation.",
-  alternates: { canonical: "https://bpr.rehab/help" },
+  alternates: { canonical: "https://bpr.clinic/help" },
 };
 
 export default async function HelpLayout({

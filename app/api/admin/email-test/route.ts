@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
       const sent = await sendTemplatedEmail("WELCOME", email, {
         patientName: name,
-        portalUrl: `${process.env.NEXTAUTH_URL || "https://bpr.rehab"}/dashboard`,
+        portalUrl: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/dashboard`,
         clinicPhone: "",
       }, patient?.id);
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
       const sent = await sendTemplatedEmail("SCREENING_RECEIVED", email, {
         patientName: name,
-        portalUrl: `${process.env.NEXTAUTH_URL || "https://bpr.rehab"}/dashboard/screening`,
+        portalUrl: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/dashboard/screening`,
       }, patient?.id);
 
       return NextResponse.json({
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
       const sent = await sendTemplatedEmail(templateSlug, email, {
         patientName: name,
-        portalUrl: `${process.env.NEXTAUTH_URL || "https://bpr.rehab"}/dashboard`,
+        portalUrl: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/dashboard`,
         appointmentDate: "Monday, 3 March 2026",
         appointmentTime: "14:00",
         therapistName: "Bruno Admin",

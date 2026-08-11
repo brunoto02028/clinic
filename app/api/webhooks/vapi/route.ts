@@ -135,7 +135,7 @@ async function handleBookAppointment(
 
     // Create guest patient if not found
     if (!patient) {
-      const guestEmail = patientEmail || `voice_guest_${Date.now()}@bpr.rehab`;
+      const guestEmail = patientEmail || `voice_guest_${Date.now()}@bpr.clinic`;
       const clinic = await prisma.clinic.findFirst({ where: { isActive: true } });
 
       patient = await prisma.user.create({
@@ -219,7 +219,7 @@ async function handleBookAppointment(
         hour: "2-digit", minute: "2-digit",
       });
       const appName = getAppName();
-      const BASE = process.env.NEXTAUTH_URL || "https://bpr.rehab";
+      const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
       await sendEmail({
         to: "brunotoaz@gmail.com",

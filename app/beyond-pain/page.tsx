@@ -14,7 +14,7 @@ import { LocalizedText } from "@/app/articles/[slug]/localized";
 
 export const dynamic = "force-dynamic";
 
-const BASE_URL = "https://bpr.rehab";
+const BASE_URL = "https://bpr.clinic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getBookConfig();

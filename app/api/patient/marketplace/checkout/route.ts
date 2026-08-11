@@ -199,8 +199,8 @@ export async function POST(req: NextRequest) {
         const checkoutSession = await stripe.checkout.sessions.create({
           mode: "payment",
           line_items: lineItems,
-          success_url: `${process.env.NEXTAUTH_URL || "https://bpr.rehab"}/dashboard/marketplace?order=${order.id}&success=true`,
-          cancel_url: `${process.env.NEXTAUTH_URL || "https://bpr.rehab"}/dashboard/marketplace?order=${order.id}&cancelled=true`,
+          success_url: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/dashboard/marketplace?order=${order.id}&success=true`,
+          cancel_url: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/dashboard/marketplace?order=${order.id}&cancelled=true`,
           metadata: { orderId: order.id, orderNumber },
         });
 

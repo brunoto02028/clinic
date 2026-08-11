@@ -40,8 +40,8 @@ export default function CookiePolicyPage() {
           <section className="bg-muted/30 rounded-lg p-5 space-y-3 text-sm text-muted-foreground">
             <p>
               {isPt
-                ? "Esta política explica como o site bpr.rehab usa cookies e tecnologias similares. Estamos em conformidade com os Regulamentos de Privacidade e Comunicações Eletrônicas (PECR) e o UK GDPR."
-                : "This policy explains how the bpr.rehab website uses cookies and similar technologies. We comply with the Privacy and Electronic Communications Regulations (PECR) and the UK GDPR."}
+                ? "Esta política explica como o site bpr.clinic usa cookies e tecnologias similares. Estamos em conformidade com os Regulamentos de Privacidade e Comunicações Eletrônicas (PECR) e o UK GDPR."
+                : "This policy explains how the bpr.clinic website uses cookies and similar technologies. We comply with the Privacy and Electronic Communications Regulations (PECR) and the UK GDPR."}
             </p>
           </section>
 
@@ -250,7 +250,7 @@ export default function CookiePolicyPage() {
                 {isPt
                   ? "Para perguntas sobre cookies ou privacidade, entre em contato: "
                   : "For questions about cookies or privacy, contact: "}
-                <a href="mailto:admin@bpr.rehab" className="text-primary hover:underline">admin@bpr.rehab</a>
+                <a href="mailto:admin@bpr.clinic" className="text-primary hover:underline">admin@bpr.clinic</a>
               </p>
             </div>
           </div>

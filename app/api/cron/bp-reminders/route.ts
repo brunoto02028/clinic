@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
       // Send reminder via patient's preferred channel
       try {
-        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+        const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
         await notifyPatient({
           patientId: patient.id,
           emailTemplateSlug: 'EXERCISE_REMINDER',

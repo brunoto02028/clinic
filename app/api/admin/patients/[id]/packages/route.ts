@@ -110,7 +110,7 @@ export async function POST(
 
     // Notify patient: package ready to pay
     try {
-      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
+      const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
       const patientId = params.id;
       const totalPrice = pkg.priceFullPackage || pkg.pricePerSession || 0;
       notifyPatient({

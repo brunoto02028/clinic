@@ -58,7 +58,7 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   const FALLBACK_TITLE = "BPR — Physical Rehabilitation | Ipswich, Suffolk";
   const FALLBACK_DESC = "Integrated physical rehabilitation programme in Ipswich, Suffolk. Combining MLS Laser, Biomechanical Analysis, HRV Monitoring and Advanced Electrotherapy into one complete, outcome-focused treatment plan.";
-  const BASE_URL = "https://bpr.rehab";
+  const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
   let s: any = null;
   try {
@@ -156,7 +156,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
-        <link rel="dns-prefetch" href="https://bpr.rehab" />
+        <link rel="dns-prefetch" href="https://bpr.clinic" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
