@@ -9,8 +9,10 @@ import {
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
   BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
+  Dumbbell,
 } from "lucide-react";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
+import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -877,6 +879,9 @@ export default function PatientProfilePage() {
                       {data.protocols.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length}
                     </span>
                   )}
+                </TabsTrigger>
+                <TabsTrigger value="exercicios" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                  <Dumbbell className="h-3 w-3" />Exercícios
                 </TabsTrigger>
                 <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
                   <Bot className="h-3 w-3" />Rehab Agent
@@ -1976,6 +1981,11 @@ export default function PatientProfilePage() {
               </div>
             );
           })}
+        </TabsContent>
+
+        {/* ── Tab: Exercícios ── */}
+        <TabsContent value="exercicios" className="mt-4">
+          <PatientExercisesTab patientId={patientId} />
         </TabsContent>
 
         {/* ── Tab: Rehab Agent ── */}
