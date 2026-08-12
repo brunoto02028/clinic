@@ -1,13 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Save, Loader2, CheckCircle, ToggleLeft, ToggleRight } from "lucide-react";
+import { Clock, Save, Loader2, CheckCircle, ToggleLeft, ToggleRight, CalendarOff, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { useLocale } from "@/hooks/use-locale";
+
+interface TherapistBlock {
+  id: string;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+  blockType: string;
+}
+
+const BLOCK_TYPES = [
+  { value: "ABSENCE", label: "Absence", labelPt: "Ausência" },
+  { value: "VACATION", label: "Vacation", labelPt: "Férias" },
+  { value: "TRAINING", label: "Training", labelPt: "Treinamento" },
+  { value: "OTHER", label: "Other", labelPt: "Outro" },
+];
 
 const DAYS = [
   { value: 0, label: "Sunday", labelPt: "Domingo" },
@@ -42,6 +57,75 @@ export default function AvailabilityPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [slotInterval, setSlotInterval] = useState<30 | 60>(30);
   const { toast } = useToast();
+
+  const [blocks, setBlocks] = useState<TherapistBlock[]>([]);
+  const [blocksLoading, setBlocksLoading] = useState(true);
+  const [addingBlock, setAddingBlock] = useState(false);
+  const [blockStart, setBlockStart] = useState("");
+  const [blockEnd, setBlockEnd] = useState("");
+  const [blockReason, setBlockReason] = useState("");
+  const [blockType, setBlockType] = useState("ABSENCE");
+
+  const fetchBlocks = () => {
+    setBlocksLoading(true);
+    fetch("/api/admin/calendar/blocks")
+      .then((r) => r.json())
+      .then((data) => setBlocks(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setBlocksLoading(false));
+  };
+
+  useEffect(() => {
+    fetchBlocks();
+  }, []);
+
+  const handleAddBlock = async () => {
+    if (!blockStart || !blockEnd) return;
+    setAddingBlock(true);
+    try {
+      const res = await fetch("/api/admin/calendar/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate: blockStart, endDate: blockEnd, reason: blockReason || null, blockType }),
+      });
+      if (!res.ok) throw new Error("Failed to add block");
+      setBlockStart("");
+      setBlockEnd("");
+      setBlockReason("");
+      setBlockType("ABSENCE");
+      fetchBlocks();
+      toast({
+        title: isPt ? "Data bloqueada" : "Date blocked",
+        description: isPt ? "Os pacientes não verão mais horários disponíveis nesse período." : "Patients will no longer see available slots in that period.",
+      });
+    } catch {
+      toast({
+        title: isPt ? "Erro" : "Error",
+        description: isPt ? "Falha ao bloquear a data." : "Failed to block the date.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingBlock(false);
+    }
+  };
+
+  const handleDeleteBlock = async (id: string) => {
+    try {
+      const res = await fetch("/api/admin/calendar/blocks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error("Failed to delete block");
+      setBlocks((prev) => prev.filter((b) => b.id !== id));
+    } catch {
+      toast({
+        title: isPt ? "Erro" : "Error",
+        description: isPt ? "Falha ao remover o bloqueio." : "Failed to remove the block.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     fetch("/api/admin/availability")
@@ -254,6 +338,92 @@ export default function AvailabilityPage() {
               </>
             )}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Blocked Dates */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <CalendarOff className="h-5 w-5 text-primary" />
+            {isPt ? "Datas Bloqueadas" : "Blocked Dates"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {isPt
+              ? "Bloqueie feriados, férias ou dias de ausência. Pacientes não verão nenhum horário disponível nesse período."
+              : "Block holidays, vacation or absence days. Patients won't see any available slots during that period."}
+          </p>
+
+          {/* Add block form */}
+          <div className="p-4 rounded-lg border border-white/10 space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex items-center gap-1.5 flex-1">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">{isPt ? "De" : "From"}</Label>
+                <Input type="date" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} className="h-9" />
+              </div>
+              <div className="flex items-center gap-1.5 flex-1">
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">{isPt ? "Até" : "To"}</Label>
+                <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} className="h-9" />
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select
+                value={blockType}
+                onChange={(e) => setBlockType(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm sm:w-40"
+              >
+                {BLOCK_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{isPt ? t.labelPt : t.label}</option>
+                ))}
+              </select>
+              <Input
+                type="text"
+                placeholder={isPt ? "Motivo (opcional)" : "Reason (optional)"}
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                className="h-9 flex-1"
+              />
+              <Button onClick={handleAddBlock} disabled={addingBlock || !blockStart || !blockEnd} size="sm" className="gap-1.5 shrink-0">
+                {addingBlock ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {isPt ? "Bloquear" : "Block"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Existing blocks list */}
+          {blocksLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : blocks.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic text-center py-2">
+              {isPt ? "Nenhuma data bloqueada." : "No blocked dates."}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {blocks.map((b) => {
+                const typeInfo = BLOCK_TYPES.find((t) => t.value === b.blockType);
+                const start = new Date(b.startDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", year: "numeric" });
+                const end = new Date(b.endDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "2-digit", month: "short", year: "numeric" });
+                return (
+                  <div key={b.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-white/10 bg-muted/20">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {start === end ? start : `${start} — ${end}`}
+                        <span className="ml-2 text-xs text-muted-foreground">({isPt ? typeInfo?.labelPt : typeInfo?.label})</span>
+                      </p>
+                      {b.reason && <p className="text-xs text-muted-foreground mt-0.5">{b.reason}</p>}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteBlock(b.id)} className="text-red-400 hover:text-red-300 shrink-0">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

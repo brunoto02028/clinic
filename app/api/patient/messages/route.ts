@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { dispatchDueBroadcasts } from "@/lib/broadcast-dispatch";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { saveChatAttachment } from "@/lib/chat-attachment";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,33 @@ export async function POST(req: NextRequest) {
     },
     include: { sender: { select: { firstName: true, lastName: true, role: true } } },
   });
+
+  // Notify the clinic by email — previously this only surfaced via the admin
+  // sidebar badge, which is easy to miss if nobody has the panel open.
+  try {
+    const patient = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient";
+    const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+    const preview = content ? content.slice(0, 300) : (attachment ? `📎 ${attachment.fileName}` : "");
+
+    await sendEmail({
+      to: process.env.ADMIN_EMAIL || "brunotoaz@gmail.com",
+      subject: `💬 Nova mensagem de ${patientName}`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <h2 style="color:#1a6b6b;">Nova mensagem no chat</h2>
+        <p style="color:#374151;"><strong>${patientName}</strong> enviou uma mensagem:</p>
+        <div style="background:#f9fafb;border-radius:8px;padding:12px 16px;color:#374151;font-size:14px;">${preview}</div>
+        <div style="margin-top:20px;text-align:center;">
+          <a href="${appUrl}/admin/patients/${userId}" style="background:#5dc9c0;color:white;padding:12px 28px;text-decoration:none;border-radius:6px;font-weight:bold;">Ver conversa →</a>
+        </div>
+      </div>`,
+    });
+  } catch (e) {
+    console.error("[patient-messages] Failed to notify staff:", e);
+  }
 
   return NextResponse.json(message, { status: 201 });
 }

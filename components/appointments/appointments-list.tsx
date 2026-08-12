@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/hooks/use-locale";
+import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 import {
   Select,
   SelectContent,
@@ -242,6 +243,7 @@ export default function AppointmentsList() {
                                     day: "numeric",
                                     month: "short",
                                     year: "numeric",
+                                    timeZone: CLINIC_TIMEZONE,
                                   }
                                 )}{" "}
                                 {isPt ? "às" : "at"}{" "}
@@ -250,6 +252,7 @@ export default function AppointmentsList() {
                                   {
                                     hour: "2-digit",
                                     minute: "2-digit",
+                                    timeZone: CLINIC_TIMEZONE,
                                   }
                                 )}
                               </span>
