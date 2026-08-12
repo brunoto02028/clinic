@@ -216,7 +216,7 @@ export default function AppointmentsList() {
       ) : (
         <div className="space-y-4">
           {appointments.map((appointment, index) => (
-            <div>
+            <div key={appointment.id}>
               <Link href={`/dashboard/appointments/${appointment.id}`}>
                 <Card className="card-hover cursor-pointer">
                   <CardContent className="p-4">
