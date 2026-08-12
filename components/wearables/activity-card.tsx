@@ -1,5 +1,7 @@
 'use client';
 
+import { useLocale } from '@/hooks/use-locale';
+
 interface ActivityData {
   steps?: number | null;
   activeCalories?: number | null;
@@ -8,19 +10,23 @@ interface ActivityData {
 }
 
 export function ActivityCard({ data }: { data: ActivityData | null }) {
-  if (!data) return <p className="text-sm text-muted-foreground">No activity data yet</p>;
+  const { locale } = useLocale();
+  const isPt = locale === 'pt-BR';
+  const emptyLabel = isPt ? 'Ainda sem dados de atividade' : 'No activity data yet';
+
+  if (!data) return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
 
   const metrics = [
-    { label: 'Steps', value: data.steps, format: (v: number) => v.toLocaleString() },
-    { label: 'Active Cal', value: data.activeCalories, format: (v: number) => `${Math.round(v)} kcal` },
-    { label: 'Active Min', value: data.activeMinutes, format: (v: number) => `${v} min` },
+    { label: isPt ? 'Passos' : 'Steps', value: data.steps, format: (v: number) => v.toLocaleString() },
+    { label: isPt ? 'Cal Ativas' : 'Active Cal', value: data.activeCalories, format: (v: number) => `${Math.round(v)} kcal` },
+    { label: isPt ? 'Min Ativos' : 'Active Min', value: data.activeMinutes, format: (v: number) => `${v} min` },
   ].filter(m => m.value != null);
 
-  if (metrics.length === 0) return <p className="text-sm text-muted-foreground">No activity data yet</p>;
+  if (metrics.length === 0) return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
 
   return (
     <div className="bg-card border border-border rounded-lg p-5">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Activity</h3>
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">{isPt ? 'Atividade' : 'Activity'}</h3>
       <div className="grid grid-cols-3 gap-4">
         {metrics.map(m => (
           <div key={m.label}>

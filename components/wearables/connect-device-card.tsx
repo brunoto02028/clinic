@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale } from '@/hooks/use-locale';
 
 interface Props {
   provider: { key: string; name: string; icon: string };
@@ -13,6 +14,8 @@ interface Props {
 
 export function ConnectDeviceCard({ provider, connected, lastSync, onConnect, onDisconnect, onSync }: Props) {
   const [loading, setLoading] = useState(false);
+  const { locale } = useLocale();
+  const isPt = locale === 'pt-BR';
 
   return (
     <div className={`border rounded-lg p-4 flex items-center justify-between ${connected ? 'border-teal-300 bg-teal-50/50 dark:border-teal-500/30 dark:bg-teal-500/5' : 'border-border'}`}>
@@ -22,7 +25,7 @@ export function ConnectDeviceCard({ provider, connected, lastSync, onConnect, on
           <p className="font-semibold text-sm text-foreground">{provider.name}</p>
           {connected && lastSync && (
             <p className="text-xs text-muted-foreground">
-              Last sync: {new Date(lastSync).toLocaleString()}
+              {isPt ? 'Última sincronização' : 'Last sync'}: {new Date(lastSync).toLocaleString(isPt ? 'pt-BR' : 'en-GB')}
             </p>
           )}
         </div>
@@ -35,13 +38,13 @@ export function ConnectDeviceCard({ provider, connected, lastSync, onConnect, on
               disabled={loading}
               className="px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:opacity-50"
             >
-              {loading ? 'Syncing...' : 'Sync'}
+              {loading ? (isPt ? 'Sincronizando...' : 'Syncing...') : (isPt ? 'Sincronizar' : 'Sync')}
             </button>
             <button
               onClick={onDisconnect}
               className="px-3 py-1.5 text-xs font-medium text-rose-400 border border-rose-500/20 rounded-md hover:bg-rose-500/10"
             >
-              Disconnect
+              {isPt ? 'Desconectar' : 'Disconnect'}
             </button>
           </>
         ) : (
@@ -49,7 +52,7 @@ export function ConnectDeviceCard({ provider, connected, lastSync, onConnect, on
             onClick={onConnect}
             className="px-3 py-1.5 text-xs font-medium bg-violet-600 text-white rounded-md hover:bg-violet-700"
           >
-            Connect
+            {isPt ? 'Conectar' : 'Connect'}
           </button>
         )}
       </div>

@@ -6,6 +6,7 @@ import { Brain, Zap, Moon, Activity, Heart, TrendingUp, CheckCircle2, ChevronDow
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useLocale } from "@/hooks/use-locale";
 import { OW_PROVIDERS } from "@/lib/open-wearables";
 import { ConnectDeviceCard } from "@/components/wearables/connect-device-card";
 import { SleepSummary } from "@/components/wearables/sleep-summary";
@@ -89,6 +90,8 @@ interface WearableDataPoint {
 }
 
 export default function BiohackingDashboardPage() {
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -102,8 +105,8 @@ export default function BiohackingDashboardPage() {
   const [connections, setConnections] = useState<WearableConnection[]>([]);
   const [wearableData, setWearableData] = useState<WearableDataPoint[]>([]);
   const [wearableMsg, setWearableMsg] = useState<string | null>(
-    searchParams?.get("connected") === "1" ? "Wearable connected! Data will sync shortly." :
-    searchParams?.get("connected") === "0" ? "Wearable connection failed. Please try again." : null
+    searchParams?.get("connected") === "1" ? (isPt ? "Wearable conectado! Os dados vão sincronizar em breve." : "Wearable connected! Data will sync shortly.") :
+    searchParams?.get("connected") === "0" ? (isPt ? "Falha ao conectar o wearable. Tente novamente." : "Wearable connection failed. Please try again.") : null
   );
 
   // Check-in form state
@@ -193,7 +196,7 @@ export default function BiohackingDashboardPage() {
 
   const dayLabel = (dateStr: string) => {
     const d = new Date(dateStr + "T12:00:00");
-    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
+    return d.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short", day: "numeric" });
   };
 
   // Latest data point per type (SLEEP, BODY = recovery, ACTIVITY)
@@ -220,8 +223,8 @@ export default function BiohackingDashboardPage() {
           <Brain className="h-5 w-5 text-emerald-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-foreground">Biohacking & Performance</h1>
-          <p className="text-sm text-muted-foreground">Daily biological check-in — track your recovery from the inside out.</p>
+          <h1 className="text-xl font-bold text-foreground">{isPt ? "Biohacking e Performance" : "Biohacking & Performance"}</h1>
+          <p className="text-sm text-muted-foreground">{isPt ? "Check-in biológico diário — acompanhe sua recuperação por dentro." : "Daily biological check-in — track your recovery from the inside out."}</p>
         </div>
       </div>
 
@@ -230,13 +233,13 @@ export default function BiohackingDashboardPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Watch className="h-4 w-4 text-violet-400" />
-            Wearable Devices
+            {isPt ? "Dispositivos Wearable" : "Wearable Devices"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {wearableMsg && (
             <div className={`text-sm p-3 rounded-lg ${
-              wearableMsg.includes("connected!") ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+              searchParams?.get("connected") === "1" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
             }`}>{wearableMsg}</div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -263,7 +266,7 @@ export default function BiohackingDashboardPage() {
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Activity className="h-4 w-4 text-emerald-400" />
-            Today's Metrics
+            {isPt ? "Métricas de Hoje" : "Today's Metrics"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <SleepSummary data={latestSleep} />
@@ -279,23 +282,23 @@ export default function BiohackingDashboardPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <Activity className="h-4 w-4 text-emerald-400" />
-              Today's Check-In
+              {isPt ? "Check-In de Hoje" : "Today's Check-In"}
             </CardTitle>
             {saved && (
               <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20 text-xs">
-                <CheckCircle2 className="h-3 w-3 mr-1" /> Saved
+                <CheckCircle2 className="h-3 w-3 mr-1" /> {isPt ? "Salvo" : "Saved"}
               </Badge>
             )}
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          <Slider label="Pain Level" value={painLevel} onChange={setPainLevel} min={0} max={10} color="rose" />
-          <Slider label="Energy Level" value={energyLevel ?? 5} onChange={setEnergyLevel} min={1} max={10} color="amber" />
-          <Slider label="Sleep Quality (last night)" value={sleepQuality ?? 5} onChange={setSleepQuality} min={1} max={10} color="indigo" />
-          <Slider label="Stress Level" value={stressLevel ?? 5} onChange={setStressLevel} min={1} max={10} color="violet" />
+          <Slider label={isPt ? "Nível de Dor" : "Pain Level"} value={painLevel} onChange={setPainLevel} min={0} max={10} color="rose" />
+          <Slider label={isPt ? "Nível de Energia" : "Energy Level"} value={energyLevel ?? 5} onChange={setEnergyLevel} min={1} max={10} color="amber" />
+          <Slider label={isPt ? "Qualidade do Sono (noite passada)" : "Sleep Quality (last night)"} value={sleepQuality ?? 5} onChange={setSleepQuality} min={1} max={10} color="indigo" />
+          <Slider label={isPt ? "Nível de Estresse" : "Stress Level"} value={stressLevel ?? 5} onChange={setStressLevel} min={1} max={10} color="violet" />
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Mood</label>
+            <label className="text-sm font-medium text-foreground">{isPt ? "Humor" : "Mood"}</label>
             <div className="flex gap-2">
               {[
                 { v: 1, emoji: "😞" }, { v: 2, emoji: "😕" }, { v: 3, emoji: "😐" },
@@ -310,11 +313,11 @@ export default function BiohackingDashboardPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">HRV <span className="text-muted-foreground font-normal">(ms — from wearable, optional)</span></label>
+            <label className="text-sm font-medium text-foreground">HRV <span className="text-muted-foreground font-normal">{isPt ? "(ms — do wearable, opcional)" : "(ms — from wearable, optional)"}</span></label>
             <input
               type="number" min={20} max={200} step={0.1}
               value={hrv} onChange={e => setHrv(e.target.value)}
-              placeholder="e.g. 52.4"
+              placeholder={isPt ? "ex: 52.4" : "e.g. 52.4"}
               className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -323,20 +326,20 @@ export default function BiohackingDashboardPage() {
             <div className={`w-5 h-5 rounded flex items-center justify-center ${exercisesDone ? "bg-emerald-500" : "border border-border"}`}>
               {exercisesDone && <CheckCircle2 className="h-4 w-4 text-white" />}
             </div>
-            <span className="text-sm font-medium">Completed today's exercise / movement protocol</span>
+            <span className="text-sm font-medium">{isPt ? "Completou o protocolo de exercícios/movimento de hoje" : "Completed today's exercise / movement protocol"}</span>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <label className="text-sm font-medium text-foreground">{isPt ? "Notas" : "Notes"} <span className="text-muted-foreground font-normal">{isPt ? "(opcional)" : "(optional)"}</span></label>
             <textarea
               rows={2} value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="How are you feeling today? Any symptoms, observations..."
+              placeholder={isPt ? "Como você está se sentindo hoje? Algum sintoma, observação..." : "How are you feeling today? Any symptoms, observations..."}
               className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
             />
           </div>
 
           <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
-            {saving ? "Saving..." : saved ? "Update Check-In" : "Save Check-In"}
+            {saving ? (isPt ? "Salvando..." : "Saving...") : saved ? (isPt ? "Atualizar Check-In" : "Update Check-In") : (isPt ? "Salvar Check-In" : "Save Check-In")}
           </Button>
         </CardContent>
       </Card>
@@ -347,7 +350,7 @@ export default function BiohackingDashboardPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-emerald-400" />
-              7-Day Trends
+              {isPt ? "Tendências dos Últimos 7 Dias" : "7-Day Trends"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -360,10 +363,10 @@ export default function BiohackingDashboardPage() {
                 ))}
               </div>
               {[
-                { key: "energyLevel", label: "Energy", color: "amber" },
-                { key: "painLevel",   label: "Pain",   color: "rose" },
-                { key: "sleepQuality",label: "Sleep",  color: "indigo" },
-                { key: "stressLevel", label: "Stress", color: "violet" },
+                { key: "energyLevel", label: isPt ? "Energia" : "Energy", color: "amber" },
+                { key: "painLevel",   label: isPt ? "Dor"     : "Pain",   color: "rose" },
+                { key: "sleepQuality",label: isPt ? "Sono"    : "Sleep",  color: "indigo" },
+                { key: "stressLevel", label: isPt ? "Estresse": "Stress", color: "violet" },
               ].map(({ key, label, color }) => (
                 <div key={key} className="grid grid-cols-[80px_1fr] gap-2 items-center py-1.5 border-b border-border/50 last:border-0">
                   <span className="text-xs text-muted-foreground">{label}</span>
@@ -395,7 +398,7 @@ export default function BiohackingDashboardPage() {
             <button className="flex items-center justify-between w-full" onClick={() => setProtocolOpen(v => !v)}>
               <CardTitle className="text-base flex items-center gap-2">
                 <Brain className="h-4 w-4 text-teal-400" />
-                Your Active Protocol
+                {isPt ? "Seu Protocolo Ativo" : "Your Active Protocol"}
                 <span className="ml-1 text-sm font-normal text-teal-400">{protocol.protocol.name}</span>
               </CardTitle>
               {protocolOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
@@ -408,7 +411,7 @@ export default function BiohackingDashboardPage() {
               )}
               {protocol.notes && (
                 <div className="p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-sm text-teal-300">
-                  <span className="font-semibold">Bruno's note: </span>{protocol.notes}
+                  <span className="font-semibold">{isPt ? "Nota do Bruno: " : "Bruno's note: "}</span>{protocol.notes}
                 </div>
               )}
               <div className="space-y-2">
@@ -439,8 +442,8 @@ export default function BiohackingDashboardPage() {
         <Card className="border-dashed">
           <CardContent className="py-10 text-center">
             <Brain className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-            <p className="text-sm text-muted-foreground">No active protocol yet.</p>
-            <p className="text-xs text-muted-foreground mt-1">Bruno will assign your personalised biohacking protocol after your initial assessment.</p>
+            <p className="text-sm text-muted-foreground">{isPt ? "Nenhum protocolo ativo ainda." : "No active protocol yet."}</p>
+            <p className="text-xs text-muted-foreground mt-1">{isPt ? "O Bruno vai atribuir seu protocolo de biohacking personalizado após a sua avaliação inicial." : "Bruno will assign your personalised biohacking protocol after your initial assessment."}</p>
           </CardContent>
         </Card>
       )}

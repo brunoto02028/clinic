@@ -117,7 +117,7 @@ export default function PatientQuizzesPage() {
         setView("result");
         fetchQuizzes();
       } catch {
-        toast({ title: "Error", description: "Failed to submit quiz", variant: "destructive" });
+        toast({ title: isPt ? "Erro" : "Error", description: isPt ? "Não foi possível enviar o quiz." : "Failed to submit quiz.", variant: "destructive" });
       } finally { setSubmitting(false); }
     }
   };

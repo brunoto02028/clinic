@@ -1,5 +1,7 @@
 'use client';
 
+import { useLocale } from '@/hooks/use-locale';
+
 interface RecoveryData {
   hrv?: number | null;
   restingHr?: number | null;
@@ -8,20 +10,24 @@ interface RecoveryData {
 }
 
 export function RecoveryCard({ data }: { data: RecoveryData | null }) {
-  if (!data) return <p className="text-sm text-muted-foreground">No recovery data yet</p>;
+  const { locale } = useLocale();
+  const isPt = locale === 'pt-BR';
+  const emptyLabel = isPt ? 'Ainda sem dados de recuperação' : 'No recovery data yet';
+
+  if (!data) return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
 
   const metrics = [
     { label: 'HRV', value: data.hrv, unit: 'ms', good: (v: number) => v > 40 },
-    { label: 'Resting HR', value: data.restingHr, unit: 'bpm', good: (v: number) => v < 65 },
+    { label: isPt ? 'FC em Repouso' : 'Resting HR', value: data.restingHr, unit: 'bpm', good: (v: number) => v < 65 },
     { label: 'SpO2', value: data.spo2, unit: '%', good: (v: number) => v > 95 },
-    { label: 'Temp', value: data.bodyTemperature, unit: '°C', good: () => true },
+    { label: isPt ? 'Temp' : 'Temp', value: data.bodyTemperature, unit: '°C', good: () => true },
   ].filter(m => m.value != null);
 
-  if (metrics.length === 0) return <p className="text-sm text-muted-foreground">No recovery data yet</p>;
+  if (metrics.length === 0) return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
 
   return (
     <div className="bg-card border border-border rounded-lg p-5">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Recovery</h3>
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">{isPt ? 'Recuperação' : 'Recovery'}</h3>
       <div className="grid grid-cols-2 gap-4">
         {metrics.map(m => (
           <div key={m.label}>

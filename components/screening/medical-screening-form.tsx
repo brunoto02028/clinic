@@ -92,18 +92,18 @@ interface ScreeningData {
 }
 
 const RED_FLAG_QUESTIONS = [
-  { key: "unexplainedWeightLoss", question: "Have you experienced unexplained weight loss recently?" },
-  { key: "nightPain", question: "Do you experience severe pain at night that disrupts your sleep?" },
-  { key: "traumaHistory", question: "Have you had any recent trauma or injury (fall, accident, sports injury)?" },
-  { key: "neurologicalSymptoms", question: "Are you experiencing numbness, tingling, pins and needles, or weakness in your arms or legs?" },
-  { key: "bladderBowelDysfunction", question: "Have you noticed any changes in bladder or bowel function (incontinence, difficulty passing urine)?" },
-  { key: "recentInfection", question: "Have you had a recent infection or been feeling generally unwell with fever?" },
-  { key: "cancerHistory", question: "Do you have a current or past history of cancer?" },
-  { key: "steroidUse", question: "Are you currently taking or have you recently taken steroid medication?" },
-  { key: "osteoporosisRisk", question: "Have you been diagnosed with osteoporosis or are you at risk (post-menopausal, family history)?" },
-  { key: "cardiovascularSymptoms", question: "Do you experience chest pain, shortness of breath, or irregular heartbeat?" },
-  { key: "severeHeadache", question: "Have you experienced severe or unusual headaches, especially sudden onset?" },
-  { key: "dizzinessBalanceIssues", question: "Do you experience dizziness, vertigo, or balance problems?" },
+  { key: "unexplainedWeightLoss", question: "Have you experienced unexplained weight loss recently?", questionPt: "Você teve perda de peso inexplicada recentemente?" },
+  { key: "nightPain", question: "Do you experience severe pain at night that disrupts your sleep?", questionPt: "Você sente dor intensa à noite que atrapalha o seu sono?" },
+  { key: "traumaHistory", question: "Have you had any recent trauma or injury (fall, accident, sports injury)?", questionPt: "Você sofreu algum trauma ou lesão recente (queda, acidente, lesão esportiva)?" },
+  { key: "neurologicalSymptoms", question: "Are you experiencing numbness, tingling, pins and needles, or weakness in your arms or legs?", questionPt: "Você sente dormência, formigamento ou fraqueza nos braços ou pernas?" },
+  { key: "bladderBowelDysfunction", question: "Have you noticed any changes in bladder or bowel function (incontinence, difficulty passing urine)?", questionPt: "Você notou alguma alteração no funcionamento da bexiga ou intestino (incontinência, dificuldade para urinar)?" },
+  { key: "recentInfection", question: "Have you had a recent infection or been feeling generally unwell with fever?", questionPt: "Você teve alguma infecção recente ou tem se sentido mal com febre?" },
+  { key: "cancerHistory", question: "Do you have a current or past history of cancer?", questionPt: "Você tem histórico atual ou passado de câncer?" },
+  { key: "steroidUse", question: "Are you currently taking or have you recently taken steroid medication?", questionPt: "Você está tomando ou tomou recentemente algum medicamento com corticoide?" },
+  { key: "osteoporosisRisk", question: "Have you been diagnosed with osteoporosis or are you at risk (post-menopausal, family history)?", questionPt: "Você foi diagnosticado(a) com osteoporose ou está em risco (pós-menopausa, histórico familiar)?" },
+  { key: "cardiovascularSymptoms", question: "Do you experience chest pain, shortness of breath, or irregular heartbeat?", questionPt: "Você sente dor no peito, falta de ar ou batimentos cardíacos irregulares?" },
+  { key: "severeHeadache", question: "Have you experienced severe or unusual headaches, especially sudden onset?", questionPt: "Você teve dores de cabeça fortes ou incomuns, especialmente de início súbito?" },
+  { key: "dizzinessBalanceIssues", question: "Do you experience dizziness, vertigo, or balance problems?", questionPt: "Você sente tontura, vertigem ou problemas de equilíbrio?" },
 ];
 
 const initialData: ScreeningData = {
@@ -280,7 +280,7 @@ export default function AssessmentScreeningForm() {
     fetch("/api/screening-config").then(r => r.json()).then(d => { if (d) setCfg(d); }).catch(() => {});
   }, []);
 
-  const activeRedFlags = cfg?.redFlagQuestions?.filter(q => q.enabled) || RED_FLAG_QUESTIONS.map(q => ({ ...q, en: q.question, pt: q.question, enabled: true }));
+  const activeRedFlags = cfg?.redFlagQuestions?.filter(q => q.enabled) || RED_FLAG_QUESTIONS.map(q => ({ ...q, en: q.question, pt: q.questionPt, enabled: true }));
   const consentLabel = cfg?.consentText ? (isPt ? cfg.consentText.pt : cfg.consentText.en) : T("screening.consentText");
   const prevTxLabel = (key: string, fallbackEn: string, fallbackPt: string) => {
     const q = cfg?.previousTreatmentQuestions?.find(q => q.key === key);
