@@ -409,7 +409,7 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
               )}
               <div>
                 <p className="font-bold text-sm">Bruno</p>
-                <p className="text-muted-foreground text-xs">{isPt ? "Fundador · Especialista em Reabilitação" : "Founder · Rehabilitation Specialist"}</p>
+                <p className="text-muted-foreground text-xs">{isPt ? "Especialista" : "Specialist"}</p>
               </div>
             </div>
           </div>
