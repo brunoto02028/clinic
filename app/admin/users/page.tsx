@@ -401,7 +401,7 @@ export default function AdminUsersPage() {
     setShowPermissionsModal(true);
   };
 
-  const staffUsers = users.filter((u) => u.role === "ADMIN" || u.role === "THERAPIST");
+  const staffUsers = users.filter((u) => u.role === "ADMIN" || u.role === "THERAPIST" || u.role === "SUPERADMIN");
   const patientUsers = users.filter((u) => u.role === "PATIENT");
 
   const filteredStaff = staffUsers.filter(
@@ -420,6 +420,8 @@ export default function AdminUsersPage() {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case "SUPERADMIN":
+        return "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300";
       case "ADMIN":
         return "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300";
       case "THERAPIST":
@@ -454,7 +456,7 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <p className="text-xl sm:text-2xl font-bold">
-                  {users.filter((u) => u.role === "ADMIN").length}
+                  {users.filter((u) => u.role === "ADMIN" || u.role === "SUPERADMIN").length}
                 </p>
                 <p className="text-[10px] sm:text-xs text-muted-foreground">Admins</p>
               </div>
