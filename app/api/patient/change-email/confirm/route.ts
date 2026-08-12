@@ -20,16 +20,19 @@ export async function POST(request: NextRequest) {
     // Guard against a race where the new email got taken between request and confirm
     const existing = await prisma.user.findUnique({ where: { email: changeToken.newEmail } });
     if (existing && existing.id !== changeToken.userId) {
-      await prisma.emailChangeToken.delete({ where: { id: changeToken.id } });
+      await prisma.emailChangeToken.deleteMany({ where: { id: changeToken.id } });
       return NextResponse.json({ error: "That email is no longer available." }, { status: 400 });
     }
 
+    // deleteMany (not delete) so a duplicate/concurrent confirm request — e.g. an email
+    // security scanner prefetching the link, or a double-submit — is a harmless no-op
+    // instead of throwing "record to delete does not exist".
     await prisma.$transaction([
       prisma.user.update({
         where: { id: changeToken.userId },
         data: { email: changeToken.newEmail },
       }),
-      prisma.emailChangeToken.delete({ where: { id: changeToken.id } }),
+      prisma.emailChangeToken.deleteMany({ where: { id: changeToken.id } }),
     ]);
 
     return NextResponse.json({ message: "Email updated successfully", newEmail: changeToken.newEmail });
