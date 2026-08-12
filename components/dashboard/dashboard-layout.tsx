@@ -80,8 +80,8 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
   if (!mounted || status === "loading") {
     return (
-      <div className="min-h-screen bg-background bg-grid-pattern flex items-center justify-center">
-        <div className="animate-neon-pulse rounded-full p-4">
+      <div className="public-site min-h-screen bg-background bg-grid-pattern flex items-center justify-center">
+        <div className="animate-pulse-soft rounded-full p-4">
           <Activity className="h-12 w-12 text-primary" />
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   }
 
   return (
-    <div className="min-h-screen bg-background bg-grid-pattern">
+    <div className="public-site min-h-screen bg-background bg-grid-pattern">
       {/* Sidebar */}
       <PatientSidebar notifications={notifCount} />
 

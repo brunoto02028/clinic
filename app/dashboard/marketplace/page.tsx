@@ -502,7 +502,7 @@ export default function MarketplacePage() {
       )}
 
       {/* Credits Info */}
-      <Card className="bg-muted/30 border-white/10">
+      <Card className="bg-muted/30 border-border">
         <CardContent className="p-4 text-center">
           <p className="text-xs text-muted-foreground">
             <span className="font-semibold">{isPt ? "Créditos BPR" : "BPR Credits"}:</span> {isPt ? "Ganhe créditos completando exercícios, missões e sequências. 1 crédito = £0.01 de desconto." : "Earn credits by completing exercises, missions and streaks. 1 credit = £0.01 discount."} {isPt ? "Você tem" : "You have"} <span className="font-bold text-emerald-400">{credits} {isPt ? "créditos" : "credits"}</span> (£{(credits * 0.01).toFixed(2)} {isPt ? "de valor" : "value"}).

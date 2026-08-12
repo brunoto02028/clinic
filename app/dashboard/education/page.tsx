@@ -177,7 +177,7 @@ export default function PatientEducationPage() {
                       key={n}
                       onClick={() => setRating(n)}
                       className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm transition-colors ${
-                        rating >= n ? "bg-amber-400 text-white border-amber-400" : "border-white/10 text-muted-foreground"
+                        rating >= n ? "bg-amber-400 text-white border-amber-400" : "border-border text-muted-foreground"
                       }`}
                     >
                       {n}

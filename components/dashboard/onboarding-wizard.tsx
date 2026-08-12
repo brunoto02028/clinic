@@ -153,7 +153,7 @@ export default function OnboardingWizard() {
                     ? "bg-emerald-500/5 border-emerald-500/20"
                     : isCurrent
                     ? "bg-primary/5 border-primary/40 ring-1 ring-primary/20"
-                    : "bg-muted/20 border-white/5 opacity-40"
+                    : "bg-muted/20 border-border opacity-40"
                 }`}>
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border-2 ${
                     done

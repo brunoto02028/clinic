@@ -174,7 +174,7 @@ export default function QuizPage() {
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                     selectedAnswer === opt.key
                       ? "border-violet-500 bg-violet-500/10 shadow-md shadow-violet-500/10"
-                      : "border-white/10 bg-card hover:border-white/20"
+                      : "border-border bg-card hover:border-primary/30"
                   }`}
                 >
                   <p className={`text-sm font-medium ${selectedAnswer === opt.key ? "text-violet-400" : "text-foreground"}`}>
