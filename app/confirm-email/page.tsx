@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ function ConfirmEmailContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const requested = useRef(false);
 
   useEffect(() => {
     if (!token) {
@@ -20,6 +21,8 @@ function ConfirmEmailContent() {
       setMessage("Invalid or missing confirmation token.");
       return;
     }
+    if (requested.current) return;
+    requested.current = true;
 
     fetch("/api/patient/change-email/confirm", {
       method: "POST",

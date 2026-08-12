@@ -30,12 +30,14 @@ export async function POST(request: NextRequest) {
 
         const hashedPassword = await bcrypt.hash(password, 12);
 
+        // deleteMany (not delete) so a duplicate/concurrent submit is a harmless no-op
+        // instead of throwing "record to delete does not exist".
         await prisma.$transaction([
             prisma.user.update({
                 where: { id: user.id },
                 data: { password: hashedPassword },
             }),
-            prisma.passwordResetToken.delete({
+            prisma.passwordResetToken.deleteMany({
                 where: { id: resetToken.id },
             }),
         ]);
