@@ -42,6 +42,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
+import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 interface AppointmentDetailProps {
   appointmentId: string;
