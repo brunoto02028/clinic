@@ -679,13 +679,22 @@ export default function ExercisesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {collections.map((c) => {
                 const cover = c.items.find((ex) => ex.thumbnailUrl)?.thumbnailUrl;
+                const disabled = c.items.length === 0 && !c.folder;
                 return (
-                  <button
+                  <div
                     key={c.key}
-                    type="button"
-                    disabled={c.items.length === 0 && !c.folder}
-                    onClick={() => setOpenCollection(c.key)}
-                    className="group relative text-left rounded-xl overflow-hidden border bg-card hover:shadow-lg hover:border-primary/40 disabled:opacity-50 disabled:cursor-default transition-all"
+                    role="button"
+                    tabIndex={disabled ? -1 : 0}
+                    onClick={() => !disabled && setOpenCollection(c.key)}
+                    onKeyDown={(e) => {
+                      if (!disabled && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        setOpenCollection(c.key);
+                      }
+                    }}
+                    className={`group relative text-left rounded-xl overflow-hidden border bg-card transition-all ${
+                      disabled ? "opacity-50 cursor-default" : "cursor-pointer hover:shadow-lg hover:border-primary/40"
+                    }`}
                   >
                     <div className="relative h-36 bg-muted flex items-center justify-center overflow-hidden">
                       {cover ? (
@@ -707,12 +716,36 @@ export default function ExercisesPage() {
                         </span>
                       </div>
                       {c.folder && (
-                        <span className="absolute top-2 left-2 text-[10px] font-medium text-white bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5 flex items-center gap-1">
-                          <FolderUp className="h-3 w-3" /> {locale === "pt-BR" ? "Pasta" : "Folder"}
-                        </span>
+                        <>
+                          <span className="absolute top-2 left-2 text-[10px] font-medium text-white bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5 flex items-center gap-1">
+                            <FolderUp className="h-3 w-3" /> {locale === "pt-BR" ? "Pasta" : "Folder"}
+                          </span>
+                          {/* Kept on the card itself: hiding these inside the
+                              folder made them undiscoverable on touch. */}
+                          <div className="absolute top-2 right-2 flex items-center gap-1">
+                            <button
+                              type="button"
+                              aria-label={locale === "pt-BR" ? "Renomear pasta" : "Rename folder"}
+                              title={locale === "pt-BR" ? "Renomear pasta" : "Rename folder"}
+                              onClick={(e) => { e.stopPropagation(); handleRenameFolder(c.folder!); }}
+                              className="h-8 w-8 rounded-md bg-black/55 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/75 transition-colors"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={locale === "pt-BR" ? "Excluir pasta" : "Delete folder"}
+                              title={locale === "pt-BR" ? "Excluir pasta" : "Delete folder"}
+                              onClick={(e) => { e.stopPropagation(); handleDeleteFolder(c.folder!); }}
+                              className="h-8 w-8 rounded-md bg-black/55 backdrop-blur-sm text-red-300 flex items-center justify-center hover:bg-red-600 hover:text-white transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
