@@ -141,7 +141,7 @@ export default function CancellationPolicyPage() {
       </Card>
 
       {/* Consumer Rights */}
-      <Card className="border-white/10 bg-muted/20">
+      <Card className="border-border bg-muted/20">
         <CardContent className="p-4 text-xs text-muted-foreground leading-relaxed">
           <p><strong>{isPt ? "Seus Direitos como Consumidor:" : "Your Consumer Rights:"}</strong> {isPt ? "De acordo com o UK Consumer Contracts Regulations 2013, você tem um período de 14 dias para desistência em compras online. Esta política de cancelamento opera em conjunto e não afeta seus direitos estatutários. Para dúvidas sobre seus direitos, visite " : "Under UK Consumer Contracts Regulations 2013, you have a 14-day cooling-off period for online purchases. This cancellation policy operates alongside and does not affect your statutory rights. For questions about your rights, visit "}<a href="https://www.citizensadvice.org.uk" target="_blank" rel="noopener noreferrer" className="underline text-primary hover:no-underline">Citizens Advice</a>.</p>
         </CardContent>

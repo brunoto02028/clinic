@@ -69,34 +69,34 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
   const navItemClass = (active: boolean) =>
     `group relative flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors w-full ${
       active
-        ? "bg-[hsl(174,56%,57%)]/10 text-[hsl(174,56%,57%)] font-medium"
-        : "text-[hsl(195,20%,60%)] hover:text-[hsl(195,20%,80%)] hover:bg-white/[0.03]"
+        ? "bg-[#4F7361]/10 text-[#4F7361] font-medium"
+        : "text-[#767B85] hover:text-[#20242D] hover:bg-black/[0.03]"
     }`;
 
   const activeBar = (
-    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[hsl(174,56%,57%)] shadow-[0_0_8px_hsl(174,56%,57%,0.4)]" />
+    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[#4F7361]" />
   );
 
   return (
     <>
       {/* Mobile toggle */}
       <button
-        className="fixed top-3 left-3 z-50 lg:hidden p-2 rounded-lg bg-[hsl(200,40%,7%)]/90 backdrop-blur border border-white/10"
+        className="fixed top-3 left-3 z-50 lg:hidden p-2 rounded-lg bg-white/90 backdrop-blur border border-black/10 shadow-sm"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Toggle menu"
       >
-        {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+        {mobileOpen ? <X size={18} className="text-[#20242D]" /> : <Menu size={18} className="text-[#20242D]" />}
       </button>
 
       {/* Mobile notification */}
       <div className="fixed top-3 right-3 z-50 lg:hidden">
         <Link
           href="/dashboard"
-          className="relative p-2 rounded-lg bg-[hsl(200,40%,7%)]/90 backdrop-blur border border-white/10 inline-flex"
+          className="relative p-2 rounded-lg bg-white/90 backdrop-blur border border-black/10 shadow-sm inline-flex text-[#20242D]"
         >
           <Bell size={18} />
           {notifications > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[hsl(174,56%,57%)] text-[9px] text-black flex items-center justify-center font-bold">
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#4F7361] text-[9px] text-white flex items-center justify-center font-bold">
               {notifications > 9 ? "9+" : notifications}
             </span>
           )}
@@ -123,14 +123,14 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
           zIndex: 40,
           display: "flex",
           flexDirection: "column",
-          background: "hsl(200 40% 5%)",
-          borderRight: "1px solid hsl(195 20% 12%)",
+          background: "#FFFFFF",
+          borderRight: "1px solid #E4E3DF",
         }}
         aria-label="Patient navigation"
       >
         {/* Logo + name */}
         <div
-          className={`px-4 pt-5 pb-4 border-b border-white/[0.06] transition-opacity duration-200 ${
+          className={`px-4 pt-5 pb-4 border-b border-black/[0.06] transition-opacity duration-200 ${
             logoReady ? "opacity-100" : "opacity-0"
           }`}
         >
@@ -141,7 +141,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
             showText={true}
             linkTo="/dashboard"
           />
-          <p className="text-[11px] text-[hsl(195,20%,50%)] mt-2 truncate">
+          <p className="text-[11px] text-[#767B85] mt-2 truncate">
             {firstName} {lastName}
           </p>
         </div>
@@ -173,7 +173,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
         </div>
 
         {/* Footer */}
-        <div className="px-2 py-3 border-t border-white/[0.06] space-y-0.5">
+        <div className="px-2 py-3 border-t border-black/[0.06] space-y-0.5">
           {/* Language toggle */}
           <div className="flex items-center gap-1 px-3 py-2">
             {(["en-GB", "pt-BR"] as const).map((loc) => (
@@ -190,7 +190,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors ${
                   locale === loc
                     ? "bg-primary/20 text-primary border border-primary/30"
-                    : "text-[hsl(195,20%,45%)] hover:text-foreground border border-transparent"
+                    : "text-[#767B85] hover:text-foreground border border-transparent"
                 }`}
               >
                 {loc === "en-GB" ? "EN" : "PT"}
@@ -211,7 +211,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
           </Link>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-[13px] text-[hsl(195,20%,45%)] hover:text-red-400 hover:bg-white/[0.02] transition-colors w-full"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-[13px] text-[#767B85] hover:text-red-500 hover:bg-black/[0.03] transition-colors w-full"
           >
             <LogOut size={16} className="flex-shrink-0" />
             <span>{isPt ? "Sair" : "Sign out"}</span>

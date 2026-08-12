@@ -313,8 +313,10 @@ body {
 }
 
 /* ============================================
-   PUBLIC SITE — LIGHT THEME
-   Scoped to .public-site — admin stays dark
+   DESIGN SYSTEM v4 — LIGHT THEME
+   Scoped to .public-site — used by the public
+   marketing site AND the patient portal
+   (/dashboard/**). Admin stays dark.
    ============================================ */
 
 .public-site {
@@ -355,6 +357,26 @@ body {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(79, 115, 97, 0.15);
+}
+
+.public-site .glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(79, 115, 97, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.public-site .glass-card:hover {
+  border-color: rgba(79, 115, 97, 0.25);
+  box-shadow: 0 8px 24px -8px rgba(32, 36, 45, 0.1);
+}
+
+.public-site .glass-strong {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(79, 115, 97, 0.15);
 }
 

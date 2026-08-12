@@ -268,7 +268,7 @@ export default function PatientMembershipPage() {
                   className={`relative overflow-hidden transition-all ${
                     isCurrentPlan
                       ? "border-violet-500/30 bg-violet-500/5 ring-2 ring-violet-500/20"
-                      : "border-white/10 hover:border-violet-500/20 hover:shadow-md"
+                      : "border-border hover:border-violet-500/30 hover:shadow-md"
                   }`}
                 >
                   {isCurrentPlan && (

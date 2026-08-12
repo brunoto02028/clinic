@@ -250,7 +250,7 @@ export default function CommunityPage() {
                     <button
                       onClick={() => handleHighFive(post.id)}
                       disabled={highFiving === post.id}
-                      className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-card border border-white/10 hover:border-amber-500/30 hover:bg-amber-500/10 transition-colors text-xs"
+                      className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-card border border-border hover:border-amber-500/30 hover:bg-amber-500/10 transition-colors text-xs"
                     >
                       <Hand className="h-3.5 w-3.5 text-amber-500" />
                       <span className="font-medium text-foreground">{post.highFives}</span>

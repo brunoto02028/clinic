@@ -204,11 +204,11 @@ export default function PatientQuizzesPage() {
 
             <div className="space-y-2">
               {q.options.map((opt, oIdx) => {
-                let borderClass = "border-white/10 hover:border-primary/50";
+                let borderClass = "border-border hover:border-primary/50";
                 if (showExplanation) {
                   if (opt.isCorrect) borderClass = "border-green-500 bg-green-500/10";
                   else if (oIdx === selectedOption && !opt.isCorrect) borderClass = "border-red-500 bg-red-500/10";
-                  else borderClass = "border-white/10 opacity-50";
+                  else borderClass = "border-border opacity-50";
                 } else if (selectedOption === oIdx) {
                   borderClass = "border-primary bg-primary/5";
                 }

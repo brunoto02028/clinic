@@ -281,7 +281,7 @@ export default function JourneyPage() {
                     className={`relative rounded-xl p-3 text-center transition-all ${
                       unlocked
                         ? "bg-card border border-amber-500/20 shadow-sm"
-                        : "bg-muted/30 border border-white/5"
+                        : "bg-muted/30 border border-border"
                     }`}
                   >
                     {!unlocked && (
@@ -319,7 +319,7 @@ export default function JourneyPage() {
                 const done = tasks.filter((t) => t.completed).length;
                 const total = tasks.length;
                 return (
-                  <div key={mission.id} className={`p-3 rounded-lg border ${mission.completedAt ? "bg-emerald-500/10 border-emerald-500/20" : "bg-card border-white/10"}`}>
+                  <div key={mission.id} className={`p-3 rounded-lg border ${mission.completedAt ? "bg-emerald-500/10 border-emerald-500/20" : "bg-card border-border"}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         {mission.isBonusMission && <Badge className="bg-violet-500/15 text-violet-400 text-[10px]">{isPt ? "Bônus" : "Bonus"}</Badge>}

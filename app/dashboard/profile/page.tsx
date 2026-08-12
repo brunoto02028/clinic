@@ -177,7 +177,7 @@ export default function PatientProfilePage() {
       </div>
 
       {/* Main profile card */}
-      <div className="bg-card rounded-2xl shadow-sm border border-white/10 overflow-hidden">
+      <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
         {/* Header info (read-only) */}
         <div className="bg-gradient-to-r from-[#607d7d] to-[#5dc9c0] px-6 py-5">
           <p className="text-white font-semibold text-lg">
@@ -214,7 +214,7 @@ export default function PatientProfilePage() {
                 className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                   locale === 'en-GB'
                     ? 'border-primary bg-primary/10'
-                    : 'border-white/10 hover:border-white/20'
+                    : 'border-border hover:border-primary/30'
                 }`}
               >
                 <span className="text-2xl">🇬🇧</span>
@@ -231,7 +231,7 @@ export default function PatientProfilePage() {
                 className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                   locale === 'pt-BR'
                     ? 'border-primary bg-primary/10'
-                    : 'border-white/10 hover:border-white/20'
+                    : 'border-border hover:border-primary/30'
                 }`}
               >
                 <span className="text-2xl">🇧🇷</span>
@@ -264,14 +264,14 @@ export default function PatientProfilePage() {
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
                   commPref === 'EMAIL'
                     ? 'border-primary bg-primary/10'
-                    : 'border-white/10 hover:border-white/20'
+                    : 'border-border hover:border-primary/30'
                 }`}
               >
                 <Mail className={`h-5 w-5 ${commPref === 'EMAIL' ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span className={`text-xs font-semibold ${commPref === 'EMAIL' ? 'text-primary' : 'text-muted-foreground'}`}>Email</span>
               </button>
               {/* SMS — coming soon */}
-              <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-white/10 text-center opacity-50 cursor-not-allowed">
+              <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-border text-center opacity-50 cursor-not-allowed">
                 <div className="absolute -top-2 -right-1 z-10">
                   <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold">
                     <Clock className="h-2.5 w-2.5" />
@@ -282,7 +282,7 @@ export default function PatientProfilePage() {
                 <span className="text-xs font-semibold text-muted-foreground">SMS</span>
               </div>
               {/* WhatsApp — coming soon */}
-              <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-white/10 text-center opacity-50 cursor-not-allowed">
+              <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-border text-center opacity-50 cursor-not-allowed">
                 <div className="absolute -top-2 -right-1 z-10">
                   <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold">
                     <Clock className="h-2.5 w-2.5" />
@@ -315,7 +315,7 @@ export default function PatientProfilePage() {
               type="date"
               value={dateOfBirth}
               onChange={e => setDateOfBirth(e.target.value)}
-              className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+              className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
             />
           </div>
 
@@ -335,7 +335,7 @@ export default function PatientProfilePage() {
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="+44 7XXX XXXXXX"
-              className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+              className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
             />
           </div>
 
@@ -355,12 +355,12 @@ export default function PatientProfilePage() {
               onChange={e => setAddress(e.target.value)}
               placeholder={isPt ? 'Seu endereço...' : 'Your address...'}
               rows={3}
-              className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent resize-none"
             />
           </div>
 
           {/* Emergency Contact */}
-          <div className="border-t border-white/10 pt-6">
+          <div className="border-t border-border pt-6">
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
               <Shield className="h-4 w-4 text-red-500" />
               {isPt ? 'Contato de Emergência' : 'Emergency Contact'}
@@ -376,7 +376,7 @@ export default function PatientProfilePage() {
                 value={emergencyName}
                 onChange={e => setEmergencyName(e.target.value)}
                 placeholder={isPt ? 'Nome completo' : 'Full name'}
-                className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
               />
               <div className="grid grid-cols-2 gap-3">
                 <input
@@ -384,14 +384,14 @@ export default function PatientProfilePage() {
                   value={emergencyPhone}
                   onChange={e => setEmergencyPhone(e.target.value)}
                   placeholder={isPt ? 'Telefone' : 'Phone number'}
-                  className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
                 />
                 <input
                   type="text"
                   value={emergencyRelation}
                   onChange={e => setEmergencyRelation(e.target.value)}
                   placeholder={isPt ? 'Relação (ex: Cônjuge)' : 'Relationship (e.g. Spouse)'}
-                  className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
                 />
               </div>
             </div>
@@ -421,7 +421,7 @@ export default function PatientProfilePage() {
       </div>
 
       {/* Terms & Consent card */}
-      <div className="bg-card rounded-2xl shadow-sm border border-white/10 overflow-hidden">
+      <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
         <Link href="/dashboard/consent" className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-500/10 rounded-xl">
@@ -437,7 +437,7 @@ export default function PatientProfilePage() {
       </div>
 
       {/* Email Change card */}
-      <div className="bg-card rounded-2xl shadow-sm border border-white/10 overflow-hidden">
+      <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
         <button
           onClick={() => setShowEmailSection(!showEmailSection)}
           className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors"
@@ -455,7 +455,7 @@ export default function PatientProfilePage() {
         </button>
 
         {showEmailSection && (
-          <div className="px-6 pb-6 space-y-4 border-t border-white/10 pt-4">
+          <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
             {emailError && (
               <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                 <AlertCircle className="h-4 w-4 shrink-0" />
@@ -473,14 +473,14 @@ export default function PatientProfilePage() {
               value={newEmail}
               onChange={e => setNewEmail(e.target.value)}
               placeholder={isPt ? 'Novo email' : 'New email address'}
-              className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+              className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
             />
             <input
               type="password"
               value={emailPassword}
               onChange={e => setEmailPassword(e.target.value)}
               placeholder={isPt ? 'Senha atual (pra confirmar)' : 'Current password (to confirm)'}
-              className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+              className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
             />
             <p className="text-xs text-muted-foreground">
               {isPt
@@ -506,7 +506,7 @@ export default function PatientProfilePage() {
       </div>
 
       {/* Password Change card */}
-      <div className="bg-card rounded-2xl shadow-sm border border-white/10 overflow-hidden">
+      <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
         <button
           onClick={() => setShowPwSection(!showPwSection)}
           className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors"
@@ -524,7 +524,7 @@ export default function PatientProfilePage() {
         </button>
 
         {showPwSection && (
-          <div className="px-6 pb-6 space-y-4 border-t border-white/10 pt-4">
+          <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
             {pwError && (
               <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                 <AlertCircle className="h-4 w-4 shrink-0" />
@@ -543,7 +543,7 @@ export default function PatientProfilePage() {
                 value={newPw}
                 onChange={e => setNewPw(e.target.value)}
                 placeholder={isPt ? 'Nova senha (mín. 6 caracteres)' : 'New password (min. 6 characters)'}
-                className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent pr-10"
+                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent pr-10"
               />
               <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -554,7 +554,7 @@ export default function PatientProfilePage() {
               value={confirmPw}
               onChange={e => setConfirmPw(e.target.value)}
               placeholder={isPt ? 'Confirmar nova senha' : 'Confirm new password'}
-              className="w-full px-4 py-3 border border-white/10 rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
+              className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
             />
             {newPw && confirmPw && newPw === confirmPw && (
               <p className="text-xs text-emerald-400 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {isPt ? 'Senhas coincidem' : 'Passwords match'}</p>

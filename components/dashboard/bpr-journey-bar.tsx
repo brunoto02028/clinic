@@ -48,7 +48,7 @@ export default function BPRJourneyBar() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       onClick={() => router.push("/dashboard/journey")}
-      className="cursor-pointer rounded-xl border border-white/10 bg-card/80 p-3 sm:p-4 hover:shadow-md transition-shadow"
+      className="cursor-pointer rounded-xl border border-border bg-card/80 p-3 sm:p-4 hover:shadow-md transition-shadow"
     >
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* Level & Title */}

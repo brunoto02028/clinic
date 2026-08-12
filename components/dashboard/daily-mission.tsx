@@ -127,7 +127,7 @@ export default function DailyMission() {
           </AnimatePresence>
         </div>
 
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <span className="text-[11px] text-muted-foreground">
             {completedCount}/{tasks.length} {T("mission.completed")}
           </span>
