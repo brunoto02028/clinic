@@ -161,6 +161,9 @@ export default function ExercisesPage() {
   const [bulkTranslating, setBulkTranslating] = useState(false);
   const [bulkResult, setBulkResult] = useState<string>("");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActing, setBulkActing] = useState(false);
+  const [bulkTargetRegion, setBulkTargetRegion] = useState("");
 
   // Modal states
   const [showForm, setShowForm] = useState(false);
@@ -232,6 +235,46 @@ export default function ExercisesPage() {
     if (!confirm("Remove this exercise from the library?")) return;
     await fetch(`/api/admin/exercises/${id}`, { method: "DELETE" });
     fetchExercises();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkRecategorize = async (targetRegion: string) => {
+    if (!targetRegion || selectedIds.size === 0) return;
+    setBulkActing(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map((id) => {
+        const fd = new FormData();
+        fd.append("bodyRegion", targetRegion);
+        return fetch(`/api/admin/exercises/${id}`, { method: "PATCH", body: fd });
+      }));
+      setSelectedIds(new Set());
+      setBulkTargetRegion("");
+      fetchExercises();
+    } finally {
+      setBulkActing(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Remove ${selectedIds.size} exercise(s) from the library?`)) return;
+    setBulkActing(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map((id) =>
+        fetch(`/api/admin/exercises/${id}`, { method: "DELETE" })
+      ));
+      setSelectedIds(new Set());
+      fetchExercises();
+    } finally {
+      setBulkActing(false);
+    }
   };
 
   const handleBulkTranslate = async () => {
@@ -471,6 +514,8 @@ export default function ExercisesPage() {
             const groupExercises = exercises.filter((ex) => REGION_TO_GROUP[ex.bodyRegion] === group.label);
             const isOpen = !!expandedGroups[group.label];
             const count = groupExercises.length;
+            const coverThumb = groupExercises.find((ex) => ex.thumbnailUrl)?.thumbnailUrl;
+            const selectedInGroup = groupExercises.filter((ex) => selectedIds.has(ex.id));
             return (
               <div key={group.label} className="border rounded-lg overflow-hidden">
                 <button
@@ -479,9 +524,18 @@ export default function ExercisesPage() {
                   onClick={() => setExpandedGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))}
                   className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-muted/40 hover:bg-muted/60 disabled:opacity-50 disabled:cursor-default transition-colors"
                 >
-                  <span className="font-medium text-sm">
-                    {locale === "pt-BR" ? group.labelPt : group.label}
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    {coverThumb ? (
+                      <img src={coverThumb} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+                    ) : (
+                      <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                        <Dumbbell className="h-4 w-4 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <span className="font-medium text-sm">
+                      {locale === "pt-BR" ? group.labelPt : group.label}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{count}</Badge>
                     {count > 0 && (
@@ -490,17 +544,73 @@ export default function ExercisesPage() {
                   </div>
                 </button>
                 {isOpen && count > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-                    {groupExercises.map((ex) => (
-                      <ExerciseCard
-                        key={ex.id}
-                        exercise={ex}
-                        onEdit={() => openEdit(ex)}
-                        onDelete={() => handleDelete(ex.id)}
-                        onPrescribe={() => openPrescribe(ex)}
-                        onPreview={() => setShowPreview(ex)}
-                      />
-                    ))}
+                  <div className="p-4 space-y-3">
+                    {selectedInGroup.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+                        <span className="text-xs font-medium">{selectedInGroup.length} selecionado{selectedInGroup.length !== 1 ? "s" : ""}</span>
+                        <Select value={bulkTargetRegion} onValueChange={setBulkTargetRegion}>
+                          <SelectTrigger className="w-[180px] h-8 text-xs">
+                            <SelectValue placeholder="Mudar categoria..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {REGION_GROUPS.map((g) => (
+                              <SelectGroup key={g.label}>
+                                <SelectLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+                                  {locale === "pt-BR" ? g.labelPt : g.label}
+                                </SelectLabel>
+                                {g.keys.map((k) => (
+                                  <SelectItem key={k} value={k}>{regionLabel(k, locale)}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs"
+                          disabled={!bulkTargetRegion || bulkActing}
+                          onClick={() => handleBulkRecategorize(bulkTargetRegion)}
+                        >
+                          Aplicar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs text-destructive hover:text-destructive"
+                          disabled={bulkActing}
+                          onClick={handleBulkDelete}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs ml-auto"
+                          onClick={() => setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            groupExercises.forEach((ex) => next.delete(ex.id));
+                            return next;
+                          })}
+                        >
+                          Limpar seleção
+                        </Button>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {groupExercises.map((ex) => (
+                        <ExerciseCard
+                          key={ex.id}
+                          exercise={ex}
+                          onEdit={() => openEdit(ex)}
+                          onDelete={() => handleDelete(ex.id)}
+                          onPrescribe={() => openPrescribe(ex)}
+                          onPreview={() => setShowPreview(ex)}
+                          selectable
+                          selected={selectedIds.has(ex.id)}
+                          onToggleSelect={() => toggleSelect(ex.id)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -581,19 +691,25 @@ function ExerciseCard({
   onDelete,
   onPrescribe,
   onPreview,
+  selectable,
+  selected,
+  onToggleSelect,
 }: {
   exercise: Exercise;
   onEdit: () => void;
   onDelete: () => void;
   onPrescribe: () => void;
   onPreview: () => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const { locale } = useLocale();
   const diff = DIFFICULTIES[exercise.difficulty] || DIFFICULTIES.BEGINNER;
   const [hoverPlaying, setHoverPlaying] = useState(false);
 
   return (
-    <Card className="group overflow-hidden hover:shadow-md transition-shadow">
+    <Card className={`group overflow-hidden hover:shadow-md transition-shadow ${selected ? "ring-2 ring-primary" : ""}`}>
       {/* Thumbnail / Video Preview */}
       <div
         className="relative h-40 bg-muted flex items-center justify-center cursor-pointer"
@@ -601,6 +717,17 @@ function ExerciseCard({
         onMouseEnter={() => exercise.videoUrl && setHoverPlaying(true)}
         onMouseLeave={() => setHoverPlaying(false)}
       >
+        {selectable && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleSelect?.(); }}
+            className={`absolute top-2 left-2 z-10 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
+              selected ? "bg-primary border-primary" : "bg-black/40 border-white/70 hover:border-white"
+            }`}
+          >
+            {selected && <Check className="h-3 w-3 text-primary-foreground" />}
+          </button>
+        )}
         {hoverPlaying && exercise.videoUrl ? (
           <video
             src={exercise.videoUrl}
