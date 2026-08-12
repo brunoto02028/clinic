@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
+import { ensureWebSafeVideo } from "@/lib/video-web-safe";
 
 export const dynamic = "force-dynamic";
 
@@ -166,6 +167,21 @@ export async function POST(req: NextRequest) {
       videoUrl = `/uploads/exercises/${uniqueName}`;
       videoFileName = videoFile.name;
       savedVideoPath = filePath;
+
+      // Normalise before the thumbnail/duration steps so they read the final
+      // file. Patients open these on unknown phones, so everything has to end
+      // up as H.264/AAC mp4 with faststart.
+      try {
+        const norm = await ensureWebSafeVideo(filePath);
+        if (norm.action !== "failed") {
+          savedVideoPath = norm.path;
+          videoUrl = `/uploads/exercises/${path.basename(norm.path)}`;
+        } else {
+          console.error("Video normalisation failed:", norm.error);
+        }
+      } catch (normErr: any) {
+        console.error("Video normalisation threw:", normErr.message);
+      }
     } else if (externalVideoUrl) {
       videoUrl = externalVideoUrl;
     }

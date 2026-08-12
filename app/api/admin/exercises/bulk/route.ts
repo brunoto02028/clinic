@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
+import { ensureWebSafeVideo } from "@/lib/video-web-safe";
 
 export const dynamic = "force-dynamic";
 
@@ -78,13 +79,29 @@ export async function POST(req: NextRequest) {
         const bytes = await videoFile.arrayBuffer();
         await writeFile(filePath, new Uint8Array(bytes));
 
-        const videoUrl = `/uploads/exercises/${uniqueName}`;
+        // Normalise first so the thumbnail and duration below describe the
+        // file patients will actually receive.
+        let finalPath = filePath;
+        let finalName = uniqueName;
+        try {
+          const norm = await ensureWebSafeVideo(filePath);
+          if (norm.action !== "failed") {
+            finalPath = norm.path;
+            finalName = path.basename(norm.path);
+          } else {
+            console.error(`Video normalisation failed for ${meta.name}:`, norm.error);
+          }
+        } catch (normErr: any) {
+          console.error(`Video normalisation threw for ${meta.name}:`, normErr.message);
+        }
+
+        const videoUrl = `/uploads/exercises/${finalName}`;
         const tags = meta.tags ? meta.tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean) : [];
 
         let thumbnailUrl: string | null = null;
         try {
           const thumbName = `${Date.now()}-thumb.jpg`;
-          await generateVideoThumbnail(filePath, path.join(thumbDir, thumbName));
+          await generateVideoThumbnail(finalPath, path.join(thumbDir, thumbName));
           thumbnailUrl = `/uploads/exercises/thumbnails/${thumbName}`;
         } catch (thumbErr: any) {
           console.error(`Auto-thumbnail generation failed for ${meta.name}:`, thumbErr.message);
@@ -92,7 +109,7 @@ export async function POST(req: NextRequest) {
 
         let duration: number | null = null;
         try {
-          duration = await getVideoDuration(filePath);
+          duration = await getVideoDuration(finalPath);
         } catch (durErr: any) {
           console.error(`Duration extraction failed for ${meta.name}:`, durErr.message);
         }
