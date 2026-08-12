@@ -30,8 +30,9 @@ export async function PATCH(
   return NextResponse.json({ folder });
 }
 
-// DELETE - Remove a folder. Exercises inside are unassigned (folderId -> null
-// via onDelete: SetNull), never deleted.
+// DELETE - Remove a folder.
+//   default            → exercises inside are just unassigned (folderId -> null)
+//   ?withExercises=true → the exercises inside are deactivated too
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -43,8 +44,20 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const withExercises = new URL(req.url).searchParams.get("withExercises") === "true";
+
+  let deletedExercises = 0;
+  if (withExercises) {
+    // Soft delete, matching how single-exercise deletion already behaves —
+    // keeps any historic prescription rows intact instead of cascading.
+    const res = await prisma.exercise.updateMany({
+      where: { folderId: id, isActive: true },
+      data: { isActive: false },
+    });
+    deletedExercises = res.count;
+  }
 
   await prisma.exerciseFolder.delete({ where: { id } });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, deletedExercises });
 }

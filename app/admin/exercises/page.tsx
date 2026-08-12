@@ -128,6 +128,8 @@ export default function ExercisesPage() {
   const [translatedFilter, setTranslatedFilter] = useState("");
   const [sort, setSort] = useState("recent");
   const [bulkTranslating, setBulkTranslating] = useState(false);
+  const [fixingVideos, setFixingVideos] = useState(false);
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: string; name: string; count: number } | null>(null);
   const [bulkResult, setBulkResult] = useState<string>("");
   const [openCollection, setOpenCollection] = useState<string | null>(null);
   const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
@@ -229,9 +231,20 @@ export default function ExercisesPage() {
     fetchFolders();
   };
 
-  const handleDeleteFolder = async (folder: { id: string; name: string }) => {
-    if (!confirm(`Excluir a pasta "${folder.name}"? Os exercícios não serão apagados, só ficarão sem pasta.`)) return;
-    await fetch(`/api/admin/exercise-folders/${folder.id}`, { method: "DELETE" });
+  const handleDeleteFolder = (folder: { id: string; name: string }) => {
+    const count = exercises.filter((ex) => ex.folderId === folder.id).length;
+    setDeleteFolderTarget({ ...folder, count });
+  };
+
+  const confirmDeleteFolder = async (withExercises: boolean) => {
+    const target = deleteFolderTarget;
+    if (!target) return;
+    setDeleteFolderTarget(null);
+    await fetch(
+      `/api/admin/exercise-folders/${target.id}${withExercises ? "?withExercises=true" : ""}`,
+      { method: "DELETE" }
+    );
+    setOpenCollection(null);
     fetchFolders();
     fetchExercises();
   };
@@ -334,6 +347,71 @@ export default function ExercisesPage() {
       fetchExercises();
     } finally {
       setBulkActing(false);
+    }
+  };
+
+  // Converts already-uploaded videos to the H.264/mp4/faststart form every
+  // device can play. Runs from a button because the owner works on an iPad,
+  // where a console command is not a realistic instruction.
+  const handleFixVideos = async () => {
+    setFixingVideos(true);
+    setBulkResult(locale === "pt-BR" ? "Verificando os vídeos..." : "Checking videos...");
+    try {
+      const dry = await fetch("/api/admin/exercises/normalize-videos?dryRun=true", { method: "POST" });
+      const dryData = await dry.json();
+      if (!dry.ok) throw new Error(dryData.error || `HTTP ${dry.status}`);
+
+      const s = dryData.summary || {};
+      const needsWork = (s.needsTranscode || 0) + (s.needsRemux || 0);
+      if (needsWork === 0) {
+        setBulkResult(
+          locale === "pt-BR"
+            ? `Nenhum vídeo precisa de conversão. (${s.missingFile || 0} arquivo(s) ausente(s), ${s.probeFailed || 0} ilegível(is))`
+            : `No videos need converting. (${s.missingFile || 0} missing, ${s.probeFailed || 0} unreadable)`
+        );
+        return;
+      }
+
+      if (!confirm(
+        locale === "pt-BR"
+          ? `${needsWork} vídeo(s) serão convertidos para tocar em qualquer celular (${s.needsTranscode || 0} recodificados, ${s.needsRemux || 0} ajustes rápidos). Pode levar alguns minutos. Continuar?`
+          : `${needsWork} video(s) will be converted so they play on any phone. This may take a few minutes. Continue?`
+      )) {
+        setBulkResult("");
+        return;
+      }
+
+      let offset = 0;
+      let converted = 0;
+      let failed = 0;
+      // Batched on purpose: transcoding the whole library in one request
+      // would outlive the proxy timeout.
+      while (offset !== null) {
+        const res = await fetch(`/api/admin/exercises/normalize-videos?limit=10&offset=${offset}`, { method: "POST" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        for (const r of data.results || []) {
+          if (r.status === "transcoded" || r.status === "remuxed") converted++;
+          else if (r.status === "failed" || r.status === "probe-failed") failed++;
+        }
+        setBulkResult(
+          locale === "pt-BR"
+            ? `Convertendo... ${converted} de ${dryData.total} prontos${failed ? ` (${failed} com erro)` : ""}`
+            : `Converting... ${converted} of ${dryData.total} done${failed ? ` (${failed} failed)` : ""}`
+        );
+        offset = data.nextOffset;
+      }
+
+      setBulkResult(
+        locale === "pt-BR"
+          ? `Pronto: ${converted} vídeo(s) convertidos${failed ? `, ${failed} com erro (veja os logs)` : ""}.`
+          : `Done: ${converted} video(s) converted${failed ? `, ${failed} failed` : ""}.`
+      );
+      fetchExercises();
+    } catch (err: any) {
+      setBulkResult((locale === "pt-BR" ? "Erro: " : "Error: ") + err.message);
+    } finally {
+      setFixingVideos(false);
     }
   };
 
@@ -465,6 +543,10 @@ export default function ExercisesPage() {
           <Button variant="outline" onClick={handleBulkTranslate} disabled={bulkTranslating}>
             {bulkTranslating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
             <span className="hidden sm:inline">{bulkTranslating ? "Traduzindo..." : "Traduzir PT"}</span>
+          </Button>
+          <Button variant="outline" onClick={handleFixVideos} disabled={fixingVideos}>
+            {fixingVideos ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Video className="h-4 w-4 mr-2" />}
+            <span className="hidden sm:inline">{fixingVideos ? (locale === "pt-BR" ? "Convertendo..." : "Converting...") : (locale === "pt-BR" ? "Corrigir Vídeos" : "Fix Videos")}</span>
           </Button>
           <Button variant="outline" onClick={handleCreateEmptyFolder}>
             <FolderUp className="h-4 w-4 mr-2" />
@@ -826,6 +908,58 @@ export default function ExercisesPage() {
           exercise={showPreview}
           onClose={() => setShowPreview(null)}
         />
+      )}
+
+      {/* Deleting a folder is destructive in one of two very different ways —
+          make the choice explicit rather than hiding it behind OK/Cancel. */}
+      {deleteFolderTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setDeleteFolderTarget(null)}>
+          <div className="bg-background rounded-xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 border-b">
+              <h2 className="text-lg font-semibold">
+                {locale === "pt-BR" ? `Excluir a pasta "${deleteFolderTarget.name}"?` : `Delete folder "${deleteFolderTarget.name}"?`}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {locale === "pt-BR"
+                  ? `Ela tem ${deleteFolderTarget.count} vídeo(s). Escolha o que fazer com eles.`
+                  : `It holds ${deleteFolderTarget.count} video(s). Choose what happens to them.`}
+              </p>
+            </div>
+            <div className="p-5 space-y-3">
+              <button
+                type="button"
+                onClick={() => confirmDeleteFolder(false)}
+                className="w-full text-left rounded-lg border p-3 hover:border-primary/50 hover:bg-muted/40 transition-colors"
+              >
+                <p className="font-medium text-sm">{locale === "pt-BR" ? "Excluir só a pasta" : "Delete folder only"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {locale === "pt-BR"
+                    ? "Os vídeos continuam na biblioteca, apenas sem pasta."
+                    : "The videos stay in the library, just unfiled."}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmDeleteFolder(true)}
+                className="w-full text-left rounded-lg border border-destructive/40 p-3 hover:bg-destructive/10 transition-colors"
+              >
+                <p className="font-medium text-sm text-destructive">
+                  {locale === "pt-BR" ? "Excluir a pasta e os vídeos" : "Delete folder and its videos"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {locale === "pt-BR"
+                    ? `Remove os ${deleteFolderTarget.count} vídeo(s) da biblioteca também.`
+                    : `Removes the ${deleteFolderTarget.count} video(s) from the library as well.`}
+                </p>
+              </button>
+            </div>
+            <div className="px-5 pb-5">
+              <Button variant="ghost" className="w-full" onClick={() => setDeleteFolderTarget(null)}>
+                {locale === "pt-BR" ? "Cancelar" : "Cancel"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showBulkUpload && (
