@@ -9,21 +9,19 @@ import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
-import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
-import { getRequestSession } from "@/lib/dual-auth";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getRequestSession(request);
+    const effectiveUser = await getEffectiveUser();
 
-    if (!session?.user) {
+    if (!effectiveUser) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
-    const userId = getEffectiveUserId(session, request);
-    const userRole = (session.user as any).role;
-    const isPreview = isPreviewRequest(session, request);
+    const userId = effectiveUser.userId;
+    const userRole = effectiveUser.role;
 
     const status = request.nextUrl.searchParams.get("status");
     const startDate = request.nextUrl.searchParams.get("startDate");
@@ -31,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     let whereClause: any = {};
 
-    if (userRole === "PATIENT" || isPreview) {
+    if (userRole === "PATIENT") {
       whereClause.patientId = userId;
     } else {
       // Therapists and admins see all appointments or their assigned ones

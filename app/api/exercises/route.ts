@@ -2,19 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { getEffectiveUserId } from "@/lib/preview-helpers";
-import { getRequestSession } from "@/lib/dual-auth";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 
 export const dynamic = "force-dynamic";
 
 // GET - Patient's prescribed exercises
 export async function GET(req: NextRequest) {
-  const session = await getRequestSession(req);
-  if (!session?.user) {
+  const effectiveUser = await getEffectiveUser();
+  if (!effectiveUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = getEffectiveUserId(session, req);
+  const userId = effectiveUser.userId;
 
   try {
     const prescriptions = await prisma.exercisePrescription.findMany({

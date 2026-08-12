@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { getEffectiveUserId } from '@/lib/preview-helpers';
-import { getRequestSession } from '@/lib/dual-auth';
+import { getEffectiveUser } from '@/lib/get-effective-user';
 
 export const dynamic = 'force-dynamic';
 
 // Patient-facing: get assigned content + published content for their clinic
 export async function GET(req: NextRequest) {
   try {
-    const session = await getRequestSession(req);
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+    const effectiveUser = await getEffectiveUser();
+    if (!effectiveUser) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const user = session.user as any;
-    const effectiveId = getEffectiveUserId(session, req);
-    const clinicId = user.clinicId;
+    const effectiveId = effectiveUser.userId;
+    const clinicUser = await prisma.user.findUnique({ where: { id: effectiveId }, select: { clinicId: true } });
+    const clinicId = clinicUser?.clinicId;
 
     // Get assigned content
     const assignments = await prisma.educationAssignment.findMany({
