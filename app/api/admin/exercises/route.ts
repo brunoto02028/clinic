@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { generateVideoThumbnail } from "@/lib/video-thumbnail";
+import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
 
 export const dynamic = "force-dynamic";
 
@@ -201,7 +201,15 @@ export async function POST(req: NextRequest) {
     }
 
     const durationRaw = formData.get("duration");
-    if (durationRaw) duration = parseInt(durationRaw as string);
+    if (durationRaw) {
+      duration = parseInt(durationRaw as string);
+    } else if (savedVideoPath) {
+      try {
+        duration = await getVideoDuration(savedVideoPath);
+      } catch (durErr: any) {
+        console.error("Duration extraction failed:", durErr.message);
+      }
+    }
 
     const exercise = await prisma.exercise.create({
       data: {

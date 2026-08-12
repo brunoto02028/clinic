@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
-import { generateVideoThumbnail } from "@/lib/video-thumbnail";
+import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
 
 export const dynamic = "force-dynamic";
 
@@ -138,6 +138,14 @@ export async function PATCH(
       updateData.videoUrl = `/uploads/exercises/${uniqueName}`;
       updateData.videoFileName = videoFile.name;
       savedVideoPath = filePath;
+
+      if (durationRaw === null) {
+        try {
+          updateData.duration = await getVideoDuration(filePath);
+        } catch (durErr: any) {
+          console.error("Duration extraction failed:", durErr.message);
+        }
+      }
     } else if (externalVideoUrl !== null) {
       updateData.videoUrl = externalVideoUrl || null;
     }

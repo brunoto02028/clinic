@@ -20,3 +20,15 @@ export async function generateVideoThumbnail(videoPath: string, thumbPath: strin
       });
   });
 }
+
+// Reads the video's real duration (seconds) via ffprobe.
+export async function getVideoDuration(videoPath: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(videoPath, (err, metadata) => {
+      if (err) return reject(err);
+      const seconds = metadata?.format?.duration;
+      if (!seconds) return reject(new Error("ffprobe returned no duration"));
+      resolve(Math.round(seconds));
+    });
+  });
+}
