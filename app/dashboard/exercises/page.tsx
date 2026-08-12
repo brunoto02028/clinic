@@ -404,7 +404,7 @@ function ExerciseRow({
   const [hoverPlaying, setHoverPlaying] = useState(false);
 
   return (
-    <div className="relative px-3 sm:px-5 py-3 sm:py-4 pb-10 sm:pb-4 flex items-start gap-3 sm:gap-4">
+    <div className="relative px-3 sm:px-5 py-3 sm:py-4 pb-16 sm:pb-4 flex items-start gap-3 sm:gap-4">
       {/* Thumbnail / Play */}
       <div
         className={`relative w-16 h-16 sm:w-24 sm:h-24 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden ${
@@ -520,21 +520,33 @@ function ExerciseRow({
           {completing ? T("exercises.completed") : T("exercises.complete")}
         </Button>
       </div>
-      {/* Mobile actions - below content */}
-      <div className="flex sm:hidden gap-2 absolute bottom-3 right-3">
+      {/* Mobile actions — below content. Kept at a real touch-target height
+          (h-11 ≈ 44px) and labelled: this is the main thing a patient does on
+          a phone, and it used to be a bare 28px icon. */}
+      <div className="flex sm:hidden gap-2 absolute bottom-3 left-3 right-3">
         {ex.videoUrl && (
-          <Button variant="outline" size="sm" className="h-7 text-[10px] px-2" onClick={onPlay}>
-            <Play className="h-3 w-3 mr-0.5" /> {T("exercises.watch")}
+          <Button
+            variant="outline"
+            className="h-11 flex-1 text-xs"
+            onClick={onPlay}
+            aria-label={T("exercises.watch")}
+          >
+            <Play className="h-4 w-4 mr-1.5" /> {T("exercises.watch")}
           </Button>
         )}
         <Button
           variant={completing ? "default" : "outline"}
-          size="sm"
-          className={`h-7 text-[10px] px-2 ${completing ? "bg-green-600 hover:bg-green-600" : ""}`}
+          className={`h-11 flex-1 text-xs ${completing ? "bg-green-600 hover:bg-green-600" : ""}`}
           onClick={onComplete}
           disabled={completing}
+          aria-label={completing ? T("exercises.completed") : T("exercises.complete")}
         >
-          {completing ? <CheckCircle2 className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+          {completing ? (
+            <CheckCircle2 className="h-4 w-4 mr-1.5" />
+          ) : (
+            <Check className="h-4 w-4 mr-1.5" />
+          )}
+          {completing ? T("exercises.completed") : T("exercises.complete")}
         </Button>
       </div>
     </div>
@@ -557,6 +569,7 @@ function VideoPlayerModal({
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
   const T = (key: string) => i18nT(key, locale);
+  const [videoFailed, setVideoFailed] = useState(false);
   const ex = prescription.exercise;
   const sets = prescription.sets || ex.defaultSets;
   const reps = prescription.reps || ex.defaultReps;
@@ -596,12 +609,19 @@ function VideoPlayerModal({
                 allowFullScreen
               />
             </div>
+          ) : videoFailed ? (
+            <div className="aspect-video rounded-lg bg-muted flex flex-col items-center justify-center text-center px-6">
+              <Video className="h-10 w-10 text-muted-foreground/40 mb-2" />
+              <p className="text-sm font-medium">{T("exercises.videoUnavailable")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{T("exercises.videoUnavailableHint")}</p>
+            </div>
           ) : (
             <video
               src={ex.videoUrl!}
               controls
               className="w-full rounded-lg"
               autoPlay
+              onError={() => setVideoFailed(true)}
             />
           )}
         </div>

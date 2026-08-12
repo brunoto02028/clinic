@@ -237,7 +237,7 @@ export default function ExercisesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Remove this exercise from the library?")) return;
+    if (!confirm(locale === "pt-BR" ? "Remover este exercício da biblioteca?" : "Remove this exercise from the library?")) return;
     await fetch(`/api/admin/exercises/${id}`, { method: "DELETE" });
     fetchExercises();
   };
@@ -324,7 +324,7 @@ export default function ExercisesPage() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Remove ${selectedIds.size} exercise(s) from the library?`)) return;
+    if (!confirm(locale === "pt-BR" ? `Remover ${selectedIds.size} exercício(s) da biblioteca?` : `Remove ${selectedIds.size} exercise(s) from the library?`)) return;
     setBulkActing(true);
     try {
       await Promise.all(Array.from(selectedIds).map((id) =>
@@ -476,7 +476,7 @@ export default function ExercisesPage() {
           </Button>
           <Button onClick={() => { setEditingExercise(null); setShowForm(true); }}>
             <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Add Exercise</span><span className="sm:hidden">Add</span>
+            <span className="hidden sm:inline">{T("admin.exAdd")}</span><span className="sm:hidden">+</span>
           </Button>
         </div>
       </div>
@@ -486,7 +486,7 @@ export default function ExercisesPage() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search exercises..."
+            placeholder={T("admin.exSearch")}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
@@ -495,11 +495,11 @@ export default function ExercisesPage() {
         <Select value={bodyRegion || "ALL"} onValueChange={(v) => { setBodyRegion(v === "ALL" ? "" : v); setPage(1); }}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Body Region">
-              {bodyRegion ? regionLabel(bodyRegion, locale) : "All Regions"}
+              {bodyRegion ? regionLabel(bodyRegion, locale) : T("admin.exAllRegions")}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">🏥 All Regions</SelectItem>
+            <SelectItem value="ALL">🏥 {T("admin.exAllRegions")}</SelectItem>
             {REGION_GROUPS.map((group) => (
               <SelectGroup key={group.label}>
                 <SelectLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 pt-2">
@@ -515,11 +515,11 @@ export default function ExercisesPage() {
           </SelectContent>
         </Select>
         <Select value={difficulty || "ALL"} onValueChange={(v) => { setDifficulty(v === "ALL" ? "" : v); setPage(1); }}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-[170px]">
             <SelectValue placeholder="Difficulty" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All Levels</SelectItem>
+            <SelectItem value="ALL">{T("admin.exAllLevels")}</SelectItem>
             <SelectItem value="BEGINNER">Beginner</SelectItem>
             <SelectItem value="INTERMEDIATE">Intermediate</SelectItem>
             <SelectItem value="ADVANCED">Advanced</SelectItem>
@@ -530,9 +530,9 @@ export default function ExercisesPage() {
             <SelectValue placeholder="Translation" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">PT: All</SelectItem>
-            <SelectItem value="yes">🇵🇹 Translated</SelectItem>
-            <SelectItem value="no">⚠️ Not translated</SelectItem>
+            <SelectItem value="ALL">{T("admin.exPtAll")}</SelectItem>
+            <SelectItem value="yes">🇵🇹 {T("admin.exPtYes")}</SelectItem>
+            <SelectItem value="no">⚠️ {T("admin.exPtNo")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
@@ -540,18 +540,18 @@ export default function ExercisesPage() {
             <SelectValue placeholder="Sort" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="recent">Newest first</SelectItem>
-            <SelectItem value="name">Name A–Z</SelectItem>
-            <SelectItem value="region">By region</SelectItem>
+            <SelectItem value="recent">{T("admin.exNewest")}</SelectItem>
+            <SelectItem value="name">{T("admin.exNameAZ")}</SelectItem>
+            <SelectItem value="region">{T("admin.exByRegion")}</SelectItem>
           </SelectContent>
         </Select>
         {(search || bodyRegion || difficulty || translatedFilter) && (
           <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setBodyRegion(""); setDifficulty(""); setTranslatedFilter(""); setPage(1); }}>
-            Clear filters
+            {T("admin.exClearFilters")}
           </Button>
         )}
         <div className="ml-auto text-sm text-muted-foreground">
-          {total} exercise{total !== 1 ? "s" : ""}
+          {total} {total !== 1 ? T("admin.exCount") : T("admin.exCountOne")}
         </div>
       </div>
 
@@ -566,17 +566,17 @@ export default function ExercisesPage() {
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading exercises...</span>
+          <span className="ml-2 text-sm text-muted-foreground">{T("admin.exLoading")}</span>
         </div>
       ) : exercises.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-20">
             <Dumbbell className="h-12 w-12 text-muted-foreground/30 mb-4" />
-            <p className="font-medium text-muted-foreground">No exercises found</p>
+            <p className="font-medium text-muted-foreground">{T("admin.exNoneFound")}</p>
             <p className="text-sm text-muted-foreground mt-1">
               {search || bodyRegion || difficulty
-                ? "Try adjusting your filters"
-                : "Click \"Add Exercise\" to create your first exercise"}
+                ? T("admin.exAdjustFilters")
+                : T("admin.exAddFirst")}
             </p>
           </CardContent>
         </Card>
@@ -784,7 +784,7 @@ export default function ExercisesPage() {
           exercises={prescribeExercises}
           collectionName={prescribeCollectionName}
           onClose={() => { setShowPrescribe(false); setPrescribeExercises([]); }}
-          onSaved={() => { setShowPrescribe(false); setPrescribeExercises([]); }}
+          onSaved={() => { setShowPrescribe(false); setPrescribeExercises([]); fetchExercises(); }}
         />
       )}
 
@@ -921,6 +921,7 @@ function ExerciseCard({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onToggleSelect?.(); }}
+            aria-label={selected ? "Desmarcar exercício" : "Selecionar exercício"}
             className={`absolute top-2 left-2 z-10 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
               selected ? "bg-primary border-primary" : "bg-black/40 border-white/70 hover:border-white"
             }`}
