@@ -88,11 +88,20 @@ export async function GET(request: NextRequest) {
       return { start: apptStart, end: apptEnd };
     });
 
-    // Filter out slots that overlap with existing appointments
+    // If the requested date is today, drop slots that have already started —
+    // otherwise a patient can "book" a consultation that's already in the past.
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const isToday = dateStr === todayStr;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Filter out slots that overlap with existing appointments or have already passed today
     const availableSlots = allSlots.filter((slot) => {
       const [sh, sm] = slot.split(":").map(Number);
       const slotStart = sh * 60 + sm;
       const slotEnd = slotStart + duration;
+
+      if (isToday && slotStart <= nowMinutes) return false;
 
       return !occupiedRanges.some(
         (range) => slotStart < range.end && slotEnd > range.start

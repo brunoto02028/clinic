@@ -170,6 +170,9 @@ export default function QuestionsPage() {
     if (!group) { group = { key: k, label: formatDayLabel(item.createdAt, isPt), items: [] }; days.push(group); }
     group.items.push(item);
   });
+  // Day groups stay newest-first, but within a day a conversation should read
+  // oldest-to-newest top-to-bottom — items were pushed in descending order above.
+  days.forEach(d => d.items.reverse());
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-28 space-y-8">
