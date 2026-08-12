@@ -13,11 +13,13 @@ import {
   Sparkles,
   RefreshCw,
   Info,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { useLocale } from "@/hooks/use-locale";
+import { zonedTimeToUtc, getZonedDateString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 type PatientState = "loading" | "new" | "returning" | "active";
 
@@ -26,6 +28,12 @@ interface PatientAppointment {
   dateTime: string;
   status: string;
   treatmentType: string;
+}
+
+interface Therapist {
+  id: string;
+  firstName: string;
+  lastName: string;
 }
 
 export default function BookingForm() {
@@ -45,9 +53,33 @@ export default function BookingForm() {
   const [patientState, setPatientState] = useState<PatientState>("loading");
   const [existingAppointments, setExistingAppointments] = useState<PatientAppointment[]>([]);
   const [totalPastCount, setTotalPastCount] = useState(0);
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
+  const [selectedTherapistId, setSelectedTherapistId] = useState<string>("");
+  const [therapistsChecked, setTherapistsChecked] = useState(false);
 
   useEffect(() => {
+    // Only matters once a second therapist exists — with a single therapist,
+    // this just resolves it explicitly instead of leaving the backend to
+    // guess via an unordered `findFirst`. If the list ever comes back empty
+    // (e.g. a misconfigured clinic), we still proceed without a therapistId
+    // rather than getting stuck — see the effect below.
+    fetch("/api/therapists")
+      .then(r => r.json())
+      .then((data: { therapists?: Therapist[] }) => {
+        const list = data?.therapists ?? [];
+        setTherapists(list);
+        if (list.length > 0) setSelectedTherapistId(list[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setTherapistsChecked(true));
+  }, []);
+
+  useEffect(() => {
+    if (!therapistsChecked) return; // wait for therapist resolution first
     fetchAvailableDates();
+  }, [therapistsChecked, selectedTherapistId]);
+
+  useEffect(() => {
     fetch("/api/patient/service-prices")
       .then(r => r.json())
       .then((data: any[]) => {
@@ -81,17 +113,20 @@ export default function BookingForm() {
   }, []);
 
   const fetchAvailableDates = async () => {
-    const today = new Date();
+    // Enumerate the next 29 calendar days starting "today" in the clinic's
+    // timezone (Europe/London) — not the patient's browser timezone, which
+    // could otherwise shift the whole date list by a day.
+    const todayLondon = getZonedDateString();
     const checks: string[] = [];
     for (let i = 0; i < 29; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() + i);
+      const d = new Date(`${todayLondon}T12:00:00.000Z`); // noon UTC anchor avoids DST-boundary drift
+      d.setUTCDate(d.getUTCDate() + i);
       checks.push(d.toISOString().split("T")[0]);
     }
     try {
       const results = await Promise.all(
         checks.map(date =>
-          fetch(`/api/availability?date=${date}&duration=60`)
+          fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}`)
             .then(r => r.json())
             .catch(() => ({ available: false }))
         )
@@ -109,7 +144,7 @@ export default function BookingForm() {
     setAvailableSlots([]);
     setSelectedTime("");
     try {
-      const res = await fetch(`/api/availability?date=${date}&duration=60`);
+      const res = await fetch(`/api/availability?date=${date}&duration=60&therapistId=${selectedTherapistId}`);
       const data = await res.json();
       setAvailableSlots(data?.slots ?? []);
     } catch {
@@ -122,7 +157,10 @@ export default function BookingForm() {
   const handleConfirmBooking = async () => {
     setLoading(true);
     try {
-      const dateTime = new Date(`${selectedDate}T${selectedTime}:00`);
+      // selectedTime is a clinic wall-clock time (Europe/London), not the
+      // patient's local time — convert explicitly so the appointment lands
+      // on the therapist's actual calendar at the right moment.
+      const dateTime = zonedTimeToUtc(selectedDate, selectedTime);
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,6 +169,7 @@ export default function BookingForm() {
           duration: 60,
           treatmentType: isPt ? "Consulta" : "Consultation",
           price: consultationPrice ?? 0,
+          therapistId: selectedTherapistId || undefined,
         }),
       });
       const data = await res.json();
@@ -206,9 +245,9 @@ export default function BookingForm() {
                 <div key={a.id} className="flex items-center gap-2">
                   <Calendar className="h-3.5 w-3.5 text-amber-400 flex-shrink-0" />
                   <span className="text-xs text-muted-foreground">
-                    {new Date(a.dateTime).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                    {new Date(a.dateTime).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: CLINIC_TIMEZONE })}
                     {" · "}
-                    {new Date(a.dateTime).toLocaleTimeString(isPt ? "pt-BR" : "en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(a.dateTime).toLocaleTimeString(isPt ? "pt-BR" : "en-GB", { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE })}
                     <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${a.status === "CONFIRMED" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
                       {a.status === "CONFIRMED" ? (isPt ? "Confirmada" : "Confirmed") : (isPt ? "Pendente" : "Pending")}
                     </span>
@@ -239,6 +278,35 @@ export default function BookingForm() {
           </div>
         ))}
       </div>
+
+      {/* Therapist selector — only shown when the clinic has more than one therapist */}
+      {step === 1 && therapists.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <User className="h-4 w-4 text-primary" />
+              {isPt ? "Escolha o Terapeuta" : "Choose a Therapist"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {therapists.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTherapistId(t.id)}
+                  className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    selectedTherapistId === t.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {t.firstName} {t.lastName}
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Step 1: Select Date */}
       {step === 1 && (

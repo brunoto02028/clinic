@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
+import { zonedTimeToUtc, getZonedDateTimeLocalString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 import { TREATMENT_OPTIONS } from "@/lib/types";
 
 interface DbTreatmentType {
@@ -266,13 +267,12 @@ export default function AdminAppointmentsPage() {
     }
     setSubmitting(true);
     try {
-      const combinedDateTime = `${createForm.appointmentDate}T${createForm.appointmentTime}:00`;
       const res = await fetch("/api/admin/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientId: createForm.patientId,
-          dateTime: new Date(combinedDateTime).toISOString(),
+          dateTime: zonedTimeToUtc(createForm.appointmentDate, createForm.appointmentTime).toISOString(),
           duration: Number(createForm.duration),
           treatmentType: createForm.treatmentType,
           price: Number(createForm.price),
@@ -328,14 +328,8 @@ export default function AdminAppointmentsPage() {
 
   const openEditDialog = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
-    const localDateTime = new Date(appointment.dateTime);
-    const year = localDateTime.getFullYear();
-    const month = String(localDateTime.getMonth() + 1).padStart(2, '0');
-    const day = String(localDateTime.getDate()).padStart(2, '0');
-    const hours = String(localDateTime.getHours()).padStart(2, '0');
-    const minutes = String(localDateTime.getMinutes()).padStart(2, '0');
-    const formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
-    
+    const formattedDateTime = getZonedDateTimeLocalString(new Date(appointment.dateTime));
+
     setEditForm({
       dateTime: formattedDateTime,
       duration: appointment.duration,
@@ -355,7 +349,7 @@ export default function AdminAppointmentsPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dateTime: new Date(editForm.dateTime).toISOString(),
+          dateTime: zonedTimeToUtc(editForm.dateTime.slice(0, 10), editForm.dateTime.slice(11, 16)).toISOString(),
           duration: Number(editForm.duration),
           treatmentType: editForm.treatmentType,
           price: Number(editForm.price),
@@ -590,7 +584,7 @@ export default function AdminAppointmentsPage() {
                           >
                             <p className="font-medium truncate">{a.patient.firstName} {a.patient.lastName}</p>
                             <p className="truncate opacity-80">{a.treatmentType}</p>
-                            <p className="opacity-60">{new Date(a.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                            <p className="opacity-60">{new Date(a.dateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE })}</p>
                           </button>
                         ))}
                       </div>
@@ -683,6 +677,7 @@ export default function AdminAppointmentsPage() {
                               weekday: "short",
                               day: "numeric",
                               month: "short",
+                              timeZone: CLINIC_TIMEZONE,
                             }
                           )}
                         </span>
@@ -690,7 +685,7 @@ export default function AdminAppointmentsPage() {
                           <Clock className="h-3 w-3" />
                           {new Date(appointment.dateTime).toLocaleTimeString(
                             "en-GB",
-                            { hour: "2-digit", minute: "2-digit" }
+                            { hour: "2-digit", minute: "2-digit", timeZone: CLINIC_TIMEZONE }
                           )}
                         </span>
                         <span>£{appointment.price}</span>

@@ -322,11 +322,13 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
               day: "numeric",
               month: "long",
               year: "numeric",
+              timeZone: CLINIC_TIMEZONE,
             })}{" "}
             {isPt ? "às" : "at"}{" "}
             {new Date(appointment?.dateTime ?? "").toLocaleTimeString(isPt ? "pt-BR" : "en-GB", {
               hour: "2-digit",
               minute: "2-digit",
+              timeZone: CLINIC_TIMEZONE,
             })}
           </p>
         </div>

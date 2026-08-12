@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { getZonedDateString, getZonedMinutesOfDay, zonedTimeToUtc } from "@/lib/clinic-timezone";
 
 // GET: Fetch available time slots for a given date
 // Query params: date (YYYY-MM-DD), therapistId (optional), duration (minutes, default 60)
@@ -21,8 +22,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Date parameter is required" }, { status: 400 });
     }
 
-    const date = new Date(dateStr);
-    const dayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
+    // Anchor at noon UTC so the calendar date is unambiguous regardless of server timezone.
+    const dayOfWeek = new Date(`${dateStr}T12:00:00.000Z`).getUTCDay(); // 0=Sunday, 1=Monday, etc.
+
+    // Clinic's own midnight-to-midnight for this date, not the server's.
+    const dayStart = zonedTimeToUtc(dateStr, "00:00");
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
     // Find therapist — if not specified, find the first available
     let targetTherapistId = therapistId;
@@ -34,6 +39,18 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "No therapist available" }, { status: 400 });
       }
       targetTherapistId = therapist.id;
+    }
+
+    // Blocked day (holiday, absence, training...) takes precedence over the weekly schedule
+    const block = await (prisma as any).therapistBlock.findFirst({
+      where: {
+        therapistId: targetTherapistId,
+        startDate: { lte: dayEnd },
+        endDate: { gte: dayStart },
+      },
+    });
+    if (block) {
+      return NextResponse.json({ slots: [], available: false, reason: "blocked" });
     }
 
     // Get therapist availability for this day of week
@@ -69,9 +86,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Get existing appointments for this date to exclude booked slots
-    const dayStart = new Date(dateStr + "T00:00:00");
-    const dayEnd = new Date(dateStr + "T23:59:59");
-
     const existingAppointments = await prisma.appointment.findMany({
       where: {
         therapistId: targetTherapistId,
@@ -83,17 +97,17 @@ export async function GET(request: NextRequest) {
 
     // Build set of occupied time ranges
     const occupiedRanges = existingAppointments.map((a) => {
-      const apptStart = a.dateTime.getHours() * 60 + a.dateTime.getMinutes();
+      const apptStart = getZonedMinutesOfDay(a.dateTime);
       const apptEnd = apptStart + (a.duration || 60);
       return { start: apptStart, end: apptEnd };
     });
 
-    // If the requested date is today, drop slots that have already started —
-    // otherwise a patient can "book" a consultation that's already in the past.
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const isToday = dateStr === todayStr;
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    // If the requested date is today (in the clinic's own timezone), drop slots
+    // that have already started — otherwise a patient can "book" a consultation
+    // that's already in the past. Compared against Europe/London, not the
+    // server's or patient's own timezone, since that's what the slot times mean.
+    const isToday = dateStr === getZonedDateString();
+    const nowMinutes = getZonedMinutesOfDay();
 
     // Filter out slots that overlap with existing appointments or have already passed today
     const availableSlots = allSlots.filter((slot) => {
