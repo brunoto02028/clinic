@@ -34,7 +34,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const clinicId = (session.user as any)?.clinicId;
+  // A SUPERADMIN in "Global View" has no clinicId on the session — fall back to
+  // the clinic, exactly like the bulk-upload route does, otherwise folders can
+  // never be created from that view.
+  let clinicId = (session.user as any)?.clinicId;
+  if (!clinicId) {
+    const anyClinic = await prisma.clinic.findFirst({ select: { id: true } });
+    clinicId = anyClinic?.id || null;
+  }
   if (!clinicId) {
     return NextResponse.json({ error: "No clinic context" }, { status: 400 });
   }

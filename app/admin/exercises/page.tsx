@@ -179,7 +179,9 @@ export default function ExercisesPage() {
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
-      params.set("limit", isGroupedMode ? "100" : "24");
+      // Grouped mode needs the whole library in one go, since the cards show
+      // per-category counts — a page-sized fetch would silently under-count.
+      params.set("limit", isGroupedMode ? "2000" : "24");
       if (search) params.set("search", search);
       if (bodyRegion) params.set("bodyRegion", bodyRegion);
       if (difficulty) params.set("difficulty", difficulty);
@@ -581,11 +583,14 @@ export default function ExercisesPage() {
       ) : isGroupedMode ? (
         (() => {
           const collections = [
+            // Region cards only hold exercises that aren't filed in a folder —
+            // otherwise a foldered video shows up twice (once here, once in its
+            // folder card) with nothing indicating it's the same exercise.
             ...REGION_GROUPS.map((g) => ({
               key: `region:${g.label}`,
               name: locale === "pt-BR" ? g.labelPt : g.label,
               folder: null as { id: string; name: string } | null,
-              items: exercises.filter((ex) => REGION_TO_GROUP[ex.bodyRegion] === g.label),
+              items: exercises.filter((ex) => !ex.folderId && REGION_TO_GROUP[ex.bodyRegion] === g.label),
             })),
             ...folders.map((f) => ({
               key: `folder:${f.id}`,
@@ -2084,6 +2089,7 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
     // (not just a tag), reusing an existing folder with the same name.
     const folderNameToId: Record<string, string> = {};
     const distinctFolderNames = Array.from(new Set(files.map(f => f.folder).filter(Boolean))) as string[];
+    const failedFolders: string[] = [];
     for (const folderName of distinctFolderNames) {
       try {
         const res = await fetch("/api/admin/exercise-folders", {
@@ -2093,9 +2099,19 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
         });
         const data = await res.json();
         if (res.ok && data.folder) folderNameToId[folderName] = data.folder.id;
+        else failedFolders.push(folderName);
       } catch (err) {
         console.error(`Failed to create/reuse folder "${folderName}":`, err);
+        failedFolders.push(folderName);
       }
+    }
+    // Don't upload into limbo: if the folder couldn't be created the videos
+    // would silently land unfiled, which is exactly what looks like "the
+    // upload went to the wrong place".
+    if (failedFolders.length > 0) {
+      setFiles(prev => prev.map(f => ({ ...f, status: "error", error: `Could not create folder "${failedFolders[0]}"` })));
+      setUploading(false);
+      return;
     }
 
     const formData = new FormData();
