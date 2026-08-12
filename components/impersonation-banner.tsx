@@ -1,24 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Eye, X, ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { Eye, ArrowLeft } from "lucide-react";
 
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-export default function ImpersonationBanner() {
-  const [patientName, setPatientName] = useState<string | null>(null);
+/**
+ * Presentational only. Whether impersonation is genuinely active is decided
+ * server-side in the dashboard layout — reading the client-readable name
+ * cookie here used to show this banner to real patients whose stale cookie
+ * had outlived their admin's session.
+ */
+export default function ImpersonationBanner({ patientName }: { patientName: string }) {
   const [exiting, setExiting] = useState(false);
-
-  useEffect(() => {
-    const name = getCookie("impersonate-patient-name");
-    setPatientName(name);
-  }, []);
-
-  if (!patientName) return null;
 
   const handleExit = async () => {
     setExiting(true);

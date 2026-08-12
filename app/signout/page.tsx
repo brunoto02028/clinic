@@ -10,6 +10,17 @@ export default function SignOutPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
 
+  // Drop any impersonation cookies before leaving, so they can't outlive this
+  // session and follow whoever logs in next on this browser.
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/admin/impersonate", { method: "DELETE" });
+    } catch {
+      // Signing out matters more than the cleanup — carry on either way.
+    }
+    signOut({ callbackUrl: "/login" });
+  };
+
   return (
     <div className="min-h-screen bg-[#0a1628] flex items-center justify-center p-4">
       <Card className="w-full max-w-sm border-white/10 bg-[#0f1d32]">
@@ -31,7 +42,7 @@ export default function SignOutPage() {
             </Button>
             <Button
               className="flex-1 gap-2"
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={handleSignOut}
             >
               <LogOut className="h-4 w-4" /> {isPt ? "Sair" : "Sign Out"}
             </Button>
