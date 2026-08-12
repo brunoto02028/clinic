@@ -450,7 +450,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                           {appointment?.therapist?.firstName ?? ""} {appointment?.therapist?.lastName ?? ""}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {isPt ? "Fisioterapeuta" : "Physiotherapist"}
+                          {isPt ? "Especialista" : "Specialist"}
                         </p>
                       </div>
                     </div>
