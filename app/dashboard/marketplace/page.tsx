@@ -311,7 +311,7 @@ export default function MarketplacePage() {
                           <Input placeholder={isPt ? "Telefone" : "Phone"} value={shippingForm.phone} onChange={(e) => setShippingForm({ ...shippingForm, phone: e.target.value })} className="text-xs h-8" />
                           <Input placeholder={isPt ? "Endereço" : "Address"} value={shippingForm.address} onChange={(e) => setShippingForm({ ...shippingForm, address: e.target.value })} className="text-xs h-8 sm:col-span-2" />
                           <Input placeholder={isPt ? "Cidade" : "City"} value={shippingForm.city} onChange={(e) => setShippingForm({ ...shippingForm, city: e.target.value })} className="text-xs h-8" />
-                          <Input placeholder="Postcode" value={shippingForm.postcode} onChange={(e) => setShippingForm({ ...shippingForm, postcode: e.target.value })} className="text-xs h-8" />
+                          <Input placeholder={isPt ? "CEP" : "Postcode"} value={shippingForm.postcode} onChange={(e) => setShippingForm({ ...shippingForm, postcode: e.target.value })} className="text-xs h-8" />
                         </div>
                       </div>
                     )}

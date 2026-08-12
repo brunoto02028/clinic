@@ -101,7 +101,8 @@ export default function PatientMembershipPage() {
         fetchData();
       }
     } catch (err: any) {
-      toast({ title: isPt ? "Erro" : "Error", description: err.message, variant: "destructive" });
+      console.error(err);
+      toast({ title: isPt ? "Erro" : "Error", description: isPt ? "Não foi possível concluir a operação. Tente novamente." : "Could not complete this action. Please try again.", variant: "destructive" });
     } finally {
       setSubscribing(null);
     }
@@ -116,7 +117,8 @@ export default function PatientMembershipPage() {
       refreshAccess();
       fetchData();
     } catch (err: any) {
-      toast({ title: isPt ? "Erro" : "Error", description: err.message, variant: "destructive" });
+      console.error(err);
+      toast({ title: isPt ? "Erro" : "Error", description: isPt ? "Não foi possível concluir a operação. Tente novamente." : "Could not complete this action. Please try again.", variant: "destructive" });
     }
   };
 

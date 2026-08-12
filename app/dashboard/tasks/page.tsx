@@ -43,7 +43,7 @@ export default function PatientTasksPage() {
       const data = await res.json();
       setTasks(data.tasks || []);
     } catch {
-      toast({ title: "Failed to load tasks", variant: "destructive" });
+      toast({ title: isPt ? "Falha ao carregar tarefas" : "Failed to load tasks", variant: "destructive" });
     }
     setLoading(false);
   };
@@ -61,7 +61,7 @@ export default function PatientTasksPage() {
       toast({ title: isPt ? "Tarefa concluida!" : "Task completed!" });
       fetchTasks();
     } catch {
-      toast({ title: "Error", variant: "destructive" });
+      toast({ title: isPt ? "Erro" : "Error", variant: "destructive" });
     }
   };
 

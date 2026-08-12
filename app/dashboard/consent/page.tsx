@@ -65,7 +65,8 @@ export default function ConsentPage() {
       toast({ title: T("consent.toastTitle"), description: T("consent.toastDesc") });
       setTimeout(() => router.push("/dashboard/screening"), 1200);
     } catch (err: any) {
-      toast({ title: T("common.error"), description: err.message, variant: "destructive" });
+      console.error(err);
+      toast({ title: T("common.error"), description: locale === "pt-BR" ? "Não foi possível concluir a operação. Tente novamente." : "Could not complete this action. Please try again.", variant: "destructive" });
     } finally {
       setSaving(false);
     }

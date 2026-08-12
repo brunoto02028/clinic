@@ -83,7 +83,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
       <button
         className="fixed top-3 left-3 z-50 lg:hidden p-2 rounded-lg bg-white/90 backdrop-blur border border-black/10 shadow-sm"
         onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label="Toggle menu"
+        aria-label={isPt ? "Abrir menu" : "Toggle menu"}
       >
         {mobileOpen ? <X size={18} className="text-[#20242D]" /> : <Menu size={18} className="text-[#20242D]" />}
       </button>
@@ -126,7 +126,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
           background: "#FFFFFF",
           borderRight: "1px solid #E4E3DF",
         }}
-        aria-label="Patient navigation"
+        aria-label={isPt ? "Navegação do paciente" : "Patient navigation"}
       >
         {/* Logo + name */}
         <div

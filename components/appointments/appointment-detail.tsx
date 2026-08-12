@@ -722,7 +722,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                     const res = await fetch("/api/patient/cancellation", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ appointmentId: appointment?.id, reason: cancelReason }),
+                      body: JSON.stringify({ appointmentId: appointment?.id, reason: cancelReason, locale }),
                     });
                     const data = await res.json();
                     setCancelResult(data);

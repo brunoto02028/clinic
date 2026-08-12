@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/use-locale";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -24,6 +25,8 @@ interface Recording {
 
 export default function PatientRecordingsPage() {
   const { toast } = useToast();
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
@@ -75,7 +78,12 @@ export default function PatientRecordingsPage() {
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
     } catch (err: any) {
-      toast({ title: "Microphone access denied", description: err.message, variant: "destructive" });
+      console.error(err);
+      toast({
+        title: isPt ? "Acesso ao microfone negado" : "Microphone access denied",
+        description: isPt ? "Não foi possível acessar o microfone. Verifique as permissões do navegador." : "Could not access the microphone. Please check your browser permissions.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -102,12 +110,20 @@ export default function PatientRecordingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      toast({ title: "Recording sent!", description: "Your physiotherapist will review it before your appointment." });
+      toast({
+        title: isPt ? "Gravação enviada!" : "Recording sent!",
+        description: isPt ? "Seu fisioterapeuta vai ouvir antes da sua consulta." : "Your physiotherapist will review it before your appointment.",
+      });
       setAudioBlob(null);
       setRecordingTime(0);
       fetchRecordings();
     } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      console.error(err);
+      toast({
+        title: isPt ? "Falha no envio" : "Upload failed",
+        description: isPt ? "Não foi possível enviar a gravação. Tente novamente." : "Could not upload the recording. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setUploading(false);
     }
@@ -118,10 +134,10 @@ export default function PatientRecordingsPage() {
 
   const statusBadge = (status: string) => {
     switch (status) {
-      case "pending": return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"><Clock className="h-3 w-3 mr-1" />Processing</Badge>;
-      case "transcribed": return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"><CheckCircle className="h-3 w-3 mr-1" />Ready</Badge>;
-      case "reviewed": return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"><CheckCircle className="h-3 w-3 mr-1" />Reviewed</Badge>;
-      case "used_in_soap": return <Badge variant="secondary" className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400"><CheckCircle className="h-3 w-3 mr-1" />Used in Notes</Badge>;
+      case "pending": return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"><Clock className="h-3 w-3 mr-1" />{isPt ? "Processando" : "Processing"}</Badge>;
+      case "transcribed": return <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Pronto" : "Ready"}</Badge>;
+      case "reviewed": return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Revisado" : "Reviewed"}</Badge>;
+      case "used_in_soap": return <Badge variant="secondary" className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400"><CheckCircle className="h-3 w-3 mr-1" />{isPt ? "Usado nas Notas" : "Used in Notes"}</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
   };
@@ -132,10 +148,10 @@ export default function PatientRecordingsPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
           <Mic className="h-7 w-7 text-violet-600 dark:text-violet-400" />
-          Pre-Consultation Recording
+          {isPt ? "Gravação Pré-Consulta" : "Pre-Consultation Recording"}
         </h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-          Record a message describing your symptoms before your appointment. Your physiotherapist will listen before your session.
+          {isPt ? "Grave uma mensagem descrevendo seus sintomas antes da sua consulta. Seu fisioterapeuta vai ouvir antes da sessão." : "Record a message describing your symptoms before your appointment. Your physiotherapist will listen before your session."}
         </p>
       </div>
 
@@ -144,18 +160,18 @@ export default function PatientRecordingsPage() {
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Mic className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-            <h2 className="font-semibold text-gray-900 dark:text-white">Record Your Symptoms</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white">{isPt ? "Grave Seus Sintomas" : "Record Your Symptoms"}</h2>
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300">
-            Tell us about your pain, symptoms, or concerns. Speak naturally — our AI will transcribe and summarise it for your physiotherapist.
+            {isPt ? "Conte-nos sobre sua dor, sintomas ou preocupações. Fale naturalmente — nossa IA vai transcrever e resumir para o seu fisioterapeuta." : "Tell us about your pain, symptoms, or concerns. Speak naturally — our AI will transcribe and summarise it for your physiotherapist."}
           </p>
 
           <div className="flex items-center gap-3">
             <Select value={language} onValueChange={setLanguage}>
               <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="pt">Portuguese</SelectItem>
+                <SelectItem value="en">{isPt ? "Inglês" : "English"}</SelectItem>
+                <SelectItem value="pt">{isPt ? "Português" : "Portuguese"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -164,18 +180,18 @@ export default function PatientRecordingsPage() {
           <div className="flex items-center gap-4">
             {!isRecording && !audioBlob && (
               <Button onClick={startRecording} className="gap-2 bg-red-600 hover:bg-red-700 text-white">
-                <Mic className="h-4 w-4" /> Start Recording
+                <Mic className="h-4 w-4" /> {isPt ? "Iniciar Gravação" : "Start Recording"}
               </Button>
             )}
 
             {isRecording && (
               <>
                 <Button onClick={stopRecording} variant="destructive" className="gap-2 animate-pulse">
-                  <Square className="h-4 w-4" /> Stop ({formatTime(recordingTime)})
+                  <Square className="h-4 w-4" /> {isPt ? "Parar" : "Stop"} ({formatTime(recordingTime)})
                 </Button>
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-sm font-medium text-red-600 dark:text-red-400">Recording...</span>
+                  <span className="text-sm font-medium text-red-600 dark:text-red-400">{isPt ? "Gravando..." : "Recording..."}</span>
                 </div>
               </>
             )}
@@ -187,10 +203,10 @@ export default function PatientRecordingsPage() {
                 </Badge>
                 <Button onClick={uploadRecording} disabled={uploading} className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  {uploading ? "Sending..." : "Send to Physiotherapist"}
+                  {uploading ? (isPt ? "Enviando..." : "Sending...") : (isPt ? "Enviar ao Fisioterapeuta" : "Send to Physiotherapist")}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => { setAudioBlob(null); setRecordingTime(0); }}>
-                  <Trash2 className="h-4 w-4" /> Discard
+                  <Trash2 className="h-4 w-4" /> {isPt ? "Descartar" : "Discard"}
                 </Button>
               </div>
             )}
@@ -200,7 +216,7 @@ export default function PatientRecordingsPage() {
 
       {/* Previous Recordings */}
       <div className="space-y-3">
-        <h3 className="font-semibold text-gray-900 dark:text-white">Your Recordings</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-white">{isPt ? "Suas Gravações" : "Your Recordings"}</h3>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -209,8 +225,8 @@ export default function PatientRecordingsPage() {
         ) : recordings.length === 0 ? (
           <Card className="py-12 text-center">
             <MicOff className="h-10 w-10 mx-auto text-gray-400 dark:text-gray-600 mb-3" />
-            <p className="text-gray-600 dark:text-gray-400">No recordings yet</p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Record your symptoms above before your next appointment</p>
+            <p className="text-gray-600 dark:text-gray-400">{isPt ? "Nenhuma gravação ainda" : "No recordings yet"}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">{isPt ? "Grave seus sintomas acima antes da sua próxima consulta" : "Record your symptoms above before your next appointment"}</p>
           </Card>
         ) : (
           recordings.map((rec) => (
@@ -226,7 +242,7 @@ export default function PatientRecordingsPage() {
                         </span>
                       )}
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(rec.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(rec.createdAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
 

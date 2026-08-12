@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { RefreshCw, AlertTriangle } from "lucide-react";
+import { useLocale } from "@/hooks/use-locale";
 
 export default function DashboardError({
   error,
@@ -10,6 +11,9 @@ export default function DashboardError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
+
   useEffect(() => {
     console.error("[DashboardError]", error);
   }, [error]);
@@ -31,12 +35,14 @@ export default function DashboardError({
         </div>
         <div>
           <h2 className="text-lg font-bold text-foreground mb-2">
-            {isChunkError ? "New version available" : "Something went wrong"}
+            {isChunkError
+              ? (isPt ? "Nova versão disponível" : "New version available")
+              : (isPt ? "Algo deu errado" : "Something went wrong")}
           </h2>
           <p className="text-muted-foreground text-sm">
             {isChunkError
-              ? "The app has been updated. Please refresh to continue."
-              : "An unexpected error occurred. Your data is safe."}
+              ? (isPt ? "O aplicativo foi atualizado. Atualize a página para continuar." : "The app has been updated. Please refresh to continue.")
+              : (isPt ? "Ocorreu um erro inesperado. Seus dados estão seguros." : "An unexpected error occurred. Your data is safe.")}
           </p>
           {!isChunkError && error?.message && (
             <p className="text-xs text-red-400 mt-2 font-mono bg-red-500/10 p-2 rounded">
@@ -50,13 +56,13 @@ export default function DashboardError({
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
-            Refresh Page
+            {isPt ? "Atualizar Página" : "Refresh Page"}
           </button>
           <button
             onClick={reset}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Try again
+            {isPt ? "Tentar novamente" : "Try again"}
           </button>
         </div>
       </div>

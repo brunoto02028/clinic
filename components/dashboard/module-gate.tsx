@@ -118,7 +118,7 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
               {(locale === "pt-BR" ? moduleDef?.labelPt : moduleDef?.label) || T("gate.lockedResource")}
             </h2>
             <p className="text-sm text-muted-foreground mb-2">
-              {moduleDef?.description || T("gate.lockedDesc")}
+              {(locale === "pt-BR" ? moduleDef?.descriptionPt : moduleDef?.description) || T("gate.lockedDesc")}
             </p>
             <p className="text-xs text-muted-foreground mb-6">
               {T("gate.upgradeDesc")}

@@ -87,7 +87,7 @@ interface DeviceInfo {
   minYearSupported: number;
 }
 
-function getDeviceInfo(): DeviceInfo {
+function getDeviceInfo(isPt: boolean): DeviceInfo {
   if (typeof navigator === "undefined") return { model: "Unknown", os: "Unknown", hasTorch: false, instructions: "", isTablet: false, cameraPosition: "top-left", isOldDevice: false, oldDeviceWarning: "", brand: "Unknown", minYearSupported: 2018 };
   const ua = navigator.userAgent;
   let model = "your phone";
@@ -121,13 +121,17 @@ function getDeviceInfo(): DeviceInfo {
       cameraPosition = "top-left corner";
       if (iphoneVersion > 0 && iphoneVersion < 7) {
         isOldDevice = true;
-        oldDeviceWarning = `iPhone ${iphoneVersion} (released before 2016) may not support reliable PPG measurement. For accurate readings, we recommend iPhone 7 or newer (2016+). The flash LED may be too dim and the camera quality insufficient for blood flow detection.`;
+        oldDeviceWarning = isPt
+          ? `iPhone ${iphoneVersion} (lançado antes de 2016) pode não suportar medição PPG confiável. Para leituras precisas, recomendamos iPhone 7 ou mais recente (2016+). O flash LED pode ser muito fraco e a qualidade da câmera insuficiente para detectar o fluxo sanguíneo.`
+          : `iPhone ${iphoneVersion} (released before 2016) may not support reliable PPG measurement. For accurate readings, we recommend iPhone 7 or newer (2016+). The flash LED may be too dim and the camera quality insufficient for blood flow detection.`;
       }
     }
   } else if (/iPad/.test(ua)) {
     os = "iOS"; brand = "Apple"; model = "iPad"; hasTorch = false; isTablet = true;
     cameraPosition = "top-centre (back)";
-    oldDeviceWarning = "iPads have limited flash support. For best results, use an iPhone or Android phone with a rear flash LED.";
+    oldDeviceWarning = isPt
+      ? "iPads têm suporte limitado a flash. Para melhores resultados, use um iPhone ou Android com flash LED traseiro."
+      : "iPads have limited flash support. For best results, use an iPhone or Android phone with a rear flash LED.";
     isOldDevice = true;
   } else if (/Android/.test(ua)) {
     os = "Android";
@@ -150,7 +154,9 @@ function getDeviceInfo(): DeviceInfo {
       const gMatch = model.match(/SM-G(\d{3})/);
       if (gMatch && parseInt(gMatch[1]) < 950) {
         isOldDevice = true;
-        oldDeviceWarning = `${model} may be a pre-2018 model. For accurate PPG readings, we recommend Samsung Galaxy S9 (2018) or newer, or Galaxy A50 (2019) or newer.`;
+        oldDeviceWarning = isPt
+          ? `${model} pode ser um modelo anterior a 2018. Para leituras PPG precisas, recomendamos Samsung Galaxy S9 (2018) ou mais recente, ou Galaxy A50 (2019) ou mais recente.`
+          : `${model} may be a pre-2018 model. For accurate PPG readings, we recommend Samsung Galaxy S9 (2018) or newer, or Galaxy A50 (2019) or newer.`;
       }
     } else if (/pixel/i.test(ua) || /pixel/i.test(model)) {
       brand = "Google";
@@ -180,7 +186,9 @@ function getDeviceInfo(): DeviceInfo {
       brand = "LG";
       cameraPosition = "top-centre";
       isOldDevice = true;
-      oldDeviceWarning = "LG has discontinued phone production. If your device is from before 2020, PPG readings may be less accurate.";
+      oldDeviceWarning = isPt
+        ? "A LG descontinuou a produção de celulares. Se o seu aparelho é anterior a 2020, as leituras PPG podem ser menos precisas."
+        : "LG has discontinued phone production. If your device is from before 2020, PPG readings may be less accurate.";
     }
 
     // Generic old Android detection via API level
@@ -188,7 +196,9 @@ function getDeviceInfo(): DeviceInfo {
     const androidVersion = apiMatch ? parseInt(apiMatch[1]) : 0;
     if (androidVersion > 0 && androidVersion < 8) {
       isOldDevice = true;
-      oldDeviceWarning = `Android ${androidVersion} detected. For reliable PPG measurement, we recommend Android 8.0 (Oreo, 2017) or newer with a quality rear camera and flash LED. Older devices may have insufficient camera/flash quality.`;
+      oldDeviceWarning = isPt
+        ? `Android ${androidVersion} detectado. Para medição PPG confiável, recomendamos Android 8.0 (Oreo, 2017) ou mais recente, com câmera traseira e flash LED de qualidade. Aparelhos mais antigos podem ter câmera/flash insuficientes.`
+        : `Android ${androidVersion} detected. For reliable PPG measurement, we recommend Android 8.0 (Oreo, 2017) or newer with a quality rear camera and flash LED. Older devices may have insufficient camera/flash quality.`;
     }
 
     if (/tablet|SM-T|Tab/i.test(ua)) { isTablet = true; hasTorch = false; }
@@ -196,36 +206,50 @@ function getDeviceInfo(): DeviceInfo {
     os = "iOS"; brand = "Apple"; model = "iPad"; hasTorch = false; isTablet = true;
     cameraPosition = "top-centre (back)";
     isOldDevice = true;
-    oldDeviceWarning = "iPads have limited flash support. Use an iPhone or Android phone for best results.";
+    oldDeviceWarning = isPt
+      ? "iPads têm suporte limitado a flash. Use um iPhone ou Android para melhores resultados."
+      : "iPads have limited flash support. Use an iPhone or Android phone for best results.";
   }
 
   // Build detailed instructions based on brand and camera position
   let instructions = "";
   if (isTablet) {
-    instructions = `On ${model}, the rear camera is at the ${cameraPosition}. Place your index fingertip firmly over the camera lens. Note: tablets may have limited flash support — for best results, use a phone.`;
+    instructions = isPt
+      ? `No ${model}, a câmera traseira fica em ${cameraPosition}. Coloque a ponta do dedo indicador firmemente sobre a lente da câmera. Nota: tablets podem ter suporte limitado a flash — para melhores resultados, use um celular.`
+      : `On ${model}, the rear camera is at the ${cameraPosition}. Place your index fingertip firmly over the camera lens. Note: tablets may have limited flash support — for best results, use a phone.`;
   } else if (brand === "Apple") {
-    instructions = `On ${model}, the rear camera and flash (LED) are at the ${cameraPosition} of the back. Place your index fingertip firmly covering BOTH the main camera lens and the flash LED completely. The flash will illuminate your fingertip to detect blood flow.`;
+    instructions = isPt
+      ? `No ${model}, a câmera traseira e o flash (LED) ficam em ${cameraPosition} da parte de trás. Coloque a ponta do dedo indicador firmemente cobrindo A LENTE DA CÂMERA E O FLASH LED completamente. O flash vai iluminar seu dedo para detectar o fluxo sanguíneo.`
+      : `On ${model}, the rear camera and flash (LED) are at the ${cameraPosition} of the back. Place your index fingertip firmly covering BOTH the main camera lens and the flash LED completely. The flash will illuminate your fingertip to detect blood flow.`;
   } else if (brand === "Samsung") {
-    instructions = `On your Samsung ${model}, the camera and flash are at the ${cameraPosition} of the back. Place your index fingertip firmly covering BOTH the main (largest) camera lens and the flash LED. The flash should activate automatically.`;
+    instructions = isPt
+      ? `No seu Samsung ${model}, a câmera e o flash ficam em ${cameraPosition} da parte de trás. Coloque a ponta do dedo indicador firmemente cobrindo A LENTE DA CÂMERA PRINCIPAL (a maior) E O FLASH LED. O flash deve ativar automaticamente.`
+      : `On your Samsung ${model}, the camera and flash are at the ${cameraPosition} of the back. Place your index fingertip firmly covering BOTH the main (largest) camera lens and the flash LED. The flash should activate automatically.`;
   } else if (brand === "Google") {
-    instructions = `On your Pixel ${model}, the camera and flash are at the ${cameraPosition}. Place your index fingertip firmly covering both the main camera lens and the flash LED.`;
+    instructions = isPt
+      ? `No seu Pixel ${model}, a câmera e o flash ficam em ${cameraPosition}. Coloque a ponta do dedo indicador firmemente cobrindo a lente da câmera principal e o flash LED.`
+      : `On your Pixel ${model}, the camera and flash are at the ${cameraPosition}. Place your index fingertip firmly covering both the main camera lens and the flash LED.`;
   } else if (os === "Android") {
-    instructions = `On your ${brand} ${model}, the camera and flash are at the ${cameraPosition} of the back. Place your index fingertip firmly covering BOTH the main camera lens and the flash LED.`;
+    instructions = isPt
+      ? `No seu ${brand} ${model}, a câmera e o flash ficam em ${cameraPosition} da parte de trás. Coloque a ponta do dedo indicador firmemente cobrindo A LENTE DA CÂMERA E O FLASH LED.`
+      : `On your ${brand} ${model}, the camera and flash are at the ${cameraPosition} of the back. Place your index fingertip firmly covering BOTH the main camera lens and the flash LED.`;
   } else {
-    instructions = "Place your index fingertip firmly covering both the rear camera lens and the flash LED on the back of your device.";
+    instructions = isPt
+      ? "Coloque a ponta do dedo indicador firmemente cobrindo a lente da câmera traseira e o flash LED na parte de trás do seu aparelho."
+      : "Place your index fingertip firmly covering both the rear camera lens and the flash LED on the back of your device.";
   }
 
   return { model, os, hasTorch, instructions, isTablet, cameraPosition, isOldDevice, oldDeviceWarning, brand, minYearSupported };
 }
 
 // ─── PPG Signal Analysis: Arrhythmia Detection + HRV ───
-function analyzePPGSignal(samples: number[], fps: number): PPGAnalysis {
+function analyzePPGSignal(samples: number[], fps: number, isPt: boolean): PPGAnalysis {
   const n = samples.length;
   if (n < 60) {
     return {
       heartRate: 0, rrIntervals: [], peaks: [], sdnn: 0, rmssd: 0, pnn50: 0,
-      rhythmClassification: "NORMAL_SINUS", rhythmLabel: "Insufficient Data", rhythmColor: "text-muted-foreground",
-      rhythmDescription: "Not enough data collected for analysis.", confidence: 0,
+      rhythmClassification: "NORMAL_SINUS", rhythmLabel: isPt ? "Dados Insuficientes" : "Insufficient Data", rhythmColor: "text-muted-foreground",
+      rhythmDescription: isPt ? "Dados insuficientes coletados para análise." : "Not enough data collected for analysis.", confidence: 0,
       waveform: samples, timestamps: samples.map((_, i) => i / fps * 1000),
     };
   }
@@ -330,49 +354,59 @@ function analyzePPGSignal(samples: number[], fps: number): PPGAnalysis {
 
   // Rhythm Classification
   let rhythmClassification: PPGAnalysis["rhythmClassification"] = "NORMAL_SINUS";
-  let rhythmLabel = "Normal Sinus Rhythm";
+  let rhythmLabel = isPt ? "Ritmo Sinusal Normal" : "Normal Sinus Rhythm";
   let rhythmColor = "text-emerald-400";
-  let rhythmDescription = "Heart rhythm appears regular with normal intervals between beats.";
+  let rhythmDescription = isPt ? "O ritmo cardíaco parece regular, com intervalos normais entre os batimentos." : "Heart rhythm appears regular with normal intervals between beats.";
   let confidence = 0.7;
 
   if (rrIntervals.length < 5) {
     rhythmClassification = "NORMAL_SINUS";
-    rhythmLabel = "Insufficient Beats";
+    rhythmLabel = isPt ? "Batimentos Insuficientes" : "Insufficient Beats";
     rhythmColor = "text-muted-foreground";
-    rhythmDescription = "Not enough heartbeats detected for reliable rhythm analysis.";
+    rhythmDescription = isPt ? "Batimentos insuficientes detectados para uma análise de ritmo confiável." : "Not enough heartbeats detected for reliable rhythm analysis.";
     confidence = 0.2;
   } else if (heartRate > 100) {
     rhythmClassification = "TACHYCARDIA";
-    rhythmLabel = "Tachycardia Detected";
+    rhythmLabel = isPt ? "Taquicardia Detectada" : "Tachycardia Detected";
     rhythmColor = "text-orange-400";
-    rhythmDescription = `Heart rate of ${heartRate} bpm is above normal resting range (60-100 bpm). This may be due to exercise, stress, caffeine, or a medical condition.`;
+    rhythmDescription = isPt
+      ? `Frequência cardíaca de ${heartRate} bpm está acima da faixa normal de repouso (60-100 bpm). Isso pode ser devido a exercício, estresse, cafeína ou uma condição médica.`
+      : `Heart rate of ${heartRate} bpm is above normal resting range (60-100 bpm). This may be due to exercise, stress, caffeine, or a medical condition.`;
     confidence = 0.75;
   } else if (heartRate < 60) {
     rhythmClassification = "BRADYCARDIA";
-    rhythmLabel = "Bradycardia Detected";
+    rhythmLabel = isPt ? "Bradicardia Detectada" : "Bradycardia Detected";
     rhythmColor = "text-blue-400";
-    rhythmDescription = `Heart rate of ${heartRate} bpm is below normal resting range. This can be normal for athletes, or may indicate a conduction issue.`;
+    rhythmDescription = isPt
+      ? `Frequência cardíaca de ${heartRate} bpm está abaixo da faixa normal de repouso. Isso pode ser normal em atletas, ou pode indicar um problema de condução.`
+      : `Heart rate of ${heartRate} bpm is below normal resting range. This can be normal for athletes, or may indicate a conduction issue.`;
     confidence = 0.7;
   } else if (cvRR > 15 && pnn50 > 30 && sdnn > 80) {
     rhythmClassification = "POSSIBLE_AFIB";
-    rhythmLabel = "Irregular Rhythm — Possible AFib";
+    rhythmLabel = isPt ? "Ritmo Irregular — Possível Fibrilação Atrial" : "Irregular Rhythm — Possible AFib";
     rhythmColor = "text-red-400";
-    rhythmDescription = `High variability detected (SDNN: ${Math.round(sdnn)}ms, CV: ${cvRR.toFixed(1)}%). R-R intervals are irregularly irregular, which may indicate atrial fibrillation. Please consult a cardiologist.`;
+    rhythmDescription = isPt
+      ? `Alta variabilidade detectada (SDNN: ${Math.round(sdnn)}ms, CV: ${cvRR.toFixed(1)}%). Os intervalos R-R estão irregularmente irregulares, o que pode indicar fibrilação atrial. Consulte um cardiologista.`
+      : `High variability detected (SDNN: ${Math.round(sdnn)}ms, CV: ${cvRR.toFixed(1)}%). R-R intervals are irregularly irregular, which may indicate atrial fibrillation. Please consult a cardiologist.`;
     confidence = 0.6;
   } else if (cvRR > 10 || pnn50 > 20) {
     rhythmClassification = "IRREGULAR";
-    rhythmLabel = "Mildly Irregular Rhythm";
+    rhythmLabel = isPt ? "Ritmo Levemente Irregular" : "Mildly Irregular Rhythm";
     rhythmColor = "text-amber-400";
-    rhythmDescription = `Some variability detected in beat-to-beat intervals (SDNN: ${Math.round(sdnn)}ms). This may be normal respiratory sinus arrhythmia or indicate premature beats.`;
+    rhythmDescription = isPt
+      ? `Alguma variabilidade detectada nos intervalos entre batimentos (SDNN: ${Math.round(sdnn)}ms). Isso pode ser uma arritmia sinusal respiratória normal ou indicar batimentos prematuros.`
+      : `Some variability detected in beat-to-beat intervals (SDNN: ${Math.round(sdnn)}ms). This may be normal respiratory sinus arrhythmia or indicate premature beats.`;
     confidence = 0.6;
   } else {
     // Check for premature beats (isolated short R-R intervals)
     const shortRR = rrIntervals.filter(rr => rr < medianRR * 0.75);
     if (shortRR.length > 1 && shortRR.length < rrIntervals.length * 0.3) {
       rhythmClassification = "PREMATURE_BEATS";
-      rhythmLabel = "Possible Premature Beats";
+      rhythmLabel = isPt ? "Possíveis Batimentos Prematuros" : "Possible Premature Beats";
       rhythmColor = "text-amber-400";
-      rhythmDescription = `Detected ${shortRR.length} beat(s) with shorter-than-normal intervals, which may indicate premature atrial or ventricular contractions (PACs/PVCs).`;
+      rhythmDescription = isPt
+        ? `Detectado(s) ${shortRR.length} batimento(s) com intervalos mais curtos que o normal, o que pode indicar contrações atriais ou ventriculares prematuras (PACs/PVCs).`
+        : `Detected ${shortRR.length} beat(s) with shorter-than-normal intervals, which may indicate premature atrial or ventricular contractions (PACs/PVCs).`;
       confidence = 0.55;
     } else {
       confidence = Math.min(0.85, 0.5 + (rrIntervals.length / 30) * 0.2);
@@ -753,6 +787,7 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
   deviceInfo: DeviceInfo;
 }) {
   const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const { toast } = useToast();
   const T = (key: string) => i18nT(key, locale);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -926,7 +961,7 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
         // Measurement complete — run full analysis
         const rawSamples = samplesRef.current.map(s => s.red);
         const fps = fpsRef.current || 30;
-        const analysis = analyzePPGSignal(rawSamples, fps);
+        const analysis = analyzePPGSignal(rawSamples, fps, isPt);
 
         const finalHR = analysis.heartRate || heartRate || 72;
         const amplitude = rawSamples.length > 0 ? Math.max(...rawSamples) - Math.min(...rawSamples) : 0;
@@ -1081,7 +1116,7 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
             <p className="text-xs font-semibold text-center text-primary mb-3">{T("bp.diagramTitle")}</p>
             <div className="flex items-center justify-center gap-6">
               {/* Phone back view */}
-              <svg viewBox="0 0 120 200" className="w-24 h-40" aria-label="Phone camera diagram">
+              <svg viewBox="0 0 120 200" className="w-24 h-40" aria-label={isPt ? "Diagrama da câmera do celular" : "Phone camera diagram"}>
                 {/* Phone body */}
                 <rect x="10" y="5" width="100" height="190" rx="12" fill="#1e293b" stroke="#475569" strokeWidth="2" />
                 {/* Camera module (top-left, iPhone style) */}
@@ -1291,6 +1326,7 @@ function PPGCamera({ onResult, onCancel, deviceInfo }: {
 export default function BloodPressurePage() {
   const { toast } = useToast();
   const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const T = (key: string) => i18nT(key, locale);
   const [readings, setReadings] = useState<BPReading[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1313,7 +1349,7 @@ export default function BloodPressurePage() {
   const [manualHR, setManualHR] = useState("");
   const [manualNotes, setManualNotes] = useState("");
 
-  const deviceInfo = useMemo(() => getDeviceInfo(), []);
+  const deviceInfo = useMemo(() => getDeviceInfo(isPt), [isPt]);
 
   const fetchReadings = useCallback(async () => {
     try {
