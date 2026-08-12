@@ -37,7 +37,10 @@ if (-not $SkipLocal) {
   try {
     $running = docker inspect $DockerLocal --format "{{.State.Running}}" 2>$null
     if ($running -ne "true") { throw "Docker container '$DockerLocal' is not running" }
-    docker exec $DockerLocal pg_dump -U $LocalDbUser --no-owner --no-acl $LocalDbName | Out-File $outFile -Encoding UTF8
+    # Write via .NET rather than Out-File: PowerShell 5.1's -Encoding UTF8
+    # prepends a BOM, which psql treats as part of the first statement.
+    $dump = docker exec $DockerLocal pg_dump -U $LocalDbUser --no-owner --no-acl $LocalDbName
+    [System.IO.File]::WriteAllLines($outFile, $dump, (New-Object System.Text.UTF8Encoding $false))
     $sizeKB = [math]::Round((Get-Item $outFile).Length / 1024, 1)
     Write-OK "local-db.sql ($sizeKB KB)"
   } catch {
@@ -69,7 +72,10 @@ if (-not $SkipProd) {
     }
 
     $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-    docker run --rm postgres:18-alpine pg_dump $prodUrl --no-owner --no-acl 1>$outFile 2>$errFile
+    # pg_dump writes straight into a mounted volume instead of coming back
+    # through PowerShell. `1>` here produced UTF-16LE, which psql cannot read —
+    # every prod backup taken this way was silently unrestorable.
+    docker run --rm -v "${BackupDir}:/backup" postgres:18-alpine pg_dump $prodUrl --no-owner --no-acl -f /backup/prod-db.sql 2>$errFile
     $ErrorActionPreference = $prev
 
     $dumpErr = Get-Content $errFile -Raw -ErrorAction SilentlyContinue
