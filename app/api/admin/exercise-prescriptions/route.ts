@@ -91,8 +91,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
+    // Skip exercises the patient already has active — prescribing a whole
+    // folder twice would otherwise show the same video repeated in their list.
+    const existing = await prisma.exercisePrescription.findMany({
+      where: {
+        patientId,
+        isActive: true,
+        exerciseId: { in: exercises.map((ex: any) => ex.exerciseId) },
+      },
+      select: { exerciseId: true },
+    });
+    const alreadyPrescribed = new Set(existing.map((e) => e.exerciseId));
+    const toCreate = exercises.filter((ex: any) => !alreadyPrescribed.has(ex.exerciseId));
+    const skipped = exercises.length - toCreate.length;
+
+    if (toCreate.length === 0) {
+      return NextResponse.json({ prescriptions: [], count: 0, skipped }, { status: 200 });
+    }
+
     const created = await prisma.$transaction(
-      exercises.map((ex: any) =>
+      toCreate.map((ex: any) =>
         prisma.exercisePrescription.create({
           data: {
             clinicId,
@@ -112,7 +130,7 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    return NextResponse.json({ prescriptions: created, count: created.length }, { status: 201 });
+    return NextResponse.json({ prescriptions: created, count: created.length, skipped }, { status: 201 });
   } catch (err: any) {
     console.error("Prescription POST error:", err);
     return NextResponse.json({ error: "Failed to create prescriptions" }, { status: 500 });

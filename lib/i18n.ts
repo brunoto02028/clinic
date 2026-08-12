@@ -767,6 +767,8 @@ const translations: Record<string, Record<Locale, string>> = {
   "exercises.exercisesLabel": { "en-GB": "Exercises", "pt-BR": "Exercícios" },
   "exercises.bodyRegions": { "en-GB": "Body Regions", "pt-BR": "Regiões do Corpo" },
   "exercises.bodyRegion": { "en-GB": "Body Region", "pt-BR": "Região do Corpo" },
+  "exercises.groups": { "en-GB": "Groups", "pt-BR": "Grupos" },
+  "exercises.group": { "en-GB": "Group", "pt-BR": "Grupo" },
   "exercises.completedLabel": { "en-GB": "Completed", "pt-BR": "Concluídos" },
   "exercises.withVideo": { "en-GB": "With Video", "pt-BR": "Com Vídeo" },
   "exercises.prescribed": { "en-GB": "prescribed across", "pt-BR": "prescritos em" },
