@@ -51,6 +51,16 @@ export async function GET(
   const ext = path.extname(resolvedPath).toLowerCase();
   const contentType = CONTENT_TYPES[ext] || "application/octet-stream";
   const fileSize = statSync(resolvedPath).size;
+  const isVideo = contentType.startsWith("video/");
+
+  // Cloudflare caches .mp4 by extension and then answers Range requests with a
+  // plain 200, which Safari refuses to play — verified by comparing the origin
+  // (206 + Content-Range) against the same request through the edge (200).
+  // Marking video uncacheable makes the edge pass the range through. Images
+  // keep their long cache.
+  const cacheControl = isVideo
+    ? "private, no-store, no-transform"
+    : "public, max-age=31536000";
 
   // Safari (iOS/iPadOS especially) will not play a video unless the server
   // honours Range requests — it probes with one and gives up on a plain 200,
@@ -86,7 +96,7 @@ export async function GET(
           "Content-Length": String(end - start + 1),
           "Content-Range": `bytes ${start}-${end}/${fileSize}`,
           "Accept-Ranges": "bytes",
-          "Cache-Control": "public, max-age=31536000",
+          "Cache-Control": cacheControl,
         },
       });
     }
@@ -98,7 +108,7 @@ export async function GET(
       "Content-Type": contentType,
       "Content-Length": String(fileSize),
       "Accept-Ranges": "bytes",
-      "Cache-Control": "public, max-age=31536000",
+      "Cache-Control": cacheControl,
     },
   });
 }
