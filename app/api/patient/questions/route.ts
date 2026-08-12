@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     }).join("");
 
     await sendEmail({
-      to: "brunotoaz@gmail.com",
+      to: process.env.ADMIN_EMAIL || "brunotoaz@gmail.com",
       subject: `✅ ${patientName} respondeu às perguntas`,
       html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#1a6b6b;">Respostas recebidas</h2>
