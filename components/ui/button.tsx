@@ -13,11 +13,11 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md shadow-red-500/20 hover:shadow-lg",
         outline:
-          "border border-secondary/30 bg-transparent text-secondary hover:bg-secondary/10 hover:border-secondary/50 hover:shadow-[0_0_15px_hsl(var(--secondary)/0.08)] transition-all",
+          "border border-primary/30 bg-transparent text-primary hover:bg-primary/10 hover:border-primary/50 hover:shadow-[0_0_15px_hsl(var(--primary)/0.08)] transition-all",
         secondary:
-          "bg-primary/10 text-secondary border border-primary/20 hover:bg-primary/20 hover:border-secondary/40 shadow-sm hover:shadow-md transition-all",
+          "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 hover:border-primary/40 shadow-sm hover:shadow-md transition-all",
         ghost: "hover:bg-white/5 hover:text-foreground",
-        link: "text-secondary underline-offset-4 hover:underline hover:text-secondary/70",
+        link: "text-primary underline-offset-4 hover:underline hover:text-primary/70",
         success:
           "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-500/20 hover:shadow-lg",
         warning:
