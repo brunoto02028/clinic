@@ -766,9 +766,11 @@ const translations: Record<string, Record<Locale, string>> = {
   "exercises.loading": { "en-GB": "Loading your exercises...", "pt-BR": "Carregando seus exercícios..." },
   "exercises.exercisesLabel": { "en-GB": "Exercises", "pt-BR": "Exercícios" },
   "exercises.bodyRegions": { "en-GB": "Body Regions", "pt-BR": "Regiões do Corpo" },
+  "exercises.bodyRegion": { "en-GB": "Body Region", "pt-BR": "Região do Corpo" },
   "exercises.completedLabel": { "en-GB": "Completed", "pt-BR": "Concluídos" },
   "exercises.withVideo": { "en-GB": "With Video", "pt-BR": "Com Vídeo" },
   "exercises.prescribed": { "en-GB": "prescribed across", "pt-BR": "prescritos em" },
+  "exercises.prescribedSingular": { "en-GB": "prescribed across", "pt-BR": "prescrito em" },
   "exercises.exercise": { "en-GB": "exercise", "pt-BR": "exercício" },
   "exercises.exercisePlural": { "en-GB": "exercises", "pt-BR": "exercícios" },
   "exercises.completedCount": { "en-GB": "Completed", "pt-BR": "Concluído" },
@@ -776,6 +778,8 @@ const translations: Record<string, Record<Locale, string>> = {
   "exercises.therapistNotes": { "en-GB": "Therapist Notes", "pt-BR": "Notas do Terapeuta" },
   "exercises.markedComplete": { "en-GB": "Marked as complete", "pt-BR": "Marcado como concluído" },
   "exercises.undo": { "en-GB": "Undo", "pt-BR": "Desfazer" },
+  "exercises.undoConfirmTitle": { "en-GB": "Undo a completion?", "pt-BR": "Desfazer uma conclusão?" },
+  "exercises.undoConfirmDesc": { "en-GB": "This will reduce your completed count for this exercise by one. Use this if you tapped complete by mistake.", "pt-BR": "Isso vai reduzir em um a contagem de vezes concluído deste exercício. Use se você marcou como concluído sem querer." },
 
   // ─── Patient Body Assessments Page ───
   "bodyAssessment.title": { "en-GB": "Body Assessments", "pt-BR": "Avaliações Corporais" },

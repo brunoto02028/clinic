@@ -23,6 +23,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
@@ -122,6 +132,7 @@ export default function PatientExercisesPage() {
   const [activeVideo, setActiveVideo] = useState<Prescription | null>(null);
   const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set());
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [undoConfirmId, setUndoConfirmId] = useState<string | null>(null);
 
   const fetchExercises = useCallback(async () => {
     setLoading(true);
@@ -249,7 +260,7 @@ export default function PatientExercisesPage() {
       <div>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{T("exercises.myExercises")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {prescriptions.length} {prescriptions.length !== 1 ? T("exercises.exercisePlural") : T("exercises.exercise")} {T("exercises.prescribed")} {orderedRegions.length} {T("exercises.bodyRegions").toLowerCase()}
+          {prescriptions.length} {prescriptions.length !== 1 ? T("exercises.exercisePlural") : T("exercises.exercise")} {prescriptions.length !== 1 ? T("exercises.prescribed") : T("exercises.prescribedSingular")} {orderedRegions.length} {(orderedRegions.length !== 1 ? T("exercises.bodyRegions") : T("exercises.bodyRegion")).toLowerCase()}
         </p>
       </div>
 
@@ -327,6 +338,7 @@ export default function PatientExercisesPage() {
                       prescription={p}
                       onPlay={() => setActiveVideo(p)}
                       onComplete={() => handleComplete(p.id)}
+                      onRequestUndo={() => setUndoConfirmId(p.id)}
                       completing={completingId === p.id}
                     />
                   ))}
@@ -349,6 +361,27 @@ export default function PatientExercisesPage() {
           }}
         />
       )}
+
+      {/* Undo-completion confirmation */}
+      <AlertDialog open={!!undoConfirmId} onOpenChange={(open) => !open && setUndoConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{T("exercises.undoConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{T("exercises.undoConfirmDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{T("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (undoConfirmId) handleUndo(undoConfirmId);
+                setUndoConfirmId(null);
+              }}
+            >
+              {T("exercises.undo")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -359,11 +392,13 @@ function ExerciseRow({
   prescription,
   onPlay,
   onComplete,
+  onRequestUndo,
   completing,
 }: {
   prescription: Prescription;
   onPlay: () => void;
   onComplete: () => void;
+  onRequestUndo: () => void;
   completing: boolean;
 }) {
   const { locale } = useLocale();
@@ -460,10 +495,14 @@ function ExerciseRow({
             {prescription.therapist.firstName}
           </span>
           {prescription.completedCount > 0 && (
-            <span className="flex items-center gap-1 text-green-400">
+            <button
+              type="button"
+              onClick={onRequestUndo}
+              className="flex items-center gap-1 text-green-400 hover:underline underline-offset-2"
+            >
               <CheckCircle2 className="h-3 w-3" />
               {T("exercises.completedCount")} {prescription.completedCount}x
-            </span>
+            </button>
           )}
         </div>
       </div>

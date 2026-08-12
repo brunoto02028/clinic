@@ -34,6 +34,15 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const [consentRequired, setConsentRequired] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
 
+  // Radix UI portals (Dialog, AlertDialog, DropdownMenu, Select, Toast...) render
+  // into document.body, outside the .public-site-scoped wrapper div below — so
+  // without this, their CSS variables fall back to the dark admin theme. Toggling
+  // the class on body itself keeps portaled content in the light patient-portal theme.
+  useEffect(() => {
+    document.body.classList.add("public-site");
+    return () => document.body.classList.remove("public-site");
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     // Detect impersonation cookie
