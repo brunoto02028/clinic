@@ -1672,10 +1672,13 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
     const newFiles: BulkFile[] = Array.from(fileList)
       .filter(f => f.type.startsWith("video/"))
       .map(f => {
-        // webkitdirectory gives a relative path like "Thoracic/011.mp4" —
-        // the first segment is the folder the file was organised into.
+        // webkitdirectory gives a relative path like "Thoracic/011.mp4", or
+        // "AllExercises/Thoracic/011.mp4" if the picked root itself contains
+        // named subfolders — either way, the segment immediately before the
+        // filename is the actual category the file was organised into.
         const relPath = (f as any).webkitRelativePath as string | undefined;
-        const folder = relPath && relPath.includes("/") ? relPath.split("/")[0] : null;
+        const pathParts = relPath ? relPath.split("/") : [];
+        const folder = pathParts.length > 1 ? pathParts[pathParts.length - 2] : null;
         const baseName = f.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
         return {
           file: f,
