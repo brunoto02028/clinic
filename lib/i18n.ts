@@ -779,6 +779,8 @@ const translations: Record<string, Record<Locale, string>> = {
   "exercises.instructions": { "en-GB": "Instructions", "pt-BR": "Instruções" },
   "exercises.therapistNotes": { "en-GB": "Therapist Notes", "pt-BR": "Notas do Terapeuta" },
   "exercises.markedComplete": { "en-GB": "Marked as complete", "pt-BR": "Marcado como concluído" },
+  "exercises.completeFailed": { "en-GB": "Could not save. Please try again.", "pt-BR": "Não foi possível salvar. Tente novamente." },
+  "exercises.undoFailed": { "en-GB": "Could not undo. Please try again.", "pt-BR": "Não foi possível desfazer. Tente novamente." },
   "exercises.undo": { "en-GB": "Undo", "pt-BR": "Desfazer" },
   "exercises.undoConfirmTitle": { "en-GB": "Undo a completion?", "pt-BR": "Desfazer uma conclusão?" },
   "exercises.undoConfirmDesc": { "en-GB": "This will reduce your completed count for this exercise by one. Use this if you tapped complete by mistake.", "pt-BR": "Isso vai reduzir em um a contagem de vezes concluído deste exercício. Use se você marcou como concluído sem querer." },

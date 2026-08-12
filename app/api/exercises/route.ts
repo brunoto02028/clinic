@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 
@@ -59,12 +57,15 @@ export async function GET(req: NextRequest) {
 
 // PATCH - Mark exercise as completed (patient action)
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  // Must be impersonation-aware like the GET above, otherwise a staff member
+  // previewing a patient hits their own (empty) prescriptions and every
+  // completion 404s.
+  const effectiveUser = await getEffectiveUser();
+  if (!effectiveUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = (session.user as any)?.id;
+  const userId = effectiveUser.userId;
 
   try {
     const { prescriptionId, action } = await req.json();

@@ -23,19 +23,26 @@ export default async function DashboardRootLayout({
     redirect("/login");
   }
 
-  // Check if admin is impersonating a patient
+  // Impersonation only counts when the logged-in user is actually staff — the
+  // same gate middleware applies before it will swap identities. Without the
+  // role check a patient whose stale cookie outlived their admin's session was
+  // shown the "Visualizando como…" banner on their own account.
   const cookieStore = cookies();
-  const isImpersonating = !!cookieStore.get("impersonate-patient-id")?.value;
+  const userRole = (session.user as { role?: string })?.role;
+  const isStaff = userRole === "ADMIN" || userRole === "SUPERADMIN";
+  const isImpersonating = isStaff && !!cookieStore.get("impersonate-patient-id")?.value;
+  const impersonatedName = isImpersonating
+    ? cookieStore.get("impersonate-patient-name")?.value || ""
+    : "";
 
   // If user is ADMIN, redirect to admin panel — UNLESS they are impersonating a patient
-  const userRole = (session.user as { role?: string })?.role;
-  if ((userRole === "ADMIN" || userRole === "SUPERADMIN") && !isImpersonating) {
+  if (isStaff && !isImpersonating) {
     redirect("/admin");
   }
 
   return (
     <>
-      <ImpersonationBanner />
+      {isImpersonating && <ImpersonationBanner patientName={impersonatedName} />}
       <div className={isImpersonating ? "pt-10" : ""}>
         <Suspense fallback={null}>
           <DashboardLayout>{children}</DashboardLayout>

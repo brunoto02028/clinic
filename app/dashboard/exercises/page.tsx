@@ -127,11 +127,15 @@ export default function PatientExercisesPage() {
   const handleComplete = async (prescriptionId: string) => {
     setCompletingId(prescriptionId);
     try {
-      await fetch("/api/exercises", {
+      // fetch() only rejects on network errors, so without this check a 404
+      // or 500 would still tick the exercise off on screen while nothing was
+      // saved — the patient would think they'd logged it.
+      const res = await fetch("/api/exercises", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prescriptionId }),
       });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
       // Update local state
       setPrescriptions((prev) =>
         prev.map((p) =>
@@ -152,6 +156,7 @@ export default function PatientExercisesPage() {
       setTimeout(dismiss, 6000);
     } catch (err) {
       console.error("Failed to mark complete:", err);
+      toast({ variant: "destructive", description: T("exercises.completeFailed") });
     } finally {
       setTimeout(() => setCompletingId(null), 1000);
     }
@@ -159,11 +164,12 @@ export default function PatientExercisesPage() {
 
   const handleUndo = async (prescriptionId: string) => {
     try {
-      await fetch("/api/exercises", {
+      const res = await fetch("/api/exercises", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prescriptionId, action: "undo" }),
       });
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
       setPrescriptions((prev) =>
         prev.map((p) =>
           p.id === prescriptionId
@@ -173,6 +179,7 @@ export default function PatientExercisesPage() {
       );
     } catch (err) {
       console.error("Failed to undo:", err);
+      toast({ variant: "destructive", description: T("exercises.undoFailed") });
     }
   };
 
