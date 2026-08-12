@@ -18,6 +18,7 @@ import {
   Dumbbell,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Users,
   Clock,
   Target,
@@ -61,6 +62,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useVoiceInput } from "@/hooks/use-voice-input";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // ─── Constants ─────────────────────────────────────────
 
@@ -96,6 +99,11 @@ const REGION_GROUPS: { label: string; labelPt: string; keys: string[] }[] = [
   { label: "General",              labelPt: "Geral",               keys: ["STRETCHING", "MUSCLE_INJURY", "FULL_BODY", "OTHER"] },
 ];
 
+const REGION_TO_GROUP: Record<string, string> = {};
+REGION_GROUPS.forEach((group) => {
+  group.keys.forEach((k) => { REGION_TO_GROUP[k] = group.label; });
+});
+
 const DIFFICULTIES: Record<string, { label: string; color: string }> = {
   BEGINNER: { label: "Beginner", color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
   INTERMEDIATE: { label: "Intermediate", color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
@@ -123,6 +131,7 @@ interface Exercise {
   defaultRestSec: number | null;
   isActive: boolean;
   createdAt: string;
+  updatedAt: string;
   createdBy?: { firstName: string; lastName: string };
   _count?: { prescriptions: number };
 }
@@ -151,6 +160,7 @@ export default function ExercisesPage() {
   const [sort, setSort] = useState("recent");
   const [bulkTranslating, setBulkTranslating] = useState(false);
   const [bulkResult, setBulkResult] = useState<string>("");
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   // Modal states
   const [showForm, setShowForm] = useState(false);
@@ -188,12 +198,14 @@ export default function ExercisesPage() {
     }
   };
 
+  const isGroupedMode = !search && !bodyRegion;
+
   const fetchExercises = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
-      params.set("limit", "24");
+      params.set("limit", isGroupedMode ? "100" : "24");
       if (search) params.set("search", search);
       if (bodyRegion) params.set("bodyRegion", bodyRegion);
       if (difficulty) params.set("difficulty", difficulty);
@@ -210,7 +222,7 @@ export default function ExercisesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, bodyRegion, difficulty, translatedFilter, sort]);
+  }, [page, search, bodyRegion, difficulty, translatedFilter, sort, isGroupedMode]);
 
   useEffect(() => {
     fetchExercises();
@@ -453,6 +465,48 @@ export default function ExercisesPage() {
             </p>
           </CardContent>
         </Card>
+      ) : isGroupedMode ? (
+        <div className="space-y-3">
+          {REGION_GROUPS.map((group) => {
+            const groupExercises = exercises.filter((ex) => REGION_TO_GROUP[ex.bodyRegion] === group.label);
+            const isOpen = !!expandedGroups[group.label];
+            const count = groupExercises.length;
+            return (
+              <div key={group.label} className="border rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  disabled={count === 0}
+                  onClick={() => setExpandedGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))}
+                  className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-muted/40 hover:bg-muted/60 disabled:opacity-50 disabled:cursor-default transition-colors"
+                >
+                  <span className="font-medium text-sm">
+                    {locale === "pt-BR" ? group.labelPt : group.label}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{count}</Badge>
+                    {count > 0 && (
+                      <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                    )}
+                  </div>
+                </button>
+                {isOpen && count > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                    {groupExercises.map((ex) => (
+                      <ExerciseCard
+                        key={ex.id}
+                        exercise={ex}
+                        onEdit={() => openEdit(ex)}
+                        onDelete={() => handleDelete(ex.id)}
+                        onPrescribe={() => openPrescribe(ex)}
+                        onPreview={() => setShowPreview(ex)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {exercises.map((ex) => (
@@ -469,7 +523,7 @@ export default function ExercisesPage() {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {!isGroupedMode && totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
@@ -534,6 +588,7 @@ function ExerciseCard({
   onPrescribe: () => void;
   onPreview: () => void;
 }) {
+  const { locale } = useLocale();
   const diff = DIFFICULTIES[exercise.difficulty] || DIFFICULTIES.BEGINNER;
   const [hoverPlaying, setHoverPlaying] = useState(false);
 
@@ -549,6 +604,7 @@ function ExerciseCard({
         {hoverPlaying && exercise.videoUrl ? (
           <video
             src={exercise.videoUrl}
+            poster={exercise.thumbnailUrl || undefined}
             className="w-full h-full object-cover"
             autoPlay
             muted
@@ -602,16 +658,35 @@ function ExerciseCard({
           {!exercise.namePt && (
             <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-500 border-amber-500/40">no PT</Badge>
           )}
-          {exercise._count && exercise._count.prescriptions > 0 && (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-              <Users className="h-3 w-3" />
-              {exercise._count.prescriptions} prescribed
-            </span>
-          )}
+          <span className="text-[10px] text-foreground/70 font-medium flex items-center gap-0.5 ml-auto">
+            <Users className="h-3 w-3" />
+            {exercise._count?.prescriptions || 0} prescribed
+          </span>
         </div>
 
         {exercise.description && (
           <p className="text-xs text-muted-foreground line-clamp-2">{exercise.description}</p>
+        )}
+
+        {(exercise.tags?.length > 0 || exercise.updatedAt) && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {exercise.tags?.slice(0, 3).map((tag) => (
+              <Badge key={tag} variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
+                {tag}
+              </Badge>
+            ))}
+            {exercise.tags?.length > 3 && (
+              <span className="text-[9px] text-muted-foreground">+{exercise.tags.length - 3}</span>
+            )}
+            {exercise.updatedAt && (
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {formatDistanceToNow(new Date(exercise.updatedAt), {
+                  addSuffix: true,
+                  locale: locale === "pt-BR" ? ptBR : undefined,
+                })}
+              </span>
+            )}
+          </div>
         )}
 
         {/* Default params */}

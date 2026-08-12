@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { generateVideoThumbnail } from "@/lib/video-thumbnail";
+import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +89,13 @@ export async function POST(req: NextRequest) {
           console.error(`Auto-thumbnail generation failed for ${meta.name}:`, thumbErr.message);
         }
 
+        let duration: number | null = null;
+        try {
+          duration = await getVideoDuration(filePath);
+        } catch (durErr: any) {
+          console.error(`Duration extraction failed for ${meta.name}:`, durErr.message);
+        }
+
         const exercise = await (prisma as any).exercise.create({
           data: {
             clinicId,
@@ -100,6 +107,7 @@ export async function POST(req: NextRequest) {
             videoUrl,
             videoFileName: videoFile.name,
             thumbnailUrl,
+            duration,
             createdById: userId,
           },
         });
