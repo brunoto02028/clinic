@@ -498,10 +498,11 @@ function ExerciseRow({
             <button
               type="button"
               onClick={onRequestUndo}
-              className="flex items-center gap-1 text-green-400 hover:underline underline-offset-2"
+              className="flex items-center gap-1 text-green-400 underline underline-offset-2"
             >
               <CheckCircle2 className="h-3 w-3" />
               {T("exercises.completedCount")} {prescription.completedCount}x
+              <RefreshCw className="h-3 w-3 ml-0.5" />
             </button>
           )}
         </div>
