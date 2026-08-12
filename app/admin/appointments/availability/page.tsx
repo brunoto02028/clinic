@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { useLocale } from "@/hooks/use-locale";
 
 const DAYS = [
   { value: 0, label: "Sunday", labelPt: "Domingo" },
@@ -33,6 +34,8 @@ const DEFAULT_SCHEDULE: DaySchedule[] = DAYS.map((d) => ({
 }));
 
 export default function AvailabilityPage() {
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
   const [schedule, setSchedule] = useState<DaySchedule[]>(DEFAULT_SCHEDULE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,11 +80,18 @@ export default function AvailabilityPage() {
       if (!res.ok) throw new Error("Failed to save");
 
       setSaveStatus("success");
-      toast({ title: "Schedule saved", description: "Therapist availability has been updated." });
+      toast({
+        title: isPt ? "Agenda salva" : "Schedule saved",
+        description: isPt ? "A disponibilidade do terapeuta foi atualizada." : "Therapist availability has been updated.",
+      });
       setTimeout(() => setSaveStatus("idle"), 5000);
     } catch {
       setSaveStatus("error");
-      toast({ title: "Error", description: "Failed to save schedule.", variant: "destructive" });
+      toast({
+        title: isPt ? "Erro" : "Error",
+        description: isPt ? "Falha ao salvar a agenda." : "Failed to save schedule.",
+        variant: "destructive",
+      });
       setTimeout(() => setSaveStatus("idle"), 5000);
     } finally {
       setSaving(false);
@@ -101,21 +111,25 @@ export default function AvailabilityPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Clock className="h-6 w-6 text-primary" />
-          Therapist Availability
+          {isPt ? "Disponibilidade do Terapeuta" : "Therapist Availability"}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Set your working hours for each day of the week. Patients will only see available time slots when booking.
+          {isPt
+            ? "Defina seu horário de trabalho para cada dia da semana. Os pacientes só verão os horários disponíveis ao agendar."
+            : "Set your working hours for each day of the week. Patients will only see available time slots when booking."}
         </p>
       </div>
 
       {/* Slot Interval Selector */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Booking Slot Interval</CardTitle>
+          <CardTitle className="text-lg">{isPt ? "Intervalo dos Horários de Agendamento" : "Booking Slot Interval"}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            Choose how time slots are displayed to patients when booking. For example, if set to 60 minutes, patients will see slots like 16:00, 17:00, 18:00 instead of 16:00, 16:30, 17:00.
+            {isPt
+              ? "Escolha como os horários são exibidos aos pacientes ao agendar. Por exemplo, se definido para 60 minutos, os pacientes verão horários como 16:00, 17:00, 18:00 em vez de 16:00, 16:30, 17:00."
+              : "Choose how time slots are displayed to patients when booking. For example, if set to 60 minutes, patients will see slots like 16:00, 17:00, 18:00 instead of 16:00, 16:30, 17:00."}
           </p>
           <div className="flex gap-3">
             <button
@@ -128,7 +142,7 @@ export default function AvailabilityPage() {
               }`}
             >
               <p className="font-bold text-lg">30 min</p>
-              <p className="text-xs mt-1">e.g. 16:00, 16:30, 17:00</p>
+              <p className="text-xs mt-1">{isPt ? "ex.: 16:00, 16:30, 17:00" : "e.g. 16:00, 16:30, 17:00"}</p>
             </button>
             <button
               type="button"
@@ -140,7 +154,7 @@ export default function AvailabilityPage() {
               }`}
             >
               <p className="font-bold text-lg">60 min</p>
-              <p className="text-xs mt-1">e.g. 16:00, 17:00, 18:00</p>
+              <p className="text-xs mt-1">{isPt ? "ex.: 16:00, 17:00, 18:00" : "e.g. 16:00, 17:00, 18:00"}</p>
             </button>
           </div>
         </CardContent>
@@ -148,7 +162,7 @@ export default function AvailabilityPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Weekly Schedule</CardTitle>
+          <CardTitle className="text-lg">{isPt ? "Agenda Semanal" : "Weekly Schedule"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {schedule.map((day) => {
@@ -175,14 +189,14 @@ export default function AvailabilityPage() {
                       <ToggleLeft className="h-6 w-6 text-muted-foreground" />
                     )}
                   </button>
-                  <span className="font-semibold text-foreground">{dayInfo.label}</span>
+                  <span className="font-semibold text-foreground">{isPt ? dayInfo.labelPt : dayInfo.label}</span>
                 </div>
 
                 {/* Time inputs */}
                 {day.isAvailable && (
                   <div className="flex items-center gap-2 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-xs text-muted-foreground whitespace-nowrap">From</Label>
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">{isPt ? "De" : "From"}</Label>
                       <Input
                         type="time"
                         value={day.startTime}
@@ -192,7 +206,7 @@ export default function AvailabilityPage() {
                     </div>
                     <span className="text-muted-foreground">—</span>
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-xs text-muted-foreground whitespace-nowrap">To</Label>
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">{isPt ? "Até" : "To"}</Label>
                       <Input
                         type="time"
                         value={day.endTime}
@@ -204,7 +218,7 @@ export default function AvailabilityPage() {
                 )}
 
                 {!day.isAvailable && (
-                  <span className="text-sm text-muted-foreground italic">Not available</span>
+                  <span className="text-sm text-muted-foreground italic">{isPt ? "Indisponível" : "Not available"}</span>
                 )}
               </div>
             );
@@ -213,28 +227,30 @@ export default function AvailabilityPage() {
           {saveStatus === "success" && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 mt-4">
               <CheckCircle className="h-5 w-5 shrink-0" />
-              <span className="text-sm font-medium">Schedule saved successfully! Patients will now see the updated availability.</span>
+              <span className="text-sm font-medium">
+                {isPt ? "Agenda salva com sucesso! Os pacientes já verão a disponibilidade atualizada." : "Schedule saved successfully! Patients will now see the updated availability."}
+              </span>
             </div>
           )}
 
           {saveStatus === "error" && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 mt-4">
-              <span className="text-sm font-medium">Failed to save schedule. Please try again.</span>
+              <span className="text-sm font-medium">{isPt ? "Falha ao salvar a agenda. Tente novamente." : "Failed to save schedule. Please try again."}</span>
             </div>
           )}
 
           <Button onClick={handleSave} disabled={saving} className="w-full gap-2 mt-4">
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                <Loader2 className="h-4 w-4 animate-spin" /> {isPt ? "Salvando..." : "Saving..."}
               </>
             ) : saveStatus === "success" ? (
               <>
-                <CheckCircle className="h-4 w-4" /> Saved!
+                <CheckCircle className="h-4 w-4" /> {isPt ? "Salvo!" : "Saved!"}
               </>
             ) : (
               <>
-                <Save className="h-4 w-4" /> Save Schedule
+                <Save className="h-4 w-4" /> {isPt ? "Salvar Agenda" : "Save Schedule"}
               </>
             )}
           </Button>

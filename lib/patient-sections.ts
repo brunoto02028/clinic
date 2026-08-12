@@ -22,7 +22,7 @@ export const PATIENT_SECTIONS: PatientSection[] = [
   {
     key: "home",
     label: "Home",
-    labelPt: "Inicio",
+    labelPt: "Início",
     icon: Home,
     href: "/dashboard",
     matchRoutes: ["/dashboard"],
@@ -44,7 +44,7 @@ export const PATIENT_SECTIONS: PatientSection[] = [
   {
     key: "health",
     label: "My Health",
-    labelPt: "Minha Saude",
+    labelPt: "Minha Saúde",
     icon: Stethoscope,
     href: "/dashboard/clinical-notes",
     matchRoutes: [
@@ -60,7 +60,7 @@ export const PATIENT_SECTIONS: PatientSection[] = [
   {
     key: "exercises",
     label: "Exercises",
-    labelPt: "Exercicios",
+    labelPt: "Exercícios",
     icon: Dumbbell,
     href: "/dashboard/exercises",
     matchRoutes: [

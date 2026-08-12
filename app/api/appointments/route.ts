@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
       `;
 
       await sendEmail({
-        to: "brunotoaz@gmail.com",
+        to: process.env.ADMIN_EMAIL || "brunotoaz@gmail.com",
         subject: `New Appointment: ${appointment.patient.firstName} ${appointment.patient.lastName} - ${new Date(dateTime).toLocaleDateString("en-GB")}`,
         html: adminHtmlBody,
       });

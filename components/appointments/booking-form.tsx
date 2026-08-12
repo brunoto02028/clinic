@@ -129,7 +129,7 @@ export default function BookingForm() {
         body: JSON.stringify({
           dateTime: dateTime.toISOString(),
           duration: 60,
-          treatmentType: "Consultation",
+          treatmentType: isPt ? "Consulta" : "Consultation",
           price: consultationPrice ?? 0,
         }),
       });
