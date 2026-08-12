@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { writeFile, mkdir, readFile, unlink } from "fs/promises";
 import path from "path";
+import { ensureWebSafeVideo } from "@/lib/video-web-safe";
 import { tmpdir } from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -204,7 +205,18 @@ export async function POST(req: NextRequest) {
         const filePath = path.join(exercisesDir, filename);
         await writeFile(filePath, new Uint8Array(videoBuffer));
 
-        const videoUrl = `/uploads/exercises/${filename}`;
+        // yt-dlp usually hands back H.264, but normalise anyway so every
+        // stored video is guaranteed playable on any patient device.
+        let finalName = filename;
+        try {
+          const norm = await ensureWebSafeVideo(filePath);
+          if (norm.action !== "failed") finalName = path.basename(norm.path);
+          else console.error("Video normalisation failed:", norm.error);
+        } catch (normErr: any) {
+          console.error("Video normalisation threw:", normErr.message);
+        }
+
+        const videoUrl = `/uploads/exercises/${finalName}`;
         const fileSize = videoBuffer.byteLength;
 
         // Auto-detect body region from caption (AI-powered)
@@ -220,7 +232,7 @@ export async function POST(req: NextRequest) {
             bodyRegion: regionLabel as any,
             difficulty: "INTERMEDIATE",
             videoUrl,
-            videoFileName: filename,
+            videoFileName: finalName,
             thumbnailUrl,
             isActive: true,
             clinicId,
