@@ -133,6 +133,8 @@ interface Exercise {
   createdAt: string;
   updatedAt: string;
   createdBy?: { firstName: string; lastName: string };
+  folderId?: string | null;
+  folder?: { id: string; name: string } | null;
   _count?: { prescriptions: number };
 }
 
@@ -161,6 +163,7 @@ export default function ExercisesPage() {
   const [bulkTranslating, setBulkTranslating] = useState(false);
   const [bulkResult, setBulkResult] = useState<string>("");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkActing, setBulkActing] = useState(false);
   const [bulkTargetRegion, setBulkTargetRegion] = useState("");
@@ -231,6 +234,38 @@ export default function ExercisesPage() {
     fetchExercises();
   }, [fetchExercises]);
 
+  const fetchFolders = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/exercise-folders");
+      const data = await res.json();
+      setFolders(data.folders || []);
+    } catch (err) {
+      console.error("Failed to fetch exercise folders:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFolders();
+  }, [fetchFolders]);
+
+  const handleRenameFolder = async (folder: { id: string; name: string }) => {
+    const newName = prompt("Novo nome da pasta:", folder.name);
+    if (!newName || !newName.trim() || newName.trim() === folder.name) return;
+    await fetch(`/api/admin/exercise-folders/${folder.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim() }),
+    });
+    fetchFolders();
+  };
+
+  const handleDeleteFolder = async (folder: { id: string; name: string }) => {
+    if (!confirm(`Excluir a pasta "${folder.name}"? Os exercícios não serão apagados, só ficarão sem pasta.`)) return;
+    await fetch(`/api/admin/exercise-folders/${folder.id}`, { method: "DELETE" });
+    fetchFolders();
+    fetchExercises();
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Remove this exercise from the library?")) return;
     await fetch(`/api/admin/exercises/${id}`, { method: "DELETE" });
@@ -256,6 +291,32 @@ export default function ExercisesPage() {
       }));
       setSelectedIds(new Set());
       setBulkTargetRegion("");
+      fetchExercises();
+    } finally {
+      setBulkActing(false);
+    }
+  };
+
+  const handleCreateFolderFromSelection = async () => {
+    if (selectedIds.size === 0) return;
+    const name = prompt("Nome da nova pasta:", search || "");
+    if (!name || !name.trim()) return;
+    setBulkActing(true);
+    try {
+      const res = await fetch("/api/admin/exercise-folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.folder) return;
+      await Promise.all(Array.from(selectedIds).map((id) => {
+        const fd = new FormData();
+        fd.append("folderId", data.folder.id);
+        return fetch(`/api/admin/exercises/${id}`, { method: "PATCH", body: fd });
+      }));
+      setSelectedIds(new Set());
+      fetchFolders();
       fetchExercises();
     } finally {
       setBulkActing(false);
@@ -546,55 +607,97 @@ export default function ExercisesPage() {
                 {isOpen && count > 0 && (
                   <div className="p-4 space-y-3">
                     {selectedInGroup.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
-                        <span className="text-xs font-medium">{selectedInGroup.length} selecionado{selectedInGroup.length !== 1 ? "s" : ""}</span>
-                        <Select value={bulkTargetRegion} onValueChange={setBulkTargetRegion}>
-                          <SelectTrigger className="w-[180px] h-8 text-xs">
-                            <SelectValue placeholder="Mudar categoria..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {REGION_GROUPS.map((g) => (
-                              <SelectGroup key={g.label}>
-                                <SelectLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 pt-2">
-                                  {locale === "pt-BR" ? g.labelPt : g.label}
-                                </SelectLabel>
-                                {g.keys.map((k) => (
-                                  <SelectItem key={k} value={k}>{regionLabel(k, locale)}</SelectItem>
-                                ))}
-                              </SelectGroup>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          size="sm"
-                          className="h-8 text-xs"
-                          disabled={!bulkTargetRegion || bulkActing}
-                          onClick={() => handleBulkRecategorize(bulkTargetRegion)}
-                        >
-                          Aplicar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 text-xs text-destructive hover:text-destructive"
-                          disabled={bulkActing}
-                          onClick={handleBulkDelete}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 text-xs ml-auto"
-                          onClick={() => setSelectedIds((prev) => {
-                            const next = new Set(prev);
-                            groupExercises.forEach((ex) => next.delete(ex.id));
-                            return next;
-                          })}
-                        >
-                          Limpar seleção
-                        </Button>
-                      </div>
+                      <BulkActionBar
+                        selectedCount={selectedInGroup.length}
+                        locale={locale}
+                        bulkTargetRegion={bulkTargetRegion}
+                        setBulkTargetRegion={setBulkTargetRegion}
+                        bulkActing={bulkActing}
+                        onApplyRecategorize={() => handleBulkRecategorize(bulkTargetRegion)}
+                        onDelete={handleBulkDelete}
+                        onClear={() => setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          groupExercises.forEach((ex) => next.delete(ex.id));
+                          return next;
+                        })}
+                      />
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {groupExercises.map((ex) => (
+                        <ExerciseCard
+                          key={ex.id}
+                          exercise={ex}
+                          onEdit={() => openEdit(ex)}
+                          onDelete={() => handleDelete(ex.id)}
+                          onPrescribe={() => openPrescribe(ex)}
+                          onPreview={() => setShowPreview(ex)}
+                          selectable
+                          selected={selectedIds.has(ex.id)}
+                          onToggleSelect={() => toggleSelect(ex.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {folders.map((folder) => {
+            const groupExercises = exercises.filter((ex) => ex.folderId === folder.id);
+            const isOpen = !!expandedGroups[`folder:${folder.id}`];
+            const count = groupExercises.length;
+            const coverThumb = groupExercises.find((ex) => ex.thumbnailUrl)?.thumbnailUrl;
+            const selectedInGroup = groupExercises.filter((ex) => selectedIds.has(ex.id));
+            return (
+              <div key={folder.id} className="border rounded-lg overflow-hidden">
+                <div className="w-full flex items-center gap-2 px-4 py-3 bg-muted/40 hover:bg-muted/60 transition-colors">
+                  <button
+                    type="button"
+                    disabled={count === 0}
+                    onClick={() => setExpandedGroups((prev) => ({ ...prev, [`folder:${folder.id}`]: !prev[`folder:${folder.id}`] }))}
+                    className="flex-1 flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-default"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      {coverThumb ? (
+                        <img src={coverThumb} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+                      ) : (
+                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
+                          <FolderUp className="h-4 w-4 text-muted-foreground/50" />
+                        </div>
+                      )}
+                      <span className="font-medium text-sm">{folder.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{count}</Badge>
+                      {count > 0 && (
+                        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                      )}
+                    </div>
+                  </button>
+                  <button type="button" onClick={() => handleRenameFolder(folder)} className="p-1 text-muted-foreground hover:text-foreground shrink-0">
+                    <Edit className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={() => handleDeleteFolder(folder)} className="p-1 text-muted-foreground hover:text-destructive shrink-0">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {isOpen && count > 0 && (
+                  <div className="p-4 space-y-3">
+                    {selectedInGroup.length > 0 && (
+                      <BulkActionBar
+                        selectedCount={selectedInGroup.length}
+                        locale={locale}
+                        bulkTargetRegion={bulkTargetRegion}
+                        setBulkTargetRegion={setBulkTargetRegion}
+                        bulkActing={bulkActing}
+                        onApplyRecategorize={() => handleBulkRecategorize(bulkTargetRegion)}
+                        onDelete={handleBulkDelete}
+                        onClear={() => setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          groupExercises.forEach((ex) => next.delete(ex.id));
+                          return next;
+                        })}
+                      />
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {groupExercises.map((ex) => (
@@ -618,17 +721,35 @@ export default function ExercisesPage() {
           })}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {exercises.map((ex) => (
-            <ExerciseCard
-              key={ex.id}
-              exercise={ex}
-              onEdit={() => openEdit(ex)}
-              onDelete={() => handleDelete(ex.id)}
-              onPrescribe={() => openPrescribe(ex)}
-              onPreview={() => setShowPreview(ex)}
+        <div className="space-y-3">
+          {selectedIds.size > 0 && (
+            <BulkActionBar
+              selectedCount={selectedIds.size}
+              locale={locale}
+              bulkTargetRegion={bulkTargetRegion}
+              setBulkTargetRegion={setBulkTargetRegion}
+              bulkActing={bulkActing}
+              onApplyRecategorize={() => handleBulkRecategorize(bulkTargetRegion)}
+              onDelete={handleBulkDelete}
+              onCreateFolder={handleCreateFolderFromSelection}
+              onClear={() => setSelectedIds(new Set())}
             />
-          ))}
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {exercises.map((ex) => (
+              <ExerciseCard
+                key={ex.id}
+                exercise={ex}
+                onEdit={() => openEdit(ex)}
+                onDelete={() => handleDelete(ex.id)}
+                onPrescribe={() => openPrescribe(ex)}
+                onPreview={() => setShowPreview(ex)}
+                selectable
+                selected={selectedIds.has(ex.id)}
+                onToggleSelect={() => toggleSelect(ex.id)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -676,9 +797,70 @@ export default function ExercisesPage() {
       {showBulkUpload && (
         <BulkUploadModal
           onClose={() => setShowBulkUpload(false)}
-          onDone={() => { setShowBulkUpload(false); fetchExercises(); }}
+          onDone={() => { setShowBulkUpload(false); fetchExercises(); fetchFolders(); }}
         />
       )}
+    </div>
+  );
+}
+
+// ─── Bulk Action Bar ────────────────────────────────────
+
+function BulkActionBar({
+  selectedCount,
+  locale,
+  bulkTargetRegion,
+  setBulkTargetRegion,
+  bulkActing,
+  onApplyRecategorize,
+  onDelete,
+  onClear,
+  onCreateFolder,
+}: {
+  selectedCount: number;
+  locale: string;
+  bulkTargetRegion: string;
+  setBulkTargetRegion: (v: string) => void;
+  bulkActing: boolean;
+  onApplyRecategorize: () => void;
+  onDelete: () => void;
+  onClear: () => void;
+  onCreateFolder?: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+      <span className="text-xs font-medium">{selectedCount} selecionado{selectedCount !== 1 ? "s" : ""}</span>
+      <Select value={bulkTargetRegion} onValueChange={setBulkTargetRegion}>
+        <SelectTrigger className="w-[180px] h-8 text-xs">
+          <SelectValue placeholder="Mudar categoria..." />
+        </SelectTrigger>
+        <SelectContent>
+          {REGION_GROUPS.map((g) => (
+            <SelectGroup key={g.label}>
+              <SelectLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 pt-2">
+                {locale === "pt-BR" ? g.labelPt : g.label}
+              </SelectLabel>
+              {g.keys.map((k) => (
+                <SelectItem key={k} value={k}>{regionLabel(k, locale)}</SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button size="sm" className="h-8 text-xs" disabled={!bulkTargetRegion || bulkActing} onClick={onApplyRecategorize}>
+        Aplicar
+      </Button>
+      {onCreateFolder && (
+        <Button size="sm" variant="outline" className="h-8 text-xs" disabled={bulkActing} onClick={onCreateFolder}>
+          <FolderUp className="h-3.5 w-3.5 mr-1" /> Criar pasta
+        </Button>
+      )}
+      <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive hover:text-destructive" disabled={bulkActing} onClick={onDelete}>
+        <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir
+      </Button>
+      <Button size="sm" variant="ghost" className="h-8 text-xs ml-auto" onClick={onClear}>
+        Limpar seleção
+      </Button>
     </div>
   );
 }
@@ -1837,6 +2019,25 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
     setUploading(true);
     setUploadProgress(0);
 
+    // Get-or-create a real ExerciseFolder for each distinct folder name in
+    // this batch, so the videos show up as their own section in the library
+    // (not just a tag), reusing an existing folder with the same name.
+    const folderNameToId: Record<string, string> = {};
+    const distinctFolderNames = Array.from(new Set(files.map(f => f.folder).filter(Boolean))) as string[];
+    for (const folderName of distinctFolderNames) {
+      try {
+        const res = await fetch("/api/admin/exercise-folders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: folderName }),
+        });
+        const data = await res.json();
+        if (res.ok && data.folder) folderNameToId[folderName] = data.folder.id;
+      } catch (err) {
+        console.error(`Failed to create/reuse folder "${folderName}":`, err);
+      }
+    }
+
     const formData = new FormData();
     const metadata = files.map((f, i) => ({
       name: f.name,
@@ -1844,6 +2045,7 @@ function BulkUploadModal({ onClose, onDone }: { onClose: () => void; onDone: () 
       difficulty: f.difficulty,
       tags: f.tags,
       fileKey: `video_${i}`,
+      folderId: f.folder ? folderNameToId[f.folder] : undefined,
     }));
 
     formData.append("metadata", JSON.stringify(metadata));

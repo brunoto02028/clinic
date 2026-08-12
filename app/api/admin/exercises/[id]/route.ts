@@ -86,6 +86,9 @@ export async function PATCH(
     const bodyRegion = formData.get("bodyRegion") as string | null;
     if (bodyRegion) updateData.bodyRegion = bodyRegion;
 
+    const folderId = formData.get("folderId");
+    if (folderId !== null) updateData.folderId = folderId ? (folderId as string) : null;
+
     const difficulty = formData.get("difficulty") as string | null;
     if (difficulty) updateData.difficulty = difficulty;
 
