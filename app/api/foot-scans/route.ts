@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { generatePresignedUploadUrl, getFileUrl } from '@/lib/s3';
 import { isDbUnreachableError, MOCK_FOOT_SCANS, devFallbackResponse } from '@/lib/dev-fallback';
-import { getEffectiveUserId, isPreviewRequest } from '@/lib/preview-helpers';
+import { getEffectiveUser } from '@/lib/get-effective-user';
 import { getRequestSession } from '@/lib/dual-auth';
 
 export const dynamic = 'force-dynamic';
@@ -31,32 +31,29 @@ async function generateScanNumber(): Promise<string> {
 // GET - List foot scans
 export async function GET(request: NextRequest) {
   try {
-    const session = await getRequestSession(request);
-    if (!session?.user) {
+    const effectiveUser = await getEffectiveUser();
+    if (!effectiveUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
     const status = searchParams.get('status');
-    
-    const effectiveId = getEffectiveUserId(session, request);
-    const isPreview = isPreviewRequest(session, request);
-    const userId = (session.user as any).id;
+
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: effectiveUser.userId },
       select: { id: true, role: true, clinicId: true }
     });
-    
+
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    
+
     // Build query based on role
     let whereClause: any = {};
-    
-    if (user.role === 'PATIENT' || isPreview) {
-      whereClause.patientId = isPreview ? effectiveId : user.id;
+
+    if (user.role === 'PATIENT') {
+      whereClause.patientId = user.id;
     } else if (user.clinicId) {
       whereClause.clinicId = user.clinicId;
       if (patientId) {

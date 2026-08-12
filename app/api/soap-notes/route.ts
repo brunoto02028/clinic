@@ -5,24 +5,23 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { isDbUnreachableError, MOCK_SOAP_NOTES, devFallbackResponse } from "@/lib/dev-fallback";
-import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const effectiveUser = await getEffectiveUser();
 
-    if (!session?.user) {
+    if (!effectiveUser) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
-    const userId = getEffectiveUserId(session, request);
-    const userRole = (session.user as any).role;
-    const isPreview = isPreviewRequest(session, request);
+    const userId = effectiveUser.userId;
+    const userRole = effectiveUser.role;
     const patientId = request.nextUrl.searchParams.get("patientId");
 
     let whereClause: any = {};
 
-    if (userRole === "PATIENT" || isPreview) {
+    if (userRole === "PATIENT") {
       whereClause.patientId = userId;
     } else if (patientId) {
       whereClause.patientId = patientId;
