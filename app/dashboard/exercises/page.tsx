@@ -19,6 +19,7 @@ import {
   CalendarDays,
   User,
   MessageSquare,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,44 +38,9 @@ import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { t as i18nT } from "@/lib/i18n";
+import { regionName, regionIcon, ORDERED_REGION_KEYS } from "@/lib/exercise-regions";
 
 // ─── Constants ─────────────────────────────────────────
-
-const BODY_REGIONS_EN: Record<string, string> = {
-  SHOULDER: "Shoulder", ELBOW: "Elbow", WRIST_HAND: "Wrist / Hand",
-  HIP: "Hip", KNEE: "Knee", ANKLE_FOOT: "Ankle / Foot",
-  SPINE_BACK: "Spine / Back", NECK_CERVICAL: "Neck / Cervical", CORE_ABDOMEN: "Core / Abdomen",
-  STRETCHING: "Stretching", MUSCLE_INJURY: "Muscle Injury", FULL_BODY: "Full Body", OTHER: "Other",
-};
-const BODY_REGIONS_PT: Record<string, string> = {
-  SHOULDER: "Ombro", ELBOW: "Cotovelo", WRIST_HAND: "Punho / Mão",
-  HIP: "Quadril", KNEE: "Joelho", ANKLE_FOOT: "Tornozelo / Pé",
-  SPINE_BACK: "Coluna / Costas", NECK_CERVICAL: "Pescoço / Cervical", CORE_ABDOMEN: "Core / Abdômen",
-  STRETCHING: "Alongamento", MUSCLE_INJURY: "Lesão Muscular", FULL_BODY: "Corpo Inteiro", OTHER: "Outro",
-};
-
-const REGION_GROUPS: Record<string, string[]> = {
-  "Upper Limbs": ["SHOULDER", "ELBOW", "WRIST_HAND"],
-  "Lower Limbs": ["HIP", "KNEE", "ANKLE_FOOT"],
-  "Trunk & Core": ["SPINE_BACK", "NECK_CERVICAL", "CORE_ABDOMEN"],
-  "Other": ["STRETCHING", "MUSCLE_INJURY", "FULL_BODY", "OTHER"],
-};
-
-const REGION_EMOJIS: Record<string, string> = {
-  SHOULDER: "💪",
-  ELBOW: "🦾",
-  WRIST_HAND: "✋",
-  HIP: "🦵",
-  KNEE: "🦿",
-  ANKLE_FOOT: "🦶",
-  SPINE_BACK: "🔙",
-  NECK_CERVICAL: "🧘",
-  CORE_ABDOMEN: "🏋️",
-  STRETCHING: "🤸",
-  MUSCLE_INJURY: "🩹",
-  FULL_BODY: "🏃",
-  OTHER: "📋",
-};
 
 const DIFFICULTIES_EN: Record<string, { label: string; color: string }> = {
   BEGINNER: { label: "Beginner", color: "bg-green-500/15 text-green-400" },
@@ -105,6 +71,11 @@ interface Prescription {
     name: string;
     description: string | null;
     instructions: string | null;
+    namePt: string | null;
+    descriptionPt: string | null;
+    instructionsPt: string | null;
+    folderId: string | null;
+    folder: { id: string; name: string } | null;
     bodyRegion: string;
     difficulty: string;
     videoUrl: string | null;
@@ -125,7 +96,6 @@ export default function PatientExercisesPage() {
   const { toast } = useToast();
   const isPt = locale === "pt-BR";
   const T = (key: string) => i18nT(key, locale);
-  const BODY_REGIONS = isPt ? BODY_REGIONS_PT : BODY_REGIONS_EN;
   const DIFFICULTIES = isPt ? DIFFICULTIES_PT : DIFFICULTIES_EN;
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,11 +110,9 @@ export default function PatientExercisesPage() {
       const res = await fetch("/api/exercises");
       const data = await res.json();
       setPrescriptions(data.prescriptions || []);
-      // Auto-expand all regions that have exercises
-      const regions = new Set(
-        (data.prescriptions || []).map((p: Prescription) => p.exercise.bodyRegion)
-      );
-      setExpandedRegions(regions as Set<string>);
+      // Start collapsed — a patient with 20-30 videos should see the list of
+      // sections on one screen, not a wall of exercises to scroll past.
+      setExpandedRegions(new Set());
     } catch (err) {
       console.error("Failed to fetch exercises:", err);
     } finally {
@@ -217,21 +185,33 @@ export default function PatientExercisesPage() {
     });
   };
 
-  // Group prescriptions by body region
-  const grouped: Record<string, Prescription[]> = {};
+  // Sections: exercises that came from a named admin folder are grouped under
+  // that folder; anything else falls back to its body region.
+  const byFolder: Record<string, { name: string; items: Prescription[] }> = {};
+  const byRegion: Record<string, Prescription[]> = {};
   prescriptions.forEach((p) => {
-    const region = p.exercise.bodyRegion;
-    if (!grouped[region]) grouped[region] = [];
-    grouped[region].push(p);
+    const folder = p.exercise.folder;
+    if (folder) {
+      if (!byFolder[folder.id]) byFolder[folder.id] = { name: folder.name, items: [] };
+      byFolder[folder.id].items.push(p);
+    } else {
+      const region = p.exercise.bodyRegion;
+      if (!byRegion[region]) byRegion[region] = [];
+      byRegion[region].push(p);
+    }
   });
 
-  // Sort groups by REGION_GROUPS order
-  const orderedRegions: string[] = [];
-  Object.values(REGION_GROUPS).forEach((regions) => {
-    regions.forEach((r) => {
-      if (grouped[r]) orderedRegions.push(r);
-    });
-  });
+  const sections: { key: string; title: string; icon: string; items: Prescription[] }[] = [
+    ...Object.entries(byFolder)
+      .sort((a, b) => a[1].name.localeCompare(b[1].name))
+      .map(([id, f]) => ({ key: `folder:${id}`, title: f.name, icon: "", items: f.items })),
+    ...ORDERED_REGION_KEYS.filter((r) => byRegion[r]).map((r) => ({
+      key: `region:${r}`,
+      title: regionName(r, locale),
+      icon: regionIcon(r),
+      items: byRegion[r],
+    })),
+  ];
 
   if (loading) {
     return (
@@ -260,7 +240,7 @@ export default function PatientExercisesPage() {
       <div>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{T("exercises.myExercises")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {prescriptions.length} {prescriptions.length !== 1 ? T("exercises.exercisePlural") : T("exercises.exercise")} {prescriptions.length !== 1 ? T("exercises.prescribed") : T("exercises.prescribedSingular")} {orderedRegions.length} {(orderedRegions.length !== 1 ? T("exercises.bodyRegions") : T("exercises.bodyRegion")).toLowerCase()}
+          {prescriptions.length} {prescriptions.length !== 1 ? T("exercises.exercisePlural") : T("exercises.exercise")} {prescriptions.length !== 1 ? T("exercises.prescribed") : T("exercises.prescribedSingular")} {sections.length} {(sections.length !== 1 ? T("exercises.groups") : T("exercises.group")).toLowerCase()}
         </p>
       </div>
 
@@ -276,8 +256,8 @@ export default function PatientExercisesPage() {
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
             <Target className="h-6 w-6 mx-auto text-primary mb-1" />
-            <p className="text-2xl font-bold">{orderedRegions.length}</p>
-            <p className="text-xs text-muted-foreground">{T("exercises.bodyRegions")}</p>
+            <p className="text-2xl font-bold">{sections.length}</p>
+            <p className="text-xs text-muted-foreground">{T("exercises.groups")}</p>
           </CardContent>
         </Card>
         <Card>
@@ -300,25 +280,28 @@ export default function PatientExercisesPage() {
         </Card>
       </div>
 
-      {/* Exercise Groups by Body Region */}
+      {/* Exercise Sections — admin folders first, then body regions */}
       <div className="space-y-4">
-        {orderedRegions.map((region) => {
-          const regionExercises = grouped[region];
-          const isExpanded = expandedRegions.has(region);
+        {sections.map((section) => {
+          const isExpanded = expandedRegions.has(section.key);
 
           return (
-            <Card key={region} className="overflow-hidden">
-              {/* Region Header */}
+            <Card key={section.key} className="overflow-hidden">
+              {/* Section Header */}
               <button
-                onClick={() => toggleRegion(region)}
+                onClick={() => toggleRegion(section.key)}
                 className="w-full text-left px-5 py-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{REGION_EMOJIS[region] || "📋"}</span>
+                  {section.icon ? (
+                    <span className="text-2xl">{section.icon}</span>
+                  ) : (
+                    <FolderOpen className="h-6 w-6 text-primary" />
+                  )}
                   <div>
-                    <h2 className="font-semibold text-base">{BODY_REGIONS[region] || region}</h2>
+                    <h2 className="font-semibold text-base">{section.title}</h2>
                     <p className="text-xs text-muted-foreground">
-                      {regionExercises.length} {regionExercises.length !== 1 ? T("exercises.exercisePlural") : T("exercises.exercise")}
+                      {section.items.length} {section.items.length !== 1 ? T("exercises.exercisePlural") : T("exercises.exercise")}
                     </p>
                   </div>
                 </div>
@@ -332,7 +315,7 @@ export default function PatientExercisesPage() {
               {/* Exercises */}
               {isExpanded && (
                 <div className="border-t divide-y">
-                  {regionExercises.map((p) => (
+                  {section.items.map((p) => (
                     <ExerciseRow
                       key={p.id}
                       prescription={p}
@@ -443,12 +426,12 @@ function ExerciseRow({
       {/* Info */}
       <div className="flex-1 min-w-0 space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-sm">{ex.name}</h3>
+          <h3 className="font-semibold text-sm">{(isPt && ex.namePt) || ex.name}</h3>
           <Badge className={`${diff.color} text-[10px] px-1.5 py-0`}>{diff.label}</Badge>
         </div>
 
-        {ex.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{ex.description}</p>
+        {((isPt && ex.descriptionPt) || ex.description) && (
+          <p className="text-xs text-muted-foreground line-clamp-2">{(isPt && ex.descriptionPt) || ex.description}</p>
         )}
 
         {/* Parameters */}
@@ -567,7 +550,6 @@ function VideoPlayerModal({
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
   const T = (key: string) => i18nT(key, locale);
-  const BODY_REGIONS = isPt ? BODY_REGIONS_PT : BODY_REGIONS_EN;
   const ex = prescription.exercise;
   const sets = prescription.sets || ex.defaultSets;
   const reps = prescription.reps || ex.defaultReps;
@@ -588,8 +570,8 @@ function VideoPlayerModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div>
-            <h3 className="font-semibold">{ex.name}</h3>
-            <p className="text-sm text-muted-foreground">{BODY_REGIONS[ex.bodyRegion]}</p>
+            <h3 className="font-semibold">{(isPt && ex.namePt) || ex.name}</h3>
+            <p className="text-sm text-muted-foreground">{regionName(ex.bodyRegion, locale)}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -647,10 +629,10 @@ function VideoPlayerModal({
             )}
           </div>
 
-          {ex.instructions && (
+          {((isPt && ex.instructionsPt) || ex.instructions) && (
             <div className="bg-muted/50 rounded-lg p-4">
               <p className="text-sm font-medium mb-1">{T("exercises.instructions")}</p>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ex.instructions}</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{(isPt && ex.instructionsPt) || ex.instructions}</p>
             </div>
           )}
 

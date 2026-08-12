@@ -29,6 +29,12 @@ export async function GET(req: NextRequest) {
             name: true,
             description: true,
             instructions: true,
+            // Portuguese translations (filled by the admin "Traduzir PT" action)
+            namePt: true,
+            descriptionPt: true,
+            instructionsPt: true,
+            folderId: true,
+            folder: { select: { id: true, name: true } },
             bodyRegion: true,
             difficulty: true,
             videoUrl: true,

@@ -64,45 +64,12 @@ import {
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { BODY_REGIONS, regionLabel, REGION_GROUPS, REGION_TO_GROUP } from "@/lib/exercise-regions";
 
 // ─── Constants ─────────────────────────────────────────
 
-const BODY_REGIONS: Record<string, { en: string; pt: string; icon: string }> = {
-  SHOULDER:       { en: "Shoulder",          pt: "Ombro",              icon: "💪" },
-  ELBOW:          { en: "Elbow",             pt: "Cotovelo",           icon: "🦾" },
-  WRIST_HAND:     { en: "Wrist / Hand",      pt: "Pulso / Mão",        icon: "🤲" },
-  HIP:            { en: "Hip",               pt: "Quadril",            icon: "🦴" },
-  KNEE:           { en: "Knee",              pt: "Joelho",             icon: "🦵" },
-  ANKLE_FOOT:     { en: "Ankle / Foot",      pt: "Tornozelo / Pé",     icon: "🦶" },
-  NECK_CERVICAL:  { en: "Neck / Cervical",   pt: "Cervical / Pescoço", icon: "🔴" },
-  SPINE_THORACIC: { en: "Thoracic Spine",    pt: "Coluna Torácica",    icon: "🟠" },
-  SPINE_LUMBAR:   { en: "Lumbar Spine",      pt: "Coluna Lombar",      icon: "🟡" },
-  SPINE_BACK:     { en: "Spine (general)",   pt: "Coluna Geral",       icon: "⬜" },
-  CORE_ABDOMEN:   { en: "Core / Abdomen",    pt: "Core / Abdomen",     icon: "🟢" },
-  STRETCHING:     { en: "Stretching",        pt: "Alongamento",        icon: "🤸" },
-  MUSCLE_INJURY:  { en: "Muscle Injury",     pt: "Lesão Muscular",     icon: "🩹" },
-  FULL_BODY:      { en: "Full Body",         pt: "Corpo Inteiro",      icon: "🏃" },
-  OTHER:          { en: "Other",             pt: "Outro",              icon: "⚙️" },
-};
-
-const regionLabel = (key: string, locale: string) => {
-  const r = BODY_REGIONS[key];
-  if (!r) return key.replace(/_/g, " ");
-  return `${r.icon} ${locale === "pt-BR" ? r.pt : r.en}`;
-};
-
-const REGION_GROUPS: { label: string; labelPt: string; keys: string[] }[] = [
-  { label: "Upper Limbs",          labelPt: "Membros Superiores",  keys: ["SHOULDER", "ELBOW", "WRIST_HAND"] },
-  { label: "Lower Limbs",          labelPt: "Membros Inferiores",  keys: ["HIP", "KNEE", "ANKLE_FOOT"] },
-  { label: "Spine",                labelPt: "Coluna Vertebral",    keys: ["NECK_CERVICAL", "SPINE_THORACIC", "SPINE_LUMBAR", "SPINE_BACK"] },
-  { label: "Core & Trunk",         labelPt: "Core & Tronco",       keys: ["CORE_ABDOMEN"] },
-  { label: "General",              labelPt: "Geral",               keys: ["STRETCHING", "MUSCLE_INJURY", "FULL_BODY", "OTHER"] },
-];
-
-const REGION_TO_GROUP: Record<string, string> = {};
-REGION_GROUPS.forEach((group) => {
-  group.keys.forEach((k) => { REGION_TO_GROUP[k] = group.label; });
-});
+// Region tables live in lib/exercise-regions.ts so the patient dashboard
+// renders the exact same names/icons/groupings.
 
 const DIFFICULTIES: Record<string, { label: string; color: string }> = {
   BEGINNER: { label: "Beginner", color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
@@ -172,7 +139,8 @@ export default function ExercisesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [showPrescribe, setShowPrescribe] = useState(false);
-  const [prescribeExercise, setPrescribeExercise] = useState<Exercise | null>(null);
+  const [prescribeExercises, setPrescribeExercises] = useState<Exercise[]>([]);
+  const [prescribeCollectionName, setPrescribeCollectionName] = useState<string>("");
   const [showPreview, setShowPreview] = useState<Exercise | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showInstagram, setShowInstagram] = useState(false);
@@ -396,7 +364,15 @@ export default function ExercisesPage() {
   };
 
   const openPrescribe = (ex: Exercise) => {
-    setPrescribeExercise(ex);
+    setPrescribeExercises([ex]);
+    setPrescribeCollectionName("");
+    setShowPrescribe(true);
+  };
+
+  const openPrescribeCollection = (items: Exercise[], name: string) => {
+    if (items.length === 0) return;
+    setPrescribeExercises(items);
+    setPrescribeCollectionName(name);
     setShowPrescribe(true);
   };
 
@@ -630,6 +606,16 @@ export default function ExercisesPage() {
                   </Button>
                   <h2 className="text-lg font-semibold">{open.name}</h2>
                   <Badge variant="outline">{open.items.length}</Badge>
+                  <div className={`flex items-center gap-1 ${open.folder ? "" : "ml-auto"}`}>
+                    <Button
+                      size="sm"
+                      disabled={open.items.length === 0}
+                      onClick={() => openPrescribeCollection(open.items, open.name)}
+                    >
+                      <Send className="h-3.5 w-3.5 mr-1" />
+                      {locale === "pt-BR" ? "Prescrever tudo" : "Prescribe all"}
+                    </Button>
+                  </div>
                   {open.folder && (
                     <div className="flex items-center gap-1 ml-auto">
                       <Button variant="ghost" size="sm" onClick={() => handleRenameFolder(open.folder!)}>
@@ -788,11 +774,12 @@ export default function ExercisesPage() {
         />
       )}
 
-      {showPrescribe && prescribeExercise && (
+      {showPrescribe && prescribeExercises.length > 0 && (
         <PrescribeModal
-          exercise={prescribeExercise}
-          onClose={() => { setShowPrescribe(false); setPrescribeExercise(null); }}
-          onSaved={() => { setShowPrescribe(false); setPrescribeExercise(null); }}
+          exercises={prescribeExercises}
+          collectionName={prescribeCollectionName}
+          onClose={() => { setShowPrescribe(false); setPrescribeExercises([]); }}
+          onSaved={() => { setShowPrescribe(false); setPrescribeExercises([]); }}
         />
       )}
 
@@ -1694,14 +1681,21 @@ function ExerciseFormModal({
 // ─── Prescribe Modal ───────────────────────────────────
 
 function PrescribeModal({
-  exercise,
+  exercises,
+  collectionName,
   onClose,
   onSaved,
 }: {
-  exercise: Exercise;
+  exercises: Exercise[];
+  collectionName?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  // One exercise → therapist tunes sets/reps for it. Many (a whole folder) →
+  // each exercise keeps its own defaults, since forcing one set/rep scheme
+  // across a mixed folder would be wrong.
+  const exercise = exercises[0];
+  const isBulk = exercises.length > 1;
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(false);
   const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
@@ -1716,6 +1710,7 @@ function PrescribeModal({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [skippedCount, setSkippedCount] = useState(0);
   const [error, setError] = useState("");
   const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -1767,24 +1762,45 @@ function PrescribeModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             patientId,
-            exercises: [
-              {
-                exerciseId: exercise.id,
-                sets: sets ? parseInt(sets) : null,
-                reps: reps ? parseInt(reps) : null,
-                holdSeconds: holdSeconds ? parseInt(holdSeconds) : null,
-                restSeconds: restSeconds ? parseInt(restSeconds) : null,
-                frequency: frequency || null,
-                notes: notes || null,
-              },
-            ],
+            exercises: exercises.map((ex) =>
+              isBulk
+                ? {
+                    exerciseId: ex.id,
+                    sets: ex.defaultSets,
+                    reps: ex.defaultReps,
+                    holdSeconds: ex.defaultHoldSec,
+                    restSeconds: ex.defaultRestSec,
+                    frequency: frequency || null,
+                    notes: notes || null,
+                  }
+                : {
+                    exerciseId: ex.id,
+                    sets: sets ? parseInt(sets) : null,
+                    reps: reps ? parseInt(reps) : null,
+                    holdSeconds: holdSeconds ? parseInt(holdSeconds) : null,
+                    restSeconds: restSeconds ? parseInt(restSeconds) : null,
+                    frequency: frequency || null,
+                    notes: notes || null,
+                  }
+            ),
           }),
         })
       );
 
-      await Promise.all(promises);
+      const results = await Promise.all(promises);
+      const payloads = await Promise.all(results.map((r) => r.json().catch(() => ({}))));
+
+      // fetch() only rejects on network errors, so a 4xx/5xx would otherwise
+      // sail through and report success while nothing was created.
+      const failed = results.find((r) => !r.ok);
+      if (failed) {
+        const idx = results.indexOf(failed);
+        throw new Error((payloads[idx] as any)?.error || `Failed to prescribe (${failed.status})`);
+      }
+
+      setSkippedCount(payloads.reduce((sum: number, p: any) => sum + (p?.skipped || 0), 0));
       setSuccess(true);
-      setTimeout(() => onSaved(), 1500);
+      setTimeout(() => onSaved(), 2500);
     } catch (err: any) {
       setError(err.message || "Failed to prescribe");
     } finally {
@@ -1797,8 +1813,12 @@ function PrescribeModal({
       <div className="bg-background rounded-xl shadow-xl w-full max-w-lg mx-4 mb-10">
         <div className="flex items-center justify-between p-5 border-b">
           <div>
-            <h2 className="text-lg font-semibold">Prescribe Exercise</h2>
-            <p className="text-sm text-muted-foreground">{exercise.name} — {regionLabel(exercise.bodyRegion, "en-GB")}</p>
+            <h2 className="text-lg font-semibold">{isBulk ? "Prescribe Collection" : "Prescribe Exercise"}</h2>
+            <p className="text-sm text-muted-foreground">
+              {isBulk
+                ? `${collectionName ? `${collectionName} — ` : ""}${exercises.length} exercises`
+                : `${exercise.name} — ${regionLabel(exercise.bodyRegion, "en-GB")}`}
+            </p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
         </div>
@@ -1810,8 +1830,16 @@ function PrescribeModal({
             </div>
           )}
           {success && (
-            <div className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-sm p-3 rounded-lg flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" /> Exercise prescribed successfully!
+            <div className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-sm p-3 rounded-lg flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                {isBulk ? "Collection prescribed successfully!" : "Exercise prescribed successfully!"}
+                {skippedCount > 0 && (
+                  <span className="block text-xs mt-0.5 opacity-80">
+                    {skippedCount} already prescribed — skipped to avoid duplicates.
+                  </span>
+                )}
+              </span>
             </div>
           )}
 
@@ -1884,8 +1912,14 @@ function PrescribeModal({
             )}
           </div>
 
+          {isBulk && (
+            <div className="bg-muted/50 text-muted-foreground text-xs p-3 rounded-lg">
+              Each exercise keeps its own default sets/reps/hold. Frequency and notes below apply to all {exercises.length}.
+            </div>
+          )}
+
           {/* Parameters — type a custom number or pick a common value */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className={`grid grid-cols-4 gap-3 ${isBulk ? "hidden" : ""}`}>
             <div className="space-y-1">
               <Label className="text-xs">Sets</Label>
               <Input type="number" min="0" list="sets-options" value={sets} onChange={(e) => setSets(e.target.value)} placeholder="3" />
