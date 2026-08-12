@@ -77,6 +77,7 @@ export async function GET(req: NextRequest) {
         take: limit,
         include: {
           createdBy: { select: { firstName: true, lastName: true } },
+          folder: { select: { id: true, name: true } },
           _count: { select: { prescriptions: true } },
         },
       }),

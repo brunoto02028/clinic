@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       description?: string;
       tags?: string;
       fileKey: string;
+      folderId?: string;
     }> = metadataRaw ? JSON.parse(metadataRaw) : [];
 
     const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
@@ -108,6 +109,7 @@ export async function POST(req: NextRequest) {
             videoFileName: videoFile.name,
             thumbnailUrl,
             duration,
+            folderId: meta.folderId || null,
             createdById: userId,
           },
         });

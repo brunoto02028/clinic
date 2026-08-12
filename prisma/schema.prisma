@@ -341,6 +341,7 @@ model Clinic {
   eduAssignments          EducationAssignment[]
   bodyAssessments         BodyAssessment[]
   exercises               Exercise[]
+  exerciseFolders         ExerciseFolder[]
   exercisePrescriptions   ExercisePrescription[]
   aiDiagnoses             AIDiagnosis[]
   treatmentProtocols      TreatmentProtocol[]
@@ -2712,6 +2713,10 @@ model Exercise {
   difficulty     ExerciseDifficulty @default(BEGINNER)
   tags           String[] // e.g. ["post-surgery", "strengthening", "mobility"]
 
+  // Optional named collection (e.g. from a bulk-upload folder) — additive to bodyRegion
+  folderId String?
+  folder   ExerciseFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
   // Media
   videoUrl      String? @db.Text // URL or local path to video
   videoFileName String?
@@ -2740,6 +2745,22 @@ model Exercise {
   @@index([bodyRegion])
   @@index([isActive])
   @@index([createdById])
+  @@index([folderId])
+}
+
+model ExerciseFolder {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exercises Exercise[]
+
+  @@index([clinicId])
 }
 
 model ExercisePrescription {
