@@ -162,7 +162,7 @@ export default function ExercisesPage() {
   const [sort, setSort] = useState("recent");
   const [bulkTranslating, setBulkTranslating] = useState(false);
   const [bulkResult, setBulkResult] = useState<string>("");
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [openCollection, setOpenCollection] = useState<string | null>(null);
   const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkActing, setBulkActing] = useState(false);
@@ -291,6 +291,35 @@ export default function ExercisesPage() {
       }));
       setSelectedIds(new Set());
       setBulkTargetRegion("");
+      fetchExercises();
+    } finally {
+      setBulkActing(false);
+    }
+  };
+
+  const handleCreateEmptyFolder = async () => {
+    const name = prompt(locale === "pt-BR" ? "Nome da nova pasta:" : "New folder name:");
+    if (!name || !name.trim()) return;
+    await fetch("/api/admin/exercise-folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    fetchFolders();
+  };
+
+  const handleBulkMoveToFolder = async (folderId: string) => {
+    if (!folderId || selectedIds.size === 0) return;
+    setBulkActing(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map((id) => {
+        const fd = new FormData();
+        // "none" removes the exercise from any folder
+        fd.append("folderId", folderId === "none" ? "" : folderId);
+        return fetch(`/api/admin/exercises/${id}`, { method: "PATCH", body: fd });
+      }));
+      setSelectedIds(new Set());
+      fetchFolders();
       fetchExercises();
     } finally {
       setBulkActing(false);
@@ -459,6 +488,10 @@ export default function ExercisesPage() {
             {bulkTranslating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
             <span className="hidden sm:inline">{bulkTranslating ? "Traduzindo..." : "Traduzir PT"}</span>
           </Button>
+          <Button variant="outline" onClick={handleCreateEmptyFolder}>
+            <FolderUp className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">{locale === "pt-BR" ? "Nova Pasta" : "New Folder"}</span>
+          </Button>
           <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
             <FolderUp className="h-4 w-4 mr-2" />
             <span className="hidden sm:inline">Bulk Upload</span>
@@ -570,156 +603,130 @@ export default function ExercisesPage() {
           </CardContent>
         </Card>
       ) : isGroupedMode ? (
-        <div className="space-y-3">
-          {REGION_GROUPS.map((group) => {
-            const groupExercises = exercises.filter((ex) => REGION_TO_GROUP[ex.bodyRegion] === group.label);
-            const isOpen = !!expandedGroups[group.label];
-            const count = groupExercises.length;
-            const coverThumb = groupExercises.find((ex) => ex.thumbnailUrl)?.thumbnailUrl;
-            const selectedInGroup = groupExercises.filter((ex) => selectedIds.has(ex.id));
+        (() => {
+          const collections = [
+            ...REGION_GROUPS.map((g) => ({
+              key: `region:${g.label}`,
+              name: locale === "pt-BR" ? g.labelPt : g.label,
+              folder: null as { id: string; name: string } | null,
+              items: exercises.filter((ex) => REGION_TO_GROUP[ex.bodyRegion] === g.label),
+            })),
+            ...folders.map((f) => ({
+              key: `folder:${f.id}`,
+              name: f.name,
+              folder: f,
+              items: exercises.filter((ex) => ex.folderId === f.id),
+            })),
+          ];
+          const open = collections.find((c) => c.key === openCollection);
+
+          if (open) {
+            const selectedInGroup = open.items.filter((ex) => selectedIds.has(ex.id));
             return (
-              <div key={group.label} className="border rounded-lg overflow-hidden">
-                <button
-                  type="button"
-                  disabled={count === 0}
-                  onClick={() => setExpandedGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))}
-                  className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-muted/40 hover:bg-muted/60 disabled:opacity-50 disabled:cursor-default transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    {coverThumb ? (
-                      <img src={coverThumb} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
-                    ) : (
-                      <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                        <Dumbbell className="h-4 w-4 text-muted-foreground/50" />
-                      </div>
-                    )}
-                    <span className="font-medium text-sm">
-                      {locale === "pt-BR" ? group.labelPt : group.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{count}</Badge>
-                    {count > 0 && (
-                      <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                    )}
-                  </div>
-                </button>
-                {isOpen && count > 0 && (
-                  <div className="p-4 space-y-3">
-                    {selectedInGroup.length > 0 && (
-                      <BulkActionBar
-                        selectedCount={selectedInGroup.length}
-                        locale={locale}
-                        bulkTargetRegion={bulkTargetRegion}
-                        setBulkTargetRegion={setBulkTargetRegion}
-                        bulkActing={bulkActing}
-                        onApplyRecategorize={() => handleBulkRecategorize(bulkTargetRegion)}
-                        onDelete={handleBulkDelete}
-                        onClear={() => setSelectedIds((prev) => {
-                          const next = new Set(prev);
-                          groupExercises.forEach((ex) => next.delete(ex.id));
-                          return next;
-                        })}
-                      />
-                    )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {groupExercises.map((ex) => (
-                        <ExerciseCard
-                          key={ex.id}
-                          exercise={ex}
-                          onEdit={() => openEdit(ex)}
-                          onDelete={() => handleDelete(ex.id)}
-                          onPrescribe={() => openPrescribe(ex)}
-                          onPreview={() => setShowPreview(ex)}
-                          selectable
-                          selected={selectedIds.has(ex.id)}
-                          onToggleSelect={() => toggleSelect(ex.id)}
-                        />
-                      ))}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" onClick={() => setOpenCollection(null)}>
+                    <ChevronLeft className="h-4 w-4 mr-1" /> {locale === "pt-BR" ? "Voltar" : "Back"}
+                  </Button>
+                  <h2 className="text-lg font-semibold">{open.name}</h2>
+                  <Badge variant="outline">{open.items.length}</Badge>
+                  {open.folder && (
+                    <div className="flex items-center gap-1 ml-auto">
+                      <Button variant="ghost" size="sm" onClick={() => handleRenameFolder(open.folder!)}>
+                        <Edit className="h-3.5 w-3.5 mr-1" /> {locale === "pt-BR" ? "Renomear" : "Rename"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => { handleDeleteFolder(open.folder!); setOpenCollection(null); }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> {locale === "pt-BR" ? "Excluir pasta" : "Delete folder"}
+                      </Button>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {folders.map((folder) => {
-            const groupExercises = exercises.filter((ex) => ex.folderId === folder.id);
-            const isOpen = !!expandedGroups[`folder:${folder.id}`];
-            const count = groupExercises.length;
-            const coverThumb = groupExercises.find((ex) => ex.thumbnailUrl)?.thumbnailUrl;
-            const selectedInGroup = groupExercises.filter((ex) => selectedIds.has(ex.id));
-            return (
-              <div key={folder.id} className="border rounded-lg overflow-hidden">
-                <div className="w-full flex items-center gap-2 px-4 py-3 bg-muted/40 hover:bg-muted/60 transition-colors">
-                  <button
-                    type="button"
-                    disabled={count === 0}
-                    onClick={() => setExpandedGroups((prev) => ({ ...prev, [`folder:${folder.id}`]: !prev[`folder:${folder.id}`] }))}
-                    className="flex-1 flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-default"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {coverThumb ? (
-                        <img src={coverThumb} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
-                      ) : (
-                        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
-                          <FolderUp className="h-4 w-4 text-muted-foreground/50" />
-                        </div>
-                      )}
-                      <span className="font-medium text-sm">{folder.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{count}</Badge>
-                      {count > 0 && (
-                        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                      )}
-                    </div>
-                  </button>
-                  <button type="button" onClick={() => handleRenameFolder(folder)} className="p-1 text-muted-foreground hover:text-foreground shrink-0">
-                    <Edit className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" onClick={() => handleDeleteFolder(folder)} className="p-1 text-muted-foreground hover:text-destructive shrink-0">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  )}
                 </div>
-                {isOpen && count > 0 && (
-                  <div className="p-4 space-y-3">
-                    {selectedInGroup.length > 0 && (
-                      <BulkActionBar
-                        selectedCount={selectedInGroup.length}
-                        locale={locale}
-                        bulkTargetRegion={bulkTargetRegion}
-                        setBulkTargetRegion={setBulkTargetRegion}
-                        bulkActing={bulkActing}
-                        onApplyRecategorize={() => handleBulkRecategorize(bulkTargetRegion)}
-                        onDelete={handleBulkDelete}
-                        onClear={() => setSelectedIds((prev) => {
-                          const next = new Set(prev);
-                          groupExercises.forEach((ex) => next.delete(ex.id));
-                          return next;
-                        })}
-                      />
-                    )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {groupExercises.map((ex) => (
-                        <ExerciseCard
-                          key={ex.id}
-                          exercise={ex}
-                          onEdit={() => openEdit(ex)}
-                          onDelete={() => handleDelete(ex.id)}
-                          onPrescribe={() => openPrescribe(ex)}
-                          onPreview={() => setShowPreview(ex)}
-                          selectable
-                          selected={selectedIds.has(ex.id)}
-                          onToggleSelect={() => toggleSelect(ex.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                {selectedInGroup.length > 0 && (
+                  <BulkActionBar
+                    selectedCount={selectedInGroup.length}
+                    locale={locale}
+                    bulkTargetRegion={bulkTargetRegion}
+                    setBulkTargetRegion={setBulkTargetRegion}
+                    bulkActing={bulkActing}
+                    onApplyRecategorize={() => handleBulkRecategorize(bulkTargetRegion)}
+                    onDelete={handleBulkDelete}
+                    onCreateFolder={handleCreateFolderFromSelection}
+                    folders={folders}
+                    onMoveToFolder={handleBulkMoveToFolder}
+                    onClear={() => setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      open.items.forEach((ex) => next.delete(ex.id));
+                      return next;
+                    })}
+                  />
                 )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {open.items.map((ex) => (
+                    <ExerciseCard
+                      key={ex.id}
+                      exercise={ex}
+                      onEdit={() => openEdit(ex)}
+                      onDelete={() => handleDelete(ex.id)}
+                      onPrescribe={() => openPrescribe(ex)}
+                      onPreview={() => setShowPreview(ex)}
+                      selectable
+                      selected={selectedIds.has(ex.id)}
+                      onToggleSelect={() => toggleSelect(ex.id)}
+                    />
+                  ))}
+                </div>
               </div>
             );
-          })}
-        </div>
+          }
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {collections.map((c) => {
+                const cover = c.items.find((ex) => ex.thumbnailUrl)?.thumbnailUrl;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    disabled={c.items.length === 0 && !c.folder}
+                    onClick={() => setOpenCollection(c.key)}
+                    className="group relative text-left rounded-xl overflow-hidden border bg-card hover:shadow-lg hover:border-primary/40 disabled:opacity-50 disabled:cursor-default transition-all"
+                  >
+                    <div className="relative h-36 bg-muted flex items-center justify-center overflow-hidden">
+                      {cover ? (
+                        <img
+                          src={cover}
+                          alt=""
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : c.folder ? (
+                        <FolderUp className="h-10 w-10 text-muted-foreground/30" />
+                      ) : (
+                        <Dumbbell className="h-10 w-10 text-muted-foreground/30" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                      <div className="absolute bottom-0 inset-x-0 p-3 flex items-end justify-between gap-2">
+                        <span className="font-semibold text-sm text-white drop-shadow line-clamp-2">{c.name}</span>
+                        <span className="shrink-0 text-xs font-medium text-white bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5">
+                          {c.items.length}
+                        </span>
+                      </div>
+                      {c.folder && (
+                        <span className="absolute top-2 left-2 text-[10px] font-medium text-white bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5 flex items-center gap-1">
+                          <FolderUp className="h-3 w-3" /> {locale === "pt-BR" ? "Pasta" : "Folder"}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()
       ) : (
         <div className="space-y-3">
           {selectedIds.size > 0 && (
@@ -732,6 +739,8 @@ export default function ExercisesPage() {
               onApplyRecategorize={() => handleBulkRecategorize(bulkTargetRegion)}
               onDelete={handleBulkDelete}
               onCreateFolder={handleCreateFolderFromSelection}
+              folders={folders}
+              onMoveToFolder={handleBulkMoveToFolder}
               onClear={() => setSelectedIds(new Set())}
             />
           )}
@@ -816,6 +825,8 @@ function BulkActionBar({
   onDelete,
   onClear,
   onCreateFolder,
+  folders,
+  onMoveToFolder,
 }: {
   selectedCount: number;
   locale: string;
@@ -826,6 +837,8 @@ function BulkActionBar({
   onDelete: () => void;
   onClear: () => void;
   onCreateFolder?: () => void;
+  folders?: { id: string; name: string }[];
+  onMoveToFolder?: (folderId: string) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
@@ -850,6 +863,19 @@ function BulkActionBar({
       <Button size="sm" className="h-8 text-xs" disabled={!bulkTargetRegion || bulkActing} onClick={onApplyRecategorize}>
         Aplicar
       </Button>
+      {onMoveToFolder && folders && folders.length > 0 && (
+        <Select value="" onValueChange={onMoveToFolder}>
+          <SelectTrigger className="w-[170px] h-8 text-xs">
+            <SelectValue placeholder={locale === "pt-BR" ? "Mover para pasta..." : "Move to folder..."} />
+          </SelectTrigger>
+          <SelectContent>
+            {folders.map((f) => (
+              <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+            ))}
+            <SelectItem value="none">{locale === "pt-BR" ? "— Sem pasta —" : "— No folder —"}</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
       {onCreateFolder && (
         <Button size="sm" variant="outline" className="h-8 text-xs" disabled={bulkActing} onClick={onCreateFolder}>
           <FolderUp className="h-3.5 w-3.5 mr-1" /> Criar pasta
