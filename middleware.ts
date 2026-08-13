@@ -114,6 +114,9 @@ const publicRoutes = [
   '/api/amazon-image',
   '/api/agent', // OpenClaw Agent API - uses Bearer token authentication
   '/api/admin/maintenance', // protected by x-maintenance-secret header, not session
+  '/api/admin/backup', // protected by x-backup-token, or a SUPERADMIN session — the
+                       // route checks both itself; a backup runs unattended and
+                       // cannot carry a browser session
   '/api/cron', // all cron/* routes verify their own ?key= secret, not session — see each route
   '/api/image-serve', // public image serving from DB (no auth needed to display images)
   '/api/health', // Coolify health check — must be public or deploy zero-downtime breaks
