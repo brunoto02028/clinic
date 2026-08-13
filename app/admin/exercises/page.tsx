@@ -769,7 +769,9 @@ export default function ExercisesPage() {
           <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
           <span className="ml-2 text-sm text-muted-foreground">{T("admin.exLoading")}</span>
         </div>
-      ) : exercises.length === 0 ? (
+      ) : exercises.length === 0 && !(isGroupedMode && folderTree.length > 0) ? (
+        // Categories created before the first upload still have to show, or
+        // creating one looks like it silently failed.
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-20">
             <Dumbbell className="h-12 w-12 text-muted-foreground/30 mb-4" />
@@ -929,7 +931,7 @@ export default function ExercisesPage() {
                     }
                   />
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                   {items.map((ex) => (
                     <ExerciseCard
                       key={ex.id}
@@ -988,7 +990,7 @@ export default function ExercisesPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                     {category.children.map((f) => (
                       <CollectionCard
                         key={f.id}
@@ -1041,7 +1043,7 @@ export default function ExercisesPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                   {folderTree.map((c) => (
                     <CollectionCard
                       key={c.id}
@@ -1090,7 +1092,7 @@ export default function ExercisesPage() {
               onClear={() => setSelectedIds(new Set())}
             />
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
             {exercises.map((ex) => (
               <ExerciseCard
                 key={ex.id}
