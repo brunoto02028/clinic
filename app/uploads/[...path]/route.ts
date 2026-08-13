@@ -2,28 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { existsSync, statSync, createReadStream } from "fs";
 import { Readable } from "stream";
 import path from "path";
+import { CONTENT_TYPES } from "@/lib/content-types";
 
 export const dynamic = "force-dynamic";
 
-const CONTENT_TYPES: Record<string, string> = {
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".png": "image/png",
-  ".gif": "image/gif",
-  ".webp": "image/webp",
-  ".svg": "image/svg+xml",
-  ".ico": "image/x-icon",
-  ".pdf": "application/pdf",
-  // Video types matter twice over: served as application/octet-stream the
-  // browser simply refuses to play the file.
-  ".mp4": "video/mp4",
-  ".webm": "video/webm",
-  ".mov": "video/quicktime",
-  ".m4v": "video/x-m4v",
-  ".ogg": "video/ogg",
-  ".mp3": "audio/mpeg",
-  ".wav": "audio/wav",
-};
+// Exercise videos live in R2 now; this route still serves everything that
+// stayed on disk — article images, the logo, patient documents.
 
 function toWebStream(nodeStream: Readable): ReadableStream {
   return Readable.toWeb(nodeStream) as unknown as ReadableStream;

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { resolveClinicId } from "@/lib/exercise-folders";
+import { deleteR2Url, isR2Configured, listR2, deleteFromR2, keyFromR2Url } from "@/lib/r2";
 import path from "path";
 import { existsSync, statSync, unlinkSync, readdirSync } from "fs";
 
@@ -118,6 +119,21 @@ export async function POST(req: NextRequest) {
   const exercisesDir = path.join(uploadsBase(), EXERCISES_SUBDIR);
   const filesOnDisk = countFilesIn(exercisesDir);
 
+  // Media now lives in R2; the disk numbers only ever describe leftovers from
+  // before the migration.
+  const r2Keys = isR2Configured() ? await listR2("exercises/") : [];
+
+  // Objects this run would actually remove, as opposed to everything sitting
+  // under the prefix — those differ as soon as there is more than one clinic,
+  // and reporting only the global number would understate nothing and
+  // overstate everything.
+  const scopedKeys = new Set(
+    exercises
+      .flatMap((e) => [e.videoUrl, e.thumbnailUrl])
+      .map((u) => keyFromR2Url(u))
+      .filter((k): k is string => !!k)
+  );
+
   const plan = {
     scope: allClinics ? "ALL CLINICS" : "this clinic only",
     clinics: clinicsAffected.map((c) => c.name),
@@ -128,6 +144,8 @@ export async function POST(req: NextRequest) {
     filesReferenced: files.length,
     filesMissing: missingFiles,
     filesOnDisk,
+    objectsInR2Total: r2Keys.length,
+    objectsInR2ThisScope: scopedKeys.size,
     orphansAfter: filesOnDisk - files.length,
     megabytesFreed: +(bytes / 1048576).toFixed(1),
   };
@@ -148,8 +166,44 @@ export async function POST(req: NextRequest) {
   const deletedExercises = await prisma.exercise.deleteMany({ where: clinicWhere });
   const deletedFolders = await prisma.exerciseFolder.deleteMany({ where: clinicWhere });
 
-  let deletedFiles = 0;
+  let deletedObjects = 0;
   const fileErrors: string[] = [];
+  for (const ex of exercises) {
+    for (const url of [ex.videoUrl, ex.thumbnailUrl]) {
+      try {
+        if (await deleteR2Url(url)) deletedObjects++;
+      } catch (err: any) {
+        fileErrors.push(`R2 ${url}: ${err.message}`);
+      }
+    }
+  }
+  // "Orphan" has to mean "no surviving row points at it" — not "everything
+  // under the prefix". R2 keys carry no clinic segment, so a blind sweep would
+  // destroy other clinics' videos even when this reset is scoped to one, and R2
+  // is now the only copy there is.
+  let purgedOrphanObjects = 0;
+  if (purgeOrphans && isR2Configured()) {
+    const survivors = await prisma.exercise.findMany({
+      select: { videoUrl: true, thumbnailUrl: true },
+    });
+    const stillReferenced = new Set(
+      survivors
+        .flatMap((e) => [e.videoUrl, e.thumbnailUrl])
+        .map((u) => keyFromR2Url(u))
+        .filter((k): k is string => !!k)
+    );
+    for (const key of await listR2("exercises/")) {
+      if (stillReferenced.has(key)) continue;
+      try {
+        await deleteFromR2(key);
+        purgedOrphanObjects++;
+      } catch (err: any) {
+        fileErrors.push(`R2 ${key}: ${err.message}`);
+      }
+    }
+  }
+
+  let deletedFiles = 0;
   for (const p of files) {
     try {
       unlinkSync(p);
@@ -189,10 +243,13 @@ export async function POST(req: NextRequest) {
       exercises: deletedExercises.count,
       folders: deletedFolders.count,
       files: deletedFiles,
+      objectsInR2: deletedObjects,
+      orphanObjectsPurged: purgedOrphanObjects,
       orphansPurged: purgedOrphans,
     },
     megabytesFreed: plan.megabytesFreed,
     filesRemaining: countFilesIn(exercisesDir),
+    objectsRemainingInR2: isR2Configured() ? (await listR2("exercises/")).length : null,
     fileErrors: fileErrors.slice(0, 20),
   });
 }

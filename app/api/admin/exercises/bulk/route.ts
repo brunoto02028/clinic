@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
-import { ensureWebSafeVideo } from "@/lib/video-web-safe";
 import { assertValidExerciseFolder } from "@/lib/exercise-folders";
+import {
+  processAndStoreExerciseVideo,
+  discardStoredMedia,
+  type StoredExerciseMedia,
+} from "@/lib/exercise-media";
 
 export const dynamic = "force-dynamic";
 
@@ -54,16 +56,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
-    const videosDir = path.join(uploadsBase, "exercises");
-    const thumbDir = path.join(videosDir, "thumbnails");
-    await mkdir(videosDir, { recursive: true });
-    await mkdir(thumbDir, { recursive: true });
-
     const allowedVideoTypes = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/mpeg"];
     const results: Array<{ name: string; success: boolean; error?: string; exerciseId?: string }> = [];
 
     for (const meta of metadata) {
+      // Per item, so one bad row doesn't strand its own upload in the bucket.
+      let storedMedia: StoredExerciseMedia | null = null;
       try {
         const videoFile = formData.get(meta.fileKey) as File | null;
         
@@ -84,47 +82,15 @@ export async function POST(req: NextRequest) {
 
         // Save video
         const ext = path.extname(videoFile.name) || ".mp4";
-        const safeName = videoFile.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(ext, "");
-        const uniqueName = `${Date.now()}-${safeName}${ext}`;
-        const filePath = path.join(videosDir, uniqueName);
-
-        const bytes = await videoFile.arrayBuffer();
-        await writeFile(filePath, new Uint8Array(bytes));
-
-        // Normalise first so the thumbnail and duration below describe the
-        // file patients will actually receive.
-        let finalPath = filePath;
-        let finalName = uniqueName;
-        try {
-          const norm = await ensureWebSafeVideo(filePath);
-          if (norm.action !== "failed") {
-            finalPath = norm.path;
-            finalName = path.basename(norm.path);
-          } else {
-            console.error(`Video normalisation failed for ${meta.name}:`, norm.error);
-          }
-        } catch (normErr: any) {
-          console.error(`Video normalisation threw for ${meta.name}:`, normErr.message);
-        }
-
-        const videoUrl = `/uploads/exercises/${finalName}`;
         const tags = meta.tags ? meta.tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean) : [];
 
-        let thumbnailUrl: string | null = null;
-        try {
-          const thumbName = `${Date.now()}-thumb.jpg`;
-          await generateVideoThumbnail(finalPath, path.join(thumbDir, thumbName));
-          thumbnailUrl = `/uploads/exercises/thumbnails/${thumbName}`;
-        } catch (thumbErr: any) {
-          console.error(`Auto-thumbnail generation failed for ${meta.name}:`, thumbErr.message);
-        }
-
-        let duration: number | null = null;
-        try {
-          duration = await getVideoDuration(finalPath);
-        } catch (durErr: any) {
-          console.error(`Duration extraction failed for ${meta.name}:`, durErr.message);
-        }
+        // Normalise, thumbnail, duration and upload all happen in one place,
+        // shared with the single and Instagram routes.
+        const stored = await processAndStoreExerciseVideo(
+          Buffer.from(await videoFile.arrayBuffer()),
+          videoFile.name
+        );
+        storedMedia = stored;
 
         const exercise = await (prisma as any).exercise.create({
           data: {
@@ -134,10 +100,10 @@ export async function POST(req: NextRequest) {
             bodyRegion: (meta.bodyRegion || "OTHER") as any,
             difficulty: (meta.difficulty || "BEGINNER") as any,
             tags,
-            videoUrl,
-            videoFileName: videoFile.name,
-            thumbnailUrl,
-            duration,
+            videoUrl: stored.videoUrl,
+            videoFileName: stored.videoFileName,
+            thumbnailUrl: stored.thumbnailUrl,
+            duration: stored.duration,
             folderId: meta.folderId || null,
             createdById: userId,
           },
@@ -145,6 +111,7 @@ export async function POST(req: NextRequest) {
 
         results.push({ name: meta.name, success: true, exerciseId: exercise.id });
       } catch (err: any) {
+        await discardStoredMedia(storedMedia);
         results.push({ name: meta.name, success: false, error: err.message });
       }
     }
