@@ -3144,6 +3144,12 @@ model PatientDocument {
   fileType     String // MIME type: application/pdf, image/jpeg, image/png
   fileSize     Int? // Size in bytes
   thumbnailUrl String? @db.Text // Preview thumbnail for images
+  // The bytes themselves, base64. In the database rather than on disk for the
+  // same reason article images and the book PDFs are: files under public/ are
+  // served statically with no auth (a bare curl fetched a patient document),
+  // and nothing on the VPS disk is in any backup. Here, access goes through
+  // /api/files/[id] which checks the session, and prod-db.sql carries the data.
+  fileData     String? @db.Text
 
   // Classification
   documentType DocumentType   @default(OTHER)
