@@ -1,4 +1,8 @@
 export const dynamic = "force-dynamic";
+// The generic 500 here hid every real failure: a missing key, an account
+// setting, a bad parameter all looked identical from the outside. The catch
+// now surfaces Stripe's own error type and code — safe to return, they never
+// contain secrets — so the next failure explains itself.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -139,10 +143,16 @@ export async function POST(request: NextRequest) {
       checkoutUrl: checkoutSession.url,
       sessionId: checkoutSession.id,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating checkout session:", error);
     return NextResponse.json(
-      { error: "Failed to create payment session" },
+      {
+        error: "Failed to create payment session",
+        stripeType: error?.type ?? null,
+        stripeCode: error?.code ?? error?.raw?.code ?? null,
+        stripeParam: error?.param ?? error?.raw?.param ?? null,
+        detail: error?.raw?.message ?? error?.message ?? null,
+      },
       { status: 500 }
     );
   }
