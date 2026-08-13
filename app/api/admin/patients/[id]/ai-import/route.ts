@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { storePatientDocument } from "@/lib/patient-documents";
 import { callAIClinical } from "@/lib/ai-provider";
 import { extractText } from "@/lib/docling";
 import { patientPseudonym } from "@/lib/pseudonymize";
@@ -38,19 +39,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   // 1. Extract text from uploaded PDFs/images
   let extractedTexts: string[] = [];
-  const savedFiles: { filename: string; filepath: string; type: string }[] = [];
+  const savedFiles: { filename: string; file: File; type: string }[] = [];
 
   for (const file of files) {
     try {
-      // Save the file locally (Railway Volume or local)
-      const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
-      const uploadDir = path.join(uploadsBase, "documents", patientId);
-      fs.mkdirSync(uploadDir, { recursive: true });
-      const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-      const filepath = path.join(uploadDir, safeName);
-      const buffer = Buffer.from(await file.arrayBuffer());
-      fs.writeFileSync(filepath, buffer);
-      savedFiles.push({ filename: file.name, filepath: `/uploads/documents/${patientId}/${safeName}`, type: file.type });
+      // Kept as the File itself: bytes go to the database through
+      // storePatientDocument, not to disk under public/ where anything could
+      // read them without a session.
+      savedFiles.push({ filename: file.name, file, type: file.type });
 
       // Try to extract text via Docling
       try {
@@ -205,19 +201,25 @@ Rules:
 
     // 4c. Save uploaded files as documents + AI-generated document entries
     for (const sf of savedFiles) {
-      await (prisma as any).patientDocument.create({
-        data: {
-          clinicId: patient.clinicId,
-          patientId,
-          uploadedById: therapistId,
-          title: sf.filename,
-          filePath: sf.filepath,
-          fileType: sf.type,
-          documentType: "OTHER",
-          source: "ADMIN_UPLOAD",
-          extractedText: extractedTexts.find((t) => t.includes(sf.filename))?.replace(/^---.*---\n/, "") || null,
-        },
+      // This create used a field the model does not have (filePath) and
+      // omitted required ones (fileName, fileUrl) — it had thrown at runtime
+      // since the day it was written. Same storage as every other upload now.
+      const storedDoc = await storePatientDocument({
+        file: sf.file,
+        clinicId: patient.clinicId || "",
+        patientId,
+        uploadedById: therapistId,
+        documentType: "OTHER",
+        source: "ADMIN_UPLOAD",
+        title: sf.filename,
       });
+      const extractedForFile = extractedTexts.find((t) => t.includes(sf.filename));
+      if (extractedForFile) {
+        await (prisma as any).patientDocument.update({
+          where: { id: storedDoc.id },
+          data: { extractedText: extractedForFile.replace(/^---.*---\n/, "") },
+        });
+      }
       documentsCreated++;
     }
 
@@ -230,8 +232,10 @@ Rules:
               clinicId: patient.clinicId,
               patientId,
               uploadedById: therapistId,
+              fileName: doc.title || "Clinical History",
+              fileUrl: "",
+              fileType: "text/plain",
               title: doc.title || "Clinical History",
-              content: doc.content,
               documentType: doc.documentType || "OTHER",
               source: "ADMIN_UPLOAD",
               aiSummary: doc.content,
@@ -249,8 +253,11 @@ Rules:
           clinicId: patient.clinicId,
           patientId,
           uploadedById: therapistId,
+          fileName: "Therapist Clinical Notes (AI Import)",
+          fileUrl: "",
+          fileType: "text/plain",
           title: "Therapist Clinical Notes (AI Import)",
-          content: clinicalText,
+          description: clinicalText,
           documentType: "PREVIOUS_TREATMENT",
           source: "ADMIN_UPLOAD",
         },

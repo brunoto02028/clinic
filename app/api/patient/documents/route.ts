@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { storePatientDocument, validatePatientFile } from "@/lib/patient-documents";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 
 export const dynamic = "force-dynamic";
@@ -53,63 +52,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type — any image, PDF, and common document formats
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain", "text/csv",
-    ];
-    if (!file.type.startsWith("image/") && !allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: "Invalid file type. Allowed: images, PDF, Word, TXT, CSV" }, { status: 400 });
+    const invalid = validatePatientFile(file);
+    if (invalid) {
+      return NextResponse.json({ error: invalid }, { status: 400 });
     }
 
-    // Max 25MB
-    if (file.size > 25 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large (max 25MB)" }, { status: 400 });
-    }
-
-    // Create uploads directory (Railway Volume or local)
-    const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
-    const uploadDir = path.join(uploadsBase, "documents", userId);
-    await mkdir(uploadDir, { recursive: true });
-
-    // Generate unique filename
-    const ext = path.extname(file.name) || (file.type === "application/pdf" ? ".pdf" : ".jpg");
-    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(ext, "");
-    const uniqueName = `${Date.now()}-${safeName}${ext}`;
-    const filePath = path.join(uploadDir, uniqueName);
-
-    // Write file
-    const bytes = await file.arrayBuffer();
-    await writeFile(filePath, new Uint8Array(bytes));
-
-    const fileUrl = `/uploads/documents/${userId}/${uniqueName}`;
-    let thumbnailUrl: string | null = null;
-    if (file.type.startsWith("image/")) {
-      thumbnailUrl = fileUrl;
-    }
-
-    const document = await (prisma as any).patientDocument.create({
-      data: {
-        clinicId: clinicId || "",
-        patientId: userId,
-        uploadedById: userId,
-        fileName: file.name,
-        fileUrl,
-        fileType: file.type,
-        fileSize: file.size,
-        thumbnailUrl,
-        documentType,
-        source,
-        title,
-        description,
-        doctorName,
-        documentDate: documentDate ? new Date(documentDate) : null,
-      },
-      include: {
-        uploadedBy: { select: { firstName: true, lastName: true, role: true } },
-      },
+    // Bytes go in the database and are served through /api/files/[id], which
+    // checks the session — see lib/patient-documents.ts for the full story.
+    const document = await storePatientDocument({
+      file,
+      clinicId: clinicId || "",
+      patientId: userId,
+      uploadedById: userId,
+      documentType,
+      source,
+      title,
+      description,
+      doctorName,
+      documentDate: documentDate ? new Date(documentDate) : null,
     });
 
     // Send confirmation via preferred channel
