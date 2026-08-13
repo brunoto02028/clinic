@@ -1658,7 +1658,7 @@ function ExerciseFormModal({
   const [videoUrl, setVideoUrl] = useState(exercise?.videoUrl || "");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
-  const [uploadType, setUploadType] = useState<"file" | "url">(exercise?.videoUrl && !exercise.videoUrl.startsWith("/uploads") ? "url" : "file");
+  const [uploadType, setUploadType] = useState<"file" | "url">(isEmbeddedVideoUrl(exercise?.videoUrl) ? "url" : "file");
 
   // ─── Voice Input ───
   const [voiceParsing, setVoiceParsing] = useState(false);
@@ -2173,7 +2173,7 @@ function ExerciseFormModal({
                         ({(videoFile.size / 1024 / 1024).toFixed(1)}MB)
                       </span>
                     </div>
-                  ) : exercise?.videoUrl && exercise.videoUrl.startsWith("/uploads") ? (
+                  ) : exercise?.videoUrl && !isEmbeddedVideoUrl(exercise.videoUrl) ? (
                     <div className="text-sm text-muted-foreground">
                       <FileVideo className="h-8 w-8 mx-auto mb-1 text-primary/50" />
                       Current: {exercise.videoFileName || "Video uploaded"}
@@ -2653,6 +2653,17 @@ const FOLDER_REGION_HINTS: [RegExp, string][] = [
   [/injury|strain|sprain/i, "MUSCLE_INJURY"],
   [/full body|total body/i, "FULL_BODY"],
 ];
+/**
+ * A pasted link to a video platform, as opposed to a file we host.
+ *
+ * This used to be written as "does the URL start with /uploads", which stopped
+ * being true when videos moved to R2 and their URLs became absolute — an
+ * exercise we host would have been mistaken for someone else's link.
+ */
+const EMBED_VIDEO_HOSTS = /(?:youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com)/i;
+const isEmbeddedVideoUrl = (url: string | null | undefined): boolean =>
+  !!url && EMBED_VIDEO_HOSTS.test(url);
+
 const guessRegionFromFolder = (folder: string): string | null => {
   const hit = FOLDER_REGION_HINTS.find(([re]) => re.test(folder));
   return hit ? hit[1] : null;
@@ -3070,7 +3081,6 @@ function VideoPreviewModal({
   exercise: Exercise;
   onClose: () => void;
 }) {
-  const isExternal = exercise.videoUrl && !exercise.videoUrl.startsWith("/uploads");
   const isYoutube = exercise.videoUrl?.includes("youtube.com") || exercise.videoUrl?.includes("youtu.be");
 
   const getYoutubeEmbedUrl = (url: string) => {

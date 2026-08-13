@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { resolveClinicId } from "@/lib/exercise-folders";
+import { deleteR2Url } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -113,11 +114,27 @@ export async function DELETE(
   let deletedFolders = 1;
 
   if (withExercises) {
+    // Drop the stored media before the rows go inactive — afterwards there is
+    // nothing left pointing at the objects, and they would sit in R2 forever.
+    const doomed = await prisma.exercise.findMany({
+      where: { folderId: { in: subtreeIds }, isActive: true },
+      select: { videoUrl: true, thumbnailUrl: true },
+    });
+    for (const ex of doomed) {
+      for (const url of [ex.videoUrl, ex.thumbnailUrl]) {
+        try {
+          await deleteR2Url(url);
+        } catch (mediaErr: any) {
+          console.error("Failed to remove media from R2:", mediaErr.message);
+        }
+      }
+    }
+
     // Soft delete, matching how single-exercise deletion already behaves —
     // keeps any historic prescription rows intact instead of cascading.
     const res = await prisma.exercise.updateMany({
       where: { folderId: { in: subtreeIds }, isActive: true },
-      data: { isActive: false },
+      data: { isActive: false, videoUrl: null, thumbnailUrl: null },
     });
     deletedExercises = res.count;
     // The DB cascade removes the children along with the parent.

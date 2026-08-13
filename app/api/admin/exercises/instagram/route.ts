@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir, readFile, unlink } from "fs/promises";
+import { mkdir, readFile, unlink } from "fs/promises";
 import path from "path";
-import { ensureWebSafeVideo } from "@/lib/video-web-safe";
+import { processAndStoreExerciseVideo } from "@/lib/exercise-media";
 import { tmpdir } from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -135,8 +135,6 @@ export async function POST(req: NextRequest) {
     });
 
     const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
-    const exercisesDir = path.join(uploadsDir, "exercises");
-    await mkdir(exercisesDir, { recursive: true });
 
     // Expand profile URLs into individual post URLs
     const expandedUrls: string[] = [];
@@ -216,27 +214,20 @@ export async function POST(req: NextRequest) {
         }
 
         const filename = `ig-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
-        const filePath = path.join(exercisesDir, filename);
-        await writeFile(filePath, new Uint8Array(videoBuffer));
 
-        // yt-dlp usually hands back H.264, but normalise anyway so every
-        // stored video is guaranteed playable on any patient device.
-        let finalName = filename;
-        try {
-          const norm = await ensureWebSafeVideo(filePath);
-          if (norm.action !== "failed") finalName = path.basename(norm.path);
-          else console.error("Video normalisation failed:", norm.error);
-        } catch (normErr: any) {
-          console.error("Video normalisation threw:", normErr.message);
-        }
-
-        const videoUrl = `/uploads/exercises/${finalName}`;
+        // Same pipeline as the other upload routes: normalise, thumbnail,
+        // duration, then store in R2. Nothing stays on the VPS.
+        const stored = await processAndStoreExerciseVideo(
+          Buffer.from(videoBuffer),
+          filename
+        );
+        const videoUrl = stored.videoUrl;
+        const thumbnailUrl = stored.thumbnailUrl;
         const fileSize = videoBuffer.byteLength;
 
         // Auto-detect body region from caption (AI-powered)
         const bodyRegion = await detectBodyRegion(videoCaption || "");
         const regionLabel = (VALID_REGIONS as readonly string[]).includes(bodyRegion) ? bodyRegion : "OTHER";
-        const thumbnailUrl: string | null = null;
 
         // Create exercise — no text from Instagram, only body region
         const exercise = await prisma.exercise.create({
@@ -246,7 +237,7 @@ export async function POST(req: NextRequest) {
             bodyRegion: regionLabel as any,
             difficulty: "INTERMEDIATE",
             videoUrl,
-            videoFileName: finalName,
+            videoFileName: stored.videoFileName,
             thumbnailUrl,
             isActive: true,
             clinicId,

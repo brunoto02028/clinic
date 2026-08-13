@@ -3,9 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { assertValidExerciseFolder, resolveClinicId } from "@/lib/exercise-folders";
-import { writeFile, mkdir, unlink } from "fs/promises";
+import { deleteR2Url, uploadToR2 } from "@/lib/r2";
+import { processAndStoreExerciseVideo, MediaStorageError } from "@/lib/exercise-media";
+import { ALLOWED_THUMBNAIL_TYPES, MAX_THUMBNAIL_BYTES } from "@/lib/exercise-media";
 import path from "path";
-import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,16 @@ export async function PATCH(
   const { id } = await params;
 
   try {
+    const callerClinicId = await resolveClinicId(session);
+    const owner = await prisma.exercise.findUnique({
+      where: { id },
+      select: { clinicId: true, videoUrl: true, thumbnailUrl: true },
+    });
+    // Uploading over someone else's exercise would delete their video.
+    if (!owner || owner.clinicId !== callerClinicId) {
+      return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
+    }
+
     const formData = await req.formData();
 
     const updateData: any = {};
@@ -129,7 +140,9 @@ export async function PATCH(
     // Handle video upload
     const videoFile = formData.get("video") as File | null;
     const externalVideoUrl = formData.get("videoUrl") as string | null;
-    let savedVideoPath: string | null = null;
+    // Old objects are only dropped after the row is updated, so a failed write
+    // leaves clutter rather than a broken player.
+    let replacedMedia: (string | null)[] = [];
 
     if (videoFile && videoFile.size > 0) {
       const allowedTypes = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/mpeg"];
@@ -140,66 +153,61 @@ export async function PATCH(
         return NextResponse.json({ error: "Video too large (max 500MB)" }, { status: 400 });
       }
 
-      const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
-      const videosDir = path.join(uploadsBase, "exercises");
-      await mkdir(videosDir, { recursive: true });
-
-      const ext = path.extname(videoFile.name) || ".mp4";
-      const safeName = videoFile.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(ext, "");
-      const uniqueName = `${Date.now()}-${safeName}${ext}`;
-      const filePath = path.join(videosDir, uniqueName);
-
-      const bytes = await videoFile.arrayBuffer();
-      await writeFile(filePath, new Uint8Array(bytes));
-
-      updateData.videoUrl = `/uploads/exercises/${uniqueName}`;
-      updateData.videoFileName = videoFile.name;
-      savedVideoPath = filePath;
-
-      if (durationRaw === null) {
-        try {
-          updateData.duration = await getVideoDuration(filePath);
-        } catch (durErr: any) {
-          console.error("Duration extraction failed:", durErr.message);
-        }
+      try {
+        const stored = await processAndStoreExerciseVideo(
+          Buffer.from(await videoFile.arrayBuffer()),
+          videoFile.name,
+          // A manual thumbnail in the same request would orphan the extracted
+          // one the moment it overwrote the URL.
+          { extractThumbnail: !(formData.get("thumbnail") as File | null)?.size }
+        );
+        updateData.videoUrl = stored.videoUrl;
+        updateData.videoFileName = stored.videoFileName;
+        if (stored.thumbnailUrl) updateData.thumbnailUrl = stored.thumbnailUrl;
+        if (durationRaw === null) updateData.duration = stored.duration;
+        replacedMedia = [owner.videoUrl, owner.thumbnailUrl];
+      } catch (err: any) {
+        console.error("Exercise media storage failed:", err.message);
+        return NextResponse.json(
+          { error: err instanceof MediaStorageError ? err.message : "Failed to store the video" },
+          { status: 500 }
+        );
       }
     } else if (externalVideoUrl !== null) {
       updateData.videoUrl = externalVideoUrl || null;
     }
 
-    // Handle thumbnail
+    // A hand-picked thumbnail replaces whatever ffmpeg extracted above.
     const thumbnailFile = formData.get("thumbnail") as File | null;
     if (thumbnailFile && thumbnailFile.size > 0) {
-      const uploadsBase2 = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
-      const thumbDir = path.join(uploadsBase2, "exercises", "thumbnails");
-      await mkdir(thumbDir, { recursive: true });
-
+      // This lands on a public domain, so it gets the same checks as creation:
+      // an unvalidated upload here would serve arbitrary content, SVG included.
+      if (!ALLOWED_THUMBNAIL_TYPES.includes(thumbnailFile.type)) {
+        return NextResponse.json({ error: "Thumbnail must be a JPEG, PNG or WebP image" }, { status: 400 });
+      }
+      if (thumbnailFile.size > MAX_THUMBNAIL_BYTES) {
+        return NextResponse.json({ error: "Thumbnail too large (max 5MB)" }, { status: 400 });
+      }
       const ext = path.extname(thumbnailFile.name) || ".jpg";
       const uniqueName = `${Date.now()}-thumb${ext}`;
-      const filePath = path.join(thumbDir, uniqueName);
-
-      const bytes = await thumbnailFile.arrayBuffer();
-      await writeFile(filePath, new Uint8Array(bytes));
-
-      updateData.thumbnailUrl = `/uploads/exercises/thumbnails/${uniqueName}`;
-    } else if (savedVideoPath) {
-      // No manual thumbnail — auto-extract the first frame via ffmpeg.
-      try {
-        const uploadsBase3 = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
-        const thumbDir = path.join(uploadsBase3, "exercises", "thumbnails");
-        await mkdir(thumbDir, { recursive: true });
-        const thumbName = `${Date.now()}-thumb.jpg`;
-        await generateVideoThumbnail(savedVideoPath, path.join(thumbDir, thumbName));
-        updateData.thumbnailUrl = `/uploads/exercises/thumbnails/${thumbName}`;
-      } catch (thumbErr: any) {
-        console.error("Auto-thumbnail generation failed:", thumbErr.message);
-      }
+      updateData.thumbnailUrl = await uploadToR2(
+        `exercises/thumbnails/${uniqueName}`,
+        Buffer.from(await thumbnailFile.arrayBuffer())
+      );
     }
 
     const exercise = await prisma.exercise.update({
       where: { id },
       data: updateData,
     });
+
+    for (const url of replacedMedia) {
+      try {
+        await deleteR2Url(url);
+      } catch (mediaErr: any) {
+        console.error("Failed to remove replaced media:", mediaErr.message);
+      }
+    }
 
     return NextResponse.json({ exercise });
   } catch (err: any) {
@@ -222,12 +230,39 @@ export async function DELETE(
   const { id } = await params;
 
   try {
+    const clinicId = await resolveClinicId(session);
+    const existing = await prisma.exercise.findUnique({
+      where: { id },
+      select: { clinicId: true, videoUrl: true, thumbnailUrl: true },
+    });
+    // Deleting used to flip a reversible boolean; it now destroys the only copy
+    // of the video, so an id belonging to another clinic must not be reachable.
+    if (!existing || existing.clinicId !== clinicId) {
+      return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
+    }
+
+    // Database first. If this write fails after the objects are gone, the row
+    // stays active pointing at dead URLs and the video is unrecoverable —
+    // whereas an object left behind is only clutter.
     await prisma.exercise.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, videoUrl: null, thumbnailUrl: null },
     });
 
-    return NextResponse.json({ success: true });
+    // The row is kept (prescription history references it) but the media is
+    // not: an inactive exercise is never watched again, and leaving the objects
+    // behind is how the VPS ended up with 296 orphaned files.
+    let removedMedia = 0;
+    for (const url of [existing.videoUrl, existing.thumbnailUrl]) {
+      try {
+        if (await deleteR2Url(url)) removedMedia++;
+      } catch (mediaErr: any) {
+        // Storage trouble must not block the deletion the user asked for.
+        console.error("Failed to remove media from R2:", mediaErr.message);
+      }
+    }
+
+    return NextResponse.json({ success: true, removedMedia });
   } catch (err: any) {
     return NextResponse.json({ error: "Failed to delete exercise" }, { status: 500 });
   }

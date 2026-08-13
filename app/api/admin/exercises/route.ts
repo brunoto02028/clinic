@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
-import { ensureWebSafeVideo } from "@/lib/video-web-safe";
 import { assertValidExerciseFolder } from "@/lib/exercise-folders";
+import {
+  processAndStoreExerciseVideo,
+  MediaStorageError,
+  discardStoredMedia,
+  ALLOWED_THUMBNAIL_TYPES,
+  MAX_THUMBNAIL_BYTES,
+  type StoredExerciseMedia,
+} from "@/lib/exercise-media";
+import { uploadToR2 } from "@/lib/r2";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +113,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Declared outside the try so the catch can roll back a completed upload.
+  let storedMedia: StoredExerciseMedia | null = null;
+
   try {
     const formData = await req.formData();
     const clinicId = (session.user as any)?.clinicId;
@@ -147,10 +156,7 @@ export async function POST(req: NextRequest) {
     const videoFile = formData.get("video") as File | null;
     const externalVideoUrl = formData.get("videoUrl") as string | null;
 
-    let savedVideoPath: string | null = null;
-
     if (videoFile && videoFile.size > 0) {
-      // Validate video file
       const allowedTypes = ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/mpeg"];
       if (!allowedTypes.includes(videoFile.type)) {
         return NextResponse.json({ error: "Invalid video format. Allowed: MP4, WebM, MOV, AVI" }, { status: 400 });
@@ -159,80 +165,51 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Video too large (max 500MB)" }, { status: 400 });
       }
 
-      // Save video to disk
-      const videosDir = path.join(process.cwd(), "public", "uploads", "exercises");
-      await mkdir(videosDir, { recursive: true });
-
-      const ext = path.extname(videoFile.name) || ".mp4";
-      const safeName = videoFile.name.replace(/[^a-zA-Z0-9.-]/g, "_").replace(ext, "");
-      const uniqueName = `${Date.now()}-${safeName}${ext}`;
-      const filePath = path.join(videosDir, uniqueName);
-
-      const bytes = await videoFile.arrayBuffer();
-      await writeFile(filePath, new Uint8Array(bytes));
-
-      videoUrl = `/uploads/exercises/${uniqueName}`;
-      videoFileName = videoFile.name;
-      savedVideoPath = filePath;
-
-      // Normalise before the thumbnail/duration steps so they read the final
-      // file. Patients open these on unknown phones, so everything has to end
-      // up as H.264/AAC mp4 with faststart.
       try {
-        const norm = await ensureWebSafeVideo(filePath);
-        if (norm.action !== "failed") {
-          savedVideoPath = norm.path;
-          videoUrl = `/uploads/exercises/${path.basename(norm.path)}`;
-        } else {
-          console.error("Video normalisation failed:", norm.error);
-        }
-      } catch (normErr: any) {
-        console.error("Video normalisation threw:", normErr.message);
+        const stored = await processAndStoreExerciseVideo(
+          Buffer.from(await videoFile.arrayBuffer()),
+          videoFile.name,
+          // Skip the extracted frame when the request carries its own — it
+          // would be overwritten below and stranded in the bucket.
+          { extractThumbnail: !(formData.get("thumbnail") as File | null)?.size }
+        );
+        storedMedia = stored;
+        videoUrl = stored.videoUrl;
+        thumbnailUrl = stored.thumbnailUrl;
+        duration = stored.duration;
+        videoFileName = stored.videoFileName;
+      } catch (err: any) {
+        // Better a refused upload than a video nobody can back up.
+        console.error("Exercise media storage failed:", err.message);
+        return NextResponse.json(
+          { error: err instanceof MediaStorageError ? err.message : "Failed to store the video" },
+          { status: 500 }
+        );
       }
     } else if (externalVideoUrl) {
       videoUrl = externalVideoUrl;
     }
 
-    // Handle thumbnail upload
+    // A hand-picked thumbnail overrides the frame ffmpeg pulled.
     const thumbnailFile = formData.get("thumbnail") as File | null;
     if (thumbnailFile && thumbnailFile.size > 0) {
-      if (!thumbnailFile.type.startsWith("image/")) {
-        return NextResponse.json({ error: "Thumbnail must be an image" }, { status: 400 });
+      if (!ALLOWED_THUMBNAIL_TYPES.includes(thumbnailFile.type)) {
+        return NextResponse.json({ error: "Thumbnail must be a JPEG, PNG or WebP image" }, { status: 400 });
       }
-
-      const thumbDir = path.join(process.cwd(), "public", "uploads", "exercises", "thumbnails");
-      await mkdir(thumbDir, { recursive: true });
-
+      if (thumbnailFile.size > MAX_THUMBNAIL_BYTES) {
+        return NextResponse.json({ error: "Thumbnail too large (max 5MB)" }, { status: 400 });
+      }
       const ext = path.extname(thumbnailFile.name) || ".jpg";
       const uniqueName = `${Date.now()}-thumb${ext}`;
-      const filePath = path.join(thumbDir, uniqueName);
-
-      const bytes = await thumbnailFile.arrayBuffer();
-      await writeFile(filePath, new Uint8Array(bytes));
-
-      thumbnailUrl = `/uploads/exercises/thumbnails/${uniqueName}`;
-    } else if (savedVideoPath) {
-      // No manual thumbnail — auto-extract the first frame via ffmpeg.
-      try {
-        const thumbDir = path.join(process.cwd(), "public", "uploads", "exercises", "thumbnails");
-        await mkdir(thumbDir, { recursive: true });
-        const thumbName = `${Date.now()}-thumb.jpg`;
-        await generateVideoThumbnail(savedVideoPath, path.join(thumbDir, thumbName));
-        thumbnailUrl = `/uploads/exercises/thumbnails/${thumbName}`;
-      } catch (thumbErr: any) {
-        console.error("Auto-thumbnail generation failed:", thumbErr.message);
-      }
+      thumbnailUrl = await uploadToR2(
+        `exercises/thumbnails/${uniqueName}`,
+        Buffer.from(await thumbnailFile.arrayBuffer())
+      );
     }
 
     const durationRaw = formData.get("duration");
     if (durationRaw) {
       duration = parseInt(durationRaw as string);
-    } else if (savedVideoPath) {
-      try {
-        duration = await getVideoDuration(savedVideoPath);
-      } catch (durErr: any) {
-        console.error("Duration extraction failed:", durErr.message);
-      }
     }
 
     const exercise = await prisma.exercise.create({
@@ -260,6 +237,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ exercise }, { status: 201 });
   } catch (err: any) {
     console.error("Exercise POST error:", err);
+    // The upload succeeded but the row did not, so nothing will ever reference
+    // those objects — roll them back rather than leave paid-for clutter.
+    await discardStoredMedia(storedMedia);
     return NextResponse.json({ error: "Failed to create exercise" }, { status: 500 });
   }
 }

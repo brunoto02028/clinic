@@ -21,6 +21,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'clinic.vps.brunophysicalrehabilitation.co.uk' },
       { protocol: 'https', hostname: 'bpr.rehab' },
       { protocol: 'https', hostname: 'bpr.clinic' },
+      { protocol: 'https', hostname: 'media.bpr.clinic' },
       { protocol: 'https', hostname: 'api.qrserver.com' },
       { protocol: 'https', hostname: '**.amazonaws.com' },
       { protocol: 'https', hostname: '**.r2.cloudflarestorage.com' },
