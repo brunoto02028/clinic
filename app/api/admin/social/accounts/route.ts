@@ -16,9 +16,24 @@ export async function GET(req: NextRequest) {
 
     const clinicId = await resolveClinicId(session);
 
+    // Explicit select, never the access token: it grants control of the
+    // Instagram account, and the browser has no use for it — publishing happens
+    // server-side. Anything running in the admin's browser (an extension, an
+    // injected script) could otherwise walk away with the account.
     const accounts = await prisma.socialAccount.findMany({
       where: clinicId ? { clinicId } : {},
-      include: { _count: { select: { posts: true } } },
+      select: {
+        id: true,
+        clinicId: true,
+        platform: true,
+        accountName: true,
+        accountId: true,
+        profilePicUrl: true,
+        isActive: true,
+        tokenExpiresAt: true,
+        createdAt: true,
+        _count: { select: { posts: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 

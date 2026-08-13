@@ -24,7 +24,21 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: `${BASE_URL}/beyond-pain` },
-    openGraph: { title, description, type: "website", url: `${BASE_URL}/beyond-pain` },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: `${BASE_URL}/beyond-pain`,
+      // Without an image the share card on WhatsApp/Instagram/Facebook is
+      // bare text — for a book launch, the cover is the pitch.
+      images: [{ url: `${BASE_URL}/images/book/beyond-pain-og.jpg`, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [`${BASE_URL}/images/book/beyond-pain-og.jpg`],
+    },
   };
 }
 
