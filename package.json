@@ -2,7 +2,7 @@
   "name": "app",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 4000",
     "build": "node scripts/update-version.js && next build",
     "start": "next start",
     "lint": "next lint",
