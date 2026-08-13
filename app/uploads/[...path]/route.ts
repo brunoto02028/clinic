@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
 import { existsSync, statSync, createReadStream } from "fs";
 import { Readable } from "stream";
 import path from "path";
@@ -7,7 +9,41 @@ import { CONTENT_TYPES } from "@/lib/content-types";
 export const dynamic = "force-dynamic";
 
 // Exercise videos live in R2 now; this route still serves everything that
-// stayed on disk — article images, the logo, patient documents.
+// stayed on disk — article images, the logo, and patient files.
+
+/**
+ * Folders holding patient data. Everything else here is public by design:
+ * article images, the logo, marketing assets.
+ *
+ * This route sits outside the middleware — its matcher skips any path with a
+ * dot in it, which is every file — so a scan or a referral letter was readable
+ * by anyone holding the URL, with no session at all. The paths are unguessable
+ * (cuid plus timestamp), but "hard to guess" is not access control, and this is
+ * health data.
+ */
+const PATIENT_DATA_DIRS = ["documents", "body-assessments", "scans", "exports"];
+
+const STAFF_ROLES = ["SUPERADMIN", "ADMIN", "THERAPIST"];
+
+/** `documents/<patientId>/<file>` — the owner is the second segment. */
+function ownerIdFromPath(segments: string[]): string | null {
+  return segments[0] === "documents" && segments.length > 1 ? segments[1] : null;
+}
+
+async function isAllowed(segments: string[]): Promise<boolean> {
+  if (!PATIENT_DATA_DIRS.includes(segments[0])) return true;
+
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return false;
+
+  const role = (session.user as any)?.role;
+  if (STAFF_ROLES.includes(role)) return true;
+
+  // A patient reaches their own documents and nobody else's. The other folders
+  // key off ids this route cannot resolve to an owner, so they stay staff-only.
+  const owner = ownerIdFromPath(segments);
+  return !!owner && owner === (session.user as any)?.id;
+}
 
 function toWebStream(nodeStream: Readable): ReadableStream {
   return Readable.toWeb(nodeStream) as unknown as ReadableStream;
@@ -25,6 +61,12 @@ export async function GET(
 
   // Prevent path traversal
   if (!resolvedPath.startsWith(resolvedDir + path.sep) && resolvedPath !== resolvedDir) {
+    return new NextResponse("Not Found", { status: 404 });
+  }
+
+  // 404 rather than 401: a refusal that distinguishes "exists but forbidden"
+  // from "does not exist" tells an outsider which patient ids are real.
+  if (!(await isAllowed(params.path))) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
