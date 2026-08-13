@@ -120,6 +120,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No clinic context" }, { status: 400 });
     }
 
+    // Instagram has no folder picker, but every exercise must live in one.
+    // Get-or-create "Instagram › Importados" so these land somewhere visible
+    // instead of reappearing as loose videos.
+    const igCategory = await prisma.exerciseFolder.upsert({
+      where: { id: `ig-cat-${clinicId}` },
+      create: { id: `ig-cat-${clinicId}`, clinicId, name: "Instagram", parentId: null },
+      update: {},
+    });
+    const igFolder = await prisma.exerciseFolder.upsert({
+      where: { id: `ig-fld-${clinicId}` },
+      create: { id: `ig-fld-${clinicId}`, clinicId, name: "Importados", parentId: igCategory.id },
+      update: {},
+    });
+
     const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
     const exercisesDir = path.join(uploadsDir, "exercises");
     await mkdir(exercisesDir, { recursive: true });
@@ -236,6 +250,7 @@ export async function POST(req: NextRequest) {
             thumbnailUrl,
             isActive: true,
             clinicId,
+            folderId: igFolder.id,
             createdById: userId,
             tags: ["instagram-import"],
           },

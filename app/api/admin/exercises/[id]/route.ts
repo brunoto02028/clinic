@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { assertValidExerciseFolder, resolveClinicId } from "@/lib/exercise-folders";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
@@ -86,8 +87,21 @@ export async function PATCH(
     const bodyRegion = formData.get("bodyRegion") as string | null;
     if (bodyRegion) updateData.bodyRegion = bodyRegion;
 
+    // Same rule as creation: an exercise moves between folders, never out of
+    // one. Leaving PATCH unguarded would let the bulk "move" action recreate
+    // the loose videos the whole hierarchy exists to prevent.
     const folderId = formData.get("folderId");
-    if (folderId !== null) updateData.folderId = folderId ? (folderId as string) : null;
+    if (folderId !== null) {
+      const clinicId = await resolveClinicId(session);
+      if (!clinicId) {
+        return NextResponse.json({ error: "No clinic context" }, { status: 400 });
+      }
+      const check = await assertValidExerciseFolder(folderId as string, clinicId);
+      if (!check.ok) {
+        return NextResponse.json({ error: check.error }, { status: check.status });
+      }
+      updateData.folderId = folderId as string;
+    }
 
     const difficulty = formData.get("difficulty") as string | null;
     if (difficulty) updateData.difficulty = difficulty;
