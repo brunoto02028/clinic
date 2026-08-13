@@ -24,8 +24,10 @@ $LocalDbUser = "postgres"
 # Where to pull the production uploads from, and the session that authorises
 # listing them. Both come from the shell profile, like PROD_DATABASE_URL — this
 # script never reads the app's .env.
-$ProdBaseUrl       = if ($env:PROD_BASE_URL) { $env:PROD_BASE_URL.TrimEnd('/') } else { "https://bpr.clinic" }
-$ProdSessionCookie = $env:PROD_SESSION_COOKIE
+$ProdBaseUrl  = if ($env:PROD_BASE_URL) { $env:PROD_BASE_URL.TrimEnd('/') } else { "https://bpr.clinic" }
+# A long-lived token rather than a session cookie: cookies are httpOnly and
+# expire, so the backup would stop working every few weeks without saying so.
+$BackupToken  = $env:BACKUP_TOKEN
 
 New-Item -ItemType Directory -Force $BackupDir | Out-Null
 Write-Host ""
@@ -148,11 +150,11 @@ if (-not $SkipFiles -and -not $SkipProd) {
   Write-Step "Production upload files ($ProdBaseUrl)"
   $outDir = Join-Path $BackupDir "prod-uploads"
   try {
-    if (-not $ProdSessionCookie) {
-      throw "No `$env:PROD_SESSION_COOKIE set. Sign in to $ProdBaseUrl as SUPERADMIN, copy the next-auth session cookie, and set it in your PowerShell profile."
+    if (-not $BackupToken) {
+      throw "No `$env:BACKUP_TOKEN set. Add the same value to the Coolify env vars and to your PowerShell profile."
     }
 
-    $headers  = @{ Cookie = $ProdSessionCookie }
+    $headers  = @{ "x-backup-token" = $BackupToken }
     $manifest = Invoke-RestMethod -Uri "$ProdBaseUrl/api/admin/backup/uploads" -Headers $headers -TimeoutSec 60
     $prodExpected = [int]$manifest.count
     Write-Host "   server reports $prodExpected file(s), $($manifest.megabytes) MB" -ForegroundColor DarkGray
@@ -174,7 +176,10 @@ if (-not $SkipFiles -and -not $SkipProd) {
       # version dangerous.
       Write-Fail "prod-uploads/ INCOMPLETE - got $prodFileCount of $prodExpected ($($prodFailed.Count) failed)"
       if ($prodFailed.Count -gt 0) {
-        Write-Host "   first failures: $($prodFailed | Select-Object -First 5 | Join-String -Separator ', ')" -ForegroundColor Red
+        # -join, not Join-String: that cmdlet is PowerShell 7+ and this runs on
+        # 5.1, where the failure reporter would itself throw.
+        $sample = ($prodFailed | Select-Object -First 5) -join ', '
+        Write-Host "   first failures: $sample" -ForegroundColor Red
       }
     } else {
       Write-OK "prod-uploads/ ($prodFileCount of $prodExpected files)"
@@ -197,7 +202,14 @@ $manifest   = @{
   prodUploadComplete = ($prodExpected -gt 0 -and $prodFileCount -eq $prodExpected)
   note             = "Exercise videos live in Cloudflare R2 and are not part of this archive."
 } | ConvertTo-Json
-$manifest   | Out-File (Join-Path $BackupDir "manifest.json") -Encoding UTF8
+# WriteAllText, not Out-File: PowerShell 5.1's -Encoding UTF8 prepends a BOM,
+# which makes the manifest unreadable to every JSON parser — the same trap that
+# made the database dumps unrestorable.
+[System.IO.File]::WriteAllText(
+  (Join-Path $BackupDir "manifest.json"),
+  $manifest,
+  (New-Object System.Text.UTF8Encoding $false)
+)
 Write-OK "manifest.json written"
 
 # 6. ROTATE OLD BACKUPS

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { existsSync, readdirSync, statSync } from "fs";
+import { timingSafeEqual } from "crypto";
 import path from "path";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,11 @@ interface Entry {
 function walk(dir: string, base: string, out: Entry[]): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
+    // Dotfiles are skipped: they are `.gitkeep` placeholders holding no data,
+    // and Next refuses to serve them (400), so listing them would leave the
+    // backup permanently reporting a shortfall it can never close — which
+    // trains the reader to ignore the report.
+    if (entry.name.startsWith(".")) continue;
     if (entry.isDirectory()) {
       walk(full, base, out);
     } else if (entry.isFile()) {
@@ -54,13 +60,40 @@ function walk(dir: string, base: string, out: Entry[]): void {
   }
 }
 
+/**
+ * A backup runs unattended, so it authenticates with a long-lived secret rather
+ * than a browser session: session cookies are httpOnly and expire, which would
+ * mean the backup quietly stops working every few weeks — the same shape of
+ * silent failure this whole endpoint exists to end.
+ *
+ * Compared in constant time so a wrong token can't be discovered byte by byte.
+ */
+function hasValidBackupToken(req: NextRequest): boolean {
+  const expected = process.env.BACKUP_TOKEN;
+  if (!expected || expected.length < 32) return false;
+
+  const provided =
+    req.headers.get("x-backup-token") ||
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
+    "";
+  if (!provided) return false;
+
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  const role = (session?.user as any)?.role;
-  // The list covers every uploaded file the clinic holds, patient documents
-  // included — the narrowest role that can plausibly need it.
-  if (!session || role !== "SUPERADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Either a signed-in SUPERADMIN (useful for checking by hand) or the backup
+  // token. The list covers every uploaded file the clinic holds, patient
+  // documents included, so nothing weaker than these two is accepted.
+  if (!hasValidBackupToken(req)) {
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as any)?.role;
+    if (!session || role !== "SUPERADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   const root = uploadsRoot();
