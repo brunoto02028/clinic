@@ -2748,6 +2748,9 @@ model Exercise {
   @@index([folderId])
 }
 
+/// Two levels in one model: a row without a parent is a category, a row with a
+/// parent is a folder that holds the videos. The depth limit lives in the API —
+/// the schema itself would happily nest forever.
 model ExerciseFolder {
   id       String @id @default(cuid())
   clinicId String
@@ -2755,12 +2758,17 @@ model ExerciseFolder {
 
   name String
 
+  parentId String?
+  parent   ExerciseFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children ExerciseFolder[] @relation("FolderTree")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   exercises Exercise[]
 
   @@index([clinicId])
+  @@index([parentId])
 }
 
 model ExercisePrescription {

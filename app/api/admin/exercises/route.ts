@@ -6,6 +6,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
 import { ensureWebSafeVideo } from "@/lib/video-web-safe";
+import { assertValidExerciseFolder } from "@/lib/exercise-folders";
 
 export const dynamic = "force-dynamic";
 
@@ -131,6 +132,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name and body region are required" }, { status: 400 });
     }
 
+    const folderId = (formData.get("folderId") as string | null) || null;
+    const folderCheck = await assertValidExerciseFolder(folderId, clinicId);
+    if (!folderCheck.ok) {
+      return NextResponse.json({ error: folderCheck.error }, { status: folderCheck.status });
+    }
+
     // Handle video upload
     let videoUrl: string | null = null;
     let videoFileName: string | null = null;
@@ -236,6 +243,7 @@ export async function POST(req: NextRequest) {
         instructions,
         bodyRegion: bodyRegion as any,
         difficulty: difficulty as any,
+        folderId,
         tags,
         videoUrl,
         videoFileName,

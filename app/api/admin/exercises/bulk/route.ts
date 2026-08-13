@@ -6,6 +6,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { generateVideoThumbnail, getVideoDuration } from "@/lib/video-thumbnail";
 import { ensureWebSafeVideo } from "@/lib/video-web-safe";
+import { assertValidExerciseFolder } from "@/lib/exercise-folders";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,17 @@ export async function POST(req: NextRequest) {
       fileKey: string;
       folderId?: string;
     }> = metadataRaw ? JSON.parse(metadataRaw) : [];
+
+    // Validate the destinations up front rather than per item: a batch that
+    // half-lands in the wrong place is worse than one that is refused outright,
+    // and this is the exact failure the reorganisation is meant to end.
+    const destinations = [...new Set(metadata.map((m) => m.folderId || ""))];
+    for (const dest of destinations) {
+      const check = await assertValidExerciseFolder(dest || null, clinicId);
+      if (!check.ok) {
+        return NextResponse.json({ error: check.error }, { status: check.status });
+      }
+    }
 
     const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
     const videosDir = path.join(uploadsBase, "exercises");
