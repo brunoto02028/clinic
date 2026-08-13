@@ -21,6 +21,11 @@ $RenderYaml  = "$env:USERPROFILE\.render\cli.yaml"
 $DockerLocal = "bpr-clinic-db-local"
 $LocalDbName = "bpr_clinic_local"
 $LocalDbUser = "postgres"
+# Where to pull the production uploads from, and the session that authorises
+# listing them. Both come from the shell profile, like PROD_DATABASE_URL — this
+# script never reads the app's .env.
+$ProdBaseUrl       = if ($env:PROD_BASE_URL) { $env:PROD_BASE_URL.TrimEnd('/') } else { "https://bpr.clinic" }
+$ProdSessionCookie = $env:PROD_SESSION_COOKIE
 
 New-Item -ItemType Directory -Force $BackupDir | Out-Null
 Write-Host ""
@@ -107,28 +112,91 @@ if (-not $SkipCode) {
   }
 }
 
-# 4. UPLOAD FILES
+# 4a. LOCAL UPLOAD FILES (developer machine — NOT the server)
+$localFileCount = 0
 if (-not $SkipFiles) {
-  Write-Step "Upload files (public/uploads)"
+  Write-Step "Local upload files (this machine)"
   $uploadsDir = Join-Path $ProjectRoot "public\uploads"
-  $outDir     = Join-Path $BackupDir "uploads"
+  # Named "local-uploads" now. It used to be just "uploads", which read like the
+  # server's files and hid the fact that production was never backed up at all.
+  $outDir     = Join-Path $BackupDir "local-uploads"
   try {
     if (Test-Path $uploadsDir) {
       robocopy $uploadsDir $outDir /E /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
-      $count = (Get-ChildItem $outDir -Recurse -File -ErrorAction SilentlyContinue).Count
-      Write-OK "uploads/ ($count files)"
+      $localFileCount = (Get-ChildItem $outDir -Recurse -File -ErrorAction SilentlyContinue).Count
+      Write-OK "local-uploads/ ($localFileCount files)"
     } else {
-      Write-OK "uploads/ folder not found - skipped"
+      Write-OK "no local uploads folder - skipped"
     }
   } catch {
-    Write-Fail "Files backup failed: $_"
+    Write-Fail "Local files backup failed: $_"
+  }
+}
+
+# 4b. PRODUCTION UPLOAD FILES (the ones that actually matter)
+# Exercise videos live in Cloudflare R2 and are replicated there. Everything
+# else — article images, the logo, patient documents — exists only on the VPS
+# disk, so this is the only copy that will ever exist off that machine.
+#
+# Transport is HTTP rather than rsync because the SSH key on this machine is not
+# authorised on the VPS. The file list comes from an authenticated endpoint; the
+# files themselves come from /uploads/*, which already serves them publicly.
+$prodFileCount = 0
+$prodExpected  = 0
+$prodFailed    = @()
+if (-not $SkipFiles -and -not $SkipProd) {
+  Write-Step "Production upload files ($ProdBaseUrl)"
+  $outDir = Join-Path $BackupDir "prod-uploads"
+  try {
+    if (-not $ProdSessionCookie) {
+      throw "No `$env:PROD_SESSION_COOKIE set. Sign in to $ProdBaseUrl as SUPERADMIN, copy the next-auth session cookie, and set it in your PowerShell profile."
+    }
+
+    $headers  = @{ Cookie = $ProdSessionCookie }
+    $manifest = Invoke-RestMethod -Uri "$ProdBaseUrl/api/admin/backup/uploads" -Headers $headers -TimeoutSec 60
+    $prodExpected = [int]$manifest.count
+    Write-Host "   server reports $prodExpected file(s), $($manifest.megabytes) MB" -ForegroundColor DarkGray
+
+    New-Item -ItemType Directory -Force $outDir | Out-Null
+    foreach ($f in $manifest.files) {
+      $target = Join-Path $outDir ($f.path -replace '/', '\')
+      New-Item -ItemType Directory -Force (Split-Path $target -Parent) | Out-Null
+      try {
+        Invoke-WebRequest -Uri "$ProdBaseUrl/uploads/$($f.path)" -OutFile $target -TimeoutSec 120 | Out-Null
+        $prodFileCount++
+      } catch {
+        $prodFailed += $f.path
+      }
+    }
+
+    if ($prodFileCount -ne $prodExpected) {
+      # Loud on purpose: a partial copy reported as OK is what made the old
+      # version dangerous.
+      Write-Fail "prod-uploads/ INCOMPLETE - got $prodFileCount of $prodExpected ($($prodFailed.Count) failed)"
+      if ($prodFailed.Count -gt 0) {
+        Write-Host "   first failures: $($prodFailed | Select-Object -First 5 | Join-String -Separator ', ')" -ForegroundColor Red
+      }
+    } else {
+      Write-OK "prod-uploads/ ($prodFileCount of $prodExpected files)"
+    }
+  } catch {
+    Write-Fail "Production files backup FAILED: $_"
   }
 }
 
 # 5. WRITE MANIFEST
 $commitHash = git -C $ProjectRoot rev-parse HEAD 2>$null
 $branch     = git -C $ProjectRoot branch --show-current 2>$null
-$manifest   = @{ timestamp = $Timestamp; commit = $commitHash; branch = $branch } | ConvertTo-Json
+$manifest   = @{
+  timestamp        = $Timestamp
+  commit           = $commitHash
+  branch           = $branch
+  localUploadFiles = $localFileCount
+  prodUploadFiles  = $prodFileCount
+  prodUploadExpected = $prodExpected
+  prodUploadComplete = ($prodExpected -gt 0 -and $prodFileCount -eq $prodExpected)
+  note             = "Exercise videos live in Cloudflare R2 and are not part of this archive."
+} | ConvertTo-Json
 $manifest   | Out-File (Join-Path $BackupDir "manifest.json") -Encoding UTF8
 Write-OK "manifest.json written"
 
