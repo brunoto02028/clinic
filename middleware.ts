@@ -123,6 +123,7 @@ const publicRoutes = [
   '/api/pwa-icon', // manifest icons: the OS fetches these with no session; behind
                    // login, "add to home screen" gets a redirect instead of an icon
   '/api/analytics/vitals', // web-vitals beacon fires on public pages too
+  '/api/vcard', // the /start page's "save contact" download — no session by definition
   '/api/public', // public read-only endpoints (clinic schedule, etc.)
 ];
 
