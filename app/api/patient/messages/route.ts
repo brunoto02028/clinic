@@ -8,15 +8,21 @@ import { sendEmail } from "@/lib/email";
 export const dynamic = "force-dynamic";
 
 // GET — patient's own message thread
-export async function GET() {
+export async function GET(req: NextRequest) {
   const effective = await getEffectiveUser();
   if (!effective) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = effective.userId;
 
-  // Lazy-dispatch due scheduled broadcasts so patients see them on time
-  await dispatchDueBroadcasts().catch(() => {});
+  // Lazy-dispatch due scheduled broadcasts so patients see them on time.
+  // Skipped while polling: the thread now refetches every few seconds, and a
+  // scheduled broadcast that waits one page load to appear is fine — one that
+  // re-runs this sweep every five seconds per open tab is not.
+  const isPoll = req.nextUrl.searchParams.get("poll") === "1";
+  if (!isPoll) {
+    await dispatchDueBroadcasts().catch(() => {});
+  }
 
   const messages = await (prisma as any).clinicMessage.findMany({
     where: { patientId: userId },

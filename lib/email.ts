@@ -33,7 +33,12 @@ export async function sendEmail({
 }) {
     try {
         const resend = await getResend();
-        const data = await resend.emails.send({
+        // The Resend SDK does NOT throw on API errors — it resolves with
+        // { data, error }. Reading only the resolved value made every failure
+        // look like a success: a wrong key sat in Admin → AI Settings for six
+        // days while the logs kept printing "Sent via Resend" and patients
+        // waited for verification codes that were never accepted for delivery.
+        const { data, error } = await resend.emails.send({
             from:     from    || FROM_ADDRESS,
             replyTo:  replyTo || REPLY_TO,
             to:       Array.isArray(to) ? to : [to],
@@ -42,7 +47,11 @@ export async function sendEmail({
             ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
             ...(attachments ? { attachments } : {}),
         });
-        console.log('[EMAIL] Sent via Resend to', to);
+        if (error) {
+            console.error('[EMAIL] Resend REJECTED send to', to, '—', error.name, ':', error.message);
+            return { success: false, error: `${error.name}: ${error.message}` };
+        }
+        console.log('[EMAIL] Sent via Resend to', to, '— id', data?.id);
         return { success: true, data };
     } catch (err) {
         console.error('[EMAIL] Resend send failed:', err);
