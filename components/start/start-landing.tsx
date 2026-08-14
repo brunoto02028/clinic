@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap, Quote, BookOpen, Stethoscope } from "lucide-react";
+import { ArrowRight, LogIn, Check, Clock, ShieldCheck, Trophy, Target, HeartHandshake, Sparkles, Activity, Heart, Shield, Dumbbell, Zap, Quote, BookOpen, Instagram, UserPlus } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
@@ -108,57 +108,6 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
       </div>
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6">
-        {/* PATH CHOOSER — clinic vs. book */}
-        <section className="mt-3 grid sm:grid-cols-2 gap-4">
-          <a
-            href="#assessment"
-            className="group flex flex-col rounded-3xl border-2 border-border bg-card ba1-card p-7 hover:border-primary/50 hover:shadow-lg transition-all"
-          >
-            <span className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-              <Stethoscope className="h-7 w-7 text-primary" />
-            </span>
-            <h2 className="font-sora font-extrabold text-xl text-foreground mb-2">
-              {isPt ? "Marcar avaliação grátis" : "Book a free assessment"}
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1">
-              {isPt
-                ? "Encontre a causa real da sua dor — avaliação completa, sem custo, para novos pacientes."
-                : "Find the real cause of your pain — a full assessment, free for new patients."}
-            </p>
-            <span className="text-sm font-bold text-primary inline-flex items-center gap-1.5">
-              {isPt ? "Ver detalhes" : "See details"} <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-            </span>
-          </a>
-
-          <Link
-            href="/beyond-pain"
-            className="group flex flex-col rounded-3xl border-2 border-border bg-card ba1-card p-7 hover:border-primary/50 hover:shadow-lg transition-all"
-          >
-            <div className="flex items-start gap-4 mb-4">
-              {bookCover ? (
-                <div className="relative w-14 h-20 rounded-lg overflow-hidden border border-border shrink-0 shadow-md">
-                  <Image src={bookCover} alt={book?.title || "Beyond Pain"} fill sizes="56px" className="object-cover" />
-                </div>
-              ) : (
-                <span className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <BookOpen className="h-7 w-7 text-primary" />
-                </span>
-              )}
-              <h2 className="font-sora font-extrabold text-xl text-foreground pt-1">
-                {isPt ? "Ler o livro grátis" : "Read the book free"}
-              </h2>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-4 flex-1">
-              {isPt
-                ? `${book?.title || "Beyond Pain"} — ${book?.subtitle || "a ciência e a alma da cura"}. Leia o primeiro capítulo grátis.`
-                : `${book?.title || "Beyond Pain"} — ${book?.subtitle || "the science and soul of healing"}. Read Chapter One free.`}
-            </p>
-            <span className="text-sm font-bold text-primary inline-flex items-center gap-1.5">
-              {isPt ? "Começar a ler" : "Start reading"} <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-            </span>
-          </Link>
-        </section>
-
         {/* HERO */}
         <header id="assessment" className="relative overflow-hidden bg-foreground text-background rounded-[26px] px-6 sm:px-10 py-10 sm:py-14 mt-3 text-center shadow-xl scroll-mt-6">
           {/* Decorative glow illustration */}
@@ -239,17 +188,28 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
                   ? (isPt ? "Um resgate por cartão · Novos pacientes · Leva 2 minutos" : "One redemption per card · New patients · Takes 2 minutes")
                   : (isPt ? "Grátis para novos pacientes · Leva 2 minutos para começar" : "Free for new patients · Takes 2 minutes to start")}
               </p>
-              {waHref && (
+              {/* The two lowest-friction actions someone who just met Bruno
+                  wants: message him, or keep him in their phone. */}
+              <div className="flex items-center justify-center gap-4 mt-1">
+                {waHref && (
+                  <a
+                    href={waHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-background/70 hover:text-background transition-colors"
+                  >
+                    <WhatsAppIcon className="h-3.5 w-3.5 text-[#25D366]" />
+                    {isPt ? "Falar no WhatsApp" : "Message on WhatsApp"}
+                  </a>
+                )}
                 <a
-                  href={waHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 text-[12px] font-semibold text-background/70 hover:text-background transition-colors mt-1"
+                  href="/api/vcard"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-background/70 hover:text-background transition-colors"
                 >
-                  <WhatsAppIcon className="h-3.5 w-3.5 text-[#25D366]" />
-                  {isPt ? "Prefere WhatsApp? Fale conosco" : "Prefer WhatsApp? Message us"}
+                  <UserPlus className="h-3.5 w-3.5 text-primary" />
+                  {isPt ? "Salvar contato" : "Save my contact"}
                 </a>
-              )}
+              </div>
             </div>
           </div>
         </header>
@@ -296,6 +256,40 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
               ))}
             </ul>
           </div>
+        </section>
+
+        {/* THE BOOK — a second, lighter path */}
+        <section className="mt-14">
+          <Link
+            href="/beyond-pain"
+            className="group flex gap-5 items-center rounded-3xl border-2 border-border bg-card ba1-card p-6 hover:border-primary/50 hover:shadow-lg transition-all"
+          >
+            {bookCover ? (
+              <div className="relative w-16 h-24 rounded-lg overflow-hidden border border-border shrink-0 shadow-md">
+                <Image src={bookCover} alt={book?.title || "Beyond Pain"} fill sizes="64px" className="object-cover" />
+              </div>
+            ) : (
+              <span className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                <BookOpen className="h-7 w-7 text-primary" />
+              </span>
+            )}
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary mb-1">
+                {isPt ? "Ainda não está pronto para marcar?" : "Not ready to book yet?"}
+              </p>
+              <h2 className="font-sora font-extrabold text-lg text-foreground mb-1">
+                {isPt ? "Leia o meu livro grátis" : "Read my book free"}
+              </h2>
+              <p className="text-[13px] text-muted-foreground leading-snug">
+                {isPt
+                  ? `${book?.title || "Beyond Pain"} — leia o primeiro capítulo grátis.`
+                  : `${book?.title || "Beyond Pain"} — read Chapter One free.`}
+              </p>
+              <span className="text-sm font-bold text-primary inline-flex items-center gap-1.5 mt-2">
+                {isPt ? "Começar a ler" : "Start reading"} <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+          </Link>
         </section>
 
         {/* HOW IT WORKS */}
@@ -485,20 +479,62 @@ export function StartLanding({ settings, isGift = false, book }: { settings: Sta
           </div>
           <p className="text-muted-foreground text-xs">BPR Physical Rehabilitation · Ipswich, Suffolk, {isPt ? "Reino Unido" : "UK"}</p>
           <p className="text-primary text-[11px] font-bold mt-1">{isPt ? "Curar com Coração" : "Healing With Heart"}</p>
-          <Link href="/" className="text-muted-foreground text-xs underline mt-2 inline-block">bpr.clinic</Link>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <a
+              href="https://www.instagram.com/bprehabilitation/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-card border border-border rounded-full px-3.5 py-2 text-xs font-semibold text-foreground/80 hover:border-primary/50 transition-colors"
+            >
+              <Instagram className="h-3.5 w-3.5 text-primary" />
+              {isPt ? "Seguir no Instagram" : "Follow on Instagram"}
+            </a>
+            {waHref && (
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 bg-card border border-border rounded-full px-3.5 py-2 text-xs font-semibold text-foreground/80 hover:border-primary/50 transition-colors"
+              >
+                <WhatsAppIcon className="h-3.5 w-3.5 text-[#25D366]" />
+                WhatsApp
+              </a>
+            )}
+            <a
+              href="/api/vcard"
+              className="inline-flex items-center gap-1.5 bg-card border border-border rounded-full px-3.5 py-2 text-xs font-semibold text-foreground/80 hover:border-primary/50 transition-colors"
+            >
+              <UserPlus className="h-3.5 w-3.5 text-primary" />
+              {isPt ? "Salvar contato" : "Save contact"}
+            </a>
+          </div>
+          <Link href="/" className="text-muted-foreground text-xs underline mt-4 inline-block">bpr.clinic</Link>
         </footer>
       </main>
 
       {/* STICKY MOBILE CTA */}
       <div className="fixed left-0 right-0 bottom-0 z-50 px-4 pb-4 pt-3 bg-gradient-to-t from-background via-background/95 to-transparent">
-        <div className="max-w-2xl mx-auto">
-          <Button size="lg" variant="ba1Primary" className="w-full shadow-xl" asChild>
-            <Link href={`/signup${viaSuffix}`}>
+        <div className="max-w-2xl mx-auto flex gap-2">
+          {/* min-w-0 + shorter labels: the long PT label refused to shrink and
+              pushed the WhatsApp square off the 390px screen. */}
+          <Button size="lg" variant="ba1Primary" className="flex-1 min-w-0 shadow-xl" asChild>
+            <Link href={`/signup${viaSuffix}`} className="truncate">
               {isGift
-                ? (isPt ? "Resgatar a minha avaliação gratuita" : "Redeem my free assessment")
-                : (isPt ? "Começar grátis — quero a minha avaliação" : "Start free — claim my assessment")}
+                ? (isPt ? "Resgatar a minha avaliação" : "Redeem my assessment")
+                : (isPt ? "Quero a minha avaliação gratuita" : "Claim my free assessment")}
             </Link>
           </Button>
+          {waHref && (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="WhatsApp"
+              className="shrink-0 w-12 h-12 self-center rounded-xl bg-[#25D366] text-white shadow-xl flex items-center justify-center hover:opacity-90 transition-opacity"
+            >
+              <WhatsAppIcon className="h-6 w-6" />
+            </a>
+          )}
         </div>
       </div>
     </div>
