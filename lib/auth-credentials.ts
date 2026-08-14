@@ -73,6 +73,15 @@ export async function validateCredentials(
     }
 
     if (!user.isActive) {
+      // isActive carries two very different meanings: an account the clinic
+      // switched off, and one that simply never finished email verification.
+      // Both used to answer "contact support", which sent brand-new patients
+      // chasing a problem that did not exist — the only route to /verify is a
+      // URL handed out at signup, so closing that tab stranded them for good.
+      // emailVerified separates the two: verify-code sets it alongside isActive.
+      if (!user.emailVerified) {
+        throw new Error("EMAIL_NOT_VERIFIED");
+      }
       throw new Error("Account is deactivated. Please contact support.");
     }
 

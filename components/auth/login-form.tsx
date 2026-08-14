@@ -59,6 +59,35 @@ export default function LoginForm() {
       });
 
       if (result?.error) {
+        // An account that never finished verification is not a dead end any
+        // more: send them straight to the code screen they never reached,
+        // carrying the credentials so they land signed in once verified —
+        // the same handoff the signup form already does.
+        if (result.error.includes("EMAIL_NOT_VERIFIED")) {
+          try {
+            const res = await fetch("/api/auth/pending-verification", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: formData.email, password: formData.password }),
+            });
+            const data = await res.json();
+            if (res.ok && data.userId) {
+              sessionStorage.setItem("pending-verify-email", formData.email);
+              sessionStorage.setItem("pending-verify-password", formData.password);
+              window.location.href =
+                `/verify?userId=${encodeURIComponent(data.userId)}&email=${encodeURIComponent(formData.email)}`;
+              return;
+            }
+          } catch {}
+          setError(
+            isPt
+              ? "A sua conta ainda não foi verificada. Contacte a clínica."
+              : "Your account is not verified yet. Please contact the clinic."
+          );
+          setIsLoading(false);
+          return;
+        }
+
         let msg = isPt ? "Email ou senha inválidos" : "Invalid email or password";
         if (result.error === "CredentialsSignin") {
           msg = isPt ? "Email ou senha inválidos. Tente novamente." : "Invalid email or password. Please try again.";
