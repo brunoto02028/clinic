@@ -13,15 +13,32 @@ import {
 import { Logo } from "@/components/ui/logo";
 import { useLocale } from "@/hooks/use-locale";
 
-interface PatientSidebarProps {
-  notifications?: number;
+interface NotificationItem {
+  id: string;
+  title: string;
+  titlePt: string;
+  message: string;
+  messagePt: string;
+  link: string;
+  isUrgent?: boolean;
 }
 
-export default function PatientSidebar({ notifications = 0 }: PatientSidebarProps) {
+interface PatientSidebarProps {
+  notifications?: number;
+  notificationItems?: NotificationItem[];
+  consentRequired?: boolean;
+}
+
+export default function PatientSidebar({
+  notifications = 0,
+  notificationItems = [],
+  consentRequired = false,
+}: PatientSidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { locale, setLocale } = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
@@ -51,6 +68,7 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
 
   useEffect(() => {
     setMobileOpen(false);
+    setNotifOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -88,20 +106,66 @@ export default function PatientSidebar({ notifications = 0 }: PatientSidebarProp
         {mobileOpen ? <X size={18} className="text-[#20242D]" /> : <Menu size={18} className="text-[#20242D]" />}
       </button>
 
-      {/* Mobile notification */}
-      <div className="fixed top-3 right-3 z-50 lg:hidden">
-        <Link
-          href="/dashboard"
-          className="relative p-2 rounded-lg bg-white/90 backdrop-blur border border-black/10 shadow-sm inline-flex text-[#20242D]"
-        >
-          <Bell size={18} />
-          {notifications > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#4F7361] text-[9px] text-white flex items-center justify-center font-bold">
-              {notifications > 9 ? "9+" : notifications}
-            </span>
+      {/* Mobile notification
+       *
+       * This used to be a Link to /dashboard with a count badge on it. Tapping
+       * it navigated home and showed no notification at all — and for a patient
+       * still behind the consent gate, every page renders that same gate, so
+       * the screen did not change by a single pixel. A patient reported it as
+       * her phone freezing, which is exactly what a button that does nothing
+       * looks like. It now opens the items the badge is counting, and stays out
+       * of the way entirely while consent is the only thing she can act on. */}
+      {!consentRequired && (
+        <div className="fixed top-3 right-3 z-50 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setNotifOpen((o) => !o)}
+            aria-label={isPt ? "Notificações" : "Notifications"}
+            aria-expanded={notifOpen}
+            className="relative p-2 rounded-lg bg-white/90 backdrop-blur border border-black/10 shadow-sm inline-flex text-[#20242D]"
+          >
+            <Bell size={18} />
+            {notifications > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#4F7361] text-[9px] text-white flex items-center justify-center font-bold">
+                {notifications > 9 ? "9+" : notifications}
+              </span>
+            )}
+          </button>
+
+          {notifOpen && (
+            <>
+              <div
+                className="fixed inset-0 -z-10"
+                onClick={() => setNotifOpen(false)}
+                aria-hidden
+              />
+              <div className="absolute right-0 mt-2 w-[280px] max-h-[60vh] overflow-y-auto rounded-xl bg-white border border-black/10 shadow-lg py-1">
+                {notificationItems.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-[13px] text-[#767B85]">
+                    {isPt ? "Nada pendente por agora." : "Nothing pending right now."}
+                  </p>
+                ) : (
+                  notificationItems.map((n) => (
+                    <Link
+                      key={n.id}
+                      href={n.link}
+                      onClick={() => setNotifOpen(false)}
+                      className="block px-4 py-3 hover:bg-black/[0.03] border-b border-black/5 last:border-0"
+                    >
+                      <p className={`text-[13px] font-medium ${n.isUrgent ? "text-[#B4413C]" : "text-[#20242D]"}`}>
+                        {isPt ? n.titlePt : n.title}
+                      </p>
+                      <p className="text-[11px] text-[#767B85] mt-0.5">
+                        {isPt ? n.messagePt : n.message}
+                      </p>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </>
           )}
-        </Link>
-      </div>
+        </div>
+      )}
 
       {/* Mobile overlay */}
       {mobileOpen && (

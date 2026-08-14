@@ -24,13 +24,30 @@ export async function GET(
     orderBy: { createdAt: "asc" },
   });
 
-  // Mark patient-sent messages as read by staff
-  await (prisma as any).clinicMessage.updateMany({
+  return NextResponse.json(messages);
+}
+
+// PATCH — staff marks the patient's messages as read
+//
+// This used to live inside GET, which was harmless while the thread loaded
+// once. Now that the tab polls, reading on every fetch would clear the unread
+// badge while the tab sits in the background and nobody has seen anything.
+// Marking read is an act of opening the conversation, so it gets its own call.
+export async function PATCH(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const updated = await (prisma as any).clinicMessage.updateMany({
     where: { patientId: params.id, senderRole: "patient", readAt: null },
     data: { readAt: new Date() },
   });
 
-  return NextResponse.json(messages);
+  return NextResponse.json({ updated: updated.count });
 }
 
 // POST — staff sends a message/notice to the patient

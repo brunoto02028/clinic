@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       data: { expiresAt: new Date(0) }, // Expire them
     });
 
-    await prisma.verificationCode.create({
+    const created = await prisma.verificationCode.create({
       data: {
         userId,
         code,
@@ -98,17 +98,33 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // A code we failed to deliver must not count against the 3-per-10-minutes
+    // ceiling. It did before: a patient asked three times, got nothing each
+    // time, and was then locked out for the failure of our own mail provider.
+    const discardCode = () =>
+      prisma.verificationCode
+        .delete({ where: { id: created.id } })
+        .catch(() => {});
+
     const isPt = user.preferredLocale === "pt-BR";
 
     // Send via chosen channel
     if (channel === "EMAIL") {
-      await sendEmail({
+      const sent = await sendEmail({
         to: user.email,
         subject: isPt
           ? `${code} — Código de verificação`
           : `${code} — Verification code`,
         html: buildVerificationEmailHtml(code, user.firstName, isPt),
       });
+      if (!sent.success) {
+        await discardCode();
+        console.error("[send-code] Email delivery failed for", user.email, "—", sent.error);
+        return NextResponse.json(
+          { error: "We could not send the verification email. Please try again, or contact the clinic if it keeps failing." },
+          { status: 502 }
+        );
+      }
     } else if (channel === "SMS") {
       // Twilio SMS — requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
       const sent = await sendSMS(
@@ -118,6 +134,7 @@ export async function POST(request: NextRequest) {
           : `Your BPR verification code: ${code}. Expires in 10 minutes.`
       );
       if (!sent) {
+        await discardCode();
         return NextResponse.json(
           { error: "Failed to send SMS. Please try email instead." },
           { status: 500 }
@@ -132,6 +149,7 @@ export async function POST(request: NextRequest) {
           : `Your BPR verification code: ${code}. Expires in 10 minutes.`
       );
       if (!sent) {
+        await discardCode();
         return NextResponse.json(
           { error: "Failed to send WhatsApp message. Please try email instead." },
           { status: 500 }

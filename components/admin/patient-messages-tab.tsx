@@ -34,15 +34,44 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchMessages = useCallback(() => {
+  // Bumped whenever we mutate the thread locally. A poll that started before
+  // the mutation must not overwrite it with a list that predates it.
+  const revisionRef = useRef(0);
+
+  const fetchMessages = useCallback((opts?: { silent?: boolean }) => {
+    const rev = revisionRef.current;
     fetch(`/api/admin/patients/${patientId}/messages`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setMessages(Array.isArray(data) ? data : []))
+      .then((data) => {
+        if (revisionRef.current !== rev) return;
+        setMessages(Array.isArray(data) ? data : []);
+      })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!opts?.silent) setLoading(false); });
   }, [patientId]);
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
+
+  // Opening the conversation is what marks the patient's messages as read —
+  // not merely fetching it, which now happens every few seconds.
+  useEffect(() => {
+    fetch(`/api/admin/patients/${patientId}/messages`, { method: "PATCH" }).catch(() => {});
+  }, [patientId]);
+
+  // The thread used to load once, so a reply written by the patient while the
+  // tab was open never appeared until someone reloaded the page.
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === "visible") fetchMessages({ silent: true });
+    };
+    const interval = setInterval(tick, 5000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [fetchMessages]);
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
 
   const send = async () => {
@@ -66,7 +95,8 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
       }
       if (!r.ok) throw new Error("Failed");
       const msg = await r.json();
-      setMessages((m) => [...m, msg]);
+      revisionRef.current++;
+      setMessages((m) => (m.some((x) => x.id === msg.id) ? m : [...m, msg]));
       setDraft("");
       setDraftTitle("");
       setFile(null);
@@ -86,6 +116,7 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messageId }),
     });
+    revisionRef.current++;
     setMessages((m) => m.filter((x) => x.id !== messageId));
   };
 
@@ -195,6 +226,9 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
           placeholder={kind === "notice" ? "Texto do aviso para o paciente…" : "Escreva a sua mensagem ao paciente…"}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+          }}
           className="text-sm min-h-[90px]"
         />
         {file && (

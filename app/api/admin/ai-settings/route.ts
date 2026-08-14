@@ -6,6 +6,7 @@ import {
   encryptValue,
   decryptValue,
   clearConfigCache,
+  validateConfigValue,
   DEFAULT_CONFIGS,
 } from "@/lib/system-config";
 
@@ -93,7 +94,11 @@ export async function PATCH(req: NextRequest) {
 
     // Only update value if provided (not empty string from form)
     if (value !== undefined && value !== null) {
-      updateData.value = existing.isSecret && value ? encryptValue(value) : value;
+      const invalid = validateConfigValue(existing.key, String(value).trim());
+      if (invalid) {
+        return NextResponse.json({ error: invalid }, { status: 400 });
+      }
+      updateData.value = existing.isSecret && value ? encryptValue(String(value).trim()) : value;
       // Clear cache for this key
       clearConfigCache(existing.key);
     }
@@ -143,10 +148,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Config key already exists" }, { status: 409 });
     }
 
+    const invalid = validateConfigValue(key, String(value || "").trim());
+    if (invalid) {
+      return NextResponse.json({ error: invalid }, { status: 400 });
+    }
+
     const config = await (prisma as any).systemConfig.create({
       data: {
         key,
-        value: isSecret && value ? encryptValue(value) : (value || ""),
+        value: isSecret && value ? encryptValue(String(value).trim()) : (value || ""),
         label,
         description: description || null,
         category: category || "other",

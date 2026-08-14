@@ -69,6 +69,10 @@ export default function QuestionsPage() {
   const [sendingChat, setSendingChat] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Bumped on every local mutation so a slow poll cannot overwrite a message
+  // the patient just sent.
+  const revisionRef = useRef(0);
+
   useEffect(() => {
     Promise.all([
       fetch("/api/patient/questions").then(r => r.json()).catch(() => []),
@@ -87,6 +91,28 @@ export default function QuestionsPage() {
         fetch("/api/patient/messages", { method: "PATCH" }).catch(() => {});
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  // Without this the clinic's reply sat on the server until the patient
+  // reloaded the page — the reason a conversation felt one-sided.
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      const rev = revisionRef.current;
+      fetch("/api/patient/messages?poll=1")
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          if (!Array.isArray(data) || revisionRef.current !== rev) return;
+          setMsgs(data);
+        })
+        .catch(() => {});
+    };
+    const interval = setInterval(tick, 5000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
   }, []);
 
   const sendChat = async () => {
@@ -108,7 +134,8 @@ export default function QuestionsPage() {
       }
       if (r.ok) {
         const msg = await r.json();
-        setMsgs(m => [...m, msg]);
+        revisionRef.current++;
+        setMsgs(m => (m.some(x => x.id === msg.id) ? m : [...m, msg]));
         setChatDraft("");
         setChatFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";

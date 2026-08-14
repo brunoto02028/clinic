@@ -33,6 +33,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
 
   const [consentRequired, setConsentRequired] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
+  const [notifItems, setNotifItems] = useState<any[]>([]);
 
   // Radix UI portals (Dialog, AlertDialog, DropdownMenu, Select, Toast...) render
   // into document.body, outside the .public-site-scoped wrapper div below — so
@@ -80,6 +81,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
       .then(res => res.json())
       .then(data => {
         if (data.unreadCount !== undefined) setNotifCount(data.unreadCount);
+        if (Array.isArray(data.notifications)) setNotifItems(data.notifications);
       })
       .catch(() => {});
   }, []);
@@ -100,7 +102,11 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   return (
     <div className="public-site min-h-screen bg-background bg-grid-pattern">
       {/* Sidebar */}
-      <PatientSidebar notifications={notifCount} />
+      <PatientSidebar
+        notifications={notifCount}
+        notificationItems={notifItems}
+        consentRequired={consentRequired}
+      />
 
       {/* Main content */}
       <div className="patient-content-area">

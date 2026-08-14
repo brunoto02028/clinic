@@ -1054,6 +1054,11 @@ html.native-app .site-footer-web-only {
 
   .patient-content-area {
     margin-left: 0;
+    /* The menu button and the notification bell are position:fixed at the top
+       corners, ending at y=47px. Nothing reserved that band, so the first line
+       of every page rendered underneath them — "Welcome Back" arrived on screen
+       as "lcome Back". */
+    padding-top: 40px;
   }
 
   /* Section tabs: smooth horizontal scroll + touch targets */

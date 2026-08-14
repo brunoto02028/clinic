@@ -715,6 +715,13 @@ export async function sendTemplatedEmail(
 
   const result = await sendEmail({ to, subject: rendered.subject, html: rendered.html, bcc: bccList });
 
+  if (!result.success) {
+    // Filing a rejected send under SENT is the same lie in another place:
+    // the mailbox would show a delivered message the patient never got.
+    console.error(`[email-templates] Send of "${slug}" to ${to} failed:`, result.error);
+    return false;
+  }
+
   // Log outbound email
   try {
     await (prisma as any).emailMessage.create({
@@ -732,7 +739,7 @@ export async function sendTemplatedEmail(
         patientId: patientId || null,
         clinicId: clinicId || null,
         sentAt: new Date(),
-        messageId: (result as any)?.data?.messageId || null,
+        messageId: (result as any)?.data?.id || null,
       },
     });
   } catch (logErr) {

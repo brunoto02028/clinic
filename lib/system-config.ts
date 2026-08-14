@@ -31,6 +31,38 @@ export function decryptValue(encrypted: string): string {
   }
 }
 
+// ─── Validate a credential before it is stored ───
+
+/**
+ * A value saved here overrides the environment variable, so a wrong paste
+ * silently disables the real key rather than erroring. That is how a
+ * 52-character non-key ended up in RESEND_API_KEY and took down every outbound
+ * email in the system for six days. These checks refuse the two ways this
+ * field gets corrupted: a value from the wrong service, and the masked display
+ * value being submitted back as though it were the secret.
+ */
+const KEY_PREFIXES: Record<string, { prefix: string; service: string }> = {
+  RESEND_API_KEY:      { prefix: "re_",     service: "Resend" },
+  OPENAI_API_KEY:      { prefix: "sk-",     service: "OpenAI" },
+  ANTHROPIC_API_KEY:   { prefix: "sk-ant-", service: "Anthropic" },
+  HUGGINGFACE_API_KEY: { prefix: "hf_",     service: "Hugging Face" },
+};
+
+export function validateConfigValue(key: string, value: string): string | null {
+  if (!value) return null; // clearing a field is allowed
+
+  if (value.includes("•")) {
+    return `That looks like the masked value shown on screen, not the key itself. Paste the real ${key} value.`;
+  }
+
+  const rule = KEY_PREFIXES[key];
+  if (rule && !value.startsWith(rule.prefix)) {
+    return `${key} does not look like a ${rule.service} key — it should start with "${rule.prefix}". Nothing was saved.`;
+  }
+
+  return null;
+}
+
 // ─── Read config value from DB, fallback to env ───
 
 const configCache = new Map<string, { value: string; timestamp: number }>();
