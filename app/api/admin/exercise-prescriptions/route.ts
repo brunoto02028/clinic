@@ -76,10 +76,68 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No clinic context" }, { status: 400 });
     }
 
-    const { patientId, exercises } = body;
+    const { patientId, folderId, frequency, notes } = body;
     // exercises: Array<{ exerciseId, sets?, reps?, holdSeconds?, restSeconds?, frequency?, notes?, startDate?, endDate? }>
+    let exercises = body.exercises;
 
-    if (!patientId || !exercises || !Array.isArray(exercises) || exercises.length === 0) {
+    if (!patientId) {
+      return NextResponse.json({ error: "Patient is required" }, { status: 400 });
+    }
+
+    // Prescribing a whole folder resolves its contents here rather than
+    // trusting a list assembled by the browser: the library view is paginated,
+    // so a client-built list can silently be a partial folder. Passing the
+    // folder id makes "the whole folder" mean exactly that.
+    let folderName: string | null = null;
+    if (!exercises && folderId) {
+      const folder = await prisma.exerciseFolder.findFirst({
+        where: { id: folderId, clinicId },
+        select: { id: true, name: true },
+      });
+      if (!folder) {
+        return NextResponse.json({ error: "Folder not found" }, { status: 404 });
+      }
+      folderName = folder.name;
+
+      // A category holds its videos in child folders; a folder holds them
+      // directly. Covering both means picking either level works.
+      const children = await prisma.exerciseFolder.findMany({
+        where: { parentId: folder.id, clinicId },
+        select: { id: true },
+      });
+      const folderIds = [folder.id, ...children.map((c) => c.id)];
+
+      const found = await prisma.exercise.findMany({
+        where: { clinicId, isActive: true, folderId: { in: folderIds } },
+        select: {
+          id: true,
+          defaultSets: true,
+          defaultReps: true,
+          defaultHoldSec: true,
+          defaultRestSec: true,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      exercises = found.map((ex) => ({
+        exerciseId: ex.id,
+        sets: ex.defaultSets,
+        reps: ex.defaultReps,
+        holdSeconds: ex.defaultHoldSec,
+        restSeconds: ex.defaultRestSec,
+        frequency: frequency || null,
+        notes: notes || null,
+      }));
+
+      if (exercises.length === 0) {
+        return NextResponse.json(
+          { error: `"${folder.name}" has no active exercises to prescribe` },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (!exercises || !Array.isArray(exercises) || exercises.length === 0) {
       return NextResponse.json({ error: "Patient and at least one exercise are required" }, { status: 400 });
     }
 
@@ -106,7 +164,7 @@ export async function POST(req: NextRequest) {
     const skipped = exercises.length - toCreate.length;
 
     if (toCreate.length === 0) {
-      return NextResponse.json({ prescriptions: [], count: 0, skipped }, { status: 200 });
+      return NextResponse.json({ prescriptions: [], count: 0, skipped, folderName }, { status: 200 });
     }
 
     const created = await prisma.$transaction(
@@ -130,7 +188,10 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    return NextResponse.json({ prescriptions: created, count: created.length, skipped }, { status: 201 });
+    return NextResponse.json(
+      { prescriptions: created, count: created.length, skipped, folderName },
+      { status: 201 }
+    );
   } catch (err: any) {
     console.error("Prescription POST error:", err);
     return NextResponse.json({ error: "Failed to create prescriptions" }, { status: 500 });
