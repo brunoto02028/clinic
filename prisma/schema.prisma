@@ -316,6 +316,7 @@ model Clinic {
   users                   User[]
   appointments            Appointment[]
   soapNotes               SOAPNote[]
+  outcomeMeasures         PatientOutcomeMeasure[]
   medicalScreenings       MedicalScreening[]
   articles                Article[]
   conditionPages          ConditionPage[]
@@ -553,6 +554,8 @@ model User {
   /// account never appears on the booking screen by accident.
   bookable                 Boolean   @default(false)
 
+  outcomeMeasures          PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
+
   // Profile Image
   profileImageUrl  String?
   profileImagePath String? // cloud_storage_path for profile image
@@ -754,6 +757,36 @@ model Account {
 enum ScreeningSource {
   PATIENT // answered by the patient in the portal
   CLINIC // filled in on the patient's behalf
+}
+
+/// Outcome measures (VAS, FAAM) tracked over the course of treatment.
+///
+/// These used to be stuffed into MedicalScreening.redFlagDetails — a JSON
+/// field meant for clinical red flags — and, when no screening existed, the
+/// route created one just to have somewhere to put them. A patient who
+/// recorded a pain score acquired an intake record nobody had filled in.
+///
+/// Intake and progress are different things: one is answered once, the other
+/// accumulates. They get different tables.
+model PatientOutcomeMeasure {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   User    @relation("PatientOutcomeMeasures", fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId  String?
+  clinic    Clinic? @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+
+  vasScore          Int? // 0-10 visual analogue scale
+  faamAdl           Int?
+  faamSport         Int?
+  faamAdlPercent    Float?
+  faamSportPercent  Float?
+  overallFunction   Int?
+
+  recordedAt DateTime @default(now())
+
+  @@index([patientId, recordedAt])
+  @@index([clinicId])
 }
 
 model MedicalScreening {

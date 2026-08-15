@@ -37,16 +37,13 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  // Check outcome measures
-  let outcomeMeasures = null;
-  if (screening) {
-    try {
-      const details = (screening as any).redFlagDetails as any;
-      if (details?.outcomeMeasures) {
-        outcomeMeasures = details.outcomeMeasures;
-      }
-    } catch {}
-  }
+  // Outcome measures have their own table now; they used to be read out of the
+  // screening's redFlagDetails, which meant a patient with no screening could
+  // never show progress on them even after recording one.
+  const outcomeMeasures = await (prisma as any).patientOutcomeMeasure.findFirst({
+    where: { patientId: user.id },
+    orderBy: { recordedAt: "desc" },
+  });
 
   // Calculate overall progress
   const steps = [
@@ -61,7 +58,7 @@ export async function GET(request: NextRequest) {
       id: "outcome_measures",
       label: "Pain & Function Measures",
       labelPt: "Medidas de Dor e Função",
-      status: outcomeMeasures?.vasScore !== undefined ? "completed" : "pending",
+      status: outcomeMeasures?.vasScore != null ? "completed" : "pending",
       data: outcomeMeasures,
     },
   ];
