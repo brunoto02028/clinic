@@ -613,6 +613,28 @@ export const DEFAULT_TEMPLATES = [
       <a href="{{portalUrl}}" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">Start Exercises →</a>
     </div>`,
   },
+  // ── EXERCISES PRESCRIBED ──
+  // EXERCISE_REMINDER nags about work already assigned; this one announces that
+  // the work has arrived. A patient who is never told has no reason to open the
+  // portal, and the prescription sits there unseen.
+  {
+    slug: 'EXERCISES_PRESCRIBED' as const,
+    name: 'New Exercises Prescribed',
+    subject: '{{patientName}}, your new exercises are ready 🏋️',
+    description: 'Sent when a therapist prescribes exercises — one email per prescription, not per exercise',
+    variables: ['patientName', 'exerciseCount', 'programmeName', 'portalUrl'],
+    htmlBody: `
+    <h2 style="color:#20242D;font-size:22px;margin:0 0 16px;">Your new exercises are ready 🏋️</h2>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 20px;">Hi {{patientName}}, your therapist has just added a new set of exercises to your portal. Each one comes with a video, and with the sets and repetitions chosen for you.</p>
+    <div style="background:#eef5f1;border:1px solid #cfe3d8;border-radius:12px;padding:20px 24px;margin:0 0 24px;text-align:center;">
+      <p style="font-size:18px;font-weight:700;color:#2f5545;margin:0 0 4px;">{{exerciseCount}} new exercises</p>
+      <p style="font-size:14px;color:#4F7361;margin:0;">{{programmeName}}</p>
+    </div>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="{{portalUrl}}" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">View My Exercises →</a>
+    </div>
+    <p style="color:#6b7280;font-size:13px;line-height:1.7;margin:0;">If anything hurts or you are unsure about a movement, stop and message us through the portal before continuing.</p>`,
+  },
   // ── ARTICLE NEWSLETTER ──
   {
     slug: 'ARTICLE_NEWSLETTER' as const,

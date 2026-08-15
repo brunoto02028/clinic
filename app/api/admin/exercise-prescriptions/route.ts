@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
@@ -188,8 +189,37 @@ export async function POST(req: NextRequest) {
       )
     );
 
+    // Tell the patient the work arrived. Once per call, never once per
+    // exercise: prescribing a folder of twenty would otherwise land as twenty
+    // separate messages. notifyPatient routes to whichever channel the patient
+    // chose, and a failure here must not undo prescriptions already written.
+    let notified: { channel: string; success: boolean } | null = null;
+    try {
+      const count = created.length;
+      const programme = folderName || (count === 1 ? "New exercise" : "New exercises");
+      const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+      const result = await notifyPatient({
+        patientId,
+        emailTemplateSlug: "EXERCISES_PRESCRIBED",
+        emailVars: {
+          patientName: patient.firstName || "there",
+          exerciseCount: String(count),
+          programmeName: programme,
+          portalUrl: `${appUrl}/dashboard/exercises`,
+        },
+        plainMessage: `Your clinic added ${count} new exercise${count === 1 ? "" : "s"} (${programme}) to your portal: ${appUrl}/dashboard/exercises`,
+        plainMessagePt: `A sua clínica adicionou ${count} novo${count === 1 ? "" : "s"} exercício${count === 1 ? "" : "s"} (${programme}) ao seu portal: ${appUrl}/dashboard/exercises`,
+      });
+      notified = { channel: result.channel, success: result.success };
+      if (!result.success) {
+        console.error("[prescriptions] Failed to notify patient:", result.error);
+      }
+    } catch (e) {
+      console.error("[prescriptions] Notification threw:", e);
+    }
+
     return NextResponse.json(
-      { prescriptions: created, count: created.length, skipped, folderName },
+      { prescriptions: created, count: created.length, skipped, folderName, notified },
       { status: 201 }
     );
   } catch (err: any) {
