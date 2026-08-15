@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
-import { MODULE_REGISTRY, PERMISSION_REGISTRY, ALWAYS_VISIBLE_MODULES } from "@/lib/module-registry";
+import { MODULE_REGISTRY, PERMISSION_REGISTRY } from "@/lib/module-registry";
+import { computePatientAccess } from "@/lib/patient-access";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
+    if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -56,36 +57,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const activeSubscriptions = patient.patientSubscriptions || [];
     const hasActiveTreatment = (patient.packagesAsPatient || []).length > 0;
 
-    // Collect plan-granted modules
-    const planModules = new Set<string>();
-    const planPermissions = new Set<string>();
-    for (const mod of ALWAYS_VISIBLE_MODULES) planModules.add(mod.key);
-    for (const sub of activeSubscriptions) {
-      if (sub.plan) {
-        for (const fk of sub.plan.features || []) {
-          if (fk.startsWith("mod_")) planModules.add(fk);
-          else if (fk.startsWith("perm_")) planPermissions.add(fk);
-        }
-      }
-    }
-    if (hasActiveTreatment) {
-      ["mod_treatment", "mod_appointments", "mod_records", "mod_clinical_notes", "mod_documents", "mod_screening", "mod_exercises"]
-        .forEach(m => planModules.add(m));
-      ["perm_book_in_person", "perm_book_online", "perm_view_exercise_videos", "perm_request_cancellation", "perm_progress_tracking", "perm_download_reports"]
-        .forEach(p => planPermissions.add(p));
-    }
-
-    // Apply admin overrides
-    const overrides = (patient.moduleOverrides || {}) as Record<string, boolean>;
-    const effectiveModules = new Set(planModules);
-    const effectivePermissions = new Set(planPermissions);
-    for (const [key, val] of Object.entries(overrides)) {
-      if (key.startsWith("mod_")) {
-        if (val) effectiveModules.add(key); else effectiveModules.delete(key);
-      } else if (key.startsWith("perm_")) {
-        if (val) effectivePermissions.add(key); else effectivePermissions.delete(key);
-      }
-    }
+    // One computation, shared with the patient's own portal. This screen used
+    // to repeat the rules and got three of them wrong: "hidden" and "locked"
+    // are strings, so `if (val)` granted what the portal was removing, and
+    // neither full access nor a free plan was accounted for at all — so the
+    // screen could show a module as withheld while the patient had it, or
+    // as granted while the patient could not open it.
+    const access = computePatientAccess(patient);
+    const overrides = (patient.moduleOverrides || {}) as Record<string, boolean | string>;
+    const effectiveModules = new Set(access.modules);
+    const effectivePermissions = new Set(access.permissions);
+    const hiddenModules = new Set(access.hiddenModules);
+    // "Granted by plan" means: would this be granted without the per-patient
+    // override? That is what the UI contrasts the override against.
+    const planModules = new Set(
+      Object.entries(access.reasons)
+        .filter(([k, r]) => k.startsWith("mod_") && r !== "override")
+        .map(([k]) => k)
+    );
+    const planPermissions = new Set(
+      Object.entries(access.reasons)
+        .filter(([k, r]) => k.startsWith("perm_") && r !== "override")
+        .map(([k]) => k)
+    );
 
     // Build per-module status for UI
     const moduleStatus = MODULE_REGISTRY.map(m => ({
