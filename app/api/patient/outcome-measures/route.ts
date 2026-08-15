@@ -1,5 +1,12 @@
 // API: Store and retrieve patient outcome measures (VAS + FAAM)
-// Stored in MedicalScreening JSON fields
+//
+// These used to live inside MedicalScreening.redFlagDetails, and when a patient
+// had no screening the route created one just to have somewhere to put them —
+// so recording a pain score gave the patient an intake record nobody had filled
+// in, which then showed up on their file as a completed screening.
+//
+// Intake and progress are different things: one is answered once, the other
+// accumulates over treatment. They have separate tables now.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestSession } from "@/lib/dual-auth";
@@ -20,35 +27,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  const latest = await (prisma as any).patientOutcomeMeasure.findFirst({
+    where: { patientId: user.id },
+    orderBy: { recordedAt: "desc" },
+  });
+
+  if (latest) {
+    return NextResponse.json({
+      measures: {
+        vasScore: latest.vasScore,
+        faamAdl: latest.faamAdl,
+        faamSport: latest.faamSport,
+        faamAdlPercent: latest.faamAdlPercent,
+        faamSportPercent: latest.faamSportPercent,
+        overallFunction: latest.overallFunction,
+        recordedAt: latest.recordedAt,
+      },
+    });
+  }
+
+  // No measure recorded yet. The screening's own pain score, if the patient
+  // gave one at intake, is a reasonable starting point for the form — but it
+  // is read only, and nothing is written back to the screening.
   const screening = await prisma.medicalScreening.findUnique({
     where: { userId: user.id },
-    select: {
-      painLevel: true,
-      painScore: true,
-      painTypes: true,
-      painPatterns: true,
-      painImpact: true,
-      painNotes: true,
-      redFlagDetails: true,
-    },
+    select: { painLevel: true, painScore: true },
   });
 
   if (!screening) {
     return NextResponse.json({ measures: null });
   }
 
-  // Outcome measures stored in redFlagDetails JSON (reusing existing field for extensibility)
-  // or we parse from painLevel/painScore
-  let outcomeMeasures = null;
-  try {
-    const details = screening.redFlagDetails as any;
-    if (details?.outcomeMeasures) {
-      outcomeMeasures = details.outcomeMeasures;
-    }
-  } catch {}
-
   return NextResponse.json({
-    measures: outcomeMeasures || {
+    measures: {
       vasScore: screening.painLevel || screening.painScore || 0,
       faamAdl: {},
       faamSport: {},
@@ -77,55 +88,23 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { vasScore, faamAdl, faamSport, faamAdlPercent, faamSportPercent, overallFunction } = body;
 
-  // Upsert medical screening with outcome measures
-  const existing = await prisma.medicalScreening.findUnique({
-    where: { userId: user.id },
-    select: { id: true, redFlagDetails: true },
+  const toInt = (v: any) => (v === null || v === undefined || v === "" ? null : Number(v));
+
+  // Appended, never upserted: every recording is a point in the patient's
+  // progress, and overwriting the last one would erase the trend the measure
+  // exists to show.
+  const measure = await (prisma as any).patientOutcomeMeasure.create({
+    data: {
+      patientId: user.id,
+      clinicId: user.clinicId ?? null,
+      vasScore: toInt(vasScore),
+      faamAdl: toInt(faamAdl),
+      faamSport: toInt(faamSport),
+      faamAdlPercent: faamAdlPercent === null || faamAdlPercent === undefined ? null : Number(faamAdlPercent),
+      faamSportPercent: faamSportPercent === null || faamSportPercent === undefined ? null : Number(faamSportPercent),
+      overallFunction: toInt(overallFunction),
+    },
   });
 
-  const outcomeMeasures = {
-    vasScore,
-    faamAdl,
-    faamSport,
-    faamAdlPercent,
-    faamSportPercent,
-    overallFunction,
-    recordedAt: new Date().toISOString(),
-  };
-
-  // Preserve existing redFlagDetails and add outcomeMeasures
-  const existingDetails = (existing?.redFlagDetails as any) || {};
-  const updatedDetails = {
-    ...existingDetails,
-    outcomeMeasures,
-    // Keep history of measures for comparison
-    outcomeMeasuresHistory: [
-      ...(existingDetails.outcomeMeasuresHistory || []),
-      outcomeMeasures,
-    ],
-  };
-
-  if (existing) {
-    await prisma.medicalScreening.update({
-      where: { userId: user.id },
-      data: {
-        painLevel: vasScore,
-        painScore: vasScore,
-        redFlagDetails: updatedDetails,
-      },
-    });
-  } else {
-    // Create screening if doesn't exist
-    await prisma.medicalScreening.create({
-      data: {
-        userId: user.id,
-        ...(user.clinicId ? { clinicId: user.clinicId } : {}),
-        painLevel: vasScore,
-        painScore: vasScore,
-        redFlagDetails: updatedDetails,
-      },
-    });
-  }
-
-  return NextResponse.json({ success: true, measures: outcomeMeasures });
+  return NextResponse.json({ success: true, measures: measure });
 }
