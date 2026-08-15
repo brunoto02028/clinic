@@ -2796,7 +2796,7 @@ export default function AdminSettingsPage() {
               </div>
               <div className="space-y-2">
                 <FieldLabel htmlFor="socialProfilesJson" fieldName="socialProfilesJson" label="Social Profile URLs (for Schema.org sameAs)" context="List all social media profile URLs for this physiotherapy clinic for schema.org sameAs property, as a JSON array of strings" />
-                <Textarea id="socialProfilesJson" value={settings.socialProfilesJson} onChange={(e) => setSettings({ ...settings, socialProfilesJson: e.target.value })} placeholder='["https://www.instagram.com/bprrehab", "https://www.facebook.com/bprrehab"]' rows={3} className="font-mono text-xs" />
+                <Textarea id="socialProfilesJson" value={settings.socialProfilesJson} onChange={(e) => setSettings({ ...settings, socialProfilesJson: e.target.value })} placeholder='["https://www.instagram.com/bprehabilitation"]' rows={3} className="font-mono text-xs" />
                 <p className="text-xs text-muted-foreground">JSON array of social profile URLs — used in Schema.org to link your business profiles</p>
               </div>
             </CardContent>
