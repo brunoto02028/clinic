@@ -140,6 +140,9 @@ export async function POST(request: NextRequest) {
           emergencyContact: body?.emergencyContact ?? null,
           emergencyContactPhone: body?.emergencyContactPhone ?? null,
           consentGiven: body?.consentGiven ?? false,
+          // The patient is answering it themselves — that is what makes this
+          // their own account of their history rather than a transcription.
+          filledBy: "PATIENT",
           isSubmitted: !isAutosave ? true : existingScreening.isSubmitted,
           isLocked: !isAutosave ? true : existingScreening.isLocked,
           editApprovedAt: !isAutosave ? null : existingScreening.editApprovedAt,
@@ -244,6 +247,7 @@ export async function POST(request: NextRequest) {
         emergencyContact: body?.emergencyContact ?? null,
         emergencyContactPhone: body?.emergencyContactPhone ?? null,
         consentGiven: body?.consentGiven ?? false,
+        filledBy: "PATIENT",
         isSubmitted: !isAutosave,
         isLocked: !isAutosave,
       } as any,
