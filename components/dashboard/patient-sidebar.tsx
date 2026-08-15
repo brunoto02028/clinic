@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Menu, X, Bell } from "lucide-react";
+import { LogOut, Menu, X, Bell, Lock } from "lucide-react";
 import {
   PATIENT_SECTIONS,
   PATIENT_PROFILE_SECTION,
@@ -70,17 +70,29 @@ export default function PatientSidebar({
   const visibleSections = useMemo(() => {
     // Until access is known, show the curated set — blanking the menu on every
     // page load would read as breakage.
-    if (accessLoading) return PATIENT_SECTIONS;
+    if (accessLoading) return PATIENT_SECTIONS.map((s) => ({ ...s, locked: false }));
 
-    const allowed = (href: string) => {
+    // Three states, not two. A module the patient could buy is not the same as
+    // one the clinic deliberately took away: the first still leads to the
+    // upgrade screen — which is where the plans are sold — and only the second
+    // disappears. Hiding both would have quietly removed the paywall from the
+    // menu of every patient without a plan.
+    const state = (href: string) => {
       const key = moduleByHref.get(href);
-      if (!key) return true; // no module governs it (e.g. Messages)
-      return hasModule(key) && !isModuleHidden(key);
+      if (!key) return "open" as const; // nothing governs it (e.g. Messages)
+      if (isModuleHidden(key)) return "hidden" as const;
+      return hasModule(key) ? ("open" as const) : ("locked" as const);
     };
 
-    const curated = PATIENT_SECTIONS.filter((s) => allowed(s.href));
+    const curated = PATIENT_SECTIONS
+      .map((s) => ({ ...s, state: state(s.href) }))
+      .filter((s) => s.state !== "hidden")
+      .map(({ state, ...s }) => ({ ...s, locked: state === "locked" }));
+
     const curatedHrefs = new Set(PATIENT_SECTIONS.map((s) => s.href));
 
+    // Modules with no curated entry only appear once granted: showing all
+    // fourteen locked would bury the six the patient actually uses.
     const extra = MODULE_REGISTRY.filter(
       (m) =>
         m.href &&
@@ -95,6 +107,7 @@ export default function PatientSidebar({
       icon: m.icon,
       href: m.href as string,
       matchRoutes: [m.href as string],
+      locked: false,
     }));
 
     return [...curated, ...extra];
@@ -277,8 +290,15 @@ export default function PatientSidebar({
                 aria-current={isActive ? "page" : undefined}
               >
                 {isActive && activeBar}
-                <Icon size={18} className="flex-shrink-0" />
-                <span className="flex-1">{isPt ? section.labelPt : section.label}</span>
+                <Icon size={18} className={`flex-shrink-0 ${section.locked ? "opacity-40" : ""}`} />
+                <span className={`flex-1 ${section.locked ? "opacity-60" : ""}`}>
+                  {isPt ? section.labelPt : section.label}
+                </span>
+                {/* Still a link: it leads to the upgrade screen, which is where
+                    the plans are sold. The lock says why, before the click. */}
+                {section.locked && (
+                  <Lock size={13} className="ml-auto flex-shrink-0 text-[#B9772F]" aria-label={isPt ? "Requer plano" : "Requires a plan"} />
+                )}
                 {section.key === "questions" && pendingQuestions > 0 && (
                   <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-amber-400 text-black text-[10px] font-bold flex items-center justify-center px-1">
                     {pendingQuestions > 9 ? "9+" : pendingQuestions}
