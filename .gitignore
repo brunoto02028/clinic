@@ -46,3 +46,4 @@ mobile/.expo/
 
 # Graphify generated knowledge graph (regenerate when codebase changes significantly)
 graphify-out/
+.email-templates-backup.json

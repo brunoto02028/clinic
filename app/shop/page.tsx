@@ -867,13 +867,10 @@ export default function ShopPage() {
                   3D printed foot care products designed by physiotherapists for real recovery results.
                 </p>
                 <div className="flex items-center gap-3">
-                  <a href="https://instagram.com/bpr.rehab" target="_blank" rel="noopener noreferrer" 
+                  <a href="https://www.instagram.com/bprehabilitation/" target="_blank" rel="noopener noreferrer"
+                    aria-label="Instagram"
                     className="w-8 h-8 rounded-lg bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors">
                     <span className="text-sm">📷</span>
-                  </a>
-                  <a href="https://facebook.com/bpr.rehab" target="_blank" rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-lg bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors">
-                    <span className="text-sm">📘</span>
                   </a>
                 </div>
               </div>
