@@ -2852,6 +2852,12 @@ model ExercisePrescription {
   frequency   String? // e.g. "3x per week", "Daily", "Every other day"
   notes       String? @db.Text // Therapist notes for the patient
 
+  /// What the patient sees this exercise filed under, when it should not be
+  /// the library folder it lives in. The library is organised for the clinic —
+  /// by body region, by intake batch — and a patient's programme rarely maps
+  /// onto that. Empty means: use the library folder, which is the common case.
+  displayGroup String?
+
   // Status
   isActive  Boolean   @default(true)
   startDate DateTime  @default(now())

@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No clinic context" }, { status: 400 });
     }
 
-    const { patientId, folderId, frequency, notes } = body;
+    const { patientId, folderId, frequency, notes, displayGroup } = body;
     // exercises: Array<{ exerciseId, sets?, reps?, holdSeconds?, restSeconds?, frequency?, notes?, startDate?, endDate? }>
     let exercises = body.exercises;
 
@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
         restSeconds: ex.defaultRestSec,
         frequency: frequency || null,
         notes: notes || null,
+        displayGroup: displayGroup || null,
       }));
 
       if (exercises.length === 0) {
@@ -182,6 +183,10 @@ export async function POST(req: NextRequest) {
             restSeconds: ex.restSeconds || null,
             frequency: ex.frequency || null,
             notes: ex.notes || null,
+            // Per exercise, falling back to one given for the whole request:
+            // prescribing a set under a single group is the common case, and
+            // requiring it to be repeated on every entry invites drift.
+            displayGroup: ex.displayGroup || displayGroup || null,
             startDate: ex.startDate ? new Date(ex.startDate) : new Date(),
             endDate: ex.endDate ? new Date(ex.endDate) : null,
           },
