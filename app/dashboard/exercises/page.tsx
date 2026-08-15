@@ -81,6 +81,7 @@ interface Prescription {
     videoUrl: string | null;
     thumbnailUrl: string | null;
     duration: number | null;
+    muteForPatient: boolean;
     defaultSets: number | null;
     defaultReps: number | null;
     defaultHoldSec: number | null;
@@ -620,7 +621,12 @@ function VideoPlayerModal({
               src={ex.videoUrl!}
               controls
               className="w-full rounded-lg"
-              autoPlay
+              playsInline
+              muted={ex.muteForPatient !== false}
+              // Browsers refuse to autoplay a video that can be heard, so an
+              // unmuted clip that autoplayed simply never started. It waits for
+              // a tap instead — which is also when someone expects sound.
+              autoPlay={ex.muteForPatient !== false}
               onError={() => setVideoFailed(true)}
             />
           )}

@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
             videoUrl: true,
             thumbnailUrl: true,
             duration: true,
+            muteForPatient: true,
             defaultSets: true,
             defaultReps: true,
             defaultHoldSec: true,
