@@ -132,6 +132,18 @@ function Sec({ title, icon: Icon, children, open: dOpen = false, badge, actions 
 }
 
 // ─── Main Page ───
+/**
+ * Three states, not two. A row exists long before it is finished, and once it
+ * is finished it still matters whether the patient answered it or the clinic
+ * transcribed it — both open the portal, but only one is the patient's own
+ * account of their history.
+ */
+function screeningBadge(screening: any): string {
+  if (!screening) return "Not filled";
+  if (!screening.isSubmitted) return "In progress";
+  return screening.filledBy === "PATIENT" ? "Answered by patient" : "Filled by clinic";
+}
+
 export default function PatientProfilePage() {
   const { id: patientId } = useParams<{ id: string }>();
   const router = useRouter();
@@ -1055,8 +1067,15 @@ export default function PatientProfilePage() {
         {/* ── Tab: Screening ── */}
         <TabsContent value="screening" className="mt-4">
         <div className="space-y-2.5">
-        {/* ── Assessment Screening ── */}
-        <Sec title="Assessment Screening" icon={FileText} badge={data.screening ? "Completed" : "Not filled"} open={!!data.screening}
+        {/* ── Assessment Screening ──
+         *
+         * The badge used to read "Completed" whenever a row existed, without
+         * looking at isSubmitted — so a half-finished draft, or a row created
+         * as a side effect elsewhere, presented as a finished screening. It
+         * also said nothing about who answered: a patient's own account of
+         * their history and a transcription by the clinic carry different
+         * clinical weight, even though both open the portal. */}
+        <Sec title="Assessment Screening" icon={FileText} badge={screeningBadge(data.screening)} open={!!data.screening}
           actions={data.screening && <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setScreeningForm({ ...data.screening }); setEditingScreening(true); }}><Pencil className="h-3 w-3" /></Button>}
         >
           {editingScreening && data.screening ? (

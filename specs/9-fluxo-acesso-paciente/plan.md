@@ -63,7 +63,7 @@ mesma função. Enquanto forem duas implementações, vão divergir de novo.
 
 | Tarefa | Nome | Status |
 |---|---|---|
-| T-1 | Profissional agendável | pendente |
+| T-1 | Profissional agendável | concluído |
 | T-2 | Estado real da triagem na ficha | pendente |
 | T-3 | Parar a criação de triagem por efeito colateral | pendente |
 | T-4 | Fonte única de acesso, admin e portal | pendente |
@@ -79,10 +79,11 @@ Cada uma muda o resultado se estiver errada:
    ele; qualquer outro profissional precisa ser marcado à mão depois.
 2. **Ninguém depende do `email` devolvido por `/api/therapists`.** Vou removê-lo
    do retorno; se algum consumidor usar, quebra.
-3. **Triagem preenchida pela clínica continua valendo como triagem.** Ela
-   libera o portal do mesmo jeito — muda apenas o rótulo na ficha, não a regra
-   de acesso. Se você quiser que só a resposta do paciente libere, é outra
-   regra e muda T-2 e T-4.
+3. ~~**Triagem preenchida pela clínica continua valendo como triagem.**~~
+   **CONFIRMADO pelo Bruno em 15/08/2026:** os dois caminhos liberam o portal
+   — a clínica pode liberar preenchendo, e o paciente pode liberar respondendo
+   pelo portal. A origem muda apenas o rótulo na ficha, nunca a regra de
+   acesso.
 4. **Os registros de triagem existentes foram preenchidos por gente.** São 3
    enviados e 0 parciais em produção. Nenhum será apagado; no máximo ganham a
    marcação de origem, com "preenchida pela clínica" como padrão para os que

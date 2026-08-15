@@ -1,6 +1,6 @@
 # T-1: Profissional agendável
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** nenhuma
 
 ## Objetivo

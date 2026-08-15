@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
 
       const hasScreening = await prisma.medicalScreening.findUnique({
         where: { userId },
+        select: { isSubmitted: true },
       });
 
       const user = await prisma.user.findUnique({
@@ -61,7 +62,11 @@ export async function GET(request: NextRequest) {
         upcomingAppointments,
         completedAppointments,
         clinicalNotes,
-        screeningComplete: !!hasScreening?.consentGiven,
+        // Was reading consentGiven — a third definition of "screening done",
+        // alongside the permissions screen's isSubmitted and the patient page's
+        // does-a-row-exist. This is what drives the onboarding progress bar the
+        // patient sees, so it has to mean the same thing as everywhere else.
+        screeningComplete: hasScreening?.isSubmitted === true,
         consentAccepted: !!(user as any)?.consentAcceptedAt,
       });
     } else {

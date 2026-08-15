@@ -751,6 +751,11 @@ model Account {
 // MEDICAL SCREENING (Updated with clinicId)
 // ============================================
 
+enum ScreeningSource {
+  PATIENT // answered by the patient in the portal
+  CLINIC // filled in on the patient's behalf
+}
+
 model MedicalScreening {
   id       String  @id @default(cuid())
   clinicId String?
@@ -845,6 +850,13 @@ model MedicalScreening {
   emergencyContact      String?
   emergencyContactPhone String?
   consentGiven          Boolean @default(false)
+
+  /// Who answered it. Both routes grant portal access equally — the clinic can
+  /// fill it in for a patient who has no email or no phone, and the patient can
+  /// fill it in from the portal. What differs is clinical weight: an answer
+  /// given by the patient and one transcribed by the clinic are not the same
+  /// evidence, and the record should not pretend otherwise.
+  filledBy         ScreeningSource @default(CLINIC)
 
   // Lock after submission
   isSubmitted      Boolean   @default(false)

@@ -168,7 +168,9 @@ Rules:
       if (existing) {
         await (prisma as any).medicalScreening.update({ where: { userId: patientId }, data: screeningData });
       } else {
-        await (prisma as any).medicalScreening.create({ data: { ...screeningData, userId: patientId } });
+        // Extracted from a document by the clinic, never answered by the
+        // patient — the record says so rather than implying otherwise.
+        await (prisma as any).medicalScreening.create({ data: { ...screeningData, userId: patientId, filledBy: "CLINIC" } });
       }
 
       const redFlagsCount = RED_FLAG_KEYS.filter((k) => screeningData[k]).length;
