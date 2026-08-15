@@ -29,11 +29,16 @@ export async function GET(request: NextRequest) {
     const dayStart = zonedTimeToUtc(dateStr, "00:00");
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-    // Find therapist — if not specified, find the first available
+    // Find therapist — if not specified, fall back to whoever sees patients.
+    // Role is not the test: the clinic owner and the developer both hold
+    // SUPERADMIN, and this findFirst had no ordering, so it could just as
+    // easily have returned the developer — who has no availability configured,
+    // leaving the patient staring at a calendar with no slots.
     let targetTherapistId = therapistId;
     if (!targetTherapistId) {
       const therapist = await prisma.user.findFirst({
-        where: { role: { in: ["ADMIN", "THERAPIST", "SUPERADMIN"] } },
+        where: { bookable: true, isActive: true },
+        orderBy: { createdAt: "asc" },
       });
       if (!therapist) {
         return NextResponse.json({ error: "No therapist available" }, { status: 400 });

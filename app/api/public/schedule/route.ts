@@ -8,9 +8,12 @@ const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","
 // Public endpoint — returns the clinic's weekly opening hours (no auth required)
 export async function GET() {
   try {
-    // Find the primary therapist/admin
+    // The clinic's opening hours come from whoever actually sees patients.
+    // Selecting by role happened to land on the right person only because the
+    // owner's account is the oldest — a staff account created before his would
+    // have published someone else's hours on the public site.
     const therapist = await prisma.user.findFirst({
-      where: { role: { in: ["SUPERADMIN", "ADMIN", "THERAPIST"] } },
+      where: { bookable: true, isActive: true },
       orderBy: { createdAt: "asc" },
     });
 
