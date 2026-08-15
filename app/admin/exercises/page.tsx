@@ -38,6 +38,8 @@ import {
   CheckCircle,
   CheckSquare,
   FolderPlus,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
   Dialog,
@@ -97,6 +99,8 @@ interface Exercise {
   difficulty: string;
   tags: string[];
   videoUrl: string | null;
+  hasAudio?: boolean;
+  muteForPatient?: boolean;
   videoFileName: string | null;
   thumbnailUrl: string | null;
   duration: number | null;
@@ -561,6 +565,27 @@ export default function ExercisesPage() {
     setShowForm(true);
   };
 
+  // Optimistic: the toggle is a single boolean and the card should feel
+  // instant. A failed write puts it straight back rather than leaving the
+  // screen disagreeing with the database.
+  const toggleSound = async (ex: Exercise) => {
+    const wasMuted = ex.muteForPatient !== false;
+    const nextMuted = !wasMuted;
+    setExercises((prev) =>
+      prev.map((e) => (e.id === ex.id ? { ...e, muteForPatient: nextMuted } : e))
+    );
+    try {
+      const fd = new FormData();
+      fd.append("muteForPatient", String(nextMuted));
+      const res = await fetch(`/api/admin/exercises/${ex.id}`, { method: "PATCH", body: fd });
+      if (!res.ok) throw new Error("failed");
+    } catch {
+      setExercises((prev) =>
+        prev.map((e) => (e.id === ex.id ? { ...e, muteForPatient: wasMuted } : e))
+      );
+    }
+  };
+
   const openPrescribe = (ex: Exercise) => {
     setPrescribeExercises([ex]);
     setPrescribeCollectionName("");
@@ -939,6 +964,7 @@ export default function ExercisesPage() {
                       onEdit={() => openEdit(ex)}
                       onDelete={() => handleDelete(ex.id)}
                       onPrescribe={() => openPrescribe(ex)}
+                      onToggleSound={() => toggleSound(ex)}
                       onPreview={() => setShowPreview(ex)}
                       selectable
                       selected={selectedIds.has(ex.id)}
@@ -1100,6 +1126,7 @@ export default function ExercisesPage() {
                 onEdit={() => openEdit(ex)}
                 onDelete={() => handleDelete(ex.id)}
                 onPrescribe={() => openPrescribe(ex)}
+                      onToggleSound={() => toggleSound(ex)}
                 onPreview={() => setShowPreview(ex)}
                 selectable
                 selected={selectedIds.has(ex.id)}
@@ -1450,6 +1477,7 @@ function ExerciseCard({
   onDelete,
   onPrescribe,
   onPreview,
+  onToggleSound,
   selectable,
   selected,
   onToggleSelect,
@@ -1459,6 +1487,7 @@ function ExerciseCard({
   onDelete: () => void;
   onPrescribe: () => void;
   onPreview: () => void;
+  onToggleSound?: () => void;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
@@ -1604,6 +1633,25 @@ function ExerciseCard({
           <Button variant="ghost" size="sm" className="h-7 text-xs flex-1" onClick={onPrescribe}>
             <Send className="h-3 w-3 mr-1" /> {locale === "pt-BR" ? "Prescrever" : "Prescribe"}
           </Button>
+          {/* Only on clips that actually carry a track — on the other 164 a
+              sound button would be a control that does nothing. */}
+          {exercise.hasAudio && onToggleSound && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 w-7 p-0 ${exercise.muteForPatient === false ? "text-primary" : "text-muted-foreground"}`}
+              onClick={onToggleSound}
+              title={
+                exercise.muteForPatient === false
+                  ? locale === "pt-BR" ? "Som ligado para o paciente — clique para silenciar" : "Sound on for the patient — click to mute"
+                  : locale === "pt-BR" ? "Sem som para o paciente — clique para ligar" : "Muted for the patient — click to enable"
+              }
+            >
+              {exercise.muteForPatient === false
+                ? <Volume2 className="h-3.5 w-3.5" />
+                : <VolumeX className="h-3.5 w-3.5" />}
+            </Button>
+          )}
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}>
             <Edit className="h-3.5 w-3.5" />
           </Button>

@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
             tags,
             videoUrl: stored.videoUrl,
             videoFileName: stored.videoFileName,
+            hasAudio: stored.hasAudio,
             thumbnailUrl: stored.thumbnailUrl,
             duration: stored.duration,
             folderId: meta.folderId || null,

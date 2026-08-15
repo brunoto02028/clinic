@@ -238,6 +238,7 @@ export async function POST(req: NextRequest) {
             difficulty: "INTERMEDIATE",
             videoUrl,
             videoFileName: stored.videoFileName,
+            hasAudio: stored.hasAudio,
             thumbnailUrl,
             isActive: true,
             clinicId,

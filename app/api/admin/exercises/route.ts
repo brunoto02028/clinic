@@ -152,6 +152,7 @@ export async function POST(req: NextRequest) {
     let videoFileName: string | null = null;
     let thumbnailUrl: string | null = null;
     let duration: number | null = null;
+    let hasAudio = false;
 
     const videoFile = formData.get("video") as File | null;
     const externalVideoUrl = formData.get("videoUrl") as string | null;
@@ -178,6 +179,7 @@ export async function POST(req: NextRequest) {
         thumbnailUrl = stored.thumbnailUrl;
         duration = stored.duration;
         videoFileName = stored.videoFileName;
+        hasAudio = stored.hasAudio;
       } catch (err: any) {
         // Better a refused upload than a video nobody can back up.
         console.error("Exercise media storage failed:", err.message);
@@ -226,6 +228,7 @@ export async function POST(req: NextRequest) {
         videoFileName,
         thumbnailUrl,
         duration,
+        hasAudio,
         defaultSets,
         defaultReps,
         defaultHoldSec,

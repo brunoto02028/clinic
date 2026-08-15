@@ -137,6 +137,11 @@ export async function PATCH(
     const durationRaw = formData.get("duration");
     if (durationRaw !== null) updateData.duration = durationRaw ? parseInt(durationRaw as string) : null;
 
+    // The sound toggle: a property of the exercise, changeable at any time,
+    // so the decision is never locked into the file itself.
+    const muteForPatient = formData.get("muteForPatient");
+    if (muteForPatient !== null) updateData.muteForPatient = muteForPatient === "true";
+
     // Handle video upload
     const videoFile = formData.get("video") as File | null;
     const externalVideoUrl = formData.get("videoUrl") as string | null;
@@ -163,6 +168,7 @@ export async function PATCH(
         );
         updateData.videoUrl = stored.videoUrl;
         updateData.videoFileName = stored.videoFileName;
+        updateData.hasAudio = stored.hasAudio;
         if (stored.thumbnailUrl) updateData.thumbnailUrl = stored.thumbnailUrl;
         if (durationRaw === null) updateData.duration = stored.duration;
         replacedMedia = [owner.videoUrl, owner.thumbnailUrl];

@@ -2723,6 +2723,12 @@ model Exercise {
   thumbnailUrl  String?
   duration      Int? // Video duration in seconds
 
+  // Sound is a property of the exercise, not of the file: stripping the track
+  // would make the choice permanent, and most clips carry background music
+  // that nobody wants playing in a session — while a narrated one must keep it.
+  hasAudio       Boolean @default(false) // detected on upload; drives whether the toggle is shown
+  muteForPatient Boolean @default(true) // silence unless the therapist says otherwise
+
   // Defaults (can be overridden per prescription)
   defaultSets    Int?
   defaultReps    Int?

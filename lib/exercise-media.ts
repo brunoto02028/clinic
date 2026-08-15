@@ -24,6 +24,12 @@ export interface StoredExerciseMedia {
   thumbnailUrl: string | null;
   duration: number | null;
   videoFileName: string;
+  /**
+   * Whether the file carries an audio track. Normalisation already probes for
+   * it and threw the answer away; keeping it means the sound toggle can be
+   * shown only on the exercises where it means anything, instead of on all 177.
+   */
+  hasAudio: boolean;
 }
 
 export class MediaStorageError extends Error {}
@@ -78,10 +84,12 @@ export async function processAndStoreExerciseVideo(
     // Patients open these on whatever phone they own — H.264/yuv420p/mp4 with
     // faststart is the combination that plays everywhere.
     let finalPath = localVideo;
+    let hasAudio = false;
     try {
       const norm = await ensureWebSafeVideo(localVideo);
       if (norm.action !== "failed") finalPath = norm.path;
       else console.error("Video normalisation failed:", norm.error);
+      hasAudio = !!norm.probe?.audioCodec;
     } catch (err: any) {
       console.error("Video normalisation threw:", err.message);
     }
@@ -121,7 +129,7 @@ export async function processAndStoreExerciseVideo(
       contentTypeFor(finalName)
     );
 
-    return { videoUrl, thumbnailUrl, duration, videoFileName: originalName };
+    return { videoUrl, thumbnailUrl, duration, videoFileName: originalName, hasAudio };
   } finally {
     // Runs on the error path too — otherwise a failed upload leaves the file
     // behind and the disk fills up invisibly.
