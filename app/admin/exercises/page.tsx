@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Plus,
   Search,
@@ -586,6 +586,13 @@ export default function ExercisesPage() {
     }
   };
 
+  // Names already in use, so the group field can suggest instead of inviting
+  // a near-duplicate ("Shoulder" vs "shoulder mobility").
+  const folderNames = useMemo(
+    () => Array.from(new Set(folders.map((f) => f.name).filter(Boolean))).sort(),
+    [folders]
+  );
+
   const openPrescribe = (ex: Exercise) => {
     setPrescribeExercises([ex]);
     setPrescribeCollectionName("");
@@ -1170,6 +1177,7 @@ export default function ExercisesPage() {
         <PrescribeModal
           exercises={prescribeExercises}
           collectionName={prescribeCollectionName}
+          folderNames={folderNames}
           onClose={() => { setShowPrescribe(false); setPrescribeExercises([]); }}
           onSaved={() => { setShowPrescribe(false); setPrescribeExercises([]); fetchExercises(); }}
         />
@@ -2353,11 +2361,15 @@ function ExerciseFormModal({
 function PrescribeModal({
   exercises,
   collectionName,
+  folderNames = [],
   onClose,
   onSaved,
 }: {
   exercises: Exercise[];
   collectionName?: string;
+  /** Existing group names, offered so a second exercise joins an existing
+   *  group instead of creating a near-duplicate with different casing. */
+  folderNames?: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -2380,6 +2392,7 @@ function PrescribeModal({
   const [restSeconds, setRestSeconds] = useState(exercise.defaultRestSec?.toString() || "");
   const [frequency, setFrequency] = useState("");
   const [notes, setNotes] = useState("");
+  const [displayGroup, setDisplayGroup] = useState("");
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [skippedCount, setSkippedCount] = useState(0);
@@ -2444,6 +2457,7 @@ function PrescribeModal({
                     restSeconds: ex.defaultRestSec,
                     frequency: frequency || null,
                     notes: notes || null,
+                    displayGroup: displayGroup.trim() || null,
                   }
                 : {
                     exerciseId: ex.id,
@@ -2453,6 +2467,7 @@ function PrescribeModal({
                     restSeconds: restSeconds ? parseInt(restSeconds) : null,
                     frequency: frequency || null,
                     notes: notes || null,
+                    displayGroup: displayGroup.trim() || null,
                   }
             ),
           }),
@@ -2641,6 +2656,29 @@ function PrescribeModal({
                 <SelectItem value="As needed">As needed</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">
+              {isPt ? "Grupo no portal do paciente" : "Group in the patient's portal"}
+            </Label>
+            <Input
+              list="grupo-do-paciente"
+              value={displayGroup}
+              onChange={(e) => setDisplayGroup(e.target.value)}
+              placeholder={isPt ? "Deixe vazio para usar a pasta da biblioteca" : "Leave empty to use the library folder"}
+            />
+            {/* The library is organised for the clinic; a patient's programme
+                rarely follows the same shape. Existing names are offered so a
+                second exercise lands in the same group instead of a near-copy. */}
+            <datalist id="grupo-do-paciente">
+              {folderNames.map((n) => <option key={n} value={n} />)}
+            </datalist>
+            <p className="text-[10px] text-muted-foreground">
+              {isPt
+                ? "O paciente verá este exercício sob esse nome, não sob a pasta onde ele está guardado."
+                : "The patient sees this exercise filed under that name, not the folder it is stored in."}
+            </p>
           </div>
 
           <div className="space-y-1">

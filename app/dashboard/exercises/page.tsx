@@ -66,6 +66,8 @@ interface Prescription {
   lastCompletedAt: string | null;
   startDate: string;
   createdAt: string;
+  /** Overrides the library folder for this patient only. */
+  displayGroup: string | null;
   exercise: {
     id: string;
     name: string;
@@ -198,6 +200,16 @@ export default function PatientExercisesPage() {
   const byFolder: Record<string, { name: string; items: Prescription[] }> = {};
   const byRegion: Record<string, Prescription[]> = {};
   prescriptions.forEach((p) => {
+    // The therapist can file an exercise somewhere else for this patient. The
+    // library is organised for the clinic — by body region, by upload batch —
+    // and a patient's programme rarely follows that shape.
+    const custom = p.displayGroup?.trim();
+    if (custom) {
+      const id = `custom:${custom.toLowerCase()}`;
+      if (!byFolder[id]) byFolder[id] = { name: custom, items: [] };
+      byFolder[id].items.push(p);
+      return;
+    }
     const folder = p.exercise.folder;
     if (folder) {
       if (!byFolder[folder.id]) byFolder[folder.id] = { name: folder.name, items: [] };
