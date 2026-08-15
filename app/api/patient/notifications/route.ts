@@ -154,6 +154,35 @@ export async function GET(request: NextRequest) {
       }
     } catch {}
 
+    // 6. Exercises prescribed but not yet started
+    //
+    // Grouped into a single row on purpose: a folder of twenty videos would
+    // otherwise bury every other notification. It clears itself once the
+    // patient completes any one of them, so nothing has to be marked as read.
+    try {
+      const fresh = await (prisma as any).exercisePrescription.findMany({
+        where: { patientId: userId, isActive: true, completedCount: 0 },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, createdAt: true },
+      });
+      if (fresh.length > 0) {
+        const n = fresh.length;
+        notifications.push({
+          id: `exercises-${fresh[0].id}`,
+          type: "exercise",
+          title: n === 1 ? "New exercise to start" : `${n} new exercises to start`,
+          titlePt: n === 1 ? "Novo exercício para começar" : `${n} novos exercícios para começar`,
+          message: "Your therapist prescribed these for you — each one has a video.",
+          messagePt: "O seu fisioterapeuta prescreveu estes para si — cada um tem vídeo.",
+          link: "/dashboard/exercises",
+          icon: "Dumbbell",
+          color: "emerald",
+          createdAt: fresh[0].createdAt?.toISOString?.() || now.toISOString(),
+          isUrgent: false,
+        });
+      }
+    } catch {}
+
     // Sort: urgent first, then by date
     notifications.sort((a, b) => {
       if (a.isUrgent && !b.isUrgent) return -1;

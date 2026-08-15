@@ -10,6 +10,7 @@
 
 jest.mock("next-auth", () => ({ getServerSession: jest.fn() }));
 jest.mock("@/lib/auth-options", () => ({ authOptions: {} }));
+jest.mock("@/lib/notify-patient", () => ({ notifyPatient: jest.fn() }));
 jest.mock("@/lib/db", () => ({
   prisma: {
     user: { findFirst: jest.fn() },
@@ -22,10 +23,12 @@ jest.mock("@/lib/db", () => ({
 
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db";
+import { notifyPatient } from "@/lib/notify-patient";
 import { POST } from "@/app/api/admin/exercise-prescriptions/route";
 
 const session = getServerSession as jest.Mock;
 const db = prisma as any;
+const notify = notifyPatient as jest.Mock;
 
 function request(body: any) {
   return new Request("http://localhost/api/admin/exercise-prescriptions", {
@@ -49,7 +52,8 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
     session.mockResolvedValue({
       user: { role: "ADMIN", clinicId: "clinic-1", id: "therapist-1" },
     });
-    db.user.findFirst.mockResolvedValue({ id: "pat-1" });
+    db.user.findFirst.mockResolvedValue({ id: "pat-1", firstName: "Gabby" });
+    notify.mockResolvedValue({ channel: "EMAIL", success: true });
     db.exerciseFolder.findFirst.mockResolvedValue({ id: "f1", name: "Swimmer's Shoulder" });
     db.exerciseFolder.findMany.mockResolvedValue([]);
     db.exercise.findMany.mockResolvedValue([exercise("e1"), exercise("e2"), exercise("e3")]);
@@ -131,6 +135,53 @@ describe("POST /api/admin/exercise-prescriptions — whole folder", () => {
     expect(res.status).toBe(201);
     expect(body.count).toBe(1);
     expect(db.exerciseFolder.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("notifies the patient once for the whole folder, not once per exercise", async () => {
+    await POST(request({ patientId: "pat-1", folderId: "f1" }));
+
+    expect(notify).toHaveBeenCalledTimes(1);
+    const arg = notify.mock.calls[0][0];
+    expect(arg.patientId).toBe("pat-1");
+    expect(arg.emailTemplateSlug).toBe("EXERCISES_PRESCRIBED");
+    expect(arg.emailVars).toMatchObject({ exerciseCount: "3", programmeName: "Swimmer's Shoulder" });
+  });
+
+  it("counts only what was actually prescribed, not what was skipped", async () => {
+    db.exercisePrescription.findMany.mockResolvedValue([{ exerciseId: "e2" }]);
+
+    await POST(request({ patientId: "pat-1", folderId: "f1" }));
+
+    expect(notify.mock.calls[0][0].emailVars.exerciseCount).toBe("2");
+  });
+
+  it("stays silent when everything was already prescribed", async () => {
+    db.exercisePrescription.findMany.mockResolvedValue([
+      { exerciseId: "e1" }, { exerciseId: "e2" }, { exerciseId: "e3" },
+    ]);
+
+    const res = await POST(request({ patientId: "pat-1", folderId: "f1" }));
+
+    expect(res.status).toBe(200);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("keeps the prescriptions when the notification fails", async () => {
+    notify.mockRejectedValue(new Error("WhatsApp down"));
+
+    const res = await POST(request({ patientId: "pat-1", folderId: "f1" }));
+    const body = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(body.count).toBe(3);
+  });
+
+  it("carries a message for both languages", async () => {
+    await POST(request({ patientId: "pat-1", folderId: "f1" }));
+
+    const arg = notify.mock.calls[0][0];
+    expect(arg.plainMessage).toContain("3 new exercises");
+    expect(arg.plainMessagePt).toContain("3 novos exercícios");
   });
 
   it("rejects a caller who is not staff", async () => {
