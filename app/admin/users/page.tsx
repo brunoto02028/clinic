@@ -71,6 +71,7 @@ interface User {
   phone: string | null;
   role: string;
   isActive: boolean;
+  bookable: boolean;
   canManageUsers: boolean;
   canManageAppointments: boolean;
   canManageArticles: boolean;
@@ -128,6 +129,7 @@ export default function AdminUsersPage() {
     canViewAllPatients: true,
     canCreateClinicalNotes: true,
     isActive: true,
+    bookable: false,
   });
 
   useEffect(() => {
@@ -397,6 +399,7 @@ export default function AdminUsersPage() {
       canViewAllPatients: user.canViewAllPatients,
       canCreateClinicalNotes: user.canCreateClinicalNotes,
       isActive: user.isActive,
+      bookable: user.bookable ?? false,
     });
     setShowPermissionsModal(true);
   };
@@ -966,6 +969,24 @@ export default function AdminUsersPage() {
                 checked={permissions.isActive}
                 onCheckedChange={(checked) =>
                   setPermissions({ ...permissions, isActive: checked })
+                }
+              />
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <Label htmlFor="p_bookable" className="font-normal">
+                  Sees patients
+                </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Appears on the patient&apos;s booking screen. Off for staff who
+                  do not treat.
+                </p>
+              </div>
+              <Switch
+                id="p_bookable"
+                checked={permissions.bookable}
+                onCheckedChange={(checked) =>
+                  setPermissions({ ...permissions, bookable: checked })
                 }
               />
             </div>

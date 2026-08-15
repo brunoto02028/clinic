@@ -547,6 +547,12 @@ model User {
   isActive                 Boolean   @default(true)
   emailVerified            DateTime?
 
+  /// Whether patients can book appointments with this person. Role cannot
+  /// answer this: the clinic owner and the developer are both SUPERADMIN, and
+  /// only one of them treats patients. Defaults to false so a new staff
+  /// account never appears on the booking screen by accident.
+  bookable                 Boolean   @default(false)
+
   // Profile Image
   profileImageUrl  String?
   profileImagePath String? // cloud_storage_path for profile image

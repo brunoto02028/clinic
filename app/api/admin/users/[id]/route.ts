@@ -13,10 +13,11 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions);
 
+    // SUPERADMIN was missing, which locked the clinic owner out of the very
+    // screen that manages staff — his own account holds that role.
     if (
       !session ||
-      ((session.user as { role?: string })?.role !== "ADMIN" &&
-        (session.user as { role?: string })?.role !== "THERAPIST")
+      !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as { role?: string })?.role || "")
     ) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
@@ -62,7 +63,7 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions);
 
-    if ((session?.user as { role?: string })?.role !== "ADMIN") {
+    if (!["SUPERADMIN", "ADMIN"].includes((session?.user as { role?: string })?.role || "")) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
@@ -70,6 +71,7 @@ export async function PUT(
     const {
       role,
       isActive,
+      bookable,
       newPassword,
       removePassword,
       canManageUsers,
@@ -98,6 +100,12 @@ export async function PUT(
     
     if (typeof isActive === "boolean") {
       updateData.isActive = isActive;
+    }
+
+    // Who patients can book with. Deliberately separate from role: the owner
+    // and the developer are both SUPERADMIN, and only one treats patients.
+    if (typeof bookable === "boolean") {
+      updateData.bookable = bookable;
     }
     
     if (typeof canManageUsers === "boolean") {
