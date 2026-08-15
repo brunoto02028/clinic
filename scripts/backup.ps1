@@ -189,6 +189,39 @@ if (-not $SkipFiles -and -not $SkipProd) {
   }
 }
 
+# 4b. R2 MEDIA (exercise videos + thumbnails)
+#
+# The exercise library moved to Cloudflare R2 and stopped being captured by
+# anything: this script saved the database, the code and the server's uploads
+# folder, while 177 videos lived only in the bucket. A bucket is durable, not
+# backed up — one wrong prefix sweep takes the library, and re-filming is not
+# a recovery plan.
+#
+# Mirrored into a single folder rather than copied per-run: object keys are
+# unique and never rewritten, so the mirror only ever grows. That makes it a
+# real defence against deletion (a removed object stays in the mirror) and
+# keeps each run cheap, since only new objects are fetched.
+$r2Count = 0
+$r2Status = "skipped"
+$R2Mirror = Join-Path $BackupRoot "r2-media"
+Write-Step "Backing up R2 media (exercise videos)"
+if (-not $env:R2_ACCESS_KEY_ID -or -not $env:R2_SECRET_ACCESS_KEY) {
+  Write-Fail "R2 credentials not in environment - set R2_* in your shell profile. Videos NOT backed up."
+  $r2Status = "missing-credentials"
+} else {
+  try {
+    New-Item -ItemType Directory -Force -Path $R2Mirror | Out-Null
+    node (Join-Path $ProjectRoot "scripts\backup-r2.js") $R2Mirror
+    if ($LASTEXITCODE -ne 0) { throw "backup-r2.js exited with $LASTEXITCODE" }
+    $r2Count = (Get-ChildItem $R2Mirror -Recurse -File -ErrorAction SilentlyContinue).Count
+    $r2Status = "ok"
+    Write-OK "R2 mirror holds $r2Count files"
+  } catch {
+    Write-Fail "R2 backup FAILED: $_"
+    $r2Status = "failed"
+  }
+}
+
 # 5. WRITE MANIFEST
 $commitHash = git -C $ProjectRoot rev-parse HEAD 2>$null
 $branch     = git -C $ProjectRoot branch --show-current 2>$null
@@ -200,7 +233,9 @@ $manifest   = @{
   prodUploadFiles  = $prodFileCount
   prodUploadExpected = $prodExpected
   prodUploadComplete = ($prodExpected -gt 0 -and $prodFileCount -eq $prodExpected)
-  note             = "Exercise videos live in Cloudflare R2 and are not part of this archive."
+  r2MirrorFiles    = $r2Count
+  r2Status         = $r2Status
+  note             = "R2 media is mirrored to $R2Mirror, shared across runs and never rotated - object keys are unique, so the mirror only grows."
 } | ConvertTo-Json
 # WriteAllText, not Out-File: PowerShell 5.1's -Encoding UTF8 prepends a BOM,
 # which makes the manifest unreadable to every JSON parser — the same trap that
@@ -213,8 +248,16 @@ $manifest   = @{
 Write-OK "manifest.json written"
 
 # 6. ROTATE OLD BACKUPS
+#
+# Only timestamped run folders rotate. Anything else living under $BackupRoot —
+# the shared r2-media mirror above all — must survive: it is the only copy of
+# the exercise library outside Cloudflare, and rotating it away would delete
+# the very thing this section exists to protect.
 Write-Step "Rotating backups (keeping last $KeepLast)"
-$all = Get-ChildItem $BackupRoot -Directory | Sort-Object Name
+$timestampPattern = '^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}$'
+$all = Get-ChildItem $BackupRoot -Directory |
+       Where-Object { $_.Name -match $timestampPattern } |
+       Sort-Object Name
 if ($all.Count -gt $KeepLast) {
   $toDelete = $all | Select-Object -First ($all.Count - $KeepLast)
   $toDelete | ForEach-Object {
@@ -223,7 +266,7 @@ if ($all.Count -gt $KeepLast) {
   }
 }
 
-$keptCount = (Get-ChildItem $BackupRoot -Directory).Count
+$keptCount = $all.Count - [Math]::Max(0, $all.Count - $KeepLast)
 Write-Host ""
 Write-Host "=== Backup complete: $BackupDir ===" -ForegroundColor Cyan
 Write-Host "Backups kept: $keptCount / $KeepLast"
