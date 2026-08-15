@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
@@ -10,6 +10,8 @@ import {
   PATIENT_PROFILE_SECTION,
   getActivePatientSection,
 } from "@/lib/patient-sections";
+import { MODULE_REGISTRY } from "@/lib/module-registry";
+import { usePatientAccess } from "@/hooks/use-patient-access";
 import { Logo } from "@/components/ui/logo";
 import { useLocale } from "@/hooks/use-locale";
 
@@ -46,6 +48,57 @@ export default function PatientSidebar({
 
   const activeSection = getActivePatientSection(pathname);
   const isPt = locale?.startsWith("pt");
+
+  /**
+   * The menu used to be a fixed list of seven, no matter what the clinic had
+   * granted. Of the twenty modules the permissions screen offers, fourteen had
+   * no entry here at all — so switching one on changed nothing the patient
+   * could see, and switching one off left it in the menu, blocked on click.
+   *
+   * The curated sections keep their wording and icons where they exist; a
+   * granted module without one falls back to its registry entry rather than
+   * staying invisible.
+   */
+  const { access, loading: accessLoading, hasModule, isModuleHidden } = usePatientAccess();
+
+  const moduleByHref = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of MODULE_REGISTRY) if (m.href) map.set(m.href, m.key);
+    return map;
+  }, []);
+
+  const visibleSections = useMemo(() => {
+    // Until access is known, show the curated set — blanking the menu on every
+    // page load would read as breakage.
+    if (accessLoading) return PATIENT_SECTIONS;
+
+    const allowed = (href: string) => {
+      const key = moduleByHref.get(href);
+      if (!key) return true; // no module governs it (e.g. Messages)
+      return hasModule(key) && !isModuleHidden(key);
+    };
+
+    const curated = PATIENT_SECTIONS.filter((s) => allowed(s.href));
+    const curatedHrefs = new Set(PATIENT_SECTIONS.map((s) => s.href));
+
+    const extra = MODULE_REGISTRY.filter(
+      (m) =>
+        m.href &&
+        !curatedHrefs.has(m.href) &&
+        m.href !== PATIENT_PROFILE_SECTION.href &&
+        hasModule(m.key) &&
+        !isModuleHidden(m.key)
+    ).map((m) => ({
+      key: m.key,
+      label: m.label,
+      labelPt: m.labelPt || m.label,
+      icon: m.icon,
+      href: m.href as string,
+      matchRoutes: [m.href as string],
+    }));
+
+    return [...curated, ...extra];
+  }, [accessLoading, hasModule, isModuleHidden, moduleByHref]);
 
   const user = session?.user as any;
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "";
@@ -212,7 +265,7 @@ export default function PatientSidebar({
 
         {/* Nav items */}
         <div className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-          {PATIENT_SECTIONS.map((section) => {
+          {visibleSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection.key === section.key;
 
