@@ -165,6 +165,13 @@ export async function PATCH(
     if (body.action === "edit_screening") {
       const { screeningId, ...fields } = body;
       delete fields.action;
+      // Correcting an answer does not change who gave it. Without this, an
+      // edit could relabel a transcription as the patient's own account —
+      // precisely the distinction the record exists to keep. userId and id are
+      // stripped for the same reason: this endpoint edits content, not identity.
+      delete fields.filledBy;
+      delete fields.userId;
+      delete fields.id;
       const updated = await prisma.medicalScreening.update({
         where: { id: screeningId },
         data: fields,

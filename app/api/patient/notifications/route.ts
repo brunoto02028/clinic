@@ -59,8 +59,12 @@ export async function GET(request: NextRequest) {
     // 2. Screening not completed
     const hasScreening = await prisma.medicalScreening.findUnique({
       where: { userId },
+      select: { isSubmitted: true },
     });
-    if (!hasScreening?.consentGiven) {
+    // isSubmitted, not consentGiven: a patient who finished the form was still
+    // being nagged to complete it, because this asked a different question
+    // than every other screen.
+    if (hasScreening?.isSubmitted !== true) {
       const hasUpcoming = upcomingAppts.length > 0;
       notifications.push({
         id: "screening-pending",
