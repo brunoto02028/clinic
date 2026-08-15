@@ -116,25 +116,35 @@ export async function notifyPatient({
     // ─── Email (default / fallback) ───
     if (emailTemplateSlug) {
       try {
-        await sendTemplatedEmail(emailTemplateSlug as any, email, {
+        // sendTemplatedEmail returns false for a template that is missing,
+        // inactive, or rejected by the provider. Discarding that answer
+        // reported delivery for mail that was never sent — the same blindness
+        // that hid a broken API key for six days. A missing template is not a
+        // reason to tell the patient nothing, so fall through to plain email.
+        const sent = await sendTemplatedEmail(emailTemplateSlug as any, email, {
           patientName: firstName,
           ...emailVars,
         }, patientId);
-        return { channel: "EMAIL", success: true };
+        if (sent) return { channel: "EMAIL", success: true };
+        console.warn(`[notify-patient] Template ${emailTemplateSlug} unavailable — sending plain text instead.`);
       } catch (err: any) {
-        return { channel: "EMAIL", success: false, error: err.message };
+        console.error(`[notify-patient] Template ${emailTemplateSlug} threw:`, err.message);
       }
-    } else {
-      // No template — send a plain email
+    }
+
+    {
+      // Plain email — the fallback, and the path when no template was asked for
       try {
         const adminBcc = process.env.ADMIN_EMAIL || "brunotoaz@gmail.com";
-        await sendEmail({
+        // sendEmail reports failure in its return value rather than throwing,
+        // so the catch below never sees a rejected send.
+        const result = await sendEmail({
           to: email,
           subject: isPt ? "BPR Rehab — Notificação" : "BPR Rehab — Notification",
           html: `<p>${isPt ? "Olá" : "Hi"} ${firstName},</p><p>${msg}</p>`,
           bcc: email.toLowerCase() !== adminBcc.toLowerCase() ? adminBcc : undefined,
         });
-        return { channel: "EMAIL", success: true };
+        return { channel: "EMAIL", success: result.success === true, error: (result as any).error };
       } catch (err: any) {
         return { channel: "EMAIL", success: false, error: err.message };
       }

@@ -775,20 +775,28 @@ export async function sendTemplatedEmail(
 export async function seedDefaultTemplates(): Promise<number> {
   let count = 0;
   for (const tmpl of DEFAULT_TEMPLATES) {
-    const existing = await (prisma as any).emailTemplate.findUnique({ where: { slug: tmpl.slug } });
-    if (!existing) {
-      await (prisma as any).emailTemplate.create({
-        data: {
-          slug: tmpl.slug,
-          name: tmpl.name,
-          subject: tmpl.subject,
-          htmlBody: tmpl.htmlBody,
-          variables: tmpl.variables,
-          description: tmpl.description,
-          isActive: true,
-        },
-      });
-      count++;
+    // Per-template, because slug is a database enum: adding a template here
+    // without adding its value to EmailTemplateSlug makes Prisma reject the
+    // lookup, and an unguarded loop turned that into a 500 on the whole Email
+    // Templates page — one unseeded template taking every other one with it.
+    try {
+      const existing = await (prisma as any).emailTemplate.findUnique({ where: { slug: tmpl.slug } });
+      if (!existing) {
+        await (prisma as any).emailTemplate.create({
+          data: {
+            slug: tmpl.slug,
+            name: tmpl.name,
+            subject: tmpl.subject,
+            htmlBody: tmpl.htmlBody,
+            variables: tmpl.variables,
+            description: tmpl.description,
+            isActive: true,
+          },
+        });
+        count++;
+      }
+    } catch (err) {
+      console.error(`[email-templates] Could not seed ${tmpl.slug}:`, err);
     }
   }
   return count;
