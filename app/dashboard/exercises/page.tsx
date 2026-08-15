@@ -209,14 +209,21 @@ export default function PatientExercisesPage() {
     }
   });
 
-  const sections: { key: string; title: string; icon: string; items: Prescription[] }[] = [
+  // The first video's frame stands in for the group, the same way it does in
+  // the library — a column of identical folder icons gives the eye nothing to
+  // land on, and the thumbnails already exist for every exercise.
+  const coverOf = (items: Prescription[]) =>
+    items.find((p) => p.exercise.thumbnailUrl)?.exercise.thumbnailUrl || null;
+
+  const sections: { key: string; title: string; icon: string; cover: string | null; items: Prescription[] }[] = [
     ...Object.entries(byFolder)
       .sort((a, b) => a[1].name.localeCompare(b[1].name))
-      .map(([id, f]) => ({ key: `folder:${id}`, title: f.name, icon: "", items: f.items })),
+      .map(([id, f]) => ({ key: `folder:${id}`, title: f.name, icon: "", cover: coverOf(f.items), items: f.items })),
     ...ORDERED_REGION_KEYS.filter((r) => byRegion[r]).map((r) => ({
       key: `region:${r}`,
       title: regionName(r, locale),
       icon: regionIcon(r),
+      cover: coverOf(byRegion[r]),
       items: byRegion[r],
     })),
   ];
@@ -301,7 +308,18 @@ export default function PatientExercisesPage() {
                 className="w-full text-left px-5 py-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  {section.icon ? (
+                  {section.cover ? (
+                    <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-muted">
+                      <img src={section.cover} alt="" loading="lazy" className="w-full h-full object-cover" />
+                      {/* Keeps the marker legible over a bright frame. */}
+                      <span className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+                      {section.icon ? (
+                        <span className="absolute bottom-0.5 left-1 text-sm drop-shadow">{section.icon}</span>
+                      ) : (
+                        <FolderOpen className="absolute bottom-1 left-1 h-3.5 w-3.5 text-white drop-shadow" />
+                      )}
+                    </div>
+                  ) : section.icon ? (
                     <span className="text-2xl">{section.icon}</span>
                   ) : (
                     <FolderOpen className="h-6 w-6 text-primary" />
