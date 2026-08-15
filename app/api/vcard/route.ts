@@ -26,7 +26,7 @@ export async function GET() {
 
   const org = settings?.siteName || "BPR Physical Rehabilitation";
   const tel = settings?.whatsappNumber || settings?.phone || "+447425199947";
-  const email = settings?.email || "admin@bpr.rehab";
+  const email = settings?.email || "admin@bpr.clinic";
 
   // The photo makes the saved contact recognisable — the whole point for
   // someone who met Bruno in person. Downscaled hard: vCards travel whole.
