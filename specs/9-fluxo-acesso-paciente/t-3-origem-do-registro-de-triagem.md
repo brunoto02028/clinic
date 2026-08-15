@@ -1,6 +1,6 @@
 # T-3: Parar a criação de triagem por efeito colateral
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-2
 
 ## Objetivo
