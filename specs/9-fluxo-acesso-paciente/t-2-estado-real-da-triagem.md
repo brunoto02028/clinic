@@ -1,6 +1,6 @@
 # T-2: Estado real da triagem na ficha
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** nenhuma
 
 ## Objetivo

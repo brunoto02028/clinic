@@ -64,7 +64,7 @@ mesma função. Enquanto forem duas implementações, vão divergir de novo.
 | Tarefa | Nome | Status |
 |---|---|---|
 | T-1 | Profissional agendável | concluído |
-| T-2 | Estado real da triagem na ficha | pendente |
+| T-2 | Estado real da triagem na ficha | concluído |
 | T-3 | Parar a criação de triagem por efeito colateral | pendente |
 | T-4 | Fonte única de acesso, admin e portal | pendente |
 
