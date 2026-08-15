@@ -1,6 +1,6 @@
 # T-4: Fonte única de acesso, admin e portal
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-2
 
 ## Objetivo

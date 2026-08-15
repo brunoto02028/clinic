@@ -66,7 +66,7 @@ mesma função. Enquanto forem duas implementações, vão divergir de novo.
 | T-1 | Profissional agendável | concluído |
 | T-2 | Estado real da triagem na ficha | concluído |
 | T-3 | Parar a criação de triagem por efeito colateral | concluído |
-| T-4 | Fonte única de acesso, admin e portal | pendente |
+| T-4 | Fonte única de acesso, admin e portal | concluído |
 
 Ordem sugerida: T-1 e T-2 são independentes e rápidos. T-3 depende da decisão
 tomada em T-2. T-4 é o maior e deve vir por último.
