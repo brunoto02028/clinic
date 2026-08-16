@@ -135,7 +135,7 @@ export default async function BuyBeyondPainPage({
 
       {/* Hero — the promise, the cover and the only call to action, above the fold */}
       <section className="relative overflow-hidden bg-dot-pattern">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-12 sm:pb-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-16 pb-12 sm:pb-20">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             <div>
               <h1 className="font-sora text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight mb-4">
@@ -145,7 +145,7 @@ export default async function BuyBeyondPainPage({
                   pt="Fomos ensinados que a dor mora no corpo. A verdade é maior — e muito mais esperançosa."
                 />
               </h1>
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6 max-w-lg">
+              <p className="text-sm sm:text-lg text-muted-foreground leading-relaxed mb-4 sm:mb-6 max-w-lg">
                 <LocalizedText
                   fallback={`${config.title} — ${config.subtitle}. A whole-person guide to healing, written by a physiotherapist who has lived with pain since he was seventeen.`}
                   en={`${config.title} — ${config.subtitle}. A whole-person guide to healing, written by a physiotherapist who has lived with pain since he was seventeen.`}
@@ -153,7 +153,11 @@ export default async function BuyBeyondPainPage({
                 />
               </p>
 
-              <div className="lg:hidden mb-8 mx-auto w-full max-w-[220px]">
+              {/* Deliberately small on a phone. The cookie banner takes the
+                  bottom ~195px on first visit, so anything below that is
+                  invisible until it is dismissed — and the price has to be
+                  one of the things that survives. */}
+              <div className="lg:hidden mb-5 mx-auto w-full max-w-[132px]">
                 <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} />
               </div>
 
