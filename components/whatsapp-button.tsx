@@ -31,7 +31,11 @@ export function WhatsAppFloatingButton() {
     pathname.startsWith("/capture") ||
     // /start carries its own WhatsApp action in the sticky bar — two green
     // buttons stacked in the same corner reads as a glitch, not an option.
-    pathname.startsWith("/start")
+    pathname.startsWith("/start") ||
+    // The book pages are paid-traffic landing pages with a single job. A
+    // second bright button in the corner of the buy box competes with it.
+    pathname.startsWith("/beyond-pain/buy") ||
+    pathname.startsWith("/beyond-pain/thank-you")
   ) {
     return null;
   }
