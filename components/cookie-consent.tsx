@@ -35,6 +35,13 @@ export function hasAnalyticsConsent(): boolean {
   return consent?.analytics === true;
 }
 
+/** Ad pixels (Meta, Google Ads remarketing) sit under marketing, not
+ *  analytics — a visitor may accept measurement and still refuse ad tracking. */
+export function hasMarketingConsent(): boolean {
+  const consent = getConsent();
+  return consent?.marketing === true;
+}
+
 function saveConsent(consent: CookieConsent) {
   localStorage.setItem(CONSENT_KEY, JSON.stringify(consent));
   // Dispatch custom event so SiteTracker can react

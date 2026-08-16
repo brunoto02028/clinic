@@ -3749,7 +3749,10 @@ model BookConfig {
   // On-sale purchase links (§4) — only used once status = ON_SALE
   buyLinkAmazon String?
   buyLinkDirect String?
-  priceDisplay  String? // e.g. "£9.99" — display-only
+  priceDisplay  String? // e.g. "£9.99" — display-only, fallback when productId is unset
+  // MarketplaceProduct sold as the book. When set, the sales page takes price
+  // and shipping from it, so what is shown is what checkout charges.
+  productId     String?
 
   updatedAt DateTime @updatedAt
 }
@@ -4173,8 +4176,13 @@ model MarketplaceOrder {
   id        String  @id @default(cuid())
   clinicId  String?
   clinic    Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patientId String
-  patient   User    @relation("PatientMarketplaceOrders", fields: [patientId], references: [id], onDelete: Cascade)
+  // Optional: the public shop sells to guests who have no BPR account.
+  patientId String?
+  patient   User?   @relation("PatientMarketplaceOrders", fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Guest buyer contact — the only way to reach someone with no account.
+  customerEmail String?
+  customerName  String?
 
   orderNumber   String  @unique // e.g. "BPR-20260220-001"
   status        String  @default("pending") // pending, paid, processing, shipped, delivered, cancelled, refunded
@@ -4200,8 +4208,14 @@ model MarketplaceOrder {
   shippingPostcode String?
   shippingCountry  String?
   shippingPhone    String?
+  carrier          String? // key from lib/shipping-carriers.ts, chosen at dispatch
   trackingNumber   String?
-  trackingUrl      String?
+  trackingUrl      String? // typed by hand; overrides the carrier's built link
+
+  // Dispatch notice: stamped when the buyer was told the parcel left, or the
+  // reason it could not be told. A failed email must never hide a real dispatch.
+  shippingNotifiedAt  DateTime?
+  shippingNotifyError String?
 
   // Notes
   customerNotes String? @db.Text

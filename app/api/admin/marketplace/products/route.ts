@@ -88,11 +88,9 @@ export async function POST(req: NextRequest) {
 
         stripeProductId = stripeProduct.id;
 
-        // Create Stripe price (in pence, including Stripe fees)
-        const stripeFeePercent = 1.5; // 1.5% Stripe fee
-        const stripeFeeFixed = 0.20; // £0.20 fixed fee
-        const priceWithFees = (price + stripeFeeFixed) / (1 - stripeFeePercent / 100);
-        const priceInPence = Math.round(priceWithFees * 100);
+        // Create Stripe price (in pence). The customer pays the listed price —
+        // the processor fee comes out of the margin, never added on top.
+        const priceInPence = Math.round(price * 100);
 
         const stripePrice = await stripe.prices.create({
           product: stripeProductId,

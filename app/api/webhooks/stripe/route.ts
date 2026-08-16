@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import Stripe from "stripe";
 import { notifyPatient } from "@/lib/notify-patient";
+import { sendOrderConfirmationEmail } from "@/lib/order-emails";
 
 export const dynamic = "force-dynamic";
 
@@ -139,6 +140,12 @@ export async function POST(req: NextRequest) {
                   ? `Pagamento confirmado para pedido #${order.orderNumber}! Seus downloads estão prontos.`
                   : `Pagamento confirmado para pedido #${order.orderNumber}! Seu pedido está sendo processado.`,
               }).catch(err => console.error('[stripe-webhook] marketplace notify error:', err));
+            } else {
+              // Guest buyer — no account, no portal, so email is the only
+              // channel they have. Without this a public-shop customer paid
+              // and heard nothing back.
+              sendOrderConfirmationEmail(order).catch(err =>
+                console.error('[stripe-webhook] guest confirmation failed:', err));
             }
           } catch (orderErr: any) {
             console.error(`[stripe-webhook] Failed to update order ${orderId}:`, orderErr.message);

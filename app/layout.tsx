@@ -11,6 +11,7 @@ import { CookieConsentBanner } from "@/components/cookie-consent";
 import { VersionChecker } from "@/components/version-checker";
 import { WebVitals } from "@/components/web-vitals";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { MetaPixel } from "@/components/analytics/meta-pixel";
 import { Hotjar } from "@/components/analytics/hotjar";
 import { prisma } from "@/lib/db";
 import { SchemaOrgScript } from "@/components/schema-org-script";
@@ -177,6 +178,7 @@ export default async function RootLayout({
           <MobileInit />
           <WebVitals />
           <GoogleAnalytics />
+          <MetaPixel />
           <Hotjar />
         </Providers>
       </body>

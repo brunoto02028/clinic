@@ -90,8 +90,12 @@ export default function ProductPage() {
   const tags = product.tags ? JSON.parse(product.tags) : [];
 
   const shippingCost = product.shippingCost || 0;
-  const freeShippingOver = product.freeShippingOver || 50;
-  const isFreeShipping = product.price * quantity >= freeShippingOver || shippingCost === 0;
+  // No invented threshold: only promise free shipping over an amount that was
+  // actually configured, otherwise the page advertises what checkout won't honour.
+  const freeShippingOver = product.freeShippingOver || 0;
+  const isFreeShipping =
+    shippingCost === 0 ||
+    (freeShippingOver > 0 && product.price * quantity >= freeShippingOver);
 
   return (
     <div className="min-h-screen bg-background">
