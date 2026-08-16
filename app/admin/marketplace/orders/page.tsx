@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { CARRIERS, buildTrackingUrl, carrierName } from "@/lib/shipping-carriers";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   pending:    { label: "Pending",    color: "text-amber-400",   bg: "bg-amber-500/10 border-amber-500/20",    icon: Clock },
@@ -68,7 +69,9 @@ export default function OrdersAdminPage() {
     const matchSearch = !q || o.orderNumber?.toLowerCase().includes(q)
       || o.patient?.firstName?.toLowerCase().includes(q)
       || o.patient?.lastName?.toLowerCase().includes(q)
-      || o.patient?.email?.toLowerCase().includes(q);
+      || o.patient?.email?.toLowerCase().includes(q)
+      || o.customerName?.toLowerCase().includes(q)
+      || o.customerEmail?.toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
 
@@ -171,7 +174,10 @@ export default function OrdersAdminPage() {
                       {order.patient ? (
                         <span>{order.patient.firstName} {order.patient.lastName} · {order.patient.email}</span>
                       ) : (
-                        <span className="italic">Guest order</span>
+                        <span>
+                          {order.customerName || "Guest"}
+                          {order.customerEmail && ` · ${order.customerEmail}`}
+                        </span>
                       )}
                       <span>·</span>
                       <span>{new Date(order.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
@@ -249,17 +255,35 @@ export default function OrdersAdminPage() {
                     {!isEditing ? (
                       <div className="flex items-center gap-2">
                         <Button size="sm" variant="outline" className="gap-1.5 text-xs"
-                          onClick={(e) => { e.stopPropagation(); setEditingId(order.id); setEditForm({ status: order.status, trackingNumber: order.trackingNumber || "", trackingUrl: order.trackingUrl || "", adminNotes: order.adminNotes || "" }); }}>
+                          onClick={(e) => { e.stopPropagation(); setEditingId(order.id); setEditForm({ status: order.status, carrier: order.carrier || "", trackingNumber: order.trackingNumber || "", trackingUrl: order.trackingUrl || "", adminNotes: order.adminNotes || "" }); }}>
                           <Edit2 className="h-3.5 w-3.5" /> Update Order
                         </Button>
-                        {order.trackingNumber && (
-                          <a href={order.trackingUrl || `https://www.royalmail.com/track-your-item#/tracking-results/${order.trackingNumber}`}
-                            target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="outline" className="gap-1.5 text-xs text-cyan-400 border-cyan-500/30">
-                              <Truck className="h-3.5 w-3.5" /> Track {order.trackingNumber}
-                            </Button>
-                          </a>
-                        )}
+                        {(() => {
+                          const url = buildTrackingUrl(order.carrier, order.trackingNumber, order.trackingUrl);
+                          if (!order.trackingNumber) return null;
+                          const label = `${carrierName(order.carrier) || "Track"} ${order.trackingNumber}`;
+                          return url ? (
+                            <a href={url} target="_blank" rel="noopener noreferrer">
+                              <Button size="sm" variant="outline" className="gap-1.5 text-xs text-cyan-400 border-cyan-500/30">
+                                <Truck className="h-3.5 w-3.5" /> {label}
+                              </Button>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+                              <Truck className="h-3.5 w-3.5" /> {label}
+                            </span>
+                          );
+                        })()}
+                        {order.shippingNotifyError ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20"
+                            title={order.shippingNotifyError}>
+                            Dispatch email failed
+                          </span>
+                        ) : order.shippingNotifiedAt ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            Customer notified
+                          </span>
+                        ) : null}
                       </div>
                     ) : (
                       <div className="space-y-3 p-3 rounded-xl bg-muted/20 border border-white/5">
@@ -276,12 +300,23 @@ export default function OrdersAdminPage() {
                             </select>
                           </div>
                           <div>
+                            <label className="text-[10px] text-muted-foreground">Carrier</label>
+                            <select value={editForm.carrier}
+                              onChange={(e) => setEditForm({ ...editForm, carrier: e.target.value })}
+                              className="w-full mt-0.5 h-8 text-xs rounded-lg border border-border bg-background px-2 text-foreground">
+                              <option value="">— not set —</option>
+                              {CARRIERS.map((c) => (
+                                <option key={c.key} value={c.key}>{c.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
                             <label className="text-[10px] text-muted-foreground">Tracking Number</label>
                             <Input value={editForm.trackingNumber} onChange={(e) => setEditForm({ ...editForm, trackingNumber: e.target.value })}
                               placeholder="e.g. AB123456789GB" className="h-8 text-xs mt-0.5" />
                           </div>
                           <div className="sm:col-span-2">
-                            <label className="text-[10px] text-muted-foreground">Tracking URL (optional)</label>
+                            <label className="text-[10px] text-muted-foreground">Tracking URL (only to override the carrier's link)</label>
                             <Input value={editForm.trackingUrl} onChange={(e) => setEditForm({ ...editForm, trackingUrl: e.target.value })}
                               placeholder="https://..." className="h-8 text-xs mt-0.5" />
                           </div>

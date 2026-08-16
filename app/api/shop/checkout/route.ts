@@ -6,12 +6,19 @@ import { authOptions } from "@/lib/auth-options";
 
 export const dynamic = "force-dynamic";
 
+// Where Stripe sends the buyer back to. Keyed, never a URL taken from the
+// request body — an unchecked redirect target is an open redirect.
+const RETURN_PATHS: Record<string, { success: string; cancel: string }> = {
+  shop: { success: "/shop", cancel: "/shop" },
+  book: { success: "/beyond-pain/thank-you", cancel: "/beyond-pain/buy" },
+};
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id || null;
 
-    const { items, shippingInfo, email } = await req.json();
+    const { items, shippingInfo, email, returnTo } = await req.json();
     if (!items?.length) return NextResponse.json({ error: "No items" }, { status: 400 });
 
     // Validate contact
@@ -64,15 +71,18 @@ export async function POST(req: NextRequest) {
     }
 
     const hasOnlyAffiliates = orderItems.every((i: any) => i.isAffiliate);
-    
-    // Calculate Stripe fees (1.5% + £0.20) and add to total
-    let stripeFee = 0;
-    if (!hasOnlyAffiliates) {
-      const baseTotal = subtotal + shippingTotal;
-      stripeFee = (baseTotal * 0.015) + 0.20; // 1.5% + £0.20
-    }
-    
-    const total = parseFloat((subtotal + shippingTotal + stripeFee).toFixed(2));
+
+    // Free shipping threshold — same rule as the patient checkout, so both
+    // charge the same for the same basket.
+    const thresholds = products
+      .filter((p: any) => p.freeShippingOver)
+      .map((p: any) => p.freeShippingOver);
+    if (thresholds.length && subtotal >= Math.min(...thresholds)) shippingTotal = 0;
+
+    // No card surcharge: passing the processor fee to a consumer is banned in
+    // the UK, and Stripe only ever charged unitPrice + shipping anyway — adding
+    // it here inflated the stored total above the money actually received.
+    const total = parseFloat((subtotal + shippingTotal).toFixed(2));
     const status = hasOnlyAffiliates ? "paid" : total === 0 ? "paid" : "pending";
 
     // Generate order number
@@ -85,6 +95,11 @@ export async function POST(req: NextRequest) {
     const order = await (prisma as any).marketplaceOrder.create({
       data: {
         patientId: userId,
+        // Guests have no account, so the order itself has to carry the contact
+        // details and the clinic — without clinicId it never shows in admin.
+        customerEmail: contactEmail,
+        customerName: shippingInfo?.name || null,
+        clinicId: products[0]?.clinicId || null,
         orderNumber,
         status,
         paymentMethod: hasOnlyAffiliates ? "affiliate" : "stripe",
@@ -111,6 +126,8 @@ export async function POST(req: NextRequest) {
     let stripeUrl = null;
     if (!hasOnlyAffiliates && total > 0) {
       try {
+        const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+        const ret = RETURN_PATHS[returnTo] || RETURN_PATHS.shop;
         const Stripe = (await import("stripe")).default;
         const _stripeKey = process.env.STRIPE_SECRET_KEY;
     const stripe = _stripeKey ? new Stripe(_stripeKey, { apiVersion: "2024-06-20" }) : null;
@@ -132,8 +149,8 @@ export async function POST(req: NextRequest) {
           mode: "payment",
           line_items: lineItems,
           customer_email: contactEmail,
-          success_url: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/shop?order=${order.id}&success=true`,
-          cancel_url: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/shop?cancelled=true`,
+          success_url: `${BASE}${ret.success}?order=${order.id}&success=true`,
+          cancel_url: `${BASE}${ret.cancel}?cancelled=true`,
           metadata: { orderId: order.id, orderNumber },
         });
         await (prisma as any).marketplaceOrder.update({

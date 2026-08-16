@@ -53,6 +53,23 @@ export async function getBookConfig() {
   return (prisma as any).bookConfig.create({ data: {} });
 }
 
+/** The MarketplaceProduct sold as the book, or null when none is linked yet.
+ *  Single source of price and shipping: the sales page must never hard-code
+ *  them, or what is advertised drifts from what checkout charges.
+ *  `isActive` false means configured but deliberately not on sale yet. */
+export async function getBookProduct(config?: { productId?: string | null }) {
+  const cfg = config ?? (await getBookConfig());
+  if (!cfg?.productId) return null;
+  return (prisma as any).marketplaceProduct.findUnique({
+    where: { id: cfg.productId },
+    select: {
+      id: true, name: true, price: true, currency: true, shippingCost: true,
+      freeShippingOver: true, imageUrl: true, isActive: true, isDigital: true,
+      stockQuantity: true, trackStock: true,
+    },
+  });
+}
+
 /** All published chapters, in reading order — powers the /beyond-pain/chapters
  *  table of contents. As chapters are written (seeded or added via admin),
  *  they simply appear here; no code change needed. */
