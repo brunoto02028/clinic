@@ -119,12 +119,13 @@ export function CookieConsentBanner() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground text-sm sm:text-base">We value your privacy</h3>
+                  {/* Kept short on purpose: on a phone this sits over the
+                      bottom of the page, and every extra line hides more of
+                      whatever the visitor came for. */}
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
-                    We use cookies and similar technologies to improve your experience, analyse site traffic, 
-                    and understand visitor behaviour. You can choose which categories to allow. 
-                    For more details, see our{" "}
-                    <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link> and{" "}
-                    <Link href="/cookies" className="text-primary hover:underline">Cookie Policy</Link>.
+                    We use cookies to improve your experience and analyse traffic.{" "}
+                    <Link href="/privacy" className="text-primary hover:underline">Privacy</Link> ·{" "}
+                    <Link href="/cookies" className="text-primary hover:underline">Cookies</Link>
                   </p>
                 </div>
               </div>
