@@ -15,12 +15,16 @@ export function Book3DCover({
   coverImagePt,
   title,
   className = "",
+  priority = false,
 }: {
   coverImage: string | null;
   /** Portuguese-language cover art — falls back to `coverImage` when unset. */
   coverImagePt?: string | null;
   title: string;
   className?: string;
+  /** Only on pages where the cover is above the fold. On the landing page it
+   *  sits far down, and preloading it there stole bandwidth from the hero. */
+  priority?: boolean;
 }) {
   const { locale } = useLocale();
   const resolvedCover = locale.startsWith("pt") ? (coverImagePt || coverImage) : coverImage;
@@ -65,8 +69,9 @@ export function Book3DCover({
               // candidate instead of over-fetching a ~1080px image on phones.
               sizes="(min-width: 1024px) 310px, 260px"
               quality={65}
-              priority
-              fetchPriority="high"
+              priority={priority}
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : "auto"}
               className="object-cover"
             />
           ) : (
