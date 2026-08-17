@@ -124,8 +124,11 @@ export function CookieConsentBanner() {
                       whatever the visitor came for. */}
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
                     We use cookies to improve your experience and analyse traffic.{" "}
-                    <Link href="/privacy" className="text-primary hover:underline">Privacy</Link> ·{" "}
-                    <Link href="/cookies" className="text-primary hover:underline">Cookies</Link>
+                    {/* prefetch off: this banner shows on the first visit, so
+                        prefetching two policy pages competes with the hero
+                        image for bandwidth at the worst possible moment. */}
+                    <Link href="/privacy" prefetch={false} className="text-primary hover:underline">Privacy</Link> ·{" "}
+                    <Link href="/cookies" prefetch={false} className="text-primary hover:underline">Cookies</Link>
                   </p>
                 </div>
               </div>

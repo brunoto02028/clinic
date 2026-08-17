@@ -37,10 +37,18 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Do not cache JS/CSS chunks — prevents ChunkLoadError after deploys
+        // Chunk filenames are content-hashed, so a deploy produces new names
+        // and never overwrites an old file — caching them forever is safe by
+        // construction. `max-age=0` used to be here to avoid ChunkLoadError
+        // after deploys, but it cost every visitor a revalidation per chunk
+        // (22 of 24 on a real mobile load) and did not actually prevent the
+        // error: that happens when the browser asks for a chunk from a build
+        // the origin no longer has. A long edge cache makes it *less* likely,
+        // since Cloudflare keeps serving the old file. Deploys with a tab open
+        // are handled by VersionChecker, which reloads at a safe moment.
         source: '/_next/static/:path*',
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
       {

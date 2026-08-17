@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getSettings } from "@/lib/settings-client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
@@ -216,15 +217,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
   ];
 
   const fetchSettings = async () => {
-    try {
-      const res = await fetch("/api/settings");
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch settings:", error);
-    }
+    const data = await getSettings();
+    if (data) setSettings(data);
   };
 
   const fetchArticles = async () => {

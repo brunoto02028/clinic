@@ -3,6 +3,7 @@
 // Shared public-site footer — mirrors the homepage footer exactly
 // (5-column grid: brand/social, navigation, programmes, contact, opening hours + bottom bar).
 import { useState, useEffect } from "react";
+import { getSettings } from "@/lib/settings-client";
 import Link from "next/link";
 import {
   Instagram, Facebook, Linkedin, Twitter, Youtube, Globe,
@@ -32,10 +33,7 @@ export function SiteFooter() {
   const [clinicSchedule, setClinicSchedule] = useState<ScheduleEntry[]>([]);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setSettings(d))
-      .catch(() => {});
+    getSettings().then((d) => d && setSettings(d));
     fetch("/api/public/schedule")
       .then((r) => r.ok ? r.json() : { schedule: [] })
       .then((data) => { if (Array.isArray(data.schedule)) setClinicSchedule(data.schedule); })
@@ -108,13 +106,13 @@ export function SiteFooter() {
                 { labelEn: "Contact",      labelPt: "Contacto",    href: "/#contact" },
               ].map((item) => (
                 <li key={item.labelEn}>
-                  <Link href={item.href} className="text-slate-400 hover:text-white text-sm transition-colors">
+                  <Link href={item.href} prefetch={false} className="text-slate-400 hover:text-white text-sm transition-colors">
                     {isPt ? item.labelPt : item.labelEn}
                   </Link>
                 </li>
               ))}
               <li className="pt-2">
-                <Link href="/signup" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
+                <Link href="/signup" prefetch={false} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors">
                   {isPt ? "Começar o Programa" : "Start Programme"} <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </li>
@@ -135,7 +133,7 @@ export function SiteFooter() {
                 { labelEn: "Exercise Therapy",          labelPt: "Terapia por Exercício",      href: "/services/exercise-therapy" },
               ].map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} className="text-slate-400 hover:text-white text-sm transition-colors">
+                  <Link href={item.href} prefetch={false} className="text-slate-400 hover:text-white text-sm transition-colors">
                     {isPt ? item.labelPt : item.labelEn}
                   </Link>
                 </li>

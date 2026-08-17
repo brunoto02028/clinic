@@ -125,6 +125,10 @@ const publicRoutes = [
   '/api/analytics/vitals', // web-vitals beacon fires on public pages too
   '/api/vcard', // the /start page's "save contact" download — no session by definition
   '/api/public', // public read-only endpoints (clinic schedule, etc.)
+  '/api/vapi/web-token', // the voice widget sits on the public landing page and the
+                         // route is written to work without a session; without this
+                         // every anonymous visit spent two requests being bounced
+                         // to /login and the widget silently failed
 ];
 
 // Routes that require SUPERADMIN access
