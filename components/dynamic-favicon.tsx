@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { getSettings } from "@/lib/settings-client";
 
 export function DynamicFavicon() {
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
+    getSettings()
       .then((data) => {
         if (data?.faviconUrl) {
           // Manipulate DOM directly instead of createPortal to avoid hydration mismatch

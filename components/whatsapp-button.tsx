@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getSettings } from "@/lib/settings-client";
 import { usePathname } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 
@@ -12,12 +13,9 @@ export function WhatsAppFloatingButton() {
     // Don't fetch on admin or dashboard pages
     if (pathname.startsWith("/admin") || pathname.startsWith("/dashboard")) return;
     
-    fetch("/api/settings")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.whatsappNumber) setWhatsappNumber(data.whatsappNumber);
-      })
-      .catch(() => {});
+    getSettings().then((data) => {
+      if (data?.whatsappNumber) setWhatsappNumber(data.whatsappNumber);
+    });
   }, [pathname]);
 
   // Hide on admin, dashboard, login, signup pages
