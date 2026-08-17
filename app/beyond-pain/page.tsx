@@ -125,7 +125,7 @@ export default async function BeyondPainPage({
 
             {/* Cover — 3D book mockup */}
             <div className="relative mx-auto w-full max-w-xs lg:max-w-sm pb-6">
-              <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} />
+              <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} priority />
               <div className="hidden sm:block absolute -bottom-1 -left-5 bg-white rounded-2xl p-4 shadow-xl border border-border ba1-card">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><HeartHandshake className="h-5 w-5 text-primary" /></div>

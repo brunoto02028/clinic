@@ -158,14 +158,14 @@ export default async function BuyBeyondPainPage({
                   invisible until it is dismissed — and the price has to be
                   one of the things that survives. */}
               <div className="lg:hidden mb-5 mx-auto w-full max-w-[132px]">
-                <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} />
+                <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} priority />
               </div>
 
               <BuyBox product={buyable} freeChapterHref={FREE_CHAPTER} preview={preview} />
             </div>
 
             <div className="hidden lg:block relative mx-auto w-full max-w-sm">
-              <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} />
+              <Book3DCover coverImage={config.coverImage} coverImagePt={config.coverImagePt} title={config.title} priority />
             </div>
           </div>
         </div>

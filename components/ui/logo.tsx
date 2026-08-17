@@ -50,13 +50,19 @@ export function Logo({
                 decoding="async"
                 fetchPriority={priority ? "high" : "auto"}
               />
+              {/* Always lazy, even when priority is set. A `display:none`
+                  image is still downloaded when eager, so marking both
+                  variants high-priority spent bandwidth on a logo nobody can
+                  see — right when the hero image needed it. Lazy means the
+                  browser fetches this one only once dark mode makes it
+                  visible. */}
               <img
                 src={darkSrc}
                 alt="Logo"
                 className="h-full w-auto object-contain hidden dark:block"
-                loading={priority ? "eager" : "lazy"}
+                loading="lazy"
                 decoding="async"
-                fetchPriority={priority ? "high" : "auto"}
+                fetchPriority="auto"
               />
             </>
           ) : variant === "dark" && darkSrc ? (
