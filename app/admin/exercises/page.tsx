@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { resolveBulkFolderId, folderNamesToEnsure } from "@/lib/bulk-folder-target";
 import {
   Plus,
   Search,
@@ -2752,6 +2753,10 @@ const EMBED_VIDEO_HOSTS = /(?:youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com
 const isEmbeddedVideoUrl = (url: string | null | undefined): boolean =>
   !!url && EMBED_VIDEO_HOSTS.test(url);
 
+// Sentinel for the folder picker: "put these in a brand-new folder" rather
+// than in one that already exists. Same shape as LOOSE/DIRECT elsewhere.
+const NEW_FOLDER = "__new_folder__";
+
 const guessRegionFromFolder = (folder: string): string | null => {
   const hit = FOLDER_REGION_HINTS.find(([re]) => re.test(folder));
   return hit ? hit[1] : null;
@@ -2780,6 +2785,9 @@ function BulkUploadModal({
   // Every video needs a home before a single byte is sent — landing unfiled is
   // the failure this whole reorganisation exists to prevent.
   const [targetCategoryId, setTargetCategoryId] = useState("");
+  // "" = nothing picked yet; NEW_FOLDER = create one from fallbackFolderName;
+  // anything else is the id of an existing folder to add these videos to.
+  const [targetFolderId, setTargetFolderId] = useState("");
   const [fallbackFolderName, setFallbackFolderName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -2804,8 +2812,19 @@ function BulkUploadModal({
   // Files dragged in without a subfolder of their own fall back to this name;
   // files inside a subfolder keep the subfolder's name.
   const needsFallbackName = files.some((f) => !f.folder);
+
+  // Folders already inside the chosen category. Typing a name that matches one
+  // does reuse it, but a bare text box gives no way to know that — so the
+  // existing folders are offered as a list and picking one is the default.
+  const existingFolders =
+    folderTree.find((c) => c.id === targetCategoryId)?.children ?? [];
+  const creatingNewFolder = targetFolderId === NEW_FOLDER;
+
   const destinationReady =
-    !!targetCategoryId && (!needsFallbackName || !!fallbackFolderName.trim());
+    !!targetCategoryId &&
+    (!needsFallbackName ||
+      (!creatingNewFolder && !!targetFolderId) ||
+      (creatingNewFolder && !!fallbackFolderName.trim()));
 
   const handleFiles = (fileList: FileList | null) => {
     if (!fileList) return;
@@ -2853,8 +2872,10 @@ function BulkUploadModal({
     // Get-or-create a real folder inside the chosen category for each distinct
     // subfolder name in this batch, reusing one that already matches.
     const folderNameToId: Record<string, string> = {};
-    const resolvedName = (f: BulkFile) => f.folder || fallbackFolderName.trim();
-    const distinctFolderNames = Array.from(new Set(files.map(resolvedName).filter(Boolean)));
+    // An existing folder was picked, so files without a subfolder of their own
+    // go straight into it — nothing is created and nothing there is touched.
+    const pickedFolderId = !creatingNewFolder && targetFolderId ? targetFolderId : null;
+    const distinctFolderNames = folderNamesToEnsure(files, pickedFolderId, fallbackFolderName);
     const failedFolders: string[] = [];
     for (const folderName of distinctFolderNames) {
       try {
@@ -2888,7 +2909,7 @@ function BulkUploadModal({
       difficulty: f.difficulty,
       tags: f.tags,
       fileKey: `video_${i}`,
-      folderId: folderNameToId[resolvedName(f)],
+      folderId: resolveBulkFolderId({ fileFolder: f.folder, pickedFolderId, fallbackFolderName, folderNameToId }) ?? undefined,
     }));
 
     formData.append("metadata", JSON.stringify(metadata));
@@ -2964,7 +2985,10 @@ function BulkUploadModal({
                 <div className="flex flex-col sm:flex-row gap-2">
                   <div className="space-y-1 flex-1">
                     <Label className="text-xs">{isPt ? "Categoria" : "Category"}</Label>
-                    <Select value={targetCategoryId} onValueChange={setTargetCategoryId}>
+                    <Select
+                      value={targetCategoryId}
+                      onValueChange={(v) => { setTargetCategoryId(v); setTargetFolderId(""); }}
+                    >
                       <SelectTrigger className="h-9">
                         <SelectValue placeholder={isPt ? "Escolha a categoria..." : "Choose a category..."} />
                       </SelectTrigger>
@@ -2981,7 +3005,35 @@ function BulkUploadModal({
                     </Button>
                   </div>
                 </div>
-                {needsFallbackName && (
+                {/* Pick an existing folder, or say you want a new one. Only
+                    shown once a category is chosen and it actually has folders. */}
+                {needsFallbackName && !!targetCategoryId && existingFolders.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{isPt ? "Pasta" : "Folder"}</Label>
+                    <Select value={targetFolderId} onValueChange={setTargetFolderId}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder={isPt ? "Escolha a pasta..." : "Choose a folder..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {existingFolders.map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name}
+                            {typeof f.exerciseCount === "number" ? ` · ${f.exerciseCount}` : ""}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value={NEW_FOLDER}>
+                          {isPt ? "+ Criar nova pasta" : "+ Create a new folder"}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      {isPt
+                        ? "Escolher uma pasta existente acrescenta estes vídeos a ela, sem mexer no que já está lá."
+                        : "Picking an existing folder adds these videos to it, leaving what's already there untouched."}
+                    </p>
+                  </div>
+                )}
+                {needsFallbackName && (creatingNewFolder || existingFolders.length === 0) && (
                   <div className="space-y-1">
                     <Label className="text-xs">
                       {isPt ? "Nome da pasta para estes vídeos" : "Folder name for these videos"}
