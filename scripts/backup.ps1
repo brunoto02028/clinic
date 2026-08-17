@@ -35,7 +35,11 @@ Write-Host "=== BPR Clinic Backup - $Timestamp ===" -ForegroundColor Cyan
 
 function Write-Step { param($msg) Write-Host "" ; Write-Host "-> $msg" -ForegroundColor Yellow }
 function Write-OK   { param($msg) Write-Host "   OK: $msg" -ForegroundColor Green }
-function Write-Fail { param($msg) Write-Host "   FAIL: $msg" -ForegroundColor Red }
+# Every failure is counted, and the script exits non-zero at the end. Without
+# this the run reported success while producing no database dump at all —
+# which is worse than no backup, because you stop checking.
+$script:Failures = @()
+function Write-Fail { param($msg) $script:Failures += $msg; Write-Host "   FAIL: $msg" -ForegroundColor Red }
 
 # 1. LOCAL DATABASE
 if (-not $SkipLocal) {
@@ -259,15 +263,47 @@ $all = Get-ChildItem $BackupRoot -Directory |
        Where-Object { $_.Name -match $timestampPattern } |
        Sort-Object Name
 if ($all.Count -gt $KeepLast) {
-  $toDelete = $all | Select-Object -First ($all.Count - $KeepLast)
+  # Never rotate away the newest backup that actually contains a database
+  # dump. Docker being off makes every run produce a dump-less backup while
+  # still succeeding, so a streak of those would otherwise push the last
+  # restorable copy out of the window one run at a time.
+  $newestWithDb = $all |
+    Where-Object { $p = Join-Path $_.FullName "prod-db.sql"; (Test-Path $p) -and (Get-Item $p).Length -gt 0 } |
+    Select-Object -Last 1
+
+  $toDelete = $all |
+    Select-Object -First ($all.Count - $KeepLast) |
+    Where-Object { -not $newestWithDb -or $_.Name -ne $newestWithDb.Name }
+
   $toDelete | ForEach-Object {
     Remove-Item $_.FullName -Recurse -Force
     Write-Host "   Deleted old backup: $($_.Name)" -ForegroundColor DarkGray
+  }
+  if ($newestWithDb) {
+    Write-Host "   Kept (last with a DB dump): $($newestWithDb.Name)" -ForegroundColor DarkGray
   }
 }
 
 $keptCount = $all.Count - [Math]::Max(0, $all.Count - $KeepLast)
 Write-Host ""
+
+# A backup is only a backup if the database is in it. Say so loudly, and exit
+# non-zero, so a scheduled run surfaces as failed instead of quietly passing.
+$dbDump = Join-Path $BackupDir "prod-db.sql"
+if (-not (Test-Path $dbDump) -or (Get-Item $dbDump).Length -eq 0) {
+  Write-Fail "No production database dump in this backup"
+}
+
+if ($script:Failures.Count -gt 0) {
+  Write-Host "=== Backup INCOMPLETE: $BackupDir ===" -ForegroundColor Red
+  Write-Host "$($script:Failures.Count) step(s) failed:" -ForegroundColor Red
+  $script:Failures | ForEach-Object { Write-Host "   - $_" -ForegroundColor Red }
+  Write-Host "Backups kept: $keptCount / $KeepLast"
+  Write-Host ""
+  exit 1
+}
+
 Write-Host "=== Backup complete: $BackupDir ===" -ForegroundColor Cyan
 Write-Host "Backups kept: $keptCount / $KeepLast"
 Write-Host ""
+exit 0
