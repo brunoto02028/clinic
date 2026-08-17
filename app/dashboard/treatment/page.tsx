@@ -69,7 +69,9 @@ export default function PatientTreatmentPage() {
   const [protocols, setProtocols] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [videoModal, setVideoModal] = useState<string | null>(null);
+  // Carries the mute flag alongside the URL: the clip's own setting has to
+  // reach the player, or a video the therapist silenced plays out loud here.
+  const [videoModal, setVideoModal] = useState<{ url: string; muted: boolean } | null>(null);
   const [paying, setPaying] = useState<string | null>(null); // packageId being paid
   const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
   const [pendingAppointments, setPendingAppointments] = useState<any[]>([]);
@@ -475,7 +477,7 @@ export default function PatientTreatmentPage() {
                     items={items}
                     phaseCompleted={phaseCompleted}
                     onToggle={handleToggleItem}
-                    onPlayVideo={(url: string) => setVideoModal(url)}
+                    onPlayVideo={(url: string, muted: boolean) => setVideoModal({ url, muted })}
                   />
                 );
               })}
@@ -503,7 +505,8 @@ export default function PatientTreatmentPage() {
               <X className="h-5 w-5" /> {isPt ? "Fechar" : "Close"}
             </Button>
             <video
-              src={videoModal}
+              src={videoModal.url}
+              muted={videoModal.muted}
               controls
               autoPlay
               className="w-full rounded-lg"
@@ -523,7 +526,7 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
   items: any[];
   phaseCompleted: number;
   onToggle: (id: string, completed: boolean) => void;
-  onPlayVideo: (url: string) => void;
+  onPlayVideo: (url: string, muted: boolean) => void;
 }) {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
@@ -598,7 +601,7 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
                         variant="outline"
                         size="sm"
                         className="mt-2 h-7 text-xs gap-1"
-                        onClick={() => onPlayVideo(item.exercise.videoUrl)}
+                        onClick={() => onPlayVideo(item.exercise.videoUrl, item.exercise.muteForPatient !== false)}
                       >
                         <Play className="h-3 w-3" /> {T("treatment.watchVideo")}
                       </Button>

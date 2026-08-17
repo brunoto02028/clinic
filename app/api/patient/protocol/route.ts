@@ -62,6 +62,9 @@ export async function GET(req: NextRequest) {
                 instructionsPt: true,
                 videoUrl: true,
                 thumbnailUrl: true,
+                // Without this the treatment screen's player had no way to know
+                // the clip should be silent, and played it with sound.
+                muteForPatient: true,
                 defaultSets: true,
                 defaultReps: true,
                 defaultHoldSec: true,
