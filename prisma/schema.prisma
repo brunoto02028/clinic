@@ -1144,7 +1144,7 @@ model Article {
   imageFocalX     Float          @default(50)
   imageFocalY     Float          @default(50)
   published       Boolean        @default(false)
-  scheduledAt     DateTime? // if set and published=false, a cron job auto-publishes once this time has passed
+  scheduledAt     DateTime? // if set and published=false, the in-process scheduler (lib/background-jobs.ts) publishes it once this time has passed
   authorId        String
   author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorName      String? // Optional override for displayed author name

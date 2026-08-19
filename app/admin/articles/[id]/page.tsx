@@ -23,6 +23,12 @@ const RichTextEditor = dynamic(() => import("@/components/admin/rich-text-editor
   loading: () => <div className="h-[350px] bg-muted rounded-md animate-pulse" />,
 });
 
+// <input type="datetime-local"> expects local wall-clock time, not a UTC ISO string.
+function toDateTimeLocal(iso: string) {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
 export default function EditArticlePage() {
   const params = useParams();
   const [title, setTitle] = useState("");
@@ -34,6 +40,7 @@ export default function EditArticlePage() {
   const [published, setPublished] = useState(false);
   const [authorName, setAuthorName] = useState("");
   const [createdAt, setCreatedAt] = useState(""); // publish date (YYYY-MM-DD) shown on the public site
+  const [scheduledAt, setScheduledAt] = useState(""); // datetime-local value; /api/cron/article-publish takes it from here
   // SEO fields
   const [metaDescription, setMetaDescription] = useState("");
   const [metaDescriptionPt, setMetaDescriptionPt] = useState("");
@@ -106,6 +113,7 @@ export default function EditArticlePage() {
         setPublished(data.published);
         setAuthorName(data.authorName || "");
         setCreatedAt(data.createdAt ? new Date(data.createdAt).toISOString().slice(0, 10) : "");
+        setScheduledAt(data.scheduledAt ? toDateTimeLocal(data.scheduledAt) : "");
         setMetaDescription(data.metaDescription || "");
         setMetaDescriptionPt(data.metaDescriptionPt || "");
         setTags(data.tags || []);
@@ -308,6 +316,8 @@ export default function EditArticlePage() {
           publishLanguage,
           imageUrl, imageFocalX, imageFocalY, published, authorName: authorName || undefined, metaDescription: metaDescription || undefined, metaDescriptionPt: metaDescriptionPt || undefined, tags, keyword: keyword || undefined,
           createdAt: createdAt ? `${createdAt}T12:00:00.000Z` : undefined,
+          // Publishing by hand cancels any pending schedule.
+          scheduledAt: published ? null : (scheduledAt ? new Date(scheduledAt).toISOString() : null),
         }),
       });
       if (res.ok) {
@@ -582,6 +592,20 @@ export default function EditArticlePage() {
               <Checkbox id="published" checked={published} onCheckedChange={(checked) => setPublished(checked as boolean)} />
               <Label htmlFor="published" className="cursor-pointer">Published</Label>
             </div>
+
+            {!published && (
+              <div className="space-y-2">
+                <Label htmlFor="scheduledAt">Schedule Publication</Label>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Input id="scheduledAt" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} className="max-w-xs" />
+                  {scheduledAt && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setScheduledAt("")}>Clear</Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Leave empty to publish by hand. If set, the article goes live automatically at this time and its publish date moves to match. Subscribers are not emailed — use "Notify" in the articles list for that.</p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Link href="/admin/articles"><Button type="button" variant="outline">Cancel</Button></Link>

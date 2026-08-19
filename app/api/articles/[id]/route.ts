@@ -24,6 +24,16 @@ export async function GET(
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
+    // Drafts are staff-only. The public article page reads the database
+    // directly, so nothing legitimate needs an unpublished article from here.
+    if (!article.published) {
+      const session = await getServerSession(authOptions);
+      const role = (session?.user as { role?: string })?.role;
+      if (!role || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes(role)) {
+        return NextResponse.json({ error: "Article not found" }, { status: 404 });
+      }
+    }
+
     return NextResponse.json(article);
   } catch (error) {
     console.error("Error fetching article:", error);

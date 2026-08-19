@@ -50,6 +50,7 @@ interface Article {
   imageFocalX?: number;
   imageFocalY?: number;
   published: boolean;
+  scheduledAt?: string | null;
   createdAt: string;
   author: { firstName: string; lastName: string };
 }
@@ -199,10 +200,10 @@ export default function AdminArticlesPage() {
       const res = await fetch(`/api/articles/${notifyArticle.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ published: true, notifySubscribers: notify }),
+        body: JSON.stringify({ published: true, scheduledAt: null, notifySubscribers: notify }),
       });
       if (res.ok) {
-        setArticles(articles.map((a) => (a.id === notifyArticle.id ? { ...a, published: true } : a)));
+        setArticles(articles.map((a) => (a.id === notifyArticle.id ? { ...a, published: true, scheduledAt: null } : a)));
         toast({
           title: "Article published",
           description: notify
@@ -551,10 +552,13 @@ export default function AdminArticlesPage() {
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           article.published
                             ? "bg-green-100 text-green-700"
+                            : article.scheduledAt
+                            ? "bg-blue-100 text-blue-700"
                             : "bg-yellow-100 text-yellow-700"
                         }`}
+                        title={!article.published && article.scheduledAt ? `Goes live on ${new Date(article.scheduledAt).toLocaleString("en-GB")}` : undefined}
                       >
-                        {article.published ? "Published" : "Draft"}
+                        {article.published ? "Published" : article.scheduledAt ? "Scheduled" : "Draft"}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-2">

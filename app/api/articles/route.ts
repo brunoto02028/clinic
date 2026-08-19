@@ -11,10 +11,43 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const published = searchParams.get("published");
     const limit = searchParams.get("limit");
-    
+
+    // This route is unauthenticated (the homepage and /articles read it), so
+    // anyone who isn't staff only ever gets published articles — a draft must
+    // never leak here just because ?published=true was left off.
+    const session = await getServerSession(authOptions);
+    const listerRole = (session?.user as { role?: string })?.role;
+    const isStaff = !!listerRole && ["SUPERADMIN", "ADMIN", "THERAPIST"].includes(listerRole);
+
     const articles = await prisma.article.findMany({
-      where: published === "true" ? { published: true } : undefined,
-      include: {
+      where: isStaff && published !== "true" ? undefined : { published: true },
+      // Bodies (content/contentEn/contentPt) are deliberately excluded: no list
+      // consumer renders them and including them made this response ~1MB.
+      // Full content comes from GET /api/articles/[id].
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        titleEn: true,
+        titlePt: true,
+        excerptEn: true,
+        excerptPt: true,
+        publishLanguage: true,
+        language: true,
+        imageUrl: true,
+        imageFocalX: true,
+        imageFocalY: true,
+        published: true,
+        scheduledAt: true,
+        authorName: true,
+        metaDescription: true,
+        metaDescriptionPt: true,
+        tags: true,
+        keyword: true,
+        generatedBy: true,
+        createdAt: true,
+        updatedAt: true,
         author: {
           select: {
             firstName: true,

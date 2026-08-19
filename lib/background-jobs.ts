@@ -13,10 +13,12 @@ import { prisma } from './db';
 import { refreshInstagramToken } from './instagram';
 import { publishSocialPost } from './social-publish';
 import { dispatchCampaignBatch } from './email-campaign-dispatch';
+import { publishDueArticles } from './article-publish';
 
 const TOKEN_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
 const POST_PUBLISH_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes
 const EMAIL_CAMPAIGN_INTERVAL_MS = 60 * 1000; // every 1 minute
+const ARTICLE_PUBLISH_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes
 
 async function refreshExpiringTokens() {
   try {
@@ -79,6 +81,19 @@ async function dispatchDueEmailCampaigns() {
   }
 }
 
+// Publishes articles whose "Schedule Publication" slot has arrived (see the
+// article editor). Same story as scheduled social posts: the date was stored
+// on the record but nothing ever acted on it.
+async function publishDueArticlesJob() {
+  try {
+    const { checked, published } = await publishDueArticles();
+    if (checked === 0) return;
+    console.log(`[background-jobs] Article publish: checked ${checked}, published ${published}`);
+  } catch (err: any) {
+    console.error('[background-jobs] Article publish failed:', err.message);
+  }
+}
+
 // Guards against double-registration (e.g. dev-mode hot reload calling
 // register() more than once in the same process).
 declare global {
@@ -90,14 +105,16 @@ export function startBackgroundJobs() {
   if (global.__bprBackgroundJobsStarted) return;
   global.__bprBackgroundJobsStarted = true;
 
-  console.log('[background-jobs] Starting in-process scheduler (token refresh every 6h, post publish every 15min, email campaigns every 1min)');
+  console.log('[background-jobs] Starting in-process scheduler (token refresh every 6h, post publish every 15min, email campaigns every 1min, article publish every 15min)');
 
   setInterval(refreshExpiringTokens, TOKEN_REFRESH_INTERVAL_MS);
   setInterval(publishDuePosts, POST_PUBLISH_INTERVAL_MS);
   setInterval(dispatchDueEmailCampaigns, EMAIL_CAMPAIGN_INTERVAL_MS);
+  setInterval(publishDueArticlesJob, ARTICLE_PUBLISH_INTERVAL_MS);
 
   // Run once shortly after boot too, instead of waiting a full interval.
   setTimeout(refreshExpiringTokens, 30_000);
   setTimeout(publishDuePosts, 60_000);
   setTimeout(dispatchDueEmailCampaigns, 45_000);
+  setTimeout(publishDueArticlesJob, 60_000);
 }
