@@ -2838,7 +2838,7 @@ model ExercisePrescription {
   therapistId String
   therapist   User   @relation("PrescribedExercises", fields: [therapistId], references: [id])
   patientId   String
-  patient     User   @relation("ReceivedExercises", fields: [patientId], references: [id])
+  patient     User   @relation("ReceivedExercises", fields: [patientId], references: [id], onDelete: Cascade)
 
   // Which exercise
   exerciseId String
@@ -2930,7 +2930,7 @@ model AIDiagnosis {
   clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   patientId   String
-  patient     User   @relation("PatientDiagnoses", fields: [patientId], references: [id])
+  patient     User   @relation("PatientDiagnoses", fields: [patientId], references: [id], onDelete: Cascade)
   therapistId String
   therapist   User   @relation("TherapistDiagnoses", fields: [therapistId], references: [id])
 
@@ -2983,7 +2983,7 @@ model TreatmentProtocol {
   clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   patientId   String
-  patient     User   @relation("PatientProtocols", fields: [patientId], references: [id])
+  patient     User   @relation("PatientProtocols", fields: [patientId], references: [id], onDelete: Cascade)
   therapistId String
   therapist   User   @relation("TherapistProtocols", fields: [therapistId], references: [id])
 
@@ -3118,7 +3118,7 @@ model TreatmentPackage {
   protocol   TreatmentProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
 
   patientId String
-  patient   User   @relation("PatientPackages", fields: [patientId], references: [id])
+  patient   User   @relation("PatientPackages", fields: [patientId], references: [id], onDelete: Cascade)
 
   // Package details
   name            String // e.g. "Shoulder Rehab — 12 Sessions"
@@ -3197,7 +3197,7 @@ model PatientDocument {
   clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   patientId    String
-  patient      User   @relation("PatientDocuments", fields: [patientId], references: [id])
+  patient      User   @relation("PatientDocuments", fields: [patientId], references: [id], onDelete: Cascade)
   uploadedById String
   uploadedBy   User   @relation("DocumentUploader", fields: [uploadedById], references: [id])
 
@@ -3404,7 +3404,7 @@ model EmailMessage {
   spamScore    Float?
   templateSlug String? // Which template was used (for outbound)
   patientId    String?
-  patient      User?          @relation("PatientEmails", fields: [patientId], references: [id])
+  patient      User?          @relation("PatientEmails", fields: [patientId], references: [id], onDelete: SetNull)
   clinicId     String?
   sentAt       DateTime?
   receivedAt   DateTime?
