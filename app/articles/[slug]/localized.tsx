@@ -56,3 +56,31 @@ export function LocalizedHtml({ en, pt, fallback, className }: LocalizedHtmlProp
     />
   );
 }
+
+interface LanguageFallbackNoticeProps {
+  hasEn: boolean;
+  hasPt: boolean;
+}
+
+/**
+ * The site's PT/EN toggle only switches between versions that exist. On an
+ * article that was never translated the toggle appears to do nothing, because
+ * every field silently falls back to the published language — this says so.
+ */
+export function LanguageFallbackNotice({ hasEn, hasPt }: LanguageFallbackNoticeProps) {
+  const { locale } = useLocale();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  const wantsPt = locale.startsWith("pt");
+  if (wantsPt ? hasPt : hasEn) return null;
+
+  return (
+    <p className="text-sm text-muted-foreground bg-muted/50 border border-border rounded-lg px-4 py-3 mb-8">
+      {wantsPt
+        ? "Este artigo ainda não está disponível em português — exibindo a versão em inglês."
+        : "This article isn't available in English yet — showing the Portuguese version."}
+    </p>
+  );
+}

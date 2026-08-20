@@ -6,7 +6,7 @@ import Image from "next/image";
 import { getServerSession } from "next-auth";
 import { Calendar, User, ChevronLeft, ChevronRight, BookOpen, ArrowLeft, Clock, Share2 } from "lucide-react";
 import type { Metadata } from "next";
-import { LocalizedText, LocalizedHtml } from "./localized";
+import { LocalizedText, LocalizedHtml, LanguageFallbackNotice } from "./localized";
 import { ArticleAudioPlayer } from "./audio-player";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
 import { authOptions } from "@/lib/auth-options";
@@ -260,6 +260,8 @@ export default async function ArticlePage({ params }: PageProps) {
                 <ArticleAudioPlayer articleId={article.id} />
               </div>
             )}
+
+            <LanguageFallbackNotice hasEn={!!article.contentEn} hasPt={!!article.contentPt} />
 
             {/* Excerpt */}
             {article.excerpt && (
