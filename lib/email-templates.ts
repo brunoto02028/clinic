@@ -706,8 +706,8 @@ export async function renderTemplate(
 export async function getPatientLocale(patientId: string): Promise<string> {
   try {
     const u = await (prisma as any).user.findUnique({ where: { id: patientId }, select: { preferredLocale: true } });
-    return u?.preferredLocale || 'pt-BR';
-  } catch { return 'pt-BR'; }
+    return u?.preferredLocale || 'en-GB';
+  } catch { return 'en-GB'; }
 }
 
 // ─── Send a templated email ───
