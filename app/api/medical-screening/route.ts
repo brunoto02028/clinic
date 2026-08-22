@@ -185,6 +185,26 @@ export async function POST(request: NextRequest) {
         console.error('[screening] CRITICAL: Failed to notify admin on screening update. Patient may not know. Error:', notifErr);
       }
 
+      // If this patient has no evidence report yet, enqueue one from the edited
+      // screening (the create path covers the common first-submit case; this
+      // closes the gap when the first report never got created).
+      try {
+        const existingReport = await prisma.clinicalEvidenceReport.findFirst({
+          where: { patientId: userId, status: { in: ["GENERATING", "DRAFT", "UNDER_REVIEW", "APPROVED"] } },
+          select: { id: true },
+        });
+        if (!existingReport) {
+          const pr = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+          if (pr?.clinicId) {
+            await prisma.clinicalEvidenceReport.create({
+              data: { clinicId: pr.clinicId, patientId: userId, screeningId: screening.id, status: "GENERATING" },
+            });
+          }
+        }
+      } catch (e) {
+        console.error('[screening] evidence-report enqueue-on-update failed (non-blocking):', e);
+      }
+
       return NextResponse.json({
         success: true,
         message: "Screening updated successfully",
@@ -274,6 +294,30 @@ export async function POST(request: NextRequest) {
 
     // Analyze screening for red flags
     const analysis = analyzeMedicalScreening(body);
+
+    // Auto-generate an evidence report for the therapist to review (activity 15).
+    // Fire-and-forget: create a GENERATING row; a background job fills it. Never
+    // blocks the patient's submit, and never surfaces to the patient.
+    try {
+      const patientRec = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+      const clinicId = patientRec?.clinicId;
+      if (clinicId) {
+        const existing = await prisma.clinicalEvidenceReport.findFirst({
+          where: {
+            screeningId: screening.id,
+            status: { in: ["GENERATING", "DRAFT", "UNDER_REVIEW", "APPROVED"] },
+          },
+          select: { id: true },
+        });
+        if (!existing) {
+          await prisma.clinicalEvidenceReport.create({
+            data: { clinicId, patientId: userId, screeningId: screening.id, status: "GENERATING" },
+          });
+        }
+      }
+    } catch (reportErr) {
+      console.error('[screening] Failed to enqueue evidence report (non-blocking):', reportErr);
+    }
 
     // Notify admin that a new screening was submitted
     try {

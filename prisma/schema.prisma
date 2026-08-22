@@ -346,6 +346,7 @@ model Clinic {
   exercisePrescriptions   ExercisePrescription[]
   aiDiagnoses             AIDiagnosis[]
   treatmentProtocols      TreatmentProtocol[]
+  evidenceReports         ClinicalEvidenceReport[]
   treatmentPackages       TreatmentPackage[]
   patientDocuments        PatientDocument[]
   voiceTranscriptions     VoiceTranscription[]
@@ -613,6 +614,8 @@ model User {
   diagnosesAsTherapist       AIDiagnosis[]          @relation("TherapistDiagnoses")
   protocolsAsPatient         TreatmentProtocol[]    @relation("PatientProtocols")
   protocolsAsTherapist       TreatmentProtocol[]    @relation("TherapistProtocols")
+  evidenceReportsAsPatient   ClinicalEvidenceReport[] @relation("PatientEvidenceReports")
+  evidenceReportsAsReviewer  ClinicalEvidenceReport[] @relation("ReviewerEvidenceReports")
   documentsAsPatient         PatientDocument[]      @relation("PatientDocuments")
   documentsUploaded          PatientDocument[]      @relation("DocumentUploader")
   packagesAsPatient          TreatmentPackage[]     @relation("PatientPackages")
@@ -898,6 +901,8 @@ model MedicalScreening {
   editApprovedAt   DateTime?
   editApprovedById String?
   editApprovedBy   User?     @relation("ScreeningEditApprover", fields: [editApprovedById], references: [id])
+
+  evidenceReports  ClinicalEvidenceReport[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2977,6 +2982,63 @@ model AIDiagnosis {
   @@index([createdAt])
 }
 
+// Auto-generated evidence report (activity 15). Created on triage submit as
+// GENERATING, filled by a background job to DRAFT, reviewed by the therapist in
+// the admin. Clinician-internal — never shown to the patient in this phase.
+model ClinicalEvidenceReport {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("PatientEvidenceReports", fields: [patientId], references: [id], onDelete: Cascade)
+
+  // The triage this report was generated from
+  screeningId String?
+  screening   MedicalScreening? @relation(fields: [screeningId], references: [id], onDelete: SetNull)
+
+  // Therapist who reviewed / approved
+  reviewedById String?
+  reviewedBy   User?   @relation("ReviewerEvidenceReports", fields: [reviewedById], references: [id])
+
+  status   DiagnosisStatus @default(GENERATING)
+  language String          @default("en-GB")
+
+  // Case snapshot taken from the triage at generation time
+  caseSummary Json? // {chiefComplaint, location, duration, scores:{vas,faamAdl,faamSport,function}, findings}
+
+  // Safety
+  redFlag        Boolean @default(false)
+  redFlagDetails Json? // categories triggered + notes
+
+  // Evidence + cross-reference + suggestions (each traceable to a source)
+  evidence       Json? // [{ref:"F1", level, title, authors, journal, year, language, doi, url}]
+  clinicCrossRef Json? // {available:[...], offCatalog:[{item, sourceRef}]}
+  suggestions    Json? // {treatment:[{text,sourceRef,available}], exercise:[{name,params,sourceRef,inCatalog}]}
+  gaps           Json?
+
+  // AI-authored prose (PT filled on demand — activity 15 T-6)
+  narrativeEn String? @db.Text
+  narrativePt String? @db.Text
+
+  // AI metadata + failure capture (attempts guards the poll job against loops)
+  aiModel          String?
+  promptTokens     Int?
+  completionTokens Int?
+  error            String? @db.Text
+  attempts         Int     @default(0)
+
+  approvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([screeningId])
+  @@index([status])
+}
+
 model TreatmentProtocol {
   id       String @id @default(cuid())
   clinicId String
@@ -3015,6 +3077,9 @@ model TreatmentProtocol {
   // Scheduling
   sessionDays String? // JSON array: ["MONDAY","WEDNESDAY","FRIDAY"]
   sessionTime String? // e.g. "10:00"
+
+  // Weekly Training Schedule (NEW)
+  weeklyTrainingSchedule Json? // { "monday": [itemIds], "tuesday": [itemIds], ... }
 
   // Protocol succession (history)
   replacedById      String? // id of the protocol that replaced this one

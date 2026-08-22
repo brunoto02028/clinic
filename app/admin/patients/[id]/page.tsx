@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
+import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -897,6 +898,9 @@ export default function PatientProfilePage() {
                 </TabsTrigger>
                 <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
                   <Bot className="h-3 w-3" />Rehab Agent
+                </TabsTrigger>
+                <TabsTrigger value="evidencia" className="text-xs data-[state=active]:bg-bruno-turquoise/20 data-[state=active]:text-bruno-turquoise flex items-center gap-1">
+                  <Stethoscope className="h-3 w-3" />Evidência
                 </TabsTrigger>
               </>
             );
@@ -2010,6 +2014,11 @@ export default function PatientProfilePage() {
         {/* ── Tab: Rehab Agent ── */}
         <TabsContent value="rehab" className="mt-4">
           <RehabAgentTab patientId={patientId} patientData={data} sentQuestions={sentQuestions} setSentQuestions={setSentQuestions} fetchSentQuestions={fetchSentQuestions} />
+        </TabsContent>
+
+        {/* ── Tab: Evidência ── */}
+        <TabsContent value="evidencia" className="mt-4">
+          <EvidenceReportTab patientId={patientId} />
         </TabsContent>
 
       </Tabs>
