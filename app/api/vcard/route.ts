@@ -25,7 +25,8 @@ export async function GET() {
     .catch(() => null);
 
   const org = settings?.siteName || "BPR Physical Rehabilitation";
-  const tel = settings?.whatsappNumber || settings?.phone || "+447425199947";
+  // No hardcoded fallback: never emit a personal number the settings don't carry.
+  const tel = settings?.whatsappNumber || settings?.phone || "";
   const email = settings?.email || "admin@bpr.clinic";
 
   // The photo makes the saved contact recognisable — the whole point for
@@ -59,7 +60,7 @@ export async function GET() {
     `FN:Bruno — ${org}`,
     `ORG:${org}`,
     "TITLE:Rehabilitation Specialist",
-    `TEL;TYPE=CELL:${tel}`,
+    tel ? `TEL;TYPE=CELL:${tel}` : "",
     `EMAIL:${email}`,
     "URL:https://bpr.clinic/start",
     "ADR;TYPE=WORK:;;;Ipswich;Suffolk;;United Kingdom",
