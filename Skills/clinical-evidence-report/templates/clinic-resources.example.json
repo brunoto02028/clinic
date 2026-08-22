@@ -1,0 +1,36 @@
+{
+  "_note": "Modelo do catálogo da clínica lido pela skill no passo 4. Copie para 'clinic-resources.json' (na pasta da skill) e preencha, OU gere automaticamente com 'node scripts/generate_clinic_resources.mjs' (lê o banco). Campos alinhados aos modelos Exercise / ProtocolTemplate do schema.",
+  "generatedAt": "2026-01-01T00:00:00.000Z",
+  "source": "example",
+  "equipment": [
+    { "name": "MLS Laser", "category": "electrotherapy", "usedFor": "pain and inflammation, tissue repair" },
+    { "name": "Shockwave", "category": "electrotherapy", "usedFor": "tendinopathy, calcific deposits" },
+    { "name": "Ultrasound 1MHz", "category": "electrotherapy", "usedFor": "deep tissue heating, soft-tissue healing" }
+  ],
+  "exercises": [
+    {
+      "name": "Shoulder External Rotation with Band",
+      "bodyRegion": "SHOULDER",
+      "difficulty": "BEGINNER",
+      "tags": ["strengthening", "rotator-cuff"],
+      "defaults": { "sets": 3, "reps": 12, "holdSec": null, "restSec": 45 }
+    },
+    {
+      "name": "Single-Leg Balance",
+      "bodyRegion": "ANKLE_FOOT",
+      "difficulty": "BEGINNER",
+      "tags": ["proprioception", "post-sprain"],
+      "defaults": { "sets": 3, "reps": null, "holdSec": 30, "restSec": 30 }
+    }
+  ],
+  "protocols": [
+    {
+      "name": "Ankle Sprain — Return to Sport",
+      "condition": "Lateral ankle sprain",
+      "bodyRegion": "ANKLE_FOOT",
+      "equipment": ["MLS Laser"],
+      "estimatedWeeks": 8,
+      "sessionsPerWeek": 2
+    }
+  ]
+}

@@ -47,3 +47,6 @@ mobile/.expo/
 # Graphify generated knowledge graph (regenerate when codebase changes significantly)
 graphify-out/
 .email-templates-backup.json
+
+# generated per-environment (activity 14 skill catalog)
+Skills/clinical-evidence-report/clinic-resources.json
