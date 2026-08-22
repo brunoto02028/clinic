@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -23,6 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useLocale } from "@/hooks/use-locale";
+import { TrendChart, type TrendPoint } from "@/components/dashboard/trend-chart";
+import { LineChart } from "lucide-react";
 
 interface TimelineEvent {
   id: string;
@@ -36,6 +38,23 @@ interface TimelineEvent {
   data?: any;
 }
 
+interface OutcomeRow {
+  recordedAt: string;
+  vasScore: number | null;
+  faamAdlPercent: number | null;
+  faamSportPercent: number | null;
+  overallFunction: number | null;
+}
+
+interface AdherenceRow {
+  periodStart: string;
+  doneCount: number;
+  totalDays: number;
+  percent: number;
+}
+
+type ProgressRange = "30d" | "90d" | "all";
+
 export default function FollowUpPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
@@ -44,9 +63,51 @@ export default function FollowUpPage() {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [outcomeTrend, setOutcomeTrend] = useState<any>(null);
 
+  const [range, setRange] = useState<ProgressRange>("all");
+  const [outcomeSeries, setOutcomeSeries] = useState<OutcomeRow[]>([]);
+  const [adherenceSeries, setAdherenceSeries] = useState<AdherenceRow[]>([]);
+  const [progressLoading, setProgressLoading] = useState(true);
+  const reqSeq = useRef(0);
+
   useEffect(() => {
     fetchTimeline();
   }, []);
+
+  useEffect(() => {
+    fetchProgress(range);
+  }, [range]);
+
+  const fetchProgress = async (r: ProgressRange) => {
+    const seq = ++reqSeq.current;
+    setProgressLoading(true);
+    try {
+      const [histRes, adhRes] = await Promise.all([
+        fetch(`/api/patient/outcome-measures?history=true&range=${r}`),
+        fetch(`/api/patient/adherence?range=${r}`),
+      ]);
+      const hist = histRes.ok ? (await histRes.json()).series ?? [] : [];
+      const adh = adhRes.ok ? (await adhRes.json()).series ?? [] : [];
+      if (seq !== reqSeq.current) return; // a newer range request superseded this one
+      setOutcomeSeries(hist);
+      setAdherenceSeries(adh);
+    } catch (e) {
+      console.error("Error fetching progress:", e);
+      if (seq === reqSeq.current) {
+        setOutcomeSeries([]);
+        setAdherenceSeries([]);
+      }
+    } finally {
+      if (seq === reqSeq.current) setProgressLoading(false);
+    }
+  };
+
+  const pointsOf = (key: keyof OutcomeRow): TrendPoint[] =>
+    outcomeSeries.map((r) => ({ date: r.recordedAt, value: (r[key] as number | null) ?? null }));
+
+  const hasOutcome = outcomeSeries.some(
+    (r) => r.vasScore !== null || r.faamAdlPercent !== null || r.faamSportPercent !== null || r.overallFunction !== null,
+  );
+  const hasAdherence = adherenceSeries.length > 0;
 
   const fetchTimeline = async () => {
     try {
@@ -193,6 +254,134 @@ export default function FollowUpPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* My Progress — trend charts */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <LineChart className="h-5 w-5 text-primary" />
+              {isPt ? "Meu Progresso" : "My Progress"}
+            </CardTitle>
+            {/* range selector */}
+            <div className="inline-flex rounded-lg bg-muted/50 p-0.5">
+              {(["30d", "90d", "all"] as ProgressRange[]).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRange(r)}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    range === r
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {r === "all" ? (isPt ? "Tudo" : "All") : r}
+                </button>
+              ))}
+            </div>
+          </div>
+          <CardDescription>
+            {isPt
+              ? "A evolução das suas medidas ao longo do tratamento."
+              : "How your measures have evolved over treatment."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {progressLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : !hasOutcome && !hasAdherence ? (
+            <div className="text-center py-8">
+              <LineChart className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">
+                {isPt
+                  ? "Ainda sem medidas registadas. Registe a primeira para começar a ver a sua evolução."
+                  : "No measures recorded yet. Record your first to start seeing your progress."}
+              </p>
+              <Button asChild size="sm" className="mt-3">
+                <Link href="/dashboard/outcome-measures">
+                  {isPt ? "Registar Medida" : "Record a Measure"}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                {
+                  key: "vasScore" as const,
+                  label: isPt ? "Dor (EVA 0–10)" : "Pain (VAS 0–10)",
+                  unit: "",
+                  min: 0,
+                  max: 10,
+                  higherIsBetter: false,
+                  color: "#ef4444",
+                  points: pointsOf("vasScore"),
+                },
+                {
+                  key: "faamAdlPercent" as const,
+                  label: "FAAM ADL",
+                  unit: "%",
+                  min: 0,
+                  max: 100,
+                  higherIsBetter: true,
+                  color: "#3b82f6",
+                  points: pointsOf("faamAdlPercent"),
+                },
+                {
+                  key: "faamSportPercent" as const,
+                  label: isPt ? "FAAM Desporto" : "FAAM Sport",
+                  unit: "%",
+                  min: 0,
+                  max: 100,
+                  higherIsBetter: true,
+                  color: "#a855f7",
+                  points: pointsOf("faamSportPercent"),
+                },
+                {
+                  key: "overallFunction" as const,
+                  label: isPt ? "Função Geral" : "Overall Function",
+                  unit: "%",
+                  min: 0,
+                  max: 100,
+                  higherIsBetter: true,
+                  color: "#10b981",
+                  points: pointsOf("overallFunction"),
+                },
+              ]
+                .filter((c) => c.points.some((p) => p.value !== null))
+                .map((c) => (
+                  <TrendChart
+                    key={c.key}
+                    points={c.points}
+                    label={c.label}
+                    unit={c.unit}
+                    min={c.min}
+                    max={c.max}
+                    higherIsBetter={c.higherIsBetter}
+                    color={c.color}
+                    isPt={isPt}
+                  />
+                ))}
+
+              {hasAdherence && (
+                <TrendChart
+                  kind="bar"
+                  points={adherenceSeries.map((w) => ({ date: w.periodStart, value: w.percent }))}
+                  label={isPt ? "Aderência (semanal)" : "Adherence (weekly)"}
+                  unit="%"
+                  min={0}
+                  max={100}
+                  higherIsBetter={true}
+                  color="#14b8a6"
+                  isPt={isPt}
+                />
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Timeline */}
       <Card>

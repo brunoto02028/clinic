@@ -12,6 +12,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestSession } from "@/lib/dual-auth";
 import { prisma } from "@/lib/db";
 
+// How far back a `range` value reaches, in days. `all` (or anything else) = no cutoff.
+function rangeCutoff(range: string | null): Date | null {
+  const days = range === "30d" ? 30 : range === "90d" ? 90 : null;
+  if (days === null) return null;
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d;
+}
+
 export async function GET(request: NextRequest) {
   const session = await getRequestSession(request);
   if (!session?.user?.email) {
@@ -25,6 +34,26 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // History mode: the full time series for the progress charts. The default
+  // (no `history` param) still returns only the latest record, which the
+  // outcome-measures form relies on to prefill.
+  const { searchParams } = new URL(request.url);
+  if (searchParams.get("history") === "true") {
+    const cutoff = rangeCutoff(searchParams.get("range"));
+    const rows = await (prisma as any).patientOutcomeMeasure.findMany({
+      where: { patientId: user.id, ...(cutoff ? { recordedAt: { gte: cutoff } } : {}) },
+      orderBy: { recordedAt: "asc" },
+      select: {
+        recordedAt: true,
+        vasScore: true,
+        faamAdlPercent: true,
+        faamSportPercent: true,
+        overallFunction: true,
+      },
+    });
+    return NextResponse.json({ series: rows });
   }
 
   const latest = await (prisma as any).patientOutcomeMeasure.findFirst({
