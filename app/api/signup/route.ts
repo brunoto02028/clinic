@@ -5,12 +5,21 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { sendTemplatedEmail } from "@/lib/email-templates";
+import { verifyTurnstile, getClientIp } from "@/lib/turnstile";
+import { rateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password, firstName, lastName, phone, role, preferredLocale } = body ?? {};
+
+    // ── Anti-bot (activity 16): honeypot is cheap, so check it first. ──
+    const ip = getClientIp(request);
+    if (body?.website) {
+      // Hidden field a human never fills — silently reject bots.
+      return NextResponse.json({ error: "Unable to process registration" }, { status: 400 });
+    }
 
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
@@ -34,6 +43,16 @@ export async function POST(request: NextRequest) {
         { error: "Password must be at least 8 characters long" },
         { status: 400 }
       );
+    }
+
+    // Anti-bot AFTER basic validation so form typos don't burn the rate limit.
+    const rl = rateLimit(`signup:${ip ?? "unknown"}`, { max: 5, windowMs: 60 * 60 * 1000 });
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+    }
+    const turn = await verifyTurnstile(body?.turnstileToken, ip);
+    if (!turn.ok) {
+      return NextResponse.json({ error: "Verification failed. Please try again." }, { status: 403 });
     }
 
     // Check if user already exists

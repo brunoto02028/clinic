@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Turnstile } from "@/components/turnstile";
 
 export default function SimplifiedSignupForm() {
   const router = useRouter();
@@ -34,6 +35,9 @@ export default function SimplifiedSignupForm() {
   const [error, setError] = useState("");
   const [step, setStep] = useState(1);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0); // bump to force a fresh challenge
+  const [website, setWebsite] = useState(""); // honeypot — real visitors never fill this
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -123,6 +127,8 @@ export default function SimplifiedSignupForm() {
           password: formData.password,
           role: "PATIENT",
           preferredLocale: locale,
+          turnstileToken,
+          website,
         }),
       });
 
@@ -142,6 +148,9 @@ export default function SimplifiedSignupForm() {
     } catch (err: any) {
       console.error("Signup error:", err);
       setError(err?.message || (isPt ? "Erro ao criar conta. Tente novamente." : "Failed to create account. Please try again."));
+      // A Turnstile token is single-use — reset so the next attempt gets a fresh one.
+      setTurnstileToken(null);
+      setTurnstileReset((v) => v + 1);
     } finally {
       setIsLoading(false);
     }
@@ -314,6 +323,25 @@ export default function SimplifiedSignupForm() {
                     </Label>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Honeypot (anti-bot) — off-screen, real users never fill it */}
+            <input
+              type="text"
+              name="website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+            />
+
+            {/* Turnstile (bot check) — only on the final step */}
+            {step === totalSteps && (
+              <div className="flex justify-center pt-2">
+                <Turnstile onToken={setTurnstileToken} resetSignal={turnstileReset} />
               </div>
             )}
 

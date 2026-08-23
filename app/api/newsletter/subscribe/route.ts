@@ -3,6 +3,8 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { logLeadMagnetEvent } from "@/lib/lead-magnet";
+import { getClientIp } from "@/lib/turnstile";
+import { rateLimit } from "@/lib/rate-limit";
 
 // POST /api/newsletter/subscribe — footer newsletter signup (P4 of
 // BPR_Devin_Spec_Website_Improvements.md). Feeds the same EmailContact list
@@ -15,6 +17,16 @@ export async function POST(req: NextRequest) {
     const email = String(body?.email || "").trim().toLowerCase();
     const consent = body?.consent === true;
     const locale: "en" | "pt" = body?.locale === "pt" ? "pt" : "en";
+
+    // Anti-bot: honeypot + rate limit (activity 16).
+    if (body?.website) {
+      return NextResponse.json({ success: true }); // silently absorb bots
+    }
+    const ip = getClientIp(req);
+    const rl = rateLimit(`newsletter:${ip ?? "unknown"}`, { max: 5, windowMs: 60 * 60 * 1000 });
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+    }
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "A valid email is required" }, { status: 400 });

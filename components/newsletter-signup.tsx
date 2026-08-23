@@ -8,6 +8,7 @@ import { Mail, Loader2, CheckCircle2 } from "lucide-react";
 export function NewsletterSignup({ isPt = false }: { isPt?: boolean }) {
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
+  const [website, setWebsite] = useState(""); // honeypot — real visitors never fill this
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +24,7 @@ export function NewsletterSignup({ isPt = false }: { isPt?: boolean }) {
       const res = await fetch("/api/newsletter/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, consent, locale: isPt ? "pt" : "en" }),
+        body: JSON.stringify({ email, consent, locale: isPt ? "pt" : "en", website }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
@@ -45,6 +46,16 @@ export function NewsletterSignup({ isPt = false }: { isPt?: boolean }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
+      <input
+        type="text"
+        name="website"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+      />
       <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">
         {isPt ? "Receba novidades" : "Get our newsletter"}
       </h4>
