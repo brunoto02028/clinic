@@ -248,9 +248,8 @@ export default function CookiePolicyPage() {
               <p className="font-semibold text-foreground">{isPt ? "Perguntas?" : "Questions?"}</p>
               <p className="text-muted-foreground mt-1">
                 {isPt
-                  ? "Para perguntas sobre cookies ou privacidade, entre em contato: "
-                  : "For questions about cookies or privacy, contact: "}
-                <a href="mailto:admin@bpr.clinic" className="text-primary hover:underline">admin@bpr.clinic</a>
+                  ? "Para perguntas sobre cookies ou privacidade, entre em contato pelo WhatsApp ou pelo formulário em bpr.clinic."
+                  : "For questions about cookies or privacy, contact us via WhatsApp or the enquiry form at bpr.clinic."}
               </p>
             </div>
           </div>

@@ -68,9 +68,8 @@ export default function ComplaintsPolicyPage() {
                   <p className="font-semibold text-foreground">{isPt ? "Formalmente, por escrito" : "Formally, in writing"}</p>
                   <p className="mt-1">
                     {isPt
-                      ? "Se preferir apresentar uma reclamação formal, ou se a conversa informal não resolveu a questão, escreva-nos para "
-                      : "If you'd rather raise a formal complaint, or the informal conversation hasn't resolved things, please write to us at "}
-                    <a href="mailto:admin@bpr.clinic" className="text-primary hover:underline">admin@bpr.clinic</a>
+                      ? "Se preferir apresentar uma reclamação formal, ou se a conversa informal não resolveu a questão, fale connosco pelo WhatsApp"
+                      : "If you'd rather raise a formal complaint, or the informal conversation hasn't resolved things, please contact us via WhatsApp"}
                     {isPt
                       ? ", através do seu portal do paciente (secção Mensagens), ou por telefone."
                       : ", through your patient portal (Messages section), or by phone."}
@@ -183,7 +182,7 @@ export default function ComplaintsPolicyPage() {
             <p className="font-semibold text-foreground">{isPt ? "Contacte-nos sobre uma reclamação" : "Contact us about a complaint"}</p>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Mail className="h-4 w-4 flex-shrink-0" />
-              <a href="mailto:admin@bpr.clinic" className="text-primary hover:underline">admin@bpr.clinic</a>
+              <span>{isPt ? "WhatsApp (ícone flutuante no site)" : "WhatsApp (floating icon on the site)"}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Phone className="h-4 w-4 flex-shrink-0" />

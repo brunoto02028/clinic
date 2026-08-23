@@ -22,7 +22,6 @@ async function getSiteSettings() {
 export default async function CancellationPolicyPage() {
   const settings = await getSiteSettings();
   const clinicName = settings?.siteName || "Bruno Physical Rehabilitation";
-  const email = settings?.email || "admin@bpr.clinic";
   const phone = settings?.phone || "";
 
   return (
@@ -109,9 +108,7 @@ export default async function CancellationPolicyPage() {
             </div>
             <div className="border-t pt-4">
               <p className="text-sm text-gray-600">
-                <strong>How to cancel:</strong> Log into your patient portal, navigate to your appointments, and submit a cancellation request. Alternatively, contact us directly at{" "}
-                <a href={`mailto:${email}`} className="text-[#4F7361] hover:underline">{email}</a>
-                {phone && <> or <a href={`tel:${phone}`} className="text-[#4F7361] hover:underline">{phone}</a></>}.
+                <strong>How to cancel:</strong> Log into your patient portal, navigate to your appointments, and submit a cancellation request. Alternatively, contact us via WhatsApp{phone && <> or <a href={`tel:${phone}`} className="text-[#4F7361] hover:underline">{phone}</a></>}.
               </p>
             </div>
           </div>
@@ -241,9 +238,9 @@ export default async function CancellationPolicyPage() {
           <h2 className="text-xl font-bold text-gray-900">Questions about this policy?</h2>
           <p className="text-gray-600">Our team is happy to help clarify anything.</p>
           <div className="flex flex-wrap gap-3 justify-center">
-            <a href={`mailto:${email}`} className="inline-flex items-center gap-2 bg-[#4F7361] text-white px-5 py-2.5 rounded-xl font-medium hover:bg-[#3d5a4a] transition-colors text-sm">
-              📧 Email Us
-            </a>
+            <span className="inline-flex items-center gap-2 text-[#3d5a4a] text-sm">
+              💬 Contact us via WhatsApp — use the floating icon on the site
+            </span>
             {phone && (
               <a href={`tel:${phone}`} className="inline-flex items-center gap-2 border border-[#4F7361] text-[#3d5a4a] px-5 py-2.5 rounded-xl font-medium hover:bg-[#4F7361]/10 transition-colors text-sm">
                 📞 Call Us

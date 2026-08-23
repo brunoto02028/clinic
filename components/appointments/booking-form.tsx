@@ -333,9 +333,9 @@ export default function BookingForm() {
                     ? "Sem datas disponíveis neste momento. Contacte a clínica."
                     : "No available dates at the moment. Please contact the clinic."}
                 </p>
-                <a href="mailto:admin@bpr.clinic" className="text-primary text-sm hover:underline mt-2 inline-block">
-                  admin@bpr.clinic
-                </a>
+                <p className="text-primary text-sm mt-2">
+                  {isPt ? "Fale connosco pelo WhatsApp (ícone no site)." : "Contact us via WhatsApp (icon on the site)."}
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">

@@ -55,8 +55,8 @@ export default function PrivacyPolicyPage() {
               ? "O controlador de dados é: Bruno Physical Rehabilitation Ltd, com sede em Ipswich, Suffolk, Reino Unido."
               : "The data controller is: Bruno Physical Rehabilitation Ltd, based in Ipswich, Suffolk, United Kingdom."}</p>
             <p>{isPt
-              ? "Para perguntas sobre proteção de dados, entre em contato: admin@bpr.clinic"
-              : "For data protection enquiries, contact: admin@bpr.clinic"}</p>
+              ? "Para perguntas sobre proteção de dados, entre em contato pelo WhatsApp ou pelo formulário em bpr.clinic."
+              : "For data protection enquiries, contact us via WhatsApp or the enquiry form at bpr.clinic."}</p>
           </Section>
 
           {/* 2. What Data We Collect */}
@@ -207,8 +207,8 @@ export default function PrivacyPolicyPage() {
               ? "Utilizamos IA para ajudar a gerar análises clínicas, transcrições e rascunhos de relatórios. NÃO tomamos decisões com efeitos legais ou significativos sobre si baseadas unicamente em processamento automatizado — todas as análises e decisões clínicas geradas por IA são revistas e aprovadas por um fisioterapeuta qualificado antes de qualquer ação. Tem o direito (Artigo 22 do UK GDPR) de não ser sujeito a decisões totalmente automatizadas."
               : "We use AI to help generate clinical analyses, transcriptions, and report drafts. We do NOT make decisions with legal or similarly significant effects about you based solely on automated processing — all AI-generated clinical analyses and decisions are reviewed and approved by a qualified physiotherapist before any action is taken. You have the right (Article 22 of the UK GDPR) not to be subject to solely automated decisions."}</p>
             <p className="mt-3">{isPt
-              ? "Para exercer qualquer um desses direitos, entre em contato: admin@bpr.clinic. Responderemos dentro de 30 dias."
-              : "To exercise any of these rights, contact: admin@bpr.clinic. We will respond within 30 days."}</p>
+              ? "Para exercer qualquer um desses direitos, entre em contato pelo WhatsApp ou pelo formulário em bpr.clinic. Responderemos dentro de 30 dias."
+              : "To exercise any of these rights, contact us via WhatsApp or the enquiry form at bpr.clinic. We will respond within 30 days."}</p>
           </Section>
 
           {/* 9. Data Security */}
@@ -248,8 +248,8 @@ export default function PrivacyPolicyPage() {
           {/* 13. Complaints */}
           <Section icon={Mail} title={isPt ? "13. Reclamações" : "13. Complaints"}>
             <p>{isPt
-              ? "Se você tem preocupações sobre como tratamos seus dados pessoais, entre em contato conosco primeiro em admin@bpr.clinic. Se não estiver satisfeito com nossa resposta, você pode reclamar ao:"
-              : "If you have concerns about how we handle your personal data, please contact us first at admin@bpr.clinic. If you are not satisfied with our response, you may complain to the:"}</p>
+              ? "Se você tem preocupações sobre como tratamos seus dados pessoais, entre em contato conosco primeiro pelo WhatsApp ou pelo formulário em bpr.clinic. Se não estiver satisfeito com nossa resposta, você pode reclamar ao:"
+              : "If you have concerns about how we handle your personal data, please contact us first via WhatsApp or the enquiry form at bpr.clinic. If you are not satisfied with our response, you may complain to the:"}</p>
             <div className="mt-2 p-3 bg-white/5 rounded-lg">
               <p className="font-semibold text-foreground">Information Commissioner&apos;s Office (ICO)</p>
               <p>{isPt ? "Telefone" : "Phone"}: 0303 123 1113</p>
@@ -264,7 +264,7 @@ export default function PrivacyPolicyPage() {
               <p className="font-semibold text-foreground">{isPt ? "Contato" : "Contact"}</p>
               <p className="text-muted-foreground mt-1">
                 Bruno Physical Rehabilitation Ltd<br />
-                Email: <a href="mailto:admin@bpr.clinic" className="text-primary hover:underline">admin@bpr.clinic</a><br />
+                {isPt ? "Contato: WhatsApp ou formulário em bpr.clinic" : "Contact: WhatsApp or enquiry form at bpr.clinic"}<br />
                 {isPt ? "Endereço" : "Address"}: Ipswich, Suffolk, United Kingdom
               </p>
             </div>

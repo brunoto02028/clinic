@@ -240,8 +240,8 @@ export default function TermsPage() {
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Contato" : "Contact"}</p>
                       <p className="mt-1">{isPt
-                        ? "Para consultas sobre proteção de dados ou para exercer seus direitos, entre em contato: Bruno Physical Rehabilitation, E-mail: admin@bpr.clinic. Para relatar uma violação de dados ou reclamação: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk."
-                        : "For data protection queries or to exercise your rights, contact: Bruno Physical Rehabilitation, Email: admin@bpr.clinic. To report a data breach or complaint: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk."}</p>
+                        ? "Para consultas sobre proteção de dados ou para exercer seus direitos, entre em contato com a Bruno Physical Rehabilitation pelo WhatsApp ou pelo formulário em bpr.clinic. Para relatar uma violação de dados ou reclamação: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk."
+                        : "For data protection queries or to exercise your rights, contact Bruno Physical Rehabilitation via WhatsApp or the enquiry form at bpr.clinic. To report a data breach or complaint: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk."}</p>
                     </div>
                   </div>
                 </div>
