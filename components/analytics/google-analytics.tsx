@@ -5,7 +5,10 @@ import { useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { hasAnalyticsConsent } from '@/components/cookie-consent';
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-XXXXXXXXXX';
+// Falls back to the real bpr.clinic GA4 Measurement ID (a public value that ships
+// to the browser anyway), since the prod host can't set NEXT_PUBLIC_GA_ID at build.
+// An env var, when present, still overrides this.
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-YW5KX3GL6J';
 
 export function GoogleAnalytics() {
   const pathname = usePathname();
