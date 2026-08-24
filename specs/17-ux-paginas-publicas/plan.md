@@ -59,8 +59,12 @@ prova social, contraste, lazy-load) + erros de console.
 | D2 | **Paleta mista** (`ba1` no público vs `bruno`/`clinic`) + acento **rosa "Healing With Heart"** destoa do teal da marca. Unificar identidade | Médio | Médio |
 | D3 | **~40 textos pequenos (<14px) com baixo contraste** na home — possível falha WCAG. Ajustar contraste/tamanho | Médio (acessibilidade) | Baixo |
 
+## Progresso
+- **Fase 1 implementada e QA-aprovada** (2026-08-24): B1 ✓, P1 ✓ (commit 4059c37); **C1 ✓, D3 ✓, C4 ✓, T1 ✓** (ver `qa/report-fase-1.md`).
+- Pendências da Fase 1 fora do código: **B2** (regra Cloudflare, lado do Bruno — excluir `_rsc`), **S1** (hreflang depende de URL por idioma / spec 12).
+
 ## Sugestão de fases (se aprovar)
-1. **Rápidas de alto impacto:** B1, B2, C1, C4, T1, S1, P1, D3 (todas baixo esforço).
+1. **Rápidas de alto impacto:** B1 ✓, B2 (CF), C1 ✓, C4 ✓, T1 ✓, S1 (spec 12), P1 ✓, D3 ✓.
 2. **Conversão:** C2 (prova social), C3 (callback), C5 (CTA fixo mobile).
 3. **Design/estrutura:** D1 (consolidar seções), D2 (paleta), P2, T2.
 

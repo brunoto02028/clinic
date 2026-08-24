@@ -59,6 +59,7 @@ import { t, getLocale, setLocale } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 
 import { VapiVoiceWidget } from "@/components/vapi-voice-widget";
+import { HomePricingFaq } from "@/components/home-pricing-faq";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 
 // Code splitting - lazy load heavy components
@@ -371,22 +372,24 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                 {S("heroSubtitle", "home.heroSubtitle")}
               </p>
               <div className="mt-4 flex items-start gap-2 max-w-lg">
-                <HeartHandshake className="h-4 w-4 text-rose-400 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-slate-500 italic leading-relaxed">
+                <HeartHandshake className="h-4 w-4 text-[#4F7361] mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-slate-600 italic leading-relaxed">
                   &ldquo;{T("home.healingWithHeartQuote")}&rdquo;
                 </p>
               </div>
-              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
                 <Link href="/signup">
                   <Button size="lg" variant="ba1Primary" className="w-full sm:w-auto gap-2 hover:-translate-y-0.5">
                     {locale === "pt-BR" ? "Começar o Programa" : "Start Your Programme"}
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
-                <Link href="/login">
-                  <Button size="lg" variant="ba1Outline" className="w-full sm:w-auto">
-                    {locale === "pt-BR" ? "Portal do Paciente" : "Patient Portal"}
-                  </Button>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+                >
+                  {locale === "pt-BR" ? "Já é paciente? Entrar" : "Already a patient? Log in"}
+                  <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
               {/* Trust badges */}
@@ -871,6 +874,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
           </div>
         </div>
       </section>
+
+      {/* Investment & FAQ (activity 17) */}
+      <HomePricingFaq isPt={locale === "pt-BR"} />
 
       {/* Book Highlight — "Beyond Pain" */}
       {book && (
