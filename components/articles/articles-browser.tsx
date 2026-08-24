@@ -201,6 +201,8 @@ export function ArticlesBrowser({ articles }: { articles: ArticleListItem[] }) {
                           <img
                             src={article.imageUrl}
                             alt={article.title}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             style={{ objectPosition: `${article.imageFocalX ?? 50}% ${article.imageFocalY ?? 50}%` }}
                           />

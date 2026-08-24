@@ -1,0 +1,69 @@
+# Atividade 17 — UX/Design das páginas públicas (auditoria + backlog)
+
+**Status geral:** auditoria concluída — aguardando o Bruno priorizar o que vira tarefa.
+
+## Objetivo
+Auditar as páginas públicas de bpr.clinic (home, serviços, artigos, livro) ao vivo e propor
+melhorias de UX/design/performance/SEO, priorizadas por **impacto × esforço**. Este `plan.md` é
+o relatório + backlog; cada item escolhido vira uma `t-N` com QA.
+
+## Método
+Auditoria ao vivo (Playwright) em **produção**: home (desktop + mobile 390px), `/articles`,
+`/services/mls-laser`. Extração estruturada (headings, CTAs, alt-text, JSON-LD, hreflang,
+prova social, contraste, lazy-load) + erros de console.
+
+## O que já está BOM (não mexer)
+- **Acessibilidade de imagem:** alt-text 100% na home e nos artigos.
+- **SEO on-page:** 1 H1 por página, `<title>` e meta description corretas, **JSON-LD presente**.
+- **Páginas de serviço:** boas — têm **FAQ e depoimentos**, ~580 palavras, meta ok.
+- **Mobile:** WhatsApp flutuante ativo (nossa mudança), hero com foto real.
+
+## Achados (priorizados por impacto × esforço)
+
+### 🐞 Bugs ao vivo (corrigir primeiro — são erros reais em produção)
+| ID | Achado | Impacto | Esforço |
+|----|--------|---------|---------|
+| B1 | **Widget de voz Vapi quebrado** — `/api/vapi/web-token` retorna **503** na home | Médio (feature morta no ar) | Baixo (corrigir ou desativar) |
+| B2 | **Cloudflare Managed Challenge dá 403 no prefetch RSC** de `/login` e `/signup` (`?_rsc=`) — quebra o prefetch do Next (console sujo + nav mais lenta) | Médio | Baixo (ajuste da regra no painel: excluir `_rsc`) |
+
+### 💰 Conversão (maior alavanca pra clínica)
+| ID | Achado | Impacto | Esforço |
+|----|--------|---------|---------|
+| C1 | **CTA sem hierarquia** — 6+ CTAs competindo na home (Start Programme, Start Your Programme, Book, Patient Portal, Contact, Read Chapter…). Definir **1 primário**, resto quieto | Alto | Baixo |
+| C2 | **Sem prova social na home** — depoimentos/reviews existem nas páginas de serviço mas **não** na home. Trazer 2–3 depoimentos + estrelas Google perto do CTA | Alto | Médio |
+| C3 | **Contato de baixo compromisso** — hoje só "criar conta" (pesado) ou WhatsApp. Adicionar **"Solicitar retorno de ligação"** (nome + telefone) | Alto | Médio |
+| C4 | **Sem preço/expectativa** — `£` não aparece em nenhuma página. Bloco "O que esperar / Investimento" (faixas ou "avaliação a partir de £X") | Médio-Alto | Baixo |
+| C5 | **CTA primário abaixo da dobra no mobile** — nenhum botão de ação no 1º viewport. **Barra fixa de ação no mobile** (Agendar) | Alto | Médio |
+
+### 🔒 Confiança
+| ID | Achado | Impacto | Esforço |
+|----|--------|---------|---------|
+| T1 | **Sem FAQ na home** (existe nas páginas de serviço) — trazer um FAQ curto (referral? seguro? domicílio? condições?) | Médio | Baixo |
+| T2 | **Bio do profissional fraca** — "Meet Bruno" com foto + qualificações + **nº de registro** (paciente de fisio confere) | Médio | Baixo |
+
+### 🔎 SEO
+| ID | Achado | Impacto | Esforço |
+|----|--------|---------|---------|
+| S1 | **Sem `hreflang` EN/PT** em nenhuma página (site é bilíngue) — adicionar tags recíprocas | Médio | Baixo |
+
+### ⚡ Performance
+| ID | Achado | Impacto | Esforço |
+|----|--------|---------|---------|
+| P1 | **`/articles`: só 3 de 33 imagens com lazy-load** — carrega tudo de uma vez (LCP/banda). Lazy-load abaixo da dobra | Alto (35 artigos) | Baixo |
+| P2 | Auditar imagens da home (hero `priority`, `next/image`, tamanhos) | Médio | Médio |
+
+### 🎨 Design
+| ID | Achado | Impacto | Esforço |
+|----|--------|---------|---------|
+| D1 | **"The Method (01–04)" e "Your Journey (01–04)" são redundantes** — dizem quase a mesma coisa 2x. Consolidar/diferenciar | Médio | Médio |
+| D2 | **Paleta mista** (`ba1` no público vs `bruno`/`clinic`) + acento **rosa "Healing With Heart"** destoa do teal da marca. Unificar identidade | Médio | Médio |
+| D3 | **~40 textos pequenos (<14px) com baixo contraste** na home — possível falha WCAG. Ajustar contraste/tamanho | Médio (acessibilidade) | Baixo |
+
+## Sugestão de fases (se aprovar)
+1. **Rápidas de alto impacto:** B1, B2, C1, C4, T1, S1, P1, D3 (todas baixo esforço).
+2. **Conversão:** C2 (prova social), C3 (callback), C5 (CTA fixo mobile).
+3. **Design/estrutura:** D1 (consolidar seções), D2 (paleta), P2, T2.
+
+## Como seguir
+O Bruno escolhe os IDs; cada um vira uma `t-N` com implementação → qa-tester → review → concluir.
+(B2 é config de Cloudflare, do lado dele; eu documento o ajuste.)
