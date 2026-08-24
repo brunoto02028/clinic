@@ -15,18 +15,25 @@ const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 // Cloudflare-published test secret that always passes.
 const TEST_SECRET = "1x0000000000000000000000000000000AA";
 
+// Cache the secret in-process (short TTL) so a bot flood doesn't do a DB read
+// per verification.
+let secretCache: { value: string; at: number } | null = null;
+const SECRET_TTL_MS = 5 * 60 * 1000;
+
 export async function getTurnstileSecret(): Promise<string> {
-  const secret = (await getConfigValue("TURNSTILE_SECRET_KEY")) || process.env.TURNSTILE_SECRET_KEY;
-  if (secret) return secret;
+  if (secretCache && Date.now() - secretCache.at < SECRET_TTL_MS) return secretCache.value;
+  const configured = (await getConfigValue("TURNSTILE_SECRET_KEY")) || process.env.TURNSTILE_SECRET_KEY;
   // No real secret configured — fall back to Cloudflare's always-pass TEST secret
   // so dev/QA works. In production this means the bot gate is effectively OFF, so
   // warn loudly (it's an easy thing to forget after deploy).
-  if (process.env.NODE_ENV === "production") {
+  if (!configured && process.env.NODE_ENV === "production") {
     console.warn(
       "[turnstile] TURNSTILE_SECRET_KEY is not configured in production — using the always-pass TEST secret. Bot protection is effectively OFF. Set it in systemConfig ('TURNSTILE_SECRET_KEY').",
     );
   }
-  return TEST_SECRET;
+  const value = configured || TEST_SECRET;
+  secretCache = { value, at: Date.now() };
+  return value;
 }
 
 export async function verifyTurnstile(

@@ -5,7 +5,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { sysLog, logAudit } from "@/lib/system-logger";
 import { validateCredentials } from "@/lib/auth-credentials";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -23,24 +23,20 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials, req) {
-        // Rate-limit login by IP to throttle brute-force (activity 16). Behind
-        // Cloudflare, cf-connecting-ip carries the real client IP.
-        const h: any = (req as any)?.headers ?? {};
-        const ip =
-          h["cf-connecting-ip"] ||
-          h["x-real-ip"] ||
-          String(h["x-forwarded-for"] || "").split(",")[0].trim() ||
-          "unknown";
-        // Key by account + IP: a shared NAT doesn't lock out everyone, and a
-        // single account is throttled even if the attacker rotates IPs.
+      async authorize(credentials) {
+        // Per-account brute-force throttle (activity 16). Keyed by account only,
+        // NOT IP, so rotating IPs can't bypass it. A successful login resets the
+        // counter, so an active user never locks themselves out.
         const acct = String(credentials?.email ?? "").toLowerCase() || "unknown";
-        const rl = rateLimit(`login:${acct}:${ip}`, { max: 10, windowMs: 10 * 60 * 1000 });
-        if (!rl.allowed) return null; // treated as a failed attempt; skips bcrypt
-        return await validateCredentials(
+        const key = `login:acct:${acct}`;
+        const rl = rateLimit(key, { max: 10, windowMs: 10 * 60 * 1000 });
+        if (!rl.allowed) return null; // throttled; skips bcrypt
+        const result = await validateCredentials(
           credentials?.email ?? "",
           credentials?.password ?? ""
         );
+        if (result) resetRateLimit(key); // success doesn't consume the budget
+        return result;
       },
     }),
   ],

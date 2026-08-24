@@ -48,7 +48,7 @@ export function NewsletterSignup({ isPt = false }: { isPt?: boolean }) {
     <form onSubmit={handleSubmit} className="space-y-2">
       <input
         type="text"
-        name="website"
+        name="hp_url"
         value={website}
         onChange={(e) => setWebsite(e.target.value)}
         tabIndex={-1}

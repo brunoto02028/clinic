@@ -329,7 +329,7 @@ export default function SimplifiedSignupForm() {
             {/* Honeypot (anti-bot) — off-screen, real users never fill it */}
             <input
               type="text"
-              name="website"
+              name="hp_url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               tabIndex={-1}

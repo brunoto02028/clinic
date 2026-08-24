@@ -13,6 +13,12 @@ function sweep(now: number) {
   for (const [k, e] of buckets) if (e.resetAt <= now) buckets.delete(k);
 }
 
+/** Clear a key's window — e.g. on a successful login so it doesn't consume the
+ *  brute-force budget. */
+export function resetRateLimit(key: string) {
+  buckets.delete(key);
+}
+
 export function rateLimit(
   key: string,
   opts: { max: number; windowMs: number },

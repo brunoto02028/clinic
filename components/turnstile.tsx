@@ -31,7 +31,10 @@ function loadTurnstileScript(): Promise<void> {
     s.async = true;
     s.defer = true;
     s.onload = () => resolve();
-    s.onerror = () => resolve(); // fail quietly; server verify is the real gate
+    s.onerror = () => {
+      scriptPromise = null; // allow a later mount to retry the load
+      resolve();
+    };
     document.head.appendChild(s);
   });
   return scriptPromise;
