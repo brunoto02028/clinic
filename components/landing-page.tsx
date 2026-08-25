@@ -60,6 +60,9 @@ import type { Locale } from "@/lib/i18n";
 
 import { VapiVoiceWidget } from "@/components/vapi-voice-widget";
 import { HomePricingFaq } from "@/components/home-pricing-faq";
+import { HomeTestimonials } from "@/components/home-testimonials";
+import { HomeCallback } from "@/components/home-callback";
+import { MobileCtaBar } from "@/components/mobile-cta-bar";
 import { NewsletterSignup } from "@/components/newsletter-signup";
 
 // Code splitting - lazy load heavy components
@@ -878,6 +881,22 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
       {/* Investment & FAQ (activity 17) */}
       <HomePricingFaq isPt={locale === "pt-BR"} />
 
+      {/* Social proof (activity 17, C2) — hidden until real testimonials exist */}
+      <HomeTestimonials
+        isPt={locale === "pt-BR"}
+        testimonials={(() => {
+          try {
+            const parsed = JSON.parse((settings as any)?.startTestimonialsJson || "[]");
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })()}
+      />
+
+      {/* Request a callback (activity 17, C3) */}
+      <HomeCallback isPt={locale === "pt-BR"} />
+
       {/* Book Highlight — "Beyond Pain" */}
       {book && (
         <section className="py-16 sm:py-20 lg:py-24 bg-white">
@@ -1317,6 +1336,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
         );
       })()}
       <VapiVoiceWidget />
+      {/* Mobile sticky CTA (activity 17, C5) */}
+      <MobileCtaBar isPt={locale === "pt-BR"} />
     </div>
   );
 }

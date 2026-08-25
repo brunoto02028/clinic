@@ -103,6 +103,7 @@ const publicRoutes = [
   '/lead-magnet',
   '/api/lead-magnet',
   '/api/newsletter', // public footer newsletter signup (P4) — feeds the same EmailContact/Lead list
+  '/api/callback', // public "request a callback" form (activity 17, C3) — creates a SalesLead
   '/intake',
   '/api/intake',
   '/api/analytics/track',
