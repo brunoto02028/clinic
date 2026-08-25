@@ -584,8 +584,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               {
                 num: "01",
                 icon: ScanLine,
-                color: "from-blue-500 to-cyan-500",
-                bg: "bg-blue-50 text-blue-600",
+                color: "from-[#4F7361] to-[#6E8F7E]",
+                bg: "bg-[#EDF3EF] text-[#4F7361]",
                 titleEn: "Global Assessment",
                 titlePt: "Avaliação Global",
                 descEn: "Full-body evaluation using infrared thermography and HRV — to identify the true root cause of your condition.",
@@ -594,8 +594,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               {
                 num: "02",
                 icon: Zap,
-                color: "from-orange-500 to-amber-500",
-                bg: "bg-orange-50 text-orange-600",
+                color: "from-[#9E5E6E] to-[#C08494]",
+                bg: "bg-[#F5EBEE] text-[#9E5E6E]",
                 titleEn: "Pain Elimination",
                 titlePt: "Eliminação da Dor",
                 descEn: "MLS® Laser, electrotherapy, microcurrent (MENS) and therapeutic ultrasound accelerate comfort and tissue repair — while movement and re-education deliver the lasting result.",
@@ -604,8 +604,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               {
                 num: "03",
                 icon: Activity,
-                color: "from-emerald-500 to-teal-500",
-                bg: "bg-emerald-50 text-emerald-600",
+                color: "from-[#55705F] to-[#7A9384]",
+                bg: "bg-[#EAF0EB] text-[#55705F]",
                 titleEn: "Movement Restoration",
                 titlePt: "Restauração do Movimento",
                 descEn: "Supervised exercise and movement rehabilitation to restore correct movement patterns, muscle balance, and full range of motion — so you return to the activities you love.",
@@ -614,8 +614,8 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               {
                 num: "04",
                 icon: Sparkles,
-                color: "from-violet-500 to-purple-500",
-                bg: "bg-violet-50 text-violet-600",
+                color: "from-[#8A6D3B] to-[#B0966A]",
+                bg: "bg-[#F4EEE3] text-[#8A6D3B]",
                 titleEn: "Re-education & Longevity",
                 titlePt: "Reeducação & Longevidade",
                 descEn: "Biohacking protocols, HRV monitoring, sleep optimisation and lifestyle guidance — so you leave with the knowledge and tools to maintain your health for life.",
@@ -850,7 +850,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             {([
               {
                 icon: Clock,
-                accent: "from-amber-400 to-orange-400",
+                accent: "from-[#6E8F7E] to-[#4F7361]",
                 titleEn: "No session limits",
                 titlePt: "Sem limite de sessão",
                 descEn: "You don't pay for hours. You invest in a complete result. Every appointment lasts as long as your treatment requires — never rushed, never cut short.",
@@ -858,7 +858,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               },
               {
                 icon: Target,
-                accent: "from-primary to-cyan-400",
+                accent: "from-[#C08494] to-[#9E5E6E]",
                 titleEn: "Root cause, not symptoms",
                 titlePt: "Causa raiz, não sintomas",
                 descEn: "We use thermography and HRV to understand why the problem exists — not just where it hurts. We treat the source.",
@@ -866,7 +866,7 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
               },
               {
                 icon: Users,
-                accent: "from-emerald-400 to-teal-400",
+                accent: "from-[#7A9384] to-[#55705F]",
                 titleEn: "Whole-person care",
                 titlePt: "Cuidado integral",
                 descEn: "When your recovery requires it, we work with dentists, nutritionists, and other specialists. Because your body is a system, and we treat it as one.",
