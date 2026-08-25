@@ -32,3 +32,10 @@
 ## Observações
 - Prod não tem `whatsappNumber` visível? Não — em prod o FAB carrega normal; no DB local ele às vezes não vem, então o teste do "lift" foi validado pela lógica (`pathname==="/" → bottom-24`).
 - C2 entrega o mecanismo; **quando o Bruno cadastrar depoimentos reais** no admin, eles aparecem na home automaticamente.
+
+## QA de ponta a ponta em PRODUÇÃO (2026-08-25, após deploy `V_4YVrWd06C3KNWE8Y9Zd`)
+- **C3 E2E real:** callback enviado no bpr.clinic ao vivo → `SalesLead` criado no **banco de produção** (`id cmt8obn610000nw096yiozfgh`, source=website, stage=new, priority=high, interestedIn=callback, notes com horário). Registro de teste **removido** após a verificação (prod limpo).
+- **C2:** oculto no HTML de prod (0 depoimentos) ✓
+- **C5:** barra fixa aparece no mobile (top 775 / viewport 844) e o WhatsApp FAB fica **acima** dela (bottom 748) — `overlap: false` ✓ (`qa-prod-c5-mobile.png`).
+- **Console de prod:** 0 erros (B2 do prefetch já resolvido).
+- **C1 (fase 1) intacto:** link "Already a patient? Log in" presente ✓.
