@@ -518,19 +518,26 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                   &ldquo;{T("home.healingWithHeartQuote")}&rdquo;
                 </p>
               </div>
-              {/* Credentials */}
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { icon: ShieldCheck, label: "STO Registered", color: "text-primary bg-primary/10" },
-                  { icon: Sparkles, label: "IPHM Biohacking Practitioner", color: "text-emerald-600 bg-emerald-100" },
-                  { icon: Activity, label: "15+ Years of Clinical Experience", color: "text-orange-600 bg-orange-100" },
-                  { icon: Users, label: "Ex-Professional Footballer", color: "text-blue-600 bg-blue-100" },
-                ].map((c) => (
-                  <div key={c.label} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${c.color}`}><c.icon className="h-4 w-4" /></div>
-                    <span className="text-sm font-medium text-foreground">{c.label}</span>
-                  </div>
-                ))}
+              {/* Credentials & standards (activity 17, T2) — kept generic and
+                  practice-level (no personal registration number) so it still
+                  holds if the clinic adds more practitioners. */}
+              <div className="mt-6">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#4F7361] mb-3">
+                  {locale === "pt-BR" ? "Registrado, segurado e baseado em evidências" : "Registered, insured & evidence-based"}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { icon: ShieldCheck, en: "STO Registered", pt: "Registrado na STO", color: "text-primary bg-primary/10" },
+                    { icon: Sparkles, en: "IPHM Biohacking Practitioner", pt: "Praticante de Biohacking IPHM", color: "text-emerald-600 bg-emerald-100" },
+                    { icon: Activity, en: "15+ Years of Clinical Experience", pt: "15+ Anos de Experiência Clínica", color: "text-orange-600 bg-orange-100" },
+                    { icon: Users, en: "Ex-Professional Footballer", pt: "Ex-Jogador Profissional de Futebol", color: "text-blue-600 bg-blue-100" },
+                  ].map((c) => (
+                    <div key={c.en} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${c.color}`}><c.icon className="h-4 w-4" /></div>
+                      <span className="text-sm font-medium text-foreground">{locale === "pt-BR" ? c.pt : c.en}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="mt-7">
                 <Link href="/signup">

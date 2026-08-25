@@ -63,6 +63,7 @@ prova social, contraste, lazy-load) + erros de console.
 - **Fase 1 implementada e QA-aprovada** (2026-08-24): B1 ✓, P1 ✓ (commit 4059c37); **C1 ✓, D3 ✓, C4 ✓, T1 ✓** (ver `qa/report-fase-1.md`).
 - **B2 ✓ resolvido** (2026-08-25): regra WAF `Challenge auth endpoints` agora exclui `?_rsc=` (prefetch do Next não é mais desafiado; navegação real segue desafiada). Aplicado via API Cloudflare com token WAF.
 - **Fase 2 implementada e QA-aprovada** (2026-08-25): **C2 ✓** (prova social pronta-porém-oculta, lê `startTestimonialsJson`), **C3 ✓** (callback → SalesLead no `/admin/sales`), **C5 ✓** (barra fixa mobile) — ver `qa/report-fase-2.md` (t-2/t-3/t-4).
+- **T2 ✓ (versão genérica)** (2026-08-25): selos de credencial da seção About agora **bilíngues** (EN/PT) + linha de confiança nível-prática ("Registrado, segurado e baseado em evidências"). **Sem nº de registro pessoal** (decisão do Bruno) — a evolução para "Nossa equipe" com card por profissional (usando `hcpcRegistrationNumber` + model `Qualification`) fica parqueada até definir os profissionais.
 - **S1 ✓ resolvido** (2026-08-25) via **spec 12** (URLs por idioma nos artigos: `/pt/articles/[slug]` server-side + hreflang recíproco + sitemap). Home/serviços em `/pt` ficam para um passo futuro, se desejado.
 
 ## Sugestão de fases (se aprovar)
