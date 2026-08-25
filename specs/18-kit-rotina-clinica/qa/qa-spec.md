@@ -37,3 +37,12 @@ Autenticação: a área é admin/staff → cenários de auth incluídos (sem ses
 
 ## Limpeza
 - Remover paciente de teste, plano e prescrições criados no QA.
+
+## Fase 2 — Produção de conteúdo (T-7..T-9)
+| Tipo | Passos | Esperado |
+|------|--------|----------|
+| Estrutura | Coluna `illustrationUrl` em `protocol_template_items` | Existe em local + prod |
+| Segurança | Rodar `generate-exercise-illustrations.cjs` SEM `--go` | Dry-run: imprime prompts, **não** escreve arquivo nem gasta API |
+| Conteúdo (T-8) | Cada protocolo de região novo | Aprovado pelo painel (clínico+exercício+evidência) ANTES da prod; bilíngue + citações |
+| Ilustração (T-9) | `--go` só após aprovação de estilo+custo | Imagens originais salvas; `illustrationUrl` preenchido |
+| Copyright | Revisão de qualquer imagem/texto | 100% autoral; nenhum ativo/imagem de terceiros |

@@ -5763,6 +5763,9 @@ model ProtocolTemplateItem {
   titlePt           String?
   descriptionPt     String?          @db.Text
   instructionsPt    String?          @db.Text
+  // Original exercise illustration (activity 18 phase 2) — URL to an AI-generated
+  // (DALL·E 3 / Gemini) or uploaded original image. Never a third-party asset.
+  illustrationUrl   String?
   treatmentTypeName String? // for IN_CLINIC items
   sessionDuration   Int?
   sessionsPerWeek   Int?

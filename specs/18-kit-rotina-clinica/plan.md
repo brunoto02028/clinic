@@ -44,11 +44,53 @@ O maior ganho diário: o clínico escolhe a condição/região → aplica um **t
 | T-1 | Discovery + gap de dados + migração aditiva | ✅ concluído |
 | T-2 | Autoria dos 3 protocolos-piloto (seed) | ✅ concluído (revisado por painel de especialistas) |
 | T-3 | Aplicar protocolo ao paciente (references + idioma) | ✅ concluído (o `assign` já existia; estendido) |
-| T-4 | Progressão/regressão no Exercise + seed | pendente (Fase 2) |
-| T-5 | Progredir/regredir na prescrição | pendente (Fase 2) |
+| T-4 | Progressão/regressão no Exercise + seed | backlog |
+| T-5 | Progredir/regredir na prescrição | backlog |
 | T-6 | QA Fase 1 | ✅ concluído (painel + E2E do assign) |
+| T-7 | Scaffold do pipeline de conteúdo + `illustrationUrl` | ✅ estrutura montada |
+| T-8 | Lotes de protocolos por região (autoria+painel+seed) | aguardando GO |
+| T-9 | Ilustrações originais por IA (DALL·E 3) | aguardando GO (estilo+custo) |
 
-**Fase 1 CONCLUÍDA (2026-08-25)** — migração aditiva (local+prod), 3 protocolos-piloto em produção, `assign` propaga references + idioma. Ver `qa/report-fase-1.md`. **T-3 já existia** (`app/api/admin/protocols/[id]/assign`), só foi estendido. Fase 2 (progressão de exercícios) fica para quando você pedir.
+**Fase 1 CONCLUÍDA (2026-08-25)** — migração aditiva (local+prod), 3 protocolos-piloto em produção, `assign` propaga references + idioma. Ver `qa/report-fase-1.md`. **T-3 já existia** (`app/api/admin/protocols/[id]/assign`), só foi estendido.
+
+---
+
+## Fase 2 — Produção de Conteúdo em Escala (ESTRUTURA MONTADA — aguardando GO do Bruno)
+
+Objetivo: **abundância de conteúdo próprio** cobrindo as 6 áreas (benchmark: os 6 "volumes" de produtos de mercado — usados só como **checklist de cobertura**, **nunca** copiados). Tudo autoral, bilíngue, com citações e revisado pelo painel de especialistas.
+
+### Decisões já tomadas
+- **1º lote:** protocolos por **região do corpo** (Volume 05), com **abundância** (2–3 condições por região).
+- **Ilustrações:** **imagens originais por IA** via o pipeline que o app já tem (`lib/ai-provider.generateImage` → DALL·E 3, Gemini fallback), estilo "educational medical illustration" + marca. **NÃO** SVG à mão, **NÃO** ativos de terceiros. Campo `ProtocolTemplateItem.illustrationUrl` (aditivo) **já criado** em local+prod.
+- **⚠️ Pendente do Bruno (amanhã):** (a) aprovar o **estilo/qualidade** das imagens (gerar 2–3 amostras, ~US$0,20) e (b) autorizar o **custo** de gerar em escala (DALL·E 3 ~US$0,04–0,08/imagem).
+
+### Pipeline (repetível, por lote)
+```
+1. Autoro um lote (ex.: 3 protocolos de uma região) — texto EN/PT + citações
+2. Painel de especialistas revisa CADA peça (clínico + exercício + evidência + código)
+3. Corrijo o que apontarem
+4. (Trilho B) Gero ilustrações originais dos exercícios via generateImage → illustrationUrl
+5. Seed em prod (idempotente, upsert por nome)
+6. Próximo lote
+```
+Trilho A (texto) e Trilho B (imagens) são independentes — o texto avança sem depender das imagens.
+
+### Roadmap de cobertura (autoral; ✓ = piloto já feito)
+| Região | Condições-alvo (originais) |
+|--------|----------------------------|
+| Joelho | OA ✓ · dor femoropatelar · tendinopatia patelar |
+| Tornozelo/Pé | Aquiles ✓ · fáscia plantar ✓ · entorse lateral de tornozelo |
+| Ombro | dor subacromial (manguito) · ombro congelado · instabilidade |
+| Cervical | cervicalgia mecânica · radiculopatia cervical · cefaleia cervicogênica |
+| Lombar | lombalgia inespecífica · radiculopatia lombar (ciática) |
+| Quadril | OA de quadril · tendinopatia glútea (GTPS) |
+| Cotovelo/Punho | epicondilalgia lateral (cotovelo de tenista) · túnel do carpo |
+
+### Tarefas da Fase 2
+- **T-7** Scaffold do pipeline: script de geração de ilustrações (`scripts/generate-exercise-illustrations.cjs`, **guardado** — não roda sem flag) + campo `illustrationUrl` (feito) + doc do fluxo. *(estrutura — feito)*
+- **T-8** Lotes de protocolos por região (autoria + painel + seed), região a região conforme o roadmap.
+- **T-9** Ilustrações originais por IA para os exercícios (após aprovação de estilo + custo).
+- (**T-4/T-5** progressão/regressão de exercícios seguem no backlog da biblioteca.)
 
 ## Suposições (validar com o Bruno)
 1. **Público:** admin/staff (área clínica). O paciente só vê o resultado (prescrição/plano) pelo portal que já existe — não há tela nova de paciente nesta atividade.
