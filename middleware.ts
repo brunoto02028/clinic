@@ -73,6 +73,7 @@ const publicRoutes = [
   '/api/signup',
   '/api/settings',
   '/api/articles',
+  '/pt/articles', // PT-language article URLs (activity 12) — public, server-rendered for SEO
   '/api/service-pages',
   '/api/version',
   '/api/client-error',

@@ -33,20 +33,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/complaints-policy`, changeFrequency: "yearly", priority: 0.2 },
   ];
 
-  // Published articles — dynamic
+  // Published articles — dynamic. Bilingual (activity 12): each article is an EN
+  // URL, plus a /pt URL when it has a Portuguese body, tied together by hreflang
+  // alternates so Google indexes both languages.
   let articlePages: MetadataRoute.Sitemap = [];
   try {
     const articles = await prisma.article.findMany({
       where: { published: true },
-      select: { slug: true, updatedAt: true },
+      select: { slug: true, updatedAt: true, titlePt: true, contentPt: true },
       orderBy: { updatedAt: "desc" },
     });
-    articlePages = articles.map((a) => ({
-      url: `${BASE_URL}/articles/${a.slug}`,
-      lastModified: a.updatedAt,
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
-    }));
+    for (const a of articles) {
+      const enUrl = `${BASE_URL}/articles/${a.slug}`;
+      const ptUrl = `${BASE_URL}/pt/articles/${a.slug}`;
+      const hasPt = !!(a.contentPt && a.contentPt.trim());
+      const languages: Record<string, string> = { en: enUrl, "x-default": enUrl };
+      if (hasPt) languages["pt-BR"] = ptUrl;
+
+      articlePages.push({
+        url: enUrl,
+        lastModified: a.updatedAt,
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+        alternates: { languages },
+      });
+      if (hasPt) {
+        articlePages.push({
+          url: ptUrl,
+          lastModified: a.updatedAt,
+          changeFrequency: "monthly" as const,
+          priority: 0.6,
+          alternates: { languages },
+        });
+      }
+    }
   } catch {
     // DB unavailable — static pages only
   }
