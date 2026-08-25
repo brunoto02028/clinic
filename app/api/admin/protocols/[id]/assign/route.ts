@@ -20,7 +20,7 @@ export async function POST(
   }
   const therapistId = (session.user as any).id;
 
-  const { patientId, note } = await req.json();
+  const { patientId, note, language } = await req.json();
   if (!patientId) return NextResponse.json({ error: "patientId required" }, { status: 400 });
 
   const [template, patient, therapist] = await Promise.all([
@@ -44,6 +44,20 @@ export async function POST(
   const clinicId = patient.clinicId || therapist?.clinicId;
   if (!clinicId) return NextResponse.json({ error: "No clinic context" }, { status: 400 });
 
+  // Bilingual + evidence (activity 18): render the patient instance in the
+  // requested language (defaults to English) and carry the template's evidence
+  // citations onto the protocol so the patient's plan keeps its references.
+  const lang = typeof language === "string" && language.toLowerCase().startsWith("pt") ? "pt-BR" : "en-GB";
+  const isPt = lang === "pt-BR";
+  const L = (en?: string | null, pt?: string | null): string => (isPt ? pt || en : en) || "";
+  let references: any[] = [];
+  try {
+    references = template.referencesJson ? JSON.parse(template.referencesJson) : [];
+    if (!Array.isArray(references)) references = [];
+  } catch {
+    references = [];
+  }
+
   // Create the patient protocol instance
   const protocol = await (prisma as any).treatmentProtocol.create({
     data: {
@@ -51,10 +65,11 @@ export async function POST(
       patientId,
       therapistId,
       templateId: template.id,
-      title: template.name,
-      summary: [template.description, note].filter(Boolean).join("\n\n") || template.name,
+      language: lang,
+      title: L(template.name, template.namePt),
+      summary: [L(template.description, template.descriptionPt), note].filter(Boolean).join("\n\n") || L(template.name, template.namePt),
       goals: [],
-      references: [],
+      references,
       status: "SENT_TO_PATIENT",
       sentToPatientAt: new Date(),
       approvedAt: new Date(),
@@ -66,9 +81,9 @@ export async function POST(
           phase: it.phase,
           itemType: it.itemType,
           sortOrder: it.sortOrder,
-          title: it.title,
-          description: it.description || it.title,
-          instructions: it.instructions,
+          title: L(it.title, it.titlePt),
+          description: L(it.description, it.descriptionPt) || L(it.title, it.titlePt),
+          instructions: L(it.instructions, it.instructionsPt),
           treatmentTypeName: it.treatmentTypeName,
           sessionDuration: it.sessionDuration,
           sessionsPerWeek: it.sessionsPerWeek,
@@ -103,7 +118,7 @@ export async function POST(
           holdSeconds: it.holdSeconds,
           restSeconds: it.restSeconds,
           frequency: it.frequency,
-          notes: `${template.name}${it.instructions ? ` — ${it.instructions}` : ""}`,
+          notes: `${L(template.name, template.namePt)}${L(it.instructions, it.instructionsPt) ? ` — ${L(it.instructions, it.instructionsPt)}` : ""}`,
         },
       });
     }

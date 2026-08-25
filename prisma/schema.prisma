@@ -5725,6 +5725,12 @@ model ProtocolTemplate {
   clinicId        String?
   name            String
   description     String?                @db.Text
+  // Bilingual + evidence (activity 18 — Kit de Rotina Clínica). name/description
+  // stay as the EN (primary) copy; the *Pt columns hold the Portuguese version so
+  // the toggle renders one clean language. referencesJson = evidence citations.
+  namePt          String?
+  descriptionPt   String?                @db.Text
+  referencesJson  String?                @db.Text // JSON: [{citation, authors, year, journal, doi}]
   condition       String? // e.g. "Knee Osteoarthritis"
   bodyRegion      String? // e.g. "KNEE"
   equipment       String[] // e.g. ["MLS Laser", "ALCE", "Ultrasound 1MHz"]
@@ -5753,6 +5759,10 @@ model ProtocolTemplateItem {
   title             String
   description       String?          @db.Text
   instructions      String?          @db.Text
+  // Bilingual (activity 18) — Portuguese versions; base fields stay EN (primary).
+  titlePt           String?
+  descriptionPt     String?          @db.Text
+  instructionsPt    String?          @db.Text
   treatmentTypeName String? // for IN_CLINIC items
   sessionDuration   Int?
   sessionsPerWeek   Int?
