@@ -673,9 +673,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             img: thermoImg,
             fallbackImg: "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800&q=80",
             gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
-            accent: "bg-blue-400/20 border-blue-300/40 text-blue-200",
+            accent: "bg-[#4F7361]/30 border-[#7DA890]/40 text-[#CFE4D8]",
             icon: ScanLine,
-            stepColor: "text-blue-300",
+            stepColor: "text-[#CFE4D8]",
             tagEn: "Step 01",
             tagPt: "Passo 01",
             titleEn: "We understand your body",
@@ -691,9 +691,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             fallbackImg: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80",
             step: "02",
             gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
-            accent: "bg-orange-400/20 border-orange-300/40 text-orange-200",
+            accent: "bg-[#9E5E6E]/30 border-[#C08494]/40 text-[#EFD2DA]",
             icon: Zap,
-            stepColor: "text-orange-300",
+            stepColor: "text-[#EFD2DA]",
             tagEn: "Step 02",
             tagPt: "Passo 02",
             titleEn: "We eliminate the pain",
@@ -709,9 +709,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             fallbackImg: "/images/method/movement.webp",
             step: "03",
             gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
-            accent: "bg-emerald-400/20 border-emerald-300/40 text-emerald-200",
+            accent: "bg-[#55705F]/30 border-[#7A9384]/40 text-[#D0E1D7]",
             icon: Activity,
-            stepColor: "text-emerald-300",
+            stepColor: "text-[#D0E1D7]",
             tagEn: "Step 03",
             tagPt: "Passo 03",
             titleEn: "We restore your movement",
@@ -727,9 +727,9 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             fallbackImg: "/images/method/lifestyle.webp",
             step: "04",
             gradient: "from-slate-900/90 via-slate-800/70 to-slate-900/30",
-            accent: "bg-violet-400/20 border-violet-300/40 text-violet-200",
+            accent: "bg-[#8A6D3B]/30 border-[#B0966A]/40 text-[#EAD9BC]",
             icon: Sparkles,
-            stepColor: "text-violet-300",
+            stepColor: "text-[#EAD9BC]",
             tagEn: "Step 04",
             tagPt: "Passo 04",
             titleEn: "We educate for life",
@@ -746,12 +746,12 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-12">
                 <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
-                  {locale === "pt-BR" ? "A Tua Jornada" : "Your Journey"}
+                  {locale === "pt-BR" ? "Tecnologia" : "Technology"}
                 </span>
                 <h2 className="font-sora text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
                   {locale === "pt-BR"
-                    ? "Não vendemos sessões. Entregamos resultados."
-                    : "We don't sell sessions. We deliver results."}
+                    ? "A tecnologia por trás de cada etapa"
+                    : "The technology behind every step"}
                 </h2>
                 <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
                   {locale === "pt-BR"
@@ -777,29 +777,16 @@ export default function LandingPage({ initialSettings = null, initialArticles = 
                       />
                       <div className={`absolute inset-0 bg-gradient-to-t ${ph.gradient}`} />
 
-                      {/* Step number watermark */}
-                      <div className={`absolute top-4 right-4 text-6xl font-black ${ph.stepColor} opacity-20 leading-none select-none`}>
-                        {ph.step}
-                      </div>
-
                       <div className="absolute inset-0 flex flex-col justify-end p-5">
                         <span className={`self-start text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${ph.accent} mb-2`}>
-                          {locale === "pt-BR" ? ph.tagPt : ph.tagEn}
+                          {locale === "pt-BR" ? ph.techPt : ph.techEn}
                         </span>
                         <h3 className="text-white font-bold text-base leading-tight mb-2">
                           {locale === "pt-BR" ? ph.titlePt : ph.titleEn}
                         </h3>
-                        <p className="text-white/80 text-xs leading-relaxed mb-3">
+                        <p className="text-white/80 text-xs leading-relaxed">
                           {locale === "pt-BR" ? ph.descPt : ph.descEn}
                         </p>
-                        <div className="border-t border-white/10 pt-2.5">
-                          <p className="text-white/40 text-[10px] uppercase tracking-wider mb-0.5">
-                            {locale === "pt-BR" ? "Tecnologia utilizada" : "Technology used"}
-                          </p>
-                          <p className="text-white/60 text-[11px] font-medium">
-                            {locale === "pt-BR" ? ph.techPt : ph.techEn}
-                          </p>
-                        </div>
                       </div>
                     </div>
                   );
