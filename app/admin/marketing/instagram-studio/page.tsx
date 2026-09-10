@@ -470,34 +470,34 @@ export default function InstagramStudioPage() {
           setTextLayers(meta.textLayers);
           textLayersHistoryRef.current = [];
           setCanUndo(false);
-          restored.push(`${meta.textLayers.length} texto(s)`);
+          restored.push(`${meta.textLayers.length} text(s)`);
         }
         if (meta.customImagePrompt) setCustomImagePrompt(meta.customImagePrompt);
       } catch {
         setTopic(draft.aiPrompt);
       }
     }
-    if (draft.caption) { setCaption(draft.caption); restored.push("legenda"); }
+    if (draft.caption) { setCaption(draft.caption); restored.push("caption"); }
     if (draft.hashtags) setHashtags(draft.hashtags);
     if (draft.mediaUrls?.[0]) {
       setGeneratedImage(draft.mediaUrls[0]);
       setOriginalImage(draft.mediaUrls[0]);
       originalImageRef.current = draft.mediaUrls[0];
       setWatermarkedImage(null);
-      restored.push("imagem");
+      restored.push("image");
     }
     // Restore music
     if (draft.musicUrl && draft.musicTitle) {
       setSelectedMusic({ id: `draft-music-${draft.id}`, title: draft.musicTitle, audioUrl: draft.musicUrl });
-      restored.push(`música: ${draft.musicTitle}`);
+      restored.push(`music: ${draft.musicTitle}`);
     } else {
       setSelectedMusic(null);
     }
     setShowDraftsPanel(false);
     setTab("image");
     const msg = restored.length > 0
-      ? `✅ Draft carregado: ${restored.join(", ")}`
-      : "Draft carregado!";
+      ? `✅ Draft loaded: ${restored.join(", ")}`
+      : "Draft loaded!";
     setSuccess(msg);
     setTimeout(() => setSuccess(null), 5000);
   }
@@ -558,7 +558,7 @@ export default function InstagramStudioPage() {
       const data = await res.json();
       if (data.track) {
         setMusicLibrary(prev => [data.track, ...prev]);
-        setSuccess('Música guardada na biblioteca!');
+        setSuccess('Music saved to the library!');
         setTimeout(() => setSuccess(null), 3000);
       }
     } catch (e: any) { setError(e.message); }
@@ -580,7 +580,7 @@ export default function InstagramStudioPage() {
       form.append('file', file);
       const uploadRes = await fetch('/api/admin/marketing/music-library/upload', { method: 'POST', body: form });
       const uploadData = await uploadRes.json();
-      if (!uploadData.url) throw new Error(uploadData.error || 'Upload falhou');
+      if (!uploadData.url) throw new Error(uploadData.error || 'Upload failed');
       // Save to library
       const res = await fetch('/api/admin/marketing/music-library', {
         method: 'POST',
@@ -595,7 +595,7 @@ export default function InstagramStudioPage() {
       const data = await res.json();
       if (data.track) {
         setMusicLibrary(prev => [data.track, ...prev]);
-        setSuccess('Música carregada e guardada!');
+        setSuccess('Music uploaded and saved!');
         setTimeout(() => setSuccess(null), 3000);
       }
     } catch (e: any) { setError(e.message); }
@@ -637,7 +637,7 @@ export default function InstagramStudioPage() {
     const updated = [entry, ...imageLibrary.filter(i => i.url !== url)].slice(0, 30);
     setImageLibrary(updated);
     localStorage.setItem(IMAGE_LIB_KEY, JSON.stringify(updated));
-    setSuccess("Imagem guardada na biblioteca!");
+    setSuccess("Image saved to the library!");
     setTimeout(() => setSuccess(null), 3000);
   }
 
@@ -758,7 +758,7 @@ export default function InstagramStudioPage() {
       if (articleCaption) {
         setCaption(articleCaption);
       }
-      setSuccess('Artigo carregado no Studio! Imagem e legenda prontas — adiciona texto, logo e música.');
+      setSuccess('Article loaded into the Studio! Image and caption ready — add text, logo and music.');
       setTimeout(() => setSuccess(null), 5000);
     }
   }, [searchParams]);
@@ -922,7 +922,7 @@ export default function InstagramStudioPage() {
     setCaption(captionText);
     setHashtags(tagsText);
     setTab("image");
-    setSuccess("Ideia carregada! Agora gera o conteúdo.");
+    setSuccess("Idea loaded! Now generate the content.");
     setTimeout(() => setSuccess(null), 3000);
   }
 
@@ -967,7 +967,7 @@ export default function InstagramStudioPage() {
     musicPollRef.current = setTimeout(async () => {
       if (musicPollAttemptsRef.current > 40) {
         setMusicPollId(null);
-        setError("Música demorou demasiado — tenta novamente.");
+        setError("Music took too long — try again.");
         return;
       }
       musicPollAttemptsRef.current += 1;
@@ -979,7 +979,7 @@ export default function InstagramStudioPage() {
           setMusicPollId(null);
         } else if (data.status === "error") {
           setMusicPollId(null);
-          setError("Erro na geração de música: " + (data.error || "Suno falhou"));
+          setError("Music generation error: " + (data.error || "Suno failed"));
         } else {
           // still pending — keep polling
           scheduleMusicPoll(id, 8000);
@@ -1064,7 +1064,7 @@ export default function InstagramStudioPage() {
     setViralSavingAll(false);
     // Reload drafts so they appear immediately in the panel
     await loadDrafts();
-    setSuccess(`✅ ${savedIds.size} ideias guardadas como drafts! Clica em "Ver Drafts" para usar.`);
+    setSuccess(`✅ ${savedIds.size} ideas saved as drafts! Click "View Drafts" to use them.`);
     setTimeout(() => setSuccess(null), 6000);
   }
 
@@ -1148,7 +1148,7 @@ export default function InstagramStudioPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setCalPosts(data.posts || []);
-      setSuccess(`${data.posts?.length || 0} posts gerados!`);
+      setSuccess(`${data.posts?.length || 0} posts generated!`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) { setError(e.message); }
     finally { setCalLoading(false); }
@@ -1207,7 +1207,7 @@ export default function InstagramStudioPage() {
         setCalPosts(prev => prev.map((p, idx) => idx === i ? { ...p, _saved: "schedule" } : p));
       } catch {}
     }
-    setSuccess(`${saved} posts agendados com sucesso!`);
+    setSuccess(`${saved} posts scheduled successfully!`);
     setTimeout(() => setSuccess(null), 4000);
     setCalSavingAll(false);
   }
@@ -1279,7 +1279,7 @@ export default function InstagramStudioPage() {
     const uploadRes = await fetch("/api/upload", { method: "POST", body: form });
     const uploadData = await uploadRes.json();
     const uploaded = uploadData.url || uploadData.imageUrl || uploadData.image?.imageUrl;
-    if (!uploaded) throw new Error("Falha ao fazer upload da imagem");
+    if (!uploaded) throw new Error("Failed to upload image");
     return uploaded.startsWith("http") ? uploaded : `https://bpr.clinic${uploaded}`;
   }
 
@@ -1293,8 +1293,8 @@ export default function InstagramStudioPage() {
     let imgUrl = canvasRef.current && hasOverlays
       ? (canvasRef.current.toDataURL("image/jpeg", 0.92))
       : (watermarkedImage || generatedImage || uploadedImages[0]);
-    if (!caption) { setError("Caption obrigatória para publicar"); return; }
-    if (!imgUrl) { setError("Imagem obrigatória para publicar"); return; }
+    if (!caption) { setError("Caption required to publish"); return; }
+    if (!imgUrl) { setError("Image required to publish"); return; }
     setPublishing(true);
     setError(null);
     try {
@@ -1346,7 +1346,7 @@ export default function InstagramStudioPage() {
 
   async function publishFacebook() {
     const imgUrl = fbImage || watermarkedImage || generatedImage || uploadedImages[0];
-    if (!imgUrl) { setError("Imagem obrigatória para publicar no Facebook"); return; }
+    if (!imgUrl) { setError("Image required to publish to Facebook"); return; }
     setPublishingFb(true);
     setError(null);
     try {
@@ -1369,7 +1369,7 @@ export default function InstagramStudioPage() {
         const uploadRes = await fetch("/api/upload", { method: "POST", body: form });
         const uploadData = await uploadRes.json();
         const uploaded = uploadData.url || uploadData.imageUrl || uploadData.image?.imageUrl;
-        if (!uploaded) throw new Error("Falha ao fazer upload da imagem");
+        if (!uploaded) throw new Error("Failed to upload image");
         publicUrl = uploaded.startsWith("http") ? uploaded : `https://bpr.clinic${uploaded}`;
       } else if (publicUrl.startsWith("/")) {
         publicUrl = `https://bpr.clinic${publicUrl}`;
@@ -1389,7 +1389,7 @@ export default function InstagramStudioPage() {
   }
 
   async function saveDraft(asScheduled = false) {
-    if (!caption && !topic) { setError("Adiciona um tópico ou legenda primeiro"); return; }
+    if (!caption && !topic) { setError("Add a topic or caption first"); return; }
     setSaving(true);
     try {
       const allImages = [
@@ -1426,7 +1426,7 @@ export default function InstagramStudioPage() {
       // Clear autosave after explicit save
       localStorage.removeItem(AUTO_SAVE_KEY);
       setRestoreSession(null);
-      setSuccess(scheduledAt ? `Agendado para ${new Date(scheduledAt).toLocaleString("pt-PT")}!` : "Draft guardado!");
+      setSuccess(scheduledAt ? `Scheduled for ${new Date(scheduledAt).toLocaleString("en-GB")}!` : "Draft saved!");
       setTimeout(() => setSuccess(null), 4000);
       // Refresh draft list if open
       if (showDraftsPanel) loadDrafts();
@@ -1498,15 +1498,15 @@ export default function InstagramStudioPage() {
         <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
           <RotateCcw className="h-4 w-4 text-amber-400 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-amber-300">Sessão anterior encontrada</p>
+            <p className="text-sm font-medium text-amber-300">Previous session found</p>
             <p className="text-xs text-muted-foreground truncate">
-              {restoreSession.topic || restoreSession.service || "Rascunho sem título"} —
-              {" "}{new Date(restoreSession.savedAt).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+              {restoreSession.topic || restoreSession.service || "Untitled draft"} —
+              {" "}{new Date(restoreSession.savedAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
             </p>
           </div>
           <Button size="sm" onClick={() => applyRestore(restoreSession)}
             className="bg-amber-500 hover:bg-amber-600 text-black font-semibold shrink-0 h-7 text-xs">
-            Restaurar
+            Restore
           </Button>
           <button onClick={() => { setRestoreSession(null); localStorage.removeItem(AUTO_SAVE_KEY); }}
             className="text-muted-foreground hover:text-foreground shrink-0">
@@ -1526,12 +1526,12 @@ export default function InstagramStudioPage() {
             <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-violet-500" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-violet-300">A gerar música…</p>
-            <p className="text-[10px] text-muted-foreground">{musicResult?.title || "Suno AI"} · pode demorar 2-3 min</p>
+            <p className="text-xs font-semibold text-violet-300">Generating music…</p>
+            <p className="text-[10px] text-muted-foreground">{musicResult?.title || "Suno AI"} · may take 2-3 min</p>
           </div>
           <button onClick={() => setTab("music")}
             className="text-[10px] bg-violet-600 hover:bg-violet-500 text-white px-2.5 py-1 rounded-lg ml-1 shrink-0">
-            Ver
+            View
           </button>
         </div>
       )}
@@ -1546,7 +1546,7 @@ export default function InstagramStudioPage() {
                   <div className="h-14 w-14 rounded-full bg-emerald-500/20 flex items-center justify-center">
                     <CheckCircle className="h-7 w-7 text-emerald-400" />
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">Publicado com sucesso! 🎉</h3>
+                  <h3 className="text-lg font-bold text-foreground">Published successfully! 🎉</h3>
                   <div className="flex gap-2 flex-wrap justify-center">
                     {publishResult.platforms.map(p => (
                       <Badge key={p} className={p === "Instagram"
@@ -1557,14 +1557,14 @@ export default function InstagramStudioPage() {
                       </Badge>
                     ))}
                   </div>
-                  <p className="text-sm text-muted-foreground">O teu post foi publicado e já está visível para os teus seguidores.</p>
+                  <p className="text-sm text-muted-foreground">Your post has been published and is now visible to your followers.</p>
                 </div>
                 <div className="flex gap-2 mt-4">
                   <Button onClick={() => setPublishResult(null)} variant="outline" className="flex-1">
-                    Continuar
+                    Continue
                   </Button>
                   <Button onClick={resetPost} className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold gap-1">
-                    <Plus className="h-4 w-4" /> Novo Post
+                    <Plus className="h-4 w-4" /> New Post
                   </Button>
                 </div>
               </>
@@ -1574,11 +1574,11 @@ export default function InstagramStudioPage() {
                   <div className="h-14 w-14 rounded-full bg-red-500/20 flex items-center justify-center">
                     <AlertCircle className="h-7 w-7 text-red-400" />
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">Erro ao publicar</h3>
+                  <h3 className="text-lg font-bold text-foreground">Error publishing</h3>
                   <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{publishResult.error}</p>
                 </div>
                 <Button onClick={() => setPublishResult(null)} variant="outline" className="w-full mt-4">
-                  Fechar
+                  Close
                 </Button>
               </>
             )}
@@ -1598,7 +1598,7 @@ export default function InstagramStudioPage() {
             </div>
             Instagram Studio
           </h1>
-          <p className="text-sm text-muted-foreground">AI para texto · imagem · vídeo · marca d'água · publicar</p>
+          <p className="text-sm text-muted-foreground">AI for text · image · video · watermark · publish</p>
         </div>
         <div className="flex items-center gap-1.5">
           <Badge className="bg-violet-500/15 text-violet-400 border-violet-500/30 text-xs gap-1"><Sparkles className="h-3 w-3" /> Claude</Badge>
@@ -1626,7 +1626,7 @@ export default function InstagramStudioPage() {
           <Card>
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tópico</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Topic</label>
                 {voice.isSupported && (
                   <button
                     type="button"
@@ -1638,20 +1638,20 @@ export default function InstagramStudioPage() {
                     }`}
                   >
                     {voice.status === "listening" ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                    {voice.status === "listening" ? "Parar" : "Falar"}
+                    {voice.status === "listening" ? "Stop" : "Speak"}
                   </button>
                 )}
               </div>
               {voice.status === "listening" && (
                 <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                  A ouvir... {voice.interimTranscript && <span className="text-foreground italic">{voice.interimTranscript}</span>}
+                  Listening... {voice.interimTranscript && <span className="text-foreground italic">{voice.interimTranscript}</span>}
                 </div>
               )}
               <textarea
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
-                placeholder="Escreve ou clica em 'Falar' para descrever o que queres criar..."
+                placeholder="Type or click 'Speak' to describe what you want to create..."
                 rows={3}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary resize-none placeholder:text-muted-foreground/50"
               />
@@ -1670,7 +1670,7 @@ export default function InstagramStudioPage() {
           {/* Tone + Language */}
           <Card>
             <CardContent className="p-4 space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tom</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tone</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {TONES.map(t => (
                   <button key={t.value} onClick={() => setTone(t.value)}
@@ -1680,9 +1680,9 @@ export default function InstagramStudioPage() {
                 ))}
               </div>
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Idioma do Post</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Post Language</label>
                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <Mic className="h-3 w-3" /> Voz sempre em PT
+                  <Mic className="h-3 w-3" /> Voice always in PT
                 </span>
               </div>
               <div className="flex gap-1.5">
@@ -1694,7 +1694,7 @@ export default function InstagramStudioPage() {
                 ))}
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Fala sempre em português — a IA gera o post no idioma seleccionado acima
+                Always speak in Portuguese — the AI generates the post in the language selected above
               </p>
             </CardContent>
           </Card>
@@ -1702,21 +1702,21 @@ export default function InstagramStudioPage() {
           {/* AI Action Buttons */}
           <Card>
             <CardContent className="p-4 space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Gerar com IA</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Generate with AI</label>
               <Button onClick={generatePost} disabled={generating} className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white justify-start">
                 {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                Texto + Imagem (Tudo)
+                Text + Image (Everything)
               </Button>
               <Button onClick={generateCaptionOnly} disabled={generating} variant="outline" className="w-full justify-start">
                 {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <AlignLeft className="h-4 w-4 mr-2" />}
-                Só Legenda / Texto
+                Caption / Text only
               </Button>
               <Button onClick={generateImageOnly} disabled={imageLoading} variant="outline" className="w-full justify-start">
                 {imageLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ImageIcon className="h-4 w-4 mr-2" />}
-                Só Imagem (Gemini)
+                Image only (Gemini)
               </Button>
               <div className="border-t border-border pt-2">
-                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><Film className="h-3.5 w-3.5" /> Script de Vídeo / Reel</p>
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><Film className="h-3.5 w-3.5" /> Video / Reel Script</p>
                 <div className="flex gap-1.5 mb-2">
                   {DURATIONS.map(d => (
                     <button key={d} onClick={() => setVideoDuration(d)}
@@ -1727,7 +1727,7 @@ export default function InstagramStudioPage() {
                 </div>
                 <Button onClick={() => { setTab("video"); generateVideoScript(); }} disabled={videoLoading} variant="outline" className="w-full justify-start border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
                   {videoLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Video className="h-4 w-4 mr-2" />}
-                  Gerar Script de Vídeo
+                  Generate Video Script
                 </Button>
               </div>
             </CardContent>
@@ -1736,10 +1736,10 @@ export default function InstagramStudioPage() {
           {/* Upload image */}
           <Card>
             <CardContent className="p-4 space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ou faz Upload de Imagem</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Or Upload an Image</label>
               <button onClick={() => fileInputRef.current?.click()}
                 className="w-full border-2 border-dashed border-border rounded-lg p-3 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground transition-all flex items-center gap-2">
-                <Upload className="h-4 w-4" /> Clica para fazer upload
+                <Upload className="h-4 w-4" /> Click to upload
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
               {uploadedImages.length > 0 && (
@@ -1764,13 +1764,13 @@ export default function InstagramStudioPage() {
           {/* Tab Switcher */}
           <div className="flex bg-muted/40 rounded-xl p-1 gap-1">
             {([
-              { id: "image" as StudioTab, icon: <ImageIcon className="h-3.5 w-3.5" />, label: "Imagem" },
-              { id: "video" as StudioTab, icon: <Video className="h-3.5 w-3.5" />, label: "Script Vídeo" },
-              { id: "caption" as StudioTab, icon: <FileText className="h-3.5 w-3.5" />, label: "Legenda" },
+              { id: "image" as StudioTab, icon: <ImageIcon className="h-3.5 w-3.5" />, label: "Image" },
+              { id: "video" as StudioTab, icon: <Video className="h-3.5 w-3.5" />, label: "Video Script" },
+              { id: "caption" as StudioTab, icon: <FileText className="h-3.5 w-3.5" />, label: "Caption" },
               { id: "viral" as StudioTab, icon: <Flame className="h-3.5 w-3.5" />, label: "Viral Scout" },
-              { id: "music" as StudioTab, icon: <span className="text-xs">🎵</span>, label: "Música" },
-              { id: "calendar" as StudioTab, icon: <Clock className="h-3.5 w-3.5" />, label: "Calendário" },
-              { id: "intelligence" as StudioTab, icon: <Zap className="h-3.5 w-3.5" />, label: "Inteligência" },
+              { id: "music" as StudioTab, icon: <span className="text-xs">🎵</span>, label: "Music" },
+              { id: "calendar" as StudioTab, icon: <Clock className="h-3.5 w-3.5" />, label: "Calendar" },
+              { id: "intelligence" as StudioTab, icon: <Zap className="h-3.5 w-3.5" />, label: "Intelligence" },
               { id: "facebook" as StudioTab, icon: <Facebook className="h-3.5 w-3.5" />, label: "Facebook" },
             ]).map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
@@ -1820,12 +1820,12 @@ export default function InstagramStudioPage() {
                         )}
                         {showTextPanel && textLayers.length > 0 && (
                           <div className="absolute bottom-2 left-2 pointer-events-none">
-                            <span className="text-[9px] bg-black/50 text-white px-1.5 py-0.5 rounded backdrop-blur-sm">🔀 Arrasta os textos na imagem</span>
+                            <span className="text-[9px] bg-black/50 text-white px-1.5 py-0.5 rounded backdrop-blur-sm">🔀 Drag the text on the image</span>
                           </div>
                         )}
                         {showWatermarkPanel && logoLoaded && !showTextPanel && (
                           <div className="absolute bottom-2 left-2 pointer-events-none">
-                            <span className="text-[9px] bg-black/50 text-white px-1.5 py-0.5 rounded backdrop-blur-sm">🔀 Arrasta o logo</span>
+                            <span className="text-[9px] bg-black/50 text-white px-1.5 py-0.5 rounded backdrop-blur-sm">🔀 Drag the logo</span>
                           </div>
                         )}
                         <div className="absolute bottom-2 right-2 pointer-events-none bg-black/50 rounded text-[9px] text-white px-1.5 py-0.5 backdrop-blur-sm">1:1 · Instagram</div>
@@ -1834,32 +1834,32 @@ export default function InstagramStudioPage() {
                       <div className="space-y-2 border border-border/50 rounded-xl p-3 bg-muted/10">
                         {/* Row 1: Text mode toggle */}
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold shrink-0">Texto na imagem:</span>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold shrink-0">Text on image:</span>
                           <div className="flex rounded-lg border border-border overflow-hidden text-[11px] font-medium">
                             <button
                               onClick={() => setImageTextMode("notext")}
                               className={`px-3 py-1 transition-all ${imageTextMode === "notext" ? "bg-cyan-500/20 text-cyan-400" : "text-muted-foreground hover:text-foreground"}`}>
-                              📷 Sem texto
+                              📷 No text
                             </button>
                             <button
                               onClick={() => setImageTextMode("withtext")}
                               className={`px-3 py-1 transition-all border-l border-border ${imageTextMode === "withtext" ? "bg-violet-500/20 text-violet-400" : "text-muted-foreground hover:text-foreground"}`}>
-                              ✍️ IA escreve
+                              ✍️ AI writes
                             </button>
                           </div>
                           {imageTextMode === "withtext" && (
-                            <span className="text-[10px] text-violet-400/70 italic">Texto baseado no tema</span>
+                            <span className="text-[10px] text-violet-400/70 italic">Text based on the topic</span>
                           )}
                         </div>
 
                         {/* Row 2: Style presets */}
                         <div className="flex gap-1.5 flex-wrap">
                           {[
-                            { id: "photo", label: "📸 Foto", desc: "Fotografia clínica realista" },
-                            { id: "infographic", label: "📊 Infográfico", desc: "Design plano c/ ícones" },
-                            { id: "motivational", label: "💪 Motivacional", desc: "Poster inspiracional" },
-                            { id: "minimal", label: "⬜ Minimal", desc: "Fundo limpo, premium" },
-                            { id: "bold", label: "🔥 Bold", desc: "Gráfico forte e vibrante" },
+                            { id: "photo", label: "📸 Photo", desc: "Realistic clinical photography" },
+                            { id: "infographic", label: "📊 Infographic", desc: "Flat design with icons" },
+                            { id: "motivational", label: "💪 Motivational", desc: "Inspirational poster" },
+                            { id: "minimal", label: "⬜ Minimal", desc: "Clean, premium background" },
+                            { id: "bold", label: "🔥 Bold", desc: "Strong, vibrant graphic" },
                           ].map(s => (
                             <button key={s.id} onClick={() => setImageStyle(s.id)}
                               title={s.desc}
@@ -1880,14 +1880,14 @@ export default function InstagramStudioPage() {
                             onChange={e => setCustomImagePrompt(e.target.value)}
                             onKeyDown={e => e.key === "Enter" && generateImageOnly()}
                             placeholder={imageTextMode === "withtext"
-                              ? "Frase/tema a escrever na imagem... (deixa vazio para usar o tema actual)"
-                              : "Prompt livre opcional — ex: 'hands on shoulder massage, clinical room'"}
+                              ? "Phrase/topic to write on the image... (leave empty to use the current topic)"
+                              : "Optional free prompt — e.g. 'hands on shoulder massage, clinical room'"}
                             className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary placeholder:text-muted-foreground/40"
                           />
                           <button
                             type="button"
                             onClick={imgPromptVoice.status === "listening" ? imgPromptVoice.stop : imgPromptVoice.start}
-                            title="Falar prompt"
+                            title="Speak prompt"
                             className={`px-2.5 rounded-lg border transition-all shrink-0 ${
                               imgPromptVoice.status === "listening"
                                 ? "bg-red-500 border-red-500 text-white animate-pulse"
@@ -1900,12 +1900,12 @@ export default function InstagramStudioPage() {
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={generateImageOnly} disabled={imageLoading} className="flex-1 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30 text-cyan-400 hover:from-cyan-500/20 hover:to-blue-500/20">
                           {imageLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-                          {imageLoading ? "A gerar..." : `Gerar · ${imageStyle === "photo" ? "📸" : imageStyle === "infographic" ? "📊" : imageStyle === "motivational" ? "💪" : imageStyle === "minimal" ? "⬜" : "🔥"} ${imageTextMode === "withtext" ? "· ✍️" : ""}`}
+                          {imageLoading ? "Generating..." : `Generate · ${imageStyle === "photo" ? "📸" : imageStyle === "infographic" ? "📊" : imageStyle === "motivational" ? "💪" : imageStyle === "minimal" ? "⬜" : "🔥"} ${imageTextMode === "withtext" ? "· ✍️" : ""}`}
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => { setShowTextPanel(v => !v); if (!showWatermarkPanel && !showTextPanel) drawCanvas(canvasBaseImage); }}
                           className="flex-1 border-violet-500/30 text-violet-400 hover:bg-violet-500/10">
                           <Type className="h-3.5 w-3.5 mr-1" />
-                          {showTextPanel ? "Fechar Texto" : "Texto"}
+                          {showTextPanel ? "Close Text" : "Text"}
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => { setShowWatermarkPanel(v => !v); if (!showWatermarkPanel) drawCanvas(canvasBaseImage); }}
                           className="flex-1 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
@@ -1914,7 +1914,7 @@ export default function InstagramStudioPage() {
                         </Button>
                         <Button size="sm" variant="outline"
                           onClick={() => saveToImageLibrary(watermarkedImage || generatedImage || uploadedImages[0])}
-                          title="Guardar imagem na biblioteca"
+                          title="Save image to library"
                           className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 px-2.5">
                           <Save className="h-3.5 w-3.5" />
                         </Button>
@@ -1925,10 +1925,10 @@ export default function InstagramStudioPage() {
                       <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center">
                         <ImageIcon className="h-7 w-7" />
                       </div>
-                      <p className="text-sm text-center">Gera uma imagem com IA ou faz upload</p>
+                      <p className="text-sm text-center">Generate an image with AI or upload one</p>
                       <Button size="sm" onClick={generateImageOnly} disabled={imageLoading || (!topic && !service)} className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
                         {imageLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-                        Gerar Imagem
+                        Generate Image
                       </Button>
                     </div>
                   )}
@@ -1943,7 +1943,7 @@ export default function InstagramStudioPage() {
                     className="w-full flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <ImageIcon className="h-4 w-4 text-cyan-400" />
-                      Biblioteca de Imagens
+                      Image Library
                       {imageLibrary.length > 0 && (
                         <Badge className="bg-cyan-500/15 text-cyan-400 border-cyan-500/30 text-[10px]">{imageLibrary.length}</Badge>
                       )}
@@ -1955,7 +1955,7 @@ export default function InstagramStudioPage() {
                     <div className="space-y-2">
                       {imageLibrary.length === 0 && (
                         <p className="text-xs text-muted-foreground text-center py-4">
-                          Nenhuma imagem guardada ainda. Clica no ícone 💾 para guardar a imagem actual.
+                          No images saved yet. Click the 💾 icon to save the current image.
                         </p>
                       )}
                       <div className="grid grid-cols-3 gap-2">
@@ -1966,12 +1966,12 @@ export default function InstagramStudioPage() {
                               <button
                                 onClick={() => applyImageFromLibrary(img.url)}
                                 className="text-[10px] text-white bg-cyan-500/80 hover:bg-cyan-500 px-2 py-1 rounded font-medium w-full text-center">
-                                Usar
+                                Use
                               </button>
                               <button
                                 onClick={() => deleteFromImageLibrary(img.id)}
                                 className="text-[10px] text-red-400 hover:text-red-300 w-full text-center">
-                                Apagar
+                                Delete
                               </button>
                             </div>
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-1.5 py-1 pointer-events-none">
@@ -1990,17 +1990,17 @@ export default function InstagramStudioPage() {
                 <Card className="border-violet-500/30 bg-violet-500/5">
                   <CardHeader className="pb-2 pt-3 px-4">
                     <CardTitle className="text-sm text-violet-400 flex items-center justify-between">
-                      <span className="flex items-center gap-2"><Type className="h-4 w-4" /> Texto sobre a Imagem</span>
+                      <span className="flex items-center gap-2"><Type className="h-4 w-4" /> Text over the Image</span>
                       <div className="flex gap-1.5">
                         <Button size="sm" variant="ghost" className="h-6 text-[11px] gap-1 text-amber-400 hover:text-amber-300"
                           onClick={generateAiTextSuggestions} disabled={aiTextLoading}>
                           {aiTextLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                          IA Sugere
+                          AI Suggests
                         </Button>
                         {canUndo && (
                           <Button size="sm" variant="ghost" className="h-6 text-[11px] gap-1 text-amber-400"
-                            onClick={undoTextLayers} title="Desfazer (Ctrl+Z)">
-                            <RotateCcw className="h-3 w-3" /> Desfazer
+                            onClick={undoTextLayers} title="Undo (Ctrl+Z)">
+                            <RotateCcw className="h-3 w-3" /> Undo
                           </Button>
                         )}
                         <Button size="sm" variant="ghost" className="h-6 text-[11px] gap-1 text-violet-400"
@@ -2015,7 +2015,7 @@ export default function InstagramStudioPage() {
                             setActiveTextId(id);
                             if (!showWatermarkPanel) drawCanvas(canvasBaseImage);
                           }}>
-                          <Plus className="h-3 w-3" /> Adicionar
+                          <Plus className="h-3 w-3" /> Add
                         </Button>
                       </div>
                     </CardTitle>
@@ -2025,7 +2025,7 @@ export default function InstagramStudioPage() {
                     {aiTextSuggestions.length > 0 && (
                       <div className="space-y-2">
                         <p className="text-[10px] text-amber-400 font-semibold uppercase tracking-wide flex items-center gap-1">
-                          <Sparkles className="h-3 w-3" /> Sugestões de capa geradas por IA — clica para aplicar
+                          <Sparkles className="h-3 w-3" /> AI-generated cover suggestions — click to apply
                         </p>
                         {aiTextSuggestions.map((sug, si) => (
                           <button key={si}
@@ -2065,7 +2065,7 @@ export default function InstagramStudioPage() {
                         ))}
                         <button onClick={() => setAiTextSuggestions([])}
                           className="text-[10px] text-muted-foreground hover:text-foreground w-full text-center py-1">
-                          Fechar sugestões
+                          Close suggestions
                         </button>
                       </div>
                     )}
@@ -2073,13 +2073,13 @@ export default function InstagramStudioPage() {
                     {aiTextSuggestions.length === 0 && (
                       <div className="space-y-2">
                         <p className="text-[10px] text-muted-foreground/70 uppercase tracking-wide font-semibold flex items-center gap-1">
-                          🎬 Pôsteres Cinematográficos
+                          🎬 Cinematic Posters
                         </p>
                         <div className="space-y-1.5">
                           {[
                             {
-                              label: "Cinema Clássico",
-                              desc: "Título grande no centro · tagline em baixo · créditos",
+                              label: "Classic Cinema",
+                              desc: "Large title in the centre · tagline below · credits",
                               preview: "bg-gradient-to-b from-black/0 via-black/20 to-black/80",
                               getLayers: (t: string) => [
                                 { text: "BRUNO PHYSICAL", font: "Montserrat", size: 5, color: "#14b8a6", bold: true, align: "center" as const, x: 0.5, y: 0.08, shadow: false, shadowColor: "#000000" },
@@ -2090,8 +2090,8 @@ export default function InstagramStudioPage() {
                               ]
                             },
                             {
-                              label: "Pôster Épico",
-                              desc: "Título topo · imagem · subtítulo base elegante",
+                              label: "Epic Poster",
+                              desc: "Title at top · image · elegant subtitle at base",
                               preview: "bg-gradient-to-b from-black/70 via-transparent to-black/70",
                               getLayers: (t: string) => [
                                 { text: "BPR PRESENTS", font: "Montserrat", size: 4, color: "#f0d080", bold: true, align: "center" as const, x: 0.5, y: 0.07, shadow: true, shadowColor: "#000000" },
@@ -2103,7 +2103,7 @@ export default function InstagramStudioPage() {
                             },
                             {
                               label: "Editorial Luxury",
-                              desc: "Estilo Vogue/magazine · fonte serifada · minimalista",
+                              desc: "Vogue/magazine style · serif font · minimalist",
                               preview: "bg-gradient-to-br from-amber-900/20 to-black/40",
                               getLayers: (t: string) => [
                                 { text: "B R U N O  P H Y S I C A L", font: "Montserrat", size: 3.5, color: "#c9a84c", bold: true, align: "center" as const, x: 0.5, y: 0.06, shadow: false, shadowColor: "#000000" },
@@ -2116,7 +2116,7 @@ export default function InstagramStudioPage() {
                             },
                             {
                               label: "Breaking News",
-                              desc: "Urgência · destaque em cor · faixa inferior",
+                              desc: "Urgency · colour highlight · bottom band",
                               preview: "bg-gradient-to-t from-red-900/50 to-transparent",
                               getLayers: (t: string) => [
                                 { text: "BREAKING", font: "Impact", size: 7, color: "#ff3333", bold: true, align: "center" as const, x: 0.5, y: 0.06, shadow: true, shadowColor: "#000000" },
@@ -2127,7 +2127,7 @@ export default function InstagramStudioPage() {
                             },
                             {
                               label: "Documentary",
-                              desc: "Estilo Netflix/HBO · texto lateral · data base",
+                              desc: "Netflix/HBO style · side text · date at base",
                               preview: "bg-gradient-to-r from-black/60 to-transparent",
                               getLayers: (t: string) => [
                                 { text: "BPR", font: "Montserrat", size: 5, color: "#14b8a6", bold: true, align: "left" as const, x: 0.07, y: 0.08, shadow: false, shadowColor: "#000000" },
@@ -2138,8 +2138,8 @@ export default function InstagramStudioPage() {
                               ]
                             },
                             {
-                              label: "Motivacional",
-                              desc: "Frase de impacto · grande · sombra densa",
+                              label: "Motivational",
+                              desc: "Impact phrase · large · dense shadow",
                               preview: "bg-gradient-to-b from-transparent to-black/50",
                               getLayers: (t: string) => [
                                 { text: t ? `"${t.toUpperCase().slice(0, 14)}` : '"A FRASE MAIS', font: "Playfair Display", size: 10, color: "#ffffff", bold: true, align: "center" as const, x: 0.5, y: 0.32, shadow: true, shadowColor: "#000000" },
@@ -2173,7 +2173,7 @@ export default function InstagramStudioPage() {
                     )}
                     {textLayers.length === 0 && aiTextSuggestions.length === 0 && (
                       <p className="text-xs text-muted-foreground text-center py-1">
-                        Clica num padrão acima, em <span className="text-amber-400">✦ IA Sugere</span> ou em <span className="text-violet-400">+ Adicionar</span>
+                        Click a template above, <span className="text-amber-400">✦ AI Suggests</span> or <span className="text-violet-400">+ Add</span>
                       </p>
                     )}
                     {textLayers.map((layer) => (
@@ -2185,7 +2185,7 @@ export default function InstagramStudioPage() {
                             value={layer.text}
                             onChange={e => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, text: e.target.value } : l))}
                             onClick={e => e.stopPropagation()}
-                            placeholder="Escreve aqui..."
+                            placeholder="Type here..."
                             className="flex-1 bg-background border border-border rounded-lg px-2 py-1 text-sm text-foreground outline-none focus:border-violet-500/50"
                           />
                           <button onClick={e => { e.stopPropagation(); pushUndoHistory(textLayers); setTextLayers(prev => prev.filter(l => l.id !== layer.id)); }}
@@ -2196,7 +2196,7 @@ export default function InstagramStudioPage() {
                             {/* Font selector */}
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="text-[10px] text-muted-foreground block mb-1">Fonte</label>
+                                <label className="text-[10px] text-muted-foreground block mb-1">Font</label>
                                 <select value={layer.font}
                                   onChange={e => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, font: e.target.value } : l))}
                                   className="w-full bg-background border border-border rounded px-2 py-1 text-xs text-foreground outline-none">
@@ -2206,7 +2206,7 @@ export default function InstagramStudioPage() {
                                 </select>
                               </div>
                               <div>
-                                <label className="text-[10px] text-muted-foreground block mb-1">Tamanho: {layer.size}%</label>
+                                <label className="text-[10px] text-muted-foreground block mb-1">Size: {layer.size}%</label>
                                 <input type="range" min={3} max={20} value={layer.size}
                                   onChange={e => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, size: Number(e.target.value) } : l))}
                                   className="w-full accent-violet-500" />
@@ -2215,7 +2215,7 @@ export default function InstagramStudioPage() {
                             {/* Colour + align + bold */}
                             <div className="flex items-center gap-3">
                               <div>
-                                <label className="text-[10px] text-muted-foreground block mb-1">Cor</label>
+                                <label className="text-[10px] text-muted-foreground block mb-1">Colour</label>
                                 <div className="flex gap-1 flex-wrap">
                                   {["#ffffff","#000000","#14b8a6","#0ea5e9","#f59e0b","#ef4444","#a855f7"].map(c => (
                                     <button key={c} onClick={() => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, color: c } : l))}
@@ -2240,14 +2240,14 @@ export default function InstagramStudioPage() {
                                 </button>
                                 <button onClick={() => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, shadow: !l.shadow } : l))}
                                   className={`px-2 py-1 rounded border text-[10px] transition-all ${layer.shadow ? "border-violet-500 bg-violet-500/20 text-violet-400" : "border-border text-muted-foreground"}`}>
-                                  Sombra
+                                  Shadow
                                 </button>
                               </div>
                             </div>
                             {/* Shadow strength */}
                             {layer.shadow && (
                               <div>
-                                <label className="text-[10px] text-muted-foreground block mb-1">Intensidade sombra: {layer.shadowBlur ?? 8}px</label>
+                                <label className="text-[10px] text-muted-foreground block mb-1">Shadow strength: {layer.shadowBlur ?? 8}px</label>
                                 <input type="range" min={2} max={60} value={layer.shadowBlur ?? 8}
                                   onChange={e => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, shadowBlur: Number(e.target.value) } : l))}
                                   className="w-full accent-violet-500" />
@@ -2257,18 +2257,18 @@ export default function InstagramStudioPage() {
                             {/* Background / Backdrop */}
                             <div className="space-y-1.5 pt-1 border-t border-border/50">
                               <div className="flex items-center justify-between">
-                                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Fundo atrás do texto</label>
+                                <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Background behind text</label>
                                 <button
                                   onClick={() => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, bgEnabled: !l.bgEnabled } : l))}
                                   className={`text-[10px] px-2 py-0.5 rounded border transition-all ${layer.bgEnabled ? "border-violet-500 bg-violet-500/20 text-violet-300" : "border-border text-muted-foreground"}`}>
-                                  {layer.bgEnabled ? "Activo" : "Off"}
+                                  {layer.bgEnabled ? "Active" : "Off"}
                                 </button>
                               </div>
                               {layer.bgEnabled && (
                                 <div className="space-y-1.5">
                                   {/* Bg colour presets + picker */}
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-muted-foreground w-10 shrink-0">Cor</span>
+                                    <span className="text-[10px] text-muted-foreground w-10 shrink-0">Colour</span>
                                     <div className="flex gap-1 flex-wrap">
                                       {["#000000","#111111","#1e293b","#ffffff","#14b8a6","#7c3aed","#dc2626"].map(c => (
                                         <button key={c}
@@ -2283,14 +2283,14 @@ export default function InstagramStudioPage() {
                                   </div>
                                   {/* Opacity */}
                                   <div>
-                                    <label className="text-[10px] text-muted-foreground block mb-0.5">Opacidade: {layer.bgOpacity ?? 60}%</label>
+                                    <label className="text-[10px] text-muted-foreground block mb-0.5">Opacity: {layer.bgOpacity ?? 60}%</label>
                                     <input type="range" min={5} max={95} value={layer.bgOpacity ?? 60}
                                       onChange={e => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, bgOpacity: Number(e.target.value) } : l))}
                                       className="w-full accent-violet-500" />
                                   </div>
                                   {/* Blur */}
                                   <div>
-                                    <label className="text-[10px] text-muted-foreground block mb-0.5">Blur de fundo: {layer.bgBlur ?? 0}px {(layer.bgBlur ?? 0) === 0 ? "(desligado)" : "(frosted glass)"}</label>
+                                    <label className="text-[10px] text-muted-foreground block mb-0.5">Background blur: {layer.bgBlur ?? 0}px {(layer.bgBlur ?? 0) === 0 ? "(off)" : "(frosted glass)"}</label>
                                     <input type="range" min={0} max={20} value={layer.bgBlur ?? 0}
                                       onChange={e => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, bgBlur: Number(e.target.value) } : l))}
                                       className="w-full accent-cyan-500" />
@@ -2302,13 +2302,13 @@ export default function InstagramStudioPage() {
                             {/* Position */}
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="text-[10px] text-muted-foreground block mb-1">Posição X: {Math.round(layer.x * 100)}%</label>
+                                <label className="text-[10px] text-muted-foreground block mb-1">Position X: {Math.round(layer.x * 100)}%</label>
                                 <input type="range" min={5} max={95} value={Math.round(layer.x * 100)}
                                   onChange={e => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, x: Number(e.target.value) / 100 } : l))}
                                   className="w-full accent-violet-500" />
                               </div>
                               <div>
-                                <label className="text-[10px] text-muted-foreground block mb-1">Posição Y: {Math.round(layer.y * 100)}%</label>
+                                <label className="text-[10px] text-muted-foreground block mb-1">Position Y: {Math.round(layer.y * 100)}%</label>
                                 <input type="range" min={5} max={95} value={Math.round(layer.y * 100)}
                                   onChange={e => setTextLayers(prev => prev.map(l => l.id === layer.id ? { ...l, y: Number(e.target.value) / 100 } : l))}
                                   className="w-full accent-violet-500" />
@@ -2326,7 +2326,7 @@ export default function InstagramStudioPage() {
                               const dataUrl = getCanvasDataUrl();
                               if (dataUrl) {
                                 setWatermarkedImage(dataUrl);
-                                setSuccess("Texto aplicado! Imagem pronta para publicar.");
+                                setSuccess("Text applied! Image ready to publish.");
                                 setTimeout(() => setSuccess(null), 3000);
                               }
                             });
@@ -2334,7 +2334,7 @@ export default function InstagramStudioPage() {
                         }}
                         disabled={!canvasBaseImage}
                         className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold">
-                        <CheckCircle className="h-4 w-4 mr-2" /> Confirmar Texto na Imagem
+                        <CheckCircle className="h-4 w-4 mr-2" /> Confirm Text on Image
                       </Button>
                     )}
                   </CardContent>
@@ -2346,7 +2346,7 @@ export default function InstagramStudioPage() {
                 <Card className="border-amber-500/30 bg-amber-500/5">
                   <CardHeader className="pb-2 pt-3 px-4">
                     <CardTitle className="text-sm text-amber-400 flex items-center gap-2">
-                      <Droplets className="h-4 w-4" /> Marca d'Água / Logo
+                      <Droplets className="h-4 w-4" /> Watermark / Logo
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 space-y-3">
@@ -2355,17 +2355,17 @@ export default function InstagramStudioPage() {
                       {logoLoaded ? (
                         <div className="flex items-center gap-2 flex-1 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-1.5">
                           <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                          <span className="text-xs text-emerald-400 truncate flex-1">Logo carregado</span>
+                          <span className="text-xs text-emerald-400 truncate flex-1">Logo loaded</span>
                           <button onClick={() => { setLogoUrl(""); setLogoLoaded(false); localStorage.removeItem("bpr_studio_logo"); }}
                             className="text-muted-foreground hover:text-red-400 shrink-0"><X className="h-3 w-3" /></button>
                         </div>
                       ) : (
                         <input type="text" value={logoUrl} onChange={e => setLogoUrl(e.target.value)}
-                          placeholder="URL do logo ou faz upload"
+                          placeholder="Logo URL or upload"
                           className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground outline-none focus:border-amber-500/50 placeholder:text-muted-foreground/50" />
                       )}
                       <Button size="sm" variant="outline" onClick={() => logoFileRef.current?.click()} className="text-xs shrink-0">
-                        <Upload className="h-3.5 w-3.5 mr-1" /> {logoLoaded ? "Trocar" : "Upload"}
+                        <Upload className="h-3.5 w-3.5 mr-1" /> {logoLoaded ? "Change" : "Upload"}
                       </Button>
                       <input ref={logoFileRef} type="file" accept="image/*" className="hidden" onChange={uploadLogo} />
                     </div>
@@ -2373,8 +2373,8 @@ export default function InstagramStudioPage() {
                     {/* Auto-logo toggle */}
                     <div className="flex items-center justify-between bg-muted/40 rounded-lg px-3 py-2">
                       <div>
-                        <p className="text-xs font-semibold text-foreground">Logo automático</p>
-                        <p className="text-[10px] text-muted-foreground">Aplica o logo em todas as imagens geradas</p>
+                        <p className="text-xs font-semibold text-foreground">Automatic logo</p>
+                        <p className="text-[10px] text-muted-foreground">Applies the logo to every generated image</p>
                       </div>
                       <button
                         onClick={() => setAutoLogoEnabled(v => !v)}
@@ -2390,10 +2390,10 @@ export default function InstagramStudioPage() {
                     {/* Colour tint */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs text-muted-foreground">Cor do logo</label>
+                        <label className="text-xs text-muted-foreground">Logo colour</label>
                         <button onClick={() => setLogoTintEnabled(v => !v)}
                           className="text-[10px] text-amber-400 hover:text-amber-300">
-                          {logoTintEnabled ? "Usar original" : "Aplicar cor"}
+                          {logoTintEnabled ? "Use original" : "Apply colour"}
                         </button>
                       </div>
                       <div className="flex gap-2 flex-wrap items-center">
@@ -2408,19 +2408,19 @@ export default function InstagramStudioPage() {
                         <input type="color" value={logoTintColor}
                           onChange={e => { setLogoTintColor(e.target.value); setLogoTintEnabled(true); }}
                           className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
-                          title="Cor personalizada" />
+                          title="Custom colour" />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-muted-foreground block mb-1">Tamanho: {Math.round(wmScale * 100)}%</label>
+                        <label className="text-xs text-muted-foreground block mb-1">Size: {Math.round(wmScale * 100)}%</label>
                         <input type="range" min={10} max={50} value={Math.round(wmScale * 100)}
                           onChange={e => setWmScale(Number(e.target.value) / 100)}
                           className="w-full accent-amber-500" />
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground block mb-1">Opacidade: {Math.round(wmOpacity * 100)}%</label>
+                        <label className="text-xs text-muted-foreground block mb-1">Opacity: {Math.round(wmOpacity * 100)}%</label>
                         <input type="range" min={20} max={100} value={Math.round(wmOpacity * 100)}
                           onChange={e => setWmOpacity(Number(e.target.value) / 100)}
                           className="w-full accent-amber-500" />
@@ -2431,16 +2431,16 @@ export default function InstagramStudioPage() {
                         const dataUrl = getCanvasDataUrl();
                         if (dataUrl) {
                           setWatermarkedImage(dataUrl);
-                          setSuccess("Logo aplicado! A imagem está pronta para publicar.");
+                          setSuccess("Logo applied! The image is ready to publish.");
                           setTimeout(() => setSuccess(null), 3000);
                         } else {
-                          setError("Carrega um logo primeiro");
+                          setError("Upload a logo first");
                         }
                       }}
                       disabled={!logoLoaded || !activeImage}
                       className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold">
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Confirmar Logo na Imagem
+                      Confirm Logo on Image
                     </Button>
                   </CardContent>
                 </Card>
@@ -2455,7 +2455,7 @@ export default function InstagramStudioPage() {
                 <Card>
                   <CardContent className="p-8 flex items-center justify-center gap-3 text-muted-foreground">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <span className="text-sm">A criar script de vídeo com Claude AI...</span>
+                    <span className="text-sm">Creating video script with Claude AI...</span>
                   </CardContent>
                 </Card>
               )}
@@ -2464,7 +2464,7 @@ export default function InstagramStudioPage() {
                   {/* Hook */}
                   <Card className="border-pink-500/30 bg-pink-500/5">
                     <CardContent className="p-4">
-                      <p className="text-xs font-semibold text-pink-400 mb-1.5 uppercase tracking-wide">🎣 Hook (0-3s) — Para o Scroll</p>
+                      <p className="text-xs font-semibold text-pink-400 mb-1.5 uppercase tracking-wide">🎣 Hook (0-3s) — Stop the Scroll</p>
                       <p className="text-sm font-semibold text-foreground">"{videoScript.hook}"</p>
                     </CardContent>
                   </Card>
@@ -2472,7 +2472,7 @@ export default function InstagramStudioPage() {
                   {/* Script segments */}
                   <Card>
                     <CardHeader className="pb-2 pt-3 px-4">
-                      <CardTitle className="text-sm">Script Completo ({videoDuration}s)</CardTitle>
+                      <CardTitle className="text-sm">Full Script ({videoDuration}s)</CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-4 space-y-2">
                       {videoScript.script?.map((seg: any, i: number) => (
@@ -2485,9 +2485,9 @@ export default function InstagramStudioPage() {
                           </button>
                           {expandedSegment === i && (
                             <div className="px-3 pb-3 pt-0 border-t border-border bg-muted/10 space-y-2 text-xs">
-                              <p><span className="text-muted-foreground">🎙️ Fala:</span> <span className="text-foreground">{seg.audio}</span></p>
+                              <p><span className="text-muted-foreground">🎙️ Voiceover:</span> <span className="text-foreground">{seg.audio}</span></p>
                               <p><span className="text-muted-foreground">📹 Visual:</span> <span className="text-foreground">{seg.visual}</span></p>
-                              {seg.text_overlay && <p><span className="text-muted-foreground">📝 Texto no ecrã:</span> <span className="text-foreground">{seg.text_overlay}</span></p>}
+                              {seg.text_overlay && <p><span className="text-muted-foreground">📝 On-screen text:</span> <span className="text-foreground">{seg.text_overlay}</span></p>}
                             </div>
                           )}
                         </div>
@@ -2499,13 +2499,13 @@ export default function InstagramStudioPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <Card className="border-emerald-500/30 bg-emerald-500/5">
                       <CardContent className="p-3">
-                        <p className="text-xs font-semibold text-emerald-400 mb-1">📢 CTA Final</p>
+                        <p className="text-xs font-semibold text-emerald-400 mb-1">📢 Final CTA</p>
                         <p className="text-xs text-foreground">{videoScript.cta}</p>
                       </CardContent>
                     </Card>
                     <Card className="border-blue-500/30 bg-blue-500/5">
                       <CardContent className="p-3">
-                        <p className="text-xs font-semibold text-blue-400 mb-1">🎵 Música</p>
+                        <p className="text-xs font-semibold text-blue-400 mb-1">🎵 Music</p>
                         <p className="text-xs text-foreground capitalize">{videoScript.music_mood}</p>
                       </CardContent>
                     </Card>
@@ -2514,7 +2514,7 @@ export default function InstagramStudioPage() {
                   {videoScript.filming_tips?.length > 0 && (
                     <Card>
                       <CardContent className="p-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-2">📷 Dicas de Filmagem</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">📷 Filming Tips</p>
                         <ul className="space-y-1">
                           {videoScript.filming_tips.map((tip: string, i: number) => (
                             <li key={i} className="text-xs text-foreground flex items-start gap-1.5">
@@ -2527,7 +2527,7 @@ export default function InstagramStudioPage() {
                   )}
 
                   <Button variant="outline" onClick={generateVideoScript} disabled={videoLoading} className="w-full">
-                    <RefreshCw className="h-3.5 w-3.5 mr-1" /> Regenerar Script
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" /> Regenerate Script
                   </Button>
                 </>
               )}
@@ -2535,10 +2535,10 @@ export default function InstagramStudioPage() {
                 <Card>
                   <CardContent className="p-8 flex flex-col items-center justify-center gap-3 text-muted-foreground">
                     <Film className="h-10 w-10 opacity-30" />
-                    <p className="text-sm">Escolhe um tópico e clica em "Gerar Script de Vídeo"</p>
+                    <p className="text-sm">Choose a topic and click "Generate Video Script"</p>
                     <Button onClick={generateVideoScript} disabled={!topic && !service}
                       className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
-                      <Video className="h-4 w-4 mr-2" /> Gerar Script {videoDuration}s
+                      <Video className="h-4 w-4 mr-2" /> Generate {videoDuration}s Script
                     </Button>
                   </CardContent>
                 </Card>
@@ -2551,14 +2551,14 @@ export default function InstagramStudioPage() {
             <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Legenda</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Caption</label>
                   <Button size="sm" variant="ghost" onClick={generateCaptionOnly} disabled={generating} className="text-xs h-6 px-2">
                     {generating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                    Regenerar
+                    Regenerate
                   </Button>
                 </div>
                 <textarea value={caption} onChange={e => setCaption(e.target.value)} rows={8}
-                  placeholder="A legenda do post..."
+                  placeholder="The post caption..."
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary resize-none placeholder:text-muted-foreground/50" />
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1"><Hash className="h-3.5 w-3.5" /> Hashtags</label>
                 <input value={hashtags} onChange={e => setHashtags(e.target.value)}
@@ -2577,7 +2577,7 @@ export default function InstagramStudioPage() {
                   <div className="flex items-center gap-2">
                     <Flame className="h-4 w-4 text-orange-400" />
                     <span className="text-sm font-semibold text-orange-400">Viral Scout</span>
-                    <span className="text-xs text-muted-foreground">— descreve qualquer tema e a IA encontra conteúdo viral para recriar</span>
+                    <span className="text-xs text-muted-foreground">— describe any topic and the AI finds viral content to recreate</span>
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -2585,7 +2585,7 @@ export default function InstagramStudioPage() {
                       value={viralQuery}
                       onChange={e => setViralQuery(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && generateViralIdeas()}
-                      placeholder="ex: palmilhas para corredores, dor no joelho, postura no trabalho, MLS laser..."
+                      placeholder="e.g. insoles for runners, knee pain, posture at work, MLS laser..."
                       className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-orange-500/50 placeholder:text-muted-foreground/50"
                     />
                     <button
@@ -2596,7 +2596,7 @@ export default function InstagramStudioPage() {
                           ? "bg-red-500 border-red-500 text-white animate-pulse"
                           : "bg-card border-border text-muted-foreground hover:text-foreground"
                       }`}
-                      title="Falar"
+                      title="Speak"
                     >
                       {viralVoice.status === "listening" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </button>
@@ -2611,11 +2611,11 @@ export default function InstagramStudioPage() {
                   {viralVoice.status === "listening" && (
                     <div className="flex items-center gap-2 text-xs text-red-400">
                       <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                      A ouvir... {viralVoice.interimTranscript}
+                      Listening... {viralVoice.interimTranscript}
                     </div>
                   )}
                   <div className="flex flex-wrap gap-1.5">
-                    {["Fisioterapia", "Lesões Desportivas", "Dor Crónica", "Postura", "Pé & Ortóticos", "Recuperação", "Bem-estar", "Laser MLS", "Site BPR", "Marketplace", "Artigos do Blog"].map(chip => (
+                    {["Physiotherapy", "Sports Injuries", "Chronic Pain", "Posture", "Foot & Orthotics", "Recovery", "Wellness", "MLS Laser", "BPR Website", "Marketplace", "Blog Articles"].map(chip => (
                       <button key={chip} onClick={() => setViralQuery(chip)}
                         className="text-[10px] px-2 py-0.5 rounded-full border border-orange-500/30 text-orange-300/70 hover:text-orange-300 hover:border-orange-500/60 transition-all">
                         {chip}
@@ -2631,9 +2631,9 @@ export default function InstagramStudioPage() {
                   <CardContent className="p-8 flex flex-col items-center gap-3 text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-6 w-6 animate-spin text-orange-400" />
-                      <span className="text-sm">A analisar tendências virais em fisioterapia...</span>
+                      <span className="text-sm">Analysing viral trends in physiotherapy...</span>
                     </div>
-                    <p className="text-xs text-center max-w-xs">Claude está a pesquisar padrões de conteúdo viral no nicho de saúde e reabilitação</p>
+                    <p className="text-xs text-center max-w-xs">Claude is researching viral content patterns in the health and rehabilitation niche</p>
                   </CardContent>
                 </Card>
               )}
@@ -2644,15 +2644,15 @@ export default function InstagramStudioPage() {
                   {/* Batch save bar */}
                   <div className="flex items-center justify-between gap-3 bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-2.5">
                     <div>
-                      <p className="text-xs font-semibold text-orange-400">{viralIdeas.length} ideias geradas</p>
+                      <p className="text-xs font-semibold text-orange-400">{viralIdeas.length} ideas generated</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {viralSavedIds.size > 0 ? `${viralSavedIds.size} guardadas como draft` : "Guarda todas de uma vez ou usa uma individualmente"}
+                        {viralSavedIds.size > 0 ? `${viralSavedIds.size} saved as drafts` : "Save them all at once or use one individually"}
                       </p>
                     </div>
                     <Button size="sm" onClick={saveAllViralIdeas} disabled={viralSavingAll || viralSavedIds.size === viralIdeas.length}
                       className="bg-orange-500 hover:bg-orange-600 text-white text-xs shrink-0 gap-1">
                       {viralSavingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      {viralSavedIds.size === viralIdeas.length ? "Todas guardadas ✓" : "Guardar Todas"}
+                      {viralSavedIds.size === viralIdeas.length ? "All saved ✓" : "Save All"}
                     </Button>
                   </div>
 
@@ -2678,7 +2678,7 @@ export default function InstagramStudioPage() {
                               </div>
                               {viralSavedIds.has(i) && (
                                 <Badge className="text-[10px] bg-emerald-500/15 text-emerald-400 border-emerald-500/30 shrink-0">
-                                  <CheckCircle className="h-2.5 w-2.5 mr-1" /> Draft guardado
+                                  <CheckCircle className="h-2.5 w-2.5 mr-1" /> Draft saved
                                 </Badge>
                               )}
                             </div>
@@ -2696,7 +2696,7 @@ export default function InstagramStudioPage() {
                               onClick={() => applyViralIdea(idea)}
                               className="bg-orange-500 hover:bg-orange-600 text-white text-xs"
                             >
-                              <Zap className="h-3.5 w-3.5 mr-1" /> Usar
+                              <Zap className="h-3.5 w-3.5 mr-1" /> Use
                             </Button>
                           </div>
                         </div>
@@ -2709,7 +2709,7 @@ export default function InstagramStudioPage() {
 
                         {/* BPR adaptation */}
                         <div>
-                          <p className="text-[10px] text-muted-foreground font-semibold mb-0.5 uppercase tracking-wide">Adaptação para BPR</p>
+                          <p className="text-[10px] text-muted-foreground font-semibold mb-0.5 uppercase tracking-wide">BPR Adaptation</p>
                           <p className="text-xs text-foreground">{idea.bpr_adaptation}</p>
                         </div>
 
@@ -2747,11 +2747,11 @@ export default function InstagramStudioPage() {
                 <Card>
                   <CardContent className="p-10 flex flex-col items-center gap-3 text-muted-foreground">
                     <Flame className="h-12 w-12 opacity-20" />
-                    <p className="text-sm font-medium">Descobre conteúdo viral</p>
-                    <p className="text-xs text-center max-w-xs">Selecciona um nicho e clica "Buscar Virais" — Claude analisa padrões de conteúdo viral e sugere ideias adaptadas para o BPR</p>
+                    <p className="text-sm font-medium">Discover viral content</p>
+                    <p className="text-xs text-center max-w-xs">Select a niche and click "Find Virals" — Claude analyses viral content patterns and suggests ideas adapted for BPR</p>
                     <Button onClick={generateViralIdeas} disabled={viralLoading}
                       className="bg-orange-500 hover:bg-orange-600 text-white">
-                      <TrendingUp className="h-4 w-4 mr-2" /> Buscar Virais Agora
+                      <TrendingUp className="h-4 w-4 mr-2" /> Find Virals Now
                     </Button>
                   </CardContent>
                 </Card>
@@ -2766,13 +2766,13 @@ export default function InstagramStudioPage() {
                 <CardContent className="p-4 space-y-4">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🎵</span>
-                    <span className="text-sm font-semibold text-violet-400">Música para o Reel</span>
-                    <span className="text-xs text-muted-foreground">— Suno AI gera música personalizada para o teu post</span>
+                    <span className="text-sm font-semibold text-violet-400">Music for the Reel</span>
+                    <span className="text-xs text-muted-foreground">— Suno AI generates custom music for your post</span>
                   </div>
 
                   {/* Duration */}
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Duração</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Duration</label>
                     <div className="flex gap-2">
                       {([15, 30, 60, 90] as const).map(d => (
                         <button key={d} onClick={() => setMusicDuration(d)}
@@ -2785,12 +2785,12 @@ export default function InstagramStudioPage() {
 
                   {/* Type */}
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Tipo</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Type</label>
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { value: "instrumental", label: "Instrumental", icon: "🎹", desc: "Só música" },
-                        { value: "vocal", label: "Com Voz", icon: "🎤", desc: "Cantado" },
-                        { value: "spoken", label: "Falado", icon: "🗣️", desc: "Narrado" },
+                        { value: "instrumental", label: "Instrumental", icon: "🎹", desc: "Music only" },
+                        { value: "vocal", label: "With Vocals", icon: "🎤", desc: "Sung" },
+                        { value: "spoken", label: "Spoken", icon: "🗣️", desc: "Narrated" },
                       ].map(t => (
                         <button key={t.value} onClick={() => setMusicType(t.value as any)}
                           className={`flex flex-col items-center py-2.5 px-2 rounded-lg border text-center transition-all ${
@@ -2806,7 +2806,7 @@ export default function InstagramStudioPage() {
 
                   {/* Style */}
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Estilo Musical</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Music Style</label>
                     <div className="flex flex-wrap gap-1.5">
                       {[
                         "motivational upbeat", "calm relaxing", "energetic", "corporate professional",
@@ -2826,12 +2826,12 @@ export default function InstagramStudioPage() {
                   {musicType === "vocal" && (
                     <div>
                       <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">
-                        Letra (opcional — deixa vazio para gerar automaticamente)
+                        Lyrics (optional — leave empty to generate automatically)
                       </label>
                       <textarea
                         value={musicLyrics}
                         onChange={e => setMusicLyrics(e.target.value)}
-                        placeholder="Escreve a letra ou deixa em branco para a IA criar com base no tópico..."
+                        placeholder="Write the lyrics or leave blank for the AI to create them based on the topic..."
                         rows={3}
                         className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-violet-500/50 resize-none placeholder:text-muted-foreground/50"
                       />
@@ -2844,8 +2844,8 @@ export default function InstagramStudioPage() {
                     className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold"
                   >
                     {musicLoading
-                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A gerar música com Suno AI...</>
-                      : <><span className="mr-2">🎵</span> Gerar Música ({musicDuration}s · {musicType})</>
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating music with Suno AI...</>
+                      : <><span className="mr-2">🎵</span> Generate Music ({musicDuration}s · {musicType})</>
                     }
                   </Button>
                 </CardContent>
@@ -2876,8 +2876,8 @@ export default function InstagramStudioPage() {
                         <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2.5">
                           <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
                           <div>
-                            <p className="font-medium">A gerar com Suno AI…</p>
-                            <p className="text-amber-300/70">Pode demorar 1-3 minutos. Podes continuar a trabalhar — a música aparece automaticamente quando ficar pronta.</p>
+                            <p className="font-medium">Generating with Suno AI…</p>
+                            <p className="text-amber-300/70">May take 1-3 minutes. You can keep working — the music appears automatically when it is ready.</p>
                           </div>
                         </div>
                         <div className="w-full bg-violet-500/10 rounded-full h-1.5 overflow-hidden">
@@ -2889,7 +2889,7 @@ export default function InstagramStudioPage() {
                     {/* Show generated lyrics if any */}
                     {musicResult.lyrics && (
                       <div className="bg-muted/30 rounded-lg p-3">
-                        <p className="text-[10px] text-violet-400 font-semibold mb-1">🎤 LETRA GERADA</p>
+                        <p className="text-[10px] text-violet-400 font-semibold mb-1">🎤 GENERATED LYRICS</p>
                         <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-6">{musicResult.lyrics}</p>
                       </div>
                     )}
@@ -2898,12 +2898,12 @@ export default function InstagramStudioPage() {
                     {musicResult.status === "complete" && musicResult.tracks && musicResult.tracks.length > 0 && (
                       <div className="space-y-3">
                         <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">
-                          🎵 Suno gerou {musicResult.tracks.length} versões — escolhe a que preferes:
+                          🎵 Suno generated {musicResult.tracks.length} versions — choose the one you prefer:
                         </p>
                         {musicResult.tracks.map((track: any, i: number) => (
                           <div key={track.id} className="space-y-2 border border-violet-500/20 rounded-xl p-3 bg-violet-500/5">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-semibold text-violet-300">Versão {i + 1}</span>
+                              <span className="text-xs font-semibold text-violet-300">Version {i + 1}</span>
                               {track.duration && <span className="text-[10px] text-muted-foreground">{Math.round(track.duration)}s</span>}
                             </div>
                             <audio
@@ -2917,7 +2917,7 @@ export default function InstagramStudioPage() {
                                 disabled={musicSaving}
                                 className="flex-1 bg-violet-600 hover:bg-violet-700 text-white gap-1 h-7 text-xs">
                                 {musicSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                Guardar V{i + 1}
+                                Save V{i + 1}
                               </Button>
                               <a href={track.audioUrl || track.streamUrl}
                                 download={`${track.title || "bpr-music"}-v${i + 1}.mp3`}
@@ -2929,7 +2929,7 @@ export default function InstagramStudioPage() {
                         ))}
                         <Button size="sm" variant="outline" onClick={() => setMusicResult(null)}
                           className="w-full h-8 text-xs gap-1.5">
-                          <RefreshCw className="h-3 w-3" /> Gerar novas versões
+                          <RefreshCw className="h-3 w-3" /> Generate new versions
                         </Button>
                       </div>
                     )}
@@ -2948,7 +2948,7 @@ export default function InstagramStudioPage() {
                             disabled={musicSaving}
                             className="flex-1 bg-violet-600 hover:bg-violet-700 text-white gap-1 h-8 text-xs">
                             {musicSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                            Guardar na Biblioteca
+                            Save to Library
                           </Button>
                           <a href={musicResult.audioUrl || musicResult.streamUrl}
                             download={`${musicResult.title || "bpr-music"}.mp3`}
@@ -2974,7 +2974,7 @@ export default function InstagramStudioPage() {
                       onClick={() => { setShowMusicLibrary(v => !v); if (!showMusicLibrary && musicLibrary.length === 0) loadMusicLibrary(); }}
                       className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                        🎼 Biblioteca de Músicas
+                        🎼 Music Library
                         {musicLibrary.length > 0 && (
                           <Badge className="bg-violet-500/15 text-violet-400 border-violet-500/30 text-[10px]">{musicLibrary.length}</Badge>
                         )}
@@ -2994,7 +2994,7 @@ export default function InstagramStudioPage() {
                   {selectedMusic && (
                     <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-3 py-2">
                       <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                      <span className="text-xs text-emerald-400 flex-1 truncate">📎 {selectedMusic.title} — vai com o post</span>
+                      <span className="text-xs text-emerald-400 flex-1 truncate">📎 {selectedMusic.title} — goes with the post</span>
                       <button onClick={() => setSelectedMusic(null)} className="text-muted-foreground hover:text-red-400 shrink-0">
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -3006,12 +3006,12 @@ export default function InstagramStudioPage() {
                       {musicLibLoading && (
                         <div className="flex items-center justify-center py-4 gap-2 text-muted-foreground">
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-xs">A carregar biblioteca...</span>
+                          <span className="text-xs">Loading library...</span>
                         </div>
                       )}
                       {!musicLibLoading && musicLibrary.length === 0 && (
                         <p className="text-xs text-muted-foreground text-center py-4">
-                          Nenhuma música ainda. Gera com Suno AI ou faz upload de um ficheiro MP3.
+                          No music yet. Generate one with Suno AI or upload an MP3 file.
                         </p>
                       )}
                       {musicLibrary.map(track => (
@@ -3068,8 +3068,8 @@ export default function InstagramStudioPage() {
                 <Card>
                   <CardContent className="p-8 flex flex-col items-center gap-3 text-muted-foreground">
                     <span className="text-5xl opacity-30">🎵</span>
-                    <p className="text-sm font-medium">Gera música personalizada</p>
-                    <p className="text-xs text-center max-w-xs">Configura o estilo, tipo e duração. Suno AI cria uma música única baseada no tema do teu post.</p>
+                    <p className="text-sm font-medium">Generate custom music</p>
+                    <p className="text-xs text-center max-w-xs">Configure the style, type and duration. Suno AI creates a unique track based on your post's topic.</p>
                   </CardContent>
                 </Card>
               )}
@@ -3084,17 +3084,17 @@ export default function InstagramStudioPage() {
                 <CardContent className="p-4 space-y-4">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm font-semibold text-blue-400">Calendário de Conteúdo</span>
-                    <span className="text-xs text-muted-foreground">— Gera 1 mês de posts no Studio</span>
+                    <span className="text-sm font-semibold text-blue-400">Content Calendar</span>
+                    <span className="text-xs text-muted-foreground">— Generate a month of posts in the Studio</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Data início</label>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Start date</label>
                       <input type="date" value={calStartDate} onChange={e => setCalStartDate(e.target.value)}
                         className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-blue-500/50" />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Posts/semana</label>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Posts/week</label>
                       <div className="flex gap-1.5">
                         {([3,5,7] as const).map(n => (
                           <button key={n} onClick={() => setCalPostsPerWeek(n)}
@@ -3106,7 +3106,7 @@ export default function InstagramStudioPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Idioma</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Language</label>
                     <div className="flex gap-1.5">
                       {(["en","pt","both"] as const).map(l => (
                         <button key={l} onClick={() => setCalLanguage(l)}
@@ -3119,18 +3119,18 @@ export default function InstagramStudioPage() {
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                       <input type="checkbox" checked={calIncludeMarketplace} onChange={e => setCalIncludeMarketplace(e.target.checked)} className="accent-blue-500" />
-                      Incluir Marketplace
+                      Include Marketplace
                     </label>
                     <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                       <input type="checkbox" checked={calIncludeArticles} onChange={e => setCalIncludeArticles(e.target.checked)} className="accent-blue-500" />
-                      Incluir Artigos
+                      Include Articles
                     </label>
                   </div>
                   <Button onClick={generateCalendar} disabled={calLoading}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                     {calLoading
-                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A gerar posts (por batches)...</>
-                      : <><Sparkles className="h-4 w-4 mr-2" /> Gerar {calPostsPerWeek * 4} Posts para 1 Mês</>
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating posts (in batches)...</>
+                      : <><Sparkles className="h-4 w-4 mr-2" /> Generate {calPostsPerWeek * 4} Posts for 1 Month</>
                     }
                   </Button>
                 </CardContent>
@@ -3140,10 +3140,10 @@ export default function InstagramStudioPage() {
               {calPosts.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
-                    <span className="text-xs text-muted-foreground font-semibold">{calPosts.length} posts gerados</span>
+                    <span className="text-xs text-muted-foreground font-semibold">{calPosts.length} posts generated</span>
                     <Button size="sm" onClick={saveAllCalendarPosts} disabled={calSavingAll}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7 px-3">
-                      {calSavingAll ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> A guardar...</> : <><CheckCircle className="h-3 w-3 mr-1" /> Agendar Todos</>}
+                      {calSavingAll ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving...</> : <><CheckCircle className="h-3 w-3 mr-1" /> Schedule All</>}
                     </Button>
                   </div>
                   {calPosts.map((post, idx) => (
@@ -3159,7 +3159,7 @@ export default function InstagramStudioPage() {
                               <span className="text-[10px] text-muted-foreground">{post.day_of_week}</span>
                               {post._saved && (
                                 <Badge className={`text-[10px] border-0 ${post._saved === "schedule" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}>
-                                  {post._saved === "schedule" ? "✓ Agendado" : "✓ Draft"}
+                                  {post._saved === "schedule" ? "✓ Scheduled" : "✓ Draft"}
                                 </Badge>
                               )}
                             </div>
@@ -3179,11 +3179,11 @@ export default function InstagramStudioPage() {
                             <div className="flex gap-1.5 flex-wrap">
                               <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
                                 onClick={() => { setTopic(post.topic); setCaption(post.caption); setHashtags(post.hashtags?.join(", ") || ""); setTab("image"); }}>
-                                <Camera className="h-2.5 w-2.5 mr-1" /> Criar no Studio
+                                <Camera className="h-2.5 w-2.5 mr-1" /> Create in Studio
                               </Button>
                               <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
                                 onClick={() => { navigator.clipboard.writeText(`${post.caption}\n\n${post.hashtags?.join(" ") || ""}`); }}>
-                                <Copy className="h-2.5 w-2.5 mr-1" /> Copiar
+                                <Copy className="h-2.5 w-2.5 mr-1" /> Copy
                               </Button>
                               <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 border-amber-500/30 text-amber-400"
                                 onClick={() => saveCalendarPost(post, idx, "draft")} disabled={calSaving === idx || !!post._saved}>
@@ -3191,7 +3191,7 @@ export default function InstagramStudioPage() {
                               </Button>
                               <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                                 onClick={() => saveCalendarPost(post, idx, "schedule")} disabled={calSaving === idx || !!post._saved}>
-                                {calSaving === idx ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Clock className="h-2.5 w-2.5 mr-1" />} Agendar
+                                {calSaving === idx ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Clock className="h-2.5 w-2.5 mr-1" />} Schedule
                               </Button>
                             </div>
                           </div>
@@ -3207,8 +3207,8 @@ export default function InstagramStudioPage() {
                 <Card>
                   <CardContent className="p-10 flex flex-col items-center gap-3 text-muted-foreground">
                     <Clock className="h-12 w-12 opacity-20" />
-                    <p className="text-sm font-medium">Configura e gera o teu mês de posts</p>
-                    <p className="text-xs text-center max-w-xs">Define a data de início, posts por semana e idioma. Claude AI gera captions, hooks, hashtags e horários para cada dia.</p>
+                    <p className="text-sm font-medium">Configure and generate your month of posts</p>
+                    <p className="text-xs text-center max-w-xs">Set the start date, posts per week and language. Claude AI generates captions, hooks, hashtags and posting times for each day.</p>
                   </CardContent>
                 </Card>
               )}
@@ -3222,14 +3222,14 @@ export default function InstagramStudioPage() {
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-yellow-400" />
-                    <span className="text-sm font-semibold text-yellow-400">Inteligência de Conteúdo</span>
-                    <span className="text-xs text-muted-foreground">— Claude analisa tendências e sugere ideias virais</span>
+                    <span className="text-sm font-semibold text-yellow-400">Content Intelligence</span>
+                    <span className="text-xs text-muted-foreground">— Claude analyses trends and suggests viral ideas</span>
                   </div>
                   <div className="flex gap-2">
                     <input
                       value={intelFocus}
                       onChange={e => setIntelFocus(e.target.value)}
-                      placeholder="Foca num tema (ex: knee pain, MLS laser, posture) — ou deixa vazio para análise geral..."
+                      placeholder="Focus on a topic (e.g. knee pain, MLS laser, posture) — or leave empty for a general analysis..."
                       className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-yellow-500/50 placeholder:text-muted-foreground/50"
                     />
                     <button
@@ -3241,8 +3241,8 @@ export default function InstagramStudioPage() {
                   <Button onClick={generateIntelligence} disabled={intelLoading}
                     className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold">
                     {intelLoading
-                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Claude a analisar tendências...</>
-                      : <><Zap className="h-4 w-4 mr-2" /> Analisar e Gerar Ideias Virais</>
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Claude analysing trends...</>
+                      : <><Zap className="h-4 w-4 mr-2" /> Analyse and Generate Viral Ideas</>
                     }
                   </Button>
                 </CardContent>
@@ -3268,7 +3268,7 @@ export default function InstagramStudioPage() {
                             <div className="flex items-center gap-1.5 flex-wrap mb-1">
                               <Badge className="bg-yellow-500/15 text-yellow-400 border-0 text-[10px]">{idea.contentType}</Badge>
                               <Badge className={`border-0 text-[10px] ${idea.urgency === "high" ? "bg-red-500/20 text-red-400" : "bg-muted text-muted-foreground"}`}>{idea.urgency}</Badge>
-                              {idea.estimatedEngagement === "high" && <Badge className="bg-emerald-500/15 text-emerald-400 border-0 text-[10px]">🔥 alto engagement</Badge>}
+                              {idea.estimatedEngagement === "high" && <Badge className="bg-emerald-500/15 text-emerald-400 border-0 text-[10px]">🔥 high engagement</Badge>}
                             </div>
                             <p className="text-xs font-semibold text-foreground">{idea.title}</p>
                             <p className="text-[11px] text-muted-foreground mt-0.5 italic">"{idea.hook}"</p>
@@ -3281,11 +3281,11 @@ export default function InstagramStudioPage() {
                         <div className="flex gap-1.5">
                           <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
                             onClick={() => { setTopic(idea.title); setCaption(idea.hook); setTab("image"); }}>
-                            <Sparkles className="h-2.5 w-2.5 mr-1" /> Criar Post
+                            <Sparkles className="h-2.5 w-2.5 mr-1" /> Create Post
                           </Button>
                           <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
                             onClick={() => { navigator.clipboard.writeText(idea.hook); }}>
-                            <Copy className="h-2.5 w-2.5 mr-1" /> Copiar Hook
+                            <Copy className="h-2.5 w-2.5 mr-1" /> Copy Hook
                           </Button>
                         </div>
                       </CardContent>
@@ -3298,8 +3298,8 @@ export default function InstagramStudioPage() {
                 <Card>
                   <CardContent className="p-10 flex flex-col items-center gap-3 text-muted-foreground">
                     <Zap className="h-12 w-12 opacity-20" />
-                    <p className="text-sm font-medium">Análise de Tendências</p>
-                    <p className="text-xs text-center max-w-xs">Claude analisa o que está viral na fisioterapia agora e sugere 8 ideias de conteúdo com potencial de engagement alto, monetização e links para BPR.</p>
+                    <p className="text-sm font-medium">Trend Analysis</p>
+                    <p className="text-xs text-center max-w-xs">Claude analyses what is going viral in physiotherapy right now and suggests 8 content ideas with high engagement potential, monetisation and links to BPR.</p>
                   </CardContent>
                 </Card>
               )}
@@ -3313,18 +3313,18 @@ export default function InstagramStudioPage() {
                 <CardContent className="p-4 space-y-4">
                   <div className="flex items-center gap-2">
                     <Facebook className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-semibold text-blue-400">Imagens para Facebook</span>
-                    <span className="text-xs text-muted-foreground">\u2014 Gera capa, post e imagem de perfil com branding BPR</span>
+                    <span className="text-sm font-semibold text-blue-400">Facebook Images</span>
+                    <span className="text-xs text-muted-foreground">\u2014 Generate a cover, post and profile image with BPR branding</span>
                   </div>
 
                   {/* Format selector */}
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Formato</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Format</label>
                     <div className="grid grid-cols-3 gap-2">
                       {[
-                        { value: "cover", label: "Capa", icon: "\ud83d\uddbc\ufe0f", desc: "1200\xd7628px", ratio: "16:9" },
+                        { value: "cover", label: "Cover", icon: "\ud83d\uddbc\ufe0f", desc: "1200\xd7628px", ratio: "16:9" },
                         { value: "post", label: "Post", icon: "\ud83d\udcf7", desc: "1080\xd71080px", ratio: "1:1" },
-                        { value: "profile", label: "Perfil", icon: "\ud83d\udc64", desc: "180\xd7180px", ratio: "circular" },
+                        { value: "profile", label: "Profile", icon: "\ud83d\udc64", desc: "180\xd7180px", ratio: "circular" },
                       ].map(f => (
                         <button key={f.value} onClick={() => setFbFormat(f.value as any)}
                           className={`flex flex-col items-center py-3 px-2 rounded-lg border text-center transition-all ${
@@ -3341,11 +3341,11 @@ export default function InstagramStudioPage() {
 
                   {/* Topic */}
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">T\u00f3pico / Descri\u00e7\u00e3o (opcional)</label>
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Topic / Description (optional)</label>
                     <input
                       value={fbTopic}
                       onChange={e => setFbTopic(e.target.value)}
-                      placeholder="Ex: MLS Laser therapy, summer sports recovery, clinic opening... (deixa vazio para usar o t\u00f3pico principal)"
+                      placeholder="e.g. MLS Laser therapy, summer sports recovery, clinic opening... (leave empty to use the main topic)"
                       className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-blue-500/50 placeholder:text-muted-foreground/50"
                     />
                   </div>
@@ -3353,8 +3353,8 @@ export default function InstagramStudioPage() {
                   <Button onClick={generateFbImage} disabled={fbLoading}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                     {fbLoading
-                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A gerar imagem para Facebook...</>
-                      : <><Facebook className="h-4 w-4 mr-2" /> Gerar {fbFormat === "cover" ? "Capa (1200\xd7628)" : fbFormat === "post" ? "Post (1080\xd71080)" : "Foto de Perfil"}</>
+                      ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating Facebook image...</>
+                      : <><Facebook className="h-4 w-4 mr-2" /> Generate {fbFormat === "cover" ? "Cover (1200\xd7628)" : fbFormat === "post" ? "Post (1080\xd71080)" : "Profile Photo"}</>
                     }
                   </Button>
                 </CardContent>
@@ -3367,7 +3367,7 @@ export default function InstagramStudioPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-emerald-400" />
-                        <span className="text-sm font-semibold">Imagem gerada!</span>
+                        <span className="text-sm font-semibold">Image generated!</span>
                         <Badge className="bg-blue-500/15 text-blue-400 border-0 text-xs">{fbFormat === "cover" ? "Facebook Cover" : fbFormat === "post" ? "Facebook Post" : "Profile Photo"}</Badge>
                       </div>
                       <a href={fbImage} download={`bpr-facebook-${fbFormat}-${Date.now()}.jpg`}
@@ -3379,22 +3379,22 @@ export default function InstagramStudioPage() {
                     <div className={`relative w-full overflow-hidden rounded-xl bg-muted ${fbFormat === "cover" ? "aspect-[1200/628]" : "aspect-square"}`}>
                       <img src={fbImage} alt="Facebook image" className="absolute inset-0 w-full h-full object-cover" />
                       <div className="absolute bottom-2 right-2 bg-black/50 rounded text-[9px] text-white px-1.5 py-0.5 backdrop-blur-sm">
-                        {fbFormat === "cover" ? "1200\xd7628 \u00b7 Cover" : fbFormat === "post" ? "1080\xd71080 \u00b7 Post" : "180\xd7180 \u00b7 Perfil"}
+                        {fbFormat === "cover" ? "1200\xd7628 \u00b7 Cover" : fbFormat === "post" ? "1080\xd71080 \u00b7 Post" : "180\xd7180 \u00b7 Profile"}
                       </div>
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <Button size="sm" variant="outline" onClick={generateFbImage} disabled={fbLoading} className="flex-1">
-                        <RefreshCw className="h-3.5 w-3.5 mr-1" /> Nova Imagem
+                        <RefreshCw className="h-3.5 w-3.5 mr-1" /> New Image
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                         onClick={() => { setGeneratedImage(fbImage!); setTab("image"); }}>
-                        <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Usar no Studio IG
+                        <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Use in IG Studio
                       </Button>
                       <Button size="sm" onClick={publishFacebook} disabled={publishingFb}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
                         {publishingFb
-                          ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> A publicar no Facebook...</>
-                          : <><Facebook className="h-3.5 w-3.5 mr-1" /> Publicar no Facebook</>
+                          ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Publishing to Facebook...</>
+                          : <><Facebook className="h-3.5 w-3.5 mr-1" /> Publish to Facebook</>
                         }
                       </Button>
                     </div>
@@ -3407,8 +3407,8 @@ export default function InstagramStudioPage() {
                 <Card>
                   <CardContent className="p-10 flex flex-col items-center gap-3 text-muted-foreground">
                     <Facebook className="h-12 w-12 opacity-20" />
-                    <p className="text-sm font-medium">Imagens com branding BPR para o Facebook</p>
-                    <p className="text-xs text-center max-w-xs">Gera capa (1200\xd7628), posts quadrados ou foto de perfil com o visual da cl\u00ednica.</p>
+                    <p className="text-sm font-medium">BPR-branded images for Facebook</p>
+                    <p className="text-xs text-center max-w-xs">Generate a cover (1200\xd7628), square posts or a profile photo with the clinic's look.</p>
                   </CardContent>
                 </Card>
               )}
@@ -3420,17 +3420,17 @@ export default function InstagramStudioPage() {
             <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Legenda</label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Caption</label>
                   <Button size="sm" variant="ghost" onClick={generateCaptionOnly} disabled={generating} className="text-xs h-6 px-2">
                     {generating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                    Regenerar
+                    Regenerate
                   </Button>
                 </div>
                 <textarea value={caption} onChange={e => setCaption(e.target.value)} rows={5}
-                  placeholder="A legenda aparece aqui depois de gerar..."
+                  placeholder="The caption appears here after generating..."
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary resize-none placeholder:text-muted-foreground/50" />
                 <input value={hashtags} onChange={e => setHashtags(e.target.value)}
-                  placeholder="hashtags separadas por vírgula..."
+                  placeholder="hashtags separated by commas..."
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary placeholder:text-muted-foreground/50" />
               </CardContent>
             </Card>
@@ -3441,7 +3441,7 @@ export default function InstagramStudioPage() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] text-muted-foreground block mb-1 flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> Data (opcional)
+                  <Calendar className="h-3 w-3" /> Date (optional)
                 </label>
                 <input type="date" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)}
                   min={new Date().toISOString().split("T")[0]}
@@ -3449,7 +3449,7 @@ export default function InstagramStudioPage() {
               </div>
               <div>
                 <label className="text-[10px] text-muted-foreground block mb-1 flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> Hora
+                  <Clock className="h-3 w-3" /> Time
                 </label>
                 <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary" />
@@ -3467,7 +3467,7 @@ export default function InstagramStudioPage() {
                   <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${publishToStories ? "translate-x-4" : "translate-x-0.5"}`} />
                 </button>
                 <label className="text-[11px] text-muted-foreground cursor-pointer" onClick={() => setPublishToStories(v => !v)}>
-                  📖 Publicar também nos <span className={publishToStories ? "text-pink-400 font-semibold" : ""}>Stories</span>
+                  📖 Also publish to <span className={publishToStories ? "text-pink-400 font-semibold" : ""}>Stories</span>
                 </label>
               </div>
               {publishToStories && (
@@ -3476,7 +3476,7 @@ export default function InstagramStudioPage() {
             </div>
             <div>
               <label className="text-[10px] text-muted-foreground block mb-1">
-                🏷️ Marcar pessoas (usernames, separados por vírgula)
+                🏷️ Tag people (usernames, comma-separated)
               </label>
               <input
                 value={taggedUsers}
@@ -3485,7 +3485,7 @@ export default function InstagramStudioPage() {
                 className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs text-foreground outline-none focus:border-pink-500/50 placeholder:text-muted-foreground/40"
               />
               {taggedUsers && (
-                <p className="text-[9px] text-muted-foreground mt-0.5">⚠ Tags incluídas na legenda. Marcar pessoas via API requer permissão adicional no Meta.</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">⚠ Tags are included in the caption. Tagging people via the API requires additional permission from Meta.</p>
               )}
             </div>
           </div>
@@ -3505,7 +3505,7 @@ export default function InstagramStudioPage() {
           <div className="flex gap-2 flex-wrap">
             <Button onClick={copyCaption} variant="outline" size="sm" className="flex-1">
               {copied ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
-              {copied ? "Copiado!" : "Copiar"}
+              {copied ? "Copied!" : "Copy"}
             </Button>
             <Button onClick={() => saveDraft(false)} disabled={saving} variant="outline" size="sm" className="flex-1">
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
@@ -3515,25 +3515,25 @@ export default function InstagramStudioPage() {
               <Button onClick={() => saveDraft(true)} disabled={saving} variant="outline" size="sm"
                 className="flex-1 border-blue-500/40 text-blue-400 hover:bg-blue-500/10">
                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Bell className="h-3.5 w-3.5 mr-1" />}
-                Agendar
+                Schedule
               </Button>
             )}
             <Button onClick={publishNow} disabled={publishing || !caption} size="sm"
               className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold">
               {publishing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
-              {publishing ? "A publicar..." : publishToStories ? "Publicar + Stories" : "Publicar"}
+              {publishing ? "Publishing..." : publishToStories ? "Publish + Stories" : "Publish"}
             </Button>
           </div>
           <Button variant="ghost" size="sm"
             onClick={() => { setShowDraftsPanel(v => !v); if (!showDraftsPanel) { loadDrafts(); loadScheduled(); } }}
             className="w-full text-xs text-muted-foreground hover:text-foreground gap-1.5">
             <FolderOpen className="h-3.5 w-3.5" />
-            {showDraftsPanel ? "Fechar Drafts" : "Ver Drafts & Agendados"}
+            {showDraftsPanel ? "Close Drafts" : "View Drafts & Scheduled"}
           </Button>
           {(generatedImage || watermarkedImage || caption) && (
             <Button variant="outline" size="sm" onClick={resetPost}
               className="w-full text-xs gap-1.5 border-pink-500/30 text-pink-400 hover:bg-pink-500/10">
-              <Plus className="h-3.5 w-3.5" /> Novo Post
+              <Plus className="h-3.5 w-3.5" /> New Post
             </Button>
           )}
         </div>
@@ -3545,7 +3545,7 @@ export default function InstagramStudioPage() {
           <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="font-bold text-foreground flex items-center gap-2">
-                <FolderOpen className="h-5 w-5 text-primary" /> Drafts & Agendados
+                <FolderOpen className="h-5 w-5 text-primary" /> Drafts & Scheduled
               </h2>
               <button onClick={() => setShowDraftsPanel(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
@@ -3560,7 +3560,7 @@ export default function InstagramStudioPage() {
               {!draftsLoading && drafts.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
                   <FolderOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Nenhum draft guardado ainda</p>
+                  <p className="text-sm">No drafts saved yet</p>
                 </div>
               )}
               {drafts.map((draft: any) => {
@@ -3590,7 +3590,7 @@ export default function InstagramStudioPage() {
                             </Badge>
                           ) : (
                             <Badge variant="outline" className={`text-[10px] ${isScheduled ? "border-blue-500/40 text-blue-400" : ""}`}>
-                              {isScheduled ? <><Bell className="h-2.5 w-2.5 mr-1" />Agendado</> : "Draft"}
+                              {isScheduled ? <><Bell className="h-2.5 w-2.5 mr-1" />Scheduled</> : "Draft"}
                             </Badge>
                           )}
                           {viralIdea?.content_type && (
@@ -3605,11 +3605,11 @@ export default function InstagramStudioPage() {
                           )}
                           {isScheduled && draft.scheduledAt && (
                             <span className="text-[10px] text-blue-400">
-                              {new Date(draft.scheduledAt).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                              {new Date(draft.scheduledAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                             </span>
                           )}
                           <span className="text-[10px] text-muted-foreground ml-auto">
-                            {new Date(draft.createdAt).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })}
+                            {new Date(draft.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
                           </span>
                         </div>
                         {(meta.topic || meta.service) && (
@@ -3621,10 +3621,10 @@ export default function InstagramStudioPage() {
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{draft.caption}</p>
                         <div className="flex gap-1.5 mt-1.5 flex-wrap">
                           {draft.mediaUrls?.length > 0 && (
-                            <span className="text-[10px] bg-muted/60 text-muted-foreground rounded px-1.5 py-0.5">🖼 Imagem</span>
+                            <span className="text-[10px] bg-muted/60 text-muted-foreground rounded px-1.5 py-0.5">🖼 Image</span>
                           )}
                           {meta.textLayers?.length > 0 && (
-                            <span className="text-[10px] bg-violet-500/10 text-violet-400 rounded px-1.5 py-0.5">T {meta.textLayers.length} texto(s)</span>
+                            <span className="text-[10px] bg-violet-500/10 text-violet-400 rounded px-1.5 py-0.5">T {meta.textLayers.length} text(s)</span>
                           )}
                           {draft.musicTitle && (
                             <span className="text-[10px] bg-violet-500/10 text-violet-400 rounded px-1.5 py-0.5">🎵 {draft.musicTitle}</span>
@@ -3635,7 +3635,7 @@ export default function InstagramStudioPage() {
                     <div className="flex gap-2 mt-3">
                       <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1"
                         onClick={() => applyDraft(draft)}>
-                        <RotateCcw className="h-3 w-3" /> Carregar
+                        <RotateCcw className="h-3 w-3" /> Load
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400"
                         onClick={() => deleteDraft(draft.id)}>

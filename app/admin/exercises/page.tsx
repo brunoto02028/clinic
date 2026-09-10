@@ -541,7 +541,7 @@ export default function ExercisesPage() {
   };
 
   const handleBulkTranslate = async () => {
-    if (!confirm("Traduzir para português todos os exercícios sem tradução? (AI — pode demorar alguns minutos)")) return;
+    if (!confirm("Translate all untranslated exercises into Portuguese? (AI — may take a few minutes)")) return;
     setBulkTranslating(true);
     setBulkResult("");
     try {
@@ -553,11 +553,11 @@ export default function ExercisesPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setBulkResult(data.translated === 0 && data.remaining === 0
-        ? "Todos os exercícios já estão traduzidos."
-        : `${data.translated} traduzido(s)${data.remaining > 0 ? ` — ${data.remaining} por traduzir (clique novamente)` : ""}`);
+        ? "All exercises are already translated."
+        : `${data.translated} translated${data.remaining > 0 ? ` — ${data.remaining} left to translate (click again)` : ""}`);
       fetchExercises();
     } catch (err: any) {
-      setBulkResult(`Erro: ${err.message}`);
+      setBulkResult(`Error: ${err.message}`);
     } finally {
       setBulkTranslating(false);
     }
@@ -696,7 +696,7 @@ export default function ExercisesPage() {
           </Dialog>
           <Button variant="outline" onClick={handleBulkTranslate} disabled={bulkTranslating}>
             {bulkTranslating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            <span className="hidden sm:inline">{bulkTranslating ? "Traduzindo..." : "Traduzir PT"}</span>
+            <span className="hidden sm:inline">{bulkTranslating ? "Translating..." : "Translate to PT"}</span>
           </Button>
           <Button variant="outline" onClick={handleFixVideos} disabled={fixingVideos}>
             {fixingVideos ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Video className="h-4 w-4 mr-2" />}
@@ -1520,7 +1520,7 @@ function ExerciseCard({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onToggleSelect?.(); }}
-            aria-label={selected ? "Desmarcar exercício" : "Selecionar exercício"}
+            aria-label={selected ? "Deselect exercise" : "Select exercise"}
             className={`absolute top-2 left-2 z-10 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
               selected ? "bg-primary border-primary" : "bg-black/40 border-white/70 hover:border-white"
             }`}

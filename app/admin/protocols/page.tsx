@@ -21,16 +21,16 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 const PHASES = [
-  { value: "SHORT_TERM", label: "Curto Prazo (1-4 sem)" },
-  { value: "MEDIUM_TERM", label: "Médio Prazo (4-12 sem)" },
-  { value: "LONG_TERM", label: "Longo Prazo (12+ sem)" },
+  { value: "SHORT_TERM", label: "Short-Term (1-4 wks)" },
+  { value: "MEDIUM_TERM", label: "Medium-Term (4-12 wks)" },
+  { value: "LONG_TERM", label: "Long-Term (12+ wks)" },
 ];
 
 const ITEM_TYPES = [
-  { value: "IN_CLINIC", label: "Na Clínica", icon: Building2 },
-  { value: "HOME_EXERCISE", label: "Exercício em Casa", icon: Dumbbell },
-  { value: "HOME_CARE", label: "Autocuidado", icon: Home },
-  { value: "ASSESSMENT", label: "Avaliação", icon: Stethoscope },
+  { value: "IN_CLINIC", label: "In-Clinic", icon: Building2 },
+  { value: "HOME_EXERCISE", label: "Home Exercise", icon: Dumbbell },
+  { value: "HOME_CARE", label: "Home Care", icon: Home },
+  { value: "ASSESSMENT", label: "Assessment", icon: Stethoscope },
 ];
 
 const EQUIPMENT_OPTIONS = [
@@ -123,19 +123,19 @@ export default function ProtocolsPage() {
   const [seeding, setSeeding] = useState(false);
 
   const seedProtocols = async () => {
-    if (!confirm("Inserir os 10 protocolos clínicos de base? Esta ação cria os templates na biblioteca.")) return;
+    if (!confirm("Insert the 10 base clinical protocols? This action creates the templates in the library.")) return;
     setSeeding(true);
     try {
       const res = await fetch("/api/admin/protocols/seed", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        toast({ title: `✅ ${data.created} protocolos criados!`, description: data.protocols?.join(", ") });
+        toast({ title: `✅ ${data.created} protocols created!`, description: data.protocols?.join(", ") });
         load();
       } else {
-        toast({ title: "Erro", description: data.error, variant: "destructive" });
+        toast({ title: "Error", description: data.error, variant: "destructive" });
       }
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {
       setSeeding(false);
     }
@@ -201,7 +201,7 @@ export default function ProtocolsPage() {
 
   const save = async () => {
     if (!form.name?.trim()) {
-      toast({ title: "Nome obrigatório", variant: "destructive" });
+      toast({ title: "Name required", variant: "destructive" });
       return;
     }
     const validItems = items.filter((it) => it.title.trim());
@@ -219,18 +219,18 @@ export default function ProtocolsPage() {
         body: JSON.stringify(payload),
       });
       if (!r.ok) throw new Error((await r.json()).error || "Failed");
-      toast({ title: editing ? "Protocolo actualizado" : "Protocolo criado" });
+      toast({ title: editing ? "Protocol updated" : "Protocol created" });
       setEditorOpen(false);
       load();
     } catch (e: any) {
-      toast({ title: "Erro", description: e.message, variant: "destructive" });
+      toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async (t: Template) => {
-    if (!confirm(`Eliminar o protocolo "${t.name}"?`)) return;
+    if (!confirm(`Delete the protocol "${t.name}"?`)) return;
     await fetch(`/api/admin/protocols/${t.id}`, { method: "DELETE" });
     setTemplates((prev) => prev.filter((x) => x.id !== t.id));
   };
@@ -247,14 +247,14 @@ export default function ProtocolsPage() {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Failed");
       toast({
-        title: "Protocolo atribuído!",
-        description: `O paciente foi notificado. ${data.prescriptions > 0 ? `${data.prescriptions} exercício(s) prescritos.` : ""}`,
+        title: "Protocol assigned!",
+        description: `The patient has been notified. ${data.prescriptions > 0 ? `${data.prescriptions} exercise(s) prescribed.` : ""}`,
       });
       setAssignOpen(null);
       setAssignPatientId("");
       setAssignNote("");
     } catch (e: any) {
-      toast({ title: "Erro ao atribuir", description: e.message, variant: "destructive" });
+      toast({ title: "Error assigning", description: e.message, variant: "destructive" });
     } finally {
       setAssigning(false);
     }
@@ -279,22 +279,22 @@ export default function ProtocolsPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
-            Protocolos de Atendimento
+            Treatment Protocols
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Templates reutilizáveis por condição, serviço e equipamento. Atribua a pacientes com um clique.
+            Reusable templates by condition, service and equipment. Assign to patients in one click.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {templates.length === 0 && (
             <Button variant="outline" onClick={seedProtocols} disabled={seeding} className="gap-2 text-primary border-primary/30 hover:bg-primary/5">
               {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
-              Carregar 10 Protocolos Base
+              Load 10 Base Protocols
             </Button>
           )}
           <Button onClick={openCreate} className="gap-2">
             <Plus className="h-4 w-4" />
-            Novo Protocolo
+            New Protocol
           </Button>
         </div>
       </div>
@@ -303,7 +303,7 @@ export default function ProtocolsPage() {
       <div className="relative max-w-sm">
         <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Procurar por nome, condição ou equipamento…"
+          placeholder="Search by name, condition or equipment…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -317,12 +317,12 @@ export default function ProtocolsPage() {
           <p className="text-sm text-muted-foreground">
             {templates.length === 0 ? (
             <>
-              Nenhum protocolo ainda.{" "}
+              No protocols yet.{" "}
               <button onClick={seedProtocols} disabled={seeding} className="text-primary underline hover:no-underline">
-                {seeding ? "A carregar..." : "Carregar os 10 protocolos de base"}
+                {seeding ? "Loading..." : "Load the 10 base protocols"}
               </button>
             </>
-          ) : "Nenhum resultado."}
+          ) : "No results."}
           </p>
         </div>
       )}
@@ -350,7 +350,7 @@ export default function ProtocolsPage() {
                     ))}
                     <span className="text-[10px] text-muted-foreground">
                       {t.items.length} item{t.items.length !== 1 ? "s" : ""}
-                      {t.estimatedWeeks ? ` · ${t.estimatedWeeks} semanas` : ""}
+                      {t.estimatedWeeks ? ` · ${t.estimatedWeeks} weeks` : ""}
                     </span>
                   </div>
                 </div>
@@ -360,7 +360,7 @@ export default function ProtocolsPage() {
                   onClick={(e) => { e.stopPropagation(); setAssignOpen(t); }}
                 >
                   <UserPlus className="h-3.5 w-3.5" />
-                  Atribuir
+                  Assign
                 </Button>
                 <Button
                   variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0"
@@ -453,7 +453,7 @@ export default function ProtocolsPage() {
                 <Input
                   value={form.bodyRegion || ""}
                   onChange={(e) => setForm({ ...form, bodyRegion: e.target.value })}
-                  placeholder="ex.: KNEE"
+                  placeholder="e.g.: KNEE"
                 />
               </div>
               <div>
@@ -578,9 +578,9 @@ export default function ProtocolsPage() {
                             });
                           }}
                         >
-                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sem vídeo" /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="No video" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none" className="text-xs">— Sem vídeo —</SelectItem>
+                            <SelectItem value="none" className="text-xs">— No video —</SelectItem>
                             {exercises.map((ex) => (
                               <SelectItem key={ex.id} value={ex.id} className="text-xs">
                                 {ex.name} ({ex.bodyRegion})
@@ -599,7 +599,7 @@ export default function ProtocolsPage() {
                       </div>
                       <div>
                         <Label className="text-[10px]">Frequency / Frequência</Label>
-                        <Input className="h-8 text-xs" value={it.frequency || ""} onChange={(e) => updateItem(idx, { frequency: e.target.value })} placeholder="3×/semana" />
+                        <Input className="h-8 text-xs" value={it.frequency || ""} onChange={(e) => updateItem(idx, { frequency: e.target.value })} placeholder="3×/week" />
                       </div>
                     </div>
                   )}
@@ -649,13 +649,13 @@ export default function ProtocolsPage() {
       <Dialog open={Boolean(assignOpen)} onOpenChange={(o) => { if (!o) setAssignOpen(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm">Atribuir &quot;{assignOpen?.name}&quot;</DialogTitle>
+            <DialogTitle className="text-sm">Assign &quot;{assignOpen?.name}&quot;</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="relative">
               <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Procurar paciente…"
+                placeholder="Search patient…"
                 value={assignSearch}
                 onChange={(e) => setAssignSearch(e.target.value)}
                 className="pl-8 h-9 text-sm"
@@ -675,21 +675,21 @@ export default function ProtocolsPage() {
                 </button>
               ))}
               {filteredPatients.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">Nenhum paciente.</p>
+                <p className="text-xs text-muted-foreground text-center py-4">No patients.</p>
               )}
             </div>
             <Textarea
-              placeholder="Nota para o paciente (opcional)…"
+              placeholder="Note for the patient (optional)…"
               value={assignNote}
               onChange={(e) => setAssignNote(e.target.value)}
               className="text-sm min-h-[60px]"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignOpen(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setAssignOpen(null)}>Cancel</Button>
             <Button onClick={assign} disabled={assigning || !assignPatientId} className="gap-2">
               {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Atribuir e Notificar
+              Assign & Notify
             </Button>
           </DialogFooter>
         </DialogContent>

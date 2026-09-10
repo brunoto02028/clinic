@@ -1250,9 +1250,9 @@ export default function AdminScansPage() {
                     <div className="flex items-center justify-between p-4 bg-bruno-turquoise/10 rounded-lg">
                       <div>
                         <h4 className="font-semibold text-bruno-turquoise flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" /> Relatório de Fabricação
+                          <CheckCircle className="h-4 w-4" /> Manufacturing Report
                         </h4>
-                        <p className="text-xs text-muted-foreground mt-1">Variáveis otimizadas para laboratório de palmilhas.</p>
+                        <p className="text-xs text-muted-foreground mt-1">Variables optimised for the insole laboratory.</p>
                       </div>
                       <Button
                         size="sm"
@@ -1262,7 +1262,7 @@ export default function AdminScansPage() {
                         disabled={isLoadingReport}
                       >
                         {isLoadingReport ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                        Gerar Report PDF
+                        Generate PDF Report
                       </Button>
                     </div>
 

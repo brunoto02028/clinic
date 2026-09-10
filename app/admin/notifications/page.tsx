@@ -94,11 +94,11 @@ export default function NotificationsPage() {
   const send = async () => {
     if (!title.trim() || !content.trim()) return;
     if (audience === "selected" && selectedIds.size === 0) {
-      toast({ title: "Selecione pelo menos um paciente", variant: "destructive" });
+      toast({ title: "Select at least one patient", variant: "destructive" });
       return;
     }
     if (schedule && !scheduledFor) {
-      toast({ title: "Escolha a data/hora do agendamento", variant: "destructive" });
+      toast({ title: "Choose the schedule date/time", variant: "destructive" });
       return;
     }
     setSending(true);
@@ -117,10 +117,10 @@ export default function NotificationsPage() {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Failed");
       toast({
-        title: data.scheduled ? "Notificação agendada!" : "Notificação enviada!",
+        title: data.scheduled ? "Notification scheduled!" : "Notification sent!",
         description: data.scheduled
-          ? `Será enviada em ${new Date(data.scheduledFor).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}.`
-          : `Entregue a ${data.recipientCount} paciente${data.recipientCount > 1 ? "s" : ""}.`,
+          ? `Will be sent on ${new Date(data.scheduledFor).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}.`
+          : `Delivered to ${data.recipientCount} patient${data.recipientCount > 1 ? "s" : ""}.`,
       });
       setTitle("");
       setContent("");
@@ -132,14 +132,14 @@ export default function NotificationsPage() {
         .then((r) => (r.ok ? r.json() : []))
         .then((bcs) => setBroadcasts(Array.isArray(bcs) ? bcs : []));
     } catch (e: any) {
-      toast({ title: "Erro ao enviar", description: e.message, variant: "destructive" });
+      toast({ title: "Error sending", description: e.message, variant: "destructive" });
     } finally {
       setSending(false);
     }
   };
 
   const removeBroadcast = async (id: string) => {
-    if (!confirm("Eliminar esta notificação? Os pacientes deixarão de a ver.")) return;
+    if (!confirm("Delete this notification? Patients will no longer see it.")) return;
     await fetch("/api/admin/broadcasts", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -161,26 +161,26 @@ export default function NotificationsPage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
           <Megaphone className="h-5 w-5 text-primary" />
-          Notificações aos Pacientes
+          Patient Notifications
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Envie avisos para todos os pacientes ou apenas para os seleccionados. Tudo fica registado.
+          Send announcements to all patients or only the selected ones. Everything is logged.
         </p>
       </div>
 
       {/* Composer */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Nova Notificação</CardTitle>
+          <CardTitle className="text-sm">New Notification</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input
-            placeholder="Título (ex.: Alteração de horário na próxima semana)"
+            placeholder="Title (e.g. Schedule change next week)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
           <Textarea
-            placeholder="Escreva a notificação…"
+            placeholder="Write the notification…"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="min-h-[100px]"
@@ -197,7 +197,7 @@ export default function NotificationsPage() {
               onClick={() => setAudience("all")}
             >
               <Users className="h-3.5 w-3.5" />
-              Todos os pacientes ({patients.length})
+              All patients ({patients.length})
             </button>
             <button
               className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors ${
@@ -208,7 +208,7 @@ export default function NotificationsPage() {
               onClick={() => setAudience("selected")}
             >
               <UserCheck className="h-3.5 w-3.5" />
-              Seleccionar pacientes {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+              Select patients {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
             </button>
           </div>
 
@@ -219,7 +219,7 @@ export default function NotificationsPage() {
                 <div className="relative">
                   <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Procurar paciente…"
+                    placeholder="Search patient…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-8 h-8 text-xs"
@@ -246,7 +246,7 @@ export default function NotificationsPage() {
                 ))}
                 {filteredPatients.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-6">
-                    Nenhum paciente encontrado.
+                    No patients found.
                   </p>
                 )}
               </div>
@@ -265,7 +265,7 @@ export default function NotificationsPage() {
               onClick={() => setSchedule(!schedule)}
             >
               <CalendarClock className="h-3.5 w-3.5" />
-              {schedule ? "Agendada para:" : "Agendar envio"}
+              {schedule ? "Scheduled for:" : "Schedule sending"}
             </button>
             {schedule && (
               <Input
@@ -286,14 +286,14 @@ export default function NotificationsPage() {
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : schedule ? <CalendarClock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
               {schedule
-                ? "Agendar notificação"
+                ? "Schedule notification"
                 : audience === "all"
-                ? `Enviar a todos (${patients.length})`
-                : `Enviar a ${selectedIds.size} paciente${selectedIds.size !== 1 ? "s" : ""}`}
+                ? `Send to all (${patients.length})`
+                : `Send to ${selectedIds.size} patient${selectedIds.size !== 1 ? "s" : ""}`}
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Cada paciente é notificado por email/WhatsApp (conforme preferência) e vê o aviso no portal.
+            Each patient is notified by email/WhatsApp (as per preference) and sees the announcement in the portal.
           </p>
         </CardContent>
       </Card>
@@ -301,12 +301,12 @@ export default function NotificationsPage() {
       {/* History */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Histórico de Notificações</CardTitle>
+          <CardTitle className="text-sm">Notification History</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {broadcasts.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-6">
-              Nenhuma notificação enviada ainda.
+              No notifications sent yet.
             </p>
           )}
           {broadcasts.map((b) => {
@@ -321,20 +321,20 @@ export default function NotificationsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold truncate">{b.title}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {new Date(b.createdAt).toLocaleString("pt-BR", {
+                      {new Date(b.createdAt).toLocaleString("en-GB", {
                         day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
                       })}{" "}
-                      · {b.sentBy} · {b.audience === "all" ? "Todos" : "Seleccionados"}
+                      · {b.sentBy} · {b.audience === "all" ? "All" : "Selected"}
                     </p>
                   </div>
                   {b.status === "scheduled" ? (
                     <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-amber-500/15 text-amber-400 shrink-0 flex items-center gap-1">
                       <CalendarClock className="h-2.5 w-2.5" />
-                      {b.scheduledFor ? new Date(b.scheduledFor).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Agendada"}
+                      {b.scheduledFor ? new Date(b.scheduledFor).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Scheduled"}
                     </span>
                   ) : (
                     <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400 shrink-0">
-                      {b.readCount}/{b.recipientCount} lidas
+                      {b.readCount}/{b.recipientCount} read
                     </span>
                   )}
                   <button

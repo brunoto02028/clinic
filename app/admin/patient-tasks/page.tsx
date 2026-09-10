@@ -176,16 +176,16 @@ export default function PatientTasksPage() {
       setShowNewType(false);
       setNewTypeName("");
       setNewTypeNamePt("");
-      toast({ title: "Tipo criado!", description: "Guardado para reutilização futura." });
+      toast({ title: "Type created!", description: "Saved for future reuse." });
     } catch {
-      toast({ title: "Erro ao criar tipo", variant: "destructive" });
+      toast({ title: "Error creating type", variant: "destructive" });
     } finally {
       setSavingType(false);
     }
   };
 
   const deleteType = async (id: string) => {
-    if (!confirm("Eliminar este tipo personalizado?")) return;
+    if (!confirm("Delete this custom type?")) return;
     await fetch("/api/admin/task-types", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -197,15 +197,15 @@ export default function PatientTasksPage() {
 
   const handleSubmit = async () => {
     if (!title) {
-      toast({ title: "Título é obrigatório", variant: "destructive" });
+      toast({ title: "Title is required", variant: "destructive" });
       return;
     }
     if (audience === "one" && !patientId) {
-      toast({ title: "Selecione um paciente", variant: "destructive" });
+      toast({ title: "Select a patient", variant: "destructive" });
       return;
     }
     if (audience === "selected" && selectedIds.size === 0) {
-      toast({ title: "Selecione pelo menos um paciente", variant: "destructive" });
+      toast({ title: "Select at least one patient", variant: "destructive" });
       return;
     }
     setSending(true);
@@ -232,8 +232,8 @@ export default function PatientTasksPage() {
       if (!res.ok) throw new Error(data.error);
 
       toast({
-        title: `Enviado a ${data.count} paciente${data.count > 1 ? "s" : ""}!`,
-        description: `${data.notified} notificado${data.notified !== 1 ? "s" : ""} por email/WhatsApp.`,
+        title: `Sent to ${data.count} patient${data.count > 1 ? "s" : ""}!`,
+        description: `${data.notified} notified by email/WhatsApp.`,
       });
 
       setShowForm(false);
@@ -248,7 +248,7 @@ export default function PatientTasksPage() {
       setPriority("normal"); setDueDate(""); setActionUrl("");
       fetchTasks();
     } catch (err: any) {
-      toast({ title: "Falha ao criar task", description: err.message, variant: "destructive" });
+      toast({ title: "Failed to create task", description: err.message, variant: "destructive" });
     }
     setSending(false);
   };
@@ -281,7 +281,7 @@ export default function PatientTasksPage() {
             Patient Action Requests
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Envie tasks e avisos a um paciente, a vários ou a todos. Notificação in-app, email e push.
+            Send tasks and reminders to one patient, several or all. In-app, email and push notification.
           </p>
         </div>
         <Button onClick={() => setShowForm(!showForm)} className="gap-2">
@@ -300,11 +300,11 @@ export default function PatientTasksPage() {
 
             {/* Audience selector */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-foreground">Destinatários *</Label>
+              <Label className="text-xs font-semibold text-foreground">Recipients *</Label>
               <div className="flex flex-wrap items-center gap-2">
-                {audienceBtn("one", User, "Um paciente")}
-                {audienceBtn("selected", UserCheck, `Vários ${selectedIds.size > 0 ? `(${selectedIds.size})` : ""}`)}
-                {audienceBtn("all", Users, `Todos (${allPatients.length})`)}
+                {audienceBtn("one", User, "One patient")}
+                {audienceBtn("selected", UserCheck, `Several ${selectedIds.size > 0 ? `(${selectedIds.size})` : ""}`)}
+                {audienceBtn("all", Users, `All (${allPatients.length})`)}
               </div>
             </div>
 
@@ -313,7 +313,7 @@ export default function PatientTasksPage() {
               <div className="space-y-1 relative">
                 <Label className="text-xs font-semibold text-foreground">Patient *</Label>
                 <Input
-                  placeholder="Procurar paciente por nome ou email…"
+                  placeholder="Search patient by name or email…"
                   value={patientSearch}
                   onChange={(e) => searchPatients(e.target.value)}
                   className="bg-background border-border text-foreground placeholder:text-muted-foreground/60"
@@ -348,7 +348,7 @@ export default function PatientTasksPage() {
                   <div className="relative">
                     <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Procurar paciente…"
+                      placeholder="Search patient…"
                       value={multiSearch}
                       onChange={(e) => setMultiSearch(e.target.value)}
                       className="pl-8 h-8 text-xs bg-background"
@@ -380,7 +380,7 @@ export default function PatientTasksPage() {
 
             {audience === "all" && (
               <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
-                ⚠ Esta task será enviada a <strong>todos os {allPatients.length} pacientes activos</strong>.
+                ⚠ This task will be sent to <strong>all {allPatients.length} active patients</strong>.
               </p>
             )}
 
@@ -394,7 +394,7 @@ export default function PatientTasksPage() {
                     className="text-[10px] text-primary hover:underline"
                     onClick={() => setShowNewType(!showNewType)}
                   >
-                    + Novo tipo
+                    + New type
                   </button>
                 </div>
                 <Select value={type} onValueChange={applyType}>
@@ -404,7 +404,7 @@ export default function PatientTasksPage() {
                       <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                     ))}
                     {customTypes.length > 0 && (
-                      <div className="px-2 py-1 text-[9px] font-bold text-muted-foreground uppercase">Personalizados</div>
+                      <div className="px-2 py-1 text-[9px] font-bold text-muted-foreground uppercase">Custom</div>
                     )}
                     {customTypes.map((c) => (
                       <SelectItem key={c.id} value={`CUSTOM:${c.id}`}>
@@ -419,7 +419,7 @@ export default function PatientTasksPage() {
                     className="text-[10px] text-red-400/70 hover:text-red-400 flex items-center gap-1"
                     onClick={() => deleteType(type.replace("CUSTOM:", ""))}
                   >
-                    <Trash2 className="h-2.5 w-2.5" /> Eliminar este tipo
+                    <Trash2 className="h-2.5 w-2.5" /> Delete this type
                   </button>
                 )}
               </div>
@@ -444,18 +444,18 @@ export default function PatientTasksPage() {
             {/* Inline new type creator */}
             {showNewType && (
               <div className="border border-primary/30 bg-primary/5 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-primary">Criar tipo personalizado</p>
+                <p className="text-xs font-semibold text-primary">Create custom type</p>
                 <p className="text-[10px] text-muted-foreground">
-                  O título, descrição e URL preenchidos abaixo serão guardados como predefinição deste tipo.
+                  The title, description and URL filled in below will be saved as this type's default.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Input placeholder="Nome do tipo (EN) — ex.: Bring Gym Clothes" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="h-8 text-xs bg-background" />
-                  <Input placeholder="Nome (PT) — opcional" value={newTypeNamePt} onChange={(e) => setNewTypeNamePt(e.target.value)} className="h-8 text-xs bg-background" />
+                  <Input placeholder="Type name (EN) — e.g. Bring Gym Clothes" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} className="h-8 text-xs bg-background" />
+                  <Input placeholder="Name (PT) — optional" value={newTypeNamePt} onChange={(e) => setNewTypeNamePt(e.target.value)} className="h-8 text-xs bg-background" />
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" className="h-7 text-xs gap-1" onClick={createType} disabled={savingType || !newTypeName.trim()}>
                     {savingType ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                    Guardar tipo
+                    Save type
                   </Button>
                   <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowNewType(false)}>
                     <X className="h-3 w-3" />
@@ -471,7 +471,7 @@ export default function PatientTasksPage() {
                 <Input placeholder="e.g. Please upload your ID document" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-background border-border text-foreground placeholder:text-muted-foreground/60" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-semibold text-foreground">Titulo (Portugues)</Label>
+                <Label className="text-xs font-semibold text-foreground">Title (Portuguese)</Label>
                 <Input placeholder="e.g. Por favor envie seu documento" value={titlePt} onChange={(e) => setTitlePt(e.target.value)} className="bg-background border-border text-foreground placeholder:text-muted-foreground/60" />
               </div>
             </div>
@@ -483,14 +483,14 @@ export default function PatientTasksPage() {
                 <Textarea placeholder="Additional details..." value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="bg-background border-border text-foreground placeholder:text-muted-foreground/60" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-semibold text-foreground">Descricao (Portugues)</Label>
+                <Label className="text-xs font-semibold text-foreground">Description (Portuguese)</Label>
                 <Textarea placeholder="Detalhes adicionais..." value={descriptionPt} onChange={(e) => setDescriptionPt(e.target.value)} rows={3} className="bg-background border-border text-foreground placeholder:text-muted-foreground/60" />
               </div>
             </div>
 
             {/* Action URL */}
             <div className="space-y-1">
-              <Label className="text-xs font-semibold text-foreground">Action URL (opcional — para onde o paciente deve ir?)</Label>
+              <Label className="text-xs font-semibold text-foreground">Action URL (optional — where should the patient go?)</Label>
               <Input placeholder="e.g. /dashboard/recordings or /dashboard/profile" value={actionUrl} onChange={(e) => setActionUrl(e.target.value)} className="bg-background border-border text-foreground placeholder:text-muted-foreground/60" />
             </div>
 
@@ -499,9 +499,9 @@ export default function PatientTasksPage() {
               <Button onClick={handleSubmit} disabled={sending} className="gap-2">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {audience === "all"
-                  ? `Enviar a todos (${allPatients.length})`
+                  ? `Send to all (${allPatients.length})`
                   : audience === "selected"
-                  ? `Enviar a ${selectedIds.size} paciente${selectedIds.size !== 1 ? "s" : ""}`
+                  ? `Send to ${selectedIds.size} patient${selectedIds.size !== 1 ? "s" : ""}`
                   : "Send to Patient"}
               </Button>
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -577,19 +577,19 @@ export default function PatientTasksPage() {
                             </span>
                           )}
                           {/* Delivery + read receipts */}
-                          <span className="flex items-center gap-1 text-emerald-400" title="Entregue na área do paciente">
+                          <span className="flex items-center gap-1 text-emerald-400" title="Delivered to the patient's area">
                             <Check className="h-3 w-3" />
-                            Entregue{task.emailSent ? " + email" : ""}
+                            Delivered{task.emailSent ? " + email" : ""}
                           </span>
                           {task.viewedAt ? (
-                            <span className="flex items-center gap-1 text-emerald-400 font-semibold" title={`Lida em ${new Date(task.viewedAt).toLocaleString("pt-BR")}`}>
+                            <span className="flex items-center gap-1 text-emerald-400 font-semibold" title={`Read on ${new Date(task.viewedAt).toLocaleString("en-GB")}`}>
                               <CheckCheck className="h-3 w-3" />
-                              Lida
+                              Read
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-muted-foreground/60" title="Ainda não visualizada pelo paciente">
+                            <span className="flex items-center gap-1 text-muted-foreground/60" title="Not yet viewed by the patient">
                               <CheckCheck className="h-3 w-3 opacity-40" />
-                              Não lida
+                              Unread
                             </span>
                           )}
                         </div>

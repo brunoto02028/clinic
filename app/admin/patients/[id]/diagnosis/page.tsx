@@ -225,7 +225,7 @@ export default function PatientDiagnosisPage() {
       try { data = await res.json(); } catch { throw new Error("Invalid server response"); }
       if (!res.ok) throw new Error(data.error);
       setTab("protocol");
-      setSuccess("Protocolo gerado com sucesso! A redirecionar para o tab Protocolo...");
+      setSuccess("Protocol generated successfully! Redirecting to the Protocol tab...");
       setTimeout(() => setSuccess(""), 5000);
       fetchData();
     } catch (err: any) {
@@ -1205,7 +1205,7 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
             </button>
             {showAtlasReview && (
               <div className="space-y-2">
-                <p className="text-[11px] text-muted-foreground">Discuss the protocol with Atlas — he knows the full patient record (screening, assessments, SOAP notes, previous Atlas conversations). When you agree, tell him to apply (e.g. “fecha assim”, “pode montar”) and he will build the revision for your approval.</p>
+                <p className="text-[11px] text-muted-foreground">Discuss the protocol with Atlas — he knows the full patient record (screening, assessments, SOAP notes, previous Atlas conversations). When you agree, tell him to apply (e.g. “close it off”, “go ahead and build it”) and he will build the revision for your approval.</p>
 
                 {atlasMsgs.length > 0 && (
                   <div className="max-h-96 overflow-y-auto space-y-2 border rounded-lg p-2 bg-card/50">
@@ -1264,7 +1264,7 @@ function ProtocolCard({ protocol: p, onUpdate, patientId }: {
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); atlasSend(); } }}
                     rows={2}
                     className="text-xs flex-1"
-                    placeholder="E.g.: A paciente está normal, quer qualidade de vida — corrente Aussie 3x/semana + alongamentos + isométricos nas primeiras semanas. Concordas?"
+                    placeholder="E.g.: The patient is stable and wants quality of life — Aussie current 3×/week + stretches + isometrics in the first weeks. Do you agree?"
                   />
                   <Button size="sm" className="h-auto bg-sky-600 hover:bg-sky-700" onClick={atlasSend} disabled={!atlasInput.trim() || atlasBusy !== ""}>
                     {atlasBusy === "chatting" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

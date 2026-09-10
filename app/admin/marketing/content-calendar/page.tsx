@@ -95,7 +95,7 @@ export default function ContentCalendarPage() {
       if (!res.ok) throw new Error(data.error);
       setPosts(data.posts || []);
       if (data.partial) {
-        setError(`Gerados ${data.totalPosts} de ${data.requestedPosts} posts pedidos — ${data.failedBatches} lote(s) falharam mesmo após nova tentativa. Podes clicar "Regenerar" para tentar de novo.`);
+        setError(`Generated ${data.totalPosts} of ${data.requestedPosts} requested posts — ${data.failedBatches} batch(es) failed even after retrying. You can click "Regenerate" to try again.`);
       }
     } catch (e: any) {
       setError(e.message);
@@ -121,7 +121,7 @@ export default function ContentCalendarPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          caption: `${post.caption}${post.date ? `\n\n[Plano: ${post.date} ${post.post_time || ""}]` : ""}`,
+          caption: `${post.caption}${post.date ? `\n\n[Plan: ${post.date} ${post.post_time || ""}]` : ""}`,
           hashtags: post.hashtags?.join(", ") || null,
           postType: post.content_type,
           mediaUrls: [],
@@ -132,7 +132,7 @@ export default function ContentCalendarPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falhou ao guardar");
+      if (!res.ok) throw new Error(data.error || "Failed to save");
       setPosts(prev => prev.map((p, i) => i === idx ? { ...p, saved: true, saving: false } : p));
       return true;
     } catch (e: any) {
@@ -153,8 +153,8 @@ export default function ContentCalendarPage() {
     setSavingAll(false);
     const failedCount = unsaved.length - successCount;
     setSuccess(failedCount > 0
-      ? `${successCount} guardados, ${failedCount} falharam — verifica os cards marcados em vermelho.`
-      : `${successCount} posts guardados como rascunho!`);
+      ? `${successCount} saved, ${failedCount} failed — check the cards marked in red.`
+      : `${successCount} posts saved as drafts!`);
     setTimeout(() => setSuccess(null), 5000);
   }
 
@@ -178,17 +178,17 @@ export default function ContentCalendarPage() {
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
               <Calendar className="h-4 w-4 text-white" />
             </div>
-            Calendário de Conteúdo
+            Content Calendar
           </h1>
-          <p className="text-sm text-muted-foreground">Gera 1 mês de posts com IA — agenda tudo de uma vez</p>
+          <p className="text-sm text-muted-foreground">Generate a month of posts with AI — schedule it all at once</p>
         </div>
         {posts.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{savedCount}/{posts.length} guardados</span>
+            <span className="text-xs text-muted-foreground">{savedCount}/{posts.length} saved</span>
             <Button onClick={saveAllPosts} disabled={savingAll || savedCount === posts.length}
               className="bg-emerald-600 hover:bg-emerald-700 text-white">
               {savingAll ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
-              {savingAll ? "A guardar..." : "Guardar Todos"}
+              {savingAll ? "Saving..." : "Save All"}
             </Button>
           </div>
         )}
@@ -213,25 +213,25 @@ export default function ContentCalendarPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Start Date */}
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Data de Início</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Start Date</label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
             </div>
             {/* Posts per week */}
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Posts por Semana</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Posts per Week</label>
               <div className="flex gap-1.5">
                 {[3, 5, 7].map(n => (
                   <button key={n} onClick={() => setPostsPerWeek(n)}
                     className={`flex-1 py-2 rounded-lg border text-sm transition-all ${postsPerWeek === n ? "border-primary bg-primary/10 text-foreground font-semibold" : "border-border text-muted-foreground"}`}>
-                    {n}/sem
+                    {n}/wk
                   </button>
                 ))}
               </div>
             </div>
             {/* Language */}
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Idioma</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Language</label>
               <div className="flex gap-1.5">
                 {(["en", "pt", "both"] as const).map(l => (
                   <button key={l} onClick={() => setLanguage(l)}
@@ -246,7 +246,7 @@ export default function ContentCalendarPage() {
           {/* Themes */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">
-              Temas (opcional — deixa vazio para mix automático)
+              Themes (optional — leave empty for an automatic mix)
             </label>
             <div className="flex flex-wrap gap-1.5">
               {THEMES.map(t => (
@@ -263,20 +263,20 @@ export default function ContentCalendarPage() {
             <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
               <input type="checkbox" checked={includeMarketplace} onChange={e => setIncludeMarketplace(e.target.checked)}
                 className="rounded accent-primary" />
-              Incluir Marketplace / PDFs
+              Include Marketplace / PDFs
             </label>
             <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
               <input type="checkbox" checked={includeArticles} onChange={e => setIncludeArticles(e.target.checked)}
                 className="rounded accent-primary" />
-              Incluir Artigos do Blog
+              Include Blog Articles
             </label>
           </div>
 
           <Button onClick={generateCalendar} disabled={loading}
             className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold py-2.5">
             {loading
-              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A gerar {postsPerWeek * 4} posts com Claude AI...</>
-              : <><Sparkles className="h-4 w-4 mr-2" /> Gerar {postsPerWeek * 4} Posts para 1 Mês</>
+              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating {postsPerWeek * 4} posts with Claude AI...</>
+              : <><Sparkles className="h-4 w-4 mr-2" /> Generate {postsPerWeek * 4} Posts for 1 Month</>
             }
           </Button>
         </CardContent>
@@ -288,8 +288,8 @@ export default function ContentCalendarPage() {
           <CardContent className="p-10 flex flex-col items-center gap-4 text-muted-foreground">
             <Loader2 className="h-10 w-10 animate-spin text-purple-400" />
             <div className="text-center">
-              <p className="text-sm font-medium text-foreground">A criar o teu calendário de conteúdo...</p>
-              <p className="text-xs mt-1">Claude AI está a gerar {postsPerWeek * 4} posts únicos, captions, hashtags e sugestões visuais</p>
+              <p className="text-sm font-medium text-foreground">Creating your content calendar...</p>
+              <p className="text-xs mt-1">Claude AI is generating {postsPerWeek * 4} unique posts, captions, hashtags and visual suggestions</p>
             </div>
           </CardContent>
         </Card>
@@ -303,16 +303,16 @@ export default function ContentCalendarPage() {
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <span className="font-semibold text-foreground">{posts.length} posts</span>
               <span>{posts.filter(p => p.content_type === "REEL").length} Reels</span>
-              <span>{posts.filter(p => p.content_type === "CAROUSEL").length} Carrosséis</span>
-              <span>{posts.filter(p => p.content_type === "IMAGE").length} Imagens</span>
+              <span>{posts.filter(p => p.content_type === "CAROUSEL").length} Carousels</span>
+              <span>{posts.filter(p => p.content_type === "IMAGE").length} Images</span>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === "list" ? "grid" : "list")}>
                 <Grid3x3 className="h-3.5 w-3.5 mr-1" />
-                {viewMode === "list" ? "Grid" : "Lista"}
+                {viewMode === "list" ? "Grid" : "List"}
               </Button>
               <Button variant="outline" size="sm" onClick={generateCalendar}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Regenerar
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Regenerate
               </Button>
             </div>
           </div>
@@ -354,14 +354,14 @@ export default function ContentCalendarPage() {
                       )}
                       {post.saved ? (
                         <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
-                          <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Guardado
+                          <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Saved
                         </Badge>
                       ) : (
                         <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); savePost(idx); }}
                           disabled={post.saving}
                           className="h-6 text-[10px] px-2">
                           {post.saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Save className="h-2.5 w-2.5 mr-0.5" />}
-                          Guardar
+                          Save
                         </Button>
                       )}
                       {expanded === idx ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -384,25 +384,25 @@ export default function ContentCalendarPage() {
                       {/* Date / time (editable) */}
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold block mb-1">Data planeada</label>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold block mb-1">Planned date</label>
                           <input type="date" value={post.date || ""} onChange={e => updatePost(idx, { date: e.target.value })}
                             className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary" />
                         </div>
                         <div>
-                          <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold block mb-1">Hora</label>
+                          <label className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold block mb-1">Time</label>
                           <input type="time" value={post.post_time || ""} onChange={e => updatePost(idx, { post_time: e.target.value })}
                             className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary" />
                         </div>
                       </div>
                       {/* Caption (editable) */}
                       <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-1">Legenda</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-1">Caption</p>
                         <textarea value={post.caption} onChange={e => updatePost(idx, { caption: e.target.value })} rows={5}
                           className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-xs text-foreground outline-none focus:border-primary resize-none leading-relaxed" />
                       </div>
                       {/* Hashtags (editable) */}
                       <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-1">Hashtags (separadas por vírgula)</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-1">Hashtags (comma-separated)</p>
                         <input type="text" value={post.hashtags?.join(", ") || ""}
                           onChange={e => updatePost(idx, { hashtags: e.target.value.split(",").map(h => h.trim()).filter(Boolean) })}
                           className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary" />
@@ -417,24 +417,24 @@ export default function ContentCalendarPage() {
                         )}
                         {post.bpr_connection && (
                           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2">
-                            <p className="text-[10px] text-blue-400 font-semibold mb-0.5">🔗 Ligação BPR</p>
+                            <p className="text-[10px] text-blue-400 font-semibold mb-0.5">🔗 BPR Link</p>
                             <p className="text-blue-300">{post.bpr_connection}</p>
                           </div>
                         )}
                       </div>
-                      <p className="text-[10px] text-muted-foreground">💡 Isto guarda como rascunho — sem imagem ainda não publica sozinho. Abre "Criar no Studio" para adicionar imagem e agendar/publicar de verdade.</p>
+                      <p className="text-[10px] text-muted-foreground">💡 This saves as a draft — without an image it will not publish on its own yet. Open "Create in Studio" to add an image and actually schedule/publish.</p>
                       {/* Actions */}
                       <div className="flex gap-2">
                         <Link href={`/admin/marketing/instagram-studio?topic=${encodeURIComponent(post.topic)}`} className="flex-1">
                           <Button size="sm" variant="outline" className="w-full text-xs">
-                            <Zap className="h-3.5 w-3.5 mr-1" /> Criar no Studio
+                            <Zap className="h-3.5 w-3.5 mr-1" /> Create in Studio
                           </Button>
                         </Link>
                         {!post.saved && (
                           <Button size="sm" onClick={() => savePost(idx)} disabled={post.saving}
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
                             {post.saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-                            Guardar rascunho
+                            Save draft
                           </Button>
                         )}
                       </div>
@@ -453,8 +453,8 @@ export default function ContentCalendarPage() {
           <CardContent className="p-12 flex flex-col items-center gap-4 text-muted-foreground">
             <Calendar className="h-14 w-14 opacity-20" />
             <div className="text-center">
-              <p className="text-sm font-medium text-foreground">Cria o teu calendário de 1 mês</p>
-              <p className="text-xs mt-1 max-w-sm">Configura as opções acima e clica em "Gerar Posts". Claude AI cria captions únicas, hooks virais, hashtags e sugestões visuais para cada dia.</p>
+              <p className="text-sm font-medium text-foreground">Create your 1-month calendar</p>
+              <p className="text-xs mt-1 max-w-sm">Configure the options above and click "Generate Posts". Claude AI creates unique captions, viral hooks, hashtags and visual suggestions for each day.</p>
             </div>
           </CardContent>
         </Card>

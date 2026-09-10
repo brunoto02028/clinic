@@ -1451,7 +1451,7 @@ export default function AdminBodyAssessmentsPage() {
                 {(() => {
                   const imgUrl = annotateView === "front" ? a.frontImageUrl : annotateView === "back" ? a.backImageUrl : annotateView === "left" ? a.leftImageUrl : a.rightImageUrl;
                   const lm = annotateView === "front" ? a.frontLandmarks : annotateView === "back" ? a.backLandmarks : annotateView === "left" ? a.leftLandmarks : a.rightLandmarks;
-                  if (!imgUrl) return <Card><CardContent className="p-8 text-center"><Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground">Nenhuma imagem para esta vista.</p></CardContent></Card>;
+                  if (!imgUrl) return <Card><CardContent className="p-8 text-center"><Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground">{locale === "pt-BR" ? "Nenhuma imagem para esta vista." : "No image for this view."}</p></CardContent></Card>;
                   return (
                     <ImageAnnotator
                       imageUrl={imgUrl}
@@ -1496,7 +1496,7 @@ export default function AdminBodyAssessmentsPage() {
                 {(() => {
                   const imgUrl = annotateView === "front" ? a.frontImageUrl : annotateView === "back" ? a.backImageUrl : annotateView === "left" ? a.leftImageUrl : a.rightImageUrl;
                   const lm = annotateView === "front" ? a.frontLandmarks : annotateView === "back" ? a.backLandmarks : annotateView === "left" ? a.leftLandmarks : a.rightLandmarks;
-                  if (!imgUrl) return <Card><CardContent className="p-8 text-center"><Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground">Nenhuma imagem para esta vista.</p></CardContent></Card>;
+                  if (!imgUrl) return <Card><CardContent className="p-8 text-center"><Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground">{locale === "pt-BR" ? "Nenhuma imagem para esta vista." : "No image for this view."}</p></CardContent></Card>;
                   return (
                     <PlumbLineOverlay
                       imageUrl={imgUrl}
@@ -1530,10 +1530,10 @@ export default function AdminBodyAssessmentsPage() {
             {annotateMode === "compare" && (
               <ImageComparison
                 images={[
-                  { label: "Frontal", url: a.frontImageUrl, landmarks: Array.isArray(a.frontLandmarks) ? a.frontLandmarks : undefined },
-                  { label: "Posterior", url: a.backImageUrl, landmarks: Array.isArray(a.backLandmarks) ? a.backLandmarks : undefined },
-                  { label: "Lateral Esq", url: a.leftImageUrl, landmarks: Array.isArray(a.leftLandmarks) ? a.leftLandmarks : undefined },
-                  { label: "Lateral Dir", url: a.rightImageUrl, landmarks: Array.isArray(a.rightLandmarks) ? a.rightLandmarks : undefined },
+                  { label: locale === "pt-BR" ? "Frontal" : "Front", url: a.frontImageUrl, landmarks: Array.isArray(a.frontLandmarks) ? a.frontLandmarks : undefined },
+                  { label: locale === "pt-BR" ? "Posterior" : "Back", url: a.backImageUrl, landmarks: Array.isArray(a.backLandmarks) ? a.backLandmarks : undefined },
+                  { label: locale === "pt-BR" ? "Lateral Esq" : "Left Lateral", url: a.leftImageUrl, landmarks: Array.isArray(a.leftLandmarks) ? a.leftLandmarks : undefined },
+                  { label: locale === "pt-BR" ? "Lateral Dir" : "Right Lateral", url: a.rightImageUrl, landmarks: Array.isArray(a.rightLandmarks) ? a.rightLandmarks : undefined },
                 ].filter((img) => img.url !== null)}
                 onExport={(dataUrl) => {
                   const link = document.createElement("a");

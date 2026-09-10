@@ -181,18 +181,18 @@ export default function AICoWorkerPage() {
           <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-violet-500/20"><Bot className="h-6 w-6 text-white" /></div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Claude Co-Work</h1>
-            <p className="text-sm text-muted-foreground">IA Autonomous — reads your system, executes tasks & notifies you</p>
+            <p className="text-sm text-muted-foreground">Autonomous AI — reads your system, executes tasks & notifies you</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setShowChat(!showChat)} className={`text-sm font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all ${showChat ? 'bg-amber-500 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400'}`}>
-            <MessageSquare className="h-4 w-4" /> Falar com Claude
+            <MessageSquare className="h-4 w-4" /> Talk to Claude
           </button>
           <button onClick={handleSuggestTasks} disabled={suggesting} className="bg-muted text-foreground text-sm font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-muted/80 transition disabled:opacity-50">
-            {suggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Sugerir Tasks
+            {suggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Suggest Tasks
           </button>
           <button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 hover:from-violet-500 hover:to-indigo-500 transition">
-            <Plus className="h-4 w-4" /> Nova Task
+            <Plus className="h-4 w-4" /> New Task
           </button>
         </div>
       </div>
@@ -201,7 +201,7 @@ export default function AICoWorkerPage() {
       {showChat && (
         <div className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border border-amber-500/30 rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
-            <p className="text-sm font-medium text-amber-200 flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Assistente Claude Co-Work <span className="text-xs text-amber-300/60 hidden sm:inline">· Describe by voice or text what you want</span></p>
+            <p className="text-sm font-medium text-amber-200 flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Claude Co-Work Assistant <span className="text-xs text-amber-300/60 hidden sm:inline">· Describe by voice or text what you want</span></p>
             <button onClick={() => setShowChat(false)} className="text-amber-300/60 hover:text-amber-200"><X className="h-4 w-4" /></button>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:divide-x divide-amber-500/10">
@@ -299,8 +299,8 @@ export default function AICoWorkerPage() {
       <div className="flex gap-1 bg-muted/30 rounded-xl p-1 w-fit">
         {([
           { key: 'tasks' as Tab, label: 'Tasks', icon: Zap },
-          { key: 'executions' as Tab, label: 'Registo de Execuções', icon: FileText },
-          { key: 'notifications' as Tab, label: `Notificações`, icon: Bell, badge: unreadCount },
+          { key: 'executions' as Tab, label: 'Execution Log', icon: FileText },
+          { key: 'notifications' as Tab, label: `Notifications`, icon: Bell, badge: unreadCount },
         ]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === t.key ? 'bg-card text-foreground shadow' : 'text-muted-foreground hover:text-foreground'}`}>
             <t.icon className="h-4 w-4" /> {t.label}
@@ -316,7 +316,7 @@ export default function AICoWorkerPage() {
             <div className="bg-card border border-dashed border-border rounded-xl p-12 text-center">
               <Calendar className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
               <p className="text-muted-foreground text-sm">No tasks yet</p>
-              <p className="text-xs text-muted-foreground/50 mt-1">Click &quot;Sugerir Tasks&quot; or &quot;Nova Task&quot; to get started</p>
+              <p className="text-xs text-muted-foreground/50 mt-1">Click &quot;Suggest Tasks&quot; or &quot;New Task&quot; to get started</p>
             </div>
           ) : (
             tasks.map(task => {
@@ -336,7 +336,7 @@ export default function AICoWorkerPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-bold">{task.name}</h3>
-                            {task.requiresApproval && <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Requer aprovação</span>}
+                            {task.requiresApproval && <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Requires approval</span>}
                           </div>
                           {task.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>}
                           <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground flex-wrap">
@@ -384,7 +384,7 @@ export default function AICoWorkerPage() {
       {tab === 'executions' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Registo de Execuções</h2>
+            <h2 className="text-lg font-semibold text-foreground">Execution Log</h2>
             <button onClick={fetchLogs} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition"><RefreshCw className="h-3 w-3" /> Refresh</button>
           </div>
           {taskLogs.length === 0 ? (
@@ -393,7 +393,7 @@ export default function AICoWorkerPage() {
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead><tr className="border-b border-border text-left text-xs text-muted-foreground"><th className="px-4 py-3 font-medium">Task</th><th className="px-4 py-3 font-medium">Estado</th><th className="px-4 py-3 font-medium">Resumo</th><th className="px-4 py-3 font-medium">Quando</th></tr></thead>
+                  <thead><tr className="border-b border-border text-left text-xs text-muted-foreground"><th className="px-4 py-3 font-medium">Task</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Summary</th><th className="px-4 py-3 font-medium">When</th></tr></thead>
                   <tbody>{taskLogs.map(log => <LogTableRow key={log.id} log={log} shortDate={shortDate} />)}</tbody>
                 </table>
               </div>
@@ -406,8 +406,8 @@ export default function AICoWorkerPage() {
       {tab === 'notifications' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Notificações</h2>
-            {unreadCount > 0 && <button onClick={markAllRead} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition"><CheckCheck className="h-3.5 w-3.5" /> Marcar todas como lidas</button>}
+            <h2 className="text-lg font-semibold text-foreground">Notifications</h2>
+            {unreadCount > 0 && <button onClick={markAllRead} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition"><CheckCheck className="h-3.5 w-3.5" /> Mark all as read</button>}
           </div>
           {notifications.length === 0 ? (
             <div className="bg-card border border-dashed border-border rounded-xl p-12 text-center"><Bell className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" /><p className="text-muted-foreground text-sm">No notifications yet</p></div>
@@ -439,22 +439,22 @@ export default function AICoWorkerPage() {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => closeModal()}>
           <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-bold text-foreground">Criar Task Claude Co-Work</h2>
+              <h2 className="text-lg font-bold text-foreground">Create Claude Co-Work Task</h2>
               <button onClick={closeModal} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
             </div>
             <div className="p-6 space-y-5">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">NOME DA TASK *</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">TASK NAME *</label>
                 <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="ex: Daily Patient Follow-up" className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none focus:border-primary" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">TIPO DE TASK *</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">TASK TYPE *</label>
                 <select value={formType} onChange={e => setFormType(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none focus:border-primary">
                   {Object.keys(TYPE_ICONS).map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">DESCRIÇÃO</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">DESCRIPTION</label>
                 <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2} placeholder="Optional description..." className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none focus:border-primary resize-none" />
               </div>
               <div>
@@ -462,39 +462,39 @@ export default function AICoWorkerPage() {
                 <textarea value={formPrompt} onChange={e => setFormPrompt(e.target.value)} rows={3} placeholder="Describe what the AI should do each run..." className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none focus:border-primary resize-none" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">AGENDAMENTO *</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">SCHEDULE *</label>
                 <select value={formSchedule} onChange={e => setFormSchedule(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground outline-none focus:border-primary">
                   {SCHED_PRESETS.map(p => <option key={p.v} value={p.v}>{p.l}</option>)}
                 </select>
               </div>
               <div className="space-y-4 pt-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">CONFIGURAÇÕES</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">SETTINGS</p>
                 {/* Require Approval */}
                 <div className="flex items-center justify-between">
-                  <div><p className="text-sm font-medium text-foreground">Requer Aprovação</p><p className="text-[10px] text-muted-foreground">Claude waits for your OK before publishing</p></div>
+                  <div><p className="text-sm font-medium text-foreground">Requires Approval</p><p className="text-[10px] text-muted-foreground">Claude waits for your OK before publishing</p></div>
                   <button onClick={() => setFormApproval(!formApproval)} className={`w-11 h-6 rounded-full transition-all ${formApproval ? 'bg-amber-500' : 'bg-muted'}`}><div className={`w-5 h-5 bg-white rounded-full transition-all mx-0.5 ${formApproval ? 'translate-x-5' : 'translate-x-0'}`} /></button>
                 </div>
                 {/* Email Notification */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-blue-400" /><p className="text-sm font-medium text-foreground">Notificação por Email</p></div>
+                  <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-blue-400" /><p className="text-sm font-medium text-foreground">Email Notification</p></div>
                   <button onClick={() => setFormNotifyEmail(!formNotifyEmail)} className={`w-11 h-6 rounded-full transition-all ${formNotifyEmail ? 'bg-amber-500' : 'bg-muted'}`}><div className={`w-5 h-5 bg-white rounded-full transition-all mx-0.5 ${formNotifyEmail ? 'translate-x-5' : 'translate-x-0'}`} /></button>
                 </div>
                 {/* SMS */}
                 <div className="flex items-center justify-between">
-                  <div><div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-green-400" /><p className="text-sm font-medium text-foreground">Notificação SMS</p></div><p className="text-[10px] text-muted-foreground ml-6">Requires Twilio — for critical alerts only</p></div>
+                  <div><div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-green-400" /><p className="text-sm font-medium text-foreground">SMS Notification</p></div><p className="text-[10px] text-muted-foreground ml-6">Requires Twilio — for critical alerts only</p></div>
                   <button onClick={() => setFormNotifySms(!formNotifySms)} className={`w-11 h-6 rounded-full transition-all ${formNotifySms ? 'bg-amber-500' : 'bg-muted'}`}><div className={`w-5 h-5 bg-white rounded-full transition-all mx-0.5 ${formNotifySms ? 'translate-x-5' : 'translate-x-0'}`} /></button>
                 </div>
                 {/* In-App */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><Bell className="h-4 w-4 text-amber-400" /><p className="text-sm font-medium text-foreground">Notificação no App</p></div>
+                  <div className="flex items-center gap-2"><Bell className="h-4 w-4 text-amber-400" /><p className="text-sm font-medium text-foreground">In-App Notification</p></div>
                   <button onClick={() => setFormNotifyInApp(!formNotifyInApp)} className={`w-11 h-6 rounded-full transition-all ${formNotifyInApp ? 'bg-amber-500' : 'bg-muted'}`}><div className={`w-5 h-5 bg-white rounded-full transition-all mx-0.5 ${formNotifyInApp ? 'translate-x-5' : 'translate-x-0'}`} /></button>
                 </div>
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
-              <button onClick={closeModal} className="text-sm text-muted-foreground px-4 py-2.5">Cancelar</button>
+              <button onClick={closeModal} className="text-sm text-muted-foreground px-4 py-2.5">Cancel</button>
               <button onClick={saveTask} disabled={formSaving || !formName || !formPrompt} className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-medium px-6 py-2.5 rounded-xl disabled:opacity-50 flex items-center gap-2 hover:from-violet-500 hover:to-indigo-500 transition">
-                {formSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} Criar Task
+                {formSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} Create Task
               </button>
             </div>
           </div>

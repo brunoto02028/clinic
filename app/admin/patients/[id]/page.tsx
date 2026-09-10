@@ -199,7 +199,7 @@ export default function PatientProfilePage() {
 
   // Atlas document generator
   const [showAtlasDoc, setShowAtlasDoc] = useState(false);
-  const [atlasDocForm, setAtlasDocForm] = useState({ instructions: "", docKind: "Carta ao médico assistente", language: "pt" });
+  const [atlasDocForm, setAtlasDocForm] = useState({ instructions: "", docKind: "Letter to the treating physician", language: "pt" });
   const [atlasDocBusy, setAtlasDocBusy] = useState(false);
   const [atlasDocResult, setAtlasDocResult] = useState<{ title: string; content: string } | null>(null);
   const [atlasDocSaving, setAtlasDocSaving] = useState(false);
@@ -341,9 +341,9 @@ export default function PatientProfilePage() {
   };
 
   const deleteNote = async (noteId: string) => {
-    if (!confirm("Eliminar esta nota SOAP? Esta ação não pode ser desfeita.")) return;
+    if (!confirm("Delete this SOAP note? This action cannot be undone.")) return;
     await apiPatch({ action: "delete_soap_note", noteId });
-    flash("Nota eliminada"); fetchData();
+    flash("Note deleted"); fetchData();
   };
 
   const saveEditNote = async () => {
@@ -394,7 +394,7 @@ export default function PatientProfilePage() {
     if (!protoFullEditing) return;
     setProtoFullSaving(true);
     const r = await patchProtocol(protoFullEditing, protoFullForm);
-    if (r) { setProtoFullEditing(null); flash("Protocolo guardado!"); fetchData(); }
+    if (r) { setProtoFullEditing(null); flash("Protocol saved!"); fetchData(); }
     setProtoFullSaving(false);
   };
 
@@ -414,38 +414,38 @@ export default function PatientProfilePage() {
       if (Number.isFinite(sw) && sw >= 1) upd.startWeek = sw; else delete upd.startWeek;
     }
     const r = await patchProtocol("", { itemId: protoItemEditId, itemUpdate: upd });
-    if (r) { setProtoItemEditId(null); flash("Item atualizado"); fetchData(); }
+    if (r) { setProtoItemEditId(null); flash("Item updated"); fetchData(); }
     setProtoItemBusy("");
   };
 
   const toggleProtoItemHidden = async (item: any) => {
     setProtoItemBusy(item.id);
     const r = await patchProtocol("", { itemId: item.id, itemUpdate: { hiddenFromPatient: !item.hiddenFromPatient } });
-    if (r) { flash(item.hiddenFromPatient ? "Item visível ao paciente" : "Item oculto do paciente"); fetchData(); }
+    if (r) { flash(item.hiddenFromPatient ? "Item visible to patient" : "Item hidden from patient"); fetchData(); }
     setProtoItemBusy("");
   };
 
   const duplicateProtoItem = async (pr: any, item: any) => {
     setProtoItemBusy(item.id);
     const { id, createdAt, updatedAt, protocolId: _p, ...rest } = item;
-    const r = await patchProtocol(pr.id, { newItem: { ...rest, title: `${item.title} (cópia)` } });
-    if (r) { flash("Item duplicado"); fetchData(); }
+    const r = await patchProtocol(pr.id, { newItem: { ...rest, title: `${item.title} (copy)` } });
+    if (r) { flash("Item duplicated"); fetchData(); }
     setProtoItemBusy("");
   };
 
   const deleteProtoItem = async (item: any) => {
-    if (!confirm(`Apagar "${item.title}"?`)) return;
+    if (!confirm(`Delete "${item.title}"?`)) return;
     setProtoItemBusy(item.id);
     const r = await patchProtocol("", { deleteItemId: item.id });
-    if (r) { flash("Item apagado"); fetchData(); }
+    if (r) { flash("Item deleted"); fetchData(); }
     setProtoItemBusy("");
   };
 
   const addProtoItem = async (pr: any) => {
     setProtoItemBusy("new-" + pr.id);
-    const r = await patchProtocol(pr.id, { newItem: { title: "Novo item", phase: "SHORT_TERM", itemType: "HOME_EXERCISE" } });
+    const r = await patchProtocol(pr.id, { newItem: { title: "New item", phase: "SHORT_TERM", itemType: "HOME_EXERCISE" } });
     if (r) {
-      flash("Item adicionado");
+      flash("Item added");
       setProtoItemsExpanded(x => ({ ...x, [pr.id]: true }));
       fetchData();
       if (r.item?.id) { setProtoItemEditId(r.item.id); setProtoItemForm({ title: r.item.title, phase: r.item.phase, itemType: r.item.itemType, sets: "", reps: "", frequency: "", description: "" }); }
@@ -457,13 +457,13 @@ export default function PatientProfilePage() {
     let days: string[] = [];
     try { days = JSON.parse(pr.sessionDays || "[]"); } catch {}
     if (!pr.startDate || days.length === 0 || !pr.sessionTime) {
-      setError("Agendamento incompleto: clique em Editar e defina a data de início, os dias da semana e o horário antes de enviar ao paciente.");
+      setError("Incomplete scheduling: click Edit and set the start date, the days of the week and the time before sending to the patient.");
       return;
     }
-    if (!confirm(`Enviar protocolo ao paciente?\n\nInício: ${new Date(pr.startDate).toLocaleDateString("pt-PT")}\nDias: ${days.join(", ")}\nHorário: ${pr.sessionTime}\n\nOs slots de calendário serão pré-bloqueados aguardando confirmação do paciente.`)) return;
+    if (!confirm(`Send protocol to the patient?\n\nStart: ${new Date(pr.startDate).toLocaleDateString("en-GB")}\nDays: ${days.join(", ")}\nTime: ${pr.sessionTime}\n\nThe calendar slots will be pre-blocked awaiting the patient's confirmation.`)) return;
     setSendingProto(true);
     const r = await patchProtocol(pr.id, { status: "SENT_TO_PATIENT" });
-    if (r) { flash("Protocolo enviado ao paciente! Calendário pré-bloqueado."); fetchData(); }
+    if (r) { flash("Protocol sent to the patient! Calendar pre-blocked."); fetchData(); }
     setSendingProto(false);
   };
 
@@ -492,7 +492,7 @@ export default function PatientProfilePage() {
     if (!atlasDocResult) return;
     setAtlasDocSaving(true);
     const r = await apiPatch({ action: "add_manual_document", title: atlasDocResult.title, content: atlasDocResult.content, documentType: "MEDICAL_REFERRAL" });
-    if (r) { flash("Documento guardado nos ficheiros do paciente"); fetchData(); }
+    if (r) { flash("Document saved to the patient's files"); fetchData(); }
     setAtlasDocSaving(false);
   };
 
@@ -763,7 +763,7 @@ export default function PatientProfilePage() {
         {/* Profile/Intake Status */}
         {p.profileCompleted ? (
           <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
-            <CheckCircle2 className="h-3 w-3 mr-1" /> Perfil Completo
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Profile Complete
           </Badge>
         ) : (
           <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
@@ -777,7 +777,7 @@ export default function PatientProfilePage() {
           </Badge>
         ) : (
           <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px]">
-            <AlertCircle className="h-3 w-3 mr-1" /> Sem Senha
+            <AlertCircle className="h-3 w-3 mr-1" /> No Password
           </Badge>
         )}
         {/* Consent Status */}
@@ -787,7 +787,7 @@ export default function PatientProfilePage() {
           </Badge>
         ) : (
           <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
-            <AlertCircle className="h-3 w-3 mr-1" /> Sem Consentimento
+            <AlertCircle className="h-3 w-3 mr-1" /> No Consent
           </Badge>
         )}
         {/* Full Access Toggle */}
@@ -818,7 +818,7 @@ export default function PatientProfilePage() {
           <div className="relative flex-1 max-w-xs">
             <Input
               type={showResetPwText ? "text" : "password"}
-              placeholder="Nova senha (mín. 6 caracteres)"
+              placeholder="New password (min. 6 characters)"
               value={resetPw}
               onChange={(e) => setResetPw(e.target.value)}
               className="h-8 text-xs pr-8"
@@ -828,7 +828,7 @@ export default function PatientProfilePage() {
             </Button>
           </div>
           <Button size="sm" className="h-8 text-xs bg-amber-600 hover:bg-amber-700" onClick={handleResetPassword} disabled={resettingPw}>
-            {resettingPw ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirmar"}
+            {resettingPw ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
           </Button>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setShowResetPw(false); setResetPw(""); }}>
             <X className="h-3 w-3" />
@@ -977,12 +977,12 @@ export default function PatientProfilePage() {
         {!isPersonal && (data.diagnoses?.length > 0 ? (
           <Link href={`/admin/patients/${patientId}/diagnosis`}>
             <Button variant="outline" size="sm" className={`${btnCls} bg-primary/10 border-primary/30 text-primary hover:bg-primary/20`}>
-              <Brain className="h-2.5 w-2.5 mr-0.5" /> Ver AI Assessment →
+              <Brain className="h-2.5 w-2.5 mr-0.5" /> View AI Assessment →
             </Button>
           </Link>
         ) : (
           <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
-            {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Gerar AI Assessment
+            {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Generate AI Assessment
           </Button>
         ))}
         {!isPersonal && (
@@ -1161,7 +1161,7 @@ export default function PatientProfilePage() {
 
         {/* ── Perguntas / Respostas do Paciente ── */}
         {sentQuestions.length > 0 && (
-          <Sec title="Perguntas & Respostas do Paciente" icon={MessageCircle} badge={`${sentQuestions.length}`} open={true}>
+          <Sec title="Patient Questions & Answers" icon={MessageCircle} badge={`${sentQuestions.length}`} open={true}>
             <div className="space-y-2">
               {sentQuestions.map((qs: any) => {
                 const isReport = qs.type === "report";
@@ -1169,12 +1169,12 @@ export default function PatientProfilePage() {
                   <div key={qs.id} className={`rounded-lg border overflow-hidden ${isReport ? "border-emerald-500/20" : "border-border/50"}`}>
                     <div className={`flex items-center gap-2 px-2.5 py-1.5 text-[9px] ${isReport ? "bg-emerald-500/10" : "bg-muted/30"}`}>
                       <span className={`font-semibold ${isReport ? "text-emerald-400" : qs.status === "answered" || qs.status === "reviewed" ? "text-emerald-400" : "text-amber-400"}`}>
-                        {isReport ? "📋 Relatório" : qs.status === "answered" || qs.status === "reviewed" ? "✅ Respondido" : "⏳ Pendente"}
+                        {isReport ? "📋 Report" : qs.status === "answered" || qs.status === "reviewed" ? "✅ Answered" : "⏳ Pending"}
                       </span>
                       <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      <span className="text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                       <button className="ml-auto text-red-400/60 hover:text-red-400 transition-colors" onClick={() => {
-                        if (!confirm("Eliminar esta entrada?")) return;
+                        if (!confirm("Delete this entry?")) return;
                         fetch(`/api/admin/patients/${patientId}/questions`, {
                           method: "DELETE",
                           headers: { "Content-Type": "application/json" },
@@ -1193,7 +1193,7 @@ export default function PatientProfilePage() {
                           return (
                             <div key={i}>
                               <p className="text-[9px] font-semibold text-muted-foreground">{i + 1}. {q}</p>
-                              {ans ? <p className="text-[10px] text-emerald-300 ml-3 mt-0.5">{ans.answer}</p> : <p className="text-[10px] text-amber-400/60 ml-3 mt-0.5 italic">Sem resposta</p>}
+                              {ans ? <p className="text-[10px] text-emerald-300 ml-3 mt-0.5">{ans.answer}</p> : <p className="text-[10px] text-amber-400/60 ml-3 mt-0.5 italic">No answer</p>}
                             </div>
                           );
                         })
@@ -1451,7 +1451,7 @@ export default function PatientProfilePage() {
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold text-muted-foreground">SOAP Notes &amp; Clinical Records</p>
           <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={() => window.print()}>
-            <FileText className="h-3 w-3" /> Exportar PDF
+            <FileText className="h-3 w-3" /> Export PDF
           </Button>
         </div>
 
@@ -1460,9 +1460,9 @@ export default function PatientProfilePage() {
           <div className="border border-primary/40 rounded-xl p-3 mb-3 space-y-2 bg-primary/5">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
-                <p className="text-xs font-semibold text-primary">Nova Nota SOAP</p>
-                {autoSaveStatus === "saving" && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> A guardar...</span>}
-                {autoSaveStatus === "saved" && <span className="text-[10px] text-emerald-400 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> Guardado automaticamente</span>}
+                <p className="text-xs font-semibold text-primary">New SOAP Note</p>
+                {autoSaveStatus === "saving" && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving...</span>}
+                {autoSaveStatus === "saved" && <span className="text-[10px] text-emerald-400 flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" /> Auto-saved</span>}
               </div>
               <div className="flex items-center gap-1">
                 <Button
@@ -1491,17 +1491,17 @@ export default function PatientProfilePage() {
                   }}
                 >
                   {atlasPrefilling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
-                  Pre-fill com Atlas
+                  Pre-fill with Atlas
                 </Button>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowNewNote(false)}><X className="h-3 w-3" /></Button>
               </div>
             </div>
-            <EF label="S — Subjetivo (queixas do paciente)" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Queixas, sintomas relatados..." />
-            <EF label="O — Objetivo (achados clínicos)" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Avaliação física, testes..." />
-            <EF label="A — Assessment / Diagnóstico" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Hipótese diagnóstica, raciocínio clínico..." />
-            <EF label="P — Plano de Tratamento" value={newNote.plan} onChange={(v) => setNewNote({ ...newNote, plan: v })} placeholder="Intervenções, exercícios, próximos passos..." />
+            <EF label="S — Subjective (patient complaints)" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Complaints, reported symptoms..." />
+            <EF label="O — Objective (clinical findings)" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Physical assessment, tests..." />
+            <EF label="A — Assessment / Diagnosis" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Diagnostic hypothesis, clinical reasoning..." />
+            <EF label="P — Treatment Plan" value={newNote.plan} onChange={(v) => setNewNote({ ...newNote, plan: v })} placeholder="Interventions, exercises, next steps..." />
             <div className="flex gap-1.5 flex-wrap">
-              <Button size="sm" className="h-7 text-xs" onClick={saveNewNote} disabled={saving}>{saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar Nota</Button>
+              <Button size="sm" className="h-7 text-xs" onClick={saveNewNote} disabled={saving}>{saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Save Note</Button>
               <Button
                 variant="outline" size="sm"
                 className="h-7 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/10"
@@ -1522,16 +1522,16 @@ export default function PatientProfilePage() {
                 }}
               >
                 {atlasPlanLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bot className="h-3 w-3" />}
-                Plano com Atlas
+                Plan with Atlas
               </Button>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowNewNote(false); setAtlasPlan(null); }}>Cancelar</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowNewNote(false); setAtlasPlan(null); }}>Cancel</Button>
             </div>
 
             {/* Atlas Treatment Plan Output */}
             {atlasPlan && (
               <div className="mt-2 border border-primary/30 rounded-lg p-3 bg-primary/5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-semibold text-primary flex items-center gap-1"><Bot className="h-3 w-3" /> Plano sugerido por Atlas</p>
+                  <p className="text-[10px] font-semibold text-primary flex items-center gap-1"><Bot className="h-3 w-3" /> Plan suggested by Atlas</p>
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setAtlasPlan(null)}><X className="h-2.5 w-2.5" /></Button>
                 </div>
                 {atlasPlan.diagnosis && <p className="text-[10px] font-medium">{atlasPlan.diagnosis}</p>}
@@ -1573,7 +1573,7 @@ export default function PatientProfilePage() {
                   setNewNote(n => ({ ...n, plan: planText }));
                   setAtlasPlan(null);
                 }}>
-                  <CheckCircle2 className="h-2.5 w-2.5" /> Copiar para campo P
+                  <CheckCircle2 className="h-2.5 w-2.5" /> Copy to P field
                 </Button>
               </div>
             )}
@@ -1595,18 +1595,18 @@ export default function PatientProfilePage() {
               </div>
               {editingNoteId === n.id ? (
                 <div className="space-y-1.5 bg-muted/30 p-2 rounded">
-                  <EF label="S — Subjetivo" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
-                  <EF label="O — Objetivo" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
+                  <EF label="S — Subjective" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
+                  <EF label="O — Objective" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
                   <EF label="A — Assessment" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
-                  <EF label="P — Plano" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
+                  <EF label="P — Plan" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
                   <div className="flex gap-1"><Button size="sm" className="h-6 text-[10px]" onClick={saveEditNote} disabled={saving}><Save className="h-2.5 w-2.5 mr-0.5" /> Save</Button><Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setEditingNoteId(null)}>Cancel</Button></div>
                 </div>
               ) : (
                 <>
-                  {n.subjective && <div><p className="text-[9px] font-bold text-blue-400">S — Subjetivo</p><p className="text-[10px]">{n.subjective}</p></div>}
-                  {n.objective && <div><p className="text-[9px] font-bold text-green-400">O — Objetivo</p><p className="text-[10px]">{n.objective}</p></div>}
+                  {n.subjective && <div><p className="text-[9px] font-bold text-blue-400">S — Subjective</p><p className="text-[10px]">{n.subjective}</p></div>}
+                  {n.objective && <div><p className="text-[9px] font-bold text-green-400">O — Objective</p><p className="text-[10px]">{n.objective}</p></div>}
                   {n.assessment && <div><p className="text-[9px] font-bold text-amber-400">A — Assessment</p><p className="text-[10px]">{n.assessment}</p></div>}
-                  {n.plan && <div><p className="text-[9px] font-bold text-purple-400">P — Plano</p><p className="text-[10px]">{n.plan}</p></div>}
+                  {n.plan && <div><p className="text-[9px] font-bold text-purple-400">P — Plan</p><p className="text-[10px]">{n.plan}</p></div>}
                 </>
               )}
             </div>
@@ -1699,30 +1699,30 @@ export default function PatientProfilePage() {
         {/* ── Documents ── */}
         {/* ── Atlas Document Generator ── */}
         {showAtlasDoc && (
-          <Card className="border-sky-500/40"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Bot className="h-4 w-4 text-sky-400" /> Criar Documento com Atlas</CardTitle></CardHeader>
+          <Card className="border-sky-500/40"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Bot className="h-4 w-4 text-sky-400" /> Create Document with Atlas</CardTitle></CardHeader>
             <CardContent className="space-y-2.5">
               <p className="text-[11px] text-muted-foreground">Atlas knows this patient's full clinical history and drafts professional, ready-to-send documents — letters to the GP, authorisation requests, statements, referral reports, etc.</p>
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-0.5"><Label className="text-[10px]">Tipo de documento</Label>
+                <div className="space-y-0.5"><Label className="text-[10px]">Document type</Label>
                   <select value={atlasDocForm.docKind} onChange={e => setAtlasDocForm(f => ({ ...f, docKind: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">
-                    {["Carta ao médico assistente", "Pedido de autorização para tratamentos", "Relatório de encaminhamento", "Declaração clínica", "Carta para seguradora", "Resumo clínico para outro profissional", "Outro documento"].map(k => <option key={k} value={k}>{k}</option>)}
+                    {["Letter to the treating physician", "Treatment authorisation request", "Referral report", "Clinical statement", "Letter to insurer", "Clinical summary for another professional", "Other document"].map(k => <option key={k} value={k}>{k}</option>)}
                   </select>
                 </div>
-                <div className="space-y-0.5"><Label className="text-[10px]">Idioma</Label>
+                <div className="space-y-0.5"><Label className="text-[10px]">Language</Label>
                   <select value={atlasDocForm.language} onChange={e => setAtlasDocForm(f => ({ ...f, language: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">
                     <option value="pt">Portuguese</option>
                     <option value="en">English</option>
                   </select>
                 </div>
               </div>
-              <div className="space-y-0.5"><Label className="text-[10px]">O que o documento deve conter / objetivo</Label>
-                <Textarea value={atlasDocForm.instructions} onChange={e => setAtlasDocForm(f => ({ ...f, instructions: e.target.value }))} rows={3} className="text-xs" placeholder="Ex: Carta ao médico da Isabel a solicitar autorização para eletroterapia e treino de resistência leve, considerando as lesões hepáticas e o estado hematológico dela..." />
+              <div className="space-y-0.5"><Label className="text-[10px]">What the document should contain / purpose</Label>
+                <Textarea value={atlasDocForm.instructions} onChange={e => setAtlasDocForm(f => ({ ...f, instructions: e.target.value }))} rows={3} className="text-xs" placeholder="e.g. Letter to Isabel's doctor requesting authorisation for electrotherapy and light resistance training, considering her liver lesions and haematological status..." />
               </div>
               <div className="flex gap-1.5">
                 <Button size="sm" className="h-7 text-xs bg-sky-600 hover:bg-sky-700" onClick={generateAtlasDoc} disabled={atlasDocBusy || !atlasDocForm.instructions.trim()}>
-                  {atlasDocBusy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />} {atlasDocResult ? "Gerar novamente" : "Gerar documento"}
+                  {atlasDocBusy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />} {atlasDocResult ? "Regenerate" : "Generate document"}
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowAtlasDoc(false); setAtlasDocResult(null); }}>Fechar</Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowAtlasDoc(false); setAtlasDocResult(null); }}>Close</Button>
               </div>
               {atlasDocResult && (
                 <div className="border border-sky-500/30 rounded-lg p-3 space-y-2 bg-card">
@@ -1734,10 +1734,10 @@ export default function PatientProfilePage() {
                   </div>
                   <div className="flex gap-1.5 flex-wrap">
                     <Button size="sm" className="h-7 text-xs" onClick={saveAtlasDoc} disabled={atlasDocSaving}>
-                      {atlasDocSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar nos documentos
+                      {atlasDocSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Save to documents
                     </Button>
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={printAtlasDoc}>
-                      <ExternalLink className="h-3 w-3 mr-1" /> Imprimir / PDF
+                      <ExternalLink className="h-3 w-3 mr-1" /> Print / PDF
                     </Button>
                   </div>
                 </div>
@@ -1747,7 +1747,7 @@ export default function PatientProfilePage() {
         )}
         <Sec title="Documents & Files" icon={FileUp} badge={data.documents?.length ? `${data.documents.length}` : "None"}
           actions={<>
-            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowAtlasDoc(true)}><Bot className="h-2.5 w-2.5 mr-0.5 text-sky-400" /> Criar com Atlas</Button>
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowAtlasDoc(true)}><Bot className="h-2.5 w-2.5 mr-0.5 text-sky-400" /> Create with Atlas</Button>
             <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowUpload(true)}><Plus className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
             <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowManualDoc(true)}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write</Button>
             <Link href={`/admin/patients/${patientId}/documents`}><Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]"><Eye className="h-2.5 w-2.5 mr-0.5" /> Full</Button></Link>
@@ -1797,18 +1797,18 @@ export default function PatientProfilePage() {
           {(!data.protocols || data.protocols.length === 0) ? (
             <div className="border-dashed border rounded-xl p-10 text-center text-muted-foreground space-y-3">
               <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground/30" />
-              <p className="font-medium text-sm">Nenhum protocolo de tratamento criado</p>
+              <p className="font-medium text-sm">No treatment protocol created</p>
               <p className="text-xs">Generate an AI assessment, then create the protocol from the diagnosis page.</p>
               {data.diagnoses?.length > 0 && (
                 <Button variant="outline" size="sm" onClick={() => generateProtocol(data.diagnoses[0].id)} disabled={genProtocol}>
-                  {genProtocol ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />} Gerar Protocolo
+                  {genProtocol ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />} Generate Protocol
                 </Button>
               )}
               <div><a href={`/admin/patients/${patientId}/diagnosis`} className="text-xs text-primary hover:underline">→ Go to Assessments & Diagnosis</a></div>
             </div>
           ) : data.protocols.map((pr: any) => {
             const STATUS_STEPS = ["DRAFT", "UNDER_REVIEW", "APPROVED", "SENT_TO_PATIENT"];
-            const STATUS_LABELS: Record<string, string> = { DRAFT: "Rascunho", UNDER_REVIEW: "Em Revisão", APPROVED: "Aprovado", SENT_TO_PATIENT: "Enviado" };
+            const STATUS_LABELS: Record<string, string> = { DRAFT: "Draft", UNDER_REVIEW: "Under Review", APPROVED: "Approved", SENT_TO_PATIENT: "Sent" };
             const currentStep = STATUS_STEPS.indexOf(pr.status);
             const isEditing = protoFullEditing === pr.id;
             const sessionDays: string[] = isEditing
@@ -1824,15 +1824,15 @@ export default function PatientProfilePage() {
                     ) : (
                       <h3 className="text-sm font-semibold truncate">{pr.title}</h3>
                     )}
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{pr.items?.length || 0} itens · {pr.totalSessions || "?"} sessões · {pr.estimatedWeeks || "?"} semanas</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{pr.items?.length || 0} items · {pr.totalSessions || "?"} sessions · {pr.estimatedWeeks || "?"} weeks</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {isEditing ? (
                       <>
                         <Button size="sm" className="h-7 text-xs" onClick={saveProtoFull} disabled={protoFullSaving}>
-                          {protoFullSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar
+                          {protoFullSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Save
                         </Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setProtoFullEditing(null)}>Cancelar</Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setProtoFullEditing(null)}>Cancel</Button>
                       </>
                     ) : (
                       <>
@@ -1852,11 +1852,11 @@ export default function PatientProfilePage() {
                             sessionDays: (() => { try { return JSON.parse(pr.sessionDays || "[]"); } catch { return []; } })(),
                           });
                         }}>
-                          <Pencil className="h-3 w-3 mr-1" /> Editar
+                          <Pencil className="h-3 w-3 mr-1" /> Edit
                         </Button>
                         {pr.status !== "SENT_TO_PATIENT" && (
                           <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={() => sendProtocol(pr)} disabled={sendingProto}>
-                            {sendingProto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />} Enviar ao Paciente
+                            {sendingProto ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />} Send to Patient
                           </Button>
                         )}
                       </>
@@ -1891,7 +1891,7 @@ export default function PatientProfilePage() {
                   </div>
                   {/* Scheduling */}
                   <div className="border rounded-lg p-3 bg-muted/10 space-y-2.5">
-                    <p className="text-[10px] font-semibold flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-primary" /> Agendamento</p>
+                    <p className="text-[10px] font-semibold flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-primary" /> Scheduling</p>
                     {isEditing ? (
                       <div className="space-y-2.5">
                         <div className="grid grid-cols-3 gap-2">
@@ -1905,7 +1905,7 @@ export default function PatientProfilePage() {
                             <Input type="number" value={protoFullForm.sessionDuration || 60} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionDuration: parseInt(e.target.value) || 60 }))} className="h-8 text-xs" min={15} max={180} step={15} />
                           </div>
                         </div>
-                        <div className="space-y-1"><Label className="text-[10px]">Dias da semana</Label>
+                        <div className="space-y-1"><Label className="text-[10px]">Days of the week</Label>
                           <div className="flex gap-1.5 flex-wrap">
                             {["MON","TUE","WED","THU","FRI","SAT","SUN"].map(d => (
                               <button key={d} type="button"
@@ -1920,13 +1920,13 @@ export default function PatientProfilePage() {
                           <div className="space-y-1"><Label className="text-[10px]">Total sessions</Label>
                             <Input type="number" value={protoFullForm.totalSessions || 12} onChange={e => setProtoFullForm((f: any) => ({ ...f, totalSessions: parseInt(e.target.value) || 12 }))} className="h-8 text-xs" min={1} />
                           </div>
-                          <div className="space-y-1"><Label className="text-[10px]">Por semana</Label>
+                          <div className="space-y-1"><Label className="text-[10px]">Per week</Label>
                             <Input type="number" value={protoFullForm.sessionsPerWeek || 2} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionsPerWeek: parseInt(e.target.value) || 2 }))} className="h-8 text-xs" min={1} max={7} />
                           </div>
-                          <div className="space-y-1"><Label className="text-[10px]">Modalidade</Label>
+                          <div className="space-y-1"><Label className="text-[10px]">Modality</Label>
                             <select value={protoFullForm.deliveryMode || "IN_CLINIC"} onChange={e => setProtoFullForm((f: any) => ({ ...f, deliveryMode: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[10px]">
-                              <option value="IN_CLINIC">Presencial</option>
-                              <option value="REMOTE">Remoto</option>
+                              <option value="IN_CLINIC">In Clinic</option>
+                              <option value="REMOTE">Remote</option>
                               <option value="HYBRID">Hybrid</option>
                             </select>
                           </div>
@@ -1934,25 +1934,25 @@ export default function PatientProfilePage() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div><p className="text-[9px] text-muted-foreground">Start date</p><p className="text-xs font-medium">{pr.startDate ? new Date(pr.startDate).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }) : "Não definida"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Start date</p><p className="text-xs font-medium">{pr.startDate ? new Date(pr.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Not set"}</p></div>
                         <div><p className="text-[9px] text-muted-foreground">Time</p><p className="text-xs font-medium">{pr.sessionTime || "—"}</p></div>
                         <div><p className="text-[9px] text-muted-foreground">Duration</p><p className="text-xs font-medium">{pr.sessionDuration ? `${pr.sessionDuration} min` : "—"}</p></div>
-                        <div><p className="text-[9px] text-muted-foreground">Dias</p><p className="text-xs font-medium">{sessionDays.length > 0 ? sessionDays.join(", ") : "—"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Days</p><p className="text-xs font-medium">{sessionDays.length > 0 ? sessionDays.join(", ") : "—"}</p></div>
                       </div>
                     )}
                   </div>
                   {/* Therapist comments */}
                   <div className="space-y-1">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Notas do Terapeuta</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Therapist Notes</p>
                     {isEditing ? (
-                      <Textarea value={protoFullForm.therapistComments || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, therapistComments: e.target.value }))} rows={3} className="text-xs" placeholder="Correções, observações ou notas adicionais..." />
+                      <Textarea value={protoFullForm.therapistComments || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, therapistComments: e.target.value }))} rows={3} className="text-xs" placeholder="Corrections, observations or additional notes..." />
                     ) : (
                       <p className="text-xs text-muted-foreground leading-relaxed">{pr.therapistComments || "—"}</p>
                     )}
                   </div>
                   {/* Status selector in edit mode */}
                   {isEditing && (
-                    <div className="space-y-1"><Label className="text-[10px]">Estado do Protocolo</Label>
+                    <div className="space-y-1"><Label className="text-[10px]">Protocol Status</Label>
                       <select value={protoFullForm.status || "DRAFT"} onChange={e => setProtoFullForm((f: any) => ({ ...f, status: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[10px]">
                         {["DRAFT","UNDER_REVIEW","APPROVED","SENT_TO_PATIENT","ARCHIVED"].map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -1961,9 +1961,9 @@ export default function PatientProfilePage() {
                   {/* Items */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Itens do Protocolo ({pr.items?.length || 0})</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Protocol Items ({pr.items?.length || 0})</p>
                       <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => addProtoItem(pr)} disabled={protoItemBusy === "new-" + pr.id}>
-                        {protoItemBusy === "new-" + pr.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 mr-0.5" />} Adicionar item
+                        {protoItemBusy === "new-" + pr.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 mr-0.5" />} Add item
                       </Button>
                     </div>
                     <div className="space-y-0.5">
@@ -1974,13 +1974,13 @@ export default function PatientProfilePage() {
                               <div className="space-y-1 col-span-2"><Label className="text-[10px]">Title</Label>
                                 <Input value={protoItemForm.title || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, title: e.target.value }))} className="h-7 text-xs" />
                               </div>
-                              <div className="space-y-1"><Label className="text-[10px]">Fase</Label>
+                              <div className="space-y-1"><Label className="text-[10px]">Phase</Label>
                                 <select value={protoItemForm.phase || "SHORT_TERM"} onChange={e => setProtoItemForm((f: any) => ({ ...f, phase: e.target.value }))} className="w-full h-7 rounded-md border border-input bg-background px-2 text-[10px]">
                                   {["IMMEDIATE","SHORT_TERM","MEDIUM_TERM","LONG_TERM","MAINTENANCE"].map(p => <option key={p} value={p}>{p}</option>)}
                                 </select>
                               </div>
                               <div className="space-y-1"><Label className="text-[10px]">Frequency</Label>
-                                <Input value={protoItemForm.frequency || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, frequency: e.target.value }))} className="h-7 text-xs" placeholder="ex: 3x/semana" />
+                                <Input value={protoItemForm.frequency || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, frequency: e.target.value }))} className="h-7 text-xs" placeholder="e.g. 3x/week" />
                               </div>
                               <div className="space-y-1"><Label className="text-[10px]">Sets</Label>
                                 <Input type="number" value={protoItemForm.sets ?? ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, sets: e.target.value }))} className="h-7 text-xs" />
@@ -1994,9 +1994,9 @@ export default function PatientProfilePage() {
                             </div>
                             <div className="flex gap-1.5">
                               <Button size="sm" className="h-6 text-[10px]" onClick={saveProtoItem} disabled={protoItemBusy === item.id}>
-                                {protoItemBusy === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-0.5" />} Guardar
+                                {protoItemBusy === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-0.5" />} Save
                               </Button>
-                              <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setProtoItemEditId(null)}>Cancelar</Button>
+                              <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setProtoItemEditId(null)}>Cancel</Button>
                             </div>
                           </div>
                         ) : (
@@ -2005,21 +2005,21 @@ export default function PatientProfilePage() {
                             <span className="truncate flex-1">{item.treatmentTypeName || item.title || "—"}</span>
                             {item.sets && item.reps && <span className="text-muted-foreground/60 shrink-0">{item.sets}×{item.reps}</span>}
                             {item.hiddenFromPatient && (
-                              <button title="Oculto do paciente — clique para mostrar" className="shrink-0 p-0.5 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
+                              <button title="Hidden from patient — click to show" className="shrink-0 p-0.5 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
                                 <EyeOff className="h-3 w-3 text-amber-400" />
                               </button>
                             )}
                             <div className="flex items-center gap-0.5 shrink-0">
-                              <button title="Editar" className="p-1 rounded hover:bg-muted" onClick={() => { setProtoItemEditId(item.id); setProtoItemForm({ title: item.title || "", phase: item.phase || "SHORT_TERM", frequency: item.frequency || "", sets: item.sets ?? "", reps: item.reps ?? "", description: item.description || "" }); }}>
+                              <button title="Edit" className="p-1 rounded hover:bg-muted" onClick={() => { setProtoItemEditId(item.id); setProtoItemForm({ title: item.title || "", phase: item.phase || "SHORT_TERM", frequency: item.frequency || "", sets: item.sets ?? "", reps: item.reps ?? "", description: item.description || "" }); }}>
                                 <Pencil className="h-3 w-3" />
                               </button>
-                              <button title={item.hiddenFromPatient ? "Mostrar ao paciente" : "Ocultar do paciente"} className="p-1 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
+                              <button title={item.hiddenFromPatient ? "Show to patient" : "Hide from patient"} className="p-1 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
                                 {item.hiddenFromPatient ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                               </button>
-                              <button title="Duplicar" className="p-1 rounded hover:bg-muted" onClick={() => duplicateProtoItem(pr, item)} disabled={protoItemBusy === item.id}>
+                              <button title="Duplicate" className="p-1 rounded hover:bg-muted" onClick={() => duplicateProtoItem(pr, item)} disabled={protoItemBusy === item.id}>
                                 <Copy className="h-3 w-3" />
                               </button>
-                              <button title="Apagar" className="p-1 rounded hover:bg-red-500/20 text-red-400" onClick={() => deleteProtoItem(item)} disabled={protoItemBusy === item.id}>
+                              <button title="Delete" className="p-1 rounded hover:bg-red-500/20 text-red-400" onClick={() => deleteProtoItem(item)} disabled={protoItemBusy === item.id}>
                                 <Trash2 className="h-3 w-3" />
                               </button>
                             </div>
@@ -2028,7 +2028,7 @@ export default function PatientProfilePage() {
                       ))}
                       {(pr.items?.length || 0) > 6 && (
                         <button className="text-[10px] text-primary hover:underline pt-0.5" onClick={() => setProtoItemsExpanded(x => ({ ...x, [pr.id]: !x[pr.id] }))}>
-                          {protoItemsExpanded[pr.id] ? "Mostrar menos" : `Ver todos os ${pr.items.length} itens`}
+                          {protoItemsExpanded[pr.id] ? "Show less" : `View all ${pr.items.length} items`}
                         </button>
                       )}
                     </div>
@@ -2200,7 +2200,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           questions: planText.split("\n\n").filter(Boolean),
-          context: "Plano de tratamento Atlas",
+          context: "Atlas treatment plan",
           language: "pt",
           type: "report",
         }),
@@ -2394,7 +2394,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
       const r = await fetch(`/api/admin/patients/${patientId}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questions: lines, context: qType === "report" ? "Relatório/Feedback" : "Pre-assessment questions", language: qLang, type: qType }),
+        body: JSON.stringify({ questions: lines, context: qType === "report" ? "Report/Feedback" : "Pre-assessment questions", language: qLang, type: qType }),
       });
       if (!r.ok) throw new Error("Failed");
       setQSentOk(true);
@@ -2449,7 +2449,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
       </div>
       {plans.length === 0 ? (
         <div className="text-center py-4 text-muted-foreground border border-dashed rounded-lg">
-          <p className="text-[10px] mt-1">Nenhum plano gerado. Usa "New Assessment" para criar um plano estruturado.</p>
+          <p className="text-[10px] mt-1">No plans generated yet. Use "New Assessment" to create a structured plan.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -2461,7 +2461,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                   <Badge variant="outline" className="text-[9px] h-4">{p.severity}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4">{p.phase}</Badge>
                   <Badge variant="outline" className={`text-[9px] h-4 ${p.status === "active" ? "border-emerald-500/40 text-emerald-400" : ""}`}>{p.status}</Badge>
-                  {p.sentToPatient && <Badge variant="outline" className="text-[9px] h-4 border-emerald-500/40 text-emerald-400">Enviado ✓</Badge>}
+                  {p.sentToPatient && <Badge variant="outline" className="text-[9px] h-4 border-emerald-500/40 text-emerald-400">Sent ✓</Badge>}
                   <span className="text-[9px] text-muted-foreground">{new Date(p.createdAt).toLocaleDateString("en-GB")}</span>
                 </div>
               </div>
@@ -2477,15 +2477,15 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           <div className="flex items-center gap-2">
             <AtlasAvatar size="sm" />
             <div>
-              <p className="text-xs font-semibold leading-tight">Plano de Tratamento</p>
-              <p className="text-[9px] text-muted-foreground leading-tight">Atlas gera um plano faseado com base em todos os dados do paciente</p>
+              <p className="text-xs font-semibold leading-tight">Treatment Plan</p>
+              <p className="text-[9px] text-muted-foreground leading-tight">Atlas generates a phased plan based on all the patient's data</p>
             </div>
           </div>
           <Button size="sm" className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 shrink-0"
             onClick={handleGenerateTreatmentPlan}
             disabled={tpView === "generating"}>
             {tpView === "generating" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3 mr-1" />}
-            {tpView === "generating" ? "A gerar..." : treatmentPlan ? "Regenerar" : "Gerar Plano"}
+            {tpView === "generating" ? "Generating..." : treatmentPlan ? "Regenerate" : "Generate Plan"}
           </Button>
         </div>
 
@@ -2518,13 +2518,13 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               <div className="grid grid-cols-2 gap-2">
                 {treatmentPlan.goals?.shortTerm?.length > 0 && (
                   <div className="p-2 bg-muted/20 rounded-lg">
-                    <p className="text-[9px] font-semibold uppercase text-amber-400 mb-1">Curto Prazo</p>
+                    <p className="text-[9px] font-semibold uppercase text-amber-400 mb-1">Short Term</p>
                     {treatmentPlan.goals.shortTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
                   </div>
                 )}
                 {treatmentPlan.goals?.longTerm?.length > 0 && (
                   <div className="p-2 bg-muted/20 rounded-lg">
-                    <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Longo Prazo</p>
+                    <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Long Term</p>
                     {treatmentPlan.goals.longTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
                   </div>
                 )}
@@ -2553,14 +2553,14 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                   )}
                   {ph.hep?.length > 0 && (
                     <div>
-                      <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Casa (HEP)</p>
+                      <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Home (HEP)</p>
                       {ph.hep.map((h: any, hi: number) => (
                         <p key={hi} className="text-[10px] mb-0.5">• {h.exercise} — {h.sets} <span className="text-muted-foreground">({h.frequency})</span></p>
                       ))}
                     </div>
                   )}
                   {ph.progressionCriteria && (
-                    <p className="text-[9px] text-muted-foreground border-t pt-1.5 mt-0.5">↗ Progressão: {ph.progressionCriteria}</p>
+                    <p className="text-[9px] text-muted-foreground border-t pt-1.5 mt-0.5">↗ Progression: {ph.progressionCriteria}</p>
                   )}
                 </div>
               </div>
@@ -2570,12 +2570,12 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
             <div className="flex gap-2 pt-1">
               <Button size="sm" variant="outline" className="h-7 text-[10px] flex-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                 onClick={() => setTpView(tpView === "chat" ? "viewing" : "chat")}>
-                <MessageSquare className="h-3 w-3 mr-1" />{tpView === "chat" ? "Fechar Chat" : "Discutir com Atlas"}
+                <MessageSquare className="h-3 w-3 mr-1" />{tpView === "chat" ? "Close Chat" : "Discuss with Atlas"}
               </Button>
               <Button size="sm" className="h-7 text-[10px] flex-1 bg-blue-600 hover:bg-blue-700"
                 onClick={handleShareTreatmentPlan} disabled={tpSending || tpSentOk}>
                 {tpSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                {tpSentOk ? "Enviado ✓" : "Partilhar com Paciente"}
+                {tpSentOk ? "Sent ✓" : "Share with Patient"}
               </Button>
             </div>
 
@@ -2602,7 +2602,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                   </div>
                 )}
                 <div className="p-2 flex gap-2 border-t">
-                  <Input className="text-xs h-8 flex-1" placeholder="Ex: Adiciona uma fase de retorno ao desporto... Altera a frequência da fase 2..."
+                  <Input className="text-xs h-8 flex-1" placeholder="e.g. Add a return-to-sport phase... Change the frequency of phase 2..."
                     value={tpChatInput} onChange={e => setTpChatInput(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleTpChat(); } }}
                     disabled={tpChatLoading} />
@@ -2622,8 +2622,8 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
         <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border-b">
           <AtlasAvatar size="sm" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold leading-tight">Chat com Atlas</p>
-            <p className="text-[9px] text-muted-foreground leading-tight">Chat persistente — o Atlas lembra-se de cada paciente</p>
+            <p className="text-xs font-semibold leading-tight">Chat with Atlas</p>
+            <p className="text-[9px] text-muted-foreground leading-tight">Persistent chat — Atlas remembers each patient</p>
           </div>
           <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] border-blue-500/30 text-blue-400 hover:bg-blue-500/10 shrink-0"
             onClick={() => {
@@ -2643,7 +2643,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               }
               setShowQDialog(true);
             }}>
-            <Send className="h-2.5 w-2.5 mr-1" />Enviar ao Paciente
+            <Send className="h-2.5 w-2.5 mr-1" />Send to Patient
           </Button>
         </div>
 
@@ -2672,7 +2672,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
         <div className="p-2 flex gap-2">
           <Input
             className="text-xs h-9 flex-1"
-            placeholder="Ex: 'Que exercícios sugeres para esta fase?' ou 'O que pode causar este padrão de dor?'"
+            placeholder="e.g. 'Which exercises do you suggest for this phase?' or 'What could cause this pain pattern?'"
             value={quickInput}
             onChange={e => setQuickInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleQuickChat(); } }}
@@ -2688,7 +2688,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
       {sentQuestions.length > 0 && (
         <div className="border rounded-lg overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 bg-blue-500/5 border-b">
-            <p className="text-xs font-semibold text-blue-400">Mensagens Enviadas ao Paciente ({sentQuestions.length})</p>
+            <p className="text-xs font-semibold text-blue-400">Messages Sent to Patient ({sentQuestions.length})</p>
             <button onClick={fetchSentQuestions} className="text-[10px] text-muted-foreground hover:text-foreground">↻ Refresh</button>
           </div>
           <div className="divide-y">
@@ -2696,7 +2696,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               const isExpanded = expandedQSet === qs.id;
               const isReport = qs.type === "report";
               const statusColor = isReport ? "text-emerald-400" : qs.status === "answered" ? "text-emerald-400" : qs.status === "reviewed" ? "text-blue-400" : "text-amber-400";
-              const statusLabel = isReport ? "📋 Relatório" : qs.status === "answered" ? "✅ Respondido" : qs.status === "reviewed" ? "👁 Revisto" : "⏳ Pendente";
+              const statusLabel = isReport ? "📋 Report" : qs.status === "answered" ? "✅ Answered" : qs.status === "reviewed" ? "👁 Reviewed" : "⏳ Pending";
               return (
                 <div key={qs.id}>
                   <button
@@ -2719,9 +2719,9 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-semibold ${statusColor}`}>{statusLabel}</span>
                         <span className="text-[10px] text-muted-foreground">·</span>
-                          <span className="text-[10px] text-muted-foreground">{isReport ? "relatório" : `${(qs.questions as string[]).length} pergunta${(qs.questions as string[]).length !== 1 ? "s" : ""}`}</span>
+                          <span className="text-[10px] text-muted-foreground">{isReport ? "report" : `${(qs.questions as string[]).length} question${(qs.questions as string[]).length !== 1 ? "s" : ""}`}</span>
                         <span className="text-[10px] text-muted-foreground">·</span>
-                        <span className="text-[10px] text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(qs.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
                       {qs.context && <p className="text-[9px] text-muted-foreground/60 mt-0.5 truncate">{qs.context}</p>}
                     </div>
@@ -2747,7 +2747,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                               </div>
                               {answer ? (
                                 <div className="px-2.5 py-1.5 bg-emerald-500/5 border-t border-emerald-500/20">
-                                  <p className="text-[10px] text-emerald-300 leading-relaxed">{answer.answer || <em className="text-muted-foreground">Sem resposta</em>}</p>
+                                  <p className="text-[10px] text-emerald-300 leading-relaxed">{answer.answer || <em className="text-muted-foreground">No answer</em>}</p>
                                 </div>
                               ) : (
                                 <div className="px-2.5 py-1.5 border-t border-amber-500/20 bg-amber-500/5">
@@ -2759,13 +2759,13 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                         })
                       )}
                       {qs.answeredAt && !isReport && (
-                        <p className="text-[9px] text-muted-foreground">Respondido a {new Date(qs.answeredAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                        <p className="text-[9px] text-muted-foreground">Answered on {new Date(qs.answeredAt).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
                       )}
                       {/* Delete button */}
                       <button
                         className="flex items-center gap-1 text-[9px] text-red-400/70 hover:text-red-400 transition-colors mt-1"
                         onClick={() => {
-                          if (!confirm(isReport ? "Eliminar este relatório? O paciente deixará de o ver." : "Eliminar este conjunto de perguntas? O paciente deixará de as ver.")) return;
+                          if (!confirm(isReport ? "Delete this report? The patient will no longer see it." : "Delete this set of questions? The patient will no longer see them.")) return;
                           fetch(`/api/admin/patients/${patientId}/questions`, {
                             method: "DELETE",
                             headers: { "Content-Type": "application/json" },
@@ -2776,7 +2776,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                           }).catch(() => {});
                         }}
                       >
-                        🗑 Eliminar {isReport ? "relatório" : "perguntas"}
+                        🗑 Delete {isReport ? "report" : "questions"}
                       </button>
                     </div>
                   )}
@@ -2793,8 +2793,8 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           <div className="bg-background border rounded-xl shadow-xl w-full max-w-lg p-5 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold">{qType === "report" ? "Enviar Relatório / Feedback" : "Rever e Enviar Perguntas"}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{qType === "report" ? "O paciente recebe como uma mensagem informativa (só de leitura)." : "Revê cada pergunta antes de enviar — use a 2ª pessoa (você) e tom directo."}</p>
+                <p className="text-sm font-semibold">{qType === "report" ? "Send Report / Feedback" : "Review and Send Questions"}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{qType === "report" ? "The patient receives it as an informational message (read-only)." : "Review each question before sending — use the second person (\"you\") and a direct tone."}</p>
               </div>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowQDialog(false)}><X className="h-3.5 w-3.5" /></Button>
             </div>
@@ -2804,7 +2804,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               <button
                 onClick={() => setQType("questions")}
                 className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${qType === "questions" ? "bg-blue-600 text-white" : "text-muted-foreground hover:text-foreground"}`}
-              >❓ Perguntas (paciente responde)</button>
+              >❓ Questions (patient answers)</button>
               <button
                 onClick={() => setQType("report")}
                 className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${qType === "report" ? "bg-emerald-600 text-white" : "text-muted-foreground hover:text-foreground"}`}
@@ -2816,7 +2816,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                 <span className="text-amber-400 text-xs mt-0.5">⚠️</span>
                 <p className="text-[10px] text-amber-300 leading-relaxed">
-                  Verifique: perguntas devem ser dirigidas ao paciente em <strong>second person ("you")</strong>, em <strong>Brazilian Portuguese</strong>, without clinical language. Use the button <strong>✨ Reformular</strong> para corrigir automaticamente.
+                  Check: questions must be addressed to the patient in the <strong>second person ("you")</strong>, in <strong>Brazilian Portuguese</strong>, without clinical language. Use the <strong>✨ Reformulate</strong> button to fix them automatically.
                 </p>
               </div>
             )}
@@ -2824,7 +2824,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               <div className="flex items-start gap-2 p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
                 <span className="text-emerald-400 text-xs mt-0.5">📋</span>
                 <p className="text-[10px] text-emerald-300 leading-relaxed">
-                  O paciente vai ver este texto como um <strong>informative report/message</strong> — no answer fields. Ideal for clinical feedback, results or instructions.
+                  The patient will see this text as an <strong>informative report/message</strong> — no answer fields. Ideal for clinical feedback, results or instructions.
                 </p>
               </div>
             )}
@@ -2845,7 +2845,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                     disabled={reformulating || !qText.trim()}
                   >
                     {reformulating ? <Loader2 className="h-3 w-3 animate-spin" /> : "✨"}
-                    {reformulating ? "A reformular..." : "Reformular para pt-BR"}
+                    {reformulating ? "Reformulating..." : "Reformulate to pt-BR"}
                   </Button>
                 </>
               )}
@@ -2864,8 +2864,8 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
             />
             <p className="text-[9px] text-muted-foreground">
               {qType === "report"
-                ? "O paciente verá isto como uma mensagem informativa — sem campos de resposta."
-                : "Cada linha = uma pergunta. O paciente responde no portal antes da consulta."}
+                ? "The patient will see this as an informational message — no answer fields."
+                : "Each line = one question. The patient answers in the portal before the appointment."}
             </p>
 
             {qSentOk ? (
@@ -2874,7 +2874,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               </div>
             ) : (
               <Button className="w-full bg-blue-600 hover:bg-blue-700 h-9 text-xs" onClick={handleSendQuestions} disabled={sendingQ || !qText.trim()}>
-                {sendingQ ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />A enviar…</> : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirmar e Enviar ao Paciente</>}
+                {sendingQ ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Sending…</> : <><Send className="h-3.5 w-3.5 mr-1.5" />Confirm and Send to Patient</>}
               </Button>
             )}
           </div>
@@ -3034,30 +3034,30 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                <p className="text-xs font-semibold text-emerald-400">Plano enviado ao paciente</p>
+                <p className="text-xs font-semibold text-emerald-400">Plan sent to patient</p>
               </div>
               <span className="text-[9px] text-muted-foreground">{activePlan.sentAt ? new Date(activePlan.sentAt).toLocaleDateString("en-GB") : ""}</span>
             </div>
             {activePlan.therapistNote && (
-              <p className="text-[10px] text-muted-foreground italic">Nota: {activePlan.therapistNote}</p>
+              <p className="text-[10px] text-muted-foreground italic">Note: {activePlan.therapistNote}</p>
             )}
             <Button variant="outline" size="sm" className="h-7 text-[10px] text-red-400 border-red-500/30 hover:bg-red-500/10" onClick={handleRevoke}>
-              Retirar acesso ao paciente
+              Revoke patient access
             </Button>
           </div>
         ) : (
           <div className="space-y-2">
             <p className="text-xs font-semibold flex items-center gap-1.5">
-              <Send className="h-3.5 w-3.5 text-emerald-400" />Enviar plano ao paciente
+              <Send className="h-3.5 w-3.5 text-emerald-400" />Send plan to patient
             </p>
             <p className="text-[10px] text-muted-foreground">The patient will see the plan and exercises in the app. You can add a personal note before sending.</p>
             <textarea
               className="w-full text-[10px] bg-muted/30 border rounded-lg p-2 resize-none h-16 placeholder:text-muted-foreground/50"
-              placeholder="Nota para o paciente (opcional)… ex: 'Lembra-te de fazer os exercícios pela manhã. Próxima sessão na 4ª feira.'"
+              placeholder="Note for the patient (optional)… e.g. 'Remember to do your exercises in the morning. Next session on Wednesday.'"
               value={sendNote} onChange={e => setSendNote(e.target.value)}
             />
             <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700" onClick={handleSend} disabled={sending}>
-              {sending ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />A enviar…</> : <><Send className="h-3 w-3 mr-1.5" />Confirmar e enviar ao paciente</>}
+              {sending ? <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Sending…</> : <><Send className="h-3 w-3 mr-1.5" />Confirm and send to patient</>}
             </Button>
           </div>
         )}
@@ -3113,14 +3113,14 @@ function ClinicalScribePanel({ patientId, onTranscript }: { patientId: string; o
   const handle = async () => {
     if (!file) return;
     setTranscribing(true); setError(""); setTranscript("");
-    setProgress(file.size > 20 * 1024 * 1024 ? "Ficheiro grande — a dividir em partes..." : "A transcrever...");
+    setProgress(file.size > 20 * 1024 * 1024 ? "Large file — splitting into parts..." : "Transcribing...");
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("lang", lang);
       const res = await fetch("/api/admin/transcribe", { method: "POST", body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha na transcrição");
+      if (!res.ok) throw new Error(data.error || "Transcription failed");
       setTranscript(data.transcript);
       setProgress("");
     } catch (e: any) { setError(e.message); setProgress(""); }
@@ -3148,14 +3148,14 @@ function ClinicalScribePanel({ patientId, onTranscript }: { patientId: string; o
                 onChange={e => { setFile(e.target.files?.[0] || null); setTranscript(""); setError(""); }} />
             </div>
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Idioma</label>
+              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Language</label>
               <select className="h-8 rounded border border-input bg-background text-xs px-2" value={lang} onChange={e => setLang(e.target.value)}>
                 <option value="pt">Portuguese</option>
                 <option value="en">English</option>
               </select>
             </div>
             <Button size="sm" className="h-8 text-xs gap-1.5 bg-violet-600 hover:bg-violet-700" onClick={handle} disabled={!file || transcribing}>
-              {transcribing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress || "A transcrever..."}</> : <><Mic className="h-3.5 w-3.5" /> Transcrever</>}
+              {transcribing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {progress || "Transcribing..."}</> : <><Mic className="h-3.5 w-3.5" /> Transcribe</>}
             </Button>
           </div>
           {error && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="h-3.5 w-3.5" /> {error}</p>}
@@ -3166,10 +3166,10 @@ function ClinicalScribePanel({ patientId, onTranscript }: { patientId: string; o
               </div>
               <div className="flex gap-2">
                 <Button size="sm" className="h-7 text-xs gap-1" onClick={() => { onTranscript(transcript); setTranscript(""); setFile(null); setOpen(false); }}>
-                  <Save className="h-3 w-3" /> Inserir no SOAP
+                  <Save className="h-3 w-3" /> Insert into SOAP
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => navigator.clipboard.writeText(transcript)}>
-                  <Copy className="h-3 w-3" /> Copiar
+                  <Copy className="h-3 w-3" /> Copy
                 </Button>
               </div>
             </div>

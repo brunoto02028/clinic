@@ -91,18 +91,18 @@ export default function AdminMarketplacePage() {
   const [bulkImporting, setBulkImporting] = useState(false);
 
   const PHYSIO_SUGGESTIONS = [
-    { label: "💊 Vitamina D", q: "vitamin D3 supplement" },
+    { label: "💊 Vitamin D", q: "vitamin D3 supplement" },
     { label: "🐟 Omega 3", q: "omega 3 fish oil joint" },
-    { label: "🦴 Glucosamina", q: "glucosamine chondroitin joint" },
-    { label: "🧴 Colagénio", q: "collagen supplement joints" },
-    { label: "🏋️ Proteína", q: "whey protein recovery muscle" },
-    { label: "🪄 Magnésio", q: "magnesium muscle cramps" },
+    { label: "🦴 Glucosamine", q: "glucosamine chondroitin joint" },
+    { label: "🧴 Collagen", q: "collagen supplement joints" },
+    { label: "🏋️ Protein", q: "whey protein recovery muscle" },
+    { label: "🪄 Magnesium", q: "magnesium muscle cramps" },
     { label: "🔴 Foam Roller", q: "foam roller physiotherapy" },
     { label: "🩺 TENS", q: "TENS machine pain relief" },
-    { label: "🦿 Palmilhas", q: "orthotic insoles running" },
-    { label: "💪 Bandas", q: "resistance bands rehabilitation" },
-    { label: "🔫 Massagem", q: "massage gun muscle recovery" },
-    { label: "🧊 Gelo/Calor", q: "ice heat pack physiotherapy" },
+    { label: "🦿 Insoles", q: "orthotic insoles running" },
+    { label: "💪 Bands", q: "resistance bands rehabilitation" },
+    { label: "🔫 Massage", q: "massage gun muscle recovery" },
+    { label: "🧊 Ice/Heat", q: "ice heat pack physiotherapy" },
   ];
 
   // Order detail
@@ -193,7 +193,7 @@ export default function AdminMarketplacePage() {
   };
 
   const deleteProduct = async (id: string) => {
-    if (!confirm("Apagar este produto? Esta acção não pode ser desfeita.")) return;
+    if (!confirm("Delete this product? This action cannot be undone.")) return;
     try {
       const res = await fetch("/api/admin/journey/products", {
         method: "DELETE",
@@ -202,12 +202,12 @@ export default function AdminMarketplacePage() {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        alert("Erro ao apagar: " + (d.error || res.statusText));
+        alert("Error deleting: " + (d.error || res.statusText));
         return;
       }
       fetchProducts();
     } catch (e: any) {
-      alert("Erro ao apagar: " + e.message);
+      alert("Error deleting: " + e.message);
     }
   };
 
@@ -423,9 +423,9 @@ export default function AdminMarketplacePage() {
     setBulkImporting(false);
     fetchProducts();
     if (errors.length > 0) {
-      alert(`✅ ${saved} importado(s).\n\n⚠️ Falhou (${errors.length}):\n${errors.join("\n")}`);
+      alert(`✅ ${saved} imported.\n\n⚠️ Failed (${errors.length}):\n${errors.join("\n")}`);
     } else {
-      alert(`✅ ${saved} produto(s) importados para o Marketplace!`);
+      alert(`✅ ${saved} product(s) imported to the Marketplace!`);
     }
   };
 
@@ -598,8 +598,8 @@ export default function AdminMarketplacePage() {
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Search className="h-4 w-4 text-blue-500" />
-                <p className="text-sm font-semibold text-foreground">🔍 Pesquisar Produtos Amazon</p>
-                <span className="text-[10px] bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">IA gera lista + afiliação automática</span>
+                <p className="text-sm font-semibold text-foreground">🔍 Search Amazon Products</p>
+                <span className="text-[10px] bg-blue-500/15 text-blue-500 px-2 py-0.5 rounded-full">AI generates list + automatic affiliation</span>
               </div>
 
               {/* Search bar */}
@@ -608,13 +608,13 @@ export default function AdminMarketplacePage() {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && searchAmazonProducts()}
-                  placeholder="ex: vitaminas articulações, omega 3, foam roller, proteína..."
+                  placeholder="e.g. joint vitamins, omega 3, foam roller, protein..."
                   className="flex-1 text-sm"
                 />
                 <Button onClick={() => searchAmazonProducts()} disabled={searching || !searchQuery.trim()} size="sm"
                   className="gap-1 bg-blue-600 hover:bg-blue-500 text-white shrink-0">
                   {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                  {searching ? "A pesquisar..." : "Pesquisar"}
+                  {searching ? "Searching..." : "Search"}
                 </Button>
               </div>
 
@@ -650,14 +650,14 @@ export default function AdminMarketplacePage() {
                         onChange={() => setBulkSelecting(bulkSelecting.size === searchResults.length ? new Set() : new Set(searchResults.map((_, i) => i)))}
                         className="rounded" />
                       <span className="text-xs text-muted-foreground">
-                        {bulkSelecting.size > 0 ? `${bulkSelecting.size} seleccionado(s)` : `${searchResults.length} produtos encontrados`}
+                        {bulkSelecting.size > 0 ? `${bulkSelecting.size} selected` : `${searchResults.length} products found`}
                       </span>
                     </div>
                     {bulkSelecting.size > 0 && (
                       <Button size="sm" onClick={importBulkSelected} disabled={bulkImporting}
                         className="gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
                         {bulkImporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                        Importar {bulkSelecting.size} produto(s)
+                        Import {bulkSelecting.size} product(s)
                       </Button>
                     )}
                   </div>
@@ -690,7 +690,7 @@ export default function AdminMarketplacePage() {
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <span className="text-xs font-bold text-emerald-500">£{p.price}</span>
                               {p.rating && <span className="text-[10px] text-amber-500">★ {p.rating}</span>}
-                              <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">{p.commission || 4}% comissão</span>
+                              <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">{p.commission || 4}% commission</span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded capitalize ${
                                 p.category === "supplement" ? "bg-violet-500/15 text-violet-500"
                                 : p.category === "equipment" ? "bg-blue-500/15 text-blue-500"
@@ -700,28 +700,28 @@ export default function AdminMarketplacePage() {
                           </div>
                           <div className="flex flex-col gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                             {isImported ? (
-                              <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">✓ Adicionado</span>
+                              <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-1">✓ Added</span>
                             ) : failedAsins.has(p.asin) ? (
                               <>
-                                <span className="text-[10px] text-red-400 font-semibold">✗ Erro</span>
+                                <span className="text-[10px] text-red-400 font-semibold">✗ Error</span>
                                 <Button size="sm" onClick={() => saveSingleProduct(p)}
                                   className="text-[10px] h-6 px-2 bg-red-600 hover:bg-red-500 text-white">
-                                  Tentar de novo
+                                  Try again
                                 </Button>
                               </>
                             ) : importingAsins.has(p.asin) ? (
                               <span className="text-[10px] text-blue-400 flex items-center gap-1">
-                                <Loader2 className="h-3 w-3 animate-spin" /> A guardar...
+                                <Loader2 className="h-3 w-3 animate-spin" /> Saving...
                               </span>
                             ) : (
                               <>
                                 <Button size="sm" onClick={() => saveSingleProduct(p)}
                                   className="text-[10px] h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white">
-                                  + Adicionar
+                                  + Add
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={() => importSingleResult(p)}
                                   className="text-[10px] h-6 px-2 text-muted-foreground hover:text-foreground">
-                                  Editar
+                                  Edit
                                 </Button>
                               </>
                             )}
@@ -741,11 +741,11 @@ export default function AdminMarketplacePage() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-amber-500" />
-                  <p className="text-sm font-semibold text-foreground">🛒 Importar da Amazon</p>
+                  <p className="text-sm font-semibold text-foreground">🛒 Import from Amazon</p>
                   <span className="text-[10px] bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full font-medium">tag: bprrrehab-21</span>
                 </div>
                 <button onClick={() => setShowImportPanel(v => !v)} className="text-xs text-muted-foreground hover:text-foreground">
-                  {showImportPanel ? "Ocultar" : "Expandir"}
+                  {showImportPanel ? "Hide" : "Expand"}
                 </button>
               </div>
 
@@ -754,20 +754,20 @@ export default function AdminMarketplacePage() {
                 <Input
                   value={amazonUrl}
                   onChange={(e) => setAmazonUrl(e.target.value)}
-                  placeholder="Cola o URL do produto Amazon aqui — ex: https://www.amazon.co.uk/dp/B09XXXXX"
+                  placeholder="Paste the Amazon product URL here — e.g. https://www.amazon.co.uk/dp/B09XXXXX"
                   className="flex-1 text-xs"
                   onKeyDown={(e) => { if (e.key === "Enter") importFromAmazon(); }}
                 />
                 <Button onClick={importFromAmazon} disabled={importing || !amazonUrl.trim()} size="sm"
                   className="gap-1 bg-amber-500 hover:bg-amber-400 text-white shrink-0">
                   {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  {importing ? "A importar..." : "IA Import"}
+                  {importing ? "Importing..." : "AI Import"}
                 </Button>
               </div>
 
               {/* Quick search suggestions — pesquisa interna */}
               <div className="flex flex-wrap gap-1.5">
-                <span className="text-[10px] text-muted-foreground self-center">Pesquisa rápida:</span>
+                <span className="text-[10px] text-muted-foreground self-center">Quick search:</span>
                 {PHYSIO_SUGGESTIONS.map(s => (
                   <button key={s.q}
                     onClick={() => { setSearchQuery(s.q); searchAmazonProducts(s.q); window.scrollTo({ top: 0, behavior: "smooth" }); }}
@@ -783,7 +783,7 @@ export default function AdminMarketplacePage() {
               {importPreview && (
                 <div className="border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-3 space-y-3">
                   <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                    <CheckCircle className="h-3.5 w-3.5" /> Produto encontrado — confirma antes de guardar
+                    <CheckCircle className="h-3.5 w-3.5" /> Product found — confirm before saving
                   </p>
                   <div className="flex gap-3">
                     {importPreview.imageUrl && (
@@ -800,7 +800,7 @@ export default function AdminMarketplacePage() {
                       <div className="flex gap-2 flex-wrap mt-1">
                         <span className="text-xs font-bold text-emerald-500">£{importPreview.price}</span>
                         <span className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">
-                          {importPreview.commission || 4}% comissão
+                          {importPreview.commission || 4}% commission
                         </span>
                         <span className="text-[10px] bg-blue-500/15 text-blue-500 px-1.5 py-0.5 rounded capitalize">
                           {importPreview.category?.replace("_", " ")}
@@ -817,10 +817,10 @@ export default function AdminMarketplacePage() {
                   <div className="flex gap-2">
                     <Button size="sm" onClick={confirmImport}
                       className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white gap-1">
-                      <CheckCircle className="h-3.5 w-3.5" /> Confirmar e Editar
+                      <CheckCircle className="h-3.5 w-3.5" /> Confirm and Edit
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setImportPreview(null)} className="gap-1">
-                      <X className="h-3.5 w-3.5" /> Cancelar
+                      <X className="h-3.5 w-3.5" /> Cancel
                     </Button>
                   </div>
                 </div>
@@ -829,13 +829,13 @@ export default function AdminMarketplacePage() {
               {/* Instructions */}
               {showImportPanel && !importPreview && (
                 <div className="text-[11px] text-muted-foreground space-y-1 border-t border-border/50 pt-3">
-                  <p className="font-semibold text-foreground">Como funciona:</p>
-                  <p>1. Vai a <a href="https://www.amazon.co.uk" target="_blank" className="text-amber-500 underline">amazon.co.uk</a> e encontra um produto relevante para fisioterapia</p>
-                  <p>2. Copia o URL da página do produto</p>
-                  <p>3. Cola aqui e clica "IA Import" — a IA extrai nome, preço, descrição e categoria</p>
-                  <p>4. Confirma o preview e edita os detalhes antes de guardar</p>
-                  <p>5. O teu link de afiliado com tag <strong>bprrrehab-21</strong> é gerado automaticamente</p>
-                  <p className="text-amber-500/80">💡 Comissão típica: 4% em equipamento, suplementos e saúde</p>
+                  <p className="font-semibold text-foreground">How it works:</p>
+                  <p>1. Go to <a href="https://www.amazon.co.uk" target="_blank" className="text-amber-500 underline">amazon.co.uk</a> and find a product relevant to physiotherapy</p>
+                  <p>2. Copy the product page URL</p>
+                  <p>3. Paste it here and click "AI Import" — the AI extracts name, price, description and category</p>
+                  <p>4. Confirm the preview and edit the details before saving</p>
+                  <p>5. Your affiliate link with the tag <strong>bprrrehab-21</strong> is generated automatically</p>
+                  <p className="text-amber-500/80">💡 Typical commission: 4% on equipment, supplements and health</p>
                 </div>
               )}
             </CardContent>

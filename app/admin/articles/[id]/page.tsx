@@ -185,7 +185,7 @@ export default function EditArticlePage() {
       setContent(data.content);
       setShowPreview(false);
       setEditLang(targetLang);
-      toast({ title: targetLang === "pt" ? "Traduzido para Português!" : "Translated to English!", description: "Review and correct the translation as needed." });
+      toast({ title: targetLang === "pt" ? "Translated to Portuguese!" : "Translated to English!", description: "Review and correct the translation as needed." });
     } catch (err: any) {
       toast({ title: "Translation failed", description: err.message, variant: "destructive" });
     } finally {

@@ -116,7 +116,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 |-----|--------|------|--------|
 | T-28 | PLAT | Rebrand claro do admin (paleta BA1: bone/ink/moss/greige) — **todo o admin, inclusive a clínica** | pendente (planejar antes de implementar; depois do produto do Personal) |
 | T-29 | PT | Esconder tudo que é clínico do personal (abas da ficha + Marketing, por URL) | concluído (QA 4/4 + re-QA 2/2; jest 111; runtime 43/43; review feito) |
-| T-30 | PLAT | Admin em inglês UK como língua base (trocar rótulos PT hardcoded) | pendente |
+| T-30 | PLAT | Admin em inglês UK como língua base (trocar rótulos PT hardcoded) | concluído (sweep de todas as páginas admin; ~500 strings; tsc limpo) |
 
 ## Suposições (validar com o Bruno)
 

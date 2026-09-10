@@ -327,7 +327,7 @@ export default function FlyerCreatorPage() {
   }
 
   function saveDesign() {
-    const name = saveName.trim() || `Flyer ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    const name = saveName.trim() || `Flyer ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
     const design: SavedFlyerDesign = {
       id: Date.now().toString(),
       name,
@@ -845,7 +845,7 @@ export default function FlyerCreatorPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{d.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {TEMPLATES.find(t => t.id === d.templateId)?.name || 'Custom'} · {new Date(d.savedAt).toLocaleDateString('pt-BR')} {new Date(d.savedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        {TEMPLATES.find(t => t.id === d.templateId)?.name || 'Custom'} · {new Date(d.savedAt).toLocaleDateString('en-GB')} {new Date(d.savedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <button onClick={() => loadDesign(d)} className="text-xs bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1 rounded-md transition whitespace-nowrap">

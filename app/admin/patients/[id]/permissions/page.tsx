@@ -43,18 +43,18 @@ interface PermItem {
 }
 
 const MODULE_CATEGORIES = [
-  { key: "core", label: "Principal (Sempre Visível)", color: "bg-slate-100 text-slate-700" },
-  { key: "clinical", label: "Clínico", color: "bg-blue-100 text-blue-700" },
-  { key: "wellness", label: "Bem-Estar & Autocuidado", color: "bg-emerald-100 text-emerald-700" },
-  { key: "content", label: "Conteúdo & Educação", color: "bg-violet-100 text-violet-700" },
+  { key: "core", label: "Main (Always Visible)", color: "bg-slate-100 text-slate-700" },
+  { key: "clinical", label: "Clinical", color: "bg-blue-100 text-blue-700" },
+  { key: "wellness", label: "Wellbeing & Self-Care", color: "bg-emerald-100 text-emerald-700" },
+  { key: "content", label: "Content & Education", color: "bg-violet-100 text-violet-700" },
 ];
 
 const PERM_CATEGORIES = [
-  { key: "booking", label: "Agendamentos" },
-  { key: "content", label: "Acesso a Conteúdo" },
-  { key: "communication", label: "Comunicação" },
-  { key: "clinical", label: "Clínico" },
-  { key: "advanced", label: "Recursos Avançados" },
+  { key: "booking", label: "Bookings" },
+  { key: "content", label: "Content Access" },
+  { key: "communication", label: "Communication" },
+  { key: "clinical", label: "Clinical" },
+  { key: "advanced", label: "Advanced Features" },
 ];
 
 export default function PatientPermissionsPage() {
@@ -90,10 +90,10 @@ export default function PatientPermissionsPage() {
         setFullAccess(json.fullAccessOverride || false);
         setHasChanges(false);
       } else {
-        toast({ title: "Erro", description: json.error, variant: "destructive" });
+        toast({ title: "Error", description: json.error, variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erro", description: "Falha ao carregar", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to load", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -121,11 +121,11 @@ export default function PatientPermissionsPage() {
   /** Confirm + immediately save a single module override to the DB */
   const confirmAndSaveModuleOverride = async (key: string, val: OverrideVal, moduleName: string) => {
     const ACTION_LABELS: Record<string, string> = {
-      true: `Liberar "${moduleName}"? O paciente terá acesso sem cadeado.`,
-      false: `Bloquear "${moduleName}"? O paciente verá com cadeado.`,
-      hidden: `Ocultar "${moduleName}"? O módulo sumirá do menu do paciente.`,
+      true: `Unlock "${moduleName}"? The patient will have access without a padlock.`,
+      false: `Lock "${moduleName}"? The patient will see it with a padlock.`,
+      hidden: `Hide "${moduleName}"? The module will disappear from the patient's menu.`,
     };
-    const label = ACTION_LABELS[String(val)] || `Alterar "${moduleName}"?`;
+    const label = ACTION_LABELS[String(val)] || `Change "${moduleName}"?`;
     if (!confirm(label)) return;
 
     const newOverrides = { ...overrides };
@@ -143,15 +143,15 @@ export default function PatientPermissionsPage() {
         body: JSON.stringify({ action: "updateOverrides", overrides: newOverrides }),
       });
       if (res.ok) {
-        toast({ title: "Salvo", description: `"${moduleName}" atualizado com sucesso` });
+        toast({ title: "Saved", description: `"${moduleName}" updated successfully` });
         setHasChanges(false);
         fetchData();
       } else {
         const json = await res.json();
-        toast({ title: "Erro", description: json.error, variant: "destructive" });
+        toast({ title: "Error", description: json.error, variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erro", description: "Falha ao salvar", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to save", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -179,14 +179,14 @@ export default function PatientPermissionsPage() {
         body: JSON.stringify({ action: "updateOverrides", overrides }),
       });
       if (res.ok) {
-        toast({ title: "Salvo", description: "Permissões atualizadas com sucesso" });
+        toast({ title: "Saved", description: "Permissions updated successfully" });
         fetchData();
       } else {
         const json = await res.json();
-        toast({ title: "Erro", description: json.error, variant: "destructive" });
+        toast({ title: "Error", description: json.error, variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erro", description: "Falha ao salvar", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to save", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -195,7 +195,7 @@ export default function PatientPermissionsPage() {
 
   const resetPassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      toast({ title: "Erro", description: "A senha deve ter pelo menos 6 caracteres", variant: "destructive" });
+      toast({ title: "Error", description: "The password must be at least 6 characters", variant: "destructive" });
       return;
     }
     setResettingPw(true);
@@ -206,14 +206,14 @@ export default function PatientPermissionsPage() {
         body: JSON.stringify({ action: "resetPassword", newPassword }),
       });
       if (res.ok) {
-        toast({ title: "Senha Redefinida", description: "Nova senha foi definida" });
+        toast({ title: "Password Reset", description: "A new password has been set" });
         setNewPassword("");
       } else {
         const json = await res.json();
-        toast({ title: "Erro", description: json.error, variant: "destructive" });
+        toast({ title: "Error", description: json.error, variant: "destructive" });
       }
     } catch {
-      toast({ title: "Erro", description: "Falha ao redefinir senha", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to reset password", variant: "destructive" });
     } finally {
       setResettingPw(false);
     }
@@ -235,16 +235,16 @@ export default function PatientPermissionsPage() {
           setOverrides({});
         }
         toast({
-          title: json.fullAccessOverride ? "Acesso Total Ativado" : "Acesso Total Desativado",
+          title: json.fullAccessOverride ? "Full Access Enabled" : "Full Access Disabled",
           description: json.fullAccessOverride
-            ? `${data?.patient?.firstName} agora tem acesso completo a todos os módulos`
-            : `${data?.patient?.firstName} voltou ao fluxo normal de permissões`,
+            ? `${data?.patient?.firstName} now has full access to all modules`
+            : `${data?.patient?.firstName} is back to the normal permissions flow`,
         });
         // Refetch to sync all data
         fetchData();
       }
     } catch {
-      toast({ title: "Erro", description: "Falha ao alterar acesso total", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to change full access", variant: "destructive" });
     } finally {
       setTogglingFullAccess(false);
     }
@@ -258,7 +258,7 @@ export default function PatientPermissionsPage() {
         body: JSON.stringify({ action: "toggleActive" }),
       });
       if (res.ok) {
-        toast({ title: "Atualizado", description: `Conta ${data.patient.isActive ? "desativada" : "ativada"}` });
+        toast({ title: "Updated", description: `Account ${data.patient.isActive ? "deactivated" : "activated"}` });
         fetchData();
       }
     } catch {}
@@ -283,9 +283,9 @@ export default function PatientPermissionsPage() {
   if (!data) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-500">Paciente não encontrado</p>
+        <p className="text-slate-500">Patient not found</p>
         <Button variant="outline" className="mt-4" onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push(`/admin/patients/${patientId}`); }}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
       </div>
     );
@@ -315,10 +315,10 @@ export default function PatientPermissionsPage() {
     const isOverridden = state !== "plan";
 
     const STATE_STYLES = {
-      unlocked: { badge: "bg-emerald-500/20 text-emerald-400", icon: Unlock, label: "Liberado", ring: "ring-emerald-400" },
-      locked: { badge: "bg-amber-500/20 text-amber-400", icon: Lock, label: "Cadeado", ring: "ring-amber-400" },
-      hidden: { badge: "bg-muted text-muted-foreground", icon: EyeOff, label: "Oculto", ring: "ring-muted" },
-      plan: { badge: effective ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400", icon: effective ? Unlock : Lock, label: effective ? "Plano" : "Bloqueado", ring: "" },
+      unlocked: { badge: "bg-emerald-500/20 text-emerald-400", icon: Unlock, label: "Unlocked", ring: "ring-emerald-400" },
+      locked: { badge: "bg-amber-500/20 text-amber-400", icon: Lock, label: "Locked", ring: "ring-amber-400" },
+      hidden: { badge: "bg-muted text-muted-foreground", icon: EyeOff, label: "Hidden", ring: "ring-muted" },
+      plan: { badge: effective ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400", icon: effective ? Unlock : Lock, label: effective ? "Plan" : "Blocked", ring: "" },
     };
     const s = fullAccess ? STATE_STYLES.unlocked : STATE_STYLES[state];
     const StateIcon = s.icon;
@@ -335,7 +335,7 @@ export default function PatientPermissionsPage() {
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-foreground">{m.labelPt || m.label}</span>
             {m.alwaysVisible && (
-              <Badge className="bg-muted text-muted-foreground text-[9px]">Sempre Ativo</Badge>
+              <Badge className="bg-muted text-muted-foreground text-[9px]">Always On</Badge>
             )}
             {isOverridden && !m.alwaysVisible && (
               <Badge className="bg-amber-500/20 text-amber-400 text-[9px]">Admin Override</Badge>
@@ -345,11 +345,11 @@ export default function PatientPermissionsPage() {
           <div className="flex items-center gap-2 mt-1">
             {m.grantedByPlan ? (
               <span className="text-[10px] text-emerald-600 flex items-center gap-0.5">
-                <CheckCircle className="h-2.5 w-2.5" /> Incluído no plano
+                <CheckCircle className="h-2.5 w-2.5" /> Included in plan
               </span>
             ) : (
               <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                <XCircle className="h-2.5 w-2.5" /> Não incluído no plano
+                <XCircle className="h-2.5 w-2.5" /> Not included in plan
               </span>
             )}
             <span className="text-[10px] text-muted-foreground/50">·</span>
@@ -363,7 +363,7 @@ export default function PatientPermissionsPage() {
           {!m.alwaysVisible && (
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
-                title="Liberado (sem cadeado)"
+                title="Unlocked (no padlock)"
                 onClick={() => confirmAndSaveModuleOverride(m.key, true, m.labelPt || m.label)}
                 disabled={fullAccess}
                 className={`p-1.5 transition-colors ${
@@ -373,7 +373,7 @@ export default function PatientPermissionsPage() {
                 <Unlock className="h-3.5 w-3.5" />
               </button>
               <button
-                title="Bloqueado (com cadeado)"
+                title="Locked (with padlock)"
                 onClick={() => confirmAndSaveModuleOverride(m.key, false, m.labelPt || m.label)}
                 disabled={fullAccess}
                 className={`p-1.5 border-x border-border transition-colors ${
@@ -383,7 +383,7 @@ export default function PatientPermissionsPage() {
                 <Lock className="h-3.5 w-3.5" />
               </button>
               <button
-                title="Oculto (não aparece no menu)"
+                title="Hidden (does not appear in the menu)"
                 onClick={() => confirmAndSaveModuleOverride(m.key, "hidden", m.labelPt || m.label)}
                 disabled={fullAccess}
                 className={`p-1.5 transition-colors ${
@@ -423,11 +423,11 @@ export default function PatientPermissionsPage() {
         <div className="flex items-center gap-2 shrink-0">
           {effective ? (
             <Badge className="bg-emerald-500/20 text-emerald-400 text-[10px]">
-              <Unlock className="h-2.5 w-2.5 mr-0.5" /> Acesso
+              <Unlock className="h-2.5 w-2.5 mr-0.5" /> Access
             </Badge>
           ) : (
             <Badge className="bg-red-500/20 text-red-400 text-[10px]">
-              <Lock className="h-2.5 w-2.5 mr-0.5" /> Bloqueado
+              <Lock className="h-2.5 w-2.5 mr-0.5" /> Blocked
             </Badge>
           )}
           <button
@@ -454,20 +454,20 @@ export default function PatientPermissionsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <Link href={`/admin/patients/${patientId}`} className="text-xs text-primary hover:underline flex items-center gap-1 mb-2">
-            <ArrowLeft className="h-3 w-3" /> Voltar ao Paciente
+            <ArrowLeft className="h-3 w-3" /> Back to Patient
           </Link>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" /> Permissões do Paciente
+            <Shield className="h-6 w-6 text-primary" /> Patient Permissions
           </h1>
         </div>
         {hasChanges && (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => { setOverrides(data.overrides || {}); setHasChanges(false); }}>
-              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Descartar
+              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Discard
             </Button>
             <Button size="sm" onClick={saveOverrides} disabled={saving} className="gap-1">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              Salvar Alterações
+              Save Changes
             </Button>
           </div>
         )}
@@ -483,12 +483,12 @@ export default function PatientPermissionsPage() {
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-bold text-foreground">
                 {patient.firstName} {patient.lastName}
-                {!patient.isActive && <Badge variant="outline" className="ml-2 text-[10px]">Inativo</Badge>}
+                {!patient.isActive && <Badge variant="outline" className="ml-2 text-[10px]">Inactive</Badge>}
               </h2>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {patient.email}</span>
                 {patient.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {patient.phone}</span>}
-                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Desde {new Date(patient.createdAt).toLocaleDateString("pt-BR")}</span>
+                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Since {new Date(patient.createdAt).toLocaleDateString("en-GB")}</span>
               </div>
             </div>
             <Button
@@ -497,7 +497,7 @@ export default function PatientPermissionsPage() {
               onClick={toggleActive}
               className="shrink-0"
             >
-              {patient.isActive ? <><EyeOff className="h-3.5 w-3.5 mr-1" /> Desativar</> : <><Eye className="h-3.5 w-3.5 mr-1" /> Ativar</>}
+              {patient.isActive ? <><EyeOff className="h-3.5 w-3.5 mr-1" /> Deactivate</> : <><Eye className="h-3.5 w-3.5 mr-1" /> Activate</>}
             </Button>
           </div>
         </CardContent>
@@ -516,13 +516,13 @@ export default function PatientPermissionsPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-foreground">Acesso Total</h3>
+                <h3 className="text-base font-bold text-foreground">Full Access</h3>
                 {fullAccess && <Badge className="bg-amber-500/20 text-amber-400 text-[10px]">VIP</Badge>}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {fullAccess
-                  ? "Este paciente tem acesso completo a todos os módulos, independente de plano ou pagamento."
-                  : "Ative para liberar todos os módulos sem necessidade de plano ou pagamento."}
+                  ? "This patient has full access to all modules, regardless of plan or payment."
+                  : "Enable to unlock all modules without needing a plan or payment."}
               </p>
             </div>
             <button
@@ -552,9 +552,9 @@ export default function PatientPermissionsPage() {
               <FileText className={`h-4 w-4 ${onboarding.consentAccepted ? "text-emerald-400" : "text-red-400"}`} />
             </div>
             <div>
-              <p className="text-xs font-bold text-foreground">Termos</p>
+              <p className="text-xs font-bold text-foreground">Terms</p>
               <p className={`text-[10px] ${onboarding.consentAccepted ? "text-emerald-600" : "text-red-600"}`}>
-                {onboarding.consentAccepted ? "Aceito" : "Não aceito"}
+                {onboarding.consentAccepted ? "Accepted" : "Not accepted"}
               </p>
             </div>
           </CardContent>
@@ -565,9 +565,9 @@ export default function PatientPermissionsPage() {
               <Shield className={`h-4 w-4 ${onboarding.screeningComplete ? "text-emerald-400" : "text-amber-400"}`} />
             </div>
             <div>
-              <p className="text-xs font-bold text-foreground">Triagem</p>
+              <p className="text-xs font-bold text-foreground">Screening</p>
               <p className={`text-[10px] ${onboarding.screeningComplete ? "text-emerald-600" : "text-amber-600"}`}>
-                {onboarding.screeningComplete ? "Completa" : "Incompleta"}
+                {onboarding.screeningComplete ? "Complete" : "Incomplete"}
               </p>
             </div>
           </CardContent>
@@ -578,9 +578,9 @@ export default function PatientPermissionsPage() {
               <Crown className={`h-4 w-4 ${membership.hasActiveSubscription ? "text-violet-400" : "text-muted-foreground"}`} />
             </div>
             <div>
-              <p className="text-xs font-bold text-foreground">Plano</p>
+              <p className="text-xs font-bold text-foreground">Plan</p>
               <p className={`text-[10px] ${membership.hasActiveSubscription ? "text-violet-400" : "text-muted-foreground"}`}>
-                {membership.hasActiveSubscription ? membership.plans[0]?.name || "Ativo" : "Sem plano"}
+                {membership.hasActiveSubscription ? membership.plans[0]?.name || "Active" : "No plan"}
               </p>
             </div>
           </CardContent>
@@ -591,9 +591,9 @@ export default function PatientPermissionsPage() {
               <Heart className={`h-4 w-4 ${membership.hasActiveTreatment ? "text-blue-400" : "text-muted-foreground"}`} />
             </div>
             <div>
-              <p className="text-xs font-bold text-foreground">Tratamento</p>
+              <p className="text-xs font-bold text-foreground">Treatment</p>
               <p className={`text-[10px] ${membership.hasActiveTreatment ? "text-blue-400" : "text-muted-foreground"}`}>
-                {membership.hasActiveTreatment ? "Pacote ativo" : "Sem pacote"}
+                {membership.hasActiveTreatment ? "Active package" : "No package"}
               </p>
             </div>
           </CardContent>
@@ -604,7 +604,7 @@ export default function PatientPermissionsPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Key className="h-4 w-4 text-amber-500" /> Redefinir Senha
+            <Key className="h-4 w-4 text-amber-500" /> Reset Password
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -614,7 +614,7 @@ export default function PatientPermissionsPage() {
                 type={showPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nova senha (mín. 6 caracteres)"
+                placeholder="New password (min. 6 characters)"
                 className="pr-10"
               />
               <button
@@ -626,7 +626,7 @@ export default function PatientPermissionsPage() {
               </button>
             </div>
             <Button variant="outline" size="sm" onClick={generatePassword} className="shrink-0 gap-1">
-              <RefreshCw className="h-3.5 w-3.5" /> Gerar
+              <RefreshCw className="h-3.5 w-3.5" /> Generate
             </Button>
             <Button
               size="sm"
@@ -642,7 +642,7 @@ export default function PatientPermissionsPage() {
                 variant="ghost"
                 size="sm"
                 className="shrink-0"
-                onClick={() => { navigator.clipboard.writeText(newPassword); toast({ title: "Copiado!" }); }}
+                onClick={() => { navigator.clipboard.writeText(newPassword); toast({ title: "Copied!" }); }}
               >
                 <Copy className="h-3.5 w-3.5" />
               </Button>
@@ -656,7 +656,7 @@ export default function PatientPermissionsPage() {
         <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowModules(!showModules)}>
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Settings className="h-4 w-4 text-primary" /> Acesso aos Módulos
+              <Settings className="h-4 w-4 text-primary" /> Module Access
               <Badge variant="outline" className="text-[10px] ml-1">
                 {(modules as ModuleItem[]).filter((m: ModuleItem) => getEffectiveAccess(m.key, m.grantedByPlan) || m.alwaysVisible).length}/{(modules as ModuleItem[]).length}
               </Badge>
@@ -689,7 +689,7 @@ export default function PatientPermissionsPage() {
         <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowPermissions(!showPermissions)}>
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Lock className="h-4 w-4 text-violet-500" /> Permissões Detalhadas
+              <Lock className="h-4 w-4 text-violet-500" /> Detailed Permissions
               <Badge variant="outline" className="text-[10px] ml-1">
                 {(permissions as PermItem[]).filter((p: PermItem) => getEffectiveAccess(p.key, p.grantedByPlan)).length}/{(permissions as PermItem[]).length}
               </Badge>
@@ -720,7 +720,7 @@ export default function PatientPermissionsPage() {
         {hasChanges && (
           <Button onClick={saveOverrides} disabled={saving} className="gap-1">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Salvar Alterações para {patient.firstName}
+            Save Changes for {patient.firstName}
           </Button>
         )}
       </div>

@@ -322,7 +322,7 @@ export default function NewFootScanPage() {
           <div>
             <h1 className="text-2xl font-bold">New Foot Scan Assessment</h1>
             <p className="text-sm text-muted-foreground">
-              Antes de começar, leia as instruções para garantir fotos de qualidade
+              Before you start, read the instructions to ensure good-quality photos
             </p>
           </div>
         </div>
@@ -353,7 +353,7 @@ export default function NewFootScanPage() {
           onClick={() => setShowInstructions(true)}
           className="ml-auto"
         >
-          Ver Instruções Novamente
+          View Instructions Again
         </Button>
       </div>
 
