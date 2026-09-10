@@ -16,6 +16,8 @@ export interface AdminTab {
   labelPt: string;
   href: string;
   matchRoutes?: string[];
+  /** Hidden for a personal-trainer tenant (purely clinical: SOAP, protocols, rehab). */
+  clinicalOnly?: boolean;
 }
 
 export interface AdminSection {
@@ -25,6 +27,8 @@ export interface AdminSection {
   icon: LucideIcon;
   tabs: AdminTab[];
   matchRoutes?: string[];
+  /** Whole section hidden for a personal-trainer tenant. */
+  clinicalOnly?: boolean;
 }
 
 export const ADMIN_SECTIONS: AdminSection[] = [
@@ -152,6 +156,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "SOAP Notes",
         labelPt: "Notas SOAP",
         href: "/admin/clinical-notes",
+        clinicalOnly: true,
       },
       {
         key: "treatments",
@@ -171,6 +176,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Protocols",
         labelPt: "Protocolos",
         href: "/admin/protocols",
+        clinicalOnly: true,
         matchRoutes: ["/admin/protocols"],
       },
       {
@@ -184,6 +190,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Rehab Agent",
         labelPt: "Agente Rehab",
         href: "/admin/clinical/rehab",
+        clinicalOnly: true,
       },
     ],
     matchRoutes: [
@@ -412,6 +419,18 @@ function routeMatches(pathname: string, route: string): boolean {
   }
   const routePath = route.split("?")[0];
   return pathname === routePath || pathname.startsWith(routePath + "/");
+}
+
+/**
+ * The sections/tabs a tenant sees. A personal-trainer studio drops the
+ * clinicalOnly sections and tabs (SOAP notes, protocols, rehab agent); a
+ * section left with no visible tabs is dropped too.
+ */
+export function visibleAdminSections(isPersonal: boolean): AdminSection[] {
+  if (!isPersonal) return ADMIN_SECTIONS;
+  return ADMIN_SECTIONS.filter((s) => !s.clinicalOnly)
+    .map((s) => ({ ...s, tabs: s.tabs.filter((t) => !t.clinicalOnly) }))
+    .filter((s) => s.tabs.length > 0);
 }
 
 export function getActiveAdminNav(pathname: string): {

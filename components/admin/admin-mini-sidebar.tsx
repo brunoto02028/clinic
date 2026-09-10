@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { LogOut, Menu, X, UserCog } from "lucide-react";
-import { ADMIN_SECTIONS, getActiveAdminNav, type AdminSection } from "@/lib/admin-sections";
+import { ADMIN_SECTIONS, visibleAdminSections, getActiveAdminNav, type AdminSection } from "@/lib/admin-sections";
 import { Logo } from "@/components/ui/logo";
 import { ClinicSelector } from "./clinic-selector";
 import { LocaleToggle } from "@/components/locale-toggle";
@@ -33,7 +33,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const [logoReady, setLogoReady] = useState(false);
   const [pendingPatients, setPendingPatients] = useState(0);
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
 
   const activeNav = getActiveAdminNav(pathname);
   const isSuperAdmin = user.role === "SUPERADMIN";
@@ -83,8 +83,9 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
     setMobileOpen(false);
   }, [pathname]);
 
-  const mainSections = ADMIN_SECTIONS.filter((s) => s.key !== "settings");
-  const settingsSection = ADMIN_SECTIONS.find((s) => s.key === "settings");
+  const sections = visibleAdminSections(isPersonal);
+  const mainSections = sections.filter((s) => s.key !== "settings");
+  const settingsSection = sections.find((s) => s.key === "settings");
 
   const navItemClass = (active: boolean) =>
     `group relative flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors cursor-pointer w-full text-left ${

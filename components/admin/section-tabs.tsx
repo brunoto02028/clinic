@@ -9,7 +9,7 @@ import { useVocab } from "@/hooks/use-vocab";
 export default function SectionTabs() {
   const pathname = usePathname();
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const activeNav = getActiveAdminNav(pathname);
 
   if (!activeNav) return null;
@@ -19,7 +19,7 @@ export default function SectionTabs() {
 
   return (
     <div className="section-tabs" role="tablist" aria-label={relabel(isPt ? section.labelPt : section.label)}>
-      {section.tabs.map((tab) => (
+      {section.tabs.filter((tab) => !isPersonal || !tab.clinicalOnly).map((tab) => (
         <Link
           key={tab.key}
           href={tab.href}
