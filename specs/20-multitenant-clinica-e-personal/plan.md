@@ -98,7 +98,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 |-----|--------|------|--------|
 | T-20 | PT | Modelo e API de treino | concluído (QA 223 jest + 25/25 runtime; review feito) |
 | T-21 | PT | Montagem de treino pelo personal (web) | concluído (QA 5/5 Playwright; review feito) |
-| T-22 | PT | Treino do aluno + registro de séries (web) | pendente |
+| T-22 | PT | Treino do aluno + registro de séries (web) | concluído (QA 5/5 UI + runtime 31/31; review feito) |
 | T-23 | PT | Módulo Treino no app do aluno | pendente |
 | T-24 | PT | Progresso e aderência para o personal | pendente |
 | T-25 | PT | Aulas em grupo | pendente |

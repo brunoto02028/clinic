@@ -53,3 +53,47 @@ export function validateExercises(exercises: unknown): string | null {
   }
   return null;
 }
+
+// ── Session logging (the student records what they did) ──
+
+export interface SetLogInput {
+  workoutExerciseId: string;
+  setNumber: number;
+  reps?: number | null;
+  loadKg?: number | null;
+  rpe?: number | null;
+  completed?: boolean;
+}
+
+export interface SessionLogInput {
+  durationMin?: number | null;
+  sessionRpe?: number | null;
+  notes?: string | null;
+  sets?: SetLogInput[];
+}
+
+/** Returns an error message, or null when the logged set is valid. */
+export function validateSetLog(s: SetLogInput): string | null {
+  if (!s || typeof s.workoutExerciseId !== "string" || !s.workoutExerciseId) return "workoutExerciseId is required";
+  if (!intAtLeast(s.setNumber, 1)) return "setNumber must be a whole number ≥ 1";
+  if (s.reps != null && !intAtLeast(s.reps, 0)) return "reps must be a whole number ≥ 0";
+  if (s.loadKg != null && !numAtLeast(s.loadKg, 0)) return "loadKg must be ≥ 0";
+  if (s.rpe != null && !intInRange(s.rpe, 1, 10)) return "rpe must be 1–10";
+  return null;
+}
+
+/** Validates a whole session log (session RPE + its sets). First error or null. */
+export function validateSessionLog(input: SessionLogInput): string | null {
+  if (input.sessionRpe != null && !intInRange(input.sessionRpe, 1, 10)) return "sessionRpe must be 1–10";
+  if (input.durationMin != null && !intAtLeast(input.durationMin, 0)) return "durationMin must be a whole number ≥ 0";
+  if (input.notes != null && typeof input.notes !== "string") return "notes must be a string";
+  const sets = input.sets;
+  if (sets != null) {
+    if (!Array.isArray(sets)) return "sets must be an array";
+    for (const s of sets) {
+      const err = validateSetLog(s);
+      if (err) return err;
+    }
+  }
+  return null;
+}

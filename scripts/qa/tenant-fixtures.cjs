@@ -70,6 +70,9 @@ async function main() {
   const pacienteA2 = await user("qa.pacientea2@example.test", "PATIENT", clinicA.id);
   const trainerB = await user("qa.trainer@example.test", "ADMIN", clinicB.id, { bookable: true });
   const alunoB = await user("qa.aluno@example.test", "PATIENT", clinicB.id);
+  // Second student in the SAME personal tenant — for ownership tests (a student
+  // must not read/log another student's workout even within their tenant).
+  const alunoB2 = await user("qa.aluno2@example.test", "PATIENT", clinicB.id);
   // Unverified account for flows that refuse active ones (send-code).
   const pendenteB = await user("qa.pendente@example.test", "PATIENT", clinicB.id, { isActive: false, emailVerified: null });
 

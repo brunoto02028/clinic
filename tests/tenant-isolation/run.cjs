@@ -124,6 +124,8 @@ async function main() {
     const trainerB = await login("qa.trainer@example.test"); // ADMIN, tenant B
     const alunoB = await login("qa.aluno@example.test"); // PATIENT, tenant B
     const adminA = await login("qa.admina@example.test"); // ADMIN, tenant A
+    const pacienteA = await login("qa.pacientea@example.test"); // PATIENT, tenant A (clinic)
+    const alunoB2 = await login("qa.aluno2@example.test"); // PATIENT, tenant B (personal), different student
 
     console.log("\nIsolation scenarios:");
 
@@ -210,6 +212,7 @@ async function main() {
       body: { name: "Treino A", studentId: ids.alunoB, exercises: [{ exerciseId: ids.exerciseB, sets: 3, repsMin: 8, repsMax: 12, rpe: 8 }] },
     });
     let workoutId = (() => { try { return JSON.parse(w.body).id; } catch { return null; } })();
+    let weId = (() => { try { return JSON.parse(w.body).exercises?.[0]?.id; } catch { return null; } })();
     check("W1 personal admin creates workout", w.status === 201 && !!workoutId, `status ${w.status}`);
 
     // W2 — clinic admin (CLINIC tenant, TRAINING off by default) is blocked → 404.
@@ -238,6 +241,47 @@ async function main() {
       body: { name: "Foreign ex", studentId: ids.alunoB, exercises: [{ exerciseId: ids.exerciseA }] },
     });
     check("W5 foreign-tenant exercise rejected 400", w.status === 400, `status ${w.status}`);
+
+    // ── T-22: student sees + logs only their own workouts ──
+    // S1 — student B sees their own workout via the student endpoint.
+    let sres = await request("GET", "/api/workouts", { cookie: alunoB.cookie });
+    check("S1 student B lists own workouts", sres.status === 200 && !!workoutId && sres.body.includes(workoutId), `status ${sres.status}`);
+
+    // S2 — student B logs a valid session for their workout → 201.
+    if (workoutId && weId) {
+      sres = await request("POST", `/api/workouts/${workoutId}/logs`, {
+        cookie: alunoB.cookie,
+        body: { sessionRpe: 8, sets: [{ workoutExerciseId: weId, setNumber: 1, reps: 10, loadKg: 40, rpe: 8, completed: true }] },
+      });
+      check("S2 student B logs a session", sres.status === 201, `status ${sres.status}`);
+
+      // S3 — a student of another tenant cannot log to student B's workout → 404
+      // (blocked at the module gate: clinic tenant has TRAINING off).
+      sres = await request("POST", `/api/workouts/${workoutId}/logs`, {
+        cookie: pacienteA.cookie,
+        body: { sets: [{ workoutExerciseId: weId, setNumber: 1, reps: 5 }] },
+      });
+      check("S3 foreign-tenant student → log 404", sres.status === 404, `status ${sres.status}`);
+
+      // S3b — a DIFFERENT student in the SAME personal tenant (TRAINING on) still
+      // cannot log to student B's workout → 404 (ownership guard, studentId check).
+      sres = await request("POST", `/api/workouts/${workoutId}/logs`, {
+        cookie: alunoB2.cookie,
+        body: { sets: [{ workoutExerciseId: weId, setNumber: 1, reps: 5 }] },
+      });
+      check("S3b other student same tenant → log 404 (ownership)", sres.status === 404, `status ${sres.status}`);
+
+      // S3c — that same student also cannot read B's workout via the list (only own).
+      sres = await request("GET", "/api/workouts", { cookie: alunoB2.cookie });
+      check("S3c other student list excludes B's workout", sres.status === 200 && !sres.body.includes(workoutId), `status ${sres.status}`);
+
+      // S4 — range validation on a logged set (rpe out of 1–10) → 400.
+      sres = await request("POST", `/api/workouts/${workoutId}/logs`, {
+        cookie: alunoB.cookie,
+        body: { sets: [{ workoutExerciseId: weId, setNumber: 1, rpe: 99 }] },
+      });
+      check("S4 invalid set rpe rejected 400", sres.status === 400, `status ${sres.status}`);
+    }
 
     // ISO-10 — mobile register never creates a tenant-less account.
     // No slug → the default tenant (never clinicId: null).

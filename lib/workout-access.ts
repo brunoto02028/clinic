@@ -35,6 +35,49 @@ export async function assertTrainingAccess(actor: Actor): Promise<string> {
 }
 
 /**
+ * A student (PATIENT) whose tenant has TRAINING on. Returns their tenant id.
+ * Used by the student-facing workout endpoints (/api/workouts).
+ */
+export async function assertStudentTrainingAccess(actor: Actor): Promise<string> {
+  if (actor.role !== "PATIENT") throw new AccessError(403, "Forbidden");
+  if (!actor.clinicId) throw new AccessError(404, "Not found");
+  if (!(await isTrainingEnabled(actor.clinicId))) throw new AccessError(404, "Not found");
+  return actor.clinicId;
+}
+
+/**
+ * Loads a workout the student owns, or 404. A student may only read/log their
+ * OWN workouts (studentId === actor.userId) — never another student's, even in
+ * the same tenant.
+ */
+export async function assertWorkoutForStudent(
+  actor: Actor,
+  workoutId: string
+): Promise<{ id: string; clinicId: string; studentId: string; isActive: boolean }> {
+  const w = await prisma.workout.findUnique({
+    where: { id: workoutId },
+    select: { id: true, clinicId: true, studentId: true, isActive: true },
+  });
+  if (!w || w.studentId !== actor.userId) throw new AccessError(404, "Not found");
+  return w;
+}
+
+/** Confirms every setLog's workoutExerciseId belongs to this workout. Error msg or null. */
+export async function assertSetExercisesInWorkout(
+  workoutId: string,
+  workoutExerciseIds: string[]
+): Promise<string | null> {
+  const ids = Array.from(new Set(workoutExerciseIds));
+  if (ids.length === 0) return null;
+  const found = await prisma.workoutExercise.findMany({
+    where: { id: { in: ids }, workoutId },
+    select: { id: true },
+  });
+  if (found.length !== ids.length) return "One or more sets reference an exercise not in this workout";
+  return null;
+}
+
+/**
  * Confirms every referenced exercise belongs to the tenant — a workout may not
  * point at another studio's exercise (cross-tenant leak). Returns an error
  * message or null.
