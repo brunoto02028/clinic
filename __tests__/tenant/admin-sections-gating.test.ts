@@ -27,4 +27,9 @@ describe("visibleAdminSections", () => {
   it("keeps the Training/Clinical section (it still has workout tabs)", () => {
     expect(visibleAdminSections(true).some((s) => s.key === "clinical")).toBe(true);
   });
+
+  it("hides the Marketing section for a personal tenant (clinic content)", () => {
+    expect(visibleAdminSections(true).some((s) => s.key === "marketing")).toBe(false);
+    expect(visibleAdminSections(false).some((s) => s.key === "marketing")).toBe(true);
+  });
 });

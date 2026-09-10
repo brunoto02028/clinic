@@ -164,6 +164,13 @@ export default function PatientProfilePage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteForm, setNoteForm] = useState<any>({});
   const [activeTab, setActiveTab] = useState("resumo");
+  // Safety net: a personal tenant must never land on a clinical tab (its trigger
+  // and every entry point are hidden, but a stale/forced value would otherwise
+  // mount clinical content). Force back to the summary if it ever happens.
+  useEffect(() => {
+    const CLINICAL_TABS = ["screening", "avaliacoes", "notas", "protocolo", "rehab", "evidencia"];
+    if (isPersonal && CLINICAL_TABS.includes(activeTab)) setActiveTab("resumo");
+  }, [isPersonal, activeTab]);
   const [showNewNote, setShowNewNote] = useState(false);
   const [newNote, setNewNote] = useState({ subjective: "", objective: "", assessment: "", plan: "" });
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -731,7 +738,7 @@ export default function PatientProfilePage() {
         <div className="flex items-center gap-1.5 flex-wrap">
           <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"><Shield className="h-3.5 w-3.5 mr-1" /> Permissões</Button></Link>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setActiveTab("docs")}><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button>
-{(() => {
+{!isPersonal && (() => {
             const latestDiag = data.diagnoses?.[0];
             const diagCls = !latestDiag
               ? "h-8 text-xs"
@@ -875,37 +882,49 @@ export default function PatientProfilePage() {
             return (
               <>
                 <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Resumo</TabsTrigger>
-                <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
-                  Screening
-                  {pendingQ > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white px-1">{pendingQ}</span>}
-                </TabsTrigger>
-                <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
-                  Avaliações
-                  {pendingDiag > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white px-1">{pendingDiag}</span>}
-                </TabsTrigger>
-                <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clínicas</TabsTrigger>
+                {!isPersonal && (
+                  <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    Screening
+                    {pendingQ > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white px-1">{pendingQ}</span>}
+                  </TabsTrigger>
+                )}
+                {!isPersonal && (
+                  <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    Avaliações
+                    {pendingDiag > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white px-1">{pendingDiag}</span>}
+                  </TabsTrigger>
+                )}
+                {!isPersonal && (
+                  <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clínicas</TabsTrigger>
+                )}
                 <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documentos</TabsTrigger>
                 <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
                   <MessageSquare className="h-3 w-3" />Mensagens
                   {unreadMsg > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white px-1">{unreadMsg}</span>}
                 </TabsTrigger>
-                <TabsTrigger value="protocolo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
-                  <ClipboardCheck className="h-3 w-3" />Protocolo
-                  {(data.protocols?.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length ?? 0) > 0 && (
-                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/60 text-[9px] font-bold text-white px-1">
-                      {data.protocols.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length}
-                    </span>
-                  )}
-                </TabsTrigger>
+                {!isPersonal && (
+                  <TabsTrigger value="protocolo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    <ClipboardCheck className="h-3 w-3" />Protocolo
+                    {(data.protocols?.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length ?? 0) > 0 && (
+                      <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/60 text-[9px] font-bold text-white px-1">
+                        {data.protocols.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="exercicios" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                   <Dumbbell className="h-3 w-3" />Exercícios
                 </TabsTrigger>
-                <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
-                  <Bot className="h-3 w-3" />Rehab Agent
-                </TabsTrigger>
-                <TabsTrigger value="evidencia" className="text-xs data-[state=active]:bg-bruno-turquoise/20 data-[state=active]:text-bruno-turquoise flex items-center gap-1">
-                  <Stethoscope className="h-3 w-3" />Evidência
-                </TabsTrigger>
+                {!isPersonal && (
+                  <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
+                    <Bot className="h-3 w-3" />Rehab Agent
+                  </TabsTrigger>
+                )}
+                {!isPersonal && (
+                  <TabsTrigger value="evidencia" className="text-xs data-[state=active]:bg-bruno-turquoise/20 data-[state=active]:text-bruno-turquoise flex items-center gap-1">
+                    <Stethoscope className="h-3 w-3" />Evidência
+                  </TabsTrigger>
+                )}
                 {isPersonal && (
                   <TabsTrigger value="workouts" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                     <Dumbbell className="h-3 w-3" />Workouts
@@ -942,10 +961,14 @@ export default function PatientProfilePage() {
 {/* Quick Actions */}
       <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-muted/30 rounded-lg border">
         <span className="text-[10px] font-medium text-muted-foreground mr-1">Actions:</span>
-        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("notas"); setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
-        <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowManualDoc(true); }}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
+        {!isPersonal && (
+          <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("notas"); setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
+        )}
+        {!isPersonal && (
+          <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowManualDoc(true); }}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
+        )}
         <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowUpload(true); }}><FileUp className="h-2.5 w-2.5 mr-0.5" /> Upload</Button>
-        {data.diagnoses?.length > 0 ? (
+        {!isPersonal && (data.diagnoses?.length > 0 ? (
           <Link href={`/admin/patients/${patientId}/diagnosis`}>
             <Button variant="outline" size="sm" className={`${btnCls} bg-primary/10 border-primary/30 text-primary hover:bg-primary/20`}>
               <Brain className="h-2.5 w-2.5 mr-0.5" /> Ver AI Assessment →
@@ -955,14 +978,16 @@ export default function PatientProfilePage() {
           <Button variant="outline" size="sm" className={btnCls} onClick={generateDiagnosis} disabled={generating}>
             {generating ? <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" /> : <Brain className="h-2.5 w-2.5 mr-0.5" />} Gerar AI Assessment
           </Button>
+        ))}
+        {!isPersonal && (
+          <Button variant="outline" size="sm" className={`${btnCls} bg-violet-500/10 border-violet-500/30 text-violet-400 hover:bg-violet-500/20`} onClick={() => setShowAIImport(true)}>
+            <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Import
+          </Button>
         )}
-        <Button variant="outline" size="sm" className={`${btnCls} bg-violet-500/10 border-violet-500/30 text-violet-400 hover:bg-violet-500/20`} onClick={() => setShowAIImport(true)}>
-          <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI Import
-        </Button>
       </div>
 
       {/* AI Import Panel */}
-      {showAIImport && (
+      {!isPersonal && showAIImport && (
         <Card className="border-violet-500/30 bg-violet-500/10">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -1051,7 +1076,7 @@ export default function PatientProfilePage() {
       {/* ─── Inline Forms ─── (showNewNote moved into Notas tab; upload/write forms moved above Tabs) ─── */}
 
       {/* Red Flags Summary */}
-      {data.screening && (() => {
+      {!isPersonal && data.screening && (() => {
         const activeFlags = RED_FLAGS.filter(f => data.screening[f.key]);
         return activeFlags.length > 0 ? (
           <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
@@ -1068,7 +1093,7 @@ export default function PatientProfilePage() {
       })()}
 
       {/* Chief Complaint */}
-      {data.screening?.chiefComplaint && (
+      {!isPersonal && data.screening?.chiefComplaint && (
         <div className="p-3 bg-muted/30 border rounded-lg">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Chief Complaint</p>
           <p className="text-xs">{data.screening.chiefComplaint}</p>

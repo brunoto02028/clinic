@@ -209,6 +209,9 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     label: "Marketing",
     labelPt: "Marketing",
     icon: Megaphone,
+    // Hidden for a personal-trainer tenant: the marketing content (articles,
+    // education, campaigns) is the clinic's / BPR's, not the studio's.
+    clinicalOnly: true,
     tabs: [
       {
         key: "instagram",

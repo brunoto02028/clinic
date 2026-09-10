@@ -2,7 +2,7 @@ import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isPersonalTenant } from '@/lib/tenant-type';
-import { isClinicalOnlyRoute } from '@/lib/clinical-routes';
+import { isPersonalBlockedRoute } from '@/lib/personal-blocked-routes';
 
 // ─── INLINE SECURITY (Edge Runtime compatible) ───
 const rateLimitStore = new Map<string, { count: number; first: number; blocked: boolean; until?: number }>();
@@ -296,15 +296,15 @@ export async function middleware(request: NextRequest) {
     activeClinicId = selectedClinicId || null;
   }
 
-  // ── CLINICAL-ONLY GATE (activity 20, T-19b) ──
-  // A personal-trainer studio has no clinical module: SOAP notes, protocols,
-  // the rehab agent and clinical AI are hidden in the nav (T-19a) and blocked
-  // here by URL too. SUPERADMIN is exempt (platform-wide view); clinics are
-  // unaffected. Fail-safe: gate only when the tenant is explicitly PERSONAL.
+  // ── PERSONAL-BLOCKED GATE (activity 20, T-19b/T-29) ──
+  // A personal-trainer studio has no clinical module (SOAP notes, protocols,
+  // rehab agent, clinical AI) and no clinic marketing — both are hidden in the
+  // nav and blocked here by URL too. SUPERADMIN is exempt (platform-wide view);
+  // clinics are unaffected. Fail-safe: gate only when the tenant is PERSONAL.
   if (
     userRole !== 'SUPERADMIN' &&
     isPersonalTenant(token.clinicType as string | null) &&
-    isClinicalOnlyRoute(pathname)
+    isPersonalBlockedRoute(pathname)
   ) {
     if (pathname.startsWith('/api')) {
       return new NextResponse(JSON.stringify({ error: 'Not found' }), {

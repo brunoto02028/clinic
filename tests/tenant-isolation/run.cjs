@@ -203,10 +203,23 @@ async function main() {
     r = await request("GET", "/admin/clinical-notes", { cookie: adminA.cookie });
     check("G4 clinic admin → /admin/clinical-notes not gated", r.status !== 307 || !(r.headers.location || "").endsWith("/admin"), `status ${r.status}, loc ${r.headers.location || "-"}`);
 
+    // G7/G8 — Marketing (clinic/BPR content) is blocked by URL for a personal tenant.
+    r = await request("GET", "/admin/marketing", { cookie: trainerB.cookie });
+    check("G7 personal admin → /admin/marketing redirected", (r.status === 307 || r.status === 302) && (r.headers.location || "").endsWith("/admin"), `status ${r.status}, loc ${r.headers.location || "-"}`);
+    r = await request("GET", "/admin/articles", { cookie: trainerB.cookie });
+    check("G8 personal admin → /admin/articles redirected", (r.status === 307 || r.status === 302) && (r.headers.location || "").endsWith("/admin"), `status ${r.status}`);
+    // G9 (control) — a clinic admin is NOT gated from marketing.
+    r = await request("GET", "/admin/marketing", { cookie: adminA.cookie });
+    check("G9 clinic admin → /admin/marketing not gated", r.status !== 307 || !(r.headers.location || "").endsWith("/admin"), `status ${r.status}`);
+
     // G5 — the per-patient clinical GENERATORS are blocked for a personal tenant,
     // not just the list pages (the gate must wall off the clinical module itself).
     r = await request("GET", `/api/admin/patients/${ids.alunoB}/protocol`, { cookie: trainerB.cookie });
     check("G5 personal admin → patient protocol generator 404", r.status === 404, `status ${r.status}`);
+
+    // G5b — the AI clinical import (creates screening + SOAP) is blocked too.
+    r = await request("POST", `/api/admin/patients/${ids.alunoB}/ai-import`, { cookie: trainerB.cookie, body: {} });
+    check("G5b personal admin → patient ai-import 404", r.status === 404, `status ${r.status}`);
 
     // G6 (control) — a clinic admin reaches the same generator (gate is type-scoped).
     r = await request("GET", `/api/admin/patients/${ids.pacienteA}/protocol`, { cookie: adminA.cookie });
