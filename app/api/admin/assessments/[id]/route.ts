@@ -58,6 +58,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       diastolic: pick("diastolic", existing.diastolic),
       girths: pick("girths", existing.girths as any),
       notes: pick("notes", existing.notes),
+      assessmentType: pick("assessmentType", existing.assessmentType),
     };
     const vErr = validateAssessment(merged);
     if (vErr) return NextResponse.json({ error: vErr }, { status: 400 });
@@ -70,6 +71,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       where: { id: params.id },
       data: {
         performedAt: has("performedAt") && body.performedAt ? new Date(body.performedAt) : undefined,
+        assessmentType: typeof merged.assessmentType === "string" && merged.assessmentType.trim() ? merged.assessmentType : null,
         weightKg: merged.weightKg ?? null,
         heightCm: merged.heightCm ?? null,
         sex,

@@ -1,6 +1,6 @@
 # T-7: Catálogo de tipos de avaliação do tenant
 
-**Status:** pendente
+**Status:** concluído (QA runtime 61/61; review feito)
 **Depende de:** T-1
 
 ## Objetivo
@@ -14,4 +14,4 @@ Expor "o que o PT oferece" de avaliação (catálogo por tenant), reusando `Trea
 - app/admin/... (pricing/serviços do tenant), components/assessments
 
 ## Critérios de aceite
-- [ ] PT vê/gere seus tipos de avaliação; isolado por tenant.
+- [x] PT vê/gere seus tipos de avaliação; isolado por tenant.

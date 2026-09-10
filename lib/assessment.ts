@@ -13,6 +13,7 @@ export type BfMethod = "MANUAL" | "BIA" | "SKINFOLD";
 
 export interface AssessmentInput {
   performedAt?: string;
+  assessmentType?: string | null;
   weightKg?: number | null;
   heightCm?: number | null;
   sex?: string | null;
@@ -36,6 +37,7 @@ const intInRange = (v: unknown, lo: number, hi: number): boolean =>
 
 /** Returns an error message, or null when the input is valid. */
 export function validateAssessment(a: AssessmentInput): string | null {
+  if (a.assessmentType != null && !(typeof a.assessmentType === "string" && a.assessmentType.length <= 120)) return "assessmentType must be ≤ 120 chars";
   if (a.weightKg != null && !(typeof a.weightKg === "number" && a.weightKg > 0 && a.weightKg < 500)) return "weightKg must be 0–500";
   if (a.heightCm != null && !(typeof a.heightCm === "number" && a.heightCm > 0 && a.heightCm < 300)) return "heightCm must be 0–300";
   if (a.bodyFatPct != null && !(typeof a.bodyFatPct === "number" && bfInRange(a.bodyFatPct))) return "bodyFatPct must be 2–75";

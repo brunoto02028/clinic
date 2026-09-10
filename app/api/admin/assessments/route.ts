@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         studentId: student.id,
         trainerId: actor.userId,
         performedAt: input.performedAt ? new Date(input.performedAt) : new Date(),
+        assessmentType: typeof input.assessmentType === "string" && input.assessmentType.trim() ? input.assessmentType : null,
         weightKg: input.weightKg ?? null,
         heightCm: input.heightCm ?? null,
         sex,

@@ -3054,6 +3054,10 @@ model StudentAssessment {
   heightCm Float?
   sex      String? // "M" | "F" — snapshot for the skinfold formula
 
+  // Which assessment type from the tenant's catalog (TreatmentType name) — free
+  // label, optional; the catalog itself lives in TreatmentType (ASSESSMENT_SERVICE).
+  assessmentType String?
+
   // Body composition
   bfMethod    BodyFatMethod @default(MANUAL)
   bodyFatPct  Float? // final %BF (entered, from BIA, or computed from skinfolds)

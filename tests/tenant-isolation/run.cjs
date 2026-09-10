@@ -380,6 +380,10 @@ async function main() {
     a = await request("POST", "/api/admin/assessments", { cookie: trainerB.cookie, body: { studentId: ids.alunoB, bfMethod: "MANUAL", bodyFatPct: 200 } });
     check("A5 invalid bodyFatPct rejected 400", a.status === 400, `status ${a.status}`);
 
+    // A9 (T-7) — assessmentType (from the tenant catalog) is stored + returned.
+    a = await request("POST", "/api/admin/assessments", { cookie: trainerB.cookie, body: { studentId: ids.alunoB, bfMethod: "MANUAL", bodyFatPct: 18, assessmentType: "Full body composition" } });
+    check("A9 assessmentType stored", a.status === 201 && (() => { try { return JSON.parse(a.body).assessmentType === "Full body composition"; } catch { return false; } })(), `status ${a.status}`);
+
     // A5b/A5c — BIA %BF out of range and a zero skinfold are rejected (400).
     a = await request("POST", "/api/admin/assessments", { cookie: trainerB.cookie, body: { studentId: ids.alunoB, bfMethod: "BIA", bia: { bodyFatPct: 200 } } });
     check("A5b invalid BIA bodyFatPct rejected 400", a.status === 400, `status ${a.status}`);

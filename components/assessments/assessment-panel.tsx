@@ -14,6 +14,7 @@ interface Assessment {
   heightCm: number | null;
   sex: string | null;
   bfMethod: Method;
+  assessmentType: string | null;
   bodyFatPct: number | null;
   bmi: number | null;
   leanMassKg: number | null;
@@ -40,6 +41,7 @@ export default function AssessmentPanel({ studentId }: { studentId: string }) {
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [consentAt, setConsentAt] = useState<string | null>(null);
+  const [types, setTypes] = useState<string[]>([]); // tenant's assessment-type catalog
 
   // Form state (strings for inputs)
   const [f, setF] = useState<Record<string, string>>({});
@@ -59,6 +61,16 @@ export default function AssessmentPanel({ studentId }: { studentId: string }) {
       // Reflect the student's existing consent so we don't re-prompt (and don't
       // overwrite the original consent date).
       if (rc.ok) setConsentAt((await rc.json()).photoConsentAt ?? null);
+      // Assessment-type catalog = the tenant's ASSESSMENT_SERVICE treatment types.
+      try {
+        const rt = await fetch("/api/admin/treatment-types");
+        if (rt.ok) {
+          const tt = await rt.json();
+          setTypes((Array.isArray(tt) ? tt : [])
+            .filter((x: any) => x.category === "ASSESSMENT_SERVICE" && x.isActive !== false)
+            .map((x: any) => x.namePt || x.name));
+        }
+      } catch { /* catalog optional */ }
     } catch {
       setError("Could not load assessments.");
     } finally {
@@ -84,6 +96,7 @@ export default function AssessmentPanel({ studentId }: { studentId: string }) {
       const body: any = {
         studentId,
         performedAt: f.performedAt || undefined,
+        assessmentType: f.assessmentType || undefined,
         weightKg: n(f.weightKg || ""),
         heightCm: n(f.heightCm || ""),
         sex: f.sex || undefined,
@@ -166,6 +179,15 @@ export default function AssessmentPanel({ studentId }: { studentId: string }) {
               <Label className="text-[10px] text-muted-foreground">Date</Label>
               <Input type="date" value={f.performedAt ?? ""} onChange={(e) => set("performedAt", e.target.value)} className="h-8" data-testid="af-performedAt" />
             </div>
+            {types.length > 0 && (
+              <div>
+                <Label className="text-[10px] text-muted-foreground">Assessment type</Label>
+                <select value={f.assessmentType ?? ""} onChange={(e) => set("assessmentType", e.target.value)} className="h-8 w-full rounded-md border bg-background px-2 text-sm" data-testid="af-assessmentType">
+                  <option value="">—</option>
+                  {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
+                </select>
+              </div>
+            )}
             {numField("weightKg", "Weight (kg)", "0.1")}
             {numField("heightCm", "Height (cm)", "0.1")}
             <div>
@@ -230,7 +252,10 @@ export default function AssessmentPanel({ studentId }: { studentId: string }) {
           list.map((a) => (
             <div key={a.id} className="rounded-md border p-3 text-sm" data-testid="assessment-row">
               <div className="flex items-center justify-between">
-                <span className="font-medium">{new Date(a.performedAt).toLocaleDateString("en-GB")}</span>
+                <span className="font-medium">
+                  {new Date(a.performedAt).toLocaleDateString("en-GB")}
+                  {a.assessmentType && <span className="ml-2 rounded bg-primary/10 px-1.5 text-[10px] text-primary">{a.assessmentType}</span>}
+                </span>
                 <button onClick={() => remove(a.id)} className="p-1 text-muted-foreground hover:text-red-500"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
