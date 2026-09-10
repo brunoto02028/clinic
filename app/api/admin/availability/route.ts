@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getActor } from "@/lib/tenant-access";
+import { findTherapist } from "@/lib/appointment-access";
 
 const ADMIN_ROLES = ["ADMIN", "THERAPIST", "SUPERADMIN"];
 
@@ -16,6 +18,10 @@ export async function GET(request: NextRequest) {
     }
 
     const therapistId = request.nextUrl.searchParams.get("therapistId") || (session.user as any).id;
+    const clinicId = (await getActor(request))?.clinicId;
+    if (!clinicId || !(await findTherapist(clinicId, therapistId, false))) {
+      return NextResponse.json({ error: "Therapist not found" }, { status: 404 });
+    }
 
     const availability = await prisma.therapistAvailability.findMany({
       where: { therapistId },
@@ -44,6 +50,11 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { schedule, therapistId: reqTherapistId, slotInterval } = body;
     const therapistId = reqTherapistId || (session.user as any).id;
+    // Only a colleague of the caller's own tenant — and the rows carry it.
+    const clinicId = (await getActor(request))?.clinicId;
+    if (!clinicId || !(await findTherapist(clinicId, therapistId, false))) {
+      return NextResponse.json({ error: "Therapist not found" }, { status: 404 });
+    }
 
     if (!Array.isArray(schedule)) {
       return NextResponse.json({ error: "Invalid schedule format" }, { status: 400 });
@@ -60,11 +71,13 @@ export async function PUT(request: NextRequest) {
             },
           },
           update: {
+            clinicId,
             startTime: day.startTime,
             endTime: day.endTime,
             isAvailable: day.isAvailable,
           },
           create: {
+            clinicId,
             therapistId,
             dayOfWeek: day.dayOfWeek,
             startTime: day.startTime,

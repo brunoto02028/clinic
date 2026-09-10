@@ -1,19 +1,30 @@
 export const dynamic = "force-dynamic";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getDefaultClinicId } from "@/lib/default-tenant";
 
 const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
 // Public endpoint — returns the clinic's weekly opening hours (no auth required)
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // A tenant's page asks for its own hours with ?clinic=<slug>; the public
+    // site gets the default tenant's.
+    const slug = request.nextUrl.searchParams.get("clinic");
+    const clinicId = slug
+      ? (await prisma.clinic.findFirst({ where: { slug, isActive: true }, select: { id: true } }))?.id ?? null
+      : await getDefaultClinicId();
+    if (!clinicId) {
+      return NextResponse.json({ schedule: [] });
+    }
+
     // The clinic's opening hours come from whoever actually sees patients.
     // Selecting by role happened to land on the right person only because the
     // owner's account is the oldest — a staff account created before his would
     // have published someone else's hours on the public site.
     const therapist = await prisma.user.findFirst({
-      where: { bookable: true, isActive: true },
+      where: { bookable: true, isActive: true, clinicId },
       orderBy: { createdAt: "asc" },
     });
 

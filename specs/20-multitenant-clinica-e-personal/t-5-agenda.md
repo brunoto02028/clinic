@@ -1,6 +1,6 @@
 # T-5: Agenda
 
-**Status:** pendente
+**Status:** concluído
 **Trilha:** PLATAFORMA
 **Depende de:** T-2
 

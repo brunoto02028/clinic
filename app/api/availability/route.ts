@@ -3,6 +3,8 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { getActor } from "@/lib/tenant-access";
+import { findTherapist } from "@/lib/appointment-access";
 import { getZonedDateString, getZonedMinutesOfDay, zonedTimeToUtc } from "@/lib/clinic-timezone";
 
 // GET: Fetch available time slots for a given date
@@ -34,17 +36,19 @@ export async function GET(request: NextRequest) {
     // SUPERADMIN, and this findFirst had no ordering, so it could just as
     // easily have returned the developer — who has no availability configured,
     // leaving the patient staring at a calendar with no slots.
-    let targetTherapistId = therapistId;
-    if (!targetTherapistId) {
-      const therapist = await prisma.user.findFirst({
-        where: { bookable: true, isActive: true },
-        orderBy: { createdAt: "asc" },
-      });
-      if (!therapist) {
-        return NextResponse.json({ error: "No therapist available" }, { status: 400 });
-      }
-      targetTherapistId = therapist.id;
+    // Only the caller's own tenant: a therapist named from another tenant
+    // answers like one that doesn't exist.
+    const actor = await getActor(request);
+    const therapist = actor?.clinicId
+      ? await findTherapist(actor.clinicId, therapistId, actor.role === "PATIENT")
+      : null;
+    if (!therapist) {
+      return NextResponse.json(
+        { error: "No therapist available" },
+        { status: therapistId ? 404 : 400 }
+      );
     }
+    const targetTherapistId = therapist.id;
 
     // Blocked day (holiday, absence, training...) takes precedence over the weekly schedule
     const block = await (prisma as any).therapistBlock.findFirst({

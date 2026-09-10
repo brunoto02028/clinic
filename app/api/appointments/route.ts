@@ -10,6 +10,8 @@ import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, devFallbackResponse } from "@/lib/dev-fallback";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant-access";
+import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 
 export async function GET(request: NextRequest) {
@@ -32,10 +34,17 @@ export async function GET(request: NextRequest) {
     if (userRole === "PATIENT") {
       whereClause.patientId = userId;
     } else {
-      // Therapists and admins see all appointments or their assigned ones
+      // Staff see their own appointments or, with viewAll, every appointment
+      // of their tenant — never another tenant's.
       const viewAll = request.nextUrl.searchParams.get("viewAll");
       if (viewAll !== "true") {
         whereClause.therapistId = userId;
+      } else {
+        const actor = await getActor(request);
+        if (!actor?.clinicId) {
+          return NextResponse.json({ error: "No tenant resolved for this account" }, { status: 403 });
+        }
+        Object.assign(whereClause, appointmentTenantWhere(actor.clinicId));
       }
     }
 
@@ -119,43 +128,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = (session.user as any).id;
-    const userRole = (session.user as any).role;
+    const actor = await getActor(request);
+    if (!actor) {
+      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    }
+    if (!actor.clinicId) {
+      return NextResponse.json({ error: "This account is not linked to a clinic" }, { status: 409 });
+    }
+    const isPatient = actor.role === "PATIENT";
 
-    // If patient is booking, they are the patient
-    // If therapist is booking, they need to specify patientId
-    let patientId = userId;
-    let selectedTherapistId = therapistId;
-
-    if (userRole !== "PATIENT") {
+    // Patients book for themselves; staff name the patient, who must belong to
+    // their tenant.
+    let patientId = actor.userId;
+    if (!isPatient) {
       if (!body?.patientId) {
         return NextResponse.json(
           { error: "Patient ID is required" },
           { status: 400 }
         );
       }
-      patientId = body.patientId;
-      selectedTherapistId = therapistId || userId;
-    } else {
-      // Get a therapist if not specified
-      if (!selectedTherapistId) {
-        const therapist = await prisma.user.findFirst({
-          where: {
-            role: { in: ["ADMIN", "THERAPIST", "SUPERADMIN"] },
-          },
-        });
-        if (!therapist) {
-          return NextResponse.json(
-            { error: "No therapist available" },
-            { status: 400 }
-          );
-        }
-        selectedTherapistId = therapist.id;
+      try {
+        await assertPatientAccess(actor, body.patientId);
+      } catch (err) {
+        return accessErrorResponse(err);
       }
+      patientId = body.patientId;
     }
+
+    // The therapist is always a member of that same tenant: a patient may only
+    // pick someone who sees patients; staff default to themselves.
+    const therapist = await findTherapist(
+      actor.clinicId,
+      therapistId || (isPatient ? null : actor.userId),
+      isPatient
+    );
+    if (!therapist) {
+      return NextResponse.json(
+        { error: "No therapist available" },
+        { status: therapistId ? 404 : 400 }
+      );
+    }
+    const selectedTherapistId = therapist.id;
 
     const appointment = await prisma.appointment.create({
       data: {
+        clinicId: actor.clinicId,
         patientId,
         therapistId: selectedTherapistId,
         dateTime: new Date(dateTime),

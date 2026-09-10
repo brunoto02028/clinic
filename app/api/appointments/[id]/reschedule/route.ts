@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { getActor, canAccessRecord } from "@/lib/tenant-access";
 import { stripe } from "@/lib/stripe";
 import { notifyPatient } from "@/lib/notify-patient";
 
@@ -33,7 +34,7 @@ export async function POST(
       where: { id },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, email: true } },
-        therapist: { select: { id: true, firstName: true, lastName: true } },
+        therapist: { select: { id: true, firstName: true, lastName: true, clinicId: true } },
         payment: true,
       },
     });
@@ -42,9 +43,12 @@ export async function POST(
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
 
-    // Patients can only reschedule their own appointments
-    if (userRole === "PATIENT" && appointment.patientId !== userId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    // The appointment's own patient, or staff of its tenant. Rows written
+    // before clinicId was stored belong to their therapist's tenant.
+    const actor = await getActor(request);
+    const tenant = appointment.clinicId ?? appointment.therapist?.clinicId ?? null;
+    if (!actor || !canAccessRecord(actor, { clinicId: tenant, patientId: appointment.patientId })) {
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
 
     // Can't reschedule cancelled or completed appointments

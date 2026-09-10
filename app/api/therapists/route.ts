@@ -1,9 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getActor } from "@/lib/tenant-access";
 
 /**
  * The people a patient can book with.
@@ -14,15 +13,19 @@ import { prisma } from "@/lib/db";
  * explicit flag, and it defaults to off: a new staff account has to be marked
  * before it can be booked.
  */
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const actor = await getActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // Only the caller's own tenant: a student never sees another tenant's staff.
+    if (!actor.clinicId) {
+      return NextResponse.json({ therapists: [] });
     }
 
     const therapists = await prisma.user.findMany({
-      where: { bookable: true, isActive: true },
+      where: { bookable: true, isActive: true, clinicId: actor.clinicId },
       // No email: the booking screen shows a name, and sending staff addresses
       // to every signed-in patient serves nothing.
       select: {
