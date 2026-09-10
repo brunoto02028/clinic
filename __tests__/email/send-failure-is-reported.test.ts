@@ -9,6 +9,10 @@
  * itself, and the field that broke must refuse the value that broke it.
  */
 
+// These tests drive the real Resend call path, which lib/outbound-guard.ts
+// short-circuits outside production.
+process.env.OUTBOUND_MODE = "live";
+
 const mockSend = jest.fn();
 
 jest.mock("resend", () => ({

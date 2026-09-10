@@ -9,6 +9,7 @@
  *   WHATSAPP_VERIFY_TOKEN      — Webhook verification token
  */
 
+import { outboundAllowed, logSunk, sinkMessageId } from "@/lib/outbound-guard";
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { getConfigValue } from "@/lib/system-config";
@@ -68,6 +69,11 @@ export async function sendWhatsAppMessage(params: {
 
   // Normalize phone number
   const phone = params.to.replace(/[^+\d]/g, "");
+
+  if (!outboundAllowed(phone)) {
+    logSunk("whatsapp", phone, params.message);
+    return { success: true, messageId: sinkMessageId() };
+  }
 
   try {
     const res = await fetch(`${GRAPH_API}/${cfg.phoneNumberId}/messages`, {
@@ -143,6 +149,11 @@ export async function sendWhatsAppTemplate(params: {
 
   const phone = params.to.replace(/[^+\d]/g, "");
   const lang = params.language || "en_US";
+
+  if (!outboundAllowed(phone)) {
+    logSunk("whatsapp", phone, `template ${params.templateName}`);
+    return { success: true, messageId: sinkMessageId() };
+  }
 
   const components: any[] = [];
   if (params.templateParams && params.templateParams.length > 0) {

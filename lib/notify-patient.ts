@@ -9,6 +9,7 @@ import { sendTemplatedEmail } from "@/lib/email-templates";
 import { sendWhatsAppMessage, isWhatsAppConfigured, isWhatsAppConfiguredAsync } from "@/lib/whatsapp";
 import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
+import { outboundAllowed, logSunk } from "@/lib/outbound-guard";
 
 interface NotifyPatientParams {
   patientId: string;
@@ -90,6 +91,10 @@ export async function notifyPatient({
       if (twilioSid && twilioToken && twilioFrom) {
         try {
           const cleanPhone = phone.replace(/[^+\d]/g, "");
+          if (!outboundAllowed(cleanPhone)) {
+            logSunk("sms", cleanPhone, msg);
+            return { channel: "SMS", success: true };
+          }
           const url = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
           const res = await fetch(url, {
             method: "POST",

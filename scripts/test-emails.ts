@@ -2,6 +2,11 @@
 import { renderTemplate, seedDefaultTemplates } from '../lib/email-templates';
 import { sendEmail } from '../lib/email';
 
+// This script exists to deliver real mail for a manual check. The outbound
+// guard (lib/outbound-guard.ts) drops mail outside production, which would
+// make every template below report "Sent" without anything leaving.
+process.env.OUTBOUND_MODE = "live";
+
 const TEST_EMAIL = 'brunotoaz@gmail.com';
 const BASE = process.env.NEXTAUTH_URL || 'https://bpr.rehab';
 

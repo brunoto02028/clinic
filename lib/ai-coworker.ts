@@ -172,7 +172,10 @@ async function sendTaskNotification(taskName: string, status: 'SUCCESS' | 'FAILE
           const sid = await getConfigValue('TWILIO_ACCOUNT_SID')
           const token = await getConfigValue('TWILIO_AUTH_TOKEN')
           const from = await getConfigValue('TWILIO_PHONE_NUMBER')
-          if (sid && token && from) {
+          const { outboundAllowed, logSunk } = await import('@/lib/outbound-guard')
+          if (sid && token && from && !outboundAllowed(phone)) {
+            logSunk('sms', phone, subject)
+          } else if (sid && token && from) {
             await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
               method: 'POST',
               headers: { Authorization: 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },

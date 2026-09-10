@@ -9,6 +9,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import { outboundAllowed, logSunk } from "@/lib/outbound-guard";
 
 const TELEGRAM_API = "https://api.telegram.org";
 
@@ -50,6 +51,11 @@ export async function sendTelegramMessage(
   
   if (!cfg.botToken) {
     return { success: false, error: "TELEGRAM_BOT_TOKEN not configured" };
+  }
+
+  if (!outboundAllowed(String(chatId))) {
+    logSunk("telegram", String(chatId), text);
+    return { success: true };
   }
 
   try {

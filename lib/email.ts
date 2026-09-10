@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { getConfigValue } from '@/lib/system-config';
+import { outboundAllowed, logSunk, sinkMessageId } from '@/lib/outbound-guard';
 
 const FROM_ADDRESS = 'BPR Physical Rehabilitation <noreply@bpr.clinic>';
 const REPLY_TO     = 'admin@bpr.clinic';
@@ -33,6 +34,11 @@ export async function sendEmail({
 }) {
     try {
         const resend = await getResend();
+        const recipients = [to, bcc ?? []].flat();
+        if (!outboundAllowed(recipients)) {
+            logSunk('email', recipients, subject);
+            return { success: true, data: { id: sinkMessageId() } };
+        }
         // The Resend SDK does NOT throw on API errors — it resolves with
         // { data, error }. Reading only the resolved value made every failure
         // look like a success: a wrong key sat in Admin → AI Settings for six

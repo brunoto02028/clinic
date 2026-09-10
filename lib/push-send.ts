@@ -8,6 +8,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import { outboundAllowed, logSunk } from "@/lib/outbound-guard";
 
 interface PushPayload {
   title: string;
@@ -41,6 +42,11 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
   if (!firebaseKey) {
     console.warn("[push-send] No FIREBASE_SERVER_KEY configured. Push notifications disabled.");
     return { sent: 0, failed: 0 };
+  }
+
+  if (!outboundAllowed(userId)) {
+    logSunk("push", userId, payload.title);
+    return { sent: tokens.length, failed: 0 };
   }
 
   let sent = 0;

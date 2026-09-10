@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
+import { outboundAllowed, logSunk } from "@/lib/outbound-guard";
 
 // Generate a random 6-digit code
 function generateCode(): string {
@@ -217,6 +218,11 @@ async function sendSMS(to: string, message: string): Promise<boolean> {
     return false;
   }
 
+  if (!outboundAllowed(to)) {
+    logSunk("sms", to, message);
+    return true;
+  }
+
   try {
     const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const res = await fetch(url, {
@@ -252,6 +258,11 @@ async function sendWhatsApp(to: string, message: string): Promise<boolean> {
   if (!phoneId || !accessToken) {
     console.warn("WhatsApp credentials not configured — message not sent");
     return false;
+  }
+
+  if (!outboundAllowed(to)) {
+    logSunk("whatsapp", to, message);
+    return true;
   }
 
   try {
