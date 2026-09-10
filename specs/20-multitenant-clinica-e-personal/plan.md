@@ -62,7 +62,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 | T-3 | CLIN | Avaliação corporal — vazamento que existe hoje em prod | concluído |
 | T-4 | PLAT | Prontuário por ID (pacientes, notas SOAP, triagem, usuários) | concluído |
 | T-5 | PLAT | Agenda (profissionais, disponibilidade, agendamentos, horário público) | concluído |
-| T-6 | PLAT | Triagem e correção das demais rotas de staff | em andamento |
+| T-6 | PLAT | Triagem e correção das demais rotas de staff | parte 2a concluída; 2b pendente |
 | T-7 | PLAT | Suíte automatizada de isolamento (`npm run test:tenants`) | concluído |
 
 ### Fase 1 — Correções da clínica encontradas na auditoria
