@@ -125,12 +125,10 @@ export async function assertPatientAccess(
     where: { id: patientId },
     select: { id: true, role: true, clinicId: true },
   });
-  if (patient?.role === "PATIENT" && patient.clinicId === null) {
-    // Accounts registered through the app still have no tenant. That is a
-    // different problem from "belongs to someone else", and saying so beats
-    // a 404 for a patient the staff member is looking straight at.
-    throw new AccessError(409, "This patient is not linked to a clinic");
-  }
+  // A clinic-less patient (app self-registration) matches no real tenant, so
+  // this answers 404 like any other unreachable id — no enumeration oracle.
+  // The route tells a patient creating their own assessment that their
+  // account has no clinic; that message does not belong to staff callers.
   if (!patient || patient.role !== "PATIENT" || !actor.clinicId || patient.clinicId !== actor.clinicId) {
     throw new AccessError(404, "Not found");
   }

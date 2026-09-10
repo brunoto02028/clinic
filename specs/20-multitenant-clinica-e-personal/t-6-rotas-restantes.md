@@ -7,15 +7,23 @@
 ## Objetivo
 Cobrir o restante da varredura da atividade 19 (A3): as rotas de staff que não referenciam tenant.
 
-## Passos
-1. Registrar em `qa/triagem-rotas.md` a classificação de cada rota. São três classes:
-   - **tenant:** passa a usar o helper;
-   - **plataforma:** fica só para SUPERADMIN — `clinics`, `system-logs`, `agent-keys`, `email-config`, `maintenance` etc.;
-   - **usuário:** o escopo por `userId` já basta.
-2. Corrigir as rotas de tenant. Grupos: clinical-scribe, education content, image-library, upload, patient-packages/service-packages, dashboard/stats, payments create-checkout/verify, agent/patients e leads, broadcasts, consent-texts, screening-config, service-pages, stripe-branding, exercises/backfill e normalize.
-3. `withClinicFilter` e `resolveClinicId` passam a falhar fechado, delegando ao `tenant-access`.
+## Triagem
+Feita em `qa/triagem-rotas.md` (2026-09-10). Cada rota ficou classificada como **tenant**, **plataforma**, **usuário** ou **público**, com prioridade.
+
+A triagem mudou a ordem da tarefa. O primeiro item é um bypass completo do isolamento que a auditoria original não tinha visto:
+
+## Passos (em ordem)
+1. **Impersonação entre tenants.** Validar no `lib/get-effective-user.ts`, que é o ponto por onde toda impersonação passa, que o paciente impersonado pertence ao tenant do admin real. Validar também ao iniciar, em `admin/impersonate`. Hoje o middleware aceita o cookie de qualquer ADMIN, então corrigir só a rota não basta.
+2. **Rotas de admin só com sessão** (paciente consegue escrever): `admin/education/content/[id]`, `admin/social/posts/[id]` e `admin/social/templates/[id]`.
+3. **Chaves de agente:** a gestão fica só para SUPERADMIN (hoje é só ADMIN).
+4. **Registros por ID sem dono:** `foot-scans/[id]/progress`, `payments/create-checkout` e `payments/verify`.
+5. **Prioridade 2 da triagem:** escopo por tenant em artigos, clinical-scribe, broadcasts, `SiteSettings` (consentimento, triagem, portal, páginas de serviço, Stripe), e-mail, pacotes, vendas, biblioteca de imagens e upload.
+6. **Plataforma:** restringir a SUPERADMIN o que é ferramenta da plataforma (logs, marketing, coworker, CPD, callback do Companies House).
+7. `withClinicFilter` e `resolveClinicId` passam a falhar fechado, delegando ao `tenant-access`.
 
 ## Critérios de aceite
-- [ ] Toda rota da varredura aparece classificada em `triagem-rotas.md`.
+- [ ] Toda rota da varredura aparece classificada em `qa/triagem-rotas.md`.
+- [ ] Admin de outro tenant não consegue impersonar paciente, nem forjando o cookie.
+- [ ] Paciente recebe 403 nas rotas de admin que hoje só conferem sessão.
 - [ ] Cenários da T-6 passando.
-- [ ] Regressão: as telas do admin da BPR abrem sem erro.
+- [ ] Regressão: as telas do admin da BPR abrem sem erro, e a impersonação de paciente da própria clínica continua funcionando.

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
+import { pickEditable } from "@/lib/tenant-field-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -101,6 +106,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -172,9 +180,12 @@ export async function PATCH(
       delete fields.filledBy;
       delete fields.userId;
       delete fields.id;
+      if (!(await recordOfPatient("medicalScreening", screeningId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const updated = await prisma.medicalScreening.update({
         where: { id: screeningId },
-        data: fields,
+        data: pickEditable("MedicalScreening", fields),
       });
       return NextResponse.json({ success: true, screening: updated });
     }
@@ -187,6 +198,9 @@ export async function PATCH(
       if (objective !== undefined) updateD.objective = objective;
       if (assessment !== undefined) updateD.assessment = assessment;
       if (plan !== undefined) updateD.plan = plan;
+      if (!(await recordOfPatient("sOAPNote", noteId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const updated = await prisma.sOAPNote.update({
         where: { id: noteId },
         data: updateD,
@@ -198,6 +212,9 @@ export async function PATCH(
     // Delete SOAP note
     if (body.action === "delete_soap_note") {
       const { noteId } = body;
+      if (!(await recordOfPatient("sOAPNote", noteId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       await prisma.sOAPNote.delete({ where: { id: noteId } });
       return NextResponse.json({ success: true });
     }
@@ -206,9 +223,12 @@ export async function PATCH(
     if (body.action === "edit_foot_scan") {
       const { scanId, ...fields } = body;
       delete fields.action;
+      if (!(await recordOfPatient("footScan", scanId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const updated = await prisma.footScan.update({
         where: { id: scanId },
-        data: fields,
+        data: pickEditable("FootScan", fields),
       });
       return NextResponse.json({ success: true, footScan: updated });
     }
@@ -217,9 +237,12 @@ export async function PATCH(
     if (body.action === "edit_body_assessment") {
       const { assessmentId, ...fields } = body;
       delete fields.action;
+      if (!(await recordOfPatient("bodyAssessment", assessmentId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const updated = await (prisma as any).bodyAssessment.update({
         where: { id: assessmentId },
-        data: fields,
+        data: pickEditable("BodyAssessment", fields),
         include: { therapist: { select: { firstName: true, lastName: true } } },
       });
       return NextResponse.json({ success: true, bodyAssessment: updated });
@@ -229,9 +252,12 @@ export async function PATCH(
     if (body.action === "edit_document") {
       const { documentId, ...fields } = body;
       delete fields.action;
+      if (!(await recordOfPatient("patientDocument", documentId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const updated = await (prisma as any).patientDocument.update({
         where: { id: documentId },
-        data: fields,
+        data: pickEditable("PatientDocument", fields),
         include: { uploadedBy: { select: { firstName: true, lastName: true, role: true } } },
       });
       return NextResponse.json({ success: true, document: updated });
@@ -252,6 +278,9 @@ export async function PATCH(
         updateD.status = status;
         if (status === "APPROVED") updateD.approvedAt = new Date();
         if (status === "SENT_TO_PATIENT") updateD.sentToPatientAt = new Date();
+      }
+      if (!(await recordOfPatient("aIDiagnosis", diagnosisId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
       const updated = await (prisma as any).aIDiagnosis.update({
         where: { id: diagnosisId },
@@ -276,6 +305,9 @@ export async function PATCH(
         if (status === "APPROVED") updateD.approvedAt = new Date();
         if (status === "SENT_TO_PATIENT") updateD.sentToPatientAt = new Date();
       }
+      if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const updated = await (prisma as any).treatmentProtocol.update({
         where: { id: protocolId },
         data: updateD,
@@ -288,9 +320,12 @@ export async function PATCH(
     if (body.action === "edit_protocol_item") {
       const { itemId, ...fields } = body;
       delete fields.action;
+      if (!(await recordOfPatient("protocolItem", itemId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const updated = await (prisma as any).protocolItem.update({
         where: { id: itemId },
-        data: fields,
+        data: pickEditable("ProtocolItem", fields),
       });
       return NextResponse.json({ success: true, item: updated });
     }

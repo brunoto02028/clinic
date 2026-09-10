@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffUserAccess } from "@/lib/staff-patient-access";
 import bcrypt from "bcryptjs";
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,9 @@ export async function GET(
     ) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
+
+    const tenantAccess = await staffUserAccess(request, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     const user = await prisma.user.findUnique({
       where: { id: params.id },
@@ -66,6 +70,9 @@ export async function PUT(
     if (!["SUPERADMIN", "ADMIN"].includes((session?.user as { role?: string })?.role || "")) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
+
+    const tenantAccess = await staffUserAccess(request, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     const body = await request.json();
     const {
@@ -173,6 +180,9 @@ export async function DELETE(
     if ((session?.user as { role?: string })?.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
+
+    const tenantAccess = await staffUserAccess(request, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     // Cannot delete yourself
     if ((session?.user as { id?: string })?.id === params.id) {

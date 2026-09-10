@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { claudeGenerate } from "@/lib/claude";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
@@ -84,6 +85,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !ALLOWED_ROLES.includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -95,6 +99,9 @@ export async function POST(
       return NextResponse.json({ error: "protocolId required" }, { status: 400 });
     }
 
+    if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const protocol = await (prisma as any).treatmentProtocol.findUnique({
       where: { id: protocolId },
       include: {
@@ -120,12 +127,12 @@ export async function POST(
           if (upd.changes[key] !== undefined) allowed[key] = upd.changes[key];
         }
         if (Object.keys(allowed).length > 0) {
-          ops.push((prisma as any).protocolItem.update({ where: { id: upd.itemId }, data: allowed }));
+          ops.push((prisma as any).protocolItem.update({ where: { id: upd.itemId, protocolId }, data: allowed }));
         }
       }
 
       for (const rem of proposal.removeItemIds || []) {
-        ops.push((prisma as any).protocolItem.delete({ where: { id: rem } }));
+        ops.push((prisma as any).protocolItem.delete({ where: { id: rem, protocolId } }));
       }
 
       for (const ni of proposal.newItems || []) {

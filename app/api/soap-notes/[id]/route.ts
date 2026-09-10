@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { soapNoteAccess } from "@/lib/staff-patient-access";
 
 export async function GET(
   request: NextRequest,
@@ -17,8 +18,9 @@ export async function GET(
     }
 
     const { id } = params;
-    const userId = (session.user as any).id;
-    const userRole = (session.user as any).role;
+
+    const tenantAccess = await soapNoteAccess(request, id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     const soapNote = await prisma.sOAPNote.findUnique({
       where: { id },
@@ -54,14 +56,6 @@ export async function GET(
       );
     }
 
-    // Check access
-    if (userRole === "PATIENT" && soapNote.patientId !== userId) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
-    }
-
     return NextResponse.json({ soapNote });
   } catch (error) {
     console.error("Error fetching SOAP note:", error);
@@ -94,6 +88,9 @@ export async function PUT(
 
     const { id } = params;
     const body = await request.json();
+
+    const tenantAccess = await soapNoteAccess(request, id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     const soapNote = await prisma.sOAPNote.update({
       where: { id },
@@ -171,6 +168,9 @@ export async function DELETE(
     }
 
     const { id } = params;
+
+    const tenantAccess = await soapNoteAccess(request, id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     await prisma.sOAPNote.delete({
       where: { id },

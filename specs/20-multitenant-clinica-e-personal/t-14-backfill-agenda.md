@@ -14,7 +14,7 @@ Em prod, 2/2 agendamentos e 7/7 disponibilidades estão com `clinicId` nulo. Est
    - idempotente.
 2. Revisar todas as criações de `Appointment` e `TherapistAvailability` para gravar `clinicId`.
 3. Preencher a clínica de pacientes com `clinicId` nulo (cadastro pelo app), que hoje recebem 409 ao criar avaliação — achado do code review da T-3.
-3. Rodar em prod só com o push autorizado.
+4. Rodar em prod só com o push autorizado.
 
 ## Critérios de aceite
 - [ ] Cenários da T-14 passando (local).

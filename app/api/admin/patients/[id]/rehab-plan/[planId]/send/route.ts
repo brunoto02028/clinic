@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string; planId: string } }
 ) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -46,9 +50,20 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string; planId: string } }
 ) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const owned = await (prisma as any).rehabPlan.findFirst({
+    where: { id: params.planId, patientId: params.id },
+    select: { id: true },
+  });
+  if (!owned) {
+    return NextResponse.json({ error: "Plan not found" }, { status: 404 });
   }
 
   await (prisma as any).rehabPlan.update({

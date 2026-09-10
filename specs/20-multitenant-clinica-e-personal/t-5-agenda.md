@@ -24,3 +24,11 @@ Fechar A1 e C4: hoje o aluno vê e agenda profissionais de outros tenants; sem p
 ## Critérios de aceite
 - [ ] Cenários da T-5 passando.
 - [ ] Regressão: o paciente da BPR agenda com o Bruno normalmente, e o `clinicId` é gravado.
+
+## Decisões tomadas no desenho (2026-09-10)
+- **Agendamentos legados sem clínica:** em prod, 2/2 agendamentos estão com `clinicId` nulo. O `viewAll` do staff aceita também esses registros, escopados pela clínica do **profissional**, para a agenda da BPR não sumir antes do preenchimento da T-14.
+- **`bookable` vale só quando o paciente escolhe o profissional.** Staff que marca sessão por alguém pode indicar qualquer colega do próprio tenant, inclusive a si mesmo (esse era o comportamento padrão).
+- **Mobile:** o app busca horários em `/api/availability?date=`. A rota entra em `MOBILE_API_PREFIXES` do middleware; sem isso o token do app recebia 307.
+
+## Dependência de deploy
+Um paciente cadastrado pelo app ainda fica com `clinicId` nulo e, com a T-5, recebe 409 ao agendar. Em prod hoje os 4 pacientes têm clínica, mas **a T-5 não sobe para prod sem a T-13** (cadastro já com tenant) **ou o item 3 da T-14** (preencher a clínica desses pacientes).

@@ -229,6 +229,11 @@ describe("assertPatientAccess", () => {
     users.findUnique.mockResolvedValue({ id: "a2", role: "ADMIN", clinicId: "clinicA" });
     await expect(assertPatientAccess(actor({}), "a2")).rejects.toMatchObject({ status: 404 });
   });
+
+  it("hides a clinic-less patient behind 404, not a distinct 409", async () => {
+    users.findUnique.mockResolvedValue({ id: "p9", role: "PATIENT", clinicId: null });
+    await expect(assertPatientAccess(actor({}), "p9")).rejects.toMatchObject({ status: 404 });
+  });
 });
 
 describe("tenantWhere and requireStaff", () => {

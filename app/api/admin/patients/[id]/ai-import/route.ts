@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { storePatientDocument } from "@/lib/patient-documents";
 import { callAIClinical } from "@/lib/ai-provider";
 import { extractText } from "@/lib/docling";
@@ -17,6 +18,9 @@ const RED_FLAG_KEYS = [
 
 // POST — Process clinical text + uploaded documents with AI
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -283,6 +287,9 @@ Rules:
 
 // PATCH — Confirm AI import (currently a no-op since we save immediately, but kept for future review flow)
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

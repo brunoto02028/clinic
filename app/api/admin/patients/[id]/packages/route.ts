@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,6 +48,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -75,6 +82,9 @@ export async function POST(
     }
 
     // Verify protocol exists
+    if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const protocol = await (prisma as any).treatmentProtocol.findUnique({
       where: { id: protocolId },
     });
@@ -139,6 +149,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -189,6 +202,9 @@ export async function PATCH(
     if (body.stripeInvoiceId !== undefined) updateData.stripeInvoiceId = body.stripeInvoiceId;
     if (body.stripeSubscriptionId !== undefined) updateData.stripeSubscriptionId = body.stripeSubscriptionId;
 
+    if (!(await recordOfPatient("treatmentPackage", packageId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const updated = await (prisma as any).treatmentPackage.update({
       where: { id: packageId },
       data: updateData,
@@ -211,6 +227,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -223,6 +242,9 @@ export async function DELETE(
       return NextResponse.json({ error: "packageId is required" }, { status: 400 });
     }
 
+    if (!(await recordOfPatient("treatmentPackage", packageId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const pkg = await (prisma as any).treatmentPackage.findUnique({
       where: { id: packageId },
     });

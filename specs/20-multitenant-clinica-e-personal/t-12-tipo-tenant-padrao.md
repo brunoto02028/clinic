@@ -18,3 +18,6 @@ Dar tipo ao tenant (clínica × personal) e acabar com "a primeira clínica do b
 ## Critérios de aceite
 - [ ] Cenários da T-12 passando.
 - [ ] Regressão: o cadastro de paciente na BPR fica igual.
+
+## Achado registrado durante a T-5
+- `/api/admin/availability` (PUT) grava `SLOT_INTERVAL_MINUTES` na `SystemConfig`, que é **global**: o admin de qualquer tenant muda o intervalo de agendamento de todos. Esse valor precisa virar configuração por tenant. A leitura em `/api/availability` e `/api/admin/availability` segue global até lá.

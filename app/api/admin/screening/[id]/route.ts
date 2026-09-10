@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { staffPatientAccess } from '@/lib/staff-patient-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,16 @@ export async function PATCH(
   }
 
   const { id } = await params;
+
+  const screening = await prisma.medicalScreening.findUnique({
+    where: { id },
+    select: { userId: true },
+  });
+  if (!screening) {
+    return NextResponse.json({ error: 'Screening not found' }, { status: 404 });
+  }
+  const tenantAccess = await staffPatientAccess(req, screening.userId, 'Screening not found');
+  if (tenantAccess.response) return tenantAccess.response;
   const { action } = await req.json();
 
   if (action === 'approve-edit') {

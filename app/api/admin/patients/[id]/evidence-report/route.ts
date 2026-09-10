@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { callAIClinical } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,9 @@ const STAFF = ["SUPERADMIN", "ADMIN", "THERAPIST"];
 
 // GET — latest evidence report for this patient (clinician-internal).
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
   if (!session?.user || !STAFF.includes(role)) {
@@ -27,6 +31,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 // PATCH — therapist review actions (status transitions). No SENT_TO_PATIENT here:
 // this report is clinician-internal in this phase.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
   if (!session?.user || !STAFF.includes(role)) {
@@ -54,6 +61,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data.reviewedById = (session.user as any).id ?? null;
   }
 
+  if (!(await recordOfPatient("clinicalEvidenceReport", reportId, params.id))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const updated = await prisma.clinicalEvidenceReport.update({ where: { id: reportId }, data });
   return NextResponse.json({ report: updated });
 }
@@ -61,6 +71,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // POST — `action: "translate"` fills narrativePt on demand (T-6); default enqueues
 // a fresh GENERATING report from the latest screening (regenerate).
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
   if (!session?.user || !STAFF.includes(role)) {

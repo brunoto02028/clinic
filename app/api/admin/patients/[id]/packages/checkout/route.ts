@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,6 +34,9 @@ export async function POST(
       return NextResponse.json({ error: "packageId is required" }, { status: 400 });
     }
 
+    if (!(await recordOfPatient("treatmentPackage", packageId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const pkg = await (prisma as any).treatmentPackage.findUnique({
       where: { id: packageId },
       include: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const tenantAccess = await staffPatientAccess(_req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,6 +33,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -83,6 +90,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -101,6 +111,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

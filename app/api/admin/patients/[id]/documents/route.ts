@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { storePatientDocument, validatePatientFile } from "@/lib/patient-documents";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -38,6 +42,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -98,6 +105,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -124,6 +134,9 @@ export async function PATCH(
       }
     }
 
+    if (!(await recordOfPatient("patientDocument", documentId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const updated = await (prisma as any).patientDocument.update({
       where: { id: documentId },
       data: updateData,
@@ -140,8 +153,11 @@ export async function PATCH(
 }
 
 // ─── DELETE — Remove a document ───
-export async function DELETE(req: NextRequest) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -152,6 +168,14 @@ export async function DELETE(req: NextRequest) {
 
     if (!documentId) {
       return NextResponse.json({ error: "documentId is required" }, { status: 400 });
+    }
+
+    const document = await (prisma as any).patientDocument.findFirst({
+      where: { id: documentId, patientId: params.id },
+      select: { id: true },
+    });
+    if (!document) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
     await (prisma as any).patientDocument.delete({ where: { id: documentId } });

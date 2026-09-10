@@ -1,6 +1,6 @@
 # T-4: Prontuário por ID
 
-**Status:** pendente
+**Status:** concluído
 **Trilha:** PLATAFORMA
 **Depende de:** T-2 (usa o mesmo desenho da T-3)
 
@@ -35,3 +35,19 @@ Casos especiais confirmados na leitura do código:
 - [ ] Cenários da T-4 passando, estendidos às 22 sub-rotas (staff de outro tenant recebe 404 em todas).
 - [ ] O DELETE de `patients/[id]` não apaga staff nem paciente de outro tenant.
 - [ ] Regressão: a ficha completa de paciente da BPR fica igual para o SUPERADMIN.
+
+## Registro
+- **QA (1ª rodada):** `qa/report-t-4.md` — os 10 cenários pedidos passaram, com 207/209 checagens. O agente reprovou a tarefa por uma prova extra, a **O1**: o guard confere o paciente da URL, mas vários handlers alteravam o registro cujo ID vinha no corpo, sem checar o dono. Um staff do tenant A editou a nota e o documento de um aluno do tenant B usando a URL de um paciente próprio.
+- **Correção da O1:** `recordOfPatient(modelo, id, pacienteDaURL)` em `lib/staff-patient-access.ts`. O registro precisa pertencer ao paciente da URL, e um ID que não seja texto — por exemplo, um objeto-operador do Prisma — nunca casa. Foram 21 checagens:
+  - nas ações do PATCH da ficha;
+  - em `diagnosis`, `documents`, `evidence-report`, `packages`, `packages/checkout`, `protocol` e `protocol-revise`.
+
+  No `protocol-revise`, o lote de itens fica restrito ao protocolo validado. Foram acrescentados testes do helper: 144/144.
+- **Fim de linha:** a inserção de import do patch da T-4 deixava um `\r` a mais por linha, o que fazia o git mostrar arquivos inteiros como alterados. Os 28 arquivos foram normalizados para CRLF limpo, e o diff real ficou em 28 arquivos, +308/−33.
+- **Fora do escopo (avisado, não corrigido):** F2 — `GET rehab-plan/[planId]` dá sempre erro 500, porque pede `createdBy.name`, campo que `User` não tem. É anterior à T-4.
+- **QA (reteste 1):** os 21 pontos corrigidos passaram — 22 negativos com 404 e registro de B intacto, injeção de operador barrada e positivos gravando. O agente achou mais duas formas de escrever em B:
+  1. o ramo `newItem` do `protocol` PATCH rodava antes da checagem de dono do protocolo;
+  2. as ações de edição livre (`edit_screening`, `edit_foot_scan`, `edit_body_assessment`, `edit_document`, `edit_protocol_item` e o `itemUpdate` do protocolo) repassavam o corpo inteiro ao Prisma. Mandando `patientId`, `clinicId` ou `protocolId`, um staff **movia** um registro do próprio tenant para B.
+- **Correção (rodada 2):** checagem de dono dentro do ramo `newItem`, e `withoutOwnership()` removendo `id`, `patientId`, `userId`, `clinicId` e `protocolId` das edições livres. A edição continua aceita; só os campos de dono são ignorados. Testes: 146/146.
+- **QA (reteste 2):** os cenários pedidos passaram, mas o `withoutOwnership` (denylist) foi contornado: `{"patient":{"connect":{"id":"<alunoB>"}}}` moveu registro para B, e `{"uploadedBy":{"update":{"role":"SUPERADMIN"}}}` promoveu um usuário. Denylist não fecha a forma de relação do Prisma.
+- **Correção (rodada 3):** `withoutOwnership` removido; edições livres passam por `pickEditable(modelo, corpo)` em `lib/tenant-field-guard.ts` — uma **allowlist** derivada do DMMF do Prisma, que mantém só as colunas escalares próprias do modelo. Relações, FKs, `id` e timestamps são descartados por nome, então nem `connect`/`update` aninhado nem troca de FK passam. Testes: 151/151.

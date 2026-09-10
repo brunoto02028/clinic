@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
+import { pickEditable } from "@/lib/tenant-field-guard";
 import { callAIClinical } from "@/lib/ai-provider";
 import { notifyPatient } from "@/lib/notify-patient";
 
@@ -13,6 +15,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -50,6 +55,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -82,6 +90,9 @@ export async function POST(
     }
 
     // Get the diagnosis
+    if (!(await recordOfPatient("aIDiagnosis", diagnosisId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const diagnosis = await (prisma as any).aIDiagnosis.findUnique({
       where: { id: diagnosisId },
     });
@@ -339,6 +350,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -349,12 +363,18 @@ export async function PATCH(
 
     // Delete a specific protocol item
     if (deleteItemId) {
+      if (!(await recordOfPatient("protocolItem", deleteItemId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       await (prisma as any).protocolItem.delete({ where: { id: deleteItemId } });
       return NextResponse.json({ success: true, deleted: deleteItemId });
     }
 
     // Create a new protocol item (manual add or duplicate)
     if (newItem && protocolId) {
+      if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const created = await (prisma as any).protocolItem.create({
         data: {
           protocolId,
@@ -385,9 +405,12 @@ export async function PATCH(
 
     // Update a specific protocol item (e.g. patient marks as completed)
     if (itemId && itemUpdate) {
+      if (!(await recordOfPatient("protocolItem", itemId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       const updated = await (prisma as any).protocolItem.update({
         where: { id: itemId },
-        data: itemUpdate,
+        data: pickEditable("ProtocolItem", itemUpdate),
       });
       return NextResponse.json({ success: true, item: updated });
     }
@@ -397,6 +420,9 @@ export async function PATCH(
       return NextResponse.json({ error: "protocolId is required" }, { status: 400 });
     }
 
+    if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     // Guard: cannot send to patient without complete scheduling
     if (status === "SENT_TO_PATIENT") {
       const current = await (prisma as any).treatmentProtocol.findUnique({

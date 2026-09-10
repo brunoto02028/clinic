@@ -60,7 +60,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 | T-1 | PLAT | Guarda de e-mail e mensagens fora de produção | concluído |
 | T-2 | PLAT | `lib/tenant-access.ts` + testes + fixtures de 2 tenants | concluído |
 | T-3 | CLIN | Avaliação corporal — vazamento que existe hoje em prod | concluído |
-| T-4 | PLAT | Prontuário por ID (pacientes, notas SOAP, triagem, usuários) | pendente |
+| T-4 | PLAT | Prontuário por ID (pacientes, notas SOAP, triagem, usuários) | concluído |
 | T-5 | PLAT | Agenda (profissionais, disponibilidade, agendamentos, horário público) | pendente |
 | T-6 | PLAT | Triagem e correção das demais rotas de staff | pendente |
 | T-7 | PLAT | Suíte automatizada de isolamento (`npm run test:tenants`) | pendente |

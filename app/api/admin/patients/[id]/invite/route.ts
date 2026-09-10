@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 import crypto from "crypto";
 
 // POST — Generate or refresh an intake token for a patient
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,6 +49,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
 // GET — Get current intake status for a patient
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

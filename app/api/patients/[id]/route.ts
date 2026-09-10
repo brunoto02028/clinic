@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { patientRecordAccess, staffPatientAccess } from "@/lib/staff-patient-access";
 
 export async function GET(
   request: NextRequest,
@@ -17,16 +18,9 @@ export async function GET(
     }
 
     const { id } = params;
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
 
-    // Patients can only view their own profile
-    if (userRole === "PATIENT" && id !== userId) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
-    }
+    const tenantAccess = await patientRecordAccess(request, id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     const patient = await prisma.user.findUnique({
       where: { id },
@@ -114,16 +108,9 @@ export async function PATCH(
 
     const { id } = params;
     const body = await request.json();
-    const userRole = (session.user as any).role;
-    const userId = (session.user as any).id;
 
-    // Only admins/therapists or the patient themselves can update
-    if (userRole === "PATIENT" && id !== userId) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
-    }
+    const tenantAccess = await patientRecordAccess(request, id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     const updateData: any = {};
 
@@ -166,10 +153,14 @@ export async function DELETE(
     }
 
     const { id } = params;
-    const userRole = (session.user as any).role;
+
+    // Staff of this patient's tenant only — and, because the guard resolves
+    // a patient, never a staff account or someone from another tenant.
+    const tenantAccess = await staffPatientAccess(request, id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     // Only admins can delete patients
-    if (userRole !== "ADMIN") {
+    if (tenantAccess.actor.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only admins can delete patients" },
         { status: 403 }

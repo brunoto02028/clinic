@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { getPatientReportData, renderPatientReportHTML } from "@/lib/patient-report";
 import { sendEmail } from "@/lib/email";
 import { notifyPatient } from "@/lib/notify-patient";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
   const session = await getServerSession(authOptions);
   if (!session?.user || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,6 +41,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !ALLOWED_ROLES.includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

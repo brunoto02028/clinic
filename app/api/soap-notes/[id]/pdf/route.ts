@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { soapNoteAccess } from "@/lib/staff-patient-access";
 
 export async function GET(
   request: NextRequest,
@@ -17,8 +18,8 @@ export async function GET(
     }
 
     const { id } = params;
-    const userId = (session.user as any).id;
-    const userRole = (session.user as any).role;
+    const tenantAccess = await soapNoteAccess(request, id);
+    if (tenantAccess.response) return tenantAccess.response;
 
     const soapNote = await prisma.sOAPNote.findUnique({
       where: { id },
@@ -51,14 +52,6 @@ export async function GET(
       return NextResponse.json(
         { error: "Clinical note not found" },
         { status: 404 }
-      );
-    }
-
-    // Check access
-    if (userRole === "PATIENT" && soapNote.patientId !== userId) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
       );
     }
 

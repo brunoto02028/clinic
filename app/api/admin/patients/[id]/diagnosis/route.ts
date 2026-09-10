@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { callAIClinical } from "@/lib/ai-provider";
 import { notifyPatient } from "@/lib/notify-patient";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
@@ -14,6 +15,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -102,6 +106,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -399,6 +406,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const tenantAccess = await staffPatientAccess(req, params.id);
+    if (tenantAccess.response) return tenantAccess.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -420,6 +430,9 @@ export async function PATCH(
     if (therapistComments !== undefined) updateData.therapistComments = therapistComments;
     if (therapistEdits !== undefined) updateData.therapistEdits = therapistEdits;
 
+    if (!(await recordOfPatient("aIDiagnosis", diagnosisId, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const updated = await (prisma as any).aIDiagnosis.update({
       where: { id: diagnosisId },
       data: updateData,
