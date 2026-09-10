@@ -330,6 +330,14 @@ async function main() {
       // M5 — clinic patient blocked from the mobile workouts endpoint → 404.
       m = await request("GET", "/api/mobile/workouts", { bearer: pacienteATok });
       check("M5 clinic patient → mobile workouts 404", m.status === 404, `status ${m.status}`);
+
+      // M6 — personal student's mobile module list includes "avaliacoes" (T-5).
+      m = await request("GET", "/api/mobile/modules", { bearer: alunoBTok });
+      check("M6 personal student modules include avaliacoes", m.status === 200 && m.body.includes('"avaliacoes"'), `status ${m.status}`);
+
+      // M7 — clinic patient's module list excludes "avaliacoes".
+      m = await request("GET", "/api/mobile/modules", { bearer: pacienteATok });
+      check("M7 clinic patient modules exclude avaliacoes", m.status === 200 && !m.body.includes('"avaliacoes"'), `status ${m.status}`);
     }
 
     // ── T-24: trainer reads the student's progress (tenant-scoped) ──

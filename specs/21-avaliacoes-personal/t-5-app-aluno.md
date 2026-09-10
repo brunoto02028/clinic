@@ -1,6 +1,6 @@
 # T-5: Módulo Avaliações no app do aluno
 
-**Status:** pendente
+**Status:** concluído (QA backend runtime 63/63 — M6/M7/A7/A7b; telas código+tsc; review feito, limpo)
 **Depende de:** T-1, T-2
 
 ## Objetivo
@@ -14,4 +14,4 @@ Mesma experiência da T-4 no app (`mobile/`).
 - mobile/app/(app)/(avaliacoes)/**, mobile/src/api/assessments.ts, module-select
 
 ## Critérios de aceite
-- [ ] Backend Bearer verificado (runtime). Telas: código + tsc; QA expo-web/EAS com o Bruno.
+- [x] Backend Bearer verificado (runtime 63/63 — M6/M7/A7/A7b). Telas: código + tsc; QA expo-web/EAS com o Bruno.

@@ -20,6 +20,7 @@ const MODULE_DEFS = [
 // (default-on for a personal-trainer studio). Appended separately from
 // MODULE_DEFS so it never rides the "admins see everything" path for a clinic.
 const TREINO_DEF = { key: "treino", name: "Training", icon: "barbell-outline", description: "Workouts & logging" };
+const AVALIACOES_DEF = { key: "avaliacoes", name: "Assessments", icon: "body-outline", description: "Measurements & progress" };
 
 // Maps our mobile module keys to the ClinicModule enum values that gate them.
 const MODULE_KEY_MAP: Record<string, string[]> = {
@@ -45,8 +46,8 @@ export async function GET(request: NextRequest) {
 
     // Training is default-on for a personal-trainer tenant (or explicitly enabled).
     const trainingOn = actor.clinicId ? await isTrainingEnabled(actor.clinicId) : false;
-    const withTraining = <T,>(mods: T[]): (T | typeof TREINO_DEF)[] =>
-      trainingOn ? [...mods, TREINO_DEF] : mods;
+    const withTraining = <T,>(mods: T[]): (T | typeof TREINO_DEF | typeof AVALIACOES_DEF)[] =>
+      trainingOn ? [...mods, TREINO_DEF, AVALIACOES_DEF] : mods;
 
     // Admins and full-access users see everything (plus Training when on).
     if (user?.fullAccessOverride || actor.role === "SUPERADMIN" || actor.role === "ADMIN") {

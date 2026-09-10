@@ -15,6 +15,7 @@ const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   "medkit-outline": "medkit-outline",
   "briefcase-outline": "briefcase-outline",
   "barbell-outline": "barbell-outline",
+  "body-outline": "body-outline",
 };
 
 const ROUTE_MAP: Record<string, string> = {
@@ -22,6 +23,7 @@ const ROUTE_MAP: Record<string, string> = {
   clinica: "/(app)/(clinica)/(tabs)",
   ba: "/(app)/(ba)/(tabs)",
   treino: "/(app)/(treino)",
+  avaliacoes: "/(app)/(avaliacoes)",
 };
 
 export default function ModuleSelect() {

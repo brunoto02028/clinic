@@ -36,7 +36,7 @@ Tudo **tenant+aluno scoped**, reusando os padrões de acesso das atividades 20 (
 | T-2 | PERSONAL | Fotos de progresso + consentimento (R2) | concluído (QA runtime 59/59; review feito) |
 | T-3 | PERSONAL | Aba "Assessments" na ficha do aluno (registrar + histórico + tendências) | concluído (QA 4/4; review feito) |
 | T-4 | PERSONAL | Área do aluno na web (`/dashboard/assessments`): ver medidas/composição/fotos + evolução | concluído (QA 2/2; review feito) |
-| T-5 | PERSONAL | Módulo Avaliações no app do aluno (mirror) | pendente |
+| T-5 | PERSONAL | Módulo Avaliações no app do aluno (mirror) | concluído (QA runtime 63/63; review feito) — telas via EAS |
 | T-6 | PERSONAL | 1RM (Epley) dos logs + dobrar curvas de composição no painel de Progresso (T-24) | concluído (QA runtime 60/60; review feito) |
 | T-7 | PERSONAL | Catálogo de tipos de avaliação do tenant (`TreatmentType`/ASSESSMENT_SERVICE) no fluxo | concluído (QA runtime 61/61; review feito) |
 
