@@ -557,6 +557,7 @@ model User {
   phone                    String?
   dateOfBirth              DateTime?
   sex                      String? // "M" | "F" — used by the personal-trainer skinfold %BF formula (activity 21)
+  photoConsentAt           DateTime? // consent for progress photos in personal-trainer assessments (activity 21)
   address                  String?
   emergencyContactName     String?
   emergencyContactPhone    String?

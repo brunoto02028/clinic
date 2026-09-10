@@ -380,6 +380,24 @@ async function main() {
     a = await request("POST", "/api/admin/assessments", { cookie: trainerB.cookie, body: { studentId: ids.alunoB, bfMethod: "SKINFOLD", skinfolds: { chest: 0, abdomen: 20, thigh: 15 } } });
     check("A5c zero skinfold rejected 400", a.status === 400, `status ${a.status}`);
 
+    // ── T-2: progress-photo consent gate (no R2 write — consent is checked
+    // before the file is read, so these exercise the gate without uploading). ──
+    if (asmt?.id) {
+      let ph = await request("POST", `/api/admin/assessments/${asmt.id}/photos`, { cookie: trainerB.cookie, body: {} });
+      check("PH1 photo without consent → 403", ph.status === 403, `status ${ph.status}`);
+      ph = await request("POST", "/api/admin/assessments/consent", { cookie: trainerB.cookie, body: { studentId: ids.alunoB } });
+      check("PH2 record photo consent → 200", ph.status === 200, `status ${ph.status}`);
+      ph = await request("POST", `/api/admin/assessments/${asmt.id}/photos`, { cookie: trainerB.cookie, body: {} });
+      check("PH3 with consent, no file → 400 (gate opened)", ph.status === 400, `status ${ph.status}`);
+      ph = await request("POST", `/api/admin/assessments/${asmt.id}/photos`, { cookie: adminA.cookie, body: {} });
+      check("PH4 clinic admin → photo 404", ph.status === 404, `status ${ph.status}`);
+      // PH5 — revoke (granted:false) re-closes the gate → upload 403 again.
+      ph = await request("POST", "/api/admin/assessments/consent", { cookie: trainerB.cookie, body: { studentId: ids.alunoB, granted: false } });
+      const okRevoke = ph.status === 200;
+      ph = await request("POST", `/api/admin/assessments/${asmt.id}/photos`, { cookie: trainerB.cookie, body: {} });
+      check("PH5 revoke consent re-closes gate 403", okRevoke && ph.status === 403, `revoke ${okRevoke}, upload ${ph.status}`);
+    }
+
     // A6 — student sees their own assessments (web); clinic patient blocked (404).
     a = await request("GET", "/api/assessments", { cookie: alunoB.cookie });
     check("A6 student lists own assessments", a.status === 200 && !!asmt?.id && a.body.includes(asmt.id), `status ${a.status}`);
