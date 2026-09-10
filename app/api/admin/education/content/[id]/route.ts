@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { staffTenantRecord } from '@/lib/tenant-record-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+
+    const tenantAccess = await staffTenantRecord(req, 'educationContent', params.id, 'Content not found');
+    if (tenantAccess.response) return tenantAccess.response;
 
     const content = await prisma.educationContent.findUnique({
       where: { id: params.id },
@@ -31,6 +35,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+
+    const tenantAccess = await staffTenantRecord(req, 'educationContent', params.id, 'Content not found');
+    if (tenantAccess.response) return tenantAccess.response;
 
     const body = await req.json();
     const updateData: any = {};
@@ -77,6 +84,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+
+    const tenantAccess = await staffTenantRecord(req, 'educationContent', params.id, 'Content not found');
+    if (tenantAccess.response) return tenantAccess.response;
 
     await prisma.educationContent.delete({ where: { id: params.id } });
     return NextResponse.json({ success: true });

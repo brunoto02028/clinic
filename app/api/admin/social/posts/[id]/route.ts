@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { staffTenantRecord } from '@/lib/tenant-record-access';
 import { publishPhoto, publishCarousel } from '@/lib/instagram';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+
+    const tenantAccess = await staffTenantRecord(req, 'socialPost', params.id, 'Post not found');
+    if (tenantAccess.response) return tenantAccess.response;
 
     const post = await prisma.socialPost.findUnique({
       where: { id: params.id },
@@ -34,6 +38,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+
+    const tenantAccess = await staffTenantRecord(req, 'socialPost', params.id, 'Post not found');
+    if (tenantAccess.response) return tenantAccess.response;
 
     const body = await req.json();
     const { caption, hashtags, postType, mediaUrls, mediaPaths, accountId, campaignId, scheduledAt, status } = body;
@@ -70,6 +77,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+
+    const tenantAccess = await staffTenantRecord(req, 'socialPost', params.id, 'Post not found');
+    if (tenantAccess.response) return tenantAccess.response;
 
     await prisma.socialPost.delete({ where: { id: params.id } });
     return NextResponse.json({ success: true });

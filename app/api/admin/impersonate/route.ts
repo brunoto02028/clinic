@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 import crypto from "crypto";
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,11 @@ export async function POST(req: NextRequest) {
     if (!patientId) {
       return NextResponse.json({ error: "patientId is required" }, { status: 400 });
     }
+
+    // Only a patient of the admin's own tenant. lib/get-effective-user.ts
+    // re-checks this on every request, because the cookie can be forged.
+    const tenantAccess = await staffPatientAccess(req, patientId);
+    if (tenantAccess.response) return tenantAccess.response;
 
     const patient = await prisma.user.findUnique({
       where: { id: patientId },

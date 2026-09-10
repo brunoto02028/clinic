@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { getActor, canAccessRecord } from '@/lib/tenant-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,13 @@ export async function GET(
     }
 
     const { id } = params;
+
+    // The scan's own patient or staff of its tenant — it used to be any login.
+    const actor = await getActor(request);
+    const owner = await prisma.footScan.findUnique({ where: { id }, select: { clinicId: true, patientId: true } });
+    if (!owner || !actor || !canAccessRecord(actor, owner)) {
+      return NextResponse.json({ error: 'Scan not found' }, { status: 404 });
+    }
 
     const footScan = await prisma.footScan.findUnique({
       where: { id },

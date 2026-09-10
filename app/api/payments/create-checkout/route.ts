@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
+import { getActor, canAccessRecord } from "@/lib/tenant-access";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,13 +37,18 @@ export async function POST(request: NextRequest) {
             firstName: true,
             lastName: true,
             email: true,
+            clinicId: true,
           },
         },
         payment: true,
       },
     });
 
-    if (!appointment) {
+    // The appointment's own patient, or staff of its tenant — not anyone logged
+    // in. Rows written before clinicId was stored fall back to the patient's.
+    const actor = await getActor(request);
+    const tenant = appointment?.clinicId ?? appointment?.patient?.clinicId ?? null;
+    if (!appointment || !actor || !canAccessRecord(actor, { clinicId: tenant, patientId: appointment.patientId })) {
       return NextResponse.json(
         { error: "Appointment not found" },
         { status: 404 }

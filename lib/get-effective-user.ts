@@ -1,7 +1,9 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/mobile-tokens";
+import { prisma } from "@/lib/db";
+import { resolveActorTenant } from "@/lib/actor-tenant";
 
 /** Resolves a mobile bearer token from the current request headers, or null. */
 function getBearerIdentity(
@@ -16,6 +18,24 @@ function getBearerIdentity(
   } catch {
     return null;
   }
+}
+
+// The middleware honours the impersonation cookie for any admin, so the cookie
+// is no proof on its own: only a patient of the admin's own tenant may be
+// impersonated. Anything else carries on as the admin themself.
+async function patientInAdminTenant(adminId: string, patientId: string): Promise<boolean> {
+  const [admin, patient] = await Promise.all([
+    prisma.user.findUnique({ where: { id: adminId }, select: { role: true, clinicId: true } }),
+    prisma.user.findUnique({ where: { id: patientId }, select: { role: true, clinicId: true } }),
+  ]);
+  if (!admin || (admin.role !== "ADMIN" && admin.role !== "SUPERADMIN")) return false;
+  if (!patient || patient.role !== "PATIENT" || !patient.clinicId) return false;
+  const tenant = await resolveActorTenant(
+    admin.role,
+    admin.clinicId,
+    cookies().get("selected-clinic-id")?.value
+  );
+  return tenant === patient.clinicId;
 }
 
 /**
@@ -58,8 +78,10 @@ export async function getEffectiveUser(): Promise<{
     impersonatedBy &&
     headerUserId &&
     headerUserId !== realUserId &&
+    impersonatedBy === realUserId &&
     validIdFormat.test(headerUserId) &&
-    validIdFormat.test(impersonatedBy)
+    validIdFormat.test(impersonatedBy) &&
+    (await patientInAdminTenant(realUserId, headerUserId))
   ) {
     const safeRole = (headerRole && validRoles.includes(headerRole)) ? headerRole : "PATIENT";
     return {

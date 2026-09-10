@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
-import { getDefaultClinicId } from "@/lib/default-tenant";
+import { resolveActorTenant } from "@/lib/actor-tenant";
 
 // Single point of tenant access control. Role and tenant are re-read from the
 // database on every call — a token minted before a role or clinic change must
@@ -31,24 +31,6 @@ export function isStaff(actor: Actor): boolean {
   return STAFF_ROLES.includes(actor.role);
 }
 
-// The switch-clinic cookie is set from a request body, so it is only trusted
-// when it names a clinic that exists and is active. With no clinic selected
-// ("All clinics"), the owner works in their own clinic: a platform-wide view
-// belongs to the SUPERADMIN screens, not to tenant-scoped data routes.
-async function resolveSuperadminClinic(
-  selected: string | undefined,
-  ownClinicId: string | null
-): Promise<string | null> {
-  if (selected) {
-    const clinic = await prisma.clinic.findUnique({
-      where: { id: selected },
-      select: { id: true, isActive: true },
-    });
-    if (clinic?.isActive) return clinic.id;
-  }
-  return ownClinicId ?? getDefaultClinicId();
-}
-
 /** The authenticated actor (web session or app bearer, impersonation applied), or null. */
 export async function getActor(request: NextRequest): Promise<Actor | null> {
   const effective = await getEffectiveUser();
@@ -60,10 +42,11 @@ export async function getActor(request: NextRequest): Promise<Actor | null> {
   });
   if (!user || !user.isActive) return null;
 
-  const clinicId =
-    user.role === "SUPERADMIN"
-      ? await resolveSuperadminClinic(request.cookies.get("selected-clinic-id")?.value, user.clinicId)
-      : user.clinicId;
+  const clinicId = await resolveActorTenant(
+    user.role,
+    user.clinicId,
+    request.cookies.get("selected-clinic-id")?.value
+  );
 
   return {
     userId: user.id,
