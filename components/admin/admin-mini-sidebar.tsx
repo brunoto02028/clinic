@@ -10,6 +10,7 @@ import { Logo } from "@/components/ui/logo";
 import { ClinicSelector } from "./clinic-selector";
 import { LocaleToggle } from "@/components/locale-toggle";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface AdminMiniSidebarProps {
   user: {
@@ -32,6 +33,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const [logoReady, setLogoReady] = useState(false);
   const [pendingPatients, setPendingPatients] = useState(0);
   const { locale } = useLocale();
+  const { relabel } = useVocab();
 
   const activeNav = getActiveAdminNav(pathname);
   const isSuperAdmin = user.role === "SUPERADMIN";
@@ -161,7 +163,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
               >
                 {isActive && activeBar}
                 <Icon size={18} className="flex-shrink-0" />
-                <span className="flex-1">{isPt ? section.labelPt : section.label}</span>
+                <span className="flex-1">{relabel(isPt ? section.labelPt : section.label)}</span>
                 {section.key === "patients" && pendingPatients > 0 && (
                   <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
                     {pendingPatients > 9 ? "9+" : pendingPatients}
@@ -183,7 +185,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
               {activeNav?.section.key === "settings" && activeBar}
               <settingsSection.icon size={18} className="flex-shrink-0" />
               <span>
-                {isPt ? settingsSection.labelPt : settingsSection.label}
+                {relabel(isPt ? settingsSection.labelPt : settingsSection.label)}
               </span>
             </button>
           )}

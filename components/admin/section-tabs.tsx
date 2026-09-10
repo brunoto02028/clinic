@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getActiveAdminNav } from "@/lib/admin-sections";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 export default function SectionTabs() {
   const pathname = usePathname();
   const { locale } = useLocale();
+  const { relabel } = useVocab();
   const activeNav = getActiveAdminNav(pathname);
 
   if (!activeNav) return null;
@@ -16,7 +18,7 @@ export default function SectionTabs() {
   const isPt = locale?.startsWith("pt");
 
   return (
-    <div className="section-tabs" role="tablist" aria-label={isPt ? section.labelPt : section.label}>
+    <div className="section-tabs" role="tablist" aria-label={relabel(isPt ? section.labelPt : section.label)}>
       {section.tabs.map((tab) => (
         <Link
           key={tab.key}
@@ -25,7 +27,7 @@ export default function SectionTabs() {
           role="tab"
           aria-selected={activeTab?.key === tab.key}
         >
-          {isPt ? tab.labelPt : tab.label}
+          {relabel(isPt ? tab.labelPt : tab.label)}
         </Link>
       ))}
     </div>

@@ -89,7 +89,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 | T-N | Trilha | Nome | Status |
 |-----|--------|------|--------|
 | T-17 | PLAT | Marca por tenant (área logada, login, e-mails, termos) | pendente |
-| T-18 | PLAT | Vocabulário por tipo de tenant | pendente |
+| T-18 | PLAT | Vocabulário por tipo de tenant | mecanismo + navegação; telas pendentes |
 | T-19 | PT | Onboarding e módulos do tenant personal | pendente |
 
 ### Fase 4 — Produto do personal
