@@ -1,8 +1,10 @@
 # T-20: Modelo e API de treino
 
-**Status:** pendente
+**Status:** concluído
 **Trilha:** PERSONAL
 **Depende de:** T-12
+
+> QA aprovado (qa/report-t-20.md — jest 223, runtime 25/25) + code review feito (5 achados de validação corrigidos). Escopo staff (montagem). Consumo do aluno + escrita de logs → T-22/T-23.
 
 ## Objetivo
 Criar a estrutura de treino de força que falta hoje (achados M1 e M2) sem tocar na prescrição clínica.
@@ -17,5 +19,5 @@ Criar a estrutura de treino de força que falta hoje (achados M1 e M2) sem tocar
 3. API CRUD com `tenant-access` e validação de faixas (RPE 1–10, RIR 0–5, reps e carga ≥ 0).
 
 ## Critérios de aceite
-- [ ] Cenários da T-20 passando.
-- [ ] Nenhuma tabela existente alterada.
+- [x] Cenários da T-20 passando.
+- [x] Nenhuma tabela existente alterada.

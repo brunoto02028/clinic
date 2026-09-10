@@ -96,7 +96,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 
 | T-N | Trilha | Nome | Status |
 |-----|--------|------|--------|
-| T-20 | PT | Modelo e API de treino | pendente |
+| T-20 | PT | Modelo e API de treino | concluído (QA 223 jest + 25/25 runtime; review feito) |
 | T-21 | PT | Montagem de treino pelo personal (web) | pendente |
 | T-22 | PT | Treino do aluno + registro de séries (web) | pendente |
 | T-23 | PT | Módulo Treino no app do aluno | pendente |
@@ -109,6 +109,12 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 | T-N | Trilha | Nome | Status |
 |-----|--------|------|--------|
 | T-27 | PT | Modo profissional no app (agenda do dia, alunos, registros) | pendente |
+
+### Fase 6 — Marca no admin
+
+| T-N | Trilha | Nome | Status |
+|-----|--------|------|--------|
+| T-28 | PLAT | Rebrand claro do admin (paleta BA1: bone/ink/moss/greige) — **todo o admin, inclusive a clínica** | pendente (planejar antes de implementar; depois do produto do Personal) |
 
 ## Suposições (validar com o Bruno)
 

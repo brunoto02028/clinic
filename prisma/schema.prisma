@@ -260,6 +260,7 @@ enum ClinicModule {
   EDUCATION
   BIOMECHANICAL_ASSESSMENT
   LABORATORY
+  TRAINING // strength-training module — default-on for personal-trainer tenants (T-20)
 }
 
 enum SocialPlatform {
@@ -343,6 +344,8 @@ model Clinic {
   treatmentPlans          TreatmentPlan[]
   membershipPlans         MembershipPlan[]
   moduleAccess            ClinicModuleAccess[]
+  workouts                Workout[]
+  workoutLogs             WorkoutLog[]
   socialAccounts          SocialAccount[]
   socialPosts             SocialPost[]
   socialCampaigns         SocialCampaign[]
@@ -620,6 +623,9 @@ model User {
   exercisesCreated           Exercise[]             @relation("ExercisesCreated")
   prescribedExercises        ExercisePrescription[] @relation("PrescribedExercises")
   receivedExercises          ExercisePrescription[] @relation("ReceivedExercises")
+  trainerWorkouts            Workout[]              @relation("TrainerWorkouts")
+  studentWorkouts            Workout[]              @relation("StudentWorkouts")
+  studentWorkoutLogs         WorkoutLog[]           @relation("StudentWorkoutLogs")
   diagnosesAsPatient         AIDiagnosis[]          @relation("PatientDiagnoses")
   diagnosesAsTherapist       AIDiagnosis[]          @relation("TherapistDiagnoses")
   protocolsAsPatient         TreatmentProtocol[]    @relation("PatientProtocols")
@@ -2809,9 +2815,10 @@ model Exercise {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  prescriptions ExercisePrescription[]
-  protocolItems ProtocolItem[]
-  templateItems ProtocolTemplateItem[] @relation("TemplateItemExercise")
+  prescriptions    ExercisePrescription[]
+  workoutExercises WorkoutExercise[]
+  protocolItems    ProtocolItem[]
+  templateItems    ProtocolTemplateItem[] @relation("TemplateItemExercise")
 
   @@index([clinicId])
   @@index([bodyRegion])
@@ -2890,6 +2897,123 @@ model ExercisePrescription {
   @@index([therapistId])
   @@index([exerciseId])
   @@index([isActive])
+}
+
+// ============================================
+// STRENGTH TRAINING (personal-trainer product, T-20)
+// New models — the clinical prescription (ExercisePrescription /
+// TreatmentProtocol) is intentionally NOT touched. Range validation
+// (RPE 1–10, RIR 0–5, reps/load ≥ 0) is enforced in the API layer.
+// ============================================
+
+// A training program a trainer assigns to a student ("Treino A").
+model Workout {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  trainerId String
+  trainer   User   @relation("TrainerWorkouts", fields: [trainerId], references: [id])
+  studentId String
+  student   User   @relation("StudentWorkouts", fields: [studentId], references: [id], onDelete: Cascade)
+
+  name       String
+  order      Int      @default(0)
+  daysOfWeek Int[] // 0=Sun … 6=Sat
+  phase      String? // e.g. "Semana 1", "Fase de força"
+  notes      String?  @db.Text
+  isActive   Boolean  @default(true)
+
+  exercises WorkoutExercise[]
+  logs      WorkoutLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([studentId])
+  @@index([trainerId])
+  @@index([isActive])
+}
+
+// One exercise inside a workout, with the prescribed load/volume.
+model WorkoutExercise {
+  id        String  @id @default(cuid())
+  workoutId String
+  workout   Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  order         Int     @default(0)
+  supersetGroup String? // exercises sharing a group are performed as a superset
+  sets          Int?
+  repsMin       Int?
+  repsMax       Int?
+  loadKg        Float?
+  rpe           Int? // 1–10
+  rir           Int? // 0–5
+  cadence       String? // e.g. "3-1-1-0"
+  restSeconds   Int?
+  notes         String? @db.Text
+
+  setLogs WorkoutSetLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workoutId])
+  @@index([exerciseId])
+}
+
+// A performed training session for a workout.
+model WorkoutLog {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  workoutId String
+  workout   Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   User   @relation("StudentWorkoutLogs", fields: [studentId], references: [id], onDelete: Cascade)
+
+  performedAt DateTime @default(now())
+  durationMin Int?
+  sessionRpe  Int? // 1–10
+  notes       String?  @db.Text
+
+  setLogs WorkoutSetLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([workoutId])
+  @@index([studentId])
+}
+
+// A performed set within a session.
+model WorkoutSetLog {
+  id           String     @id @default(cuid())
+  workoutLogId String
+  workoutLog   WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
+
+  workoutExerciseId String
+  workoutExercise   WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+
+  setNumber Int
+  reps      Int?
+  loadKg    Float?
+  rpe       Int? // 1–10
+  completed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([workoutLogId])
+  @@index([workoutExerciseId])
 }
 
 // ============================================

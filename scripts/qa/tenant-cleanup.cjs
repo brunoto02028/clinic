@@ -50,6 +50,11 @@ async function main() {
   await step("emailMessages", () => prisma.emailMessage.deleteMany({ where: { OR: [{ toAddress: qaAddress }, { patientId: { in: ids } }] } }));
   await step("passwordResetTokens", () => prisma.passwordResetToken.deleteMany({ where: { email: qaAddress } }));
   await step("verificationCodes", () => prisma.verificationCode.deleteMany({ where: { userId: { in: ids } } }));
+  // Workouts before users: Workout.trainer is RESTRICT (like ExercisePrescription.therapist),
+  // so a trainer with workouts can't be deleted until the workouts are gone.
+  // Deleting the workout cascades its exercises, logs and set-logs.
+  await step("workoutLogs", () => prisma.workoutLog.deleteMany({ where: { OR: [{ studentId: { in: ids } }, { clinicId: { in: clinicIds } }] } }));
+  await step("workouts", () => prisma.workout.deleteMany({ where: { OR: [{ studentId: { in: ids } }, { trainerId: { in: ids } }, { clinicId: { in: clinicIds } }] } }));
   await step("users", () => prisma.user.deleteMany({ where: { id: { in: ids } } }));
   await step("clinics", () => prisma.clinic.deleteMany({ where: { id: { in: clinicIds } } }));
 

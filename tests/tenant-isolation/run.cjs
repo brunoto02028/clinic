@@ -75,11 +75,15 @@ function loadFixtureIds() {
       (await prisma.user.findUnique({ where: { email }, select: { id: true } }))?.id;
     const ba = async (n) =>
       (await prisma.bodyAssessment.findUnique({ where: { assessmentNumber: n }, select: { id: true } }))?.id;
+    const exByName = async (name) =>
+      (await prisma.exercise.findFirst({ where: { name }, select: { id: true } }))?.id;
     const ids = {
       pacienteA: await byEmail("qa.pacientea@example.test"),
       alunoB: await byEmail("qa.aluno@example.test"),
       fisioA: await byEmail("qa.fisioa@example.test"),
       assessmentA1: await ba("BA-QA-A1"),
+      exerciseA: await exByName("QA Clam Shell"),
+      exerciseB: await exByName("QA Goblet Squat"),
     };
     await prisma.$disconnect();
     return ids;
@@ -198,6 +202,42 @@ async function main() {
     // G6 (control) — a clinic admin reaches the same generator (gate is type-scoped).
     r = await request("GET", `/api/admin/patients/${ids.pacienteA}/protocol`, { cookie: adminA.cookie });
     check("G6 clinic admin → patient protocol generator not gated", r.status !== 404, `status ${r.status}`);
+
+    // ── T-20: workout product (personal tenant only), tenant-scoped ──
+    // W1 — personal admin creates a workout for their student → 201.
+    let w = await request("POST", "/api/admin/workouts", {
+      cookie: trainerB.cookie,
+      body: { name: "Treino A", studentId: ids.alunoB, exercises: [{ exerciseId: ids.exerciseB, sets: 3, repsMin: 8, repsMax: 12, rpe: 8 }] },
+    });
+    let workoutId = (() => { try { return JSON.parse(w.body).id; } catch { return null; } })();
+    check("W1 personal admin creates workout", w.status === 201 && !!workoutId, `status ${w.status}`);
+
+    // W2 — clinic admin (CLINIC tenant, TRAINING off by default) is blocked → 404.
+    w = await request("POST", "/api/admin/workouts", {
+      cookie: adminA.cookie,
+      body: { name: "X", studentId: ids.pacienteA, exercises: [] },
+    });
+    check("W2 clinic admin blocked (module off) 404", w.status === 404, `status ${w.status}`);
+
+    // W3 — cross-tenant read: clinic admin cannot read the personal tenant's workout → 404.
+    if (workoutId) {
+      w = await request("GET", `/api/admin/workouts/${workoutId}`, { cookie: adminA.cookie });
+      check("W3 clinic admin → personal workout 404", w.status === 404, `status ${w.status}`);
+    }
+
+    // W4 — range validation: rpe out of 1–10 → 400.
+    w = await request("POST", "/api/admin/workouts", {
+      cookie: trainerB.cookie,
+      body: { name: "Bad RPE", studentId: ids.alunoB, exercises: [{ exerciseId: ids.exerciseB, rpe: 99 }] },
+    });
+    check("W4 invalid rpe rejected 400", w.status === 400, `status ${w.status}`);
+
+    // W5 — cross-tenant exercise: personal workout referencing clinic A's exercise → 400.
+    w = await request("POST", "/api/admin/workouts", {
+      cookie: trainerB.cookie,
+      body: { name: "Foreign ex", studentId: ids.alunoB, exercises: [{ exerciseId: ids.exerciseA }] },
+    });
+    check("W5 foreign-tenant exercise rejected 400", w.status === 400, `status ${w.status}`);
 
     // ISO-10 — mobile register never creates a tenant-less account.
     // No slug → the default tenant (never clinicId: null).
