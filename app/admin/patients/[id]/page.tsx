@@ -14,6 +14,8 @@ import {
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
+import WorkoutBuilder from "@/components/workouts/workout-builder";
+import { useVocab } from "@/hooks/use-vocab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -148,6 +150,7 @@ function screeningBadge(screening: any): string {
 export default function PatientProfilePage() {
   const { id: patientId } = useParams<{ id: string }>();
   const router = useRouter();
+  const { isPersonal } = useVocab();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -902,6 +905,11 @@ export default function PatientProfilePage() {
                 <TabsTrigger value="evidencia" className="text-xs data-[state=active]:bg-bruno-turquoise/20 data-[state=active]:text-bruno-turquoise flex items-center gap-1">
                   <Stethoscope className="h-3 w-3" />Evidência
                 </TabsTrigger>
+                {isPersonal && (
+                  <TabsTrigger value="workouts" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    <Dumbbell className="h-3 w-3" />Workouts
+                  </TabsTrigger>
+                )}
               </>
             );
           })()}
@@ -2020,6 +2028,12 @@ export default function PatientProfilePage() {
         <TabsContent value="evidencia" className="mt-4">
           <EvidenceReportTab patientId={patientId} />
         </TabsContent>
+
+        {isPersonal && (
+          <TabsContent value="workouts" className="mt-4">
+            <WorkoutBuilder studentId={patientId} />
+          </TabsContent>
+        )}
 
       </Tabs>
     </div>

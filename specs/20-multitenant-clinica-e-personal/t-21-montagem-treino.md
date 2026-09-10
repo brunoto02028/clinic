@@ -1,8 +1,12 @@
 # T-21: Montagem de treino pelo personal (web)
 
-**Status:** pendente
+**Status:** concluído
 **Trilha:** PERSONAL
 **Depende de:** T-20
+
+> QA aprovado (qa/report-t-21.md — 5/5 Playwright) + code review feito (6/7 achados corrigidos, 1 aceito).
+> Aba "Workouts" em `app/admin/patients/[id]/page.tsx` (gated por isPersonal) → `components/workouts/workout-builder.tsx`.
+> Fora do escopo (sinalizado): abas clínicas ainda visíveis ao personal na ficha (gating de nav, T-19b estendida).
 
 ## Objetivo
 O personal monta e ajusta os treinos do aluno pela web.
@@ -17,5 +21,5 @@ O personal monta e ajusta os treinos do aluno pela web.
 3. Resolver a falta de um botão claro de "nova prescrição" (PT-2 da atividade 19) no fluxo do personal.
 
 ## Critérios de aceite
-- [ ] Cenários da T-21 passando.
-- [ ] Regressão: a ficha do paciente da BPR fica sem a aba.
+- [x] Cenários da T-21 passando.
+- [x] Regressão: a ficha do paciente da BPR fica sem a aba.
