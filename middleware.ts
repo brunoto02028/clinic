@@ -1,6 +1,8 @@
 import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isPersonalTenant } from '@/lib/tenant-type';
+import { isClinicalOnlyRoute } from '@/lib/clinical-routes';
 
 // ─── INLINE SECURITY (Edge Runtime compatible) ───
 const rateLimitStore = new Map<string, { count: number; first: number; blocked: boolean; until?: number }>();
@@ -59,6 +61,7 @@ const publicRoutes = [
   '/login',
   '/signout',
   '/signup',
+  '/join', // branded tenant entry: /join/[slug] — public sign-up for a studio/clinic
   '/start',
   '/admin-login',
   '/staff-login',
@@ -291,6 +294,25 @@ export async function middleware(request: NextRequest) {
   if (userRole === 'SUPERADMIN') {
     const selectedClinicId = request.cookies.get('selected-clinic-id')?.value;
     activeClinicId = selectedClinicId || null;
+  }
+
+  // ── CLINICAL-ONLY GATE (activity 20, T-19b) ──
+  // A personal-trainer studio has no clinical module: SOAP notes, protocols,
+  // the rehab agent and clinical AI are hidden in the nav (T-19a) and blocked
+  // here by URL too. SUPERADMIN is exempt (platform-wide view); clinics are
+  // unaffected. Fail-safe: gate only when the tenant is explicitly PERSONAL.
+  if (
+    userRole !== 'SUPERADMIN' &&
+    isPersonalTenant(token.clinicType as string | null) &&
+    isClinicalOnlyRoute(pathname)
+  ) {
+    if (pathname.startsWith('/api')) {
+      return new NextResponse(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json', ...SECURITY_HEADERS },
+      });
+    }
+    return NextResponse.redirect(new URL('/admin', request.url));
   }
 
   // Check SUPERADMIN routes

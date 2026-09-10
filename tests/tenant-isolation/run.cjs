@@ -86,6 +86,22 @@ function loadFixtureIds() {
   })();
 }
 
+// Throwaway accounts the register scenarios create; removed in cleanup.
+const THROWAWAY_EMAILS = [
+  "qa.reg-none@example.test",
+  "qa.reg-slugb@example.test",
+  "qa.reg-bad@example.test",
+];
+async function deleteUsers(emails) {
+  const { PrismaClient } = require("@prisma/client");
+  const prisma = new PrismaClient();
+  try {
+    await prisma.user.deleteMany({ where: { email: { in: emails } } });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 const results = [];
 function check(name, pass, detail) {
   results.push({ name, pass, detail });
@@ -157,8 +173,62 @@ async function main() {
       cookie: `${adminA.cookie}; impersonate-patient-id=${ids.alunoB}; impersonate-admin-id=${ids.pacienteA}`,
     });
     check("IMP admin A forged impersonation of student B", forged.status === baseline.status && forged.body === baseline.body, `baseline ${baseline.status}, forged ${forged.status}`);
+
+    // ── T-19b: clinical-only routes blocked for a personal-trainer tenant ──
+    // trainerB is ADMIN of qa-studio-pt (PERSONAL_TRAINER); adminA is a clinic.
+    // G1 — personal admin hitting a clinical page is bounced to /admin.
+    r = await request("GET", "/admin/clinical-notes", { cookie: trainerB.cookie });
+    check("G1 personal admin → /admin/clinical-notes redirected", (r.status === 307 || r.status === 302) && (r.headers.location || "").endsWith("/admin"), `status ${r.status}, loc ${r.headers.location || "-"}`);
+
+    // G2/G3 — clinical APIs answer 404 for a personal tenant (no oracle).
+    r = await request("GET", "/api/admin/clinical-notes", { cookie: trainerB.cookie });
+    check("G2 personal admin → /api/admin/clinical-notes 404", r.status === 404, `status ${r.status}`);
+    r = await request("GET", "/api/admin/protocols", { cookie: trainerB.cookie });
+    check("G3 personal admin → /api/admin/protocols 404", r.status === 404, `status ${r.status}`);
+
+    // G4 (control) — a clinic admin is NOT gated: the same page is not bounced.
+    r = await request("GET", "/admin/clinical-notes", { cookie: adminA.cookie });
+    check("G4 clinic admin → /admin/clinical-notes not gated", r.status !== 307 || !(r.headers.location || "").endsWith("/admin"), `status ${r.status}, loc ${r.headers.location || "-"}`);
+
+    // G5 — the per-patient clinical GENERATORS are blocked for a personal tenant,
+    // not just the list pages (the gate must wall off the clinical module itself).
+    r = await request("GET", `/api/admin/patients/${ids.alunoB}/protocol`, { cookie: trainerB.cookie });
+    check("G5 personal admin → patient protocol generator 404", r.status === 404, `status ${r.status}`);
+
+    // G6 (control) — a clinic admin reaches the same generator (gate is type-scoped).
+    r = await request("GET", `/api/admin/patients/${ids.pacienteA}/protocol`, { cookie: adminA.cookie });
+    check("G6 clinic admin → patient protocol generator not gated", r.status !== 404, `status ${r.status}`);
+
+    // ISO-10 — mobile register never creates a tenant-less account.
+    // No slug → the default tenant (never clinicId: null).
+    await deleteUsers(THROWAWAY_EMAILS);
+    r = await request("POST", "/api/mobile/register", {
+      body: { firstName: "Reg", lastName: "None", email: "qa.reg-none@example.test", password: PASSWORD },
+    });
+    let regUser = (() => { try { return JSON.parse(r.body).user; } catch { return null; } })();
+    // The ISO-10 invariant is "never a tenant-less account": either a tenant is
+    // resolved (201 + clinicId, when DEFAULT_CLINIC_SLUG is set) or it fails
+    // closed (non-201, no account). Never 201 with clinicId null. This holds
+    // regardless of whether the server env pins a default tenant.
+    const okDefault = r.status === 201 && !!regUser?.clinicId;
+    const okFailClosed = r.status !== 201 && !regUser;
+    check("ISO-10a register w/o slug → tenant or fail-closed (never null)", okDefault || okFailClosed, `status ${r.status}, clinicId ${regUser?.clinicId ?? "null"}`);
+
+    // Explicit slug → exactly that tenant.
+    r = await request("POST", "/api/mobile/register", {
+      body: { firstName: "Reg", lastName: "SlugB", email: "qa.reg-slugb@example.test", password: PASSWORD, tenantSlug: "qa-studio-pt" },
+    });
+    regUser = (() => { try { return JSON.parse(r.body).user; } catch { return null; } })();
+    check("ISO-10b register w/ slug → that tenant", r.status === 201 && regUser?.clinicSlug === "qa-studio-pt", `status ${r.status}, slug ${regUser?.clinicSlug ?? "null"}`);
+
+    // Unknown slug → 404, no account created.
+    r = await request("POST", "/api/mobile/register", {
+      body: { firstName: "Reg", lastName: "Bad", email: "qa.reg-bad@example.test", password: PASSWORD, tenantSlug: "does-not-exist-xyz" },
+    });
+    check("ISO-10c register w/ unknown slug → 404", r.status === 404, `status ${r.status}`);
   } finally {
     console.log("\nCleaning up…");
+    await deleteUsers(THROWAWAY_EMAILS);
     execFileSync("node", [path.join(ROOT, "scripts", "qa", "tenant-cleanup.cjs")], { stdio: "ignore" });
   }
 

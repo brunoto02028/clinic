@@ -25,7 +25,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Turnstile } from "@/components/turnstile";
 
-export default function SimplifiedSignupForm() {
+interface SimplifiedSignupFormProps {
+  /** When the account is joining a specific tenant (via /join/[slug]). */
+  tenantSlug?: string;
+  tenantName?: string;
+}
+
+export default function SimplifiedSignupForm({ tenantSlug, tenantName }: SimplifiedSignupFormProps = {}) {
   const router = useRouter();
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
@@ -129,6 +135,7 @@ export default function SimplifiedSignupForm() {
           preferredLocale: locale,
           turnstileToken,
           website,
+          ...(tenantSlug ? { tenantSlug } : {}),
         }),
       });
 
@@ -168,7 +175,14 @@ export default function SimplifiedSignupForm() {
               {isPt ? "Criar Conta" : "Create Account"}
             </CardTitle>
           </div>
-          
+
+          {tenantName && (
+            <p className="text-sm text-muted-foreground">
+              {isPt ? "Você está entrando em " : "You're joining "}
+              <strong className="text-foreground">{tenantName}</strong>
+            </p>
+          )}
+
           {/* Progress */}
           <div className="space-y-3">
             <div className="flex justify-between items-center text-sm">
@@ -412,6 +426,14 @@ export default function SimplifiedSignupForm() {
             onClick={async () => {
               setIsGoogleLoading(true);
               try {
+                // Carry the tenant across the OAuth round-trip (consumed and
+                // cleared at account creation in auth-options). Short-lived,
+                // lax, and Secure over https so a stale value can't linger or
+                // ride plain HTTP.
+                if (tenantSlug) {
+                  const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; secure" : "";
+                  document.cookie = `join_tenant=${encodeURIComponent(tenantSlug)}; path=/; max-age=300; samesite=lax${secure}`;
+                }
                 await signIn("google", { callbackUrl: "/dashboard" });
               } catch {
                 setError(isPt ? "Erro ao conectar com Google" : "Failed to connect with Google");

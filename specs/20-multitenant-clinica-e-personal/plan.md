@@ -79,7 +79,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 | T-N | Trilha | Nome | Status |
 |-----|--------|------|--------|
 | T-12 | PLAT | `Clinic.type` + tenant padrão explícito; fim dos `findFirst` | base concluída |
-| T-13 | PLAT | Entrada do aluno no tenant (`/join/[slug]`, Google, app, convite) | pendente |
+| T-13 | PLAT | Entrada do aluno no tenant (`/join/[slug]`, Google, app, convite) | concluído |
 | T-14 | PLAT | Backfill de `clinicId` na agenda + obrigatório nas escritas | pendente |
 | T-15 | PLAT | Gestão de tenants (SUPERADMIN) + limites do plano | pendente |
 | T-16 | PLAT | Stripe Connect (onboarding + checkouts do tenant) | pendente |
@@ -90,7 +90,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 |-----|--------|------|--------|
 | T-17 | PLAT | Marca por tenant (área logada, login, e-mails, termos) | pendente |
 | T-18 | PLAT | Vocabulário por tipo de tenant | mecanismo + navegação; telas pendentes |
-| T-19 | PT | Onboarding e módulos do tenant personal | 19a: nav gating; 19b (onboarding+server gating) pendente |
+| T-19 | PT | Onboarding e módulos do tenant personal | 19a: nav gating ✓; 19b: server gating ✓ (QA+review); questionário + catálogo pendentes |
 
 ### Fase 4 — Produto do personal
 

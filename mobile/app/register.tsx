@@ -15,6 +15,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [professionalCode, setProfessionalCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +31,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await register(firstName.trim(), lastName.trim(), email.trim(), password);
+      await register(firstName.trim(), lastName.trim(), email.trim(), password, professionalCode.trim() || undefined);
       router.replace("/(app)/module-select");
     } catch (e) {
       setError(
@@ -118,6 +119,14 @@ export default function Register() {
               onChangeText={setConfirmPassword}
               secureTextEntry
               testID="register-confirm-password"
+            />
+            <Input
+              label="Professional code (optional)"
+              placeholder="Your trainer or clinic code"
+              value={professionalCode}
+              onChangeText={setProfessionalCode}
+              autoCapitalize="none"
+              testID="register-professional-code"
             />
 
             <View style={{ marginTop: 10 }}>

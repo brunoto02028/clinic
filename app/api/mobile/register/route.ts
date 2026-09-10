@@ -6,6 +6,7 @@ import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { signAccessToken, issueRefreshToken } from "@/lib/mobile-tokens";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
+import { resolveJoinTenant } from "@/lib/join-tenant";
 import type { ValidatedUser } from "@/lib/auth-credentials";
 
 export function OPTIONS() {
@@ -21,6 +22,9 @@ export async function POST(request: NextRequest) {
     const lastName = body?.lastName?.trim();
     const email = body?.email?.trim()?.toLowerCase();
     const password = body?.password;
+    // "código do profissional" — the studio/clinic the student is joining.
+    // Absent → the default tenant; present but unknown/inactive → 404.
+    const tenantSlug = body?.tenantSlug?.trim() || null;
 
     if (!firstName || !lastName || !email || !password) {
       return corsJson({ error: "All fields are required" }, { status: 400 });
@@ -30,6 +34,14 @@ export async function POST(request: NextRequest) {
       return corsJson(
         { error: "Password must be at least 8 characters" },
         { status: 400 }
+      );
+    }
+
+    const tenant = await resolveJoinTenant(tenantSlug);
+    if (!tenant) {
+      return corsJson(
+        { error: tenantSlug ? "Invalid professional code" : "Registration is not available" },
+        { status: tenantSlug ? 404 : 503 }
       );
     }
 
@@ -51,6 +63,7 @@ export async function POST(request: NextRequest) {
         lastName,
         role: UserRole.PATIENT,
         isActive: true,
+        clinicId: tenant.clinicId,
       },
     });
 
@@ -61,9 +74,10 @@ export async function POST(request: NextRequest) {
       role: user.role,
       firstName: user.firstName,
       lastName: user.lastName,
-      clinicId: null,
-      clinicName: null,
-      clinicSlug: null,
+      clinicId: tenant.clinicId,
+      clinicName: tenant.name,
+      clinicSlug: tenant.slug,
+      clinicType: tenant.type,
       permissions: {
         canManageUsers: user.canManageUsers,
         canManageAppointments: user.canManageAppointments,

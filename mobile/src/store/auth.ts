@@ -11,7 +11,7 @@ interface AuthState {
   user: AuthUser | null;
   bootstrap: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
+  register: (firstName: string, lastName: string, email: string, password: string, tenantSlug?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -41,8 +41,8 @@ export const useAuth = create<AuthState>((set) => ({
     set({ status: "authenticated", user: res.user });
   },
 
-  register: async (firstName, lastName, email, password) => {
-    const res = await registerRequest(firstName, lastName, email, password);
+  register: async (firstName, lastName, email, password, tenantSlug) => {
+    const res = await registerRequest(firstName, lastName, email, password, tenantSlug);
     await tokenStorage.save(res.accessToken, res.refreshToken);
     set({ status: "authenticated", user: res.user });
   },

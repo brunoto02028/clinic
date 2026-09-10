@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { sysLog, logAudit } from "@/lib/system-logger";
 import { validateCredentials } from "@/lib/auth-credentials";
 import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
+import { resolveJoinTenant } from "@/lib/join-tenant";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -86,11 +87,26 @@ export const authOptions: NextAuthOptions = {
           const firstName = (profile as any).given_name || nameParts[0] || "Patient";
           const lastName = (profile as any).family_name || nameParts.slice(1).join(" ") || "";
 
-          // Assign to default clinic
-          const defaultClinic = await prisma.clinic.findFirst({
-            where: { isActive: true },
-            select: { id: true },
-          });
+          // Resolve the tenant: the /join/[slug] page drops a `join_tenant`
+          // cookie before the OAuth round-trip; without it, the default tenant.
+          let joinSlug: string | null = null;
+          try {
+            const { cookies } = await import("next/headers");
+            const jar = cookies();
+            joinSlug = jar.get("join_tenant")?.value || null;
+            // Consume once: clear so a stale value can't misassign a later
+            // Google sign-up to a previously-visited studio.
+            if (joinSlug) {
+              try { jar.delete("join_tenant"); } catch {}
+            }
+          } catch {
+            // cookies() unavailable in this context — fall back to default tenant
+          }
+          const tenant = await resolveJoinTenant(joinSlug);
+          if (!tenant) {
+            console.error("[AUTH] Google signIn: no tenant resolved");
+            return "/login?error=NoTenant";
+          }
 
           const newUser = await prisma.user.create({
             data: {
@@ -104,7 +120,7 @@ export const authOptions: NextAuthOptions = {
               preferredLocale: "en-GB",
               // consentAcceptedAt intentionally NOT set — patient must explicitly
               // accept clinical data consent on /dashboard/consent (GDPR)
-              clinicId: defaultClinic?.id || null,
+              clinicId: tenant.clinicId,
             },
           });
 

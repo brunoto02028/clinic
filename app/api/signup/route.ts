@@ -7,12 +7,13 @@ import { UserRole } from "@prisma/client";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { verifyTurnstile, getClientIp } from "@/lib/turnstile";
 import { rateLimit } from "@/lib/rate-limit";
+import { resolveJoinTenant } from "@/lib/join-tenant";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, firstName, lastName, phone, role, preferredLocale } = body ?? {};
+    const { email, password, firstName, lastName, phone, role, preferredLocale, tenantSlug } = body ?? {};
 
     // ── Anti-bot (activity 16): honeypot is cheap, so check it first. ──
     const ip = getClientIp(request);
@@ -96,11 +97,15 @@ export async function POST(request: NextRequest) {
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Assign to default clinic (first active clinic in the system)
-    const defaultClinic = await prisma.clinic.findFirst({
-      where: { isActive: true },
-      select: { id: true },
-    });
+    // Resolve the tenant the account joins: an explicit tenantSlug names a
+    // studio/clinic (404 if unknown/inactive), else the default tenant.
+    const tenant = await resolveJoinTenant(tenantSlug?.trim() || null);
+    if (!tenant) {
+      return NextResponse.json(
+        { error: tenantSlug ? "Invalid professional code" : "Registration is not available" },
+        { status: tenantSlug ? 404 : 503 }
+      );
+    }
 
     const user = await prisma.user.create({
       data: {
@@ -111,7 +116,7 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
         role: userRole,
         preferredLocale: preferredLocale || "en-GB",
-        clinicId: defaultClinic?.id || null,
+        clinicId: tenant.clinicId,
         // Account disabled until verified
         isActive: false,
       },

@@ -33,8 +33,12 @@ function nextMonday(hourUtc) {
 async function main() {
   const hash = await bcrypt.hash(PASSWORD, 12);
 
-  const clinic = (slug, name) =>
-    prisma.clinic.upsert({ where: { slug }, update: { isActive: true }, create: { slug, name } });
+  const clinic = (slug, name, type = "CLINIC") =>
+    prisma.clinic.upsert({
+      where: { slug },
+      update: { isActive: true, type },
+      create: { slug, name, type },
+    });
 
   const user = (email, role, clinicId, extra = {}) => {
     const data = {
@@ -56,8 +60,8 @@ async function main() {
   const findOrCreate = async (model, where, data) =>
     (await prisma[model].findFirst({ where })) || prisma[model].create({ data });
 
-  const clinicA = await clinic("qa-clinic-a", "QA Clinic A");
-  const clinicB = await clinic("qa-studio-pt", "QA Studio PT");
+  const clinicA = await clinic("qa-clinic-a", "QA Clinic A", "CLINIC");
+  const clinicB = await clinic("qa-studio-pt", "QA Studio PT", "PERSONAL_TRAINER");
 
   const superadmin = await user("qa.superadmin@example.test", "SUPERADMIN", null);
   const adminA = await user("qa.admina@example.test", "ADMIN", clinicA.id);

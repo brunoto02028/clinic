@@ -24,13 +24,15 @@ export function registerRequest(
   firstName: string,
   lastName: string,
   email: string,
-  password: string
+  password: string,
+  tenantSlug?: string
 ): Promise<AuthResponse> {
   return postJson<AuthResponse>("/api/mobile/register", {
     firstName,
     lastName,
     email,
     password,
+    ...(tenantSlug ? { tenantSlug } : {}),
   });
 }
 

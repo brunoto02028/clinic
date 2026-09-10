@@ -1,8 +1,11 @@
 # T-13: Entrada do aluno no tenant
 
-**Status:** pendente
+**Status:** concluído
 **Trilha:** PLATAFORMA
 **Depende de:** T-12
+
+> QA aprovado (qa/report-t-13.md, 6/6) + code review feito. Fecha ISO-10.
+> App (item 4): campo "Professional code" adicionado; não verificável localmente (mobile/ sem node_modules).
 
 ## Objetivo
 O aluno entra no tenant certo por qualquer porta (achado A2; ISO-10 da atividade 19).
@@ -15,5 +18,5 @@ O aluno entra no tenant certo por qualquer porta (achado A2; ISO-10 da atividade
 5. Slug inexistente ou tenant inativo → 404.
 
 ## Critérios de aceite
-- [ ] Cenários da T-13 passando.
-- [ ] Regressão: o signup atual da BPR fica igual.
+- [x] Cenários da T-13 passando.
+- [x] Regressão: o signup atual da BPR fica igual.
