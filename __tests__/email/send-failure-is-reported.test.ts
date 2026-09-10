@@ -9,10 +9,6 @@
  * itself, and the field that broke must refuse the value that broke it.
  */
 
-// These tests drive the real Resend call path, which lib/outbound-guard.ts
-// short-circuits outside production.
-process.env.OUTBOUND_MODE = "live";
-
 const mockSend = jest.fn();
 
 jest.mock("resend", () => ({
@@ -28,6 +24,18 @@ jest.mock("@/lib/system-config", () => ({
 import { sendEmail } from "@/lib/email";
 
 describe("sendEmail — a rejected send must not report success", () => {
+  // These tests drive the real Resend call path, which lib/outbound-guard.ts
+  // short-circuits outside production. Restored afterwards so the setting
+  // cannot leak into whatever file this Jest worker runs next.
+  const savedMode = process.env.OUTBOUND_MODE;
+  beforeAll(() => {
+    process.env.OUTBOUND_MODE = "live";
+  });
+  afterAll(() => {
+    if (savedMode === undefined) delete process.env.OUTBOUND_MODE;
+    else process.env.OUTBOUND_MODE = savedMode;
+  });
+
   beforeEach(() => {
     mockSend.mockReset();
     jest.spyOn(console, "error").mockImplementation(() => {});

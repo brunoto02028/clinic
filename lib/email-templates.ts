@@ -744,6 +744,11 @@ export async function sendTemplatedEmail(
     return false;
   }
 
+  if (String((result as any)?.data?.id || "").startsWith("outbound-sink")) {
+    console.log(`[email-templates] "${slug}" to ${to} was dropped by the outbound guard — not filed as sent`);
+    return true;
+  }
+
   // Log outbound email
   try {
     await (prisma as any).emailMessage.create({
