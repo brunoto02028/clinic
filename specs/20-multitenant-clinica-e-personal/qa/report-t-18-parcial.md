@@ -28,3 +28,14 @@
 
 ## Restante (cauda longa documentada)
 Literais **fixos no código** (não passam pelo helper i18n) ainda aparecem em pontos isolados: botão "Add Patient", contador "N patients", selo "No Screening", placeholders/aria-labels espalhados. Fechar 100% é caçar esses literais tela a tela — incremental, de menor valor (o tenant já lê como estúdio nos rótulos, títulos, nav, header e busca). Fica como continuação da T-18.
+
+## Cauda longa — telas-núcleo fechadas
+Os literais fixos (que não passam pelo helper i18n) foram envolvidos em `relabel` nas telas que um personal usa no dia a dia:
+- **Lista de alunos** (`patients-list.tsx`): "Add Patient"→"Add Student", contador "N patients"→"students", estados vazios, "No Screening"→"No Readiness", "Patient Created!", "Delete Patient".
+- **Agendamentos** (`appointments/page.tsx`): busca "Search by patient or treatment...", "Edit Appointment"→"Edit Session", "Treatment Type"→"Workout Type".
+
+## Regra para o restante da cauda (decisão de escopo)
+A varredura achou ~150 literais em ~30 arquivos. A maioria está em **módulos só-clínicos** — foot-scans, scans, clinical-ai, recordings, treatment-types clínicos, o `patient-detail` (prontuário: SOAP, triagem, diagnóstico). Para um tenant personal esses módulos devem ser **escondidos pela T-19**, não relabelados — relabelar tela que o personal nunca vê é esforço perdido e ainda deixa "meia-tradução". Então:
+- **Telas compartilhadas/núcleo do personal:** relabel (feito: nav, header, dashboard, alunos, agenda).
+- **Telas só-clínicas:** T-19 as desliga para o personal; sem relabel.
+- **Telas de admin de baixo tráfego** (settings, email, service-pricing…): literais residuais tratáveis de forma incremental, sem urgência.

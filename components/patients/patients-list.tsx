@@ -217,13 +217,13 @@ export default function PatientsList() {
           />
         </div>
         <Button className="gap-2 shrink-0" onClick={() => { setForm({ firstName: '', lastName: '', email: '', phone: '', password: '' }); setCreatedInfo(null); setShowCreateDialog(true); }}>
-          <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add Patient</span><span className="sm:hidden">Add</span>
+          <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">{relabel("Add Patient")}</span><span className="sm:hidden">Add</span>
         </Button>
       </div>
 
       {/* Stats */}
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span>{patients.length} patient{patients.length !== 1 ? "s" : ""}</span>
+        <span>{patients.length} {relabel(patients.length !== 1 ? "patients" : "patient")}</span>
         {searchQuery && <span>· {filteredPatients.length} matching</span>}
       </div>
 
@@ -282,10 +282,10 @@ export default function PatientsList() {
           <CardContent className="py-12 text-center">
             <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">
-              {searchQuery ? "No patients match your search" : "No patients registered"}
+              {relabel(searchQuery ? "No patients match your search" : "No patients registered")}
             </h3>
             <p className="text-muted-foreground text-sm">
-              {searchQuery ? "Try a different search term." : "Add a patient to get started."}
+              {relabel(searchQuery ? "Try a different search term." : "Add a patient to get started.")}
             </p>
           </CardContent>
         </Card>
@@ -327,7 +327,7 @@ export default function PatientsList() {
                             </Badge>
                           ) : (
                             <Badge variant="warning" className="gap-0.5 text-[10px] hidden sm:flex">
-                              <AlertCircle className="h-2.5 w-2.5" /> No Screening
+                              <AlertCircle className="h-2.5 w-2.5" /> {relabel("No Screening")}
                             </Badge>
                           )}
                         </div>
@@ -431,7 +431,7 @@ export default function PatientsList() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle className="h-5 w-5 text-green-600" />
-                  <p className="font-semibold text-green-800">Patient Created!</p>
+                  <p className="font-semibold text-green-800">{relabel("Patient Created!")}</p>
                 </div>
                 <div className="space-y-2 text-sm">
                   <p><strong>Name:</strong> {createdInfo.name}</p>
@@ -445,7 +445,7 @@ export default function PatientsList() {
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
-                      <p className="text-[10px] text-amber-600 mt-1">Share this with the patient.</p>
+                      <p className="text-[10px] text-amber-600 mt-1">{relabel("Share this with the patient.")}</p>
                     </div>
                   )}
                 </div>
@@ -588,7 +588,7 @@ export default function PatientsList() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Patient</AlertDialogTitle>
+            <AlertDialogTitle>{relabel("Delete Patient")}</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to permanently delete <strong>{deletingPatient?.firstName} {deletingPatient?.lastName}</strong>?
               This will remove all their data including screenings, assessments, and documents. This action cannot be undone.

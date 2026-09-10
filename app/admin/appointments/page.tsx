@@ -606,7 +606,7 @@ export default function AdminAppointmentsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by patient or treatment..."
+            placeholder={relabel("Search by patient or treatment...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -919,7 +919,7 @@ export default function AdminAppointmentsPage() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Edit Appointment</DialogTitle>
+            <DialogTitle>{relabel("Edit Appointment")}</DialogTitle>
             <DialogDescription>
               Update the appointment details below.
             </DialogDescription>
@@ -946,7 +946,7 @@ export default function AdminAppointmentsPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Treatment Type</label>
+              <label className="text-sm font-medium">{relabel("Treatment Type")}</label>
               <Input
                 type="text"
                 value={editForm.treatmentType}
