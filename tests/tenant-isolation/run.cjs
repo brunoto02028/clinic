@@ -319,6 +319,23 @@ async function main() {
       check("M5 clinic patient → mobile workouts 404", m.status === 404, `status ${m.status}`);
     }
 
+    // ── T-24: trainer reads the student's progress (tenant-scoped) ──
+    // Guarded like the logging above (needs weId) so P1's "≥1 session" holds.
+    if (workoutId && weId) {
+      // P1 — trainer sees progress reflecting the logged sessions (S2/M4 logged some).
+      let p = await request("GET", `/api/admin/workouts/progress?studentId=${ids.alunoB}`, { cookie: trainerB.cookie });
+      let prog = (() => { try { return JSON.parse(p.body); } catch { return null; } })();
+      check("P1 trainer reads student progress", p.status === 200 && (prog?.adherence?.doneLast4Weeks ?? 0) >= 1 && Array.isArray(prog?.recent) && prog.recent.length >= 1, `status ${p.status}, done ${prog?.adherence?.doneLast4Weeks}`);
+
+      // P2 — clinic admin (TRAINING off) can't read training progress → 404.
+      p = await request("GET", `/api/admin/workouts/progress?studentId=${ids.alunoB}`, { cookie: adminA.cookie });
+      check("P2 clinic admin → progress 404", p.status === 404, `status ${p.status}`);
+
+      // P3 — trainer asking for a student outside the tenant → 404.
+      p = await request("GET", `/api/admin/workouts/progress?studentId=${ids.pacienteA}`, { cookie: trainerB.cookie });
+      check("P3 trainer → foreign student progress 404", p.status === 404, `status ${p.status}`);
+    }
+
     // ISO-10 — mobile register never creates a tenant-less account.
     // No slug → the default tenant (never clinicId: null).
     await deleteUsers(THROWAWAY_EMAILS);

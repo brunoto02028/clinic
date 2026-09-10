@@ -15,6 +15,7 @@ import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
+import WorkoutProgress from "@/components/workouts/workout-progress";
 import { useVocab } from "@/hooks/use-vocab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2030,7 +2031,8 @@ export default function PatientProfilePage() {
         </TabsContent>
 
         {isPersonal && (
-          <TabsContent value="workouts" className="mt-4">
+          <TabsContent value="workouts" className="mt-4 space-y-4">
+            <WorkoutProgress studentId={patientId} />
             <WorkoutBuilder studentId={patientId} />
           </TabsContent>
         )}
