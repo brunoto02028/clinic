@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import OnboardingWizard from "@/components/dashboard/onboarding-wizard";
 
@@ -72,7 +73,8 @@ interface PortalConfig {
 
 export default function PatientDashboard() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isPreview = pathname?.startsWith("/patient-preview");

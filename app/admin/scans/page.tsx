@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useVocab } from "@/hooks/use-vocab";
 import { useSession } from 'next-auth/react';
 import { QRCodeSVG } from 'qrcode.react';
 import nextDynamic from 'next/dynamic';
@@ -126,7 +127,8 @@ const STATUS_OPTIONS = [
 
 export default function AdminScansPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const { data: session } = useSession() || {};
   const { toast } = useToast();
 

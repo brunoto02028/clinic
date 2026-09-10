@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 
 interface ServicePrice {
@@ -53,7 +54,8 @@ export default function PatientPlansPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
 
   useEffect(() => {
     Promise.all([

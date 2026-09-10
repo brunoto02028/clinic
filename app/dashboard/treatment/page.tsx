@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
 import {
@@ -64,7 +65,8 @@ const TYPE_LABELS_PT: Record<string, string> = {
 
 export default function PatientTreatmentPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const isPt = locale === "pt-BR";
   const [protocols, setProtocols] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

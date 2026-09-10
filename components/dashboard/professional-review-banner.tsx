@@ -2,6 +2,7 @@
 
 import { UserCheck } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 
 interface ProfessionalReviewBannerProps {
@@ -11,7 +12,8 @@ interface ProfessionalReviewBannerProps {
 
 export default function ProfessionalReviewBanner({ descriptionKey = "review.description" }: ProfessionalReviewBannerProps) {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
 
   return (
     <div className="flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 sm:p-4">

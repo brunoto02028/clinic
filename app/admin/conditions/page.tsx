@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { Plus, Trash2, Edit2, Loader2, Search, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,8 @@ interface Condition {
 
 export default function ConditionsPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const { toast } = useToast();
 
   const [conditions, setConditions] = useState<Condition[]>([]);

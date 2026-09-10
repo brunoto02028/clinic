@@ -37,6 +37,7 @@ import {
 import { ToastAction } from "@/components/ui/toast";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { regionName, regionIcon, ORDERED_REGION_KEYS } from "@/lib/exercise-regions";
 
@@ -98,7 +99,8 @@ export default function PatientExercisesPage() {
   const { locale } = useLocale();
   const { toast } = useToast();
   const isPt = locale === "pt-BR";
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const DIFFICULTIES = isPt ? DIFFICULTIES_PT : DIFFICULTIES_EN;
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);

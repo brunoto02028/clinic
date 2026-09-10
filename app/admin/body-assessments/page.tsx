@@ -109,6 +109,7 @@ import {
   Save,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { BodyCapture, BodyCaptureResult } from "@/components/body-assessment/body-capture";
 import { RemoteCaptureSession } from "@/components/body-assessment/remote-capture-session";
@@ -216,7 +217,8 @@ const STATUS_CONFIG: Record<string, { label: string; labelPt: string; color: str
 
 export default function AdminBodyAssessmentsPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

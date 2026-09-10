@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Activity, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import ModuleGate from "@/components/dashboard/module-gate";
 import MobilePageHeader from "@/components/dashboard/mobile-page-header";
@@ -26,7 +27,8 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const isPatientPreview = forcePatientMode || searchParams?.get("preview") === "patient";
   const [mounted, setMounted] = useState(false);
   const { locale, setLocale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
 
   // Impersonation detection
   const [isImpersonating, setIsImpersonating] = useState(false);

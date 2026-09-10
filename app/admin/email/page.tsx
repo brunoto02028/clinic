@@ -10,6 +10,7 @@ import {
   CheckCheck, MailX, Eraser, Image as ImageIcon, Phone, AtSign,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,7 +111,8 @@ function buildSignatureHtml(sig: EmailSignature, logoUrl?: string): string {
 
 export default function EmailPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [folder, setFolder] = useState("INBOX");
   const [messages, setMessages] = useState<EmailMsg[]>([]);
   const [folderCounts, setFolderCounts] = useState<FolderCounts>({ INBOX: 0, SENT: 0, DRAFT: 0, SPAM: 0, TRASH: 0 });

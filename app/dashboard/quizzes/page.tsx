@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import {
   Loader2, BookOpen, CheckCircle2, Trophy, ChevronRight, ArrowLeft, XCircle,
@@ -47,7 +48,8 @@ type View = "list" | "quiz" | "result";
 
 export default function PatientQuizzesPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const isPt = locale === "pt-BR";
   const { toast } = useToast();
 

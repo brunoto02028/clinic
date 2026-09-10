@@ -59,6 +59,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 
 interface Patient {
@@ -121,7 +122,8 @@ const statusColors: Record<string, string> = {
 
 export default function AdminTreatmentPlansPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [plans, setPlans] = useState<TreatmentPlan[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [treatmentTypes, setTreatmentTypes] = useState<TreatmentType[]>([]);

@@ -8,6 +8,7 @@ import {
   PenSquare, CheckCircle, Clock, Star, BarChart3,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +44,8 @@ const TYPE_META: Record<string, { label: string; icon: any; colour: string }> = 
 
 export default function EducationPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [content, setContent] = useState<EduContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QUIZ_QUESTIONS, getArchetype } from "@/lib/journey";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 
 type Stage = "welcome" | "quiz" | "result";
@@ -16,7 +17,8 @@ type Stage = "welcome" | "quiz" | "result";
 export default function QuizPage() {
   const router = useRouter();
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [stage, setStage] = useState<Stage>("welcome");
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: string; answer: string }[]>([]);

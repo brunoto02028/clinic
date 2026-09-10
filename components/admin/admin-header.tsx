@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Search, Bell } from "lucide-react";
 import { getActiveAdminNav } from "@/lib/admin-sections";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface AdminHeaderProps {
   user: {
@@ -17,23 +18,26 @@ interface AdminHeaderProps {
 export default function AdminHeader({ user }: AdminHeaderProps) {
   const pathname = usePathname();
   const { locale } = useLocale();
+  const { relabel } = useVocab();
   const activeNav = getActiveAdminNav(pathname);
   const isPt = locale?.startsWith("pt");
 
-  const sectionTitle = activeNav
-    ? isPt
-      ? activeNav.section.labelPt
-      : activeNav.section.label
-    : isPt
-      ? "Painel"
-      : "Dashboard";
+  const sectionTitle = relabel(
+    activeNav
+      ? isPt
+        ? activeNav.section.labelPt
+        : activeNav.section.label
+      : isPt
+        ? "Painel"
+        : "Dashboard"
+  );
 
   const initials = [user.firstName?.[0], user.lastName?.[0]]
     .filter(Boolean)
     .join("")
     .toUpperCase() || "?";
 
-  const searchPlaceholder = isPt ? "Buscar pacientes..." : "Search patients...";
+  const searchPlaceholder = relabel(isPt ? "Buscar pacientes..." : "Search patients...");
 
   return (
     <header className="admin-header">

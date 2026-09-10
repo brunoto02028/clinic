@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import {
   Plus, Trash2, Edit2, Loader2, Search, Sparkles, Eye, EyeOff,
@@ -72,7 +73,8 @@ interface Condition {
 
 export default function QuizzesPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const { toast } = useToast();
 
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);

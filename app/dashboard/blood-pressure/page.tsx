@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import ProfessionalReviewBanner from "@/components/dashboard/professional-review-banner";
 import { QRCameraFallback } from "@/components/ui/qr-camera-fallback";
@@ -535,7 +536,8 @@ function PPGReport({ analysis, systolic, diastolic, onClose, onRepeat, repeatCou
   repeatTotal?: number;
 }) {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const bpClass = classifyBP(systolic, diastolic);
   const BPIcon = bpClass.icon;
   const needsRepeat = analysis.confidence < 0.5 || analysis.rhythmClassification !== "NORMAL_SINUS";

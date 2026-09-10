@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import {
   Shield,
@@ -173,7 +174,8 @@ export default function AssessmentScreeningForm() {
   const { toast } = useToast();
   const router = useRouter();
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const isPt = locale === "pt-BR";
   const DRAFT_KEY = "screening-draft";
   const [formData, setFormData] = useState<ScreeningData>(initialData);

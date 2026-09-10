@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { usePatientAccess } from "@/hooks/use-patient-access";
 import { GATED_MODULES, getModuleByKey, HREF_MODULE_MAP, ALWAYS_VISIBLE_MODULES } from "@/lib/module-registry";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 
 interface ModuleGateProps {
@@ -25,7 +26,8 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
   const router = useRouter();
   const { access, loading, hasModule, canAccessHref } = usePatientAccess();
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);

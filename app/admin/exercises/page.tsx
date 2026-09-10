@@ -50,6 +50,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,7 +143,8 @@ interface CategoryNode extends FolderNode {
 
 export default function ExercisesPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

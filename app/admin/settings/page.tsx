@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { AIFieldHelper } from "@/components/admin/ai-field-helper";
 import { AIImageGenerator } from "@/components/admin/ai-image-generator";
@@ -172,7 +173,8 @@ function ArticlesListInline() {
 export default function AdminSettingsPage() {
   const router = useRouter();
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");

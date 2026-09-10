@@ -54,6 +54,7 @@ import {
   X,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { zonedTimeToUtc, getZonedDateTimeLocalString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 import { TREATMENT_OPTIONS } from "@/lib/types";
@@ -79,7 +80,8 @@ interface Patient { id: string; firstName: string; lastName: string; email: stri
 
 export default function AdminAppointmentsPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const isPt = locale === "pt-BR";
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);

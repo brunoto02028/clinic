@@ -4,22 +4,35 @@
 // chosen string when the tenant is a personal trainer. Whole-word, order
 // matters (plurals before singulars).
 //
-// EN uses "Client" for a personal trainer's customer — swap to "Student" here
-// if the studio prefers it.
+// A personal trainer's customer is a "Student" (EN) / "Aluno" (PT).
 
 type Pair = [RegExp, string];
 
-const wholeWord = (from: string): RegExp => new RegExp(`\\b${from}\\b`, "g");
+// Case-insensitive whole word; the replacement keeps the matched text's case
+// (Title, lower, or UPPER) so both "Patients" and "patients" are rewritten.
+const wholeWord = (from: string): RegExp => new RegExp(`\\b${from}\\b`, "gi");
+
+function matchCase(matched: string, replacement: string): string {
+  if (matched === matched.toLowerCase()) return replacement.toLowerCase();
+  if (matched === matched.toUpperCase()) return replacement.toUpperCase();
+  return replacement; // canonical Title case
+}
 
 const PERSONAL_EN: Pair[] = (
   [
-    ["Patients", "Clients"],
-    ["Patient", "Client"],
+    ["Patients", "Students"],
+    ["Patient", "Student"],
     ["Treatments", "Workouts"],
     ["Treatment", "Workout"],
     ["Clinical", "Training"],
+    ["Clinicians", "Trainers"],
+    ["Clinician", "Trainer"],
+    ["Clinics", "Studios"],
+    ["Clinic", "Studio"],
     ["Therapists", "Trainers"],
     ["Therapist", "Trainer"],
+    ["Appointments", "Sessions"],
+    ["Appointment", "Session"],
     ["Screening", "Readiness"],
     ["Protocols", "Programs"],
     ["Protocol", "Program"],
@@ -32,9 +45,16 @@ const PERSONAL_PT: Pair[] = (
     ["Paciente", "Aluno"],
     ["Tratamentos", "Treinos"],
     ["Tratamento", "Treino"],
+    ["Clínicos", "Personais"],
     ["Clínico", "Treino"],
+    ["Clínicas", "Estúdios"],
+    ["Clínica", "Estúdio"],
     ["Fisioterapeutas", "Personais"],
     ["Fisioterapeuta", "Personal"],
+    ["Consultas", "Sessões"],
+    ["Consulta", "Sessão"],
+    ["Agendamentos", "Sessões"],
+    ["Agendamento", "Sessão"],
     ["Triagem", "Prontidão"],
     ["Protocolos", "Programas"],
     ["Protocolo", "Programa"],
@@ -51,5 +71,5 @@ export function personalizeLabel(
 ): string {
   if (!opts.isPersonal) return text;
   const pairs = opts.isPt ? PERSONAL_PT : PERSONAL_EN;
-  return pairs.reduce((acc, [re, to]) => acc.replace(re, to), text);
+  return pairs.reduce((acc, [re, to]) => acc.replace(re, (m) => matchCase(m, to)), text);
 }

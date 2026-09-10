@@ -7,6 +7,7 @@ import {
   ChevronDown, X, FileImage, FileSpreadsheet, Presentation,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +58,8 @@ const FILE_ICONS: Record<string, any> = {
 
 export default function DocumentsPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [file, setFile] = useState<File | null>(null);
   const [action, setAction] = useState<Action>("convert");
   const [subType, setSubType] = useState<SubType>("markdown");

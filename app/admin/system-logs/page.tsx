@@ -28,6 +28,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,7 +117,8 @@ const CATEGORY_ICONS: Record<string, any> = {
 
 export default function SystemLogsPage() {
   const { locale } = useLocale();
-  const T = (key: string) => i18nT(key, locale);
+  const { relabel } = useVocab();
+  const T = (key: string) => relabel(i18nT(key, locale));
   const [tab, setTab] = useState<"system" | "audit">("system");
   const [logs, setLogs] = useState<(SystemLog | AuditLog)[]>([]);
   const [total, setTotal] = useState(0);
