@@ -1,6 +1,6 @@
 # T-7: Suíte automatizada de isolamento
 
-**Status:** pendente
+**Status:** concluído
 **Trilha:** PLATAFORMA
 **Depende de:** T-6
 
