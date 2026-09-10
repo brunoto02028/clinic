@@ -736,7 +736,7 @@ export default function PatientProfilePage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"><Shield className="h-3.5 w-3.5 mr-1" /> Permissões</Button></Link>
+          <Link href={`/admin/patients/${patientId}/permissions`}><Button variant="outline" size="sm" className="h-8 text-xs bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"><Shield className="h-3.5 w-3.5 mr-1" /> Permissions</Button></Link>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setActiveTab("docs")}><FileUp className="h-3.5 w-3.5 mr-1" /> Documents</Button>
 {!isPersonal && (() => {
             const latestDiag = data.diagnoses?.[0];
@@ -766,13 +766,13 @@ export default function PatientProfilePage() {
           </Badge>
         ) : (
           <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
-            <AlertCircle className="h-3 w-3 mr-1" /> Perfil Pendente
+            <AlertCircle className="h-3 w-3 mr-1" /> Profile Pending
           </Badge>
         )}
         {/* Password Status */}
         {p.hasPassword ? (
           <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
-            <Shield className="h-3 w-3 mr-1" /> Senha Definida
+            <Shield className="h-3 w-3 mr-1" /> Password Set
           </Badge>
         ) : (
           <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px]">
@@ -782,7 +782,7 @@ export default function PatientProfilePage() {
         {/* Consent Status */}
         {p.consentAcceptedAt ? (
           <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]">
-            <CheckCircle2 className="h-3 w-3 mr-1" /> Consentimento Aceito
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Consent Accepted
           </Badge>
         ) : (
           <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
@@ -798,15 +798,15 @@ export default function PatientProfilePage() {
           disabled={togglingAccess}
         >
           {togglingAccess ? <Loader2 className="h-3 w-3 animate-spin" /> : <Shield className="h-3 w-3" />}
-          {p.fullAccessOverride ? "Acesso Total Ativo" : "Liberar Acesso Total"}
+          {p.fullAccessOverride ? "Full Access Active" : "Grant Full Access"}
         </Button>
         {/* Reset Password */}
         <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-amber-500/40 text-amber-400 hover:bg-amber-500/10" onClick={() => setShowResetPw(!showResetPw)}>
-          <Lock className="h-3 w-3" /> Resetar Senha
+          <Lock className="h-3 w-3" /> Reset Password
         </Button>
         {/* View as Patient */}
         <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-blue-500/40 text-blue-400 hover:bg-blue-500/10" onClick={handleImpersonate}>
-          <Eye className="h-3 w-3" /> Ver como Paciente
+          <Eye className="h-3 w-3" /> View as Patient
         </Button>
       </div>
 
@@ -881,7 +881,7 @@ export default function PatientProfilePage() {
             const unreadMsg = data.unreadMessages ?? 0;
             return (
               <>
-                <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Resumo</TabsTrigger>
+                <TabsTrigger value="resumo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Summary</TabsTrigger>
                 {!isPersonal && (
                   <TabsTrigger value="screening" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                     Screening
@@ -890,21 +890,21 @@ export default function PatientProfilePage() {
                 )}
                 {!isPersonal && (
                   <TabsTrigger value="avaliacoes" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
-                    Avaliações
+                    Assessments
                     {pendingDiag > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white px-1">{pendingDiag}</span>}
                   </TabsTrigger>
                 )}
                 {!isPersonal && (
-                  <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Notas Clínicas</TabsTrigger>
+                  <TabsTrigger value="notas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Clinical Notes</TabsTrigger>
                 )}
-                <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documentos</TabsTrigger>
+                <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documents</TabsTrigger>
                 <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
-                  <MessageSquare className="h-3 w-3" />Mensagens
+                  <MessageSquare className="h-3 w-3" />Messages
                   {unreadMsg > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white px-1">{unreadMsg}</span>}
                 </TabsTrigger>
                 {!isPersonal && (
                   <TabsTrigger value="protocolo" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
-                    <ClipboardCheck className="h-3 w-3" />Protocolo
+                    <ClipboardCheck className="h-3 w-3" />Protocol
                     {(data.protocols?.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length ?? 0) > 0 && (
                       <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/60 text-[9px] font-bold text-white px-1">
                         {data.protocols.filter((pr: any) => pr.status === "DRAFT" || pr.status === "UNDER_REVIEW").length}
@@ -913,7 +913,7 @@ export default function PatientProfilePage() {
                   </TabsTrigger>
                 )}
                 <TabsTrigger value="exercicios" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
-                  <Dumbbell className="h-3 w-3" />Exercícios
+                  <Dumbbell className="h-3 w-3" />Exercises
                 </TabsTrigger>
                 {!isPersonal && (
                   <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
@@ -922,7 +922,7 @@ export default function PatientProfilePage() {
                 )}
                 {!isPersonal && (
                   <TabsTrigger value="evidencia" className="text-xs data-[state=active]:bg-bruno-turquoise/20 data-[state=active]:text-bruno-turquoise flex items-center gap-1">
-                    <Stethoscope className="h-3 w-3" />Evidência
+                    <Stethoscope className="h-3 w-3" />Evidence
                   </TabsTrigger>
                 )}
                 {isPersonal && (
@@ -1443,7 +1443,7 @@ export default function PatientProfilePage() {
         {/* ── SOAP Notes ── */}
         {/* Header with PDF export */}
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold text-muted-foreground">Notas SOAP &amp; Registos Clínicos</p>
+          <p className="text-xs font-semibold text-muted-foreground">SOAP Notes &amp; Clinical Records</p>
           <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={() => window.print()}>
             <FileText className="h-3 w-3" /> Exportar PDF
           </Button>
@@ -1492,7 +1492,7 @@ export default function PatientProfilePage() {
             </div>
             <EF label="S — Subjetivo (queixas do paciente)" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Queixas, sintomas relatados..." />
             <EF label="O — Objetivo (achados clínicos)" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Avaliação física, testes..." />
-            <EF label="A — Avaliação / Diagnóstico" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Hipótese diagnóstica, raciocínio clínico..." />
+            <EF label="A — Assessment / Diagnóstico" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Hipótese diagnóstica, raciocínio clínico..." />
             <EF label="P — Plano de Tratamento" value={newNote.plan} onChange={(v) => setNewNote({ ...newNote, plan: v })} placeholder="Intervenções, exercícios, próximos passos..." />
             <div className="flex gap-1.5 flex-wrap">
               <Button size="sm" className="h-7 text-xs" onClick={saveNewNote} disabled={saving}>{saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />} Guardar Nota</Button>
@@ -1591,7 +1591,7 @@ export default function PatientProfilePage() {
                 <div className="space-y-1.5 bg-muted/30 p-2 rounded">
                   <EF label="S — Subjetivo" value={noteForm.subjective} onChange={(v) => setNoteForm({ ...noteForm, subjective: v })} />
                   <EF label="O — Objetivo" value={noteForm.objective} onChange={(v) => setNoteForm({ ...noteForm, objective: v })} />
-                  <EF label="A — Avaliação" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
+                  <EF label="A — Assessment" value={noteForm.assessment} onChange={(v) => setNoteForm({ ...noteForm, assessment: v })} />
                   <EF label="P — Plano" value={noteForm.plan} onChange={(v) => setNoteForm({ ...noteForm, plan: v })} />
                   <div className="flex gap-1"><Button size="sm" className="h-6 text-[10px]" onClick={saveEditNote} disabled={saving}><Save className="h-2.5 w-2.5 mr-0.5" /> Save</Button><Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setEditingNoteId(null)}>Cancel</Button></div>
                 </div>
@@ -1599,7 +1599,7 @@ export default function PatientProfilePage() {
                 <>
                   {n.subjective && <div><p className="text-[9px] font-bold text-blue-400">S — Subjetivo</p><p className="text-[10px]">{n.subjective}</p></div>}
                   {n.objective && <div><p className="text-[9px] font-bold text-green-400">O — Objetivo</p><p className="text-[10px]">{n.objective}</p></div>}
-                  {n.assessment && <div><p className="text-[9px] font-bold text-amber-400">A — Avaliação</p><p className="text-[10px]">{n.assessment}</p></div>}
+                  {n.assessment && <div><p className="text-[9px] font-bold text-amber-400">A — Assessment</p><p className="text-[10px]">{n.assessment}</p></div>}
                   {n.plan && <div><p className="text-[9px] font-bold text-purple-400">P — Plano</p><p className="text-[10px]">{n.plan}</p></div>}
                 </>
               )}
@@ -1695,7 +1695,7 @@ export default function PatientProfilePage() {
         {showAtlasDoc && (
           <Card className="border-sky-500/40"><CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Bot className="h-4 w-4 text-sky-400" /> Criar Documento com Atlas</CardTitle></CardHeader>
             <CardContent className="space-y-2.5">
-              <p className="text-[11px] text-muted-foreground">O Atlas conhece todo o histórico clínico deste paciente e redige documentos profissionais prontos a enviar — cartas ao médico, pedidos de autorização, declarações, relatórios de encaminhamento, etc.</p>
+              <p className="text-[11px] text-muted-foreground">Atlas knows this patient's full clinical history and drafts professional, ready-to-send documents — letters to the GP, authorisation requests, statements, referral reports, etc.</p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-0.5"><Label className="text-[10px]">Tipo de documento</Label>
                   <select value={atlasDocForm.docKind} onChange={e => setAtlasDocForm(f => ({ ...f, docKind: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">
@@ -1704,7 +1704,7 @@ export default function PatientProfilePage() {
                 </div>
                 <div className="space-y-0.5"><Label className="text-[10px]">Idioma</Label>
                   <select value={atlasDocForm.language} onChange={e => setAtlasDocForm(f => ({ ...f, language: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs">
-                    <option value="pt">Português</option>
+                    <option value="pt">Portuguese</option>
                     <option value="en">English</option>
                   </select>
                 </div>
@@ -1720,10 +1720,10 @@ export default function PatientProfilePage() {
               </div>
               {atlasDocResult && (
                 <div className="border border-sky-500/30 rounded-lg p-3 space-y-2 bg-card">
-                  <div className="space-y-0.5"><Label className="text-[10px]">Título</Label>
+                  <div className="space-y-0.5"><Label className="text-[10px]">Title</Label>
                     <Input value={atlasDocResult.title} onChange={e => setAtlasDocResult(r => r ? { ...r, title: e.target.value } : r)} className="h-8 text-xs font-medium" />
                   </div>
-                  <div className="space-y-0.5"><Label className="text-[10px]">Conteúdo (editável)</Label>
+                  <div className="space-y-0.5"><Label className="text-[10px]">Content (editable)</Label>
                     <Textarea value={atlasDocResult.content} onChange={e => setAtlasDocResult(r => r ? { ...r, content: e.target.value } : r)} rows={16} className="text-xs font-mono leading-relaxed" />
                   </div>
                   <div className="flex gap-1.5 flex-wrap">
@@ -1792,13 +1792,13 @@ export default function PatientProfilePage() {
             <div className="border-dashed border rounded-xl p-10 text-center text-muted-foreground space-y-3">
               <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground/30" />
               <p className="font-medium text-sm">Nenhum protocolo de tratamento criado</p>
-              <p className="text-xs">Gere uma avaliação AI e depois crie o protocolo a partir da página de diagnóstico.</p>
+              <p className="text-xs">Generate an AI assessment, then create the protocol from the diagnosis page.</p>
               {data.diagnoses?.length > 0 && (
                 <Button variant="outline" size="sm" onClick={() => generateProtocol(data.diagnoses[0].id)} disabled={genProtocol}>
                   {genProtocol ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />} Gerar Protocolo
                 </Button>
               )}
-              <div><a href={`/admin/patients/${patientId}/diagnosis`} className="text-xs text-primary hover:underline">→ Ir para Avaliações & Diagnóstico</a></div>
+              <div><a href={`/admin/patients/${patientId}/diagnosis`} className="text-xs text-primary hover:underline">→ Go to Assessments & Diagnosis</a></div>
             </div>
           ) : data.protocols.map((pr: any) => {
             const STATUS_STEPS = ["DRAFT", "UNDER_REVIEW", "APPROVED", "SENT_TO_PATIENT"];
@@ -1876,7 +1876,7 @@ export default function PatientProfilePage() {
                 <div className="p-3 space-y-3">
                   {/* Summary */}
                   <div className="space-y-1">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Sumário Clínico</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Clinical Summary</p>
                     {isEditing ? (
                       <Textarea value={protoFullForm.summary || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, summary: e.target.value }))} rows={5} className="text-xs" />
                     ) : (
@@ -1889,13 +1889,13 @@ export default function PatientProfilePage() {
                     {isEditing ? (
                       <div className="space-y-2.5">
                         <div className="grid grid-cols-3 gap-2">
-                          <div className="space-y-1"><Label className="text-[10px]">Data início</Label>
+                          <div className="space-y-1"><Label className="text-[10px]">Start date</Label>
                             <Input type="date" value={protoFullForm.startDate || ""} onChange={e => setProtoFullForm((f: any) => ({ ...f, startDate: e.target.value }))} className="h-8 text-xs" />
                           </div>
-                          <div className="space-y-1"><Label className="text-[10px]">Horário</Label>
+                          <div className="space-y-1"><Label className="text-[10px]">Time</Label>
                             <Input type="time" value={protoFullForm.sessionTime || "09:00"} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionTime: e.target.value }))} className="h-8 text-xs" />
                           </div>
-                          <div className="space-y-1"><Label className="text-[10px]">Duração (min)</Label>
+                          <div className="space-y-1"><Label className="text-[10px]">Duration (min)</Label>
                             <Input type="number" value={protoFullForm.sessionDuration || 60} onChange={e => setProtoFullForm((f: any) => ({ ...f, sessionDuration: parseInt(e.target.value) || 60 }))} className="h-8 text-xs" min={15} max={180} step={15} />
                           </div>
                         </div>
@@ -1911,7 +1911,7 @@ export default function PatientProfilePage() {
                           </div>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
-                          <div className="space-y-1"><Label className="text-[10px]">Total sessões</Label>
+                          <div className="space-y-1"><Label className="text-[10px]">Total sessions</Label>
                             <Input type="number" value={protoFullForm.totalSessions || 12} onChange={e => setProtoFullForm((f: any) => ({ ...f, totalSessions: parseInt(e.target.value) || 12 }))} className="h-8 text-xs" min={1} />
                           </div>
                           <div className="space-y-1"><Label className="text-[10px]">Por semana</Label>
@@ -1921,16 +1921,16 @@ export default function PatientProfilePage() {
                             <select value={protoFullForm.deliveryMode || "IN_CLINIC"} onChange={e => setProtoFullForm((f: any) => ({ ...f, deliveryMode: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-2 text-[10px]">
                               <option value="IN_CLINIC">Presencial</option>
                               <option value="REMOTE">Remoto</option>
-                              <option value="HYBRID">Híbrido</option>
+                              <option value="HYBRID">Hybrid</option>
                             </select>
                           </div>
                         </div>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div><p className="text-[9px] text-muted-foreground">Data início</p><p className="text-xs font-medium">{pr.startDate ? new Date(pr.startDate).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }) : "Não definida"}</p></div>
-                        <div><p className="text-[9px] text-muted-foreground">Horário</p><p className="text-xs font-medium">{pr.sessionTime || "—"}</p></div>
-                        <div><p className="text-[9px] text-muted-foreground">Duração</p><p className="text-xs font-medium">{pr.sessionDuration ? `${pr.sessionDuration} min` : "—"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Start date</p><p className="text-xs font-medium">{pr.startDate ? new Date(pr.startDate).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }) : "Não definida"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Time</p><p className="text-xs font-medium">{pr.sessionTime || "—"}</p></div>
+                        <div><p className="text-[9px] text-muted-foreground">Duration</p><p className="text-xs font-medium">{pr.sessionDuration ? `${pr.sessionDuration} min` : "—"}</p></div>
                         <div><p className="text-[9px] text-muted-foreground">Dias</p><p className="text-xs font-medium">{sessionDays.length > 0 ? sessionDays.join(", ") : "—"}</p></div>
                       </div>
                     )}
@@ -1965,7 +1965,7 @@ export default function PatientProfilePage() {
                         protoItemEditId === item.id ? (
                           <div key={item.id} className="border border-primary/40 rounded-lg p-2 space-y-2 bg-muted/20">
                             <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-1 col-span-2"><Label className="text-[10px]">Título</Label>
+                              <div className="space-y-1 col-span-2"><Label className="text-[10px]">Title</Label>
                                 <Input value={protoItemForm.title || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, title: e.target.value }))} className="h-7 text-xs" />
                               </div>
                               <div className="space-y-1"><Label className="text-[10px]">Fase</Label>
@@ -1973,16 +1973,16 @@ export default function PatientProfilePage() {
                                   {["IMMEDIATE","SHORT_TERM","MEDIUM_TERM","LONG_TERM","MAINTENANCE"].map(p => <option key={p} value={p}>{p}</option>)}
                                 </select>
                               </div>
-                              <div className="space-y-1"><Label className="text-[10px]">Frequência</Label>
+                              <div className="space-y-1"><Label className="text-[10px]">Frequency</Label>
                                 <Input value={protoItemForm.frequency || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, frequency: e.target.value }))} className="h-7 text-xs" placeholder="ex: 3x/semana" />
                               </div>
-                              <div className="space-y-1"><Label className="text-[10px]">Séries</Label>
+                              <div className="space-y-1"><Label className="text-[10px]">Sets</Label>
                                 <Input type="number" value={protoItemForm.sets ?? ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, sets: e.target.value }))} className="h-7 text-xs" />
                               </div>
-                              <div className="space-y-1"><Label className="text-[10px]">Repetições</Label>
+                              <div className="space-y-1"><Label className="text-[10px]">Reps</Label>
                                 <Input type="number" value={protoItemForm.reps ?? ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, reps: e.target.value }))} className="h-7 text-xs" />
                               </div>
-                              <div className="space-y-1 col-span-2"><Label className="text-[10px]">Descrição</Label>
+                              <div className="space-y-1 col-span-2"><Label className="text-[10px]">Description</Label>
                                 <Textarea value={protoItemForm.description || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="text-xs" />
                               </div>
                             </div>
@@ -2031,7 +2031,7 @@ export default function PatientProfilePage() {
                   {pr.status === "SENT_TO_PATIENT" && (
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                      <p className="text-xs text-emerald-300">Protocolo enviado. Os slots de calendário estão pré-bloqueados aguardando confirmação do paciente.</p>
+                      <p className="text-xs text-emerald-300">Protocol sent. Calendar slots are pre-blocked awaiting the patient's confirmation.</p>
                     </div>
                   )}
                 </div>
@@ -2480,7 +2480,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
         {tpView === "generating" && (
           <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
-            Atlas está a analisar todos os dados do paciente e a criar o plano...
+            Atlas is analysing all the patient's data and creating the plan...
           </div>
         )}
 
@@ -2488,7 +2488,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           <div className="p-3 space-y-3">
             {/* Diagnosis + rationale */}
             <div className="p-2.5 bg-muted/20 rounded-lg">
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-0.5">Diagnóstico de trabalho</p>
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-0.5">Working diagnosis</p>
               <p className="text-xs font-medium">{treatmentPlan.workingDiagnosis}</p>
               {treatmentPlan.clinicalRationale && <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{treatmentPlan.clinicalRationale}</p>}
             </div>
@@ -2529,7 +2529,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                 <div className="p-2.5 grid grid-cols-1 gap-2">
                   {ph.inClinic?.length > 0 && (
                     <div>
-                      <p className="text-[9px] font-semibold uppercase text-blue-400 mb-1">Em Clínica</p>
+                      <p className="text-[9px] font-semibold uppercase text-blue-400 mb-1">In Clinic</p>
                       {ph.inClinic.map((ic: any, ii: number) => (
                         <div key={ii} className="text-[10px] mb-1">
                           <span className="font-medium">• {ic.intervention}</span>
@@ -2739,7 +2739,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
                                 </div>
                               ) : (
                                 <div className="px-2.5 py-1.5 border-t border-amber-500/20 bg-amber-500/5">
-                                  <p className="text-[10px] text-amber-400/70 italic">Ainda não respondido</p>
+                                  <p className="text-[10px] text-amber-400/70 italic">Not answered yet</p>
                                 </div>
                               )}
                             </div>
@@ -2796,7 +2796,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               <button
                 onClick={() => setQType("report")}
                 className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-colors ${qType === "report" ? "bg-emerald-600 text-white" : "text-muted-foreground hover:text-foreground"}`}
-              >📋 Relatório / Feedback</button>
+              >📋 Report / Feedback</button>
             </div>
 
             {/* Contextual warning */}
@@ -2804,7 +2804,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                 <span className="text-amber-400 text-xs mt-0.5">⚠️</span>
                 <p className="text-[10px] text-amber-300 leading-relaxed">
-                  Verifique: perguntas devem ser dirigidas ao paciente em <strong>2ª pessoa ("você")</strong>, em <strong>Português do Brasil</strong>, sem linguagem clínica. Use o botão <strong>✨ Reformular</strong> para corrigir automaticamente.
+                  Verifique: perguntas devem ser dirigidas ao paciente em <strong>second person ("you")</strong>, em <strong>Brazilian Portuguese</strong>, without clinical language. Use the button <strong>✨ Reformular</strong> para corrigir automaticamente.
                 </p>
               </div>
             )}
@@ -2812,14 +2812,14 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               <div className="flex items-start gap-2 p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
                 <span className="text-emerald-400 text-xs mt-0.5">📋</span>
                 <p className="text-[10px] text-emerald-300 leading-relaxed">
-                  O paciente vai ver este texto como um <strong>relatório/mensagem informativa</strong> — sem campos de resposta. Ideal para feedback clínico, resultados ou instruções.
+                  O paciente vai ver este texto como um <strong>informative report/message</strong> — no answer fields. Ideal for clinical feedback, results or instructions.
                 </p>
               </div>
             )}
 
             {/* Language + Reformat row */}
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[10px] text-muted-foreground shrink-0">Língua:</p>
+              <p className="text-[10px] text-muted-foreground shrink-0">Language:</p>
               <Button size="sm" variant={qLang === "pt" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("pt")}>🇧🇷 PT-BR</Button>
               <Button size="sm" variant={qLang === "en" ? "default" : "outline"} className="h-7 text-[10px] px-3" onClick={() => setQLang("en")}>🇬🇧 EN</Button>
               {qType === "questions" && (
@@ -2858,7 +2858,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
 
             {qSentOk ? (
               <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
-                <CheckCircle2 className="h-4 w-4" />Perguntas enviadas! O paciente será notificado por email.
+                <CheckCircle2 className="h-4 w-4" />Questions sent! The patient will be notified by email.
               </div>
             ) : (
               <Button className="w-full bg-blue-600 hover:bg-blue-700 h-9 text-xs" onClick={handleSendQuestions} disabled={sendingQ || !qText.trim()}>
@@ -3038,7 +3038,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
             <p className="text-xs font-semibold flex items-center gap-1.5">
               <Send className="h-3.5 w-3.5 text-emerald-400" />Enviar plano ao paciente
             </p>
-            <p className="text-[10px] text-muted-foreground">O paciente verá o plano e os exercícios no app. Podes adicionar uma nota pessoal antes de enviar.</p>
+            <p className="text-[10px] text-muted-foreground">The patient will see the plan and exercises in the app. You can add a personal note before sending.</p>
             <textarea
               className="w-full text-[10px] bg-muted/30 border rounded-lg p-2 resize-none h-16 placeholder:text-muted-foreground/50"
               placeholder="Nota para o paciente (opcional)… ex: 'Lembra-te de fazer os exercícios pela manhã. Próxima sessão na 4ª feira.'"
@@ -3121,16 +3121,16 @@ function ClinicalScribePanel({ patientId, onTranscript }: { patientId: string; o
         onClick={() => setOpen(o => !o)}>
         <div className="flex items-center gap-2">
           <Mic className="h-4 w-4 text-violet-400" />
-          <span className="text-xs font-semibold text-violet-400">Clinical Scribe — Transcrever Áudio / Vídeo</span>
+          <span className="text-xs font-semibold text-violet-400">Clinical Scribe — Transcribe Audio / Video</span>
         </div>
         {open ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
       </button>
       {open && (
         <div className="px-3 pb-3 space-y-3">
-          <p className="text-[11px] text-muted-foreground">Carrega um áudio ou vídeo da sessão (MP3, MP4, WAV, M4A, etc.). O Whisper AI transcreve o conteúdo e insere-o no campo Subjetivo do SOAP.</p>
+          <p className="text-[11px] text-muted-foreground">Upload a session audio or video (MP3, MP4, WAV, M4A, etc.). Whisper AI transcribes it and fills the SOAP Subjective field.</p>
           <div className="flex flex-wrap gap-2 items-end">
             <div className="flex-1 min-w-[200px]">
-              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Ficheiro (máx 500MB)</label>
+              <label className="text-[10px] font-medium text-muted-foreground block mb-1">File (max 500MB)</label>
               <input type="file" accept="audio/*,video/*"
                 className="text-[11px] w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-violet-500/20 file:text-violet-300"
                 onChange={e => { setFile(e.target.files?.[0] || null); setTranscript(""); setError(""); }} />
@@ -3138,7 +3138,7 @@ function ClinicalScribePanel({ patientId, onTranscript }: { patientId: string; o
             <div>
               <label className="text-[10px] font-medium text-muted-foreground block mb-1">Idioma</label>
               <select className="h-8 rounded border border-input bg-background text-xs px-2" value={lang} onChange={e => setLang(e.target.value)}>
-                <option value="pt">Português</option>
+                <option value="pt">Portuguese</option>
                 <option value="en">English</option>
               </select>
             </div>
