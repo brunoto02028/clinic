@@ -1,6 +1,6 @@
 # T-3: Aba "Assessments" na ficha do aluno (admin do personal)
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-1, T-2
 
 ## Objetivo
@@ -16,5 +16,5 @@ O personal registra e acompanha avaliações na ficha do aluno.
 - app/admin/patients/[id]/page.tsx, components/assessments/**
 
 ## Critérios de aceite
-- [ ] Personal vê a aba; clínica não (regressão).
-- [ ] Registrar → salva (201) e aparece no histórico; %GC computado bate.
+- [x] Personal vê a aba; clínica não vê o painel do personal (regressão).
+- [x] Registrar → salva (201) e aparece no histórico; %GC/derivados computados batem. (QA report-t-3.md)

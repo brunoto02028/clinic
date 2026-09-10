@@ -5,6 +5,24 @@ import { prisma } from "@/lib/db";
 import { getActor, accessErrorResponse, AccessError, assertPatientAccess } from "@/lib/tenant-access";
 import { assertTrainingAccess } from "@/lib/workout-access";
 
+// GET — the student's current photo-consent timestamp (or null).
+export async function GET(request: NextRequest) {
+  try {
+    const actor = await getActor(request);
+    if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await assertTrainingAccess(actor);
+    const studentId = request.nextUrl.searchParams.get("studentId");
+    if (!studentId) return NextResponse.json({ error: "studentId is required" }, { status: 400 });
+    const student = await assertPatientAccess(actor, studentId);
+    const u = await prisma.user.findUnique({ where: { id: student.id }, select: { photoConsentAt: true } });
+    return NextResponse.json({ photoConsentAt: u?.photoConsentAt ?? null });
+  } catch (err) {
+    if (err instanceof AccessError) return accessErrorResponse(err);
+    console.error("[admin/assessments/consent] GET error:", (err as any)?.message);
+    return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 500 });
+  }
+}
+
 // POST — record that the student consented to progress photos (in-person, by
 // the trainer). Idempotent-ish: stamps photoConsentAt now. Staff, tenant-scoped.
 export async function POST(request: NextRequest) {

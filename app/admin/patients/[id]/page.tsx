@@ -16,6 +16,7 @@ import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
+import AssessmentPanel from "@/components/assessments/assessment-panel";
 import { useVocab } from "@/hooks/use-vocab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -928,6 +929,11 @@ export default function PatientProfilePage() {
                 {isPersonal && (
                   <TabsTrigger value="workouts" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                     <Dumbbell className="h-3 w-3" />Workouts
+                  </TabsTrigger>
+                )}
+                {isPersonal && (
+                  <TabsTrigger value="assessments" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    <HeartPulse className="h-3 w-3" />Assessments
                   </TabsTrigger>
                 )}
               </>
@@ -2059,6 +2065,12 @@ export default function PatientProfilePage() {
           <TabsContent value="workouts" className="mt-4 space-y-4">
             <WorkoutProgress studentId={patientId} />
             <WorkoutBuilder studentId={patientId} />
+          </TabsContent>
+        )}
+
+        {isPersonal && (
+          <TabsContent value="assessments" className="mt-4">
+            <AssessmentPanel studentId={patientId} />
           </TabsContent>
         )}
 

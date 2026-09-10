@@ -34,7 +34,7 @@ Tudo **tenant+aluno scoped**, reusando os padrões de acesso das atividades 20 (
 |-----|--------|------|--------|
 | T-1 | PERSONAL | Modelo + API de avaliações (antropometria, medidas, composição, cálculo %GC) | concluído (QA jest 14 + runtime 54/54; review feito) |
 | T-2 | PERSONAL | Fotos de progresso + consentimento (R2) | concluído (QA runtime 59/59; review feito) |
-| T-3 | PERSONAL | Aba "Assessments" na ficha do aluno (registrar + histórico + tendências) | pendente |
+| T-3 | PERSONAL | Aba "Assessments" na ficha do aluno (registrar + histórico + tendências) | concluído (QA 4/4; review feito) |
 | T-4 | PERSONAL | Área do aluno na web (`/dashboard/assessments`): ver medidas/composição/fotos + evolução | pendente |
 | T-5 | PERSONAL | Módulo Avaliações no app do aluno (mirror) | pendente |
 | T-6 | PERSONAL | 1RM (Epley) dos logs + dobrar curvas de composição no painel de Progresso (T-24) | pendente |
