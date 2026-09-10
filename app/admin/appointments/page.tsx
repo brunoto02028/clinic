@@ -80,7 +80,7 @@ interface Patient { id: string; firstName: string; lastName: string; email: stri
 
 export default function AdminAppointmentsPage() {
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal, ready: vocabReady } = useVocab();
   const T = (key: string) => relabel(i18nT(key, locale));
   const isPt = locale === "pt-BR";
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -801,9 +801,20 @@ export default function AdminAppointmentsPage() {
                           </SelectItem>
                         );
                       })
-                    : TREATMENT_OPTIONS.map(t => (
-                        <SelectItem key={t.id} value={t.name}>{isPt && t.namePt ? t.namePt : t.name} — £{t.price} ({t.duration}min)</SelectItem>
-                      ))
+                    : vocabReady && !isPersonal
+                      // Only a KNOWN clinic gets the fixed physiotherapy fallback.
+                      // A personal-trainer studio has its own catalog and must never
+                      // see physio; while the session is still loading (tenant type
+                      // unknown) we also withhold it, so a personal tenant can't flash
+                      // the physio list before the session resolves.
+                      ? TREATMENT_OPTIONS.map(t => (
+                          <SelectItem key={t.id} value={t.name}>{isPt && t.namePt ? t.namePt : t.name} — £{t.price} ({t.duration}min)</SelectItem>
+                        ))
+                      : (
+                        <SelectItem value="__none" disabled>
+                          {isPt ? "Nenhum serviço configurado ainda" : "No services configured yet"}
+                        </SelectItem>
+                      )
                   }
                 </SelectContent>
               </Select>

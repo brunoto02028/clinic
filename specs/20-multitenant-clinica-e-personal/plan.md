@@ -90,7 +90,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 |-----|--------|------|--------|
 | T-17 | PLAT | Marca por tenant (área logada, login, e-mails, termos) | pendente |
 | T-18 | PLAT | Vocabulário por tipo de tenant | mecanismo + navegação; telas pendentes |
-| T-19 | PT | Onboarding e módulos do tenant personal | 19a: nav gating ✓; 19b: server gating ✓ (QA+review); questionário + catálogo pendentes |
+| T-19 | PT | Onboarding e módulos do tenant personal | 19a: nav gating ✓; 19b: server gating ✓, catálogo ✓, questionário (estrutura) ✓ — QA+review em cada; falta onboarding 4 passos (dep. T-17) + conteúdo do painel |
 
 ### Fase 4 — Produto do personal
 

@@ -11,12 +11,16 @@ import { personalizeLabel } from "@/lib/tenant-vocab";
  * the text unchanged. The caller still picks EN vs PT.
  */
 export function useVocab() {
-  const { data } = useSession();
+  const { data, status } = useSession();
   const { locale } = useLocale();
   const isPersonal = isPersonalTenant((data?.user as any)?.clinicType);
   const isPt = !!locale?.startsWith("pt");
   return {
     isPersonal,
+    // The session has resolved (not still loading). Callers that must not act
+    // on a not-yet-known tenant type — e.g. before showing clinic-only content
+    // — gate on this so `isPersonal === false` during load isn't read as "clinic".
+    ready: status !== "loading",
     relabel: (text: string) => personalizeLabel(text, { isPersonal, isPt }),
   };
 }
