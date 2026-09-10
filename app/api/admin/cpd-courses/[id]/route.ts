@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // PATCH — Update course status or notes
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-  if (!session || !["ADMIN", "SUPERADMIN"].includes((session.user as any).role)) {
+  if (!session || (session.user as any).role !== "SUPERADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 // DELETE — Remove a specific course
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-  if (!session || !["ADMIN", "SUPERADMIN"].includes((session.user as any).role)) {
+  if (!session || (session.user as any).role !== "SUPERADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

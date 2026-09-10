@@ -39,7 +39,7 @@ async function searchWebWithGemini(query: string, geminiKey: string): Promise<st
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || !["ADMIN", "SUPERADMIN"].includes((session.user as any).role)) {
+  if (!session || (session.user as any).role !== "SUPERADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

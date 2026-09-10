@@ -13,7 +13,7 @@ const CH_OAUTH_BASE = "https://account.companieshouse.gov.uk";
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
+    if (!session?.user || (session.user as any).role !== "SUPERADMIN") {
       return NextResponse.redirect(new URL("/staff-login", req.url));
     }
 

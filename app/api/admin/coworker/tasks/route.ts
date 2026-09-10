@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 // GET — list tasks + templates
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any)?.role)) {
+  if (!session || (session.user as any)?.role !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
 // POST — create task
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any)?.role)) {
+  if (!session || (session.user as any)?.role !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 // PUT — update task
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any)?.role)) {
+  if (!session || (session.user as any)?.role !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -139,7 +139,7 @@ export async function PUT(req: NextRequest) {
 // DELETE — remove task
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any)?.role)) {
+  if (!session || (session.user as any)?.role !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

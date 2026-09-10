@@ -11,7 +11,7 @@ import { prisma } from '@/lib/db'
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any)?.role)) {
+    if (!session || (session.user as any)?.role !== 'SUPERADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

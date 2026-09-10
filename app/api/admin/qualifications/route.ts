@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // GET — List all qualifications
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session || !["ADMIN", "SUPERADMIN"].includes((session.user as any).role)) {
+  if (!session || (session.user as any).role !== "SUPERADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -22,7 +22,7 @@ export async function GET() {
 // POST — Add a new qualification
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || !["ADMIN", "SUPERADMIN"].includes((session.user as any).role)) {
+  if (!session || (session.user as any).role !== "SUPERADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

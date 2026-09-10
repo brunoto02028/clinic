@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // GET — fetch execution logs
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any)?.role)) {
+  if (!session || (session.user as any)?.role !== 'SUPERADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

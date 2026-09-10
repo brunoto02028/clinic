@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // POST — Seed Bruno's existing qualifications (run once)
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || !["ADMIN", "SUPERADMIN"].includes((session.user as any).role)) {
+  if (!session || (session.user as any).role !== "SUPERADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
