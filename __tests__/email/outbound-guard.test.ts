@@ -66,12 +66,13 @@ describe("outbound guard", () => {
     expect(log).toHaveBeenCalledWith("[OUTBOUND-SINK] email → patient@example.com: Booking confirmed");
   });
 
-  it("sends in production", async () => {
+  it("sends in production, copies included", async () => {
     env.NODE_ENV = "production";
 
-    await sendEmail(email);
+    await sendEmail({ ...email, bcc: "admin@example.com" });
 
     expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSend.mock.calls[0][0].bcc).toEqual(["admin@example.com"]);
   });
 
   it("OUTBOUND_MODE=sink drops even in production", async () => {
@@ -91,15 +92,24 @@ describe("outbound guard", () => {
     expect(mockSend).toHaveBeenCalledTimes(1);
   });
 
-  it("an allowlisted address goes out; a message with any other recipient does not", async () => {
+  it("an allowlisted address goes out; another primary recipient stops the whole message", async () => {
     env.OUTBOUND_ALLOWLIST = "QA@example.com";
 
     await sendEmail({ ...email, to: "qa@example.com" });
     expect(mockSend).toHaveBeenCalledTimes(1);
 
     await sendEmail({ ...email, to: ["qa@example.com", "admin@example.com"] });
-    await sendEmail({ ...email, to: "qa@example.com", bcc: "admin@example.com" });
     expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("trims copies outside the allowlist instead of dropping the email", async () => {
+    env.OUTBOUND_ALLOWLIST = "qa@example.com";
+
+    await sendEmail({ ...email, to: "qa@example.com", bcc: "admin@example.com" });
+
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSend.mock.calls[0][0].bcc).toBeUndefined();
+    expect(log).toHaveBeenCalledWith("[OUTBOUND-SINK] email → admin@example.com: bcc of: Booking confirmed");
   });
 
   it("matches phone numbers regardless of formatting", () => {

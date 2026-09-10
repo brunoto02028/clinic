@@ -34,10 +34,18 @@ export async function sendEmail({
 }) {
     try {
         const resend = await getResend();
-        const recipients = [to, bcc ?? []].flat();
-        if (!outboundAllowed(recipients)) {
-            logSunk('email', recipients, subject);
+        const toList = [to].flat();
+        const bccList = [bcc ?? []].flat();
+        if (!outboundAllowed(toList)) {
+            logSunk('email', [...toList, ...bccList], subject);
             return { success: true, data: { id: sinkMessageId() } };
+        }
+        // Copies are trimmed rather than fatal: every templated email BCCs the
+        // admin, so dropping the whole message would keep any templated email
+        // from reaching an allowlisted QA inbox without the real admin's too.
+        const keptBcc = bccList.filter((address) => outboundAllowed(address));
+        if (keptBcc.length < bccList.length) {
+            logSunk('email', bccList.filter((address) => !keptBcc.includes(address)), `bcc of: ${subject}`);
         }
         // The Resend SDK does NOT throw on API errors — it resolves with
         // { data, error }. Reading only the resolved value made every failure
@@ -50,7 +58,7 @@ export async function sendEmail({
             to:       Array.isArray(to) ? to : [to],
             subject,
             html,
-            ...(bcc ? { bcc: Array.isArray(bcc) ? bcc : [bcc] } : {}),
+            ...(keptBcc.length ? { bcc: keptBcc } : {}),
             ...(attachments ? { attachments } : {}),
         });
         if (error) {
