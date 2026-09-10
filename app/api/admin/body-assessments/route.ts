@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant-access";
 import crypto from "crypto";
 import { getEffectiveUserId, isPreviewRequest } from "@/lib/preview-helpers";
 import { getEffectiveUser } from "@/lib/get-effective-user";
@@ -46,27 +47,23 @@ export async function GET(request: NextRequest) {
     const impersonatedPatientId = cookieStore.get("impersonate-patient-id")?.value;
     const isImpersonating = !!impersonatedPatientId;
 
-    const userId = (session.user as any).id;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, clinicId: true },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const actor = await getActor(request);
+    if (!actor) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Build query based on role
+    // Build query based on role. This route reads the impersonation cookie
+    // itself, so the cookie only counts for staff, inside their own tenant.
     const whereClause: any = {};
 
-    if (user.role === "PATIENT" || isImpersonating) {
-      whereClause.patientId = isImpersonating ? impersonatedPatientId : user.id;
-    } else if (user.clinicId) {
-      whereClause.clinicId = user.clinicId;
-      if (patientId) whereClause.patientId = patientId;
-    } else if (user.role === "SUPERADMIN") {
-      // SUPERADMIN sees all
-      if (patientId) whereClause.patientId = patientId;
+    if (actor.role === "PATIENT") {
+      whereClause.patientId = actor.userId;
+    } else if (!actor.clinicId) {
+      return NextResponse.json({ error: "No tenant resolved for this account" }, { status: 403 });
+    } else {
+      whereClause.clinicId = actor.clinicId;
+      const scopedPatientId = isImpersonating ? impersonatedPatientId : patientId;
+      if (scopedPatientId) whereClause.patientId = scopedPatientId;
     }
 
     if (status) whereClause.status = status;
@@ -114,19 +111,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { patientId } = body;
 
-    const userId = (session.user as any).id;
     // Read impersonation cookie directly (middleware does NOT inject headers for /api/admin/* routes)
     const cookieStore = cookies();
     const impersonatedPatientId = cookieStore.get("impersonate-patient-id")?.value;
-    const isImpersonating = !!impersonatedPatientId;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, role: true, clinicId: true },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const actor = await getActor(request);
+    if (!actor) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Determine patient ID:
@@ -134,9 +125,8 @@ export async function POST(request: NextRequest) {
     // - If impersonating a patient → use the impersonated patient's ID
     // - If admin with explicit patientId → use that
     const actualPatientId =
-      user.role === "PATIENT" ? user.id :
-      isImpersonating ? impersonatedPatientId :
-      patientId;
+      actor.role === "PATIENT" ? actor.userId :
+      impersonatedPatientId || patientId;
 
     if (!actualPatientId) {
       return NextResponse.json(
@@ -145,19 +135,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get patient's clinic — try user's clinicId first, then patient's
-    let clinicId = user.clinicId;
-    if (!clinicId && actualPatientId !== user.id) {
-      const patient = await prisma.user.findUnique({
-        where: { id: actualPatientId },
-        select: { clinicId: true },
-      });
-      clinicId = patient?.clinicId || null;
+    // The assessment lives in the patient's tenant, which must be the actor's.
+    let clinicId: string | null;
+    try {
+      clinicId = (await assertPatientAccess(actor, actualPatientId)).clinicId;
+    } catch (err) {
+      return accessErrorResponse(err);
     }
     if (!clinicId) {
-      // Try to find any clinic as fallback
-      const anyClinic = await (prisma as any).clinic.findFirst({ select: { id: true } });
-      clinicId = anyClinic?.id || null;
+      return NextResponse.json({ error: "This account is not linked to a clinic" }, { status: 409 });
     }
 
     const assessmentNumber = await generateAssessmentNumber();
@@ -169,10 +155,10 @@ export async function POST(request: NextRequest) {
     const assessment = await (prisma as any).bodyAssessment.create({
       data: {
         assessmentNumber,
-        ...(clinicId ? { clinicId } : {}),
+        clinicId,
         patientId: actualPatientId,
         therapistId:
-          user.role !== "PATIENT" ? user.id : undefined,
+          actor.role !== "PATIENT" ? actor.userId : undefined,
         captureToken,
         captureTokenExpiry,
         status: "PENDING_CAPTURE",

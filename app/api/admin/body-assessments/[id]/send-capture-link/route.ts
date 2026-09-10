@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffAssessmentAccess } from "@/lib/body-assessment-access";
 
 export async function POST(
   request: NextRequest,
@@ -12,6 +13,9 @@ export async function POST(
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const access = await staffAssessmentAccess(request, params.id);
+    if (access.response) return access.response;
 
     const body = await request.json();
     const { language = "pt-BR" } = body;

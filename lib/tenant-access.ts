@@ -20,7 +20,7 @@ export interface Actor {
 }
 
 export class AccessError extends Error {
-  constructor(public status: 401 | 403 | 404, message: string) {
+  constructor(public status: 401 | 403 | 404 | 409, message: string) {
     super(message);
   }
 }
@@ -32,8 +32,13 @@ export function isStaff(actor: Actor): boolean {
 }
 
 // The switch-clinic cookie is set from a request body, so it is only trusted
-// when it names a clinic that exists and is active.
-async function resolveSuperadminClinic(selected: string | undefined): Promise<string | null> {
+// when it names a clinic that exists and is active. With no clinic selected
+// ("All clinics"), the owner works in their own clinic: a platform-wide view
+// belongs to the SUPERADMIN screens, not to tenant-scoped data routes.
+async function resolveSuperadminClinic(
+  selected: string | undefined,
+  ownClinicId: string | null
+): Promise<string | null> {
   if (selected) {
     const clinic = await prisma.clinic.findUnique({
       where: { id: selected },
@@ -41,7 +46,7 @@ async function resolveSuperadminClinic(selected: string | undefined): Promise<st
     });
     if (clinic?.isActive) return clinic.id;
   }
-  return getDefaultClinicId();
+  return ownClinicId ?? getDefaultClinicId();
 }
 
 /** The authenticated actor (web session or app bearer, impersonation applied), or null. */
@@ -57,7 +62,7 @@ export async function getActor(request: NextRequest): Promise<Actor | null> {
 
   const clinicId =
     user.role === "SUPERADMIN"
-      ? await resolveSuperadminClinic(request.cookies.get("selected-clinic-id")?.value)
+      ? await resolveSuperadminClinic(request.cookies.get("selected-clinic-id")?.value, user.clinicId)
       : user.clinicId;
 
   return {
@@ -81,19 +86,23 @@ export function tenantWhere(actor: Actor): { clinicId: string } {
 /**
  * A record is within reach when the patient owns it, or a staff member works
  * in its tenant. Anything else answers 404, so another tenant's records don't
- * reveal they exist. Pass the record's tenant, falling back to its patient's
- * for legacy rows written before clinicId was stored.
+ * reveal they exist. Pass the record's tenant; for rows written before
+ * clinicId was stored, the caller resolves the patient's tenant first.
  */
+export function canAccessRecord(
+  actor: Actor,
+  record: { clinicId: string | null; patientId?: string | null }
+): boolean {
+  if (actor.role === "PATIENT") return !!record.patientId && record.patientId === actor.userId;
+  return !!actor.clinicId && record.clinicId === actor.clinicId;
+}
+
+/** Throwing form of canAccessRecord, for routes built around AccessError. */
 export function assertRecordAccess(
   actor: Actor,
   record: { clinicId: string | null; patientId?: string | null }
 ): void {
-  if (actor.role === "PATIENT") {
-    if (record.patientId && record.patientId === actor.userId) return;
-  } else if (actor.clinicId && record.clinicId === actor.clinicId) {
-    return;
-  }
-  throw new AccessError(404, "Not found");
+  if (!canAccessRecord(actor, record)) throw new AccessError(404, "Not found");
 }
 
 /** Staff-only access to a tenant-owned resource (a user, a setting, a template). */
@@ -116,6 +125,12 @@ export async function assertPatientAccess(
     where: { id: patientId },
     select: { id: true, role: true, clinicId: true },
   });
+  if (patient?.role === "PATIENT" && patient.clinicId === null) {
+    // Accounts registered through the app still have no tenant. That is a
+    // different problem from "belongs to someone else", and saying so beats
+    // a 404 for a patient the staff member is looking straight at.
+    throw new AccessError(409, "This patient is not linked to a clinic");
+  }
   if (!patient || patient.role !== "PATIENT" || !actor.clinicId || patient.clinicId !== actor.clinicId) {
     throw new AccessError(404, "Not found");
   }

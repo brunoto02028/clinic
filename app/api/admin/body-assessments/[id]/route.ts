@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffAssessmentAccess } from "@/lib/body-assessment-access";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,9 @@ export async function GET(
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const access = await staffAssessmentAccess(request, params.id);
+    if (access.response) return access.response;
 
     const assessment = await (prisma as any).bodyAssessment.findUnique({
       where: { id: params.id },
@@ -52,6 +56,9 @@ export async function PUT(
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const access = await staffAssessmentAccess(request, params.id);
+    if (access.response) return access.response;
 
     const userId = (session.user as any).id;
     const user = await prisma.user.findUnique({
@@ -299,6 +306,9 @@ export async function DELETE(
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const access = await staffAssessmentAccess(request, params.id);
+    if (access.response) return access.response;
 
     const userId = (session.user as any).id;
     const user = await prisma.user.findUnique({

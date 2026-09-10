@@ -1,6 +1,6 @@
 # T-3: Avaliação corporal — vazamento que existe hoje em prod
 
-**Status:** pendente
+**Status:** concluído
 **Trilha:** CLÍNICA (usa o helper da plataforma)
 **Depende de:** T-2
 
@@ -38,5 +38,16 @@ Fora do escopo desta tarefa (já estão corretas ou pertencem a outra):
 4. É candidata a push isolado (vale para prod hoje), se o Bruno quiser adiantar.
 
 ## Critérios de aceite
-- [ ] Cenários da T-3 na qa-spec passando, estendidos às 13 rotas (paciente e staff de outro tenant recebem 404 em todas).
-- [ ] Regressão: o SUPERADMIN da BPR vê as mesmas avaliações e roda a análise normalmente.
+- [x] Cenários da T-3 na qa-spec passando, estendidos às 13 rotas (paciente e staff de outro tenant recebem 404 em todas).
+- [x] Regressão: o SUPERADMIN da BPR vê as mesmas avaliações e roda a análise normalmente.
+
+## Registro
+- **QA:** `qa/report-t-3.md` — aprovado, 11 de 11 cenários. Staff de outro tenant recebe 404 idêntico nas 13 rotas, o dono continua baixando o próprio PDF, o cookie de impersonação forjado por paciente não muda nada e a criação nasce no tenant do paciente.
+- **Code review (`/code-review high`):** 7 achados, todos corrigidos:
+  1. **(alto)** SUPERADMIN no modo "todas as clínicas" perderia acesso assim que existisse um segundo tenant. Agora ele trabalha na clínica do próprio usuário e só cai no tenant padrão se não tiver uma. Em prod as duas contas SUPERADMIN têm clínica, então nada muda.
+  2. e 3. **(médios)** Paciente sem clínica (cadastro pelo app grava `clinicId` nulo) recebia 404 mentiroso. Agora responde 409 com mensagem clara. O preenchimento desses registros entra na T-14.
+  4. **(médio)** E-mail bloqueado era arquivado como "enviado", o que em produção com `OUTBOUND_MODE=sink` mostraria entrega que não houve. Agora não é arquivado, só registrado no log.
+  5. **(baixo)** Comentário prometia um fallback que a função não fazia.
+  6. **(baixo)** `OUTBOUND_MODE` era escrito no escopo do módulo e vazava para outros arquivos de teste.
+  7. **(baixo)** Variável morta no POST.
+- **Verificação pós-correção:** 129/129 testes (2 novos do SUPERADMIN); `tsc` sem erro nos arquivos tocados; em runtime, 2 e-mails bloqueados, 0 linhas arquivadas, 0 P2002 e 0 envio real.

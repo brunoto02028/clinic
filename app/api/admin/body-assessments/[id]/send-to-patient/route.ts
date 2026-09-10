@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffAssessmentAccess } from "@/lib/body-assessment-access";
 import { sendEmail } from "@/lib/email";
 
 // POST - Send body assessment report to patient
@@ -14,6 +15,9 @@ export async function POST(
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const access = await staffAssessmentAccess(request, params.id);
+    if (access.response) return access.response;
 
     const user = await prisma.user.findUnique({ where: { id: (session.user as any).id } });
     if (!user || (user.role !== "ADMIN" && user.role !== "THERAPIST" && user.role !== "SUPERADMIN")) {
@@ -139,6 +143,9 @@ export async function DELETE(
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const access = await staffAssessmentAccess(request, params.id);
+    if (access.response) return access.response;
 
     const user = await prisma.user.findUnique({ where: { id: (session.user as any).id } });
     if (!user || (user.role !== "ADMIN" && user.role !== "THERAPIST" && user.role !== "SUPERADMIN")) {

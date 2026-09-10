@@ -13,6 +13,7 @@ Em prod, 2/2 agendamentos e 7/7 disponibilidades estão com `clinicId` nulo. Est
    - agendamento recebe o tenant do profissional (ou do paciente); disponibilidade recebe o tenant do profissional;
    - idempotente.
 2. Revisar todas as criações de `Appointment` e `TherapistAvailability` para gravar `clinicId`.
+3. Preencher a clínica de pacientes com `clinicId` nulo (cadastro pelo app), que hoje recebem 409 ao criar avaliação — achado do code review da T-3.
 3. Rodar em prod só com o push autorizado.
 
 ## Critérios de aceite

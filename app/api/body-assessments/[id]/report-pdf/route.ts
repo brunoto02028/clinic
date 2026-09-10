@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getActor, canAccessRecord } from "@/lib/tenant-access";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { jsPDF } from "jspdf";
 
@@ -53,9 +54,9 @@ export async function GET(
         clinic: { select: { name: true, logoUrl: true } },
       },
     });
-    if (!assessment) return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
-    if (user?.role === "PATIENT" && assessment.patient.id !== effective.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    const actor = await getActor(request);
+    if (!assessment || !actor || !canAccessRecord(actor, assessment)) {
+      return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
     }
 
     const pa = assessment.postureAnalysis || {};

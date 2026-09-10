@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffAssessmentAccess } from "@/lib/body-assessment-access";
 import { generateHomeProgram } from "@/lib/biomechanics/exercise-bank";
 
 // POST - Generate home-based treatment protocol from body assessment
@@ -15,8 +16,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const access = await staffAssessmentAccess(request, params.id);
+    if (access.response) return access.response;
+
     const userId = (session.user as any).id;
-    const clinicId = (session.user as any).clinicId;
+    // The access check above proved this is also the assessment's tenant.
+    const clinicId = access.actor.clinicId as string;
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { role: true },
@@ -56,7 +61,7 @@ export async function POST(
     if (!diagnosis) {
       diagnosis = await (prisma as any).aIDiagnosis.create({
         data: {
-          clinicId: clinicId || "",
+          clinicId,
           patientId: assessment.patientId,
           therapistId: userId,
           hasBodyAssessment: true,
@@ -113,7 +118,7 @@ Please generate a structured home exercise protocol using the exercises above. F
     // Create TreatmentProtocol
     const protocol = await (prisma as any).treatmentProtocol.create({
       data: {
-        clinicId: clinicId || "",
+        clinicId,
         patientId: assessment.patientId,
         therapistId: userId,
         diagnosisId: diagnosis.id,
@@ -167,7 +172,7 @@ Please generate a structured home exercise protocol using the exercises above. F
       if (ex.name) {
         const match = await (prisma as any).exercise.findFirst({
           where: {
-            clinicId: clinicId || undefined,
+            clinicId,
             isActive: true,
             name: { contains: ex.name, mode: "insensitive" },
           },

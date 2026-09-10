@@ -125,6 +125,23 @@ describe("getActor", () => {
       clinics.findMany.mockResolvedValue([{ id: "clinicA" }, { id: "clinicB" }]);
       expect((await getActor(request()))?.clinicId).toBeNull();
     });
+
+    // "All clinics" is the default state, so the owner must not lose their own
+    // clinic the moment a second tenant exists.
+    it("works in their own clinic when none is selected", async () => {
+      users.findUnique.mockResolvedValue({ id: "s1", role: "SUPERADMIN", clinicId: "clinicOwn", isActive: true });
+      clinics.findMany.mockResolvedValue([{ id: "clinicA" }, { id: "clinicB" }]);
+
+      expect((await getActor(request()))?.clinicId).toBe("clinicOwn");
+      expect(clinics.findMany).not.toHaveBeenCalled();
+    });
+
+    it("still prefers the selected clinic over their own", async () => {
+      users.findUnique.mockResolvedValue({ id: "s1", role: "SUPERADMIN", clinicId: "clinicOwn", isActive: true });
+      clinics.findUnique.mockResolvedValue({ id: "clinicB", isActive: true });
+
+      expect((await getActor(request("selected-clinic-id=clinicB")))?.clinicId).toBe("clinicB");
+    });
   });
 });
 

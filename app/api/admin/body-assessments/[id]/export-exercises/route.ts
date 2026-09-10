@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffAssessmentAccess } from "@/lib/body-assessment-access";
 
 // POST - Export corrective exercises from body assessment as ExercisePrescriptions
 export async function POST(
@@ -14,8 +15,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const access = await staffAssessmentAccess(request, params.id);
+    if (access.response) return access.response;
+
     const userId = (session.user as any).id;
-    const clinicId = (session.user as any).clinicId;
+    // The access check above proved this is also the assessment's tenant.
+    const clinicId = access.actor.clinicId as string;
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { role: true },
@@ -50,7 +55,7 @@ export async function POST(
       // Try to find an existing exercise in the library by name
       let exercise = await (prisma as any).exercise.findFirst({
         where: {
-          clinicId: clinicId || undefined,
+          clinicId,
           isActive: true,
           name: { equals: ex.name, mode: "insensitive" },
         },
@@ -60,7 +65,7 @@ export async function POST(
       if (!exercise) {
         exercise = await (prisma as any).exercise.create({
           data: {
-            clinicId: clinicId || "",
+            clinicId,
             createdById: userId,
             name: ex.name || "Corrective Exercise",
             description: [ex.benefits, ex.finding ? `Addresses: ${ex.finding}` : null].filter(Boolean).join("\n"),
@@ -93,7 +98,7 @@ export async function POST(
       // Create the prescription
       const prescription = await (prisma as any).exercisePrescription.create({
         data: {
-          clinicId: clinicId || "",
+          clinicId,
           therapistId: userId,
           patientId: assessment.patientId,
           exerciseId: exercise.id,
