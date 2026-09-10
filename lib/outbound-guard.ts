@@ -9,6 +9,8 @@
 // Callers apply the guard after their own "is this provider configured?" check,
 // so an unconfigured channel still fails over exactly as it does in production.
 
+import { randomUUID } from "crypto";
+
 export type OutboundChannel = "email" | "sms" | "whatsapp" | "telegram" | "push";
 
 function isLive(): boolean {
@@ -40,7 +42,7 @@ export function outboundAllowed(destinations: string | string[]): boolean {
 
 /** A fresh id per dropped message — callers log the provider id into unique columns. */
 export function sinkMessageId(): string {
-  return `outbound-sink-${crypto.randomUUID()}`;
+  return `outbound-sink-${randomUUID()}`;
 }
 
 export function logSunk(
