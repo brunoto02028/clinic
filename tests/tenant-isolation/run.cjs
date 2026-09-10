@@ -362,6 +362,12 @@ async function main() {
     a = await request("GET", `/api/admin/assessments?studentId=${ids.alunoB}`, { cookie: trainerB.cookie });
     check("A2 trainer lists student assessments", a.status === 200 && !!asmt?.id && a.body.includes(asmt.id), `status ${a.status}`);
 
+    // A8 (T-6) — progress now carries estimated 1RM (from the logged set) and the
+    // composition curve (from this assessment: weight 80).
+    a = await request("GET", `/api/admin/workouts/progress?studentId=${ids.alunoB}`, { cookie: trainerB.cookie });
+    let prog6 = (() => { try { return JSON.parse(a.body); } catch { return null; } })();
+    check("A8 progress has 1RM + composition", a.status === 200 && Array.isArray(prog6?.oneRepMax) && prog6.oneRepMax.length >= 1 && (prog6?.composition?.weight || []).some((p) => p.v === 80), `1rm ${prog6?.oneRepMax?.length}, wt ${(prog6?.composition?.weight||[]).map((p)=>p.v).join(",")}`);
+
     // A3 — clinic admin (TRAINING off) blocked → 404.
     a = await request("GET", `/api/admin/assessments?studentId=${ids.pacienteA}`, { cookie: adminA.cookie });
     check("A3 clinic admin → assessments 404", a.status === 404, `status ${a.status}`);

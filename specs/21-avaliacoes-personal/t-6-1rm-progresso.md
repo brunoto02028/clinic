@@ -1,6 +1,6 @@
 # T-6: 1RM (Epley) + curvas de composição no Progresso
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-1, T-22/T-24 (atividade 20)
 
 ## Objetivo
@@ -14,4 +14,4 @@ Enriquecer o painel de Progresso do personal com força estimada e composição.
 - app/api/admin/workouts/progress/route.ts, components/workouts/workout-progress.tsx (ou novo card)
 
 ## Critérios de aceite
-- [ ] 1RM estimado aparece por exercício; curvas de composição no progresso.
+- [x] 1RM estimado aparece por exercício; curvas de composição no progresso. (QA report-t-6.md 60/60; review 5 achados)

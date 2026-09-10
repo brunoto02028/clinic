@@ -8,6 +8,8 @@ interface Progress {
   adherence: { doneLast4Weeks: number; plannedLast4Weeks: number; plannedPerWeek: number };
   weeklyVolume: { week: string; volume: number }[];
   loadByExercise: { exerciseName: string; series: { date: string; topLoadKg: number }[] }[];
+  oneRepMax?: { exerciseName: string; kg: number }[];
+  composition?: { weight: { date: string; v: number }[]; bodyFat: { date: string; v: number }[]; waist: { date: string; v: number }[] };
   recent: { id: string; performedAt: string; sessionRpe: number | null; setCount: number; volume: number }[];
 }
 
@@ -42,6 +44,13 @@ export default function WorkoutProgress({ studentId }: { studentId: string }) {
   if (!data) return null;
 
   const { adherence, weeklyVolume, loadByExercise, recent } = data;
+  const oneRepMax = data.oneRepMax ?? [];
+  const comp = data.composition;
+  const compTrend = (pts?: { date: string; v: number }[]) => {
+    if (!pts || pts.length === 0) return null;
+    const first = pts[0].v, last = pts[pts.length - 1].v;
+    return `${first}${first !== last ? `→${last}` : ""}`;
+  };
   const adhPct = adherence.plannedLast4Weeks > 0
     ? Math.round((adherence.doneLast4Weeks / adherence.plannedLast4Weeks) * 100)
     : null;
@@ -102,6 +111,33 @@ export default function WorkoutProgress({ studentId }: { studentId: string }) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Estimated 1RM (Epley) */}
+          {oneRepMax.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">{t("Estimated 1RM (Epley)", "1RM estimado (Epley)")}</p>
+              <div className="space-y-1">
+                {oneRepMax.map((e) => (
+                  <div key={e.exerciseName} className="flex items-center justify-between text-sm">
+                    <span className="truncate">{e.exerciseName}</span>
+                    <span className="font-medium">{e.kg} kg</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Body composition (from assessments) */}
+          {comp && (comp.weight.length > 0 || comp.bodyFat.length > 0 || comp.waist.length > 0) && (
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">{t("Composition (first → latest)", "Composição (primeira → última)")}</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
+                {compTrend(comp.weight) && <span>{t("Weight", "Peso")} {compTrend(comp.weight)} kg</span>}
+                {compTrend(comp.bodyFat) && <span>{t("Body fat", "Gordura")} {compTrend(comp.bodyFat)} %</span>}
+                {compTrend(comp.waist) && <span>{t("Waist", "Cintura")} {compTrend(comp.waist)} cm</span>}
               </div>
             </div>
           )}

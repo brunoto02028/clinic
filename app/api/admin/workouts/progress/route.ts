@@ -10,6 +10,7 @@ import {
   AccessError,
 } from "@/lib/tenant-access";
 import { assertTrainingAccess } from "@/lib/workout-access";
+import { epley1RM } from "@/lib/body-composition";
 
 // ISO-week key (Mon-based) for grouping, e.g. "2026-W37".
 function weekKey(d: Date): string {
@@ -41,11 +42,20 @@ export async function GET(request: NextRequest) {
     });
 
     const since = new Date(Date.now() - 8 * 7 * 86400000); // last 8 weeks
-    const logs = await prisma.workoutLog.findMany({
-      where: { ...scope, studentId, performedAt: { gte: since } },
-      include: { setLogs: true },
-      orderBy: { performedAt: "desc" },
-    });
+    // logs + assessments have no interdependency — fetch in parallel.
+    const [logs, assessmentsDesc] = await Promise.all([
+      prisma.workoutLog.findMany({
+        where: { ...scope, studentId, performedAt: { gte: since } },
+        include: { setLogs: true },
+        orderBy: { performedAt: "desc" },
+      }),
+      prisma.studentAssessment.findMany({
+        where: { ...scope, studentId },
+        select: { performedAt: true, weightKg: true, bodyFatPct: true, girths: true },
+        orderBy: { performedAt: "desc" }, // newest first, then take the latest 60
+        take: 60,
+      }),
+    ]);
 
     // Name map for the workoutExercises that appear in the logs — queried by id
     // so it covers exercises from now-inactive workouts too (not just the active
@@ -100,6 +110,37 @@ export async function GET(request: NextRequest) {
       series,
     }));
 
+    // Estimated 1RM per exercise (Epley) — best completed set in the window.
+    const bestRm = new Map<string, number>();
+    for (const l of logs) {
+      for (const s of doneSets(l)) {
+        const rm = epley1RM(s.loadKg, s.reps);
+        if (rm != null) bestRm.set(s.workoutExerciseId, Math.max(bestRm.get(s.workoutExerciseId) ?? 0, rm));
+      }
+    }
+    // Aggregate 1RM by exercise NAME (max) so the same movement across two
+    // workouts shows once — and the client can key by name without collisions.
+    const rmByName = new Map<string, number>();
+    for (const [weId, kg] of bestRm) {
+      const name = exName.get(weId) ?? "Exercise";
+      rmByName.set(name, Math.max(rmByName.get(name) ?? 0, kg));
+    }
+    const oneRepMax = Array.from(rmByName.entries())
+      .map(([exerciseName, kg]) => ({ exerciseName, kg: Math.round(kg * 10) / 10 }))
+      .sort((a, b) => b.kg - a.kg);
+
+    // Body-composition curves (chronological — query was newest-first).
+    const assessments = [...assessmentsDesc].reverse();
+    const series = (pick: (a: (typeof assessments)[number]) => number | null | undefined) =>
+      assessments
+        .map((a) => ({ date: a.performedAt.toISOString(), v: pick(a) }))
+        .filter((p): p is { date: string; v: number } => typeof p.v === "number");
+    const composition = {
+      weight: series((a) => a.weightKg),
+      bodyFat: series((a) => a.bodyFatPct),
+      waist: series((a) => (a.girths as any)?.waist),
+    };
+
     // Recent sessions (most recent 20).
     const recent = logs.slice(0, 20).map((l) => {
       const done = doneSets(l);
@@ -116,6 +157,8 @@ export async function GET(request: NextRequest) {
       adherence: { doneLast4Weeks, plannedLast4Weeks: plannedPerWeek * 4, plannedPerWeek },
       weeklyVolume,
       loadByExercise,
+      oneRepMax,
+      composition,
       recent,
     });
   } catch (err) {
