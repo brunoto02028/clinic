@@ -7,7 +7,7 @@ import { rehabChat, summarisePlan, PatientContext } from "@/lib/rehab-agent";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // POST /api/admin/patients/[id]/rehab-plan/[planId]/chat
 export async function POST(

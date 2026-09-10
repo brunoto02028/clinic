@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // GET /api/admin/rehab-plans/recent — last 20 plans across all patients
 export async function GET(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       status: true,
       createdAt: true,
       patient: {
-        select: { id: true, firstName: true, lastName: true, name: true },
+        select: { id: true, firstName: true, lastName: true },
       },
     },
   });

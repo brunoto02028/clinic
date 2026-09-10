@@ -7,7 +7,7 @@ import { preAssess } from "@/lib/rehab-agent";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // POST /api/admin/patients/[id]/rehab-plan/pre-assess
 // Stateless — Atlas receives FULL patient profile and chat history on every call

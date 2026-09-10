@@ -7,7 +7,7 @@ import { generateRehabPlan, PatientContext } from "@/lib/rehab-agent";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // GET /api/admin/patients/[id]/rehab-plan — list all plans for patient
 export async function GET(

@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { callAI } from "@/lib/ai-provider";
 
 export const dynamic = "force-dynamic";
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);

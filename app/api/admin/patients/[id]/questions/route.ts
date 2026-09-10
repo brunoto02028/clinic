@@ -6,7 +6,7 @@ import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // GET — list all question sets for patient
 export async function GET(

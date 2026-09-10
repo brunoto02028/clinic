@@ -9,7 +9,7 @@ import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // Build a complete clinical snapshot of the patient
 async function buildPatientContext(patientId: string, clinicId: string) {

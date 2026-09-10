@@ -6,7 +6,7 @@ import { staffPatientAccess } from "@/lib/staff-patient-access";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // GET /api/admin/patients/[id]/rehab-plan/[planId] — get single plan with messages
 export async function GET(
@@ -25,7 +25,7 @@ export async function GET(
     where: { id: params.planId, patientId: params.id },
     include: {
       messages: { orderBy: { createdAt: "asc" } },
-      createdBy: { select: { name: true } },
+      createdBy: { select: { firstName: true, lastName: true } },
     },
   });
 

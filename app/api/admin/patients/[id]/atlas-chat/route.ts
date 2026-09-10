@@ -8,7 +8,7 @@ import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // GET — load persistent chat history for this patient
 export async function GET(

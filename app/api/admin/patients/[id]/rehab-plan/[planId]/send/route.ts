@@ -6,7 +6,7 @@ import { staffPatientAccess } from "@/lib/staff-patient-access";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF"];
+const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // POST /api/admin/patients/[id]/rehab-plan/[planId]/send
 // Marks the plan as sent to patient with an optional therapist note
