@@ -17,6 +17,7 @@ export interface ValidatedUser {
   clinicId: string | null;
   clinicName: string | null;
   clinicSlug: string | null;
+  clinicType: string | null;
   permissions: {
     canManageUsers: boolean;
     canManageAppointments: boolean;
@@ -56,6 +57,7 @@ export async function validateCredentials(
             id: true,
             name: true,
             slug: true,
+            type: true,
             primaryColor: true,
             secondaryColor: true,
           },
@@ -131,6 +133,7 @@ export async function validateCredentials(
       clinicId: user.clinicId,
       clinicName: user.clinic?.name || null,
       clinicSlug: user.clinic?.slug || null,
+      clinicType: user.clinic?.type || null,
       permissions: {
         canManageUsers: user.canManageUsers,
         canManageAppointments: user.canManageAppointments,
@@ -171,6 +174,7 @@ export async function getValidatedUserById(
           id: true,
           name: true,
           slug: true,
+          type: true,
           primaryColor: true,
           secondaryColor: true,
         },
@@ -192,6 +196,7 @@ export async function getValidatedUserById(
     clinicId: user.clinicId,
     clinicName: user.clinic?.name || null,
     clinicSlug: user.clinic?.slug || null,
+    clinicType: user.clinic?.type || null,
     permissions: {
       canManageUsers: user.canManageUsers,
       canManageAppointments: user.canManageAppointments,

@@ -23,6 +23,7 @@ export interface AccessTokenPayload {
   clinicId: string | null;
   clinicName: string | null;
   clinicSlug: string | null;
+  clinicType: string | null;
   permissions: ValidatedUser["permissions"];
 }
 
@@ -37,6 +38,7 @@ export function signAccessToken(user: ValidatedUser): string {
     clinicId: user.clinicId,
     clinicName: user.clinicName,
     clinicSlug: user.clinicSlug,
+    clinicType: user.clinicType,
     permissions: user.permissions,
   };
   return jwt.sign(payload, getSecret(), {

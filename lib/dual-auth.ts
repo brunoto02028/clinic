@@ -29,6 +29,7 @@ export async function getRequestSession(request: NextRequest) {
       clinicId: payload.clinicId,
       clinicName: payload.clinicName,
       clinicSlug: payload.clinicSlug,
+      clinicType: payload.clinicType,
       permissions: payload.permissions,
     },
   } as const;

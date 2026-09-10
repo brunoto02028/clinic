@@ -19,6 +19,13 @@ enum UserRole {
   PATIENT
 }
 
+// What kind of tenant a Clinic row is. Drives vocabulary (patient/student,
+// treatment/workout), which modules are on, and the onboarding flow.
+enum TenantType {
+  CLINIC
+  PERSONAL_TRAINER
+}
+
 enum AppointmentStatus {
   PENDING
   PENDING_PATIENT
@@ -308,6 +315,9 @@ model Clinic {
   timezone String  @default("Europe/London")
   currency String  @default("GBP")
   isActive Boolean @default(true)
+
+  // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
+  type TenantType @default(CLINIC)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

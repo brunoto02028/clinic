@@ -78,7 +78,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 
 | T-N | Trilha | Nome | Status |
 |-----|--------|------|--------|
-| T-12 | PLAT | `Clinic.type` + tenant padrão explícito; fim dos `findFirst` | pendente |
+| T-12 | PLAT | `Clinic.type` + tenant padrão explícito; fim dos `findFirst` | base concluída |
 | T-13 | PLAT | Entrada do aluno no tenant (`/join/[slug]`, Google, app, convite) | pendente |
 | T-14 | PLAT | Backfill de `clinicId` na agenda + obrigatório nas escritas | pendente |
 | T-15 | PLAT | Gestão de tenants (SUPERADMIN) + limites do plano | pendente |

@@ -148,6 +148,7 @@ export const authOptions: NextAuthOptions = {
         token.clinicId = (user as any).clinicId;
         token.clinicName = (user as any).clinicName;
         token.clinicSlug = (user as any).clinicSlug;
+        token.clinicType = (user as any).clinicType;
         token.permissions = (user as any).permissions;
       }
 
@@ -156,7 +157,7 @@ export const authOptions: NextAuthOptions = {
         const dbUser = await prisma.user.findUnique({
           where: { email: (token.email as string).toLowerCase() },
           include: {
-            clinic: { select: { id: true, name: true, slug: true } },
+            clinic: { select: { id: true, name: true, slug: true, type: true } },
           },
         });
         if (dbUser) {
@@ -167,6 +168,7 @@ export const authOptions: NextAuthOptions = {
           token.clinicId = dbUser.clinicId;
           token.clinicName = dbUser.clinic?.name || null;
           token.clinicSlug = dbUser.clinic?.slug || null;
+          token.clinicType = dbUser.clinic?.type || null;
           token.permissions = {
             canManageUsers: dbUser.canManageUsers,
             canManageAppointments: dbUser.canManageAppointments,
@@ -191,6 +193,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).clinicId = token.clinicId;
         (session.user as any).clinicName = token.clinicName;
         (session.user as any).clinicSlug = token.clinicSlug;
+        (session.user as any).clinicType = token.clinicType;
         (session.user as any).permissions = token.permissions;
       }
       return session;

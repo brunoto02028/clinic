@@ -1,6 +1,6 @@
 # T-12: `Clinic.type` + tenant padrão explícito; fim dos `findFirst`
 
-**Status:** pendente
+**Status:** base concluída (tipo + threading); limpeza ampla de findFirst incremental
 **Trilha:** PLATAFORMA
 **Depende de:** T-6
 
@@ -21,3 +21,12 @@ Dar tipo ao tenant (clínica × personal) e acabar com "a primeira clínica do b
 
 ## Achado registrado durante a T-5
 - `/api/admin/availability` (PUT) grava `SLOT_INTERVAL_MINUTES` na `SystemConfig`, que é **global**: o admin de qualquer tenant muda o intervalo de agendamento de todos. Esse valor precisa virar configuração por tenant. A leitura em `/api/availability` e `/api/admin/availability` segue global até lá.
+
+## Entregue (base)
+- Enum `TenantType { CLINIC, PERSONAL_TRAINER }` + `Clinic.type @default(CLINIC)`, migração aditiva idempotente aplicada no local (`prisma db execute` + `generate`). As clínicas atuais ficaram `CLINIC`.
+- `lib/tenant-type.ts` com `isPersonalTenant(type)`.
+- `clinicType` propagado por `auth-credentials`, `mobile-tokens`, `dual-auth` e `auth-options` → disponível em `session.user.clinicType` (web) e no token do app.
+
+## Pendente (incremental, não bloqueia)
+- Limpeza ampla dos 53 `findFirst`/`getDefaultClinic`/`resolveClinicId` → `default-tenant`/`tenant-access`. O resolvedor `default-tenant.ts` (T-2) e os fallbacks de signup/Google já estão corretos; o resto é higiene por rota.
+- Em prod: rodar a mesma migração aditiva de `Clinic.type` no push.
