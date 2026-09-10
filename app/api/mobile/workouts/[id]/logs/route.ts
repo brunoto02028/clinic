@@ -1,48 +1,50 @@
 export const dynamic = "force-dynamic";
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { getActor, accessErrorResponse, AccessError } from "@/lib/tenant-access";
+import { corsJson, corsPreflight } from "@/lib/mobile-cors";
+import { getMobileActor } from "@/lib/mobile-actor";
 import {
   assertStudentTrainingAccess,
   assertWorkoutForStudent,
   assertSetExercisesInWorkout,
 } from "@/lib/workout-access";
 import { validateSessionLog, type SetLogInput } from "@/lib/workout-validation";
+import { AccessError } from "@/lib/tenant-access";
 
-// POST — the student logs a performed session for one of their workouts.
+export function OPTIONS() {
+  return corsPreflight();
+}
+
+// POST — the student logs a performed session (mobile Bearer).
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const actor = await getActor(request);
-    if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await getMobileActor(request);
+    if (!actor) return corsJson({ error: "Unauthorized" }, { status: 401 });
     await assertStudentTrainingAccess(actor);
     const workout = await assertWorkoutForStudent(actor, params.id);
-    // A deactivated workout is hidden from the student's list; don't accept logs
-    // to it either (a stale client id or a replay).
     if (!workout.isActive) throw new AccessError(404, "Not found");
 
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+      return corsJson({ error: "Invalid request body" }, { status: 400 });
     }
     const vErr = validateSessionLog(body);
-    if (vErr) return NextResponse.json({ error: vErr }, { status: 400 });
+    if (vErr) return corsJson({ error: vErr }, { status: 400 });
 
     const sets: SetLogInput[] = Array.isArray(body.sets) ? body.sets : [];
-    if (sets.length === 0) {
-      return NextResponse.json({ error: "Log at least one set" }, { status: 400 });
-    }
+    if (sets.length === 0) return corsJson({ error: "Log at least one set" }, { status: 400 });
     const ownErr = await assertSetExercisesInWorkout(workout.id, sets.map((s) => s.workoutExerciseId));
-    if (ownErr) return NextResponse.json({ error: ownErr }, { status: 400 });
+    if (ownErr) return corsJson({ error: ownErr }, { status: 400 });
 
     const log = await prisma.workoutLog.create({
       data: {
         clinicId: workout.clinicId,
         workoutId: workout.id,
         studentId: actor.userId,
-        durationMin: body?.durationMin ?? null,
-        sessionRpe: body?.sessionRpe ?? null,
-        notes: body?.notes ?? null,
+        durationMin: body.durationMin ?? null,
+        sessionRpe: body.sessionRpe ?? null,
+        notes: body.notes ?? null,
         setLogs: {
           create: sets.map((s) => ({
             workoutExerciseId: s.workoutExerciseId,
@@ -56,21 +58,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       },
       include: { setLogs: true },
     });
-    return NextResponse.json(log, { status: 201 });
+    return corsJson(log, { status: 201 });
   } catch (err) {
-    if (err instanceof AccessError) return accessErrorResponse(err);
-    console.error("[workouts/[id]/logs] POST error:", (err as any)?.message);
-    return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 500 });
+    if (err instanceof AccessError) return corsJson({ error: err.message }, { status: err.status });
+    console.error("[mobile/workouts/[id]/logs] POST error:", (err as any)?.message);
+    return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });
   }
 }
 
-// GET — the student's session history for this workout (most recent first).
-// Deliberately does NOT require isActive: a deactivated workout can't be logged
-// to (POST → 404) but its recorded history stays readable to its owner.
+// GET — the student's session history for this workout. Deliberately does NOT
+// require isActive: a deactivated workout can't be logged to (POST → 404) but
+// its already-recorded history stays readable to the student who owns it.
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const actor = await getActor(request);
-    if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await getMobileActor(request);
+    if (!actor) return corsJson({ error: "Unauthorized" }, { status: 401 });
     await assertStudentTrainingAccess(actor);
     await assertWorkoutForStudent(actor, params.id);
 
@@ -80,10 +82,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       orderBy: { performedAt: "desc" },
       take: 50,
     });
-    return NextResponse.json(logs);
+    return corsJson(logs);
   } catch (err) {
-    if (err instanceof AccessError) return accessErrorResponse(err);
-    console.error("[workouts/[id]/logs] GET error:", (err as any)?.message);
-    return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 500 });
+    if (err instanceof AccessError) return corsJson({ error: err.message }, { status: err.status });
+    console.error("[mobile/workouts/[id]/logs] GET error:", (err as any)?.message);
+    return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });
   }
 }

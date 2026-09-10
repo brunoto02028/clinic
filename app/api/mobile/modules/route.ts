@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
-import { verifyAccessToken } from "@/lib/mobile-tokens";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 import { prisma } from "@/lib/db";
+import { getMobileActor } from "@/lib/mobile-actor";
+import { isTrainingEnabled } from "@/lib/workout-access";
 
 export function OPTIONS() {
   return corsPreflight();
@@ -15,6 +16,11 @@ const MODULE_DEFS = [
   { key: "ba", name: "BA", icon: "briefcase-outline", description: "Business & community" },
 ] as const;
 
+// The strength-training module — shown only when the tenant has TRAINING on
+// (default-on for a personal-trainer studio). Appended separately from
+// MODULE_DEFS so it never rides the "admins see everything" path for a clinic.
+const TREINO_DEF = { key: "treino", name: "Training", icon: "barbell-outline", description: "Workouts & logging" };
+
 // Maps our mobile module keys to the ClinicModule enum values that gate them.
 const MODULE_KEY_MAP: Record<string, string[]> = {
   lab: ["DIAGNOSTICS"],
@@ -24,40 +30,36 @@ const MODULE_KEY_MAP: Record<string, string[]> = {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = request.headers.get("authorization");
-    const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
-    if (!token) {
+    // Shared auth: verifies the Bearer, re-reads the user, and fails closed on a
+    // missing/invalid token or a deactivated account (case-insensitive scheme).
+    const actor = await getMobileActor(request);
+    if (!actor) {
       return corsJson({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let payload;
-    try {
-      payload = verifyAccessToken(token);
-    } catch {
-      return corsJson({ error: "Invalid token" }, { status: 401 });
-    }
-
+    // The extra per-user flags this endpoint needs beyond the actor.
     const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { role: true, moduleOverrides: true, fullAccessOverride: true, clinicId: true },
+      where: { id: actor.userId },
+      select: { moduleOverrides: true, fullAccessOverride: true },
     });
 
-    if (!user) {
-      return corsJson({ error: "User not found" }, { status: 404 });
+    // Training is default-on for a personal-trainer tenant (or explicitly enabled).
+    const trainingOn = actor.clinicId ? await isTrainingEnabled(actor.clinicId) : false;
+    const withTraining = <T,>(mods: T[]): (T | typeof TREINO_DEF)[] =>
+      trainingOn ? [...mods, TREINO_DEF] : mods;
+
+    // Admins and full-access users see everything (plus Training when on).
+    if (user?.fullAccessOverride || actor.role === "SUPERADMIN" || actor.role === "ADMIN") {
+      return corsJson(withTraining([...MODULE_DEFS]));
     }
 
-    // Admins and full-access users see everything
-    if (user.fullAccessOverride || user.role === "SUPERADMIN" || user.role === "ADMIN") {
-      return corsJson(MODULE_DEFS);
-    }
-
-    const overrides = (user.moduleOverrides as Record<string, boolean> | null) || {};
+    const overrides = (user?.moduleOverrides as Record<string, boolean> | null) || {};
 
     // Check clinic-level module access
     let clinicModules: string[] = [];
-    if (user.clinicId) {
+    if (actor.clinicId) {
       const access = await prisma.clinicModuleAccess.findMany({
-        where: { clinicId: user.clinicId, isEnabled: true },
+        where: { clinicId: actor.clinicId, isEnabled: true },
         select: { module: true },
       });
       clinicModules = access.map((a) => a.module);
@@ -73,10 +75,10 @@ export async function GET(request: NextRequest) {
 
     // If no modules found via permissions, show all (graceful fallback for new users)
     if (available.length === 0) {
-      return corsJson(MODULE_DEFS);
+      return corsJson(withTraining([...MODULE_DEFS]));
     }
 
-    return corsJson(available);
+    return corsJson(withTraining(available));
   } catch (error: any) {
     console.error("[mobile/modules] error:", error?.message);
     return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });

@@ -20,7 +20,7 @@ const PASSWORD = "QaTenant#2026";
 const ROOT = path.join(__dirname, "..", "..");
 const url = new URL(BASE);
 
-function request(method, pathname, { cookie, body, form } = {}) {
+function request(method, pathname, { cookie, body, form, bearer } = {}) {
   return new Promise((resolve) => {
     const payload = form ? form : body ? JSON.stringify(body) : null;
     const headers = {};
@@ -29,6 +29,7 @@ function request(method, pathname, { cookie, body, form } = {}) {
       headers["Content-Length"] = Buffer.byteLength(payload);
     }
     if (cookie) headers.Cookie = cookie;
+    if (bearer) headers.Authorization = `Bearer ${bearer}`;
     const req = http.request(
       { host: url.hostname, port: url.port, path: pathname, method, headers },
       (res) => {
@@ -57,6 +58,12 @@ async function login(email) {
   const who = JSON.parse(session.body || "{}");
   if (!who?.user?.email) throw new Error(`login failed for ${email}`);
   return { cookie, role: who.user.role };
+}
+
+async function mobileLogin(email) {
+  const res = await request("POST", "/api/mobile/login", { body: { email, password: PASSWORD } });
+  if (res.status !== 200) throw new Error(`mobile login failed for ${email} (${res.status})`);
+  return JSON.parse(res.body).accessToken;
 }
 
 function loadFixtureIds() {
@@ -281,6 +288,35 @@ async function main() {
         body: { sets: [{ workoutExerciseId: weId, setNumber: 1, rpe: 99 }] },
       });
       check("S4 invalid set rpe rejected 400", sres.status === 400, `status ${sres.status}`);
+    }
+
+    // ── T-23: mobile (Bearer) training module + endpoints ──
+    if (workoutId && weId) {
+      const alunoBTok = await mobileLogin("qa.aluno@example.test"); // personal student
+      const pacienteATok = await mobileLogin("qa.pacientea@example.test"); // clinic patient
+
+      // M1 — personal student's mobile module list includes "treino".
+      let m = await request("GET", "/api/mobile/modules", { bearer: alunoBTok });
+      check("M1 personal student modules include treino", m.status === 200 && m.body.includes('"treino"'), `status ${m.status}`);
+
+      // M2 — clinic patient's module list excludes "treino".
+      m = await request("GET", "/api/mobile/modules", { bearer: pacienteATok });
+      check("M2 clinic patient modules exclude treino", m.status === 200 && !m.body.includes('"treino"'), `status ${m.status}`);
+
+      // M3 — personal student sees own workouts over Bearer.
+      m = await request("GET", "/api/mobile/workouts", { bearer: alunoBTok });
+      check("M3 mobile student lists own workouts", m.status === 200 && m.body.includes(workoutId), `status ${m.status}`);
+
+      // M4 — personal student logs a session over Bearer → 201.
+      m = await request("POST", `/api/mobile/workouts/${workoutId}/logs`, {
+        bearer: alunoBTok,
+        body: { sessionRpe: 7, sets: [{ workoutExerciseId: weId, setNumber: 1, reps: 10, loadKg: 40 }] },
+      });
+      check("M4 mobile student logs a session", m.status === 201, `status ${m.status}`);
+
+      // M5 — clinic patient blocked from the mobile workouts endpoint → 404.
+      m = await request("GET", "/api/mobile/workouts", { bearer: pacienteATok });
+      check("M5 clinic patient → mobile workouts 404", m.status === 404, `status ${m.status}`);
     }
 
     // ISO-10 — mobile register never creates a tenant-less account.
