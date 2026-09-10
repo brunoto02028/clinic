@@ -31,8 +31,8 @@ Nota importante: o middleware **não barra paciente em `/api/admin/*`** (o `staf
 | `admin/atlas/soap-prefill`, `admin/clinical-scribe/generate-soap`, `admin/clinical-scribe/patient-intelligence` | papel; recebem `patientId` | tenant | `staffPatientAccess` |
 | `admin/clinical-scribe/recordings`, `recordings/[id]` | papel, sem tenant | tenant | `ConsultationRecording.clinicId` |
 | `admin/broadcasts` | papel; mensagens a pacientes | tenant | `ClinicBroadcast.clinicId` e destinatários do tenant |
-| `admin/consent-texts`, `admin/screening-config`, `patient-portal-config`, `admin/service-pages`, `admin/stripe-branding`, `screening-config` | `SiteSettings` sem tenant (provável `findFirst`) | tenant | `SiteSettings` do tenant do ator |
-| `admin/email`, `admin/email-config` | caixa de e-mail e contas sem tenant | tenant (+ plataforma para `SystemConfig`) | `EmailAccount.clinicId`; chaves globais só SUPERADMIN |
+| `admin/consent-texts`, `admin/screening-config`, `patient-portal-config`, `admin/service-pages`, `admin/stripe-branding`, `screening-config` | `SiteSettings` sem tenant | **movido p/ T-17** | leitura pública/do paciente; escopo depende do tenant público da T-17/T-13 |
+| `admin/email`, `admin/email-config` | sem tenant | **movido p/ T-17** | idem (caixa e contas por tenant junto da identidade) |
 | `admin/patient-packages`, `admin/service-packages` | papel, sem tenant | tenant | pacotes e paciente do tenant |
 | `admin/sales`, `admin/sales/[id]` | papel, sem tenant | tenant | `SalesLead.clinicId` |
 | `image-library`, `image-library/[id]`, `upload` | sem tenant | tenant | `ImageLibrary.clinicId` |

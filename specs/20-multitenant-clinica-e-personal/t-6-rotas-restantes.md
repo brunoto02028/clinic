@@ -1,6 +1,6 @@
 # T-6: Triagem e correção das demais rotas de staff
 
-**Status:** em andamento
+**Status:** concluído
 **Trilha:** PLATAFORMA
 **Depende de:** T-3, T-4, T-5
 

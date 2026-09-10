@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
+import { getActor } from '@/lib/tenant-access'
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +18,13 @@ export async function DELETE(req: NextRequest) {
     if (!mediaId) return NextResponse.json({ error: 'mediaId required' }, { status: 400 })
 
     // Get Instagram account credentials
+    // The tenant's own Instagram account only.
+    const actor = await getActor(req)
+    if (!actor?.clinicId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const account = await prisma.socialAccount.findFirst({
-      where: { platform: 'INSTAGRAM' },
+      where: { platform: 'INSTAGRAM', clinicId: actor.clinicId },
     })
 
     if (!account?.accessToken) {

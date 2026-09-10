@@ -20,3 +20,6 @@ O aluno e o profissional de outro tenant não veem "BPR" (achado A7).
 ## Critérios de aceite
 - [ ] Cenários da T-17 passando.
 - [ ] Regressão: a área logada da BPR fica visualmente idêntica.
+
+## Movido da T-6 (parte 2b acoplada a design)
+O escopo por tenant do grupo **`SiteSettings`** (consent-texts, screening-config, patient-portal-config, service-pages, stripe-branding, screening-config público) e das rotas de **e-mail** (admin/email, admin/email-config) veio para cá: essas rotas têm leitura pública/do paciente, então o escopo depende do mecanismo de tenant público que a T-17 (identidade por tenant) e a T-13 (entrada do aluno) estabelecem. Fazer isolado na T-6 arriscaria quebrar a página pública de consentimento. Ver `qa/triagem-rotas.md`.

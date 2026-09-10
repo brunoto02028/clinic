@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 export const dynamic = 'force-dynamic';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { analyzeMedicalScreening, ClinicalAnalysis } from '@/lib/clinical-analysis';
 import { MedicalScreeningForm } from '@/lib/types';
 
@@ -50,6 +51,9 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const access = await staffPatientAccess(request, patientId);
+    if (access.response) return access.response;
     
     // Fetch patient with medical screening
     const patient = await prisma.user.findUnique({

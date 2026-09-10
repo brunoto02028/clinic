@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { claudeGenerate } from "@/lib/claude";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
@@ -17,6 +18,9 @@ export async function POST(req: NextRequest) {
 
   const { patientId } = await req.json();
   if (!patientId) return NextResponse.json({ error: "patientId required" }, { status: 400 });
+
+  const access = await staffPatientAccess(req, patientId);
+  if (access.response) return access.response;
 
   const [patient, answeredQSets] = await Promise.all([
     prisma.user.findUnique({

@@ -14,6 +14,7 @@ Em prod, 2/2 agendamentos e 7/7 disponibilidades estão com `clinicId` nulo. Est
    - idempotente.
 2. Revisar todas as criações de `Appointment` e `TherapistAvailability` para gravar `clinicId`.
 3. Preencher a clínica de pacientes com `clinicId` nulo (cadastro pelo app), que hoje recebem 409 ao criar avaliação — achado do code review da T-3.
+4. Preencher `clinicId` (do dono do registro) em `ImageLibrary`, `ClinicBroadcast`, `SalesLead`, `PatientPackage`, `ServicePackage` e `ConsultationRecording` — hoje nulos; **e só então** escopar por tenant as rotas dessas tabelas (parte 2b da T-6, adiada para cá porque escopo estrito sem backfill esconderia os dados atuais da clínica).
 4. Rodar em prod só com o push autorizado.
 
 ## Critérios de aceite

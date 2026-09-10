@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { callAIClinical, parseAIJson } from "@/lib/ai-provider";
 import { patientPseudonym } from "@/lib/pseudonymize";
 
@@ -22,6 +23,8 @@ export async function POST(req: NextRequest) {
   // Get patient context if provided
   let patientContext = "";
   if (patientId) {
+    const access = await staffPatientAccess(req, patientId);
+    if (access.response) return access.response;
     try {
       const patient: any = await prisma.user.findUnique({
         where: { id: patientId },

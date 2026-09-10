@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { callAIClinical } from "@/lib/ai-provider";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
@@ -18,6 +19,9 @@ export async function POST(req: NextRequest) {
   if (!patientId) {
     return NextResponse.json({ error: "Patient ID is required" }, { status: 400 });
   }
+
+  const access = await staffPatientAccess(req, patientId);
+  if (access.response) return access.response;
 
   // Fetch comprehensive patient data
   const patient: any = await prisma.user.findUnique({
