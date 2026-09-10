@@ -346,6 +346,8 @@ model Clinic {
   moduleAccess            ClinicModuleAccess[]
   workouts                Workout[]
   workoutLogs             WorkoutLog[]
+  studentAssessments      StudentAssessment[]
+  assessmentPhotos        AssessmentPhoto[]
   socialAccounts          SocialAccount[]
   socialPosts             SocialPost[]
   socialCampaigns         SocialCampaign[]
@@ -554,6 +556,7 @@ model User {
   lastName                 String
   phone                    String?
   dateOfBirth              DateTime?
+  sex                      String? // "M" | "F" — used by the personal-trainer skinfold %BF formula (activity 21)
   address                  String?
   emergencyContactName     String?
   emergencyContactPhone    String?
@@ -626,6 +629,9 @@ model User {
   trainerWorkouts            Workout[]              @relation("TrainerWorkouts")
   studentWorkouts            Workout[]              @relation("StudentWorkouts")
   studentWorkoutLogs         WorkoutLog[]           @relation("StudentWorkoutLogs")
+  studentAssessments         StudentAssessment[]    @relation("StudentAssessments")
+  trainerAssessments         StudentAssessment[]    @relation("TrainerAssessments")
+  studentAssessmentPhotos    AssessmentPhoto[]      @relation("StudentAssessmentPhotos")
   diagnosesAsPatient         AIDiagnosis[]          @relation("PatientDiagnoses")
   diagnosesAsTherapist       AIDiagnosis[]          @relation("TherapistDiagnoses")
   protocolsAsPatient         TreatmentProtocol[]    @relation("PatientProtocols")
@@ -3014,6 +3020,88 @@ model WorkoutSetLog {
 
   @@index([workoutLogId])
   @@index([workoutExerciseId])
+}
+
+// ============================================
+// PERSONAL-TRAINER ASSESSMENTS (activity 21)
+// Anthropometry, girths, body composition and photos for the personal-trainer
+// product. Metric units (kg, cm, mm). Separate from the clinical BodyAssessment
+// (posture/movement) — that stays clinic-only and is not touched.
+// ============================================
+
+enum BodyFatMethod {
+  MANUAL // %BF entered directly
+  BIA // from a bioimpedance scale
+  SKINFOLD // Jackson-Pollock skinfolds → Siri
+}
+
+model StudentAssessment {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   User   @relation("StudentAssessments", fields: [studentId], references: [id], onDelete: Cascade)
+  trainerId String
+  trainer   User   @relation("TrainerAssessments", fields: [trainerId], references: [id])
+
+  performedAt DateTime @default(now())
+
+  // Anthropometry (metric)
+  weightKg Float?
+  heightCm Float?
+  sex      String? // "M" | "F" — snapshot for the skinfold formula
+
+  // Body composition
+  bfMethod    BodyFatMethod @default(MANUAL)
+  bodyFatPct  Float? // final %BF (entered, from BIA, or computed from skinfolds)
+  skinfolds   Json? // { chest, abdomen, thigh, triceps, suprailiac, subscapular, midaxillary } mm
+  bia         Json? // { bodyFatPct, muscleMassKg, bodyWaterPct, visceralFat }
+
+  // Vitals (optional)
+  restingHr Int?
+  systolic  Int?
+  diastolic Int?
+
+  // Circumferences (cm) — { neck, chest, waist, hip, armRelaxed, armFlexed, thigh, calf }
+  girths Json?
+
+  // Server-computed derivations (stored for cheap reads)
+  bmi        Float?
+  leanMassKg Float?
+  fatMassKg  Float?
+  whr        Float? // waist-to-hip ratio
+
+  notes  String?           @db.Text
+  photos AssessmentPhoto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([studentId])
+  @@index([trainerId])
+}
+
+model AssessmentPhoto {
+  id           String            @id @default(cuid())
+  clinicId     String
+  clinic       Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  assessmentId String
+  assessment   StudentAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User              @relation("StudentAssessmentPhotos", fields: [studentId], references: [id], onDelete: Cascade)
+
+  pose String // "FRONT" | "SIDE" | "BACK"
+  url  String
+  path String?
+
+  createdAt DateTime @default(now())
+
+  @@index([assessmentId])
+  @@index([studentId])
+  @@index([clinicId])
 }
 
 // ============================================

@@ -32,7 +32,7 @@ Tudo **tenant+aluno scoped**, reusando os padrões de acesso das atividades 20 (
 ## Tarefas
 | T-N | Trilha | Nome | Status |
 |-----|--------|------|--------|
-| T-1 | PERSONAL | Modelo + API de avaliações (antropometria, medidas, composição, cálculo %GC) | pendente |
+| T-1 | PERSONAL | Modelo + API de avaliações (antropometria, medidas, composição, cálculo %GC) | concluído (QA jest 14 + runtime 54/54; review feito) |
 | T-2 | PERSONAL | Fotos de progresso + consentimento (R2) | pendente |
 | T-3 | PERSONAL | Aba "Assessments" na ficha do aluno (registrar + histórico + tendências) | pendente |
 | T-4 | PERSONAL | Área do aluno na web (`/dashboard/assessments`): ver medidas/composição/fotos + evolução | pendente |

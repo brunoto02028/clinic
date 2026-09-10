@@ -55,6 +55,8 @@ async function main() {
   // Deleting the workout cascades its exercises, logs and set-logs.
   await step("workoutLogs", () => prisma.workoutLog.deleteMany({ where: { OR: [{ studentId: { in: ids } }, { clinicId: { in: clinicIds } }] } }));
   await step("workouts", () => prisma.workout.deleteMany({ where: { OR: [{ studentId: { in: ids } }, { trainerId: { in: ids } }, { clinicId: { in: clinicIds } }] } }));
+  // Assessments before users too — StudentAssessment.trainer is RESTRICT.
+  await step("studentAssessments", () => prisma.studentAssessment.deleteMany({ where: { OR: [{ studentId: { in: ids } }, { trainerId: { in: ids } }, { clinicId: { in: clinicIds } }] } }));
   await step("users", () => prisma.user.deleteMany({ where: { id: { in: ids } } }));
   await step("clinics", () => prisma.clinic.deleteMany({ where: { id: { in: clinicIds } } }));
 

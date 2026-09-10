@@ -349,6 +349,53 @@ async function main() {
       check("P3 trainer → foreign student progress 404", p.status === 404, `status ${p.status}`);
     }
 
+    // ── T-21 (activity 21): personal-trainer assessments ──
+    // A1 — trainer records an assessment (MANUAL %BF) → 201 with computed derivations.
+    let a = await request("POST", "/api/admin/assessments", {
+      cookie: trainerB.cookie,
+      body: { studentId: ids.alunoB, weightKg: 80, heightCm: 180, bfMethod: "MANUAL", bodyFatPct: 20, girths: { waist: 80, hip: 100 } },
+    });
+    let asmt = (() => { try { return JSON.parse(a.body); } catch { return null; } })();
+    check("A1 trainer records assessment (computed)", a.status === 201 && asmt?.bmi === 24.7 && asmt?.whr === 0.8 && asmt?.fatMassKg === 16 && asmt?.leanMassKg === 64, `status ${a.status}, bmi ${asmt?.bmi}, whr ${asmt?.whr}, fat ${asmt?.fatMassKg}`);
+
+    // A2 — trainer lists the student's assessments.
+    a = await request("GET", `/api/admin/assessments?studentId=${ids.alunoB}`, { cookie: trainerB.cookie });
+    check("A2 trainer lists student assessments", a.status === 200 && !!asmt?.id && a.body.includes(asmt.id), `status ${a.status}`);
+
+    // A3 — clinic admin (TRAINING off) blocked → 404.
+    a = await request("GET", `/api/admin/assessments?studentId=${ids.pacienteA}`, { cookie: adminA.cookie });
+    check("A3 clinic admin → assessments 404", a.status === 404, `status ${a.status}`);
+
+    // A4 — trainer asking for a student outside the tenant → 404.
+    a = await request("GET", `/api/admin/assessments?studentId=${ids.pacienteA}`, { cookie: trainerB.cookie });
+    check("A4 trainer → foreign student assessments 404", a.status === 404, `status ${a.status}`);
+
+    // A5 — validation: bodyFatPct out of range → 400.
+    a = await request("POST", "/api/admin/assessments", { cookie: trainerB.cookie, body: { studentId: ids.alunoB, bfMethod: "MANUAL", bodyFatPct: 200 } });
+    check("A5 invalid bodyFatPct rejected 400", a.status === 400, `status ${a.status}`);
+
+    // A5b/A5c — BIA %BF out of range and a zero skinfold are rejected (400).
+    a = await request("POST", "/api/admin/assessments", { cookie: trainerB.cookie, body: { studentId: ids.alunoB, bfMethod: "BIA", bia: { bodyFatPct: 200 } } });
+    check("A5b invalid BIA bodyFatPct rejected 400", a.status === 400, `status ${a.status}`);
+    a = await request("POST", "/api/admin/assessments", { cookie: trainerB.cookie, body: { studentId: ids.alunoB, bfMethod: "SKINFOLD", skinfolds: { chest: 0, abdomen: 20, thigh: 15 } } });
+    check("A5c zero skinfold rejected 400", a.status === 400, `status ${a.status}`);
+
+    // A6 — student sees their own assessments (web); clinic patient blocked (404).
+    a = await request("GET", "/api/assessments", { cookie: alunoB.cookie });
+    check("A6 student lists own assessments", a.status === 200 && !!asmt?.id && a.body.includes(asmt.id), `status ${a.status}`);
+    a = await request("GET", "/api/assessments", { cookie: pacienteA.cookie });
+    check("A6b clinic patient → assessments 404", a.status === 404, `status ${a.status}`);
+
+    // A7 — mobile (Bearer): student sees own; clinic patient 404.
+    {
+      const alunoBTok2 = await mobileLogin("qa.aluno@example.test");
+      const pacienteATok2 = await mobileLogin("qa.pacientea@example.test");
+      a = await request("GET", "/api/mobile/assessments", { bearer: alunoBTok2 });
+      check("A7 mobile student lists own assessments", a.status === 200 && a.body.includes(asmt?.id || "__none__"), `status ${a.status}`);
+      a = await request("GET", "/api/mobile/assessments", { bearer: pacienteATok2 });
+      check("A7b mobile clinic patient → 404", a.status === 404, `status ${a.status}`);
+    }
+
     // ISO-10 — mobile register never creates a tenant-less account.
     // No slug → the default tenant (never clinicId: null).
     await deleteUsers(THROWAWAY_EMAILS);
