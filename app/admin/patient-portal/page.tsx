@@ -144,7 +144,7 @@ const COLOR_MAP: Record<string, { bg: string; text: string }> = {
 
 export default function PatientPortalPage() {
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const T = (key: string) => relabel(i18nT(key, locale));
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -395,10 +395,20 @@ export default function PatientPortalPage() {
     );
   }
 
-  const sortedModules = [...config.modules].sort((a, b) => a.order - b.order);
+  // A personal-trainer studio has no clinical modules — hide them from the whole
+  // portal config (module list, dashboard stat cards, quick actions and preview).
+  const CLINICAL_PORTAL_IDS = new Set([
+    "scans", "records", "screening", "body-assessments", "body-assessment",
+    "treatment", "documents", "blood-pressure", "clinical-notes", "notes",
+    "journey", "community", "marketplace",
+  ]);
+  const notClinical = (x: { id: string; field?: string }) =>
+    !isPersonal || !(CLINICAL_PORTAL_IDS.has(x.id) || (x.field ? CLINICAL_PORTAL_IDS.has(x.field) : false));
+
+  const sortedModules = [...config.modules].sort((a, b) => a.order - b.order).filter(notClinical);
   const enabledModules = sortedModules.filter((m) => m.enabled);
-  const enabledStats = config.statsCards.filter((s) => s.enabled);
-  const enabledActions = config.quickActions.filter((a) => a.enabled);
+  const enabledStats = config.statsCards.filter((s) => s.enabled).filter(notClinical);
+  const enabledActions = config.quickActions.filter((a) => a.enabled).filter(notClinical);
 
   return (
     <div className="space-y-6">
