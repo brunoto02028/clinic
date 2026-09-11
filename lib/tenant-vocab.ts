@@ -78,5 +78,15 @@ export function personalizeLabel(
 ): string {
   if (!opts.isPersonal) return text;
   const pairs = opts.isPt ? PERSONAL_PT : PERSONAL_EN;
-  return pairs.reduce((acc, [re, to]) => acc.replace(re, (m) => matchCase(m, to)), text);
+  let out = pairs.reduce((acc, [re, to]) => acc.replace(re, (m) => matchCase(m, to)), text);
+  if (!opts.isPt) {
+    // Every EN replacement target starts with a consonant sound, so a phrase
+    // like "an appointment" becomes the ungrammatical "an session". Downgrade
+    // the indefinite article to "a" before any of our replacement words.
+    out = out.replace(
+      /\b(an)(\s+)(?=(students?|workouts?|training|trainers?|studios?|sessions?|readiness|programs?)\b)/gi,
+      (_m, art: string, sp: string) => (art[0] === "A" ? "A" : "a") + sp
+    );
+  }
+  return out;
 }

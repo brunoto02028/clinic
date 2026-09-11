@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Users,
   User,
@@ -87,6 +88,7 @@ interface Patient {
 export default function PatientsList() {
   const { locale } = useLocale();
   const { relabel, isPersonal } = useVocab();
+  const router = useRouter();
   const T = (key: string) => relabel(i18nT(key, locale));
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,7 +212,7 @@ export default function PatientsList() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search name, email or phone..."
+            placeholder={relabel("Search name, email or phone...")}
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -242,11 +244,11 @@ export default function PatientsList() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-blue-300">
                     {withMessages.length === 1
-                      ? `${withMessages[0].firstName} enviou uma mensagem`
-                      : `${withMessages.length} pacientes enviaram mensagens`}
+                      ? `${withMessages[0].firstName} sent a message`
+                      : relabel(`${withMessages.length} patients sent messages`)}
                   </p>
                   <p className="text-xs text-blue-400/70 mt-0.5">
-                    {withMessages.map(p => `${p.firstName} ${p.lastName}`).join(", ")} — clique no paciente → Mensagens para ver
+                    {withMessages.map(p => `${p.firstName} ${p.lastName}`).join(", ")} — {relabel("open the patient → Messages to view")}
                   </p>
                 </div>
               </div>
@@ -259,11 +261,11 @@ export default function PatientsList() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-emerald-300">
                     {withAnswers.length === 1
-                      ? `${withAnswers[0].firstName} respondeu às perguntas`
-                      : `${withAnswers.length} pacientes responderam às perguntas`}
+                      ? `${withAnswers[0].firstName} answered the questions`
+                      : relabel(`${withAnswers.length} patients answered the questions`)}
                   </p>
                   <p className="text-xs text-emerald-400/70 mt-0.5">
-                    {withAnswers.map(p => `${p.firstName} ${p.lastName}`).join(", ")} — clique no paciente → Rehab Agent para ver
+                    {withAnswers.map(p => `${p.firstName} ${p.lastName}`).join(", ")} — {relabel("open the patient → Rehab Agent to view")}
                   </p>
                 </div>
               </div>
@@ -291,9 +293,14 @@ export default function PatientsList() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredPatients.map((patient, index) => (
-            <div>
-              <Link href={`/admin/patients/${patient.id}`}>
+          {filteredPatients.map((patient) => (
+            <div
+              key={patient.id}
+              role="link"
+              tabIndex={0}
+              onClick={() => router.push(`/admin/patients/${patient.id}`)}
+              onKeyDown={(e) => { if (e.key === "Enter") router.push(`/admin/patients/${patient.id}`); }}
+            >
                 <Card className={`card-hover cursor-pointer ${patient.isActive === false ? "opacity-60" : ""}`}>
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center gap-3">
@@ -312,13 +319,13 @@ export default function PatientsList() {
                           {(patient.unreadMessages ?? 0) > 0 && (
                             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/40 text-[9px] font-semibold text-blue-300">
                               <MessageCircle className="h-2.5 w-2.5" />
-                              {patient.unreadMessages} mensage{(patient.unreadMessages ?? 0) !== 1 ? "ns" : "m"}
+                              {patient.unreadMessages} message{(patient.unreadMessages ?? 0) !== 1 ? "s" : ""}
                             </span>
                           )}
                           {(patient.answeredQCount ?? 0) > 0 && (
                             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[9px] font-semibold text-emerald-300">
                               <MessageCircle className="h-2.5 w-2.5" />
-                              {patient.answeredQCount} nova{(patient.answeredQCount ?? 0) !== 1 ? "s" : ""}
+                              {patient.answeredQCount} new
                             </span>
                           )}
                           {patient.medicalScreening?.consentGiven ? (
@@ -335,7 +342,7 @@ export default function PatientsList() {
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground/70">
                           {patient.phone && <span className="hidden sm:inline"><Phone className="h-3 w-3 inline mr-0.5" /> {patient.phone}</span>}
                           <span><Calendar className="h-3 w-3 inline mr-0.5" /> {new Date(patient.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
-                          <span className="hidden sm:inline">{patient.patientAppointments?.length ?? 0} appts</span>
+                          <span className="hidden sm:inline">{patient.patientAppointments?.length ?? 0} {relabel("appts")}</span>
                         </div>
                       </div>
 
@@ -376,17 +383,17 @@ export default function PatientsList() {
                         </Link>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={(e: any) => openEdit(patient, e)}>
-                              <Edit className="h-3.5 w-3.5 mr-2" /> Editar Paciente
+                              <Edit className="h-3.5 w-3.5 mr-2" /> {relabel("Edit Patient")}
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link href={`/admin/patients/${patient.id}/documents`} onClick={(e) => e.stopPropagation()}>
-                                <FileUp className="h-3.5 w-3.5 mr-2" /> Documentos
+                                <FileUp className="h-3.5 w-3.5 mr-2" /> Documents
                               </Link>
                             </DropdownMenuItem>
                             {!isPersonal && (
@@ -398,11 +405,11 @@ export default function PatientsList() {
                             )}
                             <DropdownMenuItem asChild>
                               <Link href={`/admin/patients/${patient.id}/permissions`} onClick={(e) => e.stopPropagation()}>
-                                <Shield className="h-3.5 w-3.5 mr-2" /> Permissões
+                                <Shield className="h-3.5 w-3.5 mr-2" /> Permissions
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e: any) => openDelete(patient, e)}>
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir Paciente
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> {relabel("Delete Patient")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -411,7 +418,6 @@ export default function PatientsList() {
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
             </div>
           ))}
         </div>
@@ -423,10 +429,10 @@ export default function PatientsList() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-primary" />
-              Add New Patient
+              {relabel("Add New Patient")}
             </DialogTitle>
             <DialogDescription>
-              Create a patient account. They can log in with the credentials below.
+              {relabel("Create a patient account. They can log in with the credentials below.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -528,7 +534,7 @@ export default function PatientsList() {
                   }}
                 >
                   {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                  Create Patient
+                  {relabel("Create Patient")}
                 </Button>
               </DialogFooter>
             </div>
@@ -542,10 +548,10 @@ export default function PatientsList() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5 text-primary" />
-              Edit Patient
+              {relabel("Edit Patient")}
             </DialogTitle>
             <DialogDescription>
-              Update patient information.
+              {relabel("Update patient information.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -594,15 +600,15 @@ export default function PatientsList() {
           <AlertDialogHeader>
             <AlertDialogTitle>{relabel("Delete Patient")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to permanently delete <strong>{deletingPatient?.firstName} {deletingPatient?.lastName}</strong>?
-              This will remove all their data including screenings, assessments, and documents. This action cannot be undone.
+              {relabel("Are you sure you want to permanently delete")} <strong>{deletingPatient?.firstName} {deletingPatient?.lastName}</strong>?
+              {" "}{relabel("This will remove all their data including screenings, assessments, and documents. This action cannot be undone.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Delete Patient
+              {relabel("Delete Patient")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

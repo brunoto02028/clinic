@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useVocab } from "@/hooks/use-vocab";
+import { useLocale } from "@/hooks/use-locale";
 
 type OverrideVal = true | false | "hidden" | null; // true=grant(unlocked), false=revoke(locked/padlock), "hidden"=not shown, null=plan default
 
@@ -60,6 +61,11 @@ const PERM_CATEGORIES = [
 
 export default function PatientPermissionsPage() {
   const { isPersonal, relabel } = useVocab();
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
+  // Registry items carry both label (EN) and labelPt (PT); pick by locale, then
+  // apply the tenant vocab (patient→student, treatment→workout, …).
+  const rlabel = (en: string, pt: string) => relabel((isPt ? pt : en) || en || pt);
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -285,7 +291,7 @@ export default function PatientPermissionsPage() {
   if (!data) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-500">Patient not found</p>
+        <p className="text-slate-500">{relabel("Patient not found")}</p>
         <Button variant="outline" className="mt-4" onClick={() => { if (typeof window !== "undefined" && window.history.length > 1) router.back(); else router.push(`/admin/patients/${patientId}`); }}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
@@ -335,7 +341,7 @@ export default function PatientPermissionsPage() {
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-foreground">{m.labelPt || m.label}</span>
+            <span className="text-sm font-medium text-foreground">{rlabel(m.label, m.labelPt)}</span>
             {m.alwaysVisible && (
               <Badge className="bg-muted text-muted-foreground text-[9px]">Always On</Badge>
             )}
@@ -343,7 +349,7 @@ export default function PatientPermissionsPage() {
               <Badge className="bg-amber-500/20 text-amber-400 text-[9px]">Admin Override</Badge>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{m.description}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{relabel(m.description)}</p>
           <div className="flex items-center gap-2 mt-1">
             {m.grantedByPlan ? (
               <span className="text-[10px] text-emerald-600 flex items-center gap-0.5">
@@ -366,7 +372,7 @@ export default function PatientPermissionsPage() {
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
                 title="Unlocked (no padlock)"
-                onClick={() => confirmAndSaveModuleOverride(m.key, true, m.labelPt || m.label)}
+                onClick={() => confirmAndSaveModuleOverride(m.key, true, rlabel(m.label, m.labelPt))}
                 disabled={fullAccess}
                 className={`p-1.5 transition-colors ${
                   state === "unlocked" ? "bg-emerald-500/20 text-emerald-400" : "bg-card text-muted-foreground hover:bg-muted"
@@ -376,7 +382,7 @@ export default function PatientPermissionsPage() {
               </button>
               <button
                 title="Locked (with padlock)"
-                onClick={() => confirmAndSaveModuleOverride(m.key, false, m.labelPt || m.label)}
+                onClick={() => confirmAndSaveModuleOverride(m.key, false, rlabel(m.label, m.labelPt))}
                 disabled={fullAccess}
                 className={`p-1.5 border-x border-border transition-colors ${
                   state === "locked" ? "bg-amber-500/20 text-amber-400" : "bg-card text-muted-foreground hover:bg-muted"
@@ -386,7 +392,7 @@ export default function PatientPermissionsPage() {
               </button>
               <button
                 title="Hidden (does not appear in the menu)"
-                onClick={() => confirmAndSaveModuleOverride(m.key, "hidden", m.labelPt || m.label)}
+                onClick={() => confirmAndSaveModuleOverride(m.key, "hidden", rlabel(m.label, m.labelPt))}
                 disabled={fullAccess}
                 className={`p-1.5 transition-colors ${
                   state === "hidden" ? "bg-muted text-muted-foreground" : "bg-card text-muted-foreground hover:bg-muted"
@@ -415,12 +421,12 @@ export default function PatientPermissionsPage() {
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-foreground">{p.labelPt || p.label}</span>
+            <span className="text-xs font-medium text-foreground">{rlabel(p.label, p.labelPt)}</span>
             {isOverridden && (
               <Badge className="bg-amber-500/20 text-amber-400 text-[9px]">Override</Badge>
             )}
           </div>
-          <p className="text-[10px] text-muted-foreground">{p.description}</p>
+          <p className="text-[10px] text-muted-foreground">{relabel(p.description)}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {effective ? (
@@ -456,7 +462,7 @@ export default function PatientPermissionsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <Link href={`/admin/patients/${patientId}`} className="text-xs text-primary hover:underline flex items-center gap-1 mb-2">
-            <ArrowLeft className="h-3 w-3" /> Back to Patient
+            <ArrowLeft className="h-3 w-3" /> {relabel("Back to Patient")}
           </Link>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" /> {relabel("Patient Permissions")}
@@ -523,7 +529,7 @@ export default function PatientPermissionsPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {fullAccess
-                  ? "This patient has full access to all modules, regardless of plan or payment."
+                  ? relabel("This patient has full access to all modules, regardless of plan or payment.")
                   : "Enable to unlock all modules without needing a plan or payment."}
               </p>
             </div>

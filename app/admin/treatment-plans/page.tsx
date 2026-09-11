@@ -468,8 +468,8 @@ export default function AdminTreatmentPlansPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ClipboardList className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium mb-1">No treatment plans yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">Create a plan to assign treatments to patients</p>
+            <h3 className="text-lg font-medium mb-1">{relabel("No treatment plans yet")}</h3>
+            <p className="text-sm text-muted-foreground mb-4">{relabel("Create a plan to assign treatments to patients")}</p>
             <Button onClick={openCreate} className="gap-2"><Plus className="h-4 w-4" /> Create First Plan</Button>
           </CardContent>
         </Card>
@@ -488,9 +488,9 @@ export default function AdminTreatmentPlansPage() {
                       {p.patient ? (
                         <><Users className="h-3 w-3 inline mr-1" />{p.patient.firstName} {p.patient.lastName}</>
                       ) : p.patientScope === "all" ? (
-                        <><Globe className="h-3 w-3 inline mr-1" /><span className="text-violet-600 font-medium">All Patients</span></>
+                        <><Globe className="h-3 w-3 inline mr-1" /><span className="text-violet-600 font-medium">{relabel("All Patients")}</span></>
                       ) : (
-                        <><ClipboardList className="h-3 w-3 inline mr-1" /><span className="text-amber-600 font-medium">Draft — No Patient</span></>
+                        <><ClipboardList className="h-3 w-3 inline mr-1" /><span className="text-amber-600 font-medium">{relabel("Draft — No Patient")}</span></>
                       )}
                     </p>
                   </div>
@@ -579,7 +579,7 @@ export default function AdminTreatmentPlansPage() {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Plan" : "New Treatment Plan"}</DialogTitle>
+            <DialogTitle>{relabel(editing ? "Edit Plan" : "New Treatment Plan")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
 
@@ -649,7 +649,7 @@ export default function AdminTreatmentPlansPage() {
                   }`}
                 >
                   <UserCheck className="h-4 w-4" />
-                  <span>Specific Patient</span>
+                  <span>{relabel("Specific Patient")}</span>
                 </button>
                 <button
                   type="button"
@@ -661,7 +661,7 @@ export default function AdminTreatmentPlansPage() {
                   }`}
                 >
                   <Globe className="h-4 w-4" />
-                  <span>All Patients</span>
+                  <span>{relabel("All Patients")}</span>
                 </button>
                 <button
                   type="button"
@@ -673,12 +673,12 @@ export default function AdminTreatmentPlansPage() {
                   }`}
                 >
                   <ClipboardList className="h-4 w-4" />
-                  <span>No Patient (Draft)</span>
+                  <span>{relabel("No Patient (Draft)")}</span>
                 </button>
               </div>
               {form.patientScope === "specific" && (
                 <Select value={form.patientId} onValueChange={(v) => setForm({ ...form, patientId: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select patient..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={relabel("Select patient...")} /></SelectTrigger>
                   <SelectContent>
                     {patients.map((p) => (
                       <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName} — {p.email}</SelectItem>
@@ -688,25 +688,25 @@ export default function AdminTreatmentPlansPage() {
               )}
               {form.patientScope === "all" && (
                 <p className="text-xs text-violet-600 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
-                  This plan will be available to all patients. Useful for subscription plans or general packages.
+                  {relabel("This plan will be available to all patients. Useful for subscription plans or general packages.")}
                 </p>
               )}
               {form.patientScope === "none" && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  Saved as a draft template — not assigned to any patient yet. You can assign it later by editing the plan.
+                  {relabel("Saved as a draft template — not assigned to any patient yet. You can assign it later by editing the plan.")}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label>Plan Name *</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Post-Surgery Rehabilitation" />
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={relabel("e.g. Post-Surgery Rehabilitation")} />
             </div>
 
             {/* Treatment Items */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">Treatments</Label>
+                <Label className="text-base font-semibold">{relabel("Treatments")}</Label>
                 <div className="flex gap-2">
                   {treatmentTypes.length > 0 && (
                     <Select onValueChange={(v) => {
@@ -714,7 +714,7 @@ export default function AdminTreatmentPlansPage() {
                       if (tt) addFromTreatmentType(tt);
                     }}>
                       <SelectTrigger className="w-[200px] h-8 text-xs">
-                        <SelectValue placeholder="Add from catalog..." />
+                        <SelectValue placeholder={relabel("Add from catalog...")} />
                       </SelectTrigger>
                       <SelectContent>
                         {treatmentTypes.map((tt) => (
@@ -729,14 +729,14 @@ export default function AdminTreatmentPlansPage() {
 
               {form.items.length === 0 && (
                 <div className="text-sm text-muted-foreground py-4 text-center border rounded-lg border-dashed space-y-1">
-                  <p>No treatments added yet. Use the catalog or add manually.</p>
+                  <p>{relabel("No treatments added yet. Use the catalog or add manually.")}</p>
                   {treatmentTypes.length === 0 && (
                     <p className="text-xs">
-                      Your treatment catalog is empty —{" "}
+                      {relabel("Your treatment catalog is empty —")}{" "}
                       <a href="/admin/treatment-types" target="_blank" className="text-primary underline hover:no-underline">
-                        create treatment types here
+                        {relabel("create treatment types here")}
                       </a>{" "}
-                      to add them with one click.
+                      {relabel("to add them with one click.")}
                     </p>
                   )}
                 </div>
@@ -745,7 +745,7 @@ export default function AdminTreatmentPlansPage() {
               {form.items.map((item, i) => (
                 <div key={i} className="border rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{item.treatmentName || `Treatment ${i + 1}`}</span>
+                    <span className="text-sm font-medium">{item.treatmentName || relabel(`Treatment ${i + 1}`)}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(i)}><X className="h-3 w-3" /></Button>
                   </div>
                   <div className="grid grid-cols-4 gap-2">

@@ -285,7 +285,7 @@ export default function AdminAppointmentsPage() {
       if (res.ok) {
         const data = await res.json();
         const checkoutMsg = data.checkoutUrl ? (isPt ? ` Link de pagamento gerado.` : ` Payment link generated.`) : '';
-        toast({ title: isPt ? "Consulta criada" : "Appointment created", description: (isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email.") + checkoutMsg });
+        toast({ title: relabel(isPt ? "Consulta criada" : "Appointment created"), description: relabel(isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email.") + checkoutMsg });
         setShowCreateDialog(false);
         setCreateForm({ patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "", duration: 60, treatmentType: "", price: 0, notes: "", paymentMode: "in_person" });
         fetchAppointments();
@@ -497,7 +497,7 @@ export default function AdminAppointmentsPage() {
           </p>
         </div>
         <Button onClick={() => setShowCreateDialog(true)} className="gap-2 w-full sm:w-auto">
-          <Plus className="h-4 w-4" /> {isPt ? "Nova Consulta" : "New Appointment"}
+          <Plus className="h-4 w-4" /> {relabel(isPt ? "Nova Consulta" : "New Appointment")}
         </Button>
       </div>
 
@@ -642,7 +642,7 @@ export default function AdminAppointmentsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No appointments found</p>
+            <p className="text-muted-foreground">{relabel("No appointments found")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -759,17 +759,17 @@ export default function AdminAppointmentsPage() {
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              {isPt ? "Nova Consulta" : "New Appointment"}
+              {relabel(isPt ? "Nova Consulta" : "New Appointment")}
             </DialogTitle>
             <DialogDescription>
-              {isPt ? "Agende uma consulta para um paciente. O paciente receberá um email de confirmação automaticamente." : "Schedule an appointment for a patient. The patient will receive a confirmation email automatically."}
+              {relabel(isPt ? "Agende uma consulta para um paciente. O paciente receberá um email de confirmação automaticamente." : "Schedule an appointment for a patient. The patient will receive a confirmation email automatically.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
             <div className="space-y-2">
-              <Label>{isPt ? "Paciente *" : "Patient *"}</Label>
+              <Label>{relabel(isPt ? "Paciente *" : "Patient *")}</Label>
               <Select value={createForm.patientId} onValueChange={v => setCreateForm(f => ({ ...f, patientId: v }))}>
-                <SelectTrigger><SelectValue placeholder={isPt ? "Selecionar paciente..." : "Select patient..."} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={relabel(isPt ? "Selecionar paciente..." : "Select patient...")} /></SelectTrigger>
                 <SelectContent>
                   {patients.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName} — {p.email}</SelectItem>
@@ -778,7 +778,7 @@ export default function AdminAppointmentsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>{isPt ? "Tipo de Tratamento" : "Treatment Type"}</Label>
+              <Label>{relabel(isPt ? "Tipo de Tratamento" : "Treatment Type")}</Label>
               <Select value={createForm.treatmentType} onValueChange={v => {
                 const dbOpt = dbTreatments.find(t => t.name === v);
                 if (dbOpt) {
@@ -789,7 +789,7 @@ export default function AdminAppointmentsPage() {
                   setCreateForm(f => ({ ...f, treatmentType: v, duration: opt?.duration || f.duration, price: opt?.price || f.price }));
                 }
               }}>
-                <SelectTrigger><SelectValue placeholder={isPt ? "Selecionar tratamento..." : "Select treatment..."} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={relabel(isPt ? "Selecionar tratamento..." : "Select treatment...")} /></SelectTrigger>
                 <SelectContent>
                   {dbTreatments.length > 0
                     ? dbTreatments.map(t => {
@@ -863,7 +863,7 @@ export default function AdminAppointmentsPage() {
                   <Banknote className="h-4 w-4" />
                   <div className="text-left">
                     <p className="font-medium">{isPt ? "Na Clínica" : "In-Person"}</p>
-                    <p className="text-[10px] opacity-70">{isPt ? "Pagar presencialmente" : "Pay at the clinic"}</p>
+                    <p className="text-[10px] opacity-70">{relabel(isPt ? "Pagar presencialmente" : "Pay at the clinic")}</p>
                   </div>
                 </button>
                 <button type="button"
@@ -882,9 +882,9 @@ export default function AdminAppointmentsPage() {
               </div>
               {createForm.paymentMode === "online" && createForm.price > 0 && (
                 <p className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">
-                  {isPt
+                  {relabel(isPt
                     ? `Um link de pagamento de £${createForm.price.toFixed(2)} será gerado e enviado ao paciente por email.`
-                    : `A payment link for £${createForm.price.toFixed(2)} will be generated and sent to the patient via email.`}
+                    : `A payment link for £${createForm.price.toFixed(2)} will be generated and sent to the patient via email.`)}
                 </p>
               )}
             </div>
@@ -898,9 +898,9 @@ export default function AdminAppointmentsPage() {
                 <Input
                   value={aiInstructions}
                   onChange={e => setAiInstructions(e.target.value)}
-                  placeholder={isPt
+                  placeholder={relabel(isPt
                     ? "Ex: paciente precisa preencher triagem antes, trazer exames..."
-                    : "Ex: patient must complete screening first, bring medical records..."}
+                    : "Ex: patient must complete screening first, bring medical records...")}
                   className="flex-1 text-sm bg-background"
                 />
                 <Button type="button" size="sm" className="gap-1.5 shrink-0 bg-violet-600 hover:bg-violet-700 text-white"
@@ -909,18 +909,18 @@ export default function AdminAppointmentsPage() {
                   {aiNotesLoading ? (isPt ? "Gerando..." : "Generating...") : (isPt ? "Gerar" : "Generate")}
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground">{isPt ? "Escreva instruções extras e clique Gerar. A IA cria as notas com base no paciente, tratamento e suas instruções." : "Write extra instructions and click Generate. AI creates notes based on patient, treatment and your instructions."}</p>
+              <p className="text-[10px] text-muted-foreground">{relabel(isPt ? "Escreva instruções extras e clique Gerar. A IA cria as notas com base no paciente, tratamento e suas instruções." : "Write extra instructions and click Generate. AI creates notes based on patient, treatment and your instructions.")}</p>
             </div>
             <div className="space-y-2">
-              <Label>{isPt ? "Notas da Consulta" : "Appointment Notes"}</Label>
-              <Textarea value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder={isPt ? "Notas clínicas sobre a consulta..." : "Clinical notes about the appointment..."} />
+              <Label>{relabel(isPt ? "Notas da Consulta" : "Appointment Notes")}</Label>
+              <Textarea value={createForm.notes} onChange={e => setCreateForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder={relabel(isPt ? "Notas clínicas sobre a consulta..." : "Clinical notes about the appointment...")} />
             </div>
           </div>
           <DialogFooter className="shrink-0 pt-2">
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>{isPt ? "Cancelar" : "Cancel"}</Button>
             <Button onClick={handleCreateAppointment} disabled={submitting} className="gap-2">
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isPt ? "Criar Consulta" : "Create Appointment"}
+              {relabel(isPt ? "Criar Consulta" : "Create Appointment")}
             </Button>
           </DialogFooter>
         </DialogContent>

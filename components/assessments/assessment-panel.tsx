@@ -32,6 +32,15 @@ interface Assessment {
 
 const GIRTHS = ["neck", "chest", "waist", "hip", "armRelaxed", "armFlexed", "thigh", "calf"];
 const SKINFOLDS = ["chest", "abdomen", "thigh", "triceps", "suprailiac", "subscapular", "midaxillary"];
+// Human-readable labels for the raw measurement keys (stored keys stay unchanged).
+const GIRTH_LABELS: Record<string, string> = {
+  neck: "Neck", chest: "Chest", waist: "Waist", hip: "Hip",
+  armRelaxed: "Arm (relaxed)", armFlexed: "Arm (flexed)", thigh: "Thigh", calf: "Calf",
+};
+const SKINFOLD_LABELS: Record<string, string> = {
+  chest: "Chest", abdomen: "Abdomen", thigh: "Thigh", triceps: "Triceps",
+  suprailiac: "Suprailiac", subscapular: "Subscapular", midaxillary: "Midaxillary",
+};
 const n = (v: string) => (v.trim() === "" ? undefined : Number(v));
 
 export default function AssessmentPanel({ studentId }: { studentId: string }) {
@@ -216,13 +225,13 @@ export default function AssessmentPanel({ studentId }: { studentId: string }) {
           {method === "SKINFOLD" && (
             <div>
               <p className="mb-1 text-[10px] text-muted-foreground">Skinfolds (mm) — 3-site by sex, or all 7</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{SKINFOLDS.map((s) => numField(`sf_${s}`, s))}</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{SKINFOLDS.map((s) => numField(`sf_${s}`, SKINFOLD_LABELS[s] || s))}</div>
             </div>
           )}
 
           <div>
             <p className="mb-1 text-[10px] text-muted-foreground flex items-center gap-1"><Ruler className="h-3 w-3" /> Circumferences (cm)</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{GIRTHS.map((g) => numField(`g_${g}`, g, "0.1"))}</div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{GIRTHS.map((g) => numField(`g_${g}`, GIRTH_LABELS[g] || g, "0.1"))}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

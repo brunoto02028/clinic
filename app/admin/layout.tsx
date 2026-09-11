@@ -6,10 +6,17 @@ import AdminHeader from "@/components/admin/admin-header";
 import SectionTabs from "@/components/admin/section-tabs";
 import type { Metadata } from "next";
 
-// Staff portal — private, keep out of the index (P4.1)
-export const metadata: Metadata = {
-  robots: { index: false, follow: true },
-};
+// Staff portal — private, keep out of the index (P4.1).
+// Title reflects the tenant (studio/clinic) name so a personal trainer doesn't
+// see the base clinic's name in the browser tab.
+export async function generateMetadata(): Promise<Metadata> {
+  const session = await getServerSession(authOptions);
+  const clinicName = (session?.user as any)?.clinicName;
+  return {
+    title: { absolute: clinicName ? `${clinicName} · Admin` : "Admin" },
+    robots: { index: false, follow: true },
+  };
+}
 
 export default async function AdminLayout({
   children,
