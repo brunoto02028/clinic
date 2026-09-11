@@ -1,6 +1,6 @@
 # T-6: Mobile — módulo e tela de nutrição
 
-**Status:** pendente
+**Status:** concluído (API + tela; build EAS no lote de release mobile)
 **Depende de:** T-5
 
 ## Objetivo

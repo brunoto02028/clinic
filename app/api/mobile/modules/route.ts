@@ -22,6 +22,7 @@ const MODULE_DEFS = [
 // MODULE_DEFS so it never rides the "admins see everything" path for a clinic.
 const TREINO_DEF = { key: "treino", name: "Training", icon: "barbell-outline", description: "Workouts & logging" };
 const AVALIACOES_DEF = { key: "avaliacoes", name: "Assessments", icon: "body-outline", description: "Measurements & progress" };
+const NUTRICAO_DEF = { key: "nutricao", name: "Nutrition", icon: "nutrition-outline", description: "Meal plans & logging" };
 
 // Maps our mobile module keys to the ClinicModule enum values that gate them.
 const MODULE_KEY_MAP: Record<string, string[]> = {
@@ -47,8 +48,8 @@ export async function GET(request: NextRequest) {
 
     // Training is default-on for a personal-trainer tenant (or explicitly enabled).
     const trainingOn = actor.clinicId ? await isTrainingEnabled(actor.clinicId) : false;
-    const withTraining = <T,>(mods: T[]): (T | typeof TREINO_DEF | typeof AVALIACOES_DEF)[] =>
-      trainingOn ? [...mods, TREINO_DEF, AVALIACOES_DEF] : mods;
+    const withTraining = <T,>(mods: T[]): (T | typeof TREINO_DEF | typeof AVALIACOES_DEF | typeof NUTRICAO_DEF)[] =>
+      trainingOn ? [...mods, TREINO_DEF, AVALIACOES_DEF, NUTRICAO_DEF] : mods;
 
     // A personal-trainer studio has no clinic modules on mobile: everyone in it
     // (students and the trainer) gets only Training + Assessments — never
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       ? await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true } })
       : null;
     if (isPersonalTenant(clinic?.type)) {
-      return corsJson(trainingOn ? [TREINO_DEF, AVALIACOES_DEF] : []);
+      return corsJson(trainingOn ? [TREINO_DEF, AVALIACOES_DEF, NUTRICAO_DEF] : []);
     }
 
     // Admins and full-access users see everything (plus Training when on).

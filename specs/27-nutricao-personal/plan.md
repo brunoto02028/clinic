@@ -39,8 +39,8 @@ Back-relations em `Clinic` e `User` (`StudentMealPlans`, `TrainerMealPlans`, `St
 | T-3 | API admin | `/api/admin/meal-plans` (GET/POST) + `[id]` (GET/PUT/DELETE), tenant+aluno scoped, meals aninhados | concluído |
 | T-4 | UI admin (ficha do aluno) | `components/nutrition/meal-plan-panel.tsx` + aba "Nutrition" personal-only na ficha | concluído |
 | T-5 | Aluno (web) | `/api/meal-plans` (ler próprio) + `/api/meal-plans/[id]/logs` (registrar) + página `/dashboard/nutrition` + seção no portal | concluído |
-| T-6 | Mobile | `NUTRICAO_DEF` em `mobile/modules` + `/api/mobile/meal-plans` + tela mobile (build EAS no lote de release) | pendente |
-| T-7 | Gating + vocab + guardas | isPersonal em todas as superfícies, relabel, guarda de rota (clínica não acessa `/dashboard/nutrition`), regressão clínica intacta | pendente |
+| T-6 | Mobile | `NUTRICAO_DEF` em `mobile/modules` + `/api/mobile/meal-plans` + tela mobile (build EAS no lote de release) | concluído (API+tela; EAS depois) |
+| T-7 | Gating + vocab + guardas | isPersonal em todas as superfícies, relabel, guarda de rota (clínica não acessa `/dashboard/nutrition`), regressão clínica intacta | concluído |
 
 ## Suposições (validar)
 1. **Gate reutilizado**: nutrição usa o mesmo toggle de TRAINING do personal (não um módulo NUTRITION separado). Se você quiser que o personal possa ligar/desligar nutrição independente do treino, adiciono um `ClinicModuleAccess` key `NUTRITION` (migração + toggle nas settings) — diga.

@@ -1,6 +1,6 @@
 # T-7: Gating + vocab + guardas de rota
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-4, T-5, T-6
 
 ## Objetivo
