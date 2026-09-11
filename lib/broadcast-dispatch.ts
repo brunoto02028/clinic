@@ -20,14 +20,19 @@ export async function dispatchDueBroadcasts(): Promise<number> {
     });
     if (!claimed.count) continue;
 
-    // Resolve recipients
-    const where: any = { role: "PATIENT", isActive: true };
+    // Resolve recipients — scoped to THIS broadcast's own tenant (b.clinicId),
+    // never to whoever happened to trigger the lazy dispatch. A legacy row
+    // created before tenant-scoping existed (clinicId null) matches no normal
+    // tenant's patients, so it fails safe (no recipients) rather than fanning
+    // out to every patient across every tenant.
+    const where: any = { role: "PATIENT", isActive: true, clinicId: b.clinicId };
     if (b.audience === "selected") where.id = { in: b.targetIds || [] };
     const patients = await prisma.user.findMany({ where, select: { id: true } });
 
     if (patients.length) {
       await (prisma as any).clinicMessage.createMany({
         data: patients.map((p) => ({
+          clinicId: b.clinicId,
           patientId: p.id,
           senderId: b.sentById,
           senderRole: "staff",
