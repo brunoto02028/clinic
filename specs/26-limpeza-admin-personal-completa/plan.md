@@ -21,9 +21,9 @@ Fonte de verdade: `qa/audit-report.md` (auditoria completa de 18 áreas, categor
 |-----|------|--------|--------|
 | T-1 | Portal config | `/admin/patient-portal`: esconder módulos clínicos p/ personal + "patient"→"student" nas 5 abas (Modules/Dashboard/Content/Legal/Preview) | feito (gating; vocab no T-6) |
 | T-2 | Settings | `/admin/settings`: esconder sub-abas clínicas (Insoles/Biomechanics/Thermography/MLS Laser) + Portal-landing clínico; branding placeholders | feito (sub-abas clínicas escondidas) |
-| T-3 | Permissões | `/admin/patients/[id]/permissions`: esconder categoria "Clinical", traduzir labels PT, vocab | pendente |
+| T-3 | Permissões | `/admin/patients/[id]/permissions`: esconder categoria "Clinical", traduzir labels PT, vocab | feito (categoria Clinical + status cards escondidos; título relabel) |
 | T-4 | Modais | New Appointment/"Session" + New Treatment Plan: vocab + treatment→workout | pendente |
-| T-5 | Features clínicas | esconder p/ personal: página AI/diagnosis, Equipment clínico, badge "Readiness", quick-link "AI" | parcial (AI/diagnosis escondido+bloqueado; falta Equipment) |
+| T-5 | Features clínicas | esconder AI/diagnosis (feito+bloqueado) + Equipment (feito) | feito |
 | T-6 | Vocab restante | availability (Therapist→Trainer), notifications, users (Therapists/Patients), tasks, ficha Messages (PT→EN), lista (appts/Readiness), my-account, `<title>` | pendente |
 
 ## QA

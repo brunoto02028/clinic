@@ -185,6 +185,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Equipment",
         labelPt: "Equipamentos",
         href: "/admin/equipment",
+        clinicalOnly: true,
       },
       {
         key: "rehab-agent",

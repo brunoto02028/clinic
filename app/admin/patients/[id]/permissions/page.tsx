@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useVocab } from "@/hooks/use-vocab";
 
 type OverrideVal = true | false | "hidden" | null; // true=grant(unlocked), false=revoke(locked/padlock), "hidden"=not shown, null=plan default
 
@@ -58,6 +59,7 @@ const PERM_CATEGORIES = [
 ];
 
 export default function PatientPermissionsPage() {
+  const { isPersonal, relabel } = useVocab();
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -457,7 +459,7 @@ export default function PatientPermissionsPage() {
             <ArrowLeft className="h-3 w-3" /> Back to Patient
           </Link>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" /> Patient Permissions
+            <Shield className="h-6 w-6 text-primary" /> {relabel("Patient Permissions")}
           </h1>
         </div>
         {hasChanges && (
@@ -559,6 +561,7 @@ export default function PatientPermissionsPage() {
             </div>
           </CardContent>
         </Card>
+        {!isPersonal && (
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${onboarding.screeningComplete ? "bg-emerald-500/20" : "bg-amber-500/20"}`}>
@@ -572,6 +575,7 @@ export default function PatientPermissionsPage() {
             </div>
           </CardContent>
         </Card>
+        )}
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${membership.hasActiveSubscription ? "bg-violet-500/20" : "bg-muted"}`}>
@@ -585,6 +589,7 @@ export default function PatientPermissionsPage() {
             </div>
           </CardContent>
         </Card>
+        {!isPersonal && (
         <Card>
           <CardContent className="p-3 flex items-center gap-3">
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${membership.hasActiveTreatment ? "bg-blue-500/20" : "bg-muted"}`}>
@@ -598,6 +603,7 @@ export default function PatientPermissionsPage() {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* Reset Password */}
@@ -666,7 +672,7 @@ export default function PatientPermissionsPage() {
         </CardHeader>
         {showModules && (
           <CardContent className="pt-0 space-y-4">
-            {MODULE_CATEGORIES.map(cat => {
+            {MODULE_CATEGORIES.filter(cat => !isPersonal || cat.key !== "clinical").map(cat => {
               const catModules = (modules as ModuleItem[]).filter((m: ModuleItem) => m.category === cat.key);
               if (catModules.length === 0) return null;
               return (
@@ -699,7 +705,7 @@ export default function PatientPermissionsPage() {
         </CardHeader>
         {showPermissions && (
           <CardContent className="pt-0 space-y-4">
-            {PERM_CATEGORIES.map(cat => {
+            {PERM_CATEGORIES.filter(cat => !isPersonal || cat.key !== "clinical").map(cat => {
               const catPerms = (permissions as PermItem[]).filter((p: PermItem) => p.category === cat.key);
               if (catPerms.length === 0) return null;
               return (
