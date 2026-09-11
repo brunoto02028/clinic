@@ -28,11 +28,15 @@ import {
     DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface Clinic {
     id: string;
     name: string;
     slug: string;
+    type: string;
     email: string;
     isActive: boolean;
     city: string;
@@ -51,6 +55,68 @@ export default function ClinicsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
 
+    // Create-tenant dialog (SUPERADMIN provisions a clinic or a personal studio).
+    const emptyForm = { name: "", slug: "", type: "CLINIC", email: "", ownerFirst: "", ownerLast: "", ownerEmail: "" };
+    const [createOpen, setCreateOpen] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [form, setForm] = useState(emptyForm);
+    const [slugEdited, setSlugEdited] = useState(false);
+    const isStudio = form.type === "PERSONAL_TRAINER";
+
+    const slugify = (s: string) =>
+        s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+            .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+    const setName = (name: string) =>
+        setForm((f) => ({ ...f, name, slug: slugEdited ? f.slug : slugify(name) }));
+
+    const handleCreate = async () => {
+        if (!form.name.trim() || !form.slug.trim()) { toast.error("Name and slug are required"); return; }
+        setCreating(true);
+        try {
+            const res = await fetch("/api/admin/clinics", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: form.name.trim(), slug: form.slug.trim(), type: form.type, email: form.email.trim() || undefined }),
+            });
+            const clinic = await res.json();
+            if (!res.ok) throw new Error(clinic?.error || "Failed to create");
+
+            // Optional owner (trainer ADMIN) — reuses the staff-user flow, which
+            // hashes a temp password and emails the owner a /staff-login link.
+            if (form.ownerEmail.trim()) {
+                // Strong, single-use temp password (CSPRNG) — emailed to the owner,
+                // changed on first login.
+                const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+                const rand = new Uint8Array(14);
+                crypto.getRandomValues(rand);
+                const tempPassword = "St-" + Array.from(rand, (b) => alphabet[b % alphabet.length]).join("");
+                const ures = await fetch("/api/admin/users", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        firstName: form.ownerFirst.trim(), lastName: form.ownerLast.trim(),
+                        email: form.ownerEmail.trim(), password: tempPassword,
+                        role: "ADMIN", targetClinicId: clinic.id,
+                    }),
+                });
+                if (!ures.ok) {
+                    const ue = await ures.json().catch(() => ({}));
+                    toast.warning(`${isStudio ? "Studio" : "Clinic"} created, but the owner account failed: ${ue?.error || ures.status}. Add it under Users.`);
+                } else {
+                    toast.success(`${isStudio ? "Studio" : "Clinic"} and owner created — the owner got an email with sign-in details.`);
+                }
+            } else {
+                toast.success(isStudio ? "Studio created" : "Clinic created");
+            }
+            setCreateOpen(false); setForm(emptyForm); setSlugEdited(false); fetchClinics();
+        } catch (e: any) {
+            toast.error(e?.message || "Failed to create");
+        } finally {
+            setCreating(false);
+        }
+    };
+
     useEffect(() => {
         fetchClinics();
     }, []);
@@ -66,6 +132,15 @@ export default function ClinicsPage() {
             toast.error("Failed to load clinics");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const copyLink = async (path: string) => {
+        try {
+            await navigator.clipboard.writeText(`${window.location.origin}${path}`);
+            toast.success(`Copied ${path}`);
+        } catch {
+            toast.error("Couldn't copy — copy it manually: " + path);
         }
     };
 
@@ -104,9 +179,9 @@ export default function ClinicsPage() {
                         Manage all clinics and medical centers on the platform
                     </p>
                 </div>
-                <Button className="md:w-auto w-full gap-2">
+                <Button className="md:w-auto w-full gap-2" onClick={() => setCreateOpen(true)}>
                     <Plus className="h-4 w-4" />
-                    Add New Clinic
+                    Add Clinic / Studio
                 </Button>
             </div>
 
@@ -158,7 +233,12 @@ export default function ClinicsPage() {
                                                         <Building2 className="h-5 w-5 text-primary" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-sm">{clinic.name}</p>
+                                                        <p className="font-bold text-sm flex items-center gap-2">
+                                                            {clinic.name}
+                                                            {clinic.type === "PERSONAL_TRAINER" && (
+                                                                <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-primary/10 text-primary border border-primary/20">Studio</span>
+                                                            )}
+                                                        </p>
                                                         <p className="text-xs text-muted-foreground">/{clinic.slug}</p>
                                                     </div>
                                                 </div>
@@ -198,6 +278,19 @@ export default function ClinicsPage() {
                                                             <ExternalLink className="mr-2 h-4 w-4" />
                                                             Manage this Clinic
                                                         </DropdownMenuItem>
+                                                        {clinic.type === "PERSONAL_TRAINER" && (
+                                                            <>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem onClick={() => copyLink(`/studio/${clinic.slug}`)}>
+                                                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                                                    Copy student login link
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => copyLink(`/join/${clinic.slug}`)}>
+                                                                    <UserPlus className="mr-2 h-4 w-4" />
+                                                                    Copy invite link
+                                                                </DropdownMenuItem>
+                                                            </>
+                                                        )}
                                                         <DropdownMenuItem>
                                                             <Settings2 className="mr-2 h-4 w-4" />
                                                             Clinic Settings
@@ -218,6 +311,71 @@ export default function ClinicsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setForm(emptyForm); setSlugEdited(false); } }}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Add clinic or studio</DialogTitle>
+                        <DialogDescription>
+                            Create a new tenant. A <strong>Personal Studio</strong> gets the trainer/student experience; a <strong>Clinic</strong> gets the clinical one.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-1">
+                        <div className="space-y-2">
+                            <Label>Type</Label>
+                            <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="CLINIC">Clinic</SelectItem>
+                                    <SelectItem value="PERSONAL_TRAINER">Personal Studio</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="tname">{isStudio ? "Studio name" : "Clinic name"}</Label>
+                            <Input id="tname" value={form.name} onChange={(e) => setName(e.target.value)} placeholder={isStudio ? "e.g. Peak Strength Studio" : "e.g. Riverside Physio"} />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="tslug">Link slug</Label>
+                            <Input
+                                id="tslug"
+                                value={form.slug}
+                                onChange={(e) => { setSlugEdited(true); setForm((f) => ({ ...f, slug: slugify(e.target.value) })); }}
+                                placeholder="peak-strength"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {isStudio
+                                    ? <>Student login: <span className="font-mono">/studio/{form.slug || "slug"}</span> · Invite: <span className="font-mono">/join/{form.slug || "slug"}</span></>
+                                    : <>Sign-up: <span className="font-mono">/join/{form.slug || "slug"}</span></>}
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="temail">Contact email <span className="text-muted-foreground">(optional)</span></Label>
+                            <Input id="temail" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="hello@example.com" />
+                        </div>
+
+                        <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                            <p className="text-sm font-medium">{isStudio ? "Studio owner (trainer)" : "Owner / admin"} <span className="text-muted-foreground font-normal">— optional, gets an email to sign in</span></p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Input value={form.ownerFirst} onChange={(e) => setForm((f) => ({ ...f, ownerFirst: e.target.value }))} placeholder="First name" />
+                                <Input value={form.ownerLast} onChange={(e) => setForm((f) => ({ ...f, ownerLast: e.target.value }))} placeholder="Last name" />
+                            </div>
+                            <Input type="email" value={form.ownerEmail} onChange={(e) => setForm((f) => ({ ...f, ownerEmail: e.target.value }))} placeholder="owner.email@example.com" />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
+                        <Button onClick={handleCreate} disabled={creating || !form.name.trim() || !form.slug.trim()}>
+                            {creating ? "Creating…" : (isStudio ? "Create studio" : "Create clinic")}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
