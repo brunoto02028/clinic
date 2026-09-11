@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
   BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
-  Dumbbell, Apple,
+  Dumbbell, Apple, CreditCard,
 } from "lucide-react";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
@@ -18,6 +18,7 @@ import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
 import AssessmentPanel from "@/components/assessments/assessment-panel";
 import MealPlanPanel from "@/components/nutrition/meal-plan-panel";
+import BillingPanel from "@/components/billing/billing-panel";
 import { useVocab } from "@/hooks/use-vocab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -940,6 +941,11 @@ export default function PatientProfilePage() {
                 {isPersonal && (
                   <TabsTrigger value="nutrition" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                     <Apple className="h-3 w-3" />Nutrition
+                  </TabsTrigger>
+                )}
+                {isPersonal && (
+                  <TabsTrigger value="billing" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    <CreditCard className="h-3 w-3" />Billing
                   </TabsTrigger>
                 )}
               </>
@@ -2083,6 +2089,12 @@ export default function PatientProfilePage() {
         {isPersonal && (
           <TabsContent value="nutrition" className="mt-4">
             <MealPlanPanel studentId={patientId} />
+          </TabsContent>
+        )}
+
+        {isPersonal && (
+          <TabsContent value="billing" className="mt-4">
+            <BillingPanel studentId={patientId} />
           </TabsContent>
         )}
 

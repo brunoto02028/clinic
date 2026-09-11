@@ -308,9 +308,13 @@ model Clinic {
   postcode String?
   country  String  @default("GB")
 
-  // Stripe Connect (for receiving payments)
-  stripeAccountId String? @unique
-  stripeOnboarded Boolean @default(false)
+  // Stripe Connect (for receiving payments). stripeOnboarded mirrors
+  // charges_enabled (may charge); the two flags below surface the rest of the
+  // account state so a trainer isn't left "charging but not getting paid" (act.28).
+  stripeAccountId       String? @unique
+  stripeOnboarded       Boolean @default(false)
+  stripePayoutsEnabled  Boolean @default(false)
+  stripeRequirementsDue Boolean @default(false)
 
   // Settings
   timezone String  @default("Europe/London")
@@ -350,6 +354,8 @@ model Clinic {
   assessmentPhotos        AssessmentPhoto[]
   mealPlans               MealPlan[]
   mealLogs                MealLog[]
+  billingPlans            BillingPlan[]
+  billingSubscriptions    BillingSubscription[]
   socialAccounts          SocialAccount[]
   socialPosts             SocialPost[]
   socialCampaigns         SocialCampaign[]
@@ -638,6 +644,10 @@ model User {
   studentMealPlans           MealPlan[]             @relation("StudentMealPlans")
   trainerMealPlans           MealPlan[]             @relation("TrainerMealPlans")
   studentMealLogs            MealLog[]              @relation("StudentMealLogs")
+  trainerBillingPlans        BillingPlan[]          @relation("TrainerBillingPlans")
+  studentBillingSubscriptions BillingSubscription[] @relation("StudentBillingSubscriptions")
+  trainerBillingSubscriptions BillingSubscription[] @relation("TrainerBillingSubscriptions")
+  studentStripeCustomers     StudentStripeCustomer[] @relation("StudentStripeCustomers")
   diagnosesAsPatient         AIDiagnosis[]          @relation("PatientDiagnoses")
   diagnosesAsTherapist       AIDiagnosis[]          @relation("TherapistDiagnoses")
   protocolsAsPatient         TreatmentProtocol[]    @relation("PatientProtocols")
@@ -3220,6 +3230,123 @@ model MealLog {
   @@index([clinicId])
   @@index([studentId])
   @@index([mealPlanId])
+}
+
+// ============================================
+// PERSONAL-TRAINER BILLING via STRIPE CONNECT (activity 28)
+// A trainer charges their own students; money lands in the TRAINER'S connected
+// Stripe account (direct charges), never the BPR platform account. All Stripe
+// objects here (product/price/customer/subscription/refund) live on the
+// connected account. Personal-only; gated by TRAINING + charges_enabled. The
+// clinical BPR payment stack (Payment/PatientSubscription/TreatmentPackage/
+// MembershipPlan) is not touched.
+// ============================================
+
+enum BillingInterval {
+  ONE_TIME
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum BillingSubStatus {
+  INCOMPLETE // checkout started, not paid yet
+  ACTIVE // recurring live
+  PAST_DUE
+  CANCELLED
+  PAID // one-time paid
+}
+
+// A price the trainer charges (recurring or one-off). Stripe product/price are
+// created on the trainer's CONNECTED account.
+model BillingPlan {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  trainerId String
+  trainer   User   @relation("TrainerBillingPlans", fields: [trainerId], references: [id])
+
+  name        String
+  description String? @db.Text
+  amountCents Int
+  currency    String          @default("GBP")
+  interval    BillingInterval @default(MONTHLY)
+  status      String          @default("ACTIVE") // ACTIVE | ARCHIVED
+
+  // Created on the connected account (not the BPR account).
+  stripeProductId String?
+  stripePriceId   String?
+
+  subscriptions BillingSubscription[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([trainerId])
+  @@index([status])
+}
+
+// A student's payment/subscription against a BillingPlan.
+model BillingSubscription {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  trainerId String
+  trainer   User   @relation("TrainerBillingSubscriptions", fields: [trainerId], references: [id])
+  studentId String
+  student   User   @relation("StudentBillingSubscriptions", fields: [studentId], references: [id], onDelete: Cascade)
+
+  billingPlanId String
+  billingPlan   BillingPlan @relation(fields: [billingPlanId], references: [id], onDelete: Cascade)
+
+  status BillingSubStatus @default(INCOMPLETE)
+
+  // All on the connected account.
+  stripeCustomerId        String?
+  stripeSubscriptionId    String? @unique
+  stripeCheckoutSessionId String?
+
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean   @default(false)
+  cancelledAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([trainerId])
+  @@index([studentId])
+  @@index([billingPlanId])
+  @@index([status])
+}
+
+// Reuse of a student's Stripe Customer per connected account (direct charges
+// create the customer on the connected account, so it's keyed by account).
+model StudentStripeCustomer {
+  id String @id @default(cuid())
+
+  studentId String
+  student   User   @relation("StudentStripeCustomers", fields: [studentId], references: [id], onDelete: Cascade)
+
+  stripeAccountId String
+  customerId      String
+
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, stripeAccountId])
+  @@index([studentId])
+}
+
+// Webhook idempotency: a processed Stripe event id (Connect events are redelivered).
+model ProcessedStripeEvent {
+  id        String   @id // the Stripe event.id
+  type      String
+  createdAt DateTime @default(now())
 }
 
 // ============================================

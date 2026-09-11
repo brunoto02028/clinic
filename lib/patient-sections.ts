@@ -4,6 +4,7 @@ import {
   Stethoscope,
   Dumbbell,
   Apple,
+  CreditCard,
   BookOpen,
   User,
   MessageCircleQuestion,
@@ -49,6 +50,15 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     href: "/dashboard/nutrition",
     personalOnly: true,
     matchRoutes: ["/dashboard/nutrition"],
+  },
+  {
+    key: "billing",
+    label: "Payments",
+    labelPt: "Pagamentos",
+    icon: CreditCard,
+    href: "/dashboard/billing",
+    personalOnly: true,
+    matchRoutes: ["/dashboard/billing"],
   },
   {
     key: "appointments",
