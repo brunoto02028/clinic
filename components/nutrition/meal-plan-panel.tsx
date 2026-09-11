@@ -10,6 +10,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVocab } from "@/hooks/use-vocab";
 
+interface FoodLite {
+  id: string;
+  name: string;
+  basis: "PER_100G" | "PER_UNIT";
+  unitLabel: string;
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  isActive?: boolean;
+}
+interface MealFoodItem {
+  foodId: string;
+  quantity: number;
+  food?: FoodLite; // kept inline for the client-side macro preview
+}
 interface MealItem {
   id?: string;
   name: string;
@@ -20,6 +36,23 @@ interface MealItem {
   carbsG: number | null;
   fatG: number | null;
   order: number;
+  foods?: MealFoodItem[]; // undefined = manual macros; array (incl []) = food-composed
+}
+
+const clientFactor = (basis: string, q: number) => (basis === "PER_100G" ? q / 100 : q);
+/** Meal macros for display/preview: computed from foods, else the manual fields. */
+function mealMacros(m: MealItem) {
+  if (m.foods) {
+    let kcal = 0, p = 0, c = 0, f = 0;
+    for (const it of m.foods) {
+      const fd = it.food;
+      if (!fd) continue;
+      const k = clientFactor(fd.basis, it.quantity || 0);
+      kcal += fd.kcal * k; p += fd.proteinG * k; c += fd.carbsG * k; f += fd.fatG * k;
+    }
+    return { kcal: Math.round(kcal), proteinG: Math.round(p * 10) / 10, carbsG: Math.round(c * 10) / 10, fatG: Math.round(f * 10) / 10 };
+  }
+  return { kcal: m.kcal ?? 0, proteinG: m.proteinG ?? 0, carbsG: m.carbsG ?? 0, fatG: m.fatG ?? 0 };
 }
 interface LogItem {
   id: string;
@@ -83,13 +116,18 @@ export default function MealPlanPanel({ studentId }: { studentId: string }) {
   const [notes, setNotes] = useState("");
   const [meals, setMeals] = useState<MealItem[]>([]);
   const [notifyStudent, setNotifyStudent] = useState(true);
+  const [catalog, setCatalog] = useState<FoodLite[]>([]);
 
   const load = useCallback(async () => {
     setError("");
     try {
-      const r = await fetch(`/api/admin/meal-plans?studentId=${encodeURIComponent(studentId)}`);
+      const [r, rc] = await Promise.all([
+        fetch(`/api/admin/meal-plans?studentId=${encodeURIComponent(studentId)}`),
+        fetch("/api/admin/foods"),
+      ]);
       if (!r.ok) throw new Error(String(r.status));
       setList(await r.json());
+      if (rc.ok) setCatalog(await rc.json());
     } catch {
       setError("Could not load meal plans.");
     } finally {
@@ -112,7 +150,15 @@ export default function MealPlanPanel({ studentId }: { studentId: string }) {
       carbs: p.targetCarbsG?.toString() ?? "", fat: p.targetFatG?.toString() ?? "",
     });
     setNotes(p.notes ?? "");
-    setMeals(p.meals.length ? p.meals.map((m) => ({ ...m })) : [emptyMeal(0)]);
+    setMeals(
+      p.meals.length
+        ? p.meals.map((m: any) => ({
+            ...m,
+            // Empty foods from the API = manual meal (undefined); non-empty = food-composed.
+            foods: m.foods && m.foods.length ? m.foods.map((f: any) => ({ foodId: f.foodId, quantity: f.quantity, food: f.food })) : undefined,
+          }))
+        : [emptyMeal(0)]
+    );
     setNotifyStudent(false);
     setError("");
   }
@@ -121,8 +167,21 @@ export default function MealPlanPanel({ studentId }: { studentId: string }) {
   const setMeal = (i: number, patch: Partial<MealItem>) =>
     setMeals((ms) => ms.map((m, idx) => (idx === i ? { ...m, ...patch } : m)));
 
+  // ── Food composition per meal ──
+  const enableFoods = (i: number) => setMeal(i, { foods: [] });
+  const disableFoods = (i: number) => setMeal(i, { foods: undefined });
+  const addFoodToMeal = (i: number, foodId: string) => {
+    const fd = catalog.find((c) => c.id === foodId);
+    if (!fd) return;
+    setMeals((ms) => ms.map((m, idx) => (idx === i ? { ...m, foods: [...(m.foods ?? []), { foodId, quantity: fd.basis === "PER_100G" ? 100 : 1, food: fd }] } : m)));
+  };
+  const setFoodQty = (i: number, fi: number, q: number) =>
+    setMeals((ms) => ms.map((m, idx) => (idx === i ? { ...m, foods: (m.foods ?? []).map((x, j) => (j === fi ? { ...x, quantity: q } : x)) } : m)));
+  const removeFoodFromMeal = (i: number, fi: number) =>
+    setMeals((ms) => ms.map((m, idx) => (idx === i ? { ...m, foods: (m.foods ?? []).filter((_, j) => j !== fi) } : m)));
+
   const plannedTotals = meals.reduce(
-    (a, m) => ({ kcal: a.kcal + (m.kcal ?? 0), protein: a.protein + (m.proteinG ?? 0), carbs: a.carbs + (m.carbsG ?? 0), fat: a.fat + (m.fatG ?? 0) }),
+    (a, m) => { const mm = mealMacros(m); return { kcal: a.kcal + mm.kcal, protein: a.protein + mm.proteinG, carbs: a.carbs + mm.carbsG, fat: a.fat + mm.fatG }; },
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   );
 
@@ -138,7 +197,12 @@ export default function MealPlanPanel({ studentId }: { studentId: string }) {
         notifyStudent,
         meals: meals
           .filter((m) => m.name.trim())
-          .map((m, i) => ({ id: m.id, name: m.name.trim(), timeOfDay: m.timeOfDay || null, description: m.description || null, kcal: m.kcal, proteinG: m.proteinG, carbsG: m.carbsG, fatG: m.fatG, order: i })),
+          .map((m, i) => ({
+            id: m.id, name: m.name.trim(), timeOfDay: m.timeOfDay || null, description: m.description || null,
+            kcal: m.kcal, proteinG: m.proteinG, carbsG: m.carbsG, fatG: m.fatG, order: i,
+            // foods present (incl []) → server computes/stores macros; absent → manual kept.
+            ...(m.foods !== undefined ? { foods: m.foods.map((x, idx) => ({ foodId: x.foodId, quantity: x.quantity, order: idx })) } : {}),
+          })),
       };
       const url = editingId ? `/api/admin/meal-plans/${editingId}` : "/api/admin/meal-plans";
       const r = await fetch(url, { method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -214,14 +278,50 @@ export default function MealPlanPanel({ studentId }: { studentId: string }) {
                   <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setMeals((ms) => ms.filter((_, idx) => idx !== i))}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
                 <Input value={m.description ?? ""} onChange={(e) => setMeal(i, { description: e.target.value })} placeholder="What to eat…" className="h-8" />
-                <div className="grid grid-cols-4 gap-2">
-                  {([["kcal", "kcal"], ["proteinG", "P (g)"], ["carbsG", "C (g)"], ["fatG", "F (g)"]] as const).map(([field, label]) => (
-                    <div key={field}>
-                      <Label className="text-[9px] text-muted-foreground">{label}</Label>
-                      <Input type="number" min={0} value={(m[field] as number | null) ?? ""} onChange={(e) => setMeal(i, { [field]: num(e.target.value) } as Partial<MealItem>)} className="h-8" />
+
+                {m.foods === undefined ? (
+                  <>
+                    {/* Manual macros (activity 27) */}
+                    <div className="grid grid-cols-4 gap-2">
+                      {([["kcal", "kcal"], ["proteinG", "P (g)"], ["carbsG", "C (g)"], ["fatG", "F (g)"]] as const).map(([field, label]) => (
+                        <div key={field}>
+                          <Label className="text-[9px] text-muted-foreground">{label}</Label>
+                          <Input type="number" min={0} value={(m[field] as number | null) ?? ""} onChange={(e) => setMeal(i, { [field]: num(e.target.value) } as Partial<MealItem>)} className="h-8" />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                    {catalog.length > 0 && (
+                      <button type="button" className="text-[10px] text-primary hover:underline" onClick={() => enableFoods(i)}>+ Build from foods (auto macros)</button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Food-composed meal */}
+                    <div className="space-y-1">
+                      {(m.foods ?? []).map((it, fi) => (
+                        <div key={fi} className="flex items-center gap-2">
+                          <span className="flex-1 text-xs truncate">{it.food?.name ?? "food"}{it.food && it.food.isActive === false ? " (inactive)" : ""}</span>
+                          <Input type="number" min={0} step="0.1" value={it.quantity} onChange={(e) => setFoodQty(i, fi, Number(e.target.value) || 0)} className="h-7 w-20 text-xs" />
+                          <span className="text-[10px] text-muted-foreground w-10">{it.food?.basis === "PER_100G" ? "g" : it.food?.unitLabel || "un"}</span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => removeFoodFromMeal(i, fi)}><X className="h-3 w-3" /></Button>
+                        </div>
+                      ))}
+                      <select
+                        value=""
+                        onChange={(e) => { if (e.target.value) addFoodToMeal(i, e.target.value); }}
+                        className="h-8 w-full rounded border bg-background px-2 text-xs"
+                        data-testid="mp-food-picker"
+                      >
+                        <option value="">+ Add food…</option>
+                        {catalog.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                      </select>
+                      {(() => { const mm = mealMacros(m); return (
+                        <p className="text-[10px] text-muted-foreground">Computed: {mm.kcal} kcal · {mm.proteinG}P / {mm.carbsG}C / {mm.fatG}F</p>
+                      ); })()}
+                      <button type="button" className="text-[10px] text-muted-foreground hover:underline" onClick={() => disableFoods(i)}>Switch to manual macros</button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setMeals((ms) => [...ms, emptyMeal(ms.length)])}><Plus className="h-3 w-3" /> Add meal</Button>

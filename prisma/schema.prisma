@@ -358,6 +358,7 @@ model Clinic {
   billingSubscriptions    BillingSubscription[]
   challenges              Challenge[]
   challengeParticipants   ChallengeParticipant[]
+  foods                   Food[]
   socialAccounts          SocialAccount[]
   socialPosts             SocialPost[]
   socialCampaigns         SocialCampaign[]
@@ -3189,13 +3190,16 @@ model Meal {
   name        String
   timeOfDay   String? // suggested time, free text e.g. "08:00"
   description String? @db.Text // what to eat
-  kcal        Int?
-  proteinG    Int?
-  carbsG      Int?
-  fatG        Int?
+  kcal        Int? // whole calories
+  // Macros are Float to preserve 1-decimal precision when computed from foods
+  // (activity 31); manual entry (activity 27) still accepts whole numbers.
+  proteinG    Float?
+  carbsG      Float?
+  fatG        Float?
   order       Int     @default(0)
 
-  logs MealLog[]
+  logs  MealLog[]
+  foods MealFood[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -3234,6 +3238,55 @@ model MealLog {
   @@index([clinicId])
   @@index([studentId])
   @@index([mealPlanId])
+}
+
+// ── Food catalog (activity 31) ──
+// A tenant food catalog; a Meal can be composed of foods (MealFood), in which
+// case the Meal's macro fields are computed and stored from them (so the student
+// portal, which reads Meal.kcal/…, needs no change). Personal-only.
+enum FoodBasis {
+  PER_100G // macros are per 100g; MealFood.quantity is in grams
+  PER_UNIT // macros are per unit; MealFood.quantity is a (possibly fractional) count
+}
+
+model Food {
+  id       String @id @default(cuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name      String
+  basis     FoodBasis @default(PER_100G)
+  unitLabel String    @default("100g") // cosmetic label for the quantity
+  kcal      Int       @default(0)
+  proteinG  Float     @default(0)
+  carbsG    Float     @default(0)
+  fatG      Float     @default(0)
+  isActive  Boolean   @default(true) // soft-delete: hidden from the picker, kept for existing meals
+
+  mealFoods MealFood[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([isActive])
+}
+
+model MealFood {
+  id     String @id @default(cuid())
+  mealId String
+  meal   Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  foodId String
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Restrict) // soft-delete only; never hard-delete a used food
+
+  quantity Float // grams (PER_100G) or count (PER_UNIT)
+  order    Int   @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([mealId])
+  @@index([foodId])
 }
 
 // ============================================

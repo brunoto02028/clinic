@@ -15,9 +15,11 @@ describe("visibleAdminSections", () => {
     expect(tabKeys(visibleAdminSections(false))).toEqual(expect.arrayContaining(["notes", "protocols", "rehab-agent"]));
   });
 
-  it("hides the personalOnly Challenges section from a clinic, shows it to a personal trainer (G7)", () => {
-    expect(sectionKeys(visibleAdminSections(false))).not.toContain("challenges");
-    expect(sectionKeys(visibleAdminSections(true))).toContain("challenges");
+  it("hides personalOnly sections (Challenges, Nutrition) from a clinic, shows them to a personal trainer (G7)", () => {
+    for (const key of ["challenges", "nutrition"]) {
+      expect(sectionKeys(visibleAdminSections(false))).not.toContain(key);
+      expect(sectionKeys(visibleAdminSections(true))).toContain(key);
+    }
   });
 
   it("drops the clinical-only tabs for a personal trainer", () => {

@@ -12,20 +12,27 @@ import {
 import { assertNutritionAccess } from "@/lib/nutrition-access";
 import { validateMealPlan, type MealInput, type MealPlanInput } from "@/lib/nutrition";
 import { notifyPatient } from "@/lib/notify-patient";
+import { loadFoodMap, mealMacroFields, mealFoodCreate, type FoodMap } from "@/lib/meal-food-build";
 
 const STATUSES = ["ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"] as const;
 type Status = (typeof STATUSES)[number];
 
-function mapMeal(m: MealInput, i: number) {
+// Builds a Meal create object. When the meal carries `foods`, macros are computed
+// from the catalog and the MealFood rows are nested-created; otherwise the manual
+// macros are used (activity 27 behaviour).
+function mapMeal(m: MealInput & { foods?: any[] }, i: number, foodMap: FoodMap) {
+  const macros = mealMacroFields(m as any, foodMap);
+  const foods = mealFoodCreate(m as any);
   return {
     name: m.name.trim(),
     timeOfDay: m.timeOfDay ?? null,
     description: m.description ?? null,
-    kcal: m.kcal ?? null,
-    proteinG: m.proteinG ?? null,
-    carbsG: m.carbsG ?? null,
-    fatG: m.fatG ?? null,
+    kcal: macros.kcal,
+    proteinG: macros.proteinG,
+    carbsG: macros.carbsG,
+    fatG: macros.fatG,
     order: typeof m.order === "number" ? m.order : i,
+    ...(foods.length ? { foods: { create: foods } } : {}),
   };
 }
 
@@ -57,7 +64,7 @@ export async function GET(request: NextRequest) {
     const plans = await prisma.mealPlan.findMany({
       where: { ...tenantWhere(actor), ...(studentId ? { studentId } : {}) },
       include: {
-        meals: { orderBy: { order: "asc" } },
+        meals: { orderBy: { order: "asc" }, include: { foods: { orderBy: { order: "asc" }, include: { food: true } } } },
         logs: {
           orderBy: { performedAt: "desc" },
           select: { id: true, mealId: true, mealName: true, loggedDate: true, performedAt: true, note: true, photoUrl: true },
@@ -101,6 +108,10 @@ export async function POST(request: NextRequest) {
 
     const status: Status = STATUSES.includes(body?.status) ? body.status : "ACTIVE";
 
+    // Resolve any catalog foods referenced by the meals (tenant-scoped, active).
+    const { map: foodMap, missing } = await loadFoodMap(clinicId, input.meals as any[], true);
+    if (missing.length) return NextResponse.json({ error: "One or more foods are not in this catalog" }, { status: 400 });
+
     const created = await prisma.$transaction(async (tx) => {
       if (status === "ACTIVE") {
         await tx.mealPlan.updateMany({
@@ -120,7 +131,7 @@ export async function POST(request: NextRequest) {
           targetCarbsG: input.targetCarbsG ?? null,
           targetFatG: input.targetFatG ?? null,
           notes: input.notes ?? null,
-          meals: { create: input.meals.map(mapMeal) },
+          meals: { create: input.meals.map((m, i) => mapMeal(m, i, foodMap)) },
         },
         include: { meals: { orderBy: { order: "asc" } } },
       });

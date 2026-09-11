@@ -11,21 +11,25 @@ import {
 import { assertNutritionAccess } from "@/lib/nutrition-access";
 import { validateMealPlan, type MealInput, type MealPlanInput } from "@/lib/nutrition";
 import { notifyPatient } from "@/lib/notify-patient";
+import { loadFoodMap, mealMacroFields, mealFoodCreate, foodsProvided, type FoodMap } from "@/lib/meal-food-build";
 
 const STATUSES = ["ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"] as const;
 type Status = (typeof STATUSES)[number];
 
-type MealInputWithId = MealInput & { id?: string };
+type MealInputWithId = MealInput & { id?: string; foods?: any[] };
 
-function mealScalars(m: MealInput, i: number) {
+// Scalars + macros for a meal: macros are computed from foods when present, else
+// the manual values (activity 27). foods themselves are (re)linked separately.
+function mealScalars(m: MealInputWithId, i: number, foodMap: FoodMap) {
+  const macros = mealMacroFields(m as any, foodMap);
   return {
     name: m.name.trim(),
     timeOfDay: m.timeOfDay ?? null,
     description: m.description ?? null,
-    kcal: m.kcal ?? null,
-    proteinG: m.proteinG ?? null,
-    carbsG: m.carbsG ?? null,
-    fatG: m.fatG ?? null,
+    kcal: macros.kcal,
+    proteinG: macros.proteinG,
+    carbsG: macros.carbsG,
+    fatG: macros.fatG,
     order: typeof m.order === "number" ? m.order : i,
   };
 }
@@ -51,7 +55,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const plan = await prisma.mealPlan.findUnique({
       where: { id: params.id },
       include: {
-        meals: { orderBy: { order: "asc" } },
+        meals: { orderBy: { order: "asc" }, include: { foods: { orderBy: { order: "asc" }, include: { food: true } } } },
         logs: {
           orderBy: { performedAt: "desc" },
           select: { id: true, mealId: true, mealName: true, loggedDate: true, performedAt: true, note: true, photoUrl: true },
@@ -107,6 +111,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const status: Status | undefined = STATUSES.includes(body?.status) ? body.status : undefined;
     if (status) data.status = status;
 
+    // Resolve catalog foods referenced by the meals (tenant-scoped; PUT allows an
+    // already-linked inactive food to be re-sent — G2).
+    let foodMap: FoodMap = new Map();
+    if (hasMeals) {
+      const res = await loadFoodMap(clinicId, body.meals as any[], false);
+      if (res.missing.length) return NextResponse.json({ error: "One or more foods are not in this catalog" }, { status: 400 });
+      foodMap = res.map;
+    }
+
     await prisma.$transaction(async (tx) => {
       // One ACTIVE plan per student: activating this one pauses the others.
       if (status === "ACTIVE") {
@@ -124,15 +137,25 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         for (let i = 0; i < incoming.length; i++) {
           const m = incoming[i];
+          let mealId: string;
           if (m.id && existingIds.has(m.id)) {
             keptIds.add(m.id);
-            await tx.meal.update({ where: { id: m.id }, data: mealScalars(m, i) });
+            await tx.meal.update({ where: { id: m.id }, data: mealScalars(m, i, foodMap) });
+            mealId = m.id;
           } else {
-            await tx.meal.create({ data: { mealPlanId: params.id, ...mealScalars(m, i) } });
+            const createdMeal = await tx.meal.create({ data: { mealPlanId: params.id, ...mealScalars(m, i, foodMap) } });
+            mealId = createdMeal.id;
+          }
+          // foods key present (incl. []) → replace the meal's foods; absent → leave.
+          if (foodsProvided(m as any)) {
+            await tx.mealFood.deleteMany({ where: { mealId } });
+            const rows = mealFoodCreate(m as any);
+            if (rows.length) await tx.mealFood.createMany({ data: rows.map((r) => ({ ...r, mealId })) });
           }
         }
         // Remove only meals dropped from the plan; their MealLogs keep the
-        // snapshot and have mealId set to null (onDelete: SetNull).
+        // snapshot and have mealId set to null (onDelete: SetNull). MealFood
+        // rows cascade-delete with the meal.
         const toDelete = [...existingIds].filter((id) => !keptIds.has(id));
         if (toDelete.length) await tx.meal.deleteMany({ where: { id: { in: toDelete } } });
       }

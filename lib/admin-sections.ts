@@ -8,6 +8,7 @@ import {
   Settings,
   BellRing,
   Trophy,
+  Apple,
   type LucideIcon,
 } from "lucide-react";
 
@@ -323,6 +324,23 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Desafios",
         href: "/admin/challenges",
         matchRoutes: ["/admin/challenges"],
+      },
+    ],
+  },
+  {
+    key: "nutrition",
+    label: "Nutrition",
+    labelPt: "Nutrição",
+    icon: Apple,
+    personalOnly: true,
+    matchRoutes: ["/admin/nutrition"],
+    tabs: [
+      {
+        key: "food-catalog",
+        label: "Food Catalog",
+        labelPt: "Alimentos",
+        href: "/admin/nutrition",
+        matchRoutes: ["/admin/nutrition"],
       },
     ],
   },
