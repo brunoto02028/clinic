@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Trophy, Loader2, Flame, Medal, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/hooks/use-locale";
+import BadgesStrip from "@/components/challenges/badges-strip";
 
 interface ChallengeItem {
   id: string;
@@ -45,15 +46,17 @@ export default function StudentChallenges() {
   const [open, setOpen] = useState<ChallengeItem | null>(null);
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [boardLoading, setBoardLoading] = useState(false);
+  const [badges, setBadges] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     setError("");
     try {
-      const r = await fetch("/api/challenges");
+      const [r, rb] = await Promise.all([fetch("/api/challenges"), fetch("/api/badges")]);
       if (!r.ok) throw new Error(String(r.status));
       const d = await r.json();
       setItems(d.challenges || []);
       setStreaks(d.streaks || { workout: 0, meal: 0 });
+      if (rb.ok) setBadges((await rb.json()).badges || []);
     } catch {
       setError(t("Could not load challenges.", "Não foi possível carregar os desafios."));
     } finally {
@@ -131,6 +134,14 @@ export default function StudentChallenges() {
           <div><p className="text-lg font-bold leading-none">{streaks.meal}</p><p className="text-[11px] text-muted-foreground">{t("meal log streak", "dias de refeição seguidos")}</p></div>
         </div>
       </div>
+
+      {/* Achievements */}
+      {badges.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground">{t("Achievements", "Conquistas")}</p>
+          <BadgesStrip badges={badges} isPt={isPt} />
+        </div>
+      )}
 
       {error && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 

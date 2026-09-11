@@ -19,6 +19,7 @@ import WorkoutProgress from "@/components/workouts/workout-progress";
 import AssessmentPanel from "@/components/assessments/assessment-panel";
 import MealPlanPanel from "@/components/nutrition/meal-plan-panel";
 import BillingPanel from "@/components/billing/billing-panel";
+import StudentBadgesStrip from "@/components/challenges/student-badges-strip";
 import { useVocab } from "@/hooks/use-vocab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2075,6 +2076,7 @@ export default function PatientProfilePage() {
 
         {isPersonal && (
           <TabsContent value="workouts" className="mt-4 space-y-4">
+            <StudentBadgesStrip studentId={patientId} />
             <WorkoutProgress studentId={patientId} />
             <WorkoutBuilder studentId={patientId} />
           </TabsContent>
