@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { useVocab } from "@/hooks/use-vocab";
 import {
   Bell, Send, CheckCircle2, Clock, AlertTriangle,
   User, FileText, Mic, Shield, CreditCard, CalendarCheck,
@@ -55,6 +56,7 @@ interface CustomType {
 
 export default function PatientTasksPage() {
   const { toast } = useToast();
+  const { relabel } = useVocab();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -205,7 +207,7 @@ export default function PatientTasksPage() {
       return;
     }
     if (audience === "selected" && selectedIds.size === 0) {
-      toast({ title: "Select at least one patient", variant: "destructive" });
+      toast({ title: relabel("Select at least one patient"), variant: "destructive" });
       return;
     }
     setSending(true);
@@ -278,10 +280,10 @@ export default function PatientTasksPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Bell className="h-6 w-6 text-primary" />
-            Patient Action Requests
-          </h1>
+            {relabel("Patient Action Requests")}
+</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Send tasks and reminders to one patient, several or all. In-app, email and push notification.
+            {relabel("Send tasks and reminders to one patient, several or all. In-app, email and push notification.")}
           </p>
         </div>
         <Button onClick={() => setShowForm(!showForm)} className="gap-2">
@@ -302,7 +304,7 @@ export default function PatientTasksPage() {
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">Recipients *</Label>
               <div className="flex flex-wrap items-center gap-2">
-                {audienceBtn("one", User, "One patient")}
+                {audienceBtn("one", User, relabel("One patient"))}
                 {audienceBtn("selected", UserCheck, `Several ${selectedIds.size > 0 ? `(${selectedIds.size})` : ""}`)}
                 {audienceBtn("all", Users, `All (${allPatients.length})`)}
               </div>
@@ -311,7 +313,7 @@ export default function PatientTasksPage() {
             {/* Single patient search */}
             {audience === "one" && (
               <div className="space-y-1 relative">
-                <Label className="text-xs font-semibold text-foreground">Patient *</Label>
+                <Label className="text-xs font-semibold text-foreground">{relabel("Patient")} *</Label>
                 <Input
                   placeholder="Search patient by name or email…"
                   value={patientSearch}
@@ -436,7 +438,7 @@ export default function PatientTasksPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-semibold text-foreground">Due Date (opcional)</Label>
+                <Label className="text-xs font-semibold text-foreground">Due Date (optional)</Label>
                 <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="bg-background border-border text-foreground" />
               </div>
             </div>
@@ -502,7 +504,7 @@ export default function PatientTasksPage() {
                   ? `Send to all (${allPatients.length})`
                   : audience === "selected"
                   ? `Send to ${selectedIds.size} patient${selectedIds.size !== 1 ? "s" : ""}`
-                  : "Send to Patient"}
+                  : relabel("Send to Patient")}
               </Button>
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
             </div>
@@ -533,7 +535,7 @@ export default function PatientTasksPage() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <Bell className="h-8 w-8 mx-auto mb-3 opacity-30" />
-            <p>No tasks found. Create one to request action from a patient.</p>
+            <p>{relabel("No tasks found. Create one to request action from a patient.")}</p>
           </CardContent>
         </Card>
       ) : (

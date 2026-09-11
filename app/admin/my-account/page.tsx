@@ -135,7 +135,7 @@ export default function MyAccountPage() {
 
           <div className="space-y-1.5">
             <Label className="text-xs">{isPt ? "Novo email" : "New email"}</Label>
-            <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="you@clinic.com" />
+            <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="you@example.com" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">{isPt ? "Senha atual (pra confirmar)" : "Current password (to confirm)"}</Label>
