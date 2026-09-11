@@ -348,6 +348,8 @@ model Clinic {
   workoutLogs             WorkoutLog[]
   studentAssessments      StudentAssessment[]
   assessmentPhotos        AssessmentPhoto[]
+  mealPlans               MealPlan[]
+  mealLogs                MealLog[]
   socialAccounts          SocialAccount[]
   socialPosts             SocialPost[]
   socialCampaigns         SocialCampaign[]
@@ -633,6 +635,9 @@ model User {
   studentAssessments         StudentAssessment[]    @relation("StudentAssessments")
   trainerAssessments         StudentAssessment[]    @relation("TrainerAssessments")
   studentAssessmentPhotos    AssessmentPhoto[]      @relation("StudentAssessmentPhotos")
+  studentMealPlans           MealPlan[]             @relation("StudentMealPlans")
+  trainerMealPlans           MealPlan[]             @relation("TrainerMealPlans")
+  studentMealLogs            MealLog[]              @relation("StudentMealLogs")
   diagnosesAsPatient         AIDiagnosis[]          @relation("PatientDiagnoses")
   diagnosesAsTherapist       AIDiagnosis[]          @relation("TherapistDiagnoses")
   protocolsAsPatient         TreatmentProtocol[]    @relation("PatientProtocols")
@@ -3107,6 +3112,114 @@ model AssessmentPhoto {
   @@index([assessmentId])
   @@index([studentId])
   @@index([clinicId])
+}
+
+// ============================================
+// NUTRITION / MEAL PLANS (personal-trainer product, activity 27)
+// A trainer builds a meal plan with macro targets and meals, assigns it to a
+// student; the student logs adherence (marks meals done). Mirrors the Workout
+// three-tier shape. Personal-only; gated behind the TRAINING module. The
+// clinical side is not touched. Macros are grams; energy is kcal.
+// ============================================
+
+enum MealPlanStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+// A meal plan a trainer assigns to a student.
+model MealPlan {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  trainerId String
+  trainer   User   @relation("TrainerMealPlans", fields: [trainerId], references: [id])
+  studentId String
+  student   User   @relation("StudentMealPlans", fields: [studentId], references: [id], onDelete: Cascade)
+
+  name   String
+  status MealPlanStatus @default(ACTIVE)
+
+  // Daily macro targets (optional)
+  targetKcal     Int?
+  targetProteinG Int?
+  targetCarbsG   Int?
+  targetFatG     Int?
+
+  notes     String?   @db.Text
+  startDate DateTime  @default(now())
+  endDate   DateTime?
+
+  meals Meal[]
+  logs  MealLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([studentId])
+  @@index([trainerId])
+  @@index([status])
+}
+
+// A planned meal inside a plan (e.g. "Breakfast").
+model Meal {
+  id         String   @id @default(cuid())
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  name        String
+  timeOfDay   String? // suggested time, free text e.g. "08:00"
+  description String? @db.Text // what to eat
+  kcal        Int?
+  proteinG    Int?
+  carbsG      Int?
+  fatG        Int?
+  order       Int     @default(0)
+
+  logs MealLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mealPlanId])
+}
+
+// A student marking a planned meal as done on a given day. Idempotent per
+// (student, meal, day). Keeps a snapshot of the meal name + day so the
+// adherence history survives edits/deletion of the underlying Meal.
+model MealLog {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  mealId String?
+  meal   Meal?   @relation(fields: [mealId], references: [id], onDelete: SetNull)
+
+  studentId String
+  student   User   @relation("StudentMealLogs", fields: [studentId], references: [id], onDelete: Cascade)
+
+  mealName    String // snapshot — survives Meal edit/deletion
+  loggedDate  DateTime @db.Date // the day this meal counts for
+  performedAt DateTime @default(now())
+  note        String?  @db.Text
+  photoUrl    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, mealId, loggedDate])
+  @@index([clinicId])
+  @@index([studentId])
+  @@index([mealPlanId])
 }
 
 // ============================================

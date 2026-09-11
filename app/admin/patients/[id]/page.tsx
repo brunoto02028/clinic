@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
   BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
-  Dumbbell,
+  Dumbbell, Apple,
 } from "lucide-react";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
@@ -17,6 +17,7 @@ import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
 import AssessmentPanel from "@/components/assessments/assessment-panel";
+import MealPlanPanel from "@/components/nutrition/meal-plan-panel";
 import { useVocab } from "@/hooks/use-vocab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -934,6 +935,11 @@ export default function PatientProfilePage() {
                 {isPersonal && (
                   <TabsTrigger value="assessments" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                     <HeartPulse className="h-3 w-3" />Assessments
+                  </TabsTrigger>
+                )}
+                {isPersonal && (
+                  <TabsTrigger value="nutrition" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    <Apple className="h-3 w-3" />Nutrition
                   </TabsTrigger>
                 )}
               </>
@@ -2071,6 +2077,12 @@ export default function PatientProfilePage() {
         {isPersonal && (
           <TabsContent value="assessments" className="mt-4">
             <AssessmentPanel studentId={patientId} />
+          </TabsContent>
+        )}
+
+        {isPersonal && (
+          <TabsContent value="nutrition" className="mt-4">
+            <MealPlanPanel studentId={patientId} />
           </TabsContent>
         )}
 

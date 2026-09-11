@@ -3,6 +3,7 @@ import {
   Calendar,
   Stethoscope,
   Dumbbell,
+  Apple,
   BookOpen,
   User,
   MessageCircleQuestion,
@@ -39,6 +40,15 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     href: "/dashboard/workouts",
     personalOnly: true,
     matchRoutes: ["/dashboard/workouts"],
+  },
+  {
+    key: "nutrition",
+    label: "Nutrition",
+    labelPt: "Nutrição",
+    icon: Apple,
+    href: "/dashboard/nutrition",
+    personalOnly: true,
+    matchRoutes: ["/dashboard/nutrition"],
   },
   {
     key: "appointments",
