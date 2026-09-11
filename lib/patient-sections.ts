@@ -18,6 +18,8 @@ export interface PatientSection {
   matchRoutes: string[];
   /** Clinical section hidden from a personal-trainer studio's students. */
   clinicalOnly?: boolean;
+  /** Section shown only to a personal-trainer studio's students. */
+  personalOnly?: boolean;
 }
 
 export const PATIENT_SECTIONS: PatientSection[] = [
@@ -28,6 +30,15 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     icon: Home,
     href: "/dashboard",
     matchRoutes: ["/dashboard"],
+  },
+  {
+    key: "workouts",
+    label: "Workouts",
+    labelPt: "Treinos",
+    icon: Dumbbell,
+    href: "/dashboard/workouts",
+    personalOnly: true,
+    matchRoutes: ["/dashboard/workouts"],
   },
   {
     key: "appointments",

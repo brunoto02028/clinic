@@ -96,8 +96,9 @@ export default function PatientSidebar({
     };
 
     const curated = PATIENT_SECTIONS
-      // A personal-trainer studio's students never see clinical sections.
-      .filter((s) => !(isPersonal && (s.clinicalOnly || CLINICAL_PATIENT_KEYS.has(s.key))))
+      // A personal-trainer studio's students see studio sections (Workouts) and
+      // never the clinical ones; clinic patients see the inverse.
+      .filter((s) => (isPersonal ? !(s.clinicalOnly || CLINICAL_PATIENT_KEYS.has(s.key)) : !s.personalOnly))
       .map((s) => ({ ...s, state: state(s.href) }))
       .filter((s) => s.state !== "hidden")
       .map(({ state, ...s }) => ({ ...s, locked: state === "locked" }));

@@ -38,8 +38,9 @@ Decisões do usuário (2026-09-11):
 | T-4b | Bloquear rotas clínicas do `/dashboard` para alunos de tenant personal (redirect por role) | concluído (QA) |
 | T-4c | Branding do estúdio no portal do aluno (logo/cor do tenant via token) | concluído (QA) |
 | T-4d | Home/onboarding do aluno sem passos clínicos (Medical Screening) p/ personal | concluído (QA) |
-| T-5 | Exibir links do estúdio no admin do personal (login + convite, copiáveis) | pendente |
-| T-6 | Guards: middleware público p/ `/studio/[slug]`; clínica `/login`/`/staff-login` inalterados; personal gate não bloqueia | pendente |
+| T-5 | Exibir links do estúdio no admin do personal (login + convite, copiáveis) | concluído (QA) |
+| T-6 | Guards: middleware público p/ `/studio/[slug]`; clínica `/login`/`/staff-login` inalterados; personal gate não bloqueia | concluído (verificação) |
+| T-8 | Item "Workouts" na nav do aluno personal → `/dashboard/workouts` (tela T-22, só personal) | concluído (QA) |
 
 ## Suposições (validar com o Bruno)
 1. **Prefixo de URL** `/studio/[slug]` (alternativas: `/s/[slug]`, `/[slug]/login`). Assumo `studio`.

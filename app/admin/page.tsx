@@ -33,6 +33,7 @@ import {
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
+import StudioLinksCard from "@/components/admin/studio-links-card";
 
 interface AdminStats {
   totalUsers: number;
@@ -201,6 +202,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Shareable studio links — personal-trainer tenants only (renders null otherwise) */}
+      <StudioLinksCard />
 
       {/* ═══ TODAY AT A GLANCE ═══ */}
       <div>
