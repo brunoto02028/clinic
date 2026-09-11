@@ -29,9 +29,12 @@ interface SimplifiedSignupFormProps {
   /** When the account is joining a specific tenant (via /join/[slug]). */
   tenantSlug?: string;
   tenantName?: string;
+  /** Personal-trainer studio: student/studio wording + branded sign-in link. */
+  isPersonal?: boolean;
+  primaryColor?: string | null;
 }
 
-export default function SimplifiedSignupForm({ tenantSlug, tenantName }: SimplifiedSignupFormProps = {}) {
+export default function SimplifiedSignupForm({ tenantSlug, tenantName, isPersonal, primaryColor }: SimplifiedSignupFormProps = {}) {
   const router = useRouter();
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
@@ -179,7 +182,8 @@ export default function SimplifiedSignupForm({ tenantSlug, tenantName }: Simplif
           {tenantName && (
             <p className="text-sm text-muted-foreground">
               {isPt ? "Você está entrando em " : "You're joining "}
-              <strong className="text-foreground">{tenantName}</strong>
+              <strong style={isPersonal && primaryColor ? { color: primaryColor } : undefined} className={isPersonal && primaryColor ? "" : "text-foreground"}>{tenantName}</strong>
+              {isPersonal ? (isPt ? " como aluno" : " as a student") : ""}
             </p>
           )}
 
@@ -456,7 +460,11 @@ export default function SimplifiedSignupForm({ tenantSlug, tenantName }: Simplif
 
           <div className="text-center text-sm">
             <span className="text-muted-foreground">{isPt ? "Já tem conta? " : "Already have an account? "}</span>
-            <Link href="/login" className="text-primary font-medium hover:underline">
+            <Link
+              href={isPersonal && tenantSlug ? `/studio/${tenantSlug}` : "/login"}
+              className="text-primary font-medium hover:underline"
+              style={isPersonal && primaryColor ? { color: primaryColor } : undefined}
+            >
               {isPt ? "Entrar" : "Sign in"}
             </Link>
           </div>

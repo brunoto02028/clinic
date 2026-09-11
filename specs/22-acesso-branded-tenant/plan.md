@@ -32,7 +32,7 @@ Decisões do usuário (2026-09-11):
 |-----|------|--------|
 | T-1 | Rota branded de login `/studio/[slug]` (resolve tenant, personal-only, branding + vocab) | concluído (QA + review) |
 | T-2 | Auth escopada por tenant no login branded (assert clinicId, rejeição cross-tenant, redirect por role) | concluído (QA + review) |
-| T-3 | Signup branded `/join/[slug]` com vocabulário estúdio/aluno + branding (auditar/ajustar) | pendente |
+| T-3 | Signup branded `/join/[slug]` com vocabulário estúdio/aluno + branding (auditar/ajustar) | concluído (QA + review) |
 | T-4 | Student Portal branded pós-login (`/dashboard` do aluno personal: título/marca/vocab) | pendente |
 | T-5 | Exibir links do estúdio no admin do personal (login + convite, copiáveis) | pendente |
 | T-6 | Guards: middleware público p/ `/studio/[slug]`; clínica `/login`/`/staff-login` inalterados; personal gate não bloqueia | pendente |

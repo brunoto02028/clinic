@@ -1,6 +1,6 @@
 # T-3: Signup branded `/join/[slug]` com vocabulário estúdio/aluno
 
-**Status:** pendente
+**Status:** concluído (QA aprovado; review limpo)
 **Depende de:** nenhuma (pode ir em paralelo com T-1)
 
 ## Objetivo

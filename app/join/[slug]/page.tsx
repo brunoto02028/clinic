@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { getSiteSettingsLogo } from "@/lib/get-site-settings";
 import { resolveJoinTenant } from "@/lib/join-tenant";
+import { prisma } from "@/lib/db";
 import type { Metadata } from "next";
 
 // Branded entry point for a tenant (studio/clinic). Utility page — keep out of
@@ -29,11 +30,23 @@ export default async function JoinPage({ params }: { params: { slug: string } })
     redirect("/dashboard");
   }
 
+  // A personal-trainer studio gets student/studio wording and links its sign-in
+  // to the branded /studio/[slug] rather than the generic /login.
+  const isPersonal = tenant.type === "PERSONAL_TRAINER";
+  const branding = isPersonal
+    ? await prisma.clinic.findUnique({ where: { id: tenant.clinicId }, select: { primaryColor: true } })
+    : null;
+
   return (
     <div className="public-site min-h-screen bg-background flex flex-col">
       <SiteHeader currentPage="other" initialSettings={settings} />
       <main className="flex-1 flex items-center justify-center p-4 py-8">
-        <SimplifiedSignupForm tenantSlug={tenant.slug} tenantName={tenant.name} />
+        <SimplifiedSignupForm
+          tenantSlug={tenant.slug}
+          tenantName={tenant.name}
+          isPersonal={isPersonal}
+          primaryColor={branding?.primaryColor ?? null}
+        />
       </main>
       <SiteFooter />
     </div>
