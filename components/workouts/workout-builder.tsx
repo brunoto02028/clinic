@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Search, Video, Save, Loader2, Dumbbell } from "lucide-react";
+import { Plus, Trash2, Copy, ChevronUp, ChevronDown, Search, Video, Save, Loader2, Dumbbell, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +75,14 @@ export default function WorkoutBuilder({ studentId }: { studentId: string }) {
   const [results, setResults] = useState<LibraryExercise[]>([]);
   const [searching, setSearching] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // AI Workout Builder (activity 32) — never persists; only fills `name`/`rows`,
+  // the same state the manual flow edits and the normal Save button submits.
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiForm, setAiForm] = useState({ goal: "", level: "intermediate", daysPerWeek: "", focus: "", notes: "" });
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiFallbackNotice, setAiFallbackNotice] = useState("");
 
   // Fetches and stores the list; returns it so callers can (re)select a row.
   // Never toggles the full-screen spinner or auto-selects — that would fire on
@@ -167,6 +175,62 @@ export default function WorkoutBuilder({ studentId }: { studentId: string }) {
     setPickerOpen(false);
     setQuery("");
     setResults([]);
+  }
+
+  // AI Workout Builder — generates a draft, populates name/rows exactly like
+  // picking exercises manually would. Nothing is saved until the normal Save
+  // button is clicked. Regenerating is all-or-nothing (G-5): confirms before
+  // replacing non-empty rows, no partial merge with manual edits.
+  async function generateWithAI() {
+    // M1: also guard a manually-typed name with no exercises yet — the AI draft
+    // would silently overwrite it otherwise (the confirm text only mentions exercises).
+    const hasManualWork = rows.length > 0 || name.trim() !== "";
+    if (hasManualWork && !confirm(t(
+      "This replaces the current name and exercises with the AI draft. Continue?",
+      "Isso substitui o nome e os exercícios atuais pelo rascunho da IA. Continuar?"
+    ))) return;
+
+    setAiGenerating(true);
+    setAiError("");
+    setAiFallbackNotice("");
+    // B2: capture the focus used for THIS request — aiForm isn't reset after
+    // success, so referencing the live state in the notice below could show a
+    // focus the user typed after this call, not the one actually sent.
+    const usedFocus = aiForm.focus;
+    try {
+      const r = await fetch("/api/admin/workouts/ai-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId,
+          goal: aiForm.goal || undefined,
+          level: aiForm.level || undefined,
+          daysPerWeek: aiForm.daysPerWeek ? Number(aiForm.daysPerWeek) : undefined,
+          focus: usedFocus || undefined,
+          notes: aiForm.notes || undefined,
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.error || String(r.status));
+
+      const gen = data.generated as { name: string; phase: string | null; exercises: Array<Omit<WEx, "_uid">> };
+      setName(gen.name);
+      setRows(gen.exercises.map((e) => ({ ...e, _uid: uid() })));
+      if (data.usedFallbackCatalog) {
+        setAiFallbackNotice(t(
+          `No exercises matched "${usedFocus}" — used your full library instead.`,
+          `Nenhum exercício bateu com "${usedFocus}" — usamos toda a sua biblioteca.`
+        ));
+      }
+      setAiOpen(false);
+      // B1: clear the form so a later generation (another student/workout) doesn't
+      // silently reuse this one's goal/focus/notes.
+      setAiForm({ goal: "", level: "intermediate", daysPerWeek: "", focus: "", notes: "" });
+    } catch (e: any) {
+      setAiError(e?.message || t("Could not generate a workout. Try again.", "Não foi possível gerar o treino. Tente de novo."));
+    } finally {
+      setAiGenerating(false);
+    }
   }
 
   function updateRow(i: number, patch: Partial<WEx>) {
@@ -366,11 +430,61 @@ export default function WorkoutBuilder({ studentId }: { studentId: string }) {
                 <Label htmlFor="wname">{t("Workout name", "Nome do treino")}</Label>
                 <Input id="wname" value={name} onChange={(e) => setName(e.target.value)} data-testid="workout-name" />
               </div>
+              <Button variant="outline" onClick={() => { setAiOpen((v) => !v); setAiError(""); }} className="gap-2" data-testid="workout-ai-generate">
+                <Sparkles className="h-4 w-4" /> {t("Generate with AI", "Gerar com IA")}
+              </Button>
               <Button onClick={save} disabled={saving} className="gap-2" data-testid="workout-save">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {t("Save", "Salvar")}
               </Button>
             </div>
+
+            {/* AI Workout Builder (activity 32) — draft-only, never saves by itself */}
+            {aiOpen && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2" data-testid="workout-ai-form">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-sm font-medium"><Sparkles className="h-4 w-4 text-primary" /> {t("Generate with AI", "Gerar com IA")}</span>
+                  <button onClick={() => setAiOpen(false)} className="p-1 hover:text-red-500" title={t("Close", "Fechar")}><X className="h-4 w-4" /></button>
+                </div>
+                {aiError && <div className="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700">{aiError}</div>}
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="col-span-2">
+                    <Label className="text-[10px] text-muted-foreground">{t("Goal", "Objetivo")}</Label>
+                    <Input value={aiForm.goal} onChange={(e) => setAiForm((f) => ({ ...f, goal: e.target.value }))} placeholder={t("e.g. build strength", "ex: ganhar força")} className="h-8" data-testid="ai-goal" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">{t("Level", "Nível")}</Label>
+                    <select value={aiForm.level} onChange={(e) => setAiForm((f) => ({ ...f, level: e.target.value }))} className="h-8 w-full rounded border bg-background px-2 text-sm">
+                      <option value="beginner">{t("Beginner", "Iniciante")}</option>
+                      <option value="intermediate">{t("Intermediate", "Intermediário")}</option>
+                      <option value="advanced">{t("Advanced", "Avançado")}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">{t("Days/week", "Dias/semana")}</Label>
+                    <Input type="number" min={1} max={7} value={aiForm.daysPerWeek} onChange={(e) => setAiForm((f) => ({ ...f, daysPerWeek: e.target.value }))} className="h-8" />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-[10px] text-muted-foreground">{t("Focus", "Foco")}</Label>
+                    <Input value={aiForm.focus} onChange={(e) => setAiForm((f) => ({ ...f, focus: e.target.value }))} placeholder={t("e.g. legs, upper body, full body", "ex: pernas, superiores, corpo todo")} className="h-8" data-testid="ai-focus" />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-[10px] text-muted-foreground">{t("Notes", "Observações")}</Label>
+                    <Input value={aiForm.notes} onChange={(e) => setAiForm((f) => ({ ...f, notes: e.target.value }))} className="h-8" placeholder={t("e.g. avoid overhead pressing", "ex: evitar press acima da cabeça")} />
+                  </div>
+                </div>
+                <Button onClick={generateWithAI} disabled={aiGenerating} className="gap-2" data-testid="workout-ai-submit">
+                  {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {aiGenerating ? t("Generating…", "Gerando…") : t("Generate", "Gerar")}
+                </Button>
+              </div>
+            )}
+            {aiFallbackNotice && (
+              <div className="flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">
+                <span>{aiFallbackNotice}</span>
+                <button onClick={() => setAiFallbackNotice("")} className="p-0.5 hover:text-amber-950"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            )}
 
             {/* Progression */}
             <div className="flex flex-wrap items-center gap-2 text-xs">
