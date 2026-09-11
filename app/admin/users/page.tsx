@@ -478,7 +478,7 @@ export default function AdminUsersPage() {
                 <p className="text-xl sm:text-2xl font-bold">
                   {users.filter((u) => u.role === "THERAPIST").length}
                 </p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Therapists</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">{relabel("Therapists")}</p>
               </div>
             </div>
           </CardContent>
@@ -493,7 +493,7 @@ export default function AdminUsersPage() {
                 <p className="text-xl sm:text-2xl font-bold">
                   {users.filter((u) => u.role === "PATIENT").length}
                 </p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Patients</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">{relabel("Patients")}</p>
               </div>
             </div>
           </CardContent>
@@ -520,7 +520,7 @@ export default function AdminUsersPage() {
           </TabsTrigger>
           <TabsTrigger value="patients" className="gap-2">
             <UserCircle className="h-4 w-4" />
-            Patients ({patientUsers.length})
+            {relabel("Patients")} ({patientUsers.length})
           </TabsTrigger>
         </TabsList>
 
@@ -907,7 +907,7 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="canViewAllPatients" className="font-normal">
-                    View All Patients
+                    {relabel("View All Patients")}
                   </Label>
                   <Switch
                     id="canViewAllPatients"
@@ -1044,7 +1044,7 @@ export default function AdminUsersPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="p_canViewAllPatients" className="font-normal">
-                    View All Patients
+                    {relabel("View All Patients")}
                   </Label>
                   <Switch
                     id="p_canViewAllPatients"

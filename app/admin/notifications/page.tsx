@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface PatientLite {
   id: string;
@@ -36,6 +37,7 @@ interface Broadcast {
 
 export default function NotificationsPage() {
   const { toast } = useToast();
+  const { relabel } = useVocab();
   const [patients, setPatients] = useState<PatientLite[]>([]);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
@@ -161,10 +163,10 @@ export default function NotificationsPage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
           <Megaphone className="h-5 w-5 text-primary" />
-          Patient Notifications
+          {relabel("Patient Notifications")}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Send announcements to all patients or only the selected ones. Everything is logged.
+          {relabel("Send announcements to all patients or only the selected ones. Everything is logged.")}
         </p>
       </div>
 
@@ -197,7 +199,7 @@ export default function NotificationsPage() {
               onClick={() => setAudience("all")}
             >
               <Users className="h-3.5 w-3.5" />
-              All patients ({patients.length})
+              {relabel("All patients")} ({patients.length})
             </button>
             <button
               className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border transition-colors ${
@@ -208,7 +210,7 @@ export default function NotificationsPage() {
               onClick={() => setAudience("selected")}
             >
               <UserCheck className="h-3.5 w-3.5" />
-              Select patients {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+              {relabel("Select patients")} {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
             </button>
           </div>
 
@@ -293,7 +295,7 @@ export default function NotificationsPage() {
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Each patient is notified by email/WhatsApp (as per preference) and sees the announcement in the portal.
+            {relabel("Each patient is notified by email/WhatsApp (as per preference) and sees the announcement in the portal.")}
           </p>
         </CardContent>
       </Card>

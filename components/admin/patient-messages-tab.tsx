@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface ClinicMsg {
   id: string;
@@ -24,6 +25,7 @@ interface ClinicMsg {
 
 export default function PatientMessagesTab({ patientId }: { patientId: string }) {
   const { toast } = useToast();
+  const { relabel } = useVocab();
   const [messages, setMessages] = useState<ClinicMsg[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
@@ -101,16 +103,16 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
       setDraftTitle("");
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      toast({ title: "Mensagem enviada", description: "O paciente foi notificado." });
+      toast({ title: "Message sent", description: relabel("The patient has been notified.") });
     } catch {
-      toast({ title: "Erro ao enviar", variant: "destructive" });
+      toast({ title: "Failed to send", variant: "destructive" });
     } finally {
       setSending(false);
     }
   };
 
   const remove = async (messageId: string) => {
-    if (!confirm("Eliminar esta mensagem? O paciente deixará de a ver.")) return;
+    if (!confirm(relabel("Delete this message? The patient will no longer see it."))) return;
     await fetch(`/api/admin/patients/${patientId}/messages`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -135,7 +137,7 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
         {messages.length === 0 && (
           <div className="text-center py-12 space-y-2">
             <MessageSquare className="h-10 w-10 text-muted-foreground/20 mx-auto" />
-            <p className="text-sm text-muted-foreground">Nenhuma mensagem trocada com este paciente ainda.</p>
+            <p className="text-sm text-muted-foreground">{relabel("No messages exchanged with this patient yet.")}</p>
           </div>
         )}
         {messages.map((m) => {
@@ -154,7 +156,7 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
                   {isBroadcast && <Megaphone className="h-3 w-3 text-amber-400" />}
                   {m.kind === "notice" && <BellRing className="h-3 w-3 text-primary" />}
                   <span className="text-[10px] font-semibold text-muted-foreground">
-                    {isStaff ? `${m.sender.firstName} (clínica)` : `${m.sender.firstName} (paciente)`}
+                    {isStaff ? `${m.sender.firstName} (${relabel("clinic")})` : `${m.sender.firstName} (${relabel("patient")})`}
                   </span>
                   <span className="text-[9px] text-muted-foreground/60">
                     {new Date(m.createdAt).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
@@ -170,7 +172,7 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
                   ) : (
                     <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mt-2 px-3 py-2 bg-muted/40 border border-border/60 rounded-xl text-xs font-medium hover:bg-muted/70 transition-colors">
                       <FileText className="h-4 w-4 text-primary shrink-0" />
-                      <span className="truncate">{m.attachmentName || "Anexo"}</span>
+                      <span className="truncate">{m.attachmentName || "Attachment"}</span>
                     </a>
                   )
                 )}
@@ -203,7 +205,7 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
             }`}
             onClick={() => setKind("message")}
           >
-            <MessageSquare className="h-3 w-3 inline mr-1" />Mensagem
+            <MessageSquare className="h-3 w-3 inline mr-1" />Message
           </button>
           <button
             className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
@@ -211,19 +213,19 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
             }`}
             onClick={() => setKind("notice")}
           >
-            <BellRing className="h-3 w-3 inline mr-1" />Aviso
+            <BellRing className="h-3 w-3 inline mr-1" />Notice
           </button>
         </div>
         {kind === "notice" && (
           <Input
-            placeholder="Título do aviso (ex.: Alteração de horário)"
+            placeholder="Notice title (e.g. Schedule change)"
             value={draftTitle}
             onChange={(e) => setDraftTitle(e.target.value)}
             className="text-sm"
           />
         )}
         <Textarea
-          placeholder={kind === "notice" ? "Texto do aviso para o paciente…" : "Escreva a sua mensagem ao paciente…"}
+          placeholder={kind === "notice" ? relabel("Notice text for the patient…") : relabel("Write your message to the patient…")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -248,15 +250,15 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
             onChange={(e) => { const f = e.target.files?.[0]; if (f) setFile(f); }}
           />
           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => fileInputRef.current?.click()}>
-            <Paperclip className="h-3.5 w-3.5" /> Anexar ficheiro
+            <Paperclip className="h-3.5 w-3.5" /> Attach file
           </Button>
           <Button onClick={send} disabled={sending || (!draft.trim() && !file)} className="gap-2">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Enviar ao paciente
+            {relabel("Send to patient")}
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground">
-          O paciente é notificado (email/WhatsApp conforme preferência) e vê a mensagem na área &quot;Perguntas&quot; do portal. Tudo fica registado.
+          {relabel("The patient is notified (email/WhatsApp as per preference) and sees the message in the portal's \"Questions\" area. Everything is logged.")}
         </p>
       </div>
     </div>

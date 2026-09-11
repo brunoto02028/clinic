@@ -56,6 +56,8 @@ const PERSONAL_PT: Pair[] = (
     ["Clínica", "Estúdio"],
     ["Fisioterapeutas", "Personais"],
     ["Fisioterapeuta", "Personal"],
+    ["Terapeutas", "Personais"],
+    ["Terapeuta", "Personal"],
     ["Consultas", "Sessões"],
     ["Consulta", "Sessão"],
     ["Agendamentos", "Sessões"],

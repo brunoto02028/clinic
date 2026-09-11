@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface TherapistBlock {
   id: string;
@@ -50,6 +51,7 @@ const DEFAULT_SCHEDULE: DaySchedule[] = DAYS.map((d) => ({
 
 export default function AvailabilityPage() {
   const { locale } = useLocale();
+  const { relabel } = useVocab();
   const isPt = locale === "pt-BR";
   const [schedule, setSchedule] = useState<DaySchedule[]>(DEFAULT_SCHEDULE);
   const [loading, setLoading] = useState(true);
@@ -195,12 +197,12 @@ export default function AvailabilityPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Clock className="h-6 w-6 text-primary" />
-          {isPt ? "Disponibilidade do Terapeuta" : "Therapist Availability"}
+          {relabel(isPt ? "Disponibilidade do Terapeuta" : "Therapist Availability")}
         </h1>
         <p className="text-muted-foreground mt-1">
-          {isPt
+          {relabel(isPt
             ? "Defina seu horário de trabalho para cada dia da semana. Os pacientes só verão os horários disponíveis ao agendar."
-            : "Set your working hours for each day of the week. Patients will only see available time slots when booking."}
+            : "Set your working hours for each day of the week. Patients will only see available time slots when booking.")}
         </p>
       </div>
 
@@ -211,9 +213,9 @@ export default function AvailabilityPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            {isPt
+            {relabel(isPt
               ? "Escolha como os horários são exibidos aos pacientes ao agendar. Por exemplo, se definido para 60 minutos, os pacientes verão horários como 16:00, 17:00, 18:00 em vez de 16:00, 16:30, 17:00."
-              : "Choose how time slots are displayed to patients when booking. For example, if set to 60 minutes, patients will see slots like 16:00, 17:00, 18:00 instead of 16:00, 16:30, 17:00."}
+              : "Choose how time slots are displayed to patients when booking. For example, if set to 60 minutes, patients will see slots like 16:00, 17:00, 18:00 instead of 16:00, 16:30, 17:00.")}
           </p>
           <div className="flex gap-3">
             <button
