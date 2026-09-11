@@ -65,8 +65,11 @@ export function isPersonalBlockedRoute(pathname: string): boolean {
   if (all.some((r) => pathname === r || pathname.startsWith(r + "/"))) {
     return true;
   }
-  const m = pathname.match(/^\/api\/admin\/patients\/[^/]+\/([^/?]+)/);
-  return !!m && CLINICAL_PATIENT_SUBROUTES.has(m[1]);
+  const mApi = pathname.match(/^\/api\/admin\/patients\/[^/]+\/([^/?]+)/);
+  if (mApi && CLINICAL_PATIENT_SUBROUTES.has(mApi[1])) return true;
+  // Same clinical generators as pages: /admin/patients/<id>/<sub> (e.g. diagnosis).
+  const mPage = pathname.match(/^\/admin\/patients\/[^/]+\/([^/?]+)/);
+  return !!mPage && CLINICAL_PATIENT_SUBROUTES.has(mPage[1]);
 }
 
 // A blocked student route lives under /dashboard, so a blocked PATIENT should be

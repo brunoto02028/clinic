@@ -86,7 +86,7 @@ interface Patient {
 
 export default function PatientsList() {
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const T = (key: string) => relabel(i18nT(key, locale));
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -348,6 +348,7 @@ export default function PatientsList() {
                         >
                           <FileUp className="h-3 w-3" /> Docs
                         </Link>
+                        {!isPersonal && (
                         <Link
                           href={`/admin/patients/${patient.id}/diagnosis`}
                           onClick={(e) => e.stopPropagation()}
@@ -365,6 +366,7 @@ export default function PatientsList() {
                             <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
                           )}
                         </Link>
+                        )}
                         <Link
                           href={`/admin/patients/${patient.id}/permissions`}
                           onClick={(e) => e.stopPropagation()}
@@ -387,11 +389,13 @@ export default function PatientsList() {
                                 <FileUp className="h-3.5 w-3.5 mr-2" /> Documentos
                               </Link>
                             </DropdownMenuItem>
+                            {!isPersonal && (
                             <DropdownMenuItem asChild>
                               <Link href={`/admin/patients/${patient.id}/diagnosis`} onClick={(e) => e.stopPropagation()}>
-                                <Brain className="h-3.5 w-3.5 mr-2" /> Avaliação IA
+                                <Brain className="h-3.5 w-3.5 mr-2" /> {relabel("AI Assessment")}
                               </Link>
                             </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem asChild>
                               <Link href={`/admin/patients/${patient.id}/permissions`} onClick={(e) => e.stopPropagation()}>
                                 <Shield className="h-3.5 w-3.5 mr-2" /> Permissões

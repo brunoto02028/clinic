@@ -173,7 +173,7 @@ function ArticlesListInline() {
 export default function AdminSettingsPage() {
   const router = useRouter();
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const T = (key: string) => relabel(i18nT(key, locale));
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -763,16 +763,16 @@ export default function AdminSettingsPage() {
           <TabsTrigger value="hero">Hero</TabsTrigger>
           <TabsTrigger value="portal">Portal</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
-          <TabsTrigger value="insoles">Insoles</TabsTrigger>
-          <TabsTrigger value="biomechanics">Biomechanics</TabsTrigger>
-          <TabsTrigger value="thermography">Thermography</TabsTrigger>
-          <TabsTrigger value="mls-laser">MLS Laser</TabsTrigger>
+          {!isPersonal && <TabsTrigger value="insoles">Insoles</TabsTrigger>}
+          {!isPersonal && <TabsTrigger value="biomechanics">Biomechanics</TabsTrigger>}
+          {!isPersonal && <TabsTrigger value="thermography">Thermography</TabsTrigger>}
+          {!isPersonal && <TabsTrigger value="mls-laser">MLS Laser</TabsTrigger>}
           <TabsTrigger value="about">About</TabsTrigger>
-          <TabsTrigger value="articles">Articles</TabsTrigger>
+          {!isPersonal && <TabsTrigger value="articles">Articles</TabsTrigger>}
           <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="footer">Footer</TabsTrigger>
           <TabsTrigger value="terms">Terms of Use</TabsTrigger>
-          <TabsTrigger value="marketing">Marketing</TabsTrigger>
+          {!isPersonal && <TabsTrigger value="marketing">Marketing</TabsTrigger>}
           <TabsTrigger value="seo">SEO</TabsTrigger>
         </TabsList>
 
