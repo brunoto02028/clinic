@@ -73,7 +73,7 @@ interface PortalConfig {
 
 export default function PatientDashboard() {
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const T = (key: string) => relabel(i18nT(key, locale));
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -111,7 +111,8 @@ export default function PatientDashboard() {
 
   const welcomeTitle = T("patient.welcomeTitle");
   const welcomeSubtitle = T("patient.welcomeSubtitle");
-  const showScreening = config?.showScreeningAlert ?? true;
+  // The clinical screening CTA never applies to a personal-trainer studio's students.
+  const showScreening = !isPersonal && (config?.showScreeningAlert ?? true);
   const enabledStats = (config?.statsCards || []).filter((s) => s.enabled);
 
   return (

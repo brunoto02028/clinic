@@ -16,6 +16,8 @@ export interface PatientSection {
   icon: LucideIcon;
   href: string;
   matchRoutes: string[];
+  /** Clinical section hidden from a personal-trainer studio's students. */
+  clinicalOnly?: boolean;
 }
 
 export const PATIENT_SECTIONS: PatientSection[] = [
@@ -47,6 +49,7 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     labelPt: "Minha Saúde",
     icon: Stethoscope,
     href: "/dashboard/clinical-notes",
+    clinicalOnly: true,
     matchRoutes: [
       "/dashboard/clinical-notes",
       "/dashboard/treatment",

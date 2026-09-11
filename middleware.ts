@@ -2,7 +2,7 @@ import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isPersonalTenant } from '@/lib/tenant-type';
-import { isPersonalBlockedRoute } from '@/lib/personal-blocked-routes';
+import { isPersonalBlockedRoute, isPersonalBlockedPatientRoute } from '@/lib/personal-blocked-routes';
 
 // ─── INLINE SECURITY (Edge Runtime compatible) ───
 const rateLimitStore = new Map<string, { count: number; first: number; blocked: boolean; until?: number }>();
@@ -313,7 +313,10 @@ export async function middleware(request: NextRequest) {
         headers: { 'Content-Type': 'application/json', ...SECURITY_HEADERS },
       });
     }
-    return NextResponse.redirect(new URL('/admin', request.url));
+    // A blocked student route lives under /dashboard — send the student back to
+    // their own portal; staff (blocked from clinical /admin routes) go to /admin.
+    const home = userRole === 'PATIENT' || isPersonalBlockedPatientRoute(pathname) ? '/dashboard' : '/admin';
+    return NextResponse.redirect(new URL(home, request.url));
   }
 
   // Check SUPERADMIN routes

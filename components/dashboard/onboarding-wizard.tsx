@@ -7,9 +7,11 @@ import {
   User, ClipboardList, Calendar, CheckCircle, ChevronRight,
   Sparkles, ArrowRight,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface OnboardingStep {
   id: string;
@@ -67,31 +69,33 @@ const STEPS: OnboardingStep[] = [
 
 export default function OnboardingWizard() {
   const { locale } = useLocale();
+  const { relabel, isPersonal } = useVocab();
+  const { data: session } = useSession();
+  const clinicName = (session?.user as any)?.clinicName || null;
   const isPt = locale === "pt-BR";
   const pathname = usePathname();
   const isPreview = pathname?.startsWith("/patient-preview");
 
   const [completionMap, setCompletionMap] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
-  const [allDone, setAllDone] = useState(false);
 
   useEffect(() => {
     fetch("/api/patient/onboarding-status")
       .then((r) => r.json())
-      .then((data) => {
-        setCompletionMap(data);
-        const allComplete = data.profileComplete && data.screeningComplete && data.consentAccepted && data.hasAppointment;
-        setAllDone(!!allComplete);
-      })
+      .then((data) => setCompletionMap(data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
+  // A personal-trainer studio's students don't do the clinical screening step.
+  const activeSteps = isPersonal ? STEPS.filter((s) => s.id !== "screening") : STEPS;
+  const allDone = !loading && activeSteps.every((s) => completionMap[s.checkField]);
+
   if (loading || allDone || isPreview) return null;
 
-  const completedCount = STEPS.filter((s) => completionMap[s.checkField]).length;
-  const progress = Math.round((completedCount / STEPS.length) * 100);
-  const nextStep = STEPS.find((s) => !completionMap[s.checkField]);
+  const completedCount = activeSteps.filter((s) => completionMap[s.checkField]).length;
+  const progress = Math.round((completedCount / activeSteps.length) * 100);
+  const nextStep = activeSteps.find((s) => !completionMap[s.checkField]);
 
   return (
     <Card className="border-primary/30 bg-card overflow-hidden relative">
@@ -102,7 +106,9 @@ export default function OnboardingWizard() {
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <h3 className="font-bold text-foreground text-lg">
-            {isPt ? "Bem-vindo ao BPR!" : "Welcome to BPR!"}
+            {isPersonal
+              ? (clinicName ? (isPt ? `Bem-vindo a ${clinicName}!` : `Welcome to ${clinicName}!`) : (isPt ? "Bem-vindo!" : "Welcome!"))
+              : (isPt ? "Bem-vindo ao BPR!" : "Welcome to BPR!")}
           </h3>
           <p className="text-sm text-muted-foreground">
             {isPt ? "Complete os passos abaixo para começar" : "Complete the steps below to get started"}
@@ -127,17 +133,19 @@ export default function OnboardingWizard() {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">
-              {isPt ? `${completedCount} de ${STEPS.length} completos` : `${completedCount} of ${STEPS.length} complete`}
+              {isPt ? `${completedCount} de ${activeSteps.length} completos` : `${completedCount} of ${activeSteps.length} complete`}
             </p>
             <p className="text-xs text-muted-foreground">
-              {isPt ? "Falta pouco para começar seu tratamento" : "Almost ready to start your treatment"}
+              {isPersonal
+                ? (isPt ? "Falta pouco para começar seus treinos" : "Almost ready to start your training")
+                : (isPt ? "Falta pouco para começar seu tratamento" : "Almost ready to start your treatment")}
             </p>
           </div>
         </div>
 
         {/* Checklist items */}
         <div className="flex flex-col gap-2">
-          {STEPS.map((step) => {
+          {activeSteps.map((step) => {
             const done = completionMap[step.checkField];
             const isCurrent = nextStep?.id === step.id;
             const isLocked = !done && !isCurrent;
@@ -172,13 +180,13 @@ export default function OnboardingWizard() {
                     <p className={`text-sm font-medium ${
                       done ? "text-emerald-400 line-through decoration-emerald-400/30" : "text-foreground"
                     }`}>
-                      {isPt ? step.titlePt : step.titleEn}
+                      {relabel(isPt ? step.titlePt : step.titleEn)}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {done
                         ? (isPt ? "Concluído" : "Complete")
                         : isCurrent
-                        ? (isPt ? step.descPt : step.descEn)
+                        ? relabel(isPt ? step.descPt : step.descEn)
                         : (isPt ? "Disponível após o passo anterior" : "Available after previous step")}
                     </p>
                   </div>
@@ -197,7 +205,7 @@ export default function OnboardingWizard() {
         {nextStep && (
           <Button asChild className="w-full mt-4 gap-2" size="lg">
             <Link href={nextStep.href}>
-              {isPt ? nextStep.titlePt : nextStep.titleEn}
+              {relabel(isPt ? nextStep.titlePt : nextStep.titleEn)}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

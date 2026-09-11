@@ -14,6 +14,11 @@ import { MODULE_REGISTRY } from "@/lib/module-registry";
 import { usePatientAccess } from "@/hooks/use-patient-access";
 import { Logo } from "@/components/ui/logo";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
+
+// Sections/modules that belong to the clinical side — hidden from a
+// personal-trainer studio's students (they get workouts, not clinical notes).
+const CLINICAL_PATIENT_KEYS = new Set(["health", "screening", "mod_screening"]);
 
 interface NotificationItem {
   id: string;
@@ -39,6 +44,12 @@ export default function PatientSidebar({
   const pathname = usePathname();
   const { data: session } = useSession();
   const { locale, setLocale } = useLocale();
+  const { relabel } = useVocab();
+  const isPersonal = (session?.user as any)?.clinicType === "PERSONAL_TRAINER";
+  // Studio branding for a personal-trainer student — falls back to the platform
+  // logo/accent when the studio hasn't set its own.
+  const studioLogo = isPersonal ? ((session?.user as any)?.clinicLogoUrl ?? null) : null;
+  const studioColor = isPersonal ? ((session?.user as any)?.clinicPrimaryColor ?? null) : null;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -85,6 +96,8 @@ export default function PatientSidebar({
     };
 
     const curated = PATIENT_SECTIONS
+      // A personal-trainer studio's students never see clinical sections.
+      .filter((s) => !(isPersonal && (s.clinicalOnly || CLINICAL_PATIENT_KEYS.has(s.key))))
       .map((s) => ({ ...s, state: state(s.href) }))
       .filter((s) => s.state !== "hidden")
       .map(({ state, ...s }) => ({ ...s, locked: state === "locked" }));
@@ -98,6 +111,7 @@ export default function PatientSidebar({
         m.href &&
         !curatedHrefs.has(m.href) &&
         m.href !== PATIENT_PROFILE_SECTION.href &&
+        !(isPersonal && CLINICAL_PATIENT_KEYS.has(m.key)) &&
         hasModule(m.key) &&
         !isModuleHidden(m.key)
     ).map((m) => ({
@@ -111,7 +125,7 @@ export default function PatientSidebar({
     }));
 
     return [...curated, ...extra];
-  }, [accessLoading, hasModule, isModuleHidden, moduleByHref]);
+  }, [accessLoading, hasModule, isModuleHidden, moduleByHref, isPersonal]);
 
   const user = session?.user as any;
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "";
@@ -158,7 +172,10 @@ export default function PatientSidebar({
     }`;
 
   const activeBar = (
-    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[#4F7361]" />
+    <span
+      className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[#4F7361]"
+      style={studioColor ? { backgroundColor: studioColor } : undefined}
+    />
   );
 
   return (
@@ -265,8 +282,8 @@ export default function PatientSidebar({
           }`}
         >
           <Logo
-            logoUrl={logoUrl}
-            darkLogoUrl={darkLogoUrl}
+            logoUrl={studioLogo ?? logoUrl}
+            darkLogoUrl={studioLogo ? null : darkLogoUrl}
             size="sm"
             showText={true}
             linkTo="/dashboard"
@@ -292,7 +309,7 @@ export default function PatientSidebar({
                 {isActive && activeBar}
                 <Icon size={18} className={`flex-shrink-0 ${section.locked ? "opacity-40" : ""}`} />
                 <span className={`flex-1 ${section.locked ? "opacity-60" : ""}`}>
-                  {isPt ? section.labelPt : section.label}
+                  {relabel(isPt ? section.labelPt : section.label)}
                 </span>
                 {/* Still a link: it leads to the upgrade screen, which is where
                     the plans are sold. The lock says why, before the click. */}
@@ -341,9 +358,9 @@ export default function PatientSidebar({
             {activeSection.key === "profile" && activeBar}
             <PATIENT_PROFILE_SECTION.icon size={18} className="flex-shrink-0" />
             <span>
-              {isPt
+              {relabel(isPt
                 ? PATIENT_PROFILE_SECTION.labelPt
-                : PATIENT_PROFILE_SECTION.label}
+                : PATIENT_PROFILE_SECTION.label)}
             </span>
           </Link>
           <button
