@@ -356,6 +356,8 @@ model Clinic {
   mealLogs                MealLog[]
   billingPlans            BillingPlan[]
   billingSubscriptions    BillingSubscription[]
+  challenges              Challenge[]
+  challengeParticipants   ChallengeParticipant[]
   socialAccounts          SocialAccount[]
   socialPosts             SocialPost[]
   socialCampaigns         SocialCampaign[]
@@ -648,6 +650,8 @@ model User {
   studentBillingSubscriptions BillingSubscription[] @relation("StudentBillingSubscriptions")
   trainerBillingSubscriptions BillingSubscription[] @relation("TrainerBillingSubscriptions")
   studentStripeCustomers     StudentStripeCustomer[] @relation("StudentStripeCustomers")
+  trainerChallenges          Challenge[]            @relation("TrainerChallenges")
+  studentChallengeParticipations ChallengeParticipant[] @relation("StudentChallengeParticipations")
   diagnosesAsPatient         AIDiagnosis[]          @relation("PatientDiagnoses")
   diagnosesAsTherapist       AIDiagnosis[]          @relation("TherapistDiagnoses")
   protocolsAsPatient         TreatmentProtocol[]    @relation("PatientProtocols")
@@ -3347,6 +3351,71 @@ model ProcessedStripeEvent {
   id        String   @id // the Stripe event.id
   type      String
   createdAt DateTime @default(now())
+}
+
+// ============================================
+// PERSONAL-TRAINER CHALLENGES / GAMIFICATION (activity 29)
+// A trainer creates studio-wide challenges; students join; progress is computed
+// ON-READ from the existing WorkoutLog / MealLog (no manual counters). Leaderboard
+// among the studio's students. Personal-only; gated by TRAINING. The clinical
+// "BPR Journey" gamification stack is separate and untouched.
+// ============================================
+
+enum ChallengeMetric {
+  WORKOUT_COUNT // number of workout sessions logged in the window
+  MEAL_LOG_DAYS // distinct days with a meal logged in the window
+}
+
+enum ChallengeStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Challenge {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  trainerId String
+  trainer   User   @relation("TrainerChallenges", fields: [trainerId], references: [id])
+
+  title       String
+  description String?         @db.Text
+  metric      ChallengeMetric
+  target      Int
+  startsAt    DateTime
+  endsAt      DateTime
+  status      ChallengeStatus @default(ACTIVE)
+
+  participants ChallengeParticipant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([trainerId])
+  @@index([status])
+}
+
+model ChallengeParticipant {
+  id String @id @default(cuid())
+
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  studentId String
+  student   User   @relation("StudentChallengeParticipations", fields: [studentId], references: [id], onDelete: Cascade)
+
+  joinedAt    DateTime  @default(now())
+  completedAt DateTime? // set once the student's progress first reaches target
+
+  @@unique([challengeId, studentId])
+  @@index([clinicId])
+  @@index([studentId])
 }
 
 // ============================================

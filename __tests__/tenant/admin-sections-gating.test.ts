@@ -4,15 +4,20 @@
  * A personal-trainer tenant must not see the clinical-only nav: no SOAP notes,
  * protocols or rehab agent. A clinic sees everything.
  */
-import { ADMIN_SECTIONS, visibleAdminSections } from "@/lib/admin-sections";
+import { visibleAdminSections } from "@/lib/admin-sections";
 
 const tabKeys = (secs: ReturnType<typeof visibleAdminSections>) =>
   secs.flatMap((s) => s.tabs.map((t) => t.key));
+const sectionKeys = (secs: ReturnType<typeof visibleAdminSections>) => secs.map((s) => s.key);
 
 describe("visibleAdminSections", () => {
-  it("returns everything for a clinic", () => {
-    expect(visibleAdminSections(false)).toBe(ADMIN_SECTIONS);
+  it("keeps the clinical nav for a clinic", () => {
     expect(tabKeys(visibleAdminSections(false))).toEqual(expect.arrayContaining(["notes", "protocols", "rehab-agent"]));
+  });
+
+  it("hides the personalOnly Challenges section from a clinic, shows it to a personal trainer (G7)", () => {
+    expect(sectionKeys(visibleAdminSections(false))).not.toContain("challenges");
+    expect(sectionKeys(visibleAdminSections(true))).toContain("challenges");
   });
 
   it("drops the clinical-only tabs for a personal trainer", () => {
@@ -20,8 +25,10 @@ describe("visibleAdminSections", () => {
     expect(keys).not.toContain("notes");
     expect(keys).not.toContain("protocols");
     expect(keys).not.toContain("rehab-agent");
-    // The useful ones stay.
-    expect(keys).toEqual(expect.arrayContaining(["exercises", "treatments", "equipment", "list", "screening"]));
+    // The useful ones stay. (equipment/screening became clinicalOnly in act.26.)
+    expect(keys).toEqual(expect.arrayContaining(["exercises", "treatments", "list", "challenges-list"]));
+    expect(keys).not.toContain("equipment");
+    expect(keys).not.toContain("screening");
   });
 
   it("keeps the Training/Clinical section (it still has workout tabs)", () => {

@@ -7,6 +7,7 @@ import {
   DollarSign,
   Settings,
   BellRing,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,6 +19,8 @@ export interface AdminTab {
   matchRoutes?: string[];
   /** Hidden for a personal-trainer tenant (purely clinical: SOAP, protocols, rehab). */
   clinicalOnly?: boolean;
+  /** Shown ONLY to a personal-trainer tenant (e.g. Challenges). */
+  personalOnly?: boolean;
 }
 
 export interface AdminSection {
@@ -29,6 +32,8 @@ export interface AdminSection {
   matchRoutes?: string[];
   /** Whole section hidden for a personal-trainer tenant. */
   clinicalOnly?: boolean;
+  /** Whole section shown ONLY to a personal-trainer tenant (e.g. Challenges). */
+  personalOnly?: boolean;
 }
 
 export const ADMIN_SECTIONS: AdminSection[] = [
@@ -305,6 +310,23 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     ],
   },
   {
+    key: "challenges",
+    label: "Challenges",
+    labelPt: "Desafios",
+    icon: Trophy,
+    personalOnly: true,
+    matchRoutes: ["/admin/challenges"],
+    tabs: [
+      {
+        key: "challenges-list",
+        label: "Challenges",
+        labelPt: "Desafios",
+        href: "/admin/challenges",
+        matchRoutes: ["/admin/challenges"],
+      },
+    ],
+  },
+  {
     key: "finance",
     label: "Finance",
     labelPt: "Financeiro",
@@ -428,13 +450,16 @@ function routeMatches(pathname: string, route: string): boolean {
 
 /**
  * The sections/tabs a tenant sees. A personal-trainer studio drops the
- * clinicalOnly sections and tabs (SOAP notes, protocols, rehab agent); a
- * section left with no visible tabs is dropped too.
+ * clinicalOnly sections/tabs (SOAP notes, protocols, rehab agent); a clinic
+ * drops the personalOnly sections/tabs (e.g. Challenges). Either way a section
+ * left with no visible tabs is dropped too. Both branches must filter — a bare
+ * `return ADMIN_SECTIONS` for a clinic would leak personalOnly sections.
  */
 export function visibleAdminSections(isPersonal: boolean): AdminSection[] {
-  if (!isPersonal) return ADMIN_SECTIONS;
-  return ADMIN_SECTIONS.filter((s) => !s.clinicalOnly)
-    .map((s) => ({ ...s, tabs: s.tabs.filter((t) => !t.clinicalOnly) }))
+  const hideSection = (s: AdminSection) => (isPersonal ? s.clinicalOnly : s.personalOnly);
+  const hideTab = (t: AdminTab) => (isPersonal ? t.clinicalOnly : t.personalOnly);
+  return ADMIN_SECTIONS.filter((s) => !hideSection(s))
+    .map((s) => ({ ...s, tabs: s.tabs.filter((t) => !hideTab(t)) }))
     .filter((s) => s.tabs.length > 0);
 }
 

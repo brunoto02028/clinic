@@ -5,6 +5,7 @@ import {
   Dumbbell,
   Apple,
   CreditCard,
+  Trophy,
   BookOpen,
   User,
   MessageCircleQuestion,
@@ -59,6 +60,15 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     href: "/dashboard/billing",
     personalOnly: true,
     matchRoutes: ["/dashboard/billing"],
+  },
+  {
+    key: "challenges",
+    label: "Challenges",
+    labelPt: "Desafios",
+    icon: Trophy,
+    href: "/dashboard/challenges",
+    personalOnly: true,
+    matchRoutes: ["/dashboard/challenges"],
   },
   {
     key: "appointments",
