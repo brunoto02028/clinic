@@ -62,6 +62,7 @@ const publicRoutes = [
   '/signout',
   '/signup',
   '/join', // branded tenant entry: /join/[slug] — public sign-up for a studio/clinic
+  '/studio', // branded tenant login: /studio/[slug] — public sign-in for a personal-trainer studio
   '/start',
   '/admin-login',
   '/staff-login',
