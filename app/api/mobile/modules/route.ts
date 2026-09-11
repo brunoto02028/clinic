@@ -5,6 +5,7 @@ import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 import { prisma } from "@/lib/db";
 import { getMobileActor } from "@/lib/mobile-actor";
 import { isTrainingEnabled } from "@/lib/workout-access";
+import { isPersonalTenant } from "@/lib/tenant-type";
 
 export function OPTIONS() {
   return corsPreflight();
@@ -48,6 +49,17 @@ export async function GET(request: NextRequest) {
     const trainingOn = actor.clinicId ? await isTrainingEnabled(actor.clinicId) : false;
     const withTraining = <T,>(mods: T[]): (T | typeof TREINO_DEF | typeof AVALIACOES_DEF)[] =>
       trainingOn ? [...mods, TREINO_DEF, AVALIACOES_DEF] : mods;
+
+    // A personal-trainer studio has no clinic modules on mobile: everyone in it
+    // (students and the trainer) gets only Training + Assessments — never
+    // Lab/Clinic/BA — mirroring the web separation. Checked before the
+    // admins-see-everything path so a personal ADMIN doesn't get clinic modules.
+    const clinic = actor.clinicId
+      ? await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true } })
+      : null;
+    if (isPersonalTenant(clinic?.type)) {
+      return corsJson(trainingOn ? [TREINO_DEF, AVALIACOES_DEF] : []);
+    }
 
     // Admins and full-access users see everything (plus Training when on).
     if (user?.fullAccessOverride || actor.role === "SUPERADMIN" || actor.role === "ADMIN") {

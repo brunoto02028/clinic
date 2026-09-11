@@ -41,6 +41,7 @@ Decisões do usuário (2026-09-11):
 | T-5 | Exibir links do estúdio no admin do personal (login + convite, copiáveis) | concluído (QA) |
 | T-6 | Guards: middleware público p/ `/studio/[slug]`; clínica `/login`/`/staff-login` inalterados; personal gate não bloqueia | concluído (verificação) |
 | T-8 | Item "Workouts" na nav do aluno personal → `/dashboard/workouts` (tela T-22, só personal) | concluído (QA) |
+| T-9 | Gate de módulos mobile: tenant personal só recebe treino+avaliacoes (sem lab/clinica/ba) | concluído (runtime) |
 
 ## Suposições (validar com o Bruno)
 1. **Prefixo de URL** `/studio/[slug]` (alternativas: `/s/[slug]`, `/[slug]/login`). Assumo `studio`.

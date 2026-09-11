@@ -338,6 +338,18 @@ async function main() {
       // M7 — clinic patient's module list excludes "avaliacoes".
       m = await request("GET", "/api/mobile/modules", { bearer: pacienteATok });
       check("M7 clinic patient modules exclude avaliacoes", m.status === 200 && !m.body.includes('"avaliacoes"'), `status ${m.status}`);
+
+      // M8 — a personal student never gets the clinic modules on mobile (act.22 T-9).
+      m = await request("GET", "/api/mobile/modules", { bearer: alunoBTok });
+      check(
+        "M8 personal student modules exclude clinic (lab/clinica/ba)",
+        m.status === 200 && !m.body.includes('"lab"') && !m.body.includes('"clinica"') && !m.body.includes('"ba"'),
+        `status ${m.status} body ${m.body.slice(0, 120)}`
+      );
+
+      // M9 — a clinic patient still sees clinic modules (regression).
+      m = await request("GET", "/api/mobile/modules", { bearer: pacienteATok });
+      check("M9 clinic patient still has a clinic module", m.status === 200 && m.body.includes('"clinica"'), `status ${m.status}`);
     }
 
     // ── T-24: trainer reads the student's progress (tenant-scoped) ──
