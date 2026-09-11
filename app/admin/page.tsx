@@ -34,6 +34,7 @@ import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import StudioLinksCard from "@/components/admin/studio-links-card";
+import StudioGettingStarted from "@/components/admin/studio-getting-started";
 
 interface AdminStats {
   totalUsers: number;
@@ -205,6 +206,9 @@ export default function AdminDashboard() {
 
       {/* Shareable studio links — personal-trainer tenants only (renders null otherwise) */}
       <StudioLinksCard />
+
+      {/* Getting-started checklist — personal-trainer tenants only, dismissible */}
+      <StudioGettingStarted studentCount={stats?.totalPatients ?? 0} />
 
       {/* ═══ TODAY AT A GLANCE ═══ */}
       <div>
