@@ -128,7 +128,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function AdminDashboard() {
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const T = (key: string) => relabel(i18nT(key, locale));
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -281,6 +281,7 @@ export default function AdminDashboard() {
             bgColor="bg-blue-100"
             href="/admin/appointments"
           />
+          {!isPersonal && (
           <StatCard
             title={T("admin.clinicalNotes")}
             value={stats?.totalSoapNotes || 0}
@@ -290,6 +291,7 @@ export default function AdminDashboard() {
             bgColor="bg-purple-100"
             href="/admin/clinical-notes"
           />
+          )}
           <StatCard
             title={T("admin.completed")}
             value={stats?.completedAppointments || 0}
@@ -464,6 +466,7 @@ export default function AdminDashboard() {
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">{T("admin.administration")}</h2>
         </div>
+        {!isPersonal && (
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
           <StatCard
             title={T("admin.articles")}
@@ -484,6 +487,7 @@ export default function AdminDashboard() {
             href="/admin/clinical-notes"
           />
         </div>
+        )}
 
         {/* Quick Actions */}
         <Card className="mt-4">
@@ -502,6 +506,7 @@ export default function AdminDashboard() {
                   <p className="text-[11px] text-muted-foreground">{T("admin.registerEditView")}</p>
                 </div>
               </Link>
+              {!isPersonal && (
               <Link href="/admin/clinical-notes" className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">
                 <div className="p-2 bg-purple-100 rounded-lg"><ClipboardList className="h-4 w-4 text-purple-600" /></div>
                 <div>
@@ -509,6 +514,8 @@ export default function AdminDashboard() {
                   <p className="text-[11px] text-muted-foreground">{T("admin.soapAndAssessments")}</p>
                 </div>
               </Link>
+              )}
+              {!isPersonal && (
               <Link href="/admin/articles/new" className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">
                 <div className="p-2 bg-orange-100 rounded-lg"><PenLine className="h-4 w-4 text-orange-600" /></div>
                 <div>
@@ -516,6 +523,7 @@ export default function AdminDashboard() {
                   <p className="text-[11px] text-muted-foreground">{T("admin.writePublish")}</p>
                 </div>
               </Link>
+              )}
               <Link href="/admin/settings" className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">
                 <div className="p-2 bg-slate-100 rounded-lg"><Settings className="h-4 w-4 text-slate-600" /></div>
                 <div>

@@ -152,7 +152,7 @@ function screeningBadge(screening: any): string {
 export default function PatientProfilePage() {
   const { id: patientId } = useParams<{ id: string }>();
   const router = useRouter();
-  const { isPersonal } = useVocab();
+  const { isPersonal, relabel } = useVocab();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -807,7 +807,7 @@ export default function PatientProfilePage() {
         </Button>
         {/* View as Patient */}
         <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-blue-500/40 text-blue-400 hover:bg-blue-500/10" onClick={handleImpersonate}>
-          <Eye className="h-3 w-3" /> View as Patient
+          <Eye className="h-3 w-3" /> {relabel("View as Patient")}
         </Button>
       </div>
 
@@ -947,7 +947,7 @@ export default function PatientProfilePage() {
       {/* Invite Link */}
       <div className="flex flex-wrap items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
         <Link2 className="h-4 w-4 text-blue-400 shrink-0" />
-        <span className="text-xs font-medium text-blue-300">Patient Invite Link</span>
+        <span className="text-xs font-medium text-blue-300">{relabel("Patient Invite Link")}</span>
         {inviteUrl ? (
           <>
             <code className="text-[10px] bg-card border rounded px-2 py-1 text-blue-400 flex-1 min-w-0 truncate">{inviteUrl}</code>
@@ -961,7 +961,7 @@ export default function PatientProfilePage() {
             Generate Invite Link
           </Button>
         )}
-        <span className="text-[9px] text-blue-500">Send via WhatsApp/SMS so the patient can complete their profile</span>
+        <span className="text-[9px] text-blue-500">{relabel("Send via WhatsApp/SMS so the patient can complete their profile")}</span>
       </div>
 
 {/* Quick Actions */}

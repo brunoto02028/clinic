@@ -97,6 +97,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Screening",
         labelPt: "Triagem",
         href: "/admin/screening-preview",
+        clinicalOnly: true,
       },
       {
         key: "tasks",
