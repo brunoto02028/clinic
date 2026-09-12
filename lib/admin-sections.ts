@@ -166,11 +166,18 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         clinicalOnly: true,
       },
       {
+        // Clinic-only: its checkout (app/api/patient/treatment-plans/checkout)
+        // uses the single global BPR Stripe account, not stripeFor(clinicId)
+        // (activity 28's per-trainer Connect account) — showing this to a
+        // personal trainer would route their student's payment to the wrong
+        // account. Personal trainers use Program Templates + activity 28's
+        // billing instead.
         key: "treatments",
         label: "Treatments",
         labelPt: "Tratamentos",
         href: "/admin/treatment-plans",
         matchRoutes: ["/admin/treatment-plans", "/admin/treatment-types"],
+        clinicalOnly: true,
       },
       {
         key: "exercises",
