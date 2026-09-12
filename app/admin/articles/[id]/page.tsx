@@ -534,7 +534,7 @@ export default function EditArticlePage() {
               </div>
               {showPreview ? (
                 <div className="border rounded-lg p-6 min-h-[350px] bg-white">
-                  <div className="article-content prose prose-lg max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-blockquote:border-l-primary/30 prose-blockquote:text-muted-foreground prose-img:rounded-xl prose-img:shadow-md" dangerouslySetInnerHTML={{ __html: content || "<p class='text-muted-foreground italic'>No content yet.</p>" }} />
+                  <div className="article-content prose prose-lg max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-accent-bright prose-strong:text-foreground prose-blockquote:border-l-primary/30 prose-blockquote:text-muted-foreground prose-img:rounded-xl prose-img:shadow-md" dangerouslySetInnerHTML={{ __html: content || "<p class='text-muted-foreground italic'>No content yet.</p>" }} />
                 </div>
               ) : (
                 <RichTextEditor value={content} onChange={setContent} placeholder="Write your article content here..." />

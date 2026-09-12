@@ -84,6 +84,12 @@ node /app/scripts/seed-site-logo.js || echo "[start.sh] logo seed warning — ch
 echo "[start.sh] Fixing generic site-settings placeholders..."
 node /app/scripts/fix-generic-site-defaults.js || echo "[start.sh] site-defaults fix warning — check logs"
 
+# BA One identity unification (activity 34): personal-trainer tenants move to
+# the new moss brand colour now — idempotent, only touches a Clinic still on
+# the exact old default (see scripts/migrate-personal-trainer-colors.js).
+echo "[start.sh] Migrating personal-trainer default colours to BA One moss..."
+node /app/scripts/migrate-personal-trainer-colors.js || echo "[start.sh] personal-trainer colour migration warning — check logs"
+
 echo "[start.sh] Startup maintenance tasks done — server already serving traffic."
 
 # Keep the container alive as long as the Next.js server process is running,

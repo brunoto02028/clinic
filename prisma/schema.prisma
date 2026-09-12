@@ -297,8 +297,8 @@ model Clinic {
   // Branding
   logoUrl        String?
   logoPath       String? // cloud_storage_path
-  primaryColor   String? @default("#607d7d")
-  secondaryColor String? @default("#5dc9c0")
+  primaryColor   String? @default("#4F7361") // BA One "health" moss
+  secondaryColor String? @default("#3D5A4D") // darker moss shade
 
   // Contact
   email    String?

@@ -26,8 +26,8 @@ export async function GET() {
 
     return NextResponse.json({
       branding: {
-        primaryColor: branding.primary_color || '#5dc9c0',
-        secondaryColor: branding.secondary_color || '#1a6b6b',
+        primaryColor: branding.primary_color || '#4F7361',
+        secondaryColor: branding.secondary_color || '#3D5A4D',
         logoUrl: branding.logo || null,
         iconUrl: branding.icon || null,
       },
@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
     const updateData: any = {
       settings: {
         branding: {
-          primary_color: primaryColor || '#5dc9c0',
-          secondary_color: secondaryColor || '#1a6b6b',
+          primary_color: primaryColor || '#4F7361',
+          secondary_color: secondaryColor || '#3D5A4D',
         },
       },
       business_profile: {},
@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
     }
 
     const params = new URLSearchParams();
-    params.append('settings[branding][primary_color]', primaryColor || '#5dc9c0');
-    params.append('settings[branding][secondary_color]', secondaryColor || '#1a6b6b');
+    params.append('settings[branding][primary_color]', primaryColor || '#4F7361');
+    params.append('settings[branding][secondary_color]', secondaryColor || '#3D5A4D');
     if (businessName) params.append('business_profile[name]', businessName);
     if (supportEmail) params.append('business_profile[support_email]', supportEmail);
     if (websiteUrl) params.append('business_profile[url]', websiteUrl);

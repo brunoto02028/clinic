@@ -3,56 +3,74 @@
 @tailwind utilities;
 
 /* ============================================
-   FUTURISTIC NEON DARK THEME
+   BA ONE DESIGN SYSTEM v4 — ADMIN (dark)
+   Same tokens as .public-site below, kept dark:
+   ink-based surfaces, moss (health pillar) as the
+   accent. Values converted from the BA One mockup
+   hex (see docs' identidade-visual-ba-one memory).
    ============================================ */
 
 :root {
-  /* Dark teal-charcoal base */
-  --background: 200 35% 7%;
-  --foreground: 195 20% 90%;
-  
-  /* Glass card surfaces */
-  --card: 200 30% 11%;
-  --card-foreground: 195 20% 90%;
-  --popover: 200 30% 11%;
-  --popover-foreground: 195 20% 90%;
+  /* Ink-based dark base (#20242D family) */
+  --background: 222 17% 8%;
+  --foreground: 222 15% 90%;
 
-  /* Azul-Teal Suave primary (#4a7c8a) */
-  --primary: 195 30% 42%;
+  /* Card surfaces — ink itself, lighter than the page background */
+  --card: 222 17% 15%;
+  --card-foreground: 222 15% 90%;
+  --popover: 222 17% 15%;
+  --popover-foreground: 222 15% 90%;
+
+  /* Moss primary (#4F7361) — the Health pillar's accent */
+  --primary: 150 19% 38%;
   --primary-foreground: 0 0% 100%;
 
-  /* Lighter teal accent (#6ba3b0) */
-  --secondary: 195 30% 55%;
-  --secondary-foreground: 200 35% 7%;
-  
-  /* Muted surfaces */
-  --muted: 200 25% 14%;
-  --muted-foreground: 195 15% 50%;
-  
-  /* Accent — deeper teal (#3a6570) */
-  --accent: 195 32% 33%;
-  --accent-foreground: 0 0% 100%;
-  
-  --destructive: 0 85% 55%;
-  --destructive-foreground: 0 0% 100%;
-  
-  /* Borders — subtle teal tint */
-  --border: 200 20% 18%;
-  --input: 200 20% 18%;
-  --ring: 195 30% 42%;
-  
-  --radius: 0.75rem;
-  --success: 160 60% 40%;
-  --success-foreground: 0 0% 100%;
-  --warning: 38 80% 50%;
-  --warning-foreground: 200 35% 7%;
+  /* Greige (#CDC7BE) — signature CTA, dark text on it */
+  --secondary: 36 13% 77%;
+  --secondary-foreground: 222 17% 15%;
 
-  /* Glow colors (raw RGB) */
-  --neon-cyan: 74 124 138;
-  --neon-emerald: 90 180 140;
-  --neon-purple: 120 140 170;
-  --neon-pink: 180 100 130;
-  --neon-amber: 200 160 80;
+  /* Muted surfaces */
+  --muted: 222 12% 20%;
+  --muted-foreground: 220 10% 65%;
+
+  /* Accent mirrors primary (moss) */
+  --accent: 150 19% 38%;
+  --accent-foreground: 0 0% 100%;
+
+  /* "Bad" (#A85A4B) */
+  --destructive: 10 38% 48%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 222 15% 20%;
+  --input: 222 15% 20%;
+  --ring: 150 19% 38%;
+
+  --radius: 0.75rem;
+  /* "Ok" (#55705F) */
+  --success: 142 14% 39%;
+  --success-foreground: 0 0% 100%;
+  /* "Warn" (#8A6D3B) */
+  --warning: 38 40% 39%;
+  --warning-foreground: 0 0% 100%;
+
+  /* Brighter moss for text/active-state roles on a dark surface — --primary
+     itself (38% L) fails WCAG AA as text color here (~3:1); this clears
+     8:1+ against both --background and --card. .public-site overrides this
+     back down to --primary's own value, since on its light background the
+     darker moss already reads fine as link/active-state text. */
+  --accent-bright: 150 30% 60%;
+
+  /* Glow/pattern tints (raw RGB) — used by .glass*, .bg-grid-pattern,
+     .neon-*, .card-hover, .sidebar-futuristic, focus rings, etc. Mapped to
+     the BA One palette (moss/ok/ink-2/bad/warn) so those effects keep
+     working under the new theme instead of silently losing their color
+     (an undefined custom property makes the rgba()/rgb() using it invalid,
+     which the browser just drops — no build error, no visible warning). */
+  --neon-cyan: 79 115 97; /* moss */
+  --neon-emerald: 85 112 95; /* "ok" */
+  --neon-purple: 58 65 80; /* ink-2 */
+  --neon-pink: 168 90 75; /* "bad" */
+  --neon-amber: 138 109 59; /* "warn" */
 }
 
 * {
@@ -338,6 +356,10 @@ body {
   --accent: 140 20% 94%;           /* health-soft #EDF3EF */
   --accent-foreground: 150 19% 38%;
   --ring: 150 19% 38%;
+  /* On this light background --primary's own 38% L already has good
+     contrast as link/active-state text — unlike admin's dark :root, this
+     scope does not need a brighter override. */
+  --accent-bright: 150 19% 38%;
 
   /* BA1 raw tokens for bespoke UX patterns (accent-top cards, pills, hero) */
   --ba1-ink: 32 36 45;
@@ -626,7 +648,7 @@ input:focus, textarea:focus, select:focus, [role="combobox"]:focus {
 }
 
 .article-content li::marker {
-  color: hsl(var(--primary));
+  color: hsl(var(--accent-bright));
 }
 
 .article-content strong {
@@ -639,7 +661,7 @@ input:focus, textarea:focus, select:focus, [role="combobox"]:focus {
 }
 
 .article-content a {
-  color: hsl(var(--primary));
+  color: hsl(var(--accent-bright));
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -860,7 +882,7 @@ html.native-app .site-footer-web-only {
 .admin-header-title {
   font-size: 18px;
   font-weight: 600;
-  color: hsl(195 20% 92%);
+  color: hsl(var(--foreground));
   letter-spacing: -0.01em;
 }
 
@@ -876,18 +898,18 @@ html.native-app .site-footer-web-only {
   gap: 8px;
   padding: 7px 14px;
   border-radius: 8px;
-  background: hsl(200 30% 10%);
-  border: 1px solid hsl(195 20% 16%);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   min-width: 220px;
   transition: border-color 0.15s ease;
 }
 
 .admin-header-search:focus-within {
-  border-color: hsl(174 56% 57% / 0.4);
+  border-color: hsl(var(--accent-bright) / 0.4);
 }
 
 .admin-header-search-icon {
-  color: hsl(195 20% 90% / 0.35);
+  color: hsl(var(--foreground) / 0.35);
   flex-shrink: 0;
 }
 
@@ -895,13 +917,13 @@ html.native-app .site-footer-web-only {
   background: transparent;
   border: none;
   outline: none;
-  color: hsl(195 20% 90%);
+  color: hsl(var(--foreground));
   font-size: 13px;
   width: 100%;
 }
 
 .admin-header-search-input::placeholder {
-  color: hsl(195 20% 90% / 0.3);
+  color: hsl(var(--foreground) / 0.3);
 }
 
 .admin-header-icon-btn {
@@ -914,15 +936,15 @@ html.native-app .site-footer-web-only {
   border-radius: 8px;
   background: transparent;
   border: 1px solid transparent;
-  color: hsl(195 20% 90% / 0.5);
+  color: hsl(var(--foreground) / 0.5);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .admin-header-icon-btn:hover {
-  background: hsl(195 20% 90% / 0.04);
-  border-color: hsl(195 20% 90% / 0.06);
-  color: hsl(195 20% 90% / 0.8);
+  background: hsl(var(--foreground) / 0.04);
+  border-color: hsl(var(--foreground) / 0.06);
+  color: hsl(var(--foreground) / 0.8);
 }
 
 .admin-header-notif-dot {
@@ -932,16 +954,16 @@ html.native-app .site-footer-web-only {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: hsl(174 56% 57%);
-  box-shadow: 0 0 6px hsl(174 56% 57% / 0.5);
+  background: hsl(var(--accent-bright));
+  box-shadow: 0 0 6px hsl(var(--accent-bright) / 0.5);
 }
 
 .admin-header-avatar {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: hsl(195 30% 42% / 0.2);
-  color: hsl(174 56% 57%);
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--accent-bright));
   font-size: 12px;
   font-weight: 600;
   display: flex;
@@ -972,7 +994,7 @@ html.native-app .site-footer-web-only {
 .section-tabs {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid hsl(195 20% 90% / 0.08);
+  border-bottom: 1px solid hsl(var(--foreground) / 0.08);
   margin-bottom: 20px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -987,7 +1009,7 @@ html.native-app .site-footer-web-only {
 .section-tab {
   padding: 10px 18px;
   font-size: 13px;
-  color: hsl(195 20% 90% / 0.45);
+  color: hsl(var(--foreground) / 0.45);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color 0.15s ease, border-color 0.15s ease;
@@ -996,12 +1018,12 @@ html.native-app .site-footer-web-only {
 }
 
 .section-tab:hover {
-  color: hsl(195 20% 90% / 0.7);
+  color: hsl(var(--foreground) / 0.7);
 }
 
 .section-tab.active {
-  color: hsl(174 56% 57%);
-  border-bottom-color: hsl(174 56% 57%);
+  color: hsl(var(--accent-bright));
+  border-bottom-color: hsl(var(--accent-bright));
 }
 
 /* Patient sidebar styles are inline in the component */

@@ -90,19 +90,19 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const navItemClass = (active: boolean) =>
     `group relative flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors cursor-pointer w-full text-left ${
       active
-        ? "bg-[hsl(195,30%,42%)]/10 text-[hsl(174,56%,57%)] font-medium"
-        : "text-[hsl(195,20%,65%)] hover:text-[hsl(195,20%,82%)] hover:bg-white/[0.03]"
+        ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--accent-bright))] font-medium"
+        : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-white/[0.03]"
     }`;
 
   const activeBar = (
-    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[hsl(174,56%,57%)] shadow-[0_0_8px_hsl(174,56%,57%,0.4)]" />
+    <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[hsl(var(--accent-bright))] shadow-[0_0_8px_hsl(var(--accent-bright)/0.4)]" />
   );
 
   return (
     <>
       {/* Mobile toggle */}
       <button
-        className="fixed top-3 left-3 z-50 lg:hidden p-2 rounded-lg bg-[hsl(200,40%,7%)]/90 backdrop-blur border border-white/10"
+        className="fixed top-3 left-3 z-50 lg:hidden p-2 rounded-lg bg-[hsl(var(--background))]/90 backdrop-blur border border-white/10"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Toggle menu"
       >
@@ -129,8 +129,8 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
           zIndex: 40,
           display: "flex",
           flexDirection: "column",
-          background: "hsl(200 40% 5%)",
-          borderRight: "1px solid hsl(195 20% 12%)",
+          background: "hsl(var(--background))",
+          borderRight: "1px solid hsl(var(--border))",
         }}
         aria-label="Admin navigation"
       >
@@ -146,6 +146,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
             size="sm"
             showText={true}
             linkTo="/admin"
+            variant="dark"
           />
         </div>
 
@@ -205,23 +206,23 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
 
           {/* User */}
           <div className="flex items-center gap-2.5 px-3 py-2 rounded-md">
-            <div className="w-7 h-7 rounded-md bg-[hsl(195,30%,42%)]/20 text-[hsl(174,56%,57%)] text-[11px] font-semibold flex items-center justify-center flex-shrink-0">
+            <div className="w-7 h-7 rounded-md bg-[hsl(var(--primary))]/20 text-[hsl(var(--accent-bright))] text-[11px] font-semibold flex items-center justify-center flex-shrink-0">
               {initials}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[12px] text-[hsl(195,20%,80%)] truncate leading-tight">
+              <span className="text-[12px] text-[hsl(var(--foreground))] truncate leading-tight">
                 {user.firstName} {user.lastName}
               </span>
               <Link
                 href="/admin/my-account"
-                className="text-[11px] text-[hsl(195,20%,50%)] hover:text-primary text-left leading-tight transition-colors flex items-center gap-1"
+                className="text-[11px] text-[hsl(var(--muted-foreground))] hover:text-primary text-left leading-tight transition-colors flex items-center gap-1"
               >
                 <UserCog className="h-2.5 w-2.5" />
                 {isPt ? "Minha Conta" : "My Account"}
               </Link>
               <button
                 onClick={() => signOut({ callbackUrl: "/login" })}
-                className="text-[11px] text-[hsl(195,20%,50%)] hover:text-red-400 text-left leading-tight transition-colors"
+                className="text-[11px] text-[hsl(var(--muted-foreground))] hover:text-red-400 text-left leading-tight transition-colors"
               >
                 {isPt ? "Sair" : "Sign out"}
               </button>

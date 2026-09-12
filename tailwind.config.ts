@@ -46,6 +46,9 @@ const config: Config = {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
         },
+        // Brighter moss for text/links on a dark surface — see globals.css
+        // :root's --accent-bright comment for why this differs from --primary.
+        'accent-bright': 'hsl(var(--accent-bright))',
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
@@ -60,23 +63,33 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        // Bruno Physical Rehabilitation brand colours
+        // Bruno Physical Rehabilitation brand colours — BA One Design System v4
+        // (moss/health pillar). Values changed, keys kept so the 7 existing
+        // callers (patient detail, scans, evidence report, foot-scan,
+        // admin-login-form) inherit the new palette without editing each one.
+        // slate = ink family (neutral/structural, e.g. subtle gradients);
+        // turquoise = moss (the actual brand accent — icons, buttons, active
+        // states). Kept distinct on purpose: they used to be two different
+        // hues, and at least one caller (evidence-report-tab.tsx) blends
+        // them in a gradient that goes flat if both resolve to the same hex.
         bruno: {
-          slate: '#607d7d',
-          'slate-dark': '#4a6363',
-          'slate-light': '#7a9494',
-          turquoise: '#5dc9c0',
-          'turquoise-dark': '#4ab3ab',
-          'turquoise-light': '#7dd4cd',
+          slate: '#3A4150',
+          'slate-dark': '#20242D',
+          'slate-light': '#5A6478',
+          turquoise: '#4F7361',
+          'turquoise-dark': '#3D5A4D',
+          'turquoise-light': '#7DA391',
         },
-        // Dynamic clinic theme colors (CSS Variables)
+        // Dynamic clinic theme colors (CSS Variables) — fallback is BA One
+        // moss; a tenant's own Clinic.primaryColor/secondaryColor (injected
+        // as --clinic-primary/--clinic-secondary) still wins when set.
         clinic: {
-          primary: 'var(--clinic-primary, #607d7d)',
-          'primary-light': 'var(--clinic-primary-light, #7a9494)',
-          'primary-dark': 'var(--clinic-primary-dark, #4a6363)',
-          secondary: 'var(--clinic-secondary, #5dc9c0)',
-          'secondary-light': 'var(--clinic-secondary-light, #7dd4cd)',
-          'secondary-dark': 'var(--clinic-secondary-dark, #4ab3ab)',
+          primary: 'var(--clinic-primary, #4F7361)',
+          'primary-light': 'var(--clinic-primary-light, #7DA391)',
+          'primary-dark': 'var(--clinic-primary-dark, #3D5A4D)',
+          secondary: 'var(--clinic-secondary, #3D5A4D)',
+          'secondary-light': 'var(--clinic-secondary-light, #7DA391)',
+          'secondary-dark': 'var(--clinic-secondary-dark, #2E453B)',
         },
         // BA1 Design System v4 — public-site only (Home, Articles, Services, etc.)
         ba1: {
