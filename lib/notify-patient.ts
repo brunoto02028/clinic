@@ -42,6 +42,7 @@ export async function notifyPatient({
         firstName: true,
         communicationPreference: true,
         preferredLocale: true,
+        clinicId: true,
       } as any,
     });
 
@@ -129,7 +130,7 @@ export async function notifyPatient({
         const sent = await sendTemplatedEmail(emailTemplateSlug as any, email, {
           patientName: firstName,
           ...emailVars,
-        }, patientId);
+        }, patientId, u.clinicId);
         if (sent) return { channel: "EMAIL", success: true };
         console.warn(`[notify-patient] Template ${emailTemplateSlug} unavailable — sending plain text instead.`);
       } catch (err: any) {
@@ -140,7 +141,8 @@ export async function notifyPatient({
     {
       // Plain email — the fallback, and the path when no template was asked for
       try {
-        const adminBcc = process.env.ADMIN_EMAIL || "brunotoaz@gmail.com";
+        const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
+        const adminBcc = await getAdminNotificationEmail(u.clinicId);
         // sendEmail reports failure in its return value rather than throwing,
         // so the catch below never sees a rejected send.
         const result = await sendEmail({

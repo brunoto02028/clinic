@@ -84,14 +84,15 @@ export async function POST(req: NextRequest) {
   try {
     const patient = await prisma.user.findUnique({
       where: { id: userId },
-      select: { firstName: true, lastName: true },
+      select: { firstName: true, lastName: true, clinicId: true },
     });
     const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient";
     const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
     const preview = content ? content.slice(0, 300) : (attachment ? `📎 ${attachment.fileName}` : "");
 
+    const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
     await sendEmail({
-      to: process.env.ADMIN_EMAIL || "brunotoaz@gmail.com",
+      to: await getAdminNotificationEmail(patient?.clinicId),
       subject: `💬 Nova mensagem de ${patientName}`,
       html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#1a6b6b;">Nova mensagem no chat</h2>

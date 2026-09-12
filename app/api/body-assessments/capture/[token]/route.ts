@@ -31,7 +31,8 @@ async function blurFaceOnFile(filePath: string, patientId?: string, token?: stri
     console.error(`[blur-faces] CRITICAL: Face blur failed for user. Rosto do paciente pode estar exposto. Error:`, err?.message);
     // Notify admin about face blur failure
     try {
-      const adminEmail = process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com';
+      const { getAdminNotificationEmail } = await import('@/lib/admin-notify-email');
+      const adminEmail = await getAdminNotificationEmail();
       await fetch(`${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/api/admin/notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -303,7 +304,10 @@ export async function PUT(
       try {
         const full = await (prisma as any).bodyAssessment.findUnique({
           where: { id: assessment.id },
-          select: { patientId: true },
+          select: {
+            patientId: true,
+            patient: { select: { firstName: true, lastName: true, clinicId: true } },
+          },
         });
         if (full?.patientId) {
           const { notifyPatient } = await import('@/lib/notify-patient');
@@ -316,6 +320,23 @@ export async function PUT(
             plainMessage: 'Your body assessment photos have been submitted and are being analysed. You will be notified when results are ready.',
             plainMessagePt: 'Suas fotos de avaliação corporal foram enviadas e estão sendo analisadas. Você será notificado quando os resultados estiverem prontos.',
           });
+
+          // Dedicated admin alert (activity 37)
+          try {
+            const { sendAdminAlert } = await import('@/lib/admin-alert-email');
+            const { escapeHtml } = await import('@/lib/admin-notify-email');
+            const appUrl = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
+            const patientName = full.patient ? `${full.patient.firstName} ${full.patient.lastName}` : 'A patient';
+            await sendAdminAlert({
+              clinicId: full.patient?.clinicId ?? null,
+              subject: `📸 Body Assessment Submitted: ${patientName}`,
+              title: "Body Assessment Submitted",
+              intro: `<strong>${escapeHtml(patientName)}</strong> submitted their body assessment photos for review.`,
+              ctaUrl: `${appUrl}/admin/patients/${full.patientId}`,
+            });
+          } catch (adminAlertErr) {
+            console.error('[body-assessment] Failed to send admin alert:', adminAlertErr);
+          }
         }
       } catch (emailErr) {
         console.error('[body-assessment] Failed to send notification:', emailErr);

@@ -155,9 +155,10 @@ export async function POST(request: NextRequest) {
 
       // FIX 6: Log notification failure with CRITICAL so admin can see in system logs
       try {
-        const patient = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true } });
+        const patient = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, clinicId: true } });
         const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (session.user?.name || 'Patient');
-        const adminEmail = process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com';
+        const { getAdminNotificationEmail } = await import('@/lib/admin-notify-email');
+        const adminEmail = await getAdminNotificationEmail(patient?.clinicId);
         const adminUrl = `${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/admin/patients/${userId}`;
         const complaint = body?.chiefComplaint || 'Not specified';
         const painScore = body?.painScore != null ? `${body.painScore}/10` : 'N/A';
@@ -321,9 +322,10 @@ export async function POST(request: NextRequest) {
 
     // Notify admin that a new screening was submitted
     try {
-      const patient = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true } });
+      const patient = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, clinicId: true } });
       const patientName = patient ? `${patient.firstName} ${patient.lastName}` : (session.user?.name || 'Patient');
-      const adminEmail = process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com';
+      const { getAdminNotificationEmail } = await import('@/lib/admin-notify-email');
+      const adminEmail = await getAdminNotificationEmail(patient?.clinicId);
       const adminUrl = `${process.env.NEXTAUTH_URL || 'https://bpr.clinic'}/admin/patients/${userId}`;
       const complaint = body?.chiefComplaint || 'Not specified';
       const painScore = body?.painScore != null ? `${body.painScore}/10` : 'N/A';

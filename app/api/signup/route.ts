@@ -8,6 +8,8 @@ import { sendTemplatedEmail } from "@/lib/email-templates";
 import { verifyTurnstile, getClientIp } from "@/lib/turnstile";
 import { rateLimit } from "@/lib/rate-limit";
 import { resolveJoinTenant } from "@/lib/join-tenant";
+import { sendAdminAlert } from "@/lib/admin-alert-email";
+import { escapeHtml } from "@/lib/admin-notify-email";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -145,9 +147,30 @@ export async function POST(request: NextRequest) {
         patientName: firstName,
         portalUrl: `${appUrl}/dashboard`,
         clinicPhone: clinicPhone || "Contact us via the website",
-      }, user.id);
+      }, user.id, tenant.clinicId);
     } catch (emailError) {
       console.error("Failed to send welcome email:", emailError);
+    }
+
+    // Dedicated admin alert (activity 37) — the welcome email above already
+    // BCCs the admin, but that's a copy of an email addressed to the patient.
+    // This is what actually motivated the whole activity: the admin wants to
+    // know the moment someone signs up, not just once they've BCC-scrolled
+    // past it.
+    try {
+      const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+      const rows = [{ label: "Email", value: email.toLowerCase() }];
+      if (phone) rows.push({ label: "Phone", value: phone });
+      await sendAdminAlert({
+        clinicId: tenant.clinicId,
+        subject: `👋 New Patient Signup: ${firstName} ${lastName}`,
+        title: "New Patient Signup",
+        intro: `<strong>${escapeHtml(firstName)} ${escapeHtml(lastName)}</strong> just created an account${tenant.name ? ` under <strong>${escapeHtml(tenant.name)}</strong>` : ""}.`,
+        rows,
+        ctaUrl: `${appUrl}/admin/patients/${user.id}`,
+      });
+    } catch (adminAlertError) {
+      console.error("Failed to send new-signup admin alert:", adminAlertError);
     }
 
     return NextResponse.json({

@@ -170,6 +170,35 @@ async function handleUpdate(
       console.error('Failed to send appointment update notification:', emailError);
     }
 
+    // Dedicated admin alert (activity 37) — only when the PATIENT cancelled
+    // themselves. An admin/therapist cancelling doesn't need to be told
+    // about their own action; this route handles both actors on the same
+    // status field, so userRole is what tells them apart. Recomputes
+    // date/time fresh rather than reaching into the try block above (whose
+    // locals are scoped to it and a failure there shouldn't suppress this).
+    if (body?.status === "CANCELLED" && userRole === "PATIENT") {
+      (async () => {
+        const { sendAdminAlert } = await import("@/lib/admin-alert-email");
+        const { escapeHtml } = await import("@/lib/admin-notify-email");
+        const appUrl2 = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+        const apptDate2 = new Date(appointment.dateTime);
+        const dateStr2 = apptDate2.toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+        const timeStr2 = apptDate2.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        const patientName = `${appointment.patient.firstName} ${appointment.patient.lastName}`;
+        return sendAdminAlert({
+          clinicId: (appointment as any).clinicId ?? null,
+          subject: `❌ Appointment Cancelled by Patient: ${patientName}`,
+          title: "Appointment Cancelled",
+          intro: `<strong>${escapeHtml(patientName)}</strong> cancelled their own appointment.`,
+          rows: [
+            { label: "Was scheduled", value: `${dateStr2} at ${timeStr2}` },
+            { label: "Treatment", value: appointment.treatmentType || "—" },
+          ],
+          ctaUrl: `${appUrl2}/admin/patients/${appointment.patient.id}`,
+        });
+      })().catch((err) => console.error("[appointments] admin cancellation alert error:", err));
+    }
+
     if (body?.status === "CANCELLED") {
       notifyWaitlistForCancelledAppointment({
         id: appointment.id,

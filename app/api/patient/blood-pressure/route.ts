@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
+import { sendAdminAlert } from "@/lib/admin-alert-email";
+import { escapeHtml } from "@/lib/admin-notify-email";
 
 // GET — list patient's own BP readings
 export async function GET(request: NextRequest) {
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
     const userId = effectiveUser.userId;
-    const _u = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } }); const clinicId = _u?.clinicId || null;
+    const _u = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true, firstName: true, lastName: true } }); const clinicId = _u?.clinicId || null;
     const body = await request.json();
 
     const { systolic, diastolic, heartRate, method, notes, confidence, ppgSignal } = body;
@@ -97,6 +99,28 @@ export async function POST(request: NextRequest) {
           ? `🚨 CRISE HIPERTENSIVA: Sua leitura de ${sys}/${dia} mmHg requer atenção médica IMEDIATA. Ligue 999/112 ou vá ao pronto-socorro agora.`
           : `⚠️ Alerta de PA Alta: Sua leitura de ${sys}/${dia} mmHg é classificada como ${classification}. Entre em contato com seu médico.`,
       }).catch(err => console.error('[bp] alert notification error:', err));
+
+      // Dedicated admin alert (activity 37) — the patient-facing template
+      // above already BCCs the admin, but that's a passive copy of an email
+      // addressed to the patient. This is the only event in the system with
+      // a direct clinical-safety implication, so it gets its own clearly
+      // flagged alert instead of relying on the BCC being noticed.
+      const patientName = _u ? `${_u.firstName} ${_u.lastName}` : "A patient";
+      sendAdminAlert({
+        clinicId,
+        subject: isCrisis
+          ? `🚨 HYPERTENSIVE CRISIS: ${patientName} — ${sys}/${dia} mmHg`
+          : `🚨 High Blood Pressure Reading: ${patientName} — ${sys}/${dia} mmHg`,
+        title: isCrisis ? "Hypertensive Crisis Reading" : "High Blood Pressure Reading",
+        intro: `<strong>${escapeHtml(patientName)}</strong> just logged a reading requiring attention.`,
+        rows: [
+          { label: "Reading", value: `${sys}/${dia} mmHg` },
+          { label: "Classification", value: classification },
+          { label: "Date", value: new Date().toLocaleString("en-GB") },
+        ],
+        ctaUrl: `${BASE}/admin/patients/${userId}`,
+        accentColor: "#dc2626",
+      }).catch(err => console.error('[bp] admin alert error:', err));
     }
 
     return NextResponse.json({ reading });

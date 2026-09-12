@@ -308,6 +308,15 @@ model Clinic {
   postcode String?
   country  String  @default("GB")
 
+  // Where this tenant's own operational alerts (new signup, high blood
+  // pressure, patient-initiated cancellation, etc.) go — activity 37.
+  // Deliberately separate from `email` above (that one is often stale or
+  // unset — it's the public contact address, edited rarely) and NOT the
+  // same thing as the default tenant's SiteSettings.notificationEmail:
+  // that one only applies to the default/primary clinic, never leaks to
+  // any other tenant. See lib/admin-notify-email.ts.
+  notificationEmail String?
+
   // Stripe Connect (for receiving payments). stripeOnboarded mirrors
   // charges_enabled (may charge); the two flags below surface the rest of the
   // account state so a trainer isn't left "charging but not getting paid" (act.28).
@@ -1344,6 +1353,14 @@ model SiteSettings {
   phone            String?
   email            String?
   address          String?
+
+  // Internal alerts (activity 37) — where "new signup", "high blood
+  // pressure", "patient cancelled" etc. admin alerts go. Deliberately
+  // separate from `email` above: that one is the PUBLIC contact address
+  // shown on the site/footer, not necessarily where staff want operational
+  // alerts landing. Falls back to `email`, then ADMIN_EMAIL, then a
+  // hardcoded address — see lib/admin-notify-email.ts.
+  notificationEmail String?
 
   // WhatsApp floating button
   whatsappNumber  String? // e.g. "447123456789" — shown as floating button on public pages

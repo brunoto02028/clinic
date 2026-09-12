@@ -140,6 +140,19 @@ export async function POST(req: NextRequest) {
                   ? `Pagamento confirmado para pedido #${order.orderNumber}! Seus downloads estão prontos.`
                   : `Pagamento confirmado para pedido #${order.orderNumber}! Seu pedido está sendo processado.`,
               }).catch(err => console.error('[stripe-webhook] marketplace notify error:', err));
+
+              // Dedicated admin alert (activity 37)
+              (async () => {
+                const { sendAdminAlert } = await import('@/lib/admin-alert-email');
+                const { escapeHtml } = await import('@/lib/admin-notify-email');
+                return sendAdminAlert({
+                  clinicId: order.clinicId ?? null,
+                  subject: `💳 Payment Confirmed: Order #${order.orderNumber} (£${order.total.toFixed(2)})`,
+                  title: "Payment Confirmed",
+                  intro: `<strong>${escapeHtml(order.patient.firstName)}</strong> paid for order #${escapeHtml(String(order.orderNumber))} (£${order.total.toFixed(2)}).`,
+                  ctaUrl: `${BASE}/admin/patients/${order.patient.id}`,
+                });
+              })().catch(err => console.error('[stripe-webhook] admin payment alert error:', err));
             } else {
               // Guest buyer — no account, no portal, so email is the only
               // channel they have. Without this a public-shop customer paid
@@ -161,7 +174,7 @@ export async function POST(req: NextRequest) {
               stripePaymentIntentId: session.payment_intent as string || session.id,
               status: "PAID",
             },
-            include: { patient: { select: { id: true, firstName: true } } },
+            include: { patient: { select: { id: true, firstName: true, lastName: true, clinicId: true } } },
           });
           console.log(`[stripe-webhook] Package ${packageId} marked as PAID`);
 
@@ -180,6 +193,20 @@ export async function POST(req: NextRequest) {
               plainMessage: `Payment of £${amount} confirmed for ${pkg.name || 'your treatment package'}. You can now access your treatment plan.`,
               plainMessagePt: `Pagamento de £${amount} confirmado para ${pkg.name || 'seu pacote de tratamento'}. Agora você pode acessar seu plano de tratamento.`,
             }).catch(err => console.error('[stripe-webhook] package notify error:', err));
+
+            // Dedicated admin alert (activity 37)
+            (async () => {
+              const { sendAdminAlert } = await import('@/lib/admin-alert-email');
+              const { escapeHtml } = await import('@/lib/admin-notify-email');
+              const patientName = `${pkg.patient.firstName} ${pkg.patient.lastName}`;
+              return sendAdminAlert({
+                clinicId: pkg.patient.clinicId ?? null,
+                subject: `💳 Package Payment Confirmed: ${patientName} (£${amount})`,
+                title: "Package Payment Confirmed",
+                intro: `<strong>${escapeHtml(patientName)}</strong> paid £${amount} for ${escapeHtml(pkg.name || 'a treatment package')}.`,
+                ctaUrl: `${BASE}/admin/patients/${pkg.patient.id}`,
+              });
+            })().catch(err => console.error('[stripe-webhook] admin package alert error:', err));
           }
         }
         break;

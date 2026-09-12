@@ -260,8 +260,9 @@ export async function POST(request: NextRequest) {
         </div>
       `;
 
+      const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
       await sendEmail({
-        to: process.env.ADMIN_EMAIL || "brunotoaz@gmail.com",
+        to: await getAdminNotificationEmail(actor.clinicId),
         subject: `New Appointment: ${appointment.patient.firstName} ${appointment.patient.lastName} - ${new Date(dateTime).toLocaleDateString("en-GB")}`,
         html: adminHtmlBody,
       });

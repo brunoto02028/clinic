@@ -141,7 +141,8 @@ async function sendTaskNotification(taskName: string, status: 'SUCCESS' | 'FAILE
   for (const ch of channels) {
     try {
       if (ch === 'email') {
-        const toEmail = (config.notifyEmail as string) || process.env.ADMIN_EMAIL || 'brunotoaz@gmail.com'
+        const { getAdminNotificationEmail } = await import('@/lib/admin-notify-email')
+        const toEmail = (config.notifyEmail as string) || await getAdminNotificationEmail()
         const { sendEmail } = await import('@/lib/email')
         await sendEmail({
           to: toEmail,

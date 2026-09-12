@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   // Fetch patient name for notifications
   const patient = await prisma.user.findUnique({
     where: { id: patientId },
-    select: { firstName: true, lastName: true, email: true },
+    select: { firstName: true, lastName: true, email: true, clinicId: true },
   });
 
   const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Patient";
@@ -53,8 +53,9 @@ export async function POST(req: NextRequest) {
       return `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;color:#374151;"><strong>${i + 1}. ${q}</strong><br/><span style="color:#059669;">${a?.answer || "—"}</span></td></tr>`;
     }).join("");
 
+    const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
     await sendEmail({
-      to: process.env.ADMIN_EMAIL || "brunotoaz@gmail.com",
+      to: await getAdminNotificationEmail(patient?.clinicId),
       subject: `✅ ${patientName} respondeu às perguntas`,
       html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#1a6b6b;">Respostas recebidas</h2>

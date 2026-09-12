@@ -168,6 +168,7 @@ export async function PUT(request: NextRequest) {
       contactCardsJson: body.contactCardsJson || null,
       phone: body.phone || null,
       email: body.email || null,
+      notificationEmail: body.notificationEmail || null,
       address: body.address || null,
       whatsappNumber: body.whatsappNumber || null,
       whatsappEnabled: body.whatsappEnabled ?? false,

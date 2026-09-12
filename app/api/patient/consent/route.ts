@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { sendTemplatedEmail } from '@/lib/email-templates';
 import { notifyPatient } from '@/lib/notify-patient';
+import { sendAdminAlert } from '@/lib/admin-alert-email';
+import { escapeHtml } from '@/lib/admin-notify-email';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'You must accept the terms' }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, email: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, email: true, clinicId: true } });
 
   await prisma.user.update({
     where: { id: userId },
@@ -57,6 +59,19 @@ export async function POST(req: NextRequest) {
     plainMessage: 'Your consent has been recorded. You can now access all features of your patient portal.',
     plainMessagePt: 'Seu consentimento foi registrado. Agora você pode acessar todos os recursos do seu portal do paciente.',
   }).catch(err => console.error('[consent] notification error:', err));
+
+  // Dedicated admin alert (activity 37)
+  (async () => {
+    const appUrl = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
+    const patientName = user ? `${user.firstName} ${user.lastName}` : 'A patient';
+    return sendAdminAlert({
+      clinicId: user?.clinicId ?? null,
+      subject: `✅ Consent Accepted: ${patientName}`,
+      title: "Consent Accepted",
+      intro: `<strong>${escapeHtml(patientName)}</strong> accepted the terms of use and consent to data processing.`,
+      ctaUrl: `${appUrl}/admin/patients/${userId}`,
+    });
+  })().catch(err => console.error('[consent] admin alert error:', err));
 
   return NextResponse.json({ success: true, consentAcceptedAt: new Date().toISOString() });
 }

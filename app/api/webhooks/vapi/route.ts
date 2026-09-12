@@ -221,8 +221,9 @@ async function handleBookAppointment(
       const appName = getAppName();
       const BASE = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
+      const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
       await sendEmail({
-        to: "brunotoaz@gmail.com",
+        to: await getAdminNotificationEmail(),
         subject: `📞 Voice Booking: ${patientName} — ${treatmentType} on ${dateStr}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

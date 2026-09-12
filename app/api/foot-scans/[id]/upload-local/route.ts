@@ -206,7 +206,10 @@ export async function POST(
       try {
         const fullScan = await (prisma.footScan as any).findUnique({
           where: { id },
-          select: { patientId: true },
+          select: {
+            patientId: true,
+            patient: { select: { firstName: true, lastName: true, clinicId: true } },
+          },
         });
         if (fullScan?.patientId) {
           const { notifyPatient } = await import('@/lib/notify-patient');
@@ -219,6 +222,23 @@ export async function POST(
             plainMessage: 'Your foot scan images have been uploaded successfully. Our team will analyse them shortly.',
             plainMessagePt: 'Suas imagens de escaneamento do pé foram enviadas com sucesso. Nossa equipe irá analisá-las em breve.',
           });
+
+          // Dedicated admin alert (activity 37)
+          try {
+            const { sendAdminAlert } = await import('@/lib/admin-alert-email');
+            const { escapeHtml } = await import('@/lib/admin-notify-email');
+            const appUrl = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
+            const patientName = fullScan.patient ? `${fullScan.patient.firstName} ${fullScan.patient.lastName}` : 'A patient';
+            await sendAdminAlert({
+              clinicId: fullScan.patient?.clinicId ?? null,
+              subject: `🦶 Foot Scan Submitted: ${patientName}`,
+              title: "Foot Scan Submitted",
+              intro: `<strong>${escapeHtml(patientName)}</strong> uploaded their foot scan images.`,
+              ctaUrl: `${appUrl}/admin/patients/${fullScan.patientId}`,
+            });
+          } catch (adminAlertErr) {
+            console.error('[foot-scan] Failed to send admin alert:', adminAlertErr);
+          }
         }
       } catch (emailErr) {
         console.error('[foot-scan] Failed to send notification:', emailErr);

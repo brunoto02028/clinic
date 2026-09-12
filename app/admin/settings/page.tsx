@@ -233,6 +233,7 @@ export default function AdminSettingsPage() {
     contactText: "",
     phone: "",
     email: "",
+    notificationEmail: "",
     address: "",
     whatsappNumber: "",
     whatsappEnabled: false,
@@ -395,6 +396,7 @@ export default function AdminSettingsPage() {
           contactText: data.contactText || "",
           phone: data.phone || "",
           email: data.email || "",
+          notificationEmail: data.notificationEmail || "",
           address: data.address || "",
           whatsappNumber: data.whatsappNumber || "",
           whatsappEnabled: data.whatsappEnabled ?? false,
@@ -2066,6 +2068,20 @@ export default function AdminSettingsPage() {
                   <Label htmlFor="address">Address</Label>
                   <Input id="address" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} placeholder="Ipswich, Suffolk" />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notificationEmail">Notification email</Label>
+                <Input
+                  id="notificationEmail"
+                  type="email"
+                  value={settings.notificationEmail}
+                  onChange={(e) => setSettings({ ...settings, notificationEmail: e.target.value })}
+                  placeholder="admin@bpr.clinic"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Where new-signup, high-blood-pressure and other admin alerts go — separate from the public contact email above. Leave blank to fall back to the contact email.
+                </p>
               </div>
 
               <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 space-y-3">
