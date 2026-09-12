@@ -1032,11 +1032,31 @@ html.native-app .site-footer-web-only {
    REDESIGN: Content area offsets
    ======================================== */
 .admin-content-area {
-  margin-left: 220px;
+  /* Sidebar is a collapsed icon rail by default (activity 35) and expands
+     over the content on hover — the content margin matches the collapsed
+     width and never moves, so the expanded menu overlays it instead. */
+  margin-left: 68px;
   min-height: 100vh;
   box-sizing: border-box;
   overflow-x: hidden;
   padding: 0 24px 24px;
+}
+
+.admin-mini-sidebar {
+  width: 68px;
+  box-shadow: none;
+  /* One declaration covering every property this element ever transitions
+     (width/box-shadow for the desktop hover-expand, transform for the
+     mobile drawer slide) — an inline `style.transition` on the element
+     would fully replace this rule rather than merge with it, silently
+     killing whichever property it omits (bit us once: the mobile slide
+     stopped animating when width/box-shadow moved to an inline style). */
+  transition: width 0.2s ease, box-shadow 0.2s ease, transform 0.3s ease;
+}
+
+.admin-mini-sidebar.expanded {
+  width: 220px;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
 }
 
 .patient-content-area {
@@ -1053,8 +1073,11 @@ html.native-app .site-footer-web-only {
 /* --- Tablet + Phone (max-width: 1023px) --- */
 @media (max-width: 1023px) {
   .admin-mini-sidebar {
+    /* The hover rail is desktop-only — the drawer always opens full width.
+       Transition is inherited from the base rule above (not redeclared
+       here) so it keeps all three animated properties, not just transform. */
+    width: 220px;
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
   }
 
   .admin-mini-sidebar.mobile-open {
