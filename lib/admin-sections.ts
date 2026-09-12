@@ -179,6 +179,14 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/exercises",
       },
       {
+        key: "programs",
+        label: "Programs",
+        labelPt: "Programas",
+        href: "/admin/training-programs",
+        matchRoutes: ["/admin/training-programs"],
+        personalOnly: true,
+      },
+      {
         key: "protocols",
         label: "Protocols",
         labelPt: "Protocolos",
@@ -207,6 +215,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       "/admin/treatment-plans",
       "/admin/treatment-types",
       "/admin/exercises",
+      "/admin/training-programs",
       "/admin/protocols",
       "/admin/equipment",
       "/admin/clinical/rehab",

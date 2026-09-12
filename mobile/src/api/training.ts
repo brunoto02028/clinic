@@ -25,6 +25,10 @@ export interface Workout {
   name: string;
   phase: string | null;
   daysOfWeek: number[];
+  // Set only for a workout generated from a Program Template assignment
+  // (activity 33) — recurring, manually-created workouts leave both null.
+  scheduledDate: string | null;
+  templateDayId: string | null;
   exercises: WorkoutExercise[];
 }
 

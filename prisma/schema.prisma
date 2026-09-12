@@ -350,6 +350,7 @@ model Clinic {
   moduleAccess            ClinicModuleAccess[]
   workouts                Workout[]
   workoutLogs             WorkoutLog[]
+  workoutTemplates        WorkoutTemplate[]
   studentAssessments      StudentAssessment[]
   assessmentPhotos        AssessmentPhoto[]
   mealPlans               MealPlan[]
@@ -641,6 +642,7 @@ model User {
   trainerWorkouts            Workout[]              @relation("TrainerWorkouts")
   studentWorkouts            Workout[]              @relation("StudentWorkouts")
   studentWorkoutLogs         WorkoutLog[]           @relation("StudentWorkoutLogs")
+  trainerWorkoutTemplates    WorkoutTemplate[]      @relation("TrainerWorkoutTemplates")
   studentAssessments         StudentAssessment[]    @relation("StudentAssessments")
   trainerAssessments         StudentAssessment[]    @relation("TrainerAssessments")
   studentAssessmentPhotos    AssessmentPhoto[]      @relation("StudentAssessmentPhotos")
@@ -2842,10 +2844,11 @@ model Exercise {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  prescriptions    ExercisePrescription[]
-  workoutExercises WorkoutExercise[]
-  protocolItems    ProtocolItem[]
-  templateItems    ProtocolTemplateItem[] @relation("TemplateItemExercise")
+  prescriptions            ExercisePrescription[]
+  workoutExercises         WorkoutExercise[]
+  workoutTemplateExercises WorkoutTemplateExercise[]
+  protocolItems            ProtocolItem[]
+  templateItems            ProtocolTemplateItem[] @relation("TemplateItemExercise")
 
   @@index([clinicId])
   @@index([bodyRegion])
@@ -2952,6 +2955,12 @@ model Workout {
   notes      String?  @db.Text
   isActive   Boolean  @default(true)
 
+  // Set when this workout was generated from a Program Template assignment
+  // (activity 33). Both null = today's manual/recurring behavior, unchanged.
+  scheduledDate DateTime?
+  templateDayId String?
+  templateDay   WorkoutTemplateDay? @relation(fields: [templateDayId], references: [id], onDelete: SetNull)
+
   exercises WorkoutExercise[]
   logs      WorkoutLog[]
 
@@ -2962,6 +2971,7 @@ model Workout {
   @@index([studentId])
   @@index([trainerId])
   @@index([isActive])
+  @@index([templateDayId])
 }
 
 // One exercise inside a workout, with the prescribed load/volume.
@@ -2991,6 +3001,85 @@ model WorkoutExercise {
   updatedAt DateTime @updatedAt
 
   @@index([workoutId])
+  @@index([exerciseId])
+}
+
+// A reusable, multi-week workout program (activity 33). Belongs to the
+// trainer/tenant, not to a student — assigning it materializes real Workout
+// rows (see Workout.templateDayId) for each selected student.
+model WorkoutTemplate {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  trainerId String
+  trainer   User   @relation("TrainerWorkoutTemplates", fields: [trainerId], references: [id])
+
+  name        String
+  description String? @db.Text
+  weeks       Int // 1-12, validated at the API layer
+  isActive    Boolean @default(true)
+
+  days WorkoutTemplateDay[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([trainerId])
+}
+
+// One day within a WorkoutTemplate. weekIndex is 0-based so different weeks
+// can carry different content (progression), which is the point of the gap
+// this activity closes.
+model WorkoutTemplateDay {
+  id         String          @id @default(cuid())
+  templateId String
+  template   WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  weekIndex Int // 0-based
+  dayOfWeek Int // 0=Sun … 6=Sat
+  name      String
+  phase     String?
+  order     Int     @default(0)
+
+  exercises WorkoutTemplateExercise[]
+  workouts  Workout[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([templateId, weekIndex, dayOfWeek])
+  @@index([templateId])
+}
+
+// Mirrors WorkoutExercise's prescription fields, scoped to a template day
+// instead of a student's concrete workout.
+model WorkoutTemplateExercise {
+  id            String             @id @default(cuid())
+  templateDayId String
+  templateDay   WorkoutTemplateDay @relation(fields: [templateDayId], references: [id], onDelete: Cascade)
+
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  order         Int     @default(0)
+  supersetGroup String?
+  sets          Int?
+  repsMin       Int?
+  repsMax       Int?
+  loadKg        Float?
+  rpe           Int?
+  rir           Int?
+  cadence       String?
+  restSeconds   Int?
+  notes         String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([templateDayId])
   @@index([exerciseId])
 }
 

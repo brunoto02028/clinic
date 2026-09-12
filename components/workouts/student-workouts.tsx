@@ -25,6 +25,8 @@ interface Workout {
   name: string;
   phase?: string | null;
   daysOfWeek: number[];
+  scheduledDate?: string | null;
+  templateDayId?: string | null;
   exercises: WEx[];
 }
 interface SetEntry { reps: string; loadKg: string; rpe: string; completed: boolean }
@@ -188,6 +190,56 @@ export default function StudentWorkouts() {
     ? ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
     : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+  // scheduledDate is a UTC-midnight-anchored "date-only" value (see
+  // assign/route.ts's scheduledDateFor) — reading it with local getters would
+  // shift it by a day for any negative-offset timezone (Brazil included,
+  // UTC-3 year-round), so this compares/formats in UTC to match how it was
+  // written, not the viewer's local wall-clock time.
+  const isToday = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    return (
+      d.getUTCFullYear() === now.getUTCFullYear() &&
+      d.getUTCMonth() === now.getUTCMonth() &&
+      d.getUTCDate() === now.getUTCDate()
+    );
+  };
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return `${dayNames[d.getUTCDay()]} ${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+  };
+  // Program-generated workouts (activity 33) carry a scheduledDate and are
+  // grouped separately, sorted by date with today highlighted. Manually
+  // assigned recurring workouts (scheduledDate: null) keep the plain list —
+  // unchanged from before this activity.
+  const recurringWorkouts = workouts.filter((w) => !w.scheduledDate);
+  const scheduledWorkouts = workouts
+    .filter((w) => w.scheduledDate)
+    .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime());
+
+  const renderWorkoutRow = (w: Workout) => (
+    <button
+      key={w.id}
+      onClick={() => openWorkout(w)}
+      className={`flex w-full items-center justify-between rounded-md border p-3 text-left hover:border-primary hover:bg-primary/5 ${
+        w.scheduledDate && isToday(w.scheduledDate) ? "border-primary" : ""
+      }`}
+    >
+      <span>
+        <span className="font-medium">{w.name}</span>
+        {w.phase && <span className="ml-2 text-xs text-muted-foreground">{w.phase}</span>}
+        <span className="block text-xs text-muted-foreground">
+          {w.scheduledDate
+            ? `${isToday(w.scheduledDate) ? t("Today", "Hoje") : formatDate(w.scheduledDate)} · `
+            : ""}
+          {w.exercises.length} {t("exercises", "exercícios")}
+          {!w.scheduledDate && w.daysOfWeek?.length ? " · " + w.daysOfWeek.map((d) => dayNames[d]).join(", ") : ""}
+        </span>
+      </span>
+      <Play className="h-4 w-4 text-primary" />
+    </button>
+  );
+
   return (
     <div className="mx-auto max-w-3xl p-4 space-y-4">
       <h1 className="flex items-center gap-2 text-xl font-bold">
@@ -202,24 +254,21 @@ export default function StudentWorkouts() {
             {t("No workouts assigned yet. Your trainer will set these up.", "Nenhum treino ainda. Seu personal vai montar.")}
           </p>
         ) : (
-          <div className="space-y-2">
-            {workouts.map((w) => (
-              <button
-                key={w.id}
-                onClick={() => openWorkout(w)}
-                className="flex w-full items-center justify-between rounded-md border p-3 text-left hover:border-primary hover:bg-primary/5"
-              >
-                <span>
-                  <span className="font-medium">{w.name}</span>
-                  {w.phase && <span className="ml-2 text-xs text-muted-foreground">{w.phase}</span>}
-                  <span className="block text-xs text-muted-foreground">
-                    {w.exercises.length} {t("exercises", "exercícios")}
-                    {w.daysOfWeek?.length ? " · " + w.daysOfWeek.map((d) => dayNames[d]).join(", ") : ""}
-                  </span>
-                </span>
-                <Play className="h-4 w-4 text-primary" />
-              </button>
-            ))}
+          <div className="space-y-4">
+            {scheduledWorkouts.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase text-muted-foreground">{t("Program", "Programa")}</p>
+                {scheduledWorkouts.map(renderWorkoutRow)}
+              </div>
+            )}
+            {recurringWorkouts.length > 0 && (
+              <div className="space-y-2">
+                {scheduledWorkouts.length > 0 && (
+                  <p className="text-xs font-medium uppercase text-muted-foreground">{t("Recurring", "Recorrente")}</p>
+                )}
+                {recurringWorkouts.map(renderWorkoutRow)}
+              </div>
+            )}
           </div>
         )
       ) : (

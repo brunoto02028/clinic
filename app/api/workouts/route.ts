@@ -14,7 +14,13 @@ export async function GET(request: NextRequest) {
 
     const workouts = await prisma.workout.findMany({
       where: { studentId: actor.userId, isActive: true },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        phase: true,
+        daysOfWeek: true,
+        scheduledDate: true,
+        templateDayId: true,
         exercises: {
           orderBy: { order: "asc" },
           include: {

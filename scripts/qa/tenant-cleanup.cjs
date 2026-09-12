@@ -57,6 +57,10 @@ async function main() {
   await step("workouts", () => prisma.workout.deleteMany({ where: { OR: [{ studentId: { in: ids } }, { trainerId: { in: ids } }, { clinicId: { in: clinicIds } }] } }));
   // Assessments before users too — StudentAssessment.trainer is RESTRICT.
   await step("studentAssessments", () => prisma.studentAssessment.deleteMany({ where: { OR: [{ studentId: { in: ids } }, { trainerId: { in: ids } }, { clinicId: { in: clinicIds } }] } }));
+  // WorkoutTemplate.trainer is RESTRICT too (activity 33) — deleting the
+  // template cascades its days/exercises; Workouts made from it just lose
+  // their templateDayId (SetNull), already cleaned up above.
+  await step("workoutTemplates", () => prisma.workoutTemplate.deleteMany({ where: { OR: [{ trainerId: { in: ids } }, { clinicId: { in: clinicIds } }] } }));
   await step("users", () => prisma.user.deleteMany({ where: { id: { in: ids } } }));
   await step("clinics", () => prisma.clinic.deleteMany({ where: { id: { in: clinicIds } } }));
 
