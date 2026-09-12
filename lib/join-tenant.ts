@@ -6,6 +6,9 @@ export interface JoinTenant {
   name: string;
   slug: string;
   type: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  instagramImportEnabled: boolean;
 }
 
 /**
@@ -17,18 +20,31 @@ export interface JoinTenant {
  * tenant-less account (the ISO-10 leak).
  */
 export async function resolveJoinTenant(slug?: string | null): Promise<JoinTenant | null> {
+  const select = { id: true, name: true, slug: true, type: true, logoUrl: true, primaryColor: true, instagramImportEnabled: true };
+  const toJoinTenant = (clinic: {
+    id: string;
+    name: string;
+    slug: string;
+    type: string;
+    logoUrl: string | null;
+    primaryColor: string | null;
+    instagramImportEnabled: boolean;
+  }): JoinTenant => ({
+    clinicId: clinic.id,
+    name: clinic.name,
+    slug: clinic.slug,
+    type: clinic.type,
+    logoUrl: clinic.logoUrl && /^https?:\/\//.test(clinic.logoUrl) ? clinic.logoUrl : null,
+    primaryColor: clinic.primaryColor,
+    instagramImportEnabled: clinic.instagramImportEnabled,
+  });
+
   if (slug) {
-    const clinic = await prisma.clinic.findFirst({
-      where: { slug, isActive: true },
-      select: { id: true, name: true, slug: true, type: true },
-    });
-    return clinic ? { clinicId: clinic.id, name: clinic.name, slug: clinic.slug, type: clinic.type } : null;
+    const clinic = await prisma.clinic.findFirst({ where: { slug, isActive: true }, select });
+    return clinic ? toJoinTenant(clinic) : null;
   }
   const defaultId = await getDefaultClinicId();
   if (!defaultId) return null;
-  const clinic = await prisma.clinic.findUnique({
-    where: { id: defaultId },
-    select: { id: true, name: true, slug: true, type: true },
-  });
-  return clinic ? { clinicId: clinic.id, name: clinic.name, slug: clinic.slug, type: clinic.type } : null;
+  const clinic = await prisma.clinic.findUnique({ where: { id: defaultId }, select });
+  return clinic ? toJoinTenant(clinic) : null;
 }

@@ -27,10 +27,11 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 interface Clinic {
     id: string;
@@ -41,6 +42,7 @@ interface Clinic {
     isActive: boolean;
     city: string;
     createdAt: string;
+    instagramImportEnabled: boolean;
     _count: {
         users: number;
         patients: number;
@@ -51,6 +53,7 @@ export default function ClinicsPage() {
     const { locale } = useLocale();
     const { relabel } = useVocab();
     const T = (key: string) => relabel(i18nT(key, locale));
+    const { toast } = useToast();
     const [clinics, setClinics] = useState<Clinic[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -71,7 +74,7 @@ export default function ClinicsPage() {
         setForm((f) => ({ ...f, name, slug: slugEdited ? f.slug : slugify(name) }));
 
     const handleCreate = async () => {
-        if (!form.name.trim() || !form.slug.trim()) { toast.error("Name and slug are required"); return; }
+        if (!form.name.trim() || !form.slug.trim()) { toast({ title: "Error", description: "Name and slug are required", variant: "destructive" }); return; }
         setCreating(true);
         try {
             const res = await fetch("/api/admin/clinics", {
@@ -102,16 +105,16 @@ export default function ClinicsPage() {
                 });
                 if (!ures.ok) {
                     const ue = await ures.json().catch(() => ({}));
-                    toast.warning(`${isStudio ? "Studio" : "Clinic"} created, but the owner account failed: ${ue?.error || ures.status}. Add it under Users.`);
+                    toast({ title: "Warning", description: `${isStudio ? "Studio" : "Clinic"} created, but the owner account failed: ${ue?.error || ures.status}. Add it under Users.`, variant: "warning" });
                 } else {
-                    toast.success(`${isStudio ? "Studio" : "Clinic"} and owner created — the owner got an email with sign-in details.`);
+                    toast({ title: "Success", description: `${isStudio ? "Studio" : "Clinic"} and owner created — the owner got an email with sign-in details.`, variant: "success" });
                 }
             } else {
-                toast.success(isStudio ? "Studio created" : "Clinic created");
+                toast({ title: "Success", description: isStudio ? "Studio created" : "Clinic created", variant: "success" });
             }
             setCreateOpen(false); setForm(emptyForm); setSlugEdited(false); fetchClinics();
         } catch (e: any) {
-            toast.error(e?.message || "Failed to create");
+            toast({ title: "Error", description: e?.message || "Failed to create", variant: "destructive" });
         } finally {
             setCreating(false);
         }
@@ -129,7 +132,7 @@ export default function ClinicsPage() {
                 setClinics(data);
             }
         } catch (error) {
-            toast.error("Failed to load clinics");
+            toast({ title: "Error", description: "Failed to load clinics", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -138,9 +141,41 @@ export default function ClinicsPage() {
     const copyLink = async (path: string) => {
         try {
             await navigator.clipboard.writeText(`${window.location.origin}${path}`);
-            toast.success(`Copied ${path}`);
+            toast({ title: "Success", description: `Copied ${path}`, variant: "success" });
         } catch {
-            toast.error("Couldn't copy — copy it manually: " + path);
+            toast({ title: "Error", description: "Couldn't copy — copy it manually: " + path, variant: "destructive" });
+        }
+    };
+
+    // Per-clinic settings dialog (activity 36 — starts with just the
+    // Instagram-import toggle, but is the natural home for future per-clinic
+    // feature flags too, rather than each one growing its own dialog).
+    const [settingsClinic, setSettingsClinic] = useState<Clinic | null>(null);
+    const [settingsInstagramImport, setSettingsInstagramImport] = useState(false);
+    const [savingSettings, setSavingSettings] = useState(false);
+
+    const openSettings = (clinic: Clinic) => {
+        setSettingsClinic(clinic);
+        setSettingsInstagramImport(clinic.instagramImportEnabled);
+    };
+
+    const saveSettings = async () => {
+        if (!settingsClinic) return;
+        setSavingSettings(true);
+        try {
+            const res = await fetch(`/api/admin/clinics/${settingsClinic.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ instagramImportEnabled: settingsInstagramImport }),
+            });
+            if (!res.ok) throw new Error("Failed to save");
+            toast({ title: "Success", description: "Clinic settings saved", variant: "success" });
+            setClinics((prev) => prev.map((c) => c.id === settingsClinic.id ? { ...c, instagramImportEnabled: settingsInstagramImport } : c));
+            setSettingsClinic(null);
+        } catch {
+            toast({ title: "Error", description: "Failed to save clinic settings", variant: "destructive" });
+        } finally {
+            setSavingSettings(false);
         }
     };
 
@@ -153,11 +188,11 @@ export default function ClinicsPage() {
             });
 
             if (res.ok) {
-                toast.success("Context switched successfully");
+                toast({ title: "Success", description: "Context switched successfully", variant: "success" });
                 window.location.href = "/admin"; // Go to dashboard with new context
             }
         } catch (error) {
-            toast.error("Failed to switch context");
+            toast({ title: "Error", description: "Failed to switch context", variant: "destructive" });
         }
     };
 
@@ -291,7 +326,7 @@ export default function ClinicsPage() {
                                                                 </DropdownMenuItem>
                                                             </>
                                                         )}
-                                                        <DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => openSettings(clinic)}>
                                                             <Settings2 className="mr-2 h-4 w-4" />
                                                             Clinic Settings
                                                         </DropdownMenuItem>
@@ -372,6 +407,39 @@ export default function ClinicsPage() {
                         <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
                         <Button onClick={handleCreate} disabled={creating || !form.name.trim() || !form.slug.trim()}>
                             {creating ? "Creating…" : (isStudio ? "Create studio" : "Create clinic")}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!settingsClinic} onOpenChange={(o) => { if (!o) setSettingsClinic(null); }}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{settingsClinic?.name} — Settings</DialogTitle>
+                        <DialogDescription>Per-tenant feature flags.</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-1">
+                        <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="ig-import-toggle">Instagram Import</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Lets admins download videos from any Instagram post/profile straight into the exercise library.
+                                    Copyright-sensitive — only enable it for a tenant you trust to use it responsibly.
+                                </p>
+                            </div>
+                            <Switch
+                                id="ig-import-toggle"
+                                checked={settingsInstagramImport}
+                                onCheckedChange={setSettingsInstagramImport}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSettingsClinic(null)} disabled={savingSettings}>Cancel</Button>
+                        <Button onClick={saveSettings} disabled={savingSettings}>
+                            {savingSettings ? "Saving…" : "Save"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

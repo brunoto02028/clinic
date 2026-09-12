@@ -102,22 +102,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    const userId = (session.user as any).id;
+
+    // Resolve the effective clinic. A SUPERADMIN's own account has no fixed
+    // clinicId, but "Manage this Clinic" (app/admin/clinics) sets the
+    // selected-clinic-id cookie for exactly this — the tenant they're
+    // currently acting on behalf of. Falling back to an arbitrary clinic
+    // (prisma.clinic.findFirst()) here, as older code in this route used to,
+    // meant the copyright-risk gate below could read a completely unrelated
+    // clinic's flag and import videos into the wrong tenant's library.
+    let clinicId = (session.user as any)?.clinicId;
+    if (!clinicId && userRole === "SUPERADMIN") {
+      const { cookies } = await import("next/headers");
+      clinicId = cookies().get("selected-clinic-id")?.value || null;
+    }
+    if (!clinicId) {
+      return NextResponse.json({ error: "No clinic context" }, { status: 400 });
+    }
+
+    // Server-side re-check, not just the (possibly stale — the session JWT
+    // only refreshes on login/expiry) session flag: this scraper downloads
+    // and permanently re-hosts video from any post/profile on Instagram, not
+    // just the tenant's own, so it stays opt-in per clinic (activity 36).
+    const clinicForGate = await prisma.clinic.findUnique({
+      where: { id: clinicId },
+      select: { instagramImportEnabled: true },
+    });
+    if (!clinicForGate?.instagramImportEnabled) {
+      return NextResponse.json(
+        { error: "Instagram import isn't enabled for this clinic. Ask the platform administrator to turn it on." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     let { urls } = body; // Can be individual post URLs or a profile URL
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return NextResponse.json({ error: "At least one Instagram URL is required" }, { status: 400 });
-    }
-
-    const userId = (session.user as any).id;
-
-    let clinicId = (session.user as any)?.clinicId;
-    if (!clinicId) {
-      const anyClinic = await prisma.clinic.findFirst({ select: { id: true } });
-      clinicId = anyClinic?.id || null;
-    }
-    if (!clinicId) {
-      return NextResponse.json({ error: "No clinic context" }, { status: 400 });
     }
 
     // Instagram has no folder picker, but every exercise must live in one.

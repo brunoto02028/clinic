@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
       clinicName: tenant.name,
       clinicSlug: tenant.slug,
       clinicType: tenant.type,
+      clinicLogoUrl: tenant.logoUrl,
+      clinicPrimaryColor: tenant.primaryColor,
+      instagramImportEnabled: tenant.instagramImportEnabled,
       permissions: {
         canManageUsers: user.canManageUsers,
         canManageAppointments: user.canManageAppointments,

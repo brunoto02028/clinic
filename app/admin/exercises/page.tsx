@@ -49,6 +49,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSession } from "next-auth/react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
@@ -144,6 +145,11 @@ interface CategoryNode extends FolderNode {
 export default function ExercisesPage() {
   const { locale } = useLocale();
   const { relabel } = useVocab();
+  const { data: sessionData } = useSession();
+  // Opt-in per clinic (activity 36) — the scraper downloads video from any
+  // Instagram post/profile, not just the tenant's own, so it's off by
+  // default for personal trainers. The API re-checks this server-side too.
+  const instagramImportEnabled = !!(sessionData?.user as any)?.instagramImportEnabled;
   const T = (key: string) => relabel(i18nT(key, locale));
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [total, setTotal] = useState(0);
@@ -621,6 +627,7 @@ export default function ExercisesPage() {
         </div>
         {/* Wraps: six actions with real labels no longer fit one row on a laptop. */}
         <div className="flex items-center gap-2 flex-wrap">
+          {instagramImportEnabled && (
           <Dialog open={showInstagram} onOpenChange={(open) => { setShowInstagram(open); if (!open) { setIgUrls(""); setIgResult(null); } }}>
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-1.5 text-pink-600 border-pink-200 hover:bg-pink-50">
@@ -694,6 +701,7 @@ export default function ExercisesPage() {
               </div>
             </DialogContent>
           </Dialog>
+          )}
           <Button variant="outline" onClick={handleBulkTranslate} disabled={bulkTranslating}>
             {bulkTranslating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
             <span className="hidden sm:inline">{bulkTranslating ? "Translating..." : "Translate to PT"}</span>

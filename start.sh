@@ -46,6 +46,18 @@ node /app/scripts/seed-admin-user.js || echo "[start.sh] admin bootstrap warning
 echo "[start.sh] Checking for bootstrap clinic..."
 node /app/scripts/seed-clinic.js || echo "[start.sh] clinic bootstrap warning — check logs"
 
+# Instagram-import permission gate (activity 36): CLINIC-type tenants keep
+# the access they already had; PERSONAL_TRAINER stays opt-in (see
+# scripts/backfill-instagram-import-flag.js) — true-once, not just
+# idempotent (a SystemConfig marker stops it from re-enabling a CLINIC a
+# SUPERADMIN deliberately disabled). Runs early, right after the clinic
+# bootstrap it depends on: unlike the content-seeding scripts below, a late
+# run here means real requests get wrongly 403'd on an already-working
+# feature during the boot window (server starts serving traffic before this
+# file finishes — see the note above SERVER_PID).
+echo "[start.sh] Backfilling instagramImportEnabled for existing clinic tenants..."
+node /app/scripts/backfill-instagram-import-flag.js || echo "[start.sh] instagram-import flag backfill warning — check logs"
+
 # Seed the lead-magnet PDF guides (idempotent — skips guides that already
 # exist by slug, see scripts/seed-lead-magnet-guides.js). P1.2/P3 of
 # BPR_Devin_Spec_Website_Improvements.md.

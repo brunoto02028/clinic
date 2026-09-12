@@ -321,6 +321,13 @@ model Clinic {
   currency String  @default("GBP")
   isActive Boolean @default(true)
 
+  // Gates the "Import from Instagram" scraper (act.36) — it downloads and
+  // permanently re-hosts video from ANY post/profile, not just the tenant's
+  // own, which is a copyright-exposure risk for the platform. Opt-in only;
+  // the boot migration backfills `true` for existing CLINIC tenants (kept
+  // their current behaviour) and leaves every PERSONAL_TRAINER at `false`.
+  instagramImportEnabled Boolean @default(false)
+
   // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
   type TenantType @default(CLINIC)
 

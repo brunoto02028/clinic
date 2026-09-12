@@ -167,6 +167,7 @@ export const authOptions: NextAuthOptions = {
         token.clinicType = (user as any).clinicType;
         token.clinicLogoUrl = (user as any).clinicLogoUrl;
         token.clinicPrimaryColor = (user as any).clinicPrimaryColor;
+        token.instagramImportEnabled = (user as any).instagramImportEnabled;
         token.permissions = (user as any).permissions;
       }
 
@@ -175,7 +176,7 @@ export const authOptions: NextAuthOptions = {
         const dbUser = await prisma.user.findUnique({
           where: { email: (token.email as string).toLowerCase() },
           include: {
-            clinic: { select: { id: true, name: true, slug: true, type: true, logoUrl: true, primaryColor: true } },
+            clinic: { select: { id: true, name: true, slug: true, type: true, logoUrl: true, primaryColor: true, instagramImportEnabled: true } },
           },
         });
         if (dbUser) {
@@ -189,6 +190,7 @@ export const authOptions: NextAuthOptions = {
           token.clinicType = dbUser.clinic?.type || null;
           token.clinicLogoUrl = dbUser.clinic?.logoUrl && /^https?:\/\//.test(dbUser.clinic.logoUrl) ? dbUser.clinic.logoUrl : null;
           token.clinicPrimaryColor = dbUser.clinic?.primaryColor || null;
+          token.instagramImportEnabled = dbUser.clinic?.instagramImportEnabled || false;
           token.permissions = {
             canManageUsers: dbUser.canManageUsers,
             canManageAppointments: dbUser.canManageAppointments,
@@ -216,6 +218,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).clinicType = token.clinicType;
         (session.user as any).clinicLogoUrl = token.clinicLogoUrl;
         (session.user as any).clinicPrimaryColor = token.clinicPrimaryColor;
+        (session.user as any).instagramImportEnabled = token.instagramImportEnabled;
         (session.user as any).permissions = token.permissions;
       }
       return session;

@@ -20,6 +20,7 @@ export interface ValidatedUser {
   clinicType: string | null;
   clinicLogoUrl: string | null;
   clinicPrimaryColor: string | null;
+  instagramImportEnabled: boolean;
   permissions: {
     canManageUsers: boolean;
     canManageAppointments: boolean;
@@ -63,6 +64,7 @@ export async function validateCredentials(
             logoUrl: true,
             primaryColor: true,
             secondaryColor: true,
+            instagramImportEnabled: true,
           },
         },
       },
@@ -139,6 +141,7 @@ export async function validateCredentials(
       clinicType: user.clinic?.type || null,
       clinicLogoUrl: user.clinic?.logoUrl && /^https?:\/\//.test(user.clinic.logoUrl) ? user.clinic.logoUrl : null,
       clinicPrimaryColor: user.clinic?.primaryColor || null,
+      instagramImportEnabled: user.clinic?.instagramImportEnabled || false,
       permissions: {
         canManageUsers: user.canManageUsers,
         canManageAppointments: user.canManageAppointments,
@@ -183,6 +186,7 @@ export async function getValidatedUserById(
           logoUrl: true,
           primaryColor: true,
           secondaryColor: true,
+          instagramImportEnabled: true,
         },
       },
     },
@@ -205,6 +209,7 @@ export async function getValidatedUserById(
     clinicType: user.clinic?.type || null,
     clinicLogoUrl: user.clinic?.logoUrl && /^https?:\/\//.test(user.clinic.logoUrl) ? user.clinic.logoUrl : null,
     clinicPrimaryColor: user.clinic?.primaryColor || null,
+    instagramImportEnabled: user.clinic?.instagramImportEnabled || false,
     permissions: {
       canManageUsers: user.canManageUsers,
       canManageAppointments: user.canManageAppointments,
