@@ -69,10 +69,10 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 
 | T-N | Trilha | Nome | Status |
 |-----|--------|------|--------|
-| T-8 | CLIN | Paywall contornável pela URL | pendente |
-| T-9 | CLIN | Erro de hidratação e `key` na lista de pacientes | pendente |
-| T-10 | CLIN | Estado de consentimento desatualizado | pendente |
-| T-11 | PLAT | Token de paciente sem flags de staff | pendente |
+| T-8 | CLIN | Paywall contornável pela URL | pendente (confirmado real em 13/09/2026 — ver atividade de fechamento) |
+| T-9 | CLIN | Erro de hidratação e `key` na lista de pacientes | concluído (verificado 13/09/2026 — `components/patients/patients-list.tsx` já tem `key={patient.id}`) |
+| T-10 | CLIN | Estado de consentimento desatualizado | concluído (verificado 13/09/2026 — não reproduzido no fluxo atual de `app/api/patient/consent/route.ts`) |
+| T-11 | PLAT | Token de paciente sem flags de staff | concluído (verificado 13/09/2026 — `lib/mobile-tokens.ts` já carrega `role`/`permissions`) |
 
 ### Fase 2 — Fundação multi-tenant
 
@@ -82,7 +82,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 | T-13 | PLAT | Entrada do aluno no tenant (`/join/[slug]`, Google, app, convite) | concluído |
 | T-14 | PLAT | Backfill de `clinicId` na agenda + obrigatório nas escritas | pendente |
 | T-15 | PLAT | Gestão de tenants (SUPERADMIN) + limites do plano | pendente |
-| T-16 | PLAT | Stripe Connect (onboarding + checkouts do tenant) | pendente |
+| T-16 | PLAT | Stripe Connect (onboarding + checkouts do tenant) | = atividade 28 (código pronto, gating QA aprovado) — falta só ativar de verdade + QA em modo teste, deliberadamente por último a pedido do Bruno |
 
 ### Fase 3 — Identidade do tenant
 
@@ -99,7 +99,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 | T-20 | PT | Modelo e API de treino | concluído (QA 223 jest + 25/25 runtime; review feito) |
 | T-21 | PT | Montagem de treino pelo personal (web) | concluído (QA 5/5 Playwright; review feito) |
 | T-22 | PT | Treino do aluno + registro de séries (web) | concluído (QA 5/5 UI + runtime 31/31; review feito) |
-| T-23 | PT | Módulo Treino no app do aluno | backend concluído (QA 36/36 + review); telas do app: código+tsc, QA expo-web/EAS pendente (fora do alcance da sessão) |
+| T-23 | PT | Módulo Treino no app do aluno | código completo (`mobile/app/(app)/(treino)/*`), backend concluído — falta só o build EAS pra chegar em aparelho real, nenhum código faltando |
 | T-24 | PT | Progresso e aderência para o personal | concluído (QA 3/3 UI + runtime 39/39; review feito) |
 | T-25 | PT | Aulas em grupo | pendente |
 | T-26 | PT | Planos e mensalidade do personal | pendente |
@@ -114,7 +114,7 @@ Legenda de trilha: **PLAT** = plataforma · **CLIN** = clínica · **PT** = pers
 
 | T-N | Trilha | Nome | Status |
 |-----|--------|------|--------|
-| T-28 | PLAT | Rebrand claro do admin (paleta BA1: bone/ink/moss/greige) — **todo o admin, inclusive a clínica** | pendente (planejar antes de implementar; depois do produto do Personal) |
+| T-28 | PLAT | Rebrand claro do admin (paleta BA1: bone/ink/moss/greige) — **todo o admin, inclusive a clínica** | concluído — = atividade 34 (BA One Design System v4), confirmado em `app/globals.css` |
 | T-29 | PT | Esconder tudo que é clínico do personal (abas da ficha + Marketing, por URL) | concluído (QA 4/4 + re-QA 2/2; jest 111; runtime 43/43; review feito) |
 | T-30 | PLAT | Admin em inglês UK como língua base (trocar rótulos PT hardcoded) | concluído (sweep de todas as páginas admin; ~500 strings; tsc limpo) |
 
