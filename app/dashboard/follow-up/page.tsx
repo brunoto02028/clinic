@@ -155,19 +155,19 @@ export default function FollowUpPage() {
 
   const getEventIcon = (type: string) => {
     switch (type) {
-      case "screening": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case "outcome_measures": return <TrendingUp className="h-4 w-4 text-blue-500" />;
-      case "body_assessment": return <Activity className="h-4 w-4 text-purple-500" />;
-      case "foot_scan": return <Footprints className="h-4 w-4 text-emerald-500" />;
+      case "screening": return <CheckCircle2 className="h-4 w-4 text-ba1-ok" />;
+      case "outcome_measures": return <TrendingUp className="h-4 w-4 text-ba1-health" />;
+      case "body_assessment": return <Activity className="h-4 w-4 text-ba1-warn" />;
+      case "foot_scan": return <Footprints className="h-4 w-4 text-ba1-ok" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed": return "bg-green-500";
-      case "processing": return "bg-blue-500";
-      case "in_progress": return "bg-yellow-500";
+      case "completed": return "bg-ba1-ok";
+      case "processing": return "bg-ba1-health";
+      case "in_progress": return "bg-ba1-warn";
       default: return "bg-muted-foreground";
     }
   };
@@ -217,13 +217,13 @@ export default function FollowUpPage() {
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">
                   VAS {isPt ? "Dor" : "Pain"}
                 </p>
-                <p className="text-2xl font-bold text-red-500 mt-1">
+                <p className="text-2xl font-bold text-ba1-bad mt-1">
                   {outcomeTrend.vasScore ?? "—"}/10
                 </p>
               </div>
               <div className="p-3 bg-muted/30 rounded-lg">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">FAAM ADL</p>
-                <p className="text-2xl font-bold text-blue-500 mt-1">
+                <p className="text-2xl font-bold text-ba1-health mt-1">
                   {outcomeTrend.faamAdlPercent ?? "—"}%
                 </p>
               </div>
@@ -231,7 +231,7 @@ export default function FollowUpPage() {
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">
                   FAAM {isPt ? "Desporto" : "Sport"}
                 </p>
-                <p className="text-2xl font-bold text-purple-500 mt-1">
+                <p className="text-2xl font-bold text-ba1-warn mt-1">
                   {outcomeTrend.faamSportPercent ?? "—"}%
                 </p>
               </div>
@@ -239,7 +239,7 @@ export default function FollowUpPage() {
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">
                   {isPt ? "Função" : "Function"}
                 </p>
-                <p className="text-2xl font-bold text-emerald-500 mt-1">
+                <p className="text-2xl font-bold text-ba1-ok mt-1">
                   {outcomeTrend.overallFunction ?? "—"}%
                 </p>
               </div>

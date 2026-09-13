@@ -23,9 +23,9 @@ const TYPE_ICONS: Record<string, any> = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  urgent: "border-l-red-500",
-  high: "border-l-orange-500",
-  normal: "border-l-blue-500",
+  urgent: "border-l-ba1-bad",
+  high: "border-l-ba1-warn",
+  normal: "border-l-ba1-health",
   low: "border-l-gray-400",
 };
 
@@ -72,7 +72,7 @@ export default function PatientTasksPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Bell className="h-6 w-6 text-violet-500" />
+          <Bell className="h-6 w-6 text-ba1-health" />
           {isPt ? "Acoes Pendentes" : "Pending Actions"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -89,7 +89,7 @@ export default function PatientTasksPage() {
       ) : tasks.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-500" />
+            <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-ba1-ok" />
             <p className="text-lg font-medium text-foreground">
               {isPt ? "Tudo em dia!" : "All caught up!"}
             </p>
@@ -109,8 +109,8 @@ export default function PatientTasksPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30 mt-0.5">
-                        <Icon className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                      <div className="p-2 rounded-lg bg-ba1-health/15 mt-0.5">
+                        <Icon className="h-5 w-5 text-ba1-health" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-foreground">{getTitle(task)}</h3>
@@ -119,18 +119,18 @@ export default function PatientTasksPage() {
                         )}
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           {task.priority === "urgent" && (
-                            <Badge className="bg-red-500 text-white text-[10px]">
+                            <Badge className="bg-ba1-bad text-white text-[10px]">
                               <AlertTriangle className="h-3 w-3 mr-0.5" />
                               {isPt ? "Urgente" : "Urgent"}
                             </Badge>
                           )}
                           {task.priority === "high" && (
-                            <Badge className="bg-orange-500 text-white text-[10px]">
+                            <Badge className="bg-ba1-warn text-white text-[10px]">
                               {isPt ? "Alta prioridade" : "High priority"}
                             </Badge>
                           )}
                           {task.dueDate && (
-                            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                            <span className="flex items-center gap-1 text-ba1-warn">
                               <Clock className="h-3 w-3" />
                               {isPt ? "Prazo:" : "Due:"} {new Date(task.dueDate).toLocaleDateString(isPt ? "pt-BR" : "en-GB")}
                             </span>

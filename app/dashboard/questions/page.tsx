@@ -215,8 +215,8 @@ export default function QuestionsPage() {
           </p>
         </div>
         {pendingCount > 0 && (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/15 border border-amber-500/30 rounded-full text-xs font-semibold text-amber-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-ba1-warn/15 border border-ba1-warn/30 rounded-full text-xs font-semibold text-ba1-warn">
+            <span className="w-1.5 h-1.5 rounded-full bg-ba1-warn animate-pulse" />
             {pendingCount} {isPt ? "pendente" : "pending"}{pendingCount > 1 ? "s" : ""}
           </span>
         )}
@@ -254,14 +254,14 @@ export default function QuestionsPage() {
                 <div key={m.id} className={`flex ${fromStaff ? "justify-start" : "justify-end"}`}>
                   <div className={`max-w-[85%] rounded-2xl border px-4 py-3 ${
                     isBroadcast
-                      ? "bg-amber-500/5 border-amber-500/25"
+                      ? "bg-ba1-warn/5 border-ba1-warn/25"
                       : fromStaff
                       ? "bg-card border-border"
                       : "bg-primary/10 border-primary/25"
                   }`}>
                     <div className="flex items-center gap-1.5 mb-1">
                       {isBroadcast
-                        ? <Megaphone className="h-3 w-3 text-amber-400" />
+                        ? <Megaphone className="h-3 w-3 text-ba1-warn" />
                         : m.kind === "notice"
                         ? <BellRing className="h-3 w-3 text-primary" />
                         : <MessageSquare className="h-3 w-3 text-muted-foreground" />}
@@ -302,7 +302,7 @@ export default function QuestionsPage() {
                 key={set.id}
                 className={`rounded-2xl border overflow-hidden transition-all ${
                   isReport
-                    ? "border-emerald-500/25 bg-emerald-500/5"
+                    ? "border-ba1-ok/25 bg-ba1-ok/5"
                     : isPending
                     ? "border-primary/30 bg-primary/5 shadow-sm shadow-primary/10"
                     : "border-border bg-card"
@@ -312,7 +312,7 @@ export default function QuestionsPage() {
                 <div
                   className={`flex items-center gap-3 px-4 py-3 ${
                     isReport
-                      ? "bg-emerald-500/10 border-b border-emerald-500/20"
+                      ? "bg-ba1-ok/10 border-b border-ba1-ok/20"
                       : isPending
                       ? "bg-primary/10 border-b border-primary/20"
                       : "bg-muted/30 border-b border-border/50"
@@ -324,15 +324,15 @@ export default function QuestionsPage() {
                   }}
                 >
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    isReport ? "bg-emerald-500/20" : "bg-primary/20"
+                    isReport ? "bg-ba1-ok/20" : "bg-primary/20"
                   }`}>
                     {isReport
-                      ? <ClipboardList className="h-4 w-4 text-emerald-400" />
+                      ? <ClipboardList className="h-4 w-4 text-ba1-ok" />
                       : <HelpCircle className="h-4 w-4 text-primary" />
                     }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-semibold ${isReport ? "text-emerald-300" : isPending ? "text-primary" : "text-foreground"}`}>
+                    <p className={`text-xs font-semibold ${isReport ? "text-ba1-ok" : isPending ? "text-primary" : "text-foreground"}`}>
                       {isReport
                         ? (isPt ? "Relatório / Mensagem Clínica" : "Clinical Report / Message")
                         : (isPt ? "Pré-Atendimento — Perguntas" : "Pre-Appointment Questions")}
@@ -347,14 +347,14 @@ export default function QuestionsPage() {
                     {!isReport && (
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                         isPending
-                          ? "bg-amber-500/20 text-amber-400"
-                          : "bg-emerald-500/20 text-emerald-400"
+                          ? "bg-ba1-warn/20 text-ba1-warn"
+                          : "bg-ba1-ok/20 text-ba1-ok"
                       }`}>
                         {isPending ? (isPt ? "⏳ Pendente" : "⏳ Pending") : (isPt ? "✅ Respondido" : "✅ Answered")}
                       </span>
                     )}
                     {isReport && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-ba1-ok/20 text-ba1-ok">
                         {isPt ? "✓ Recebido" : "✓ Received"}
                       </span>
                     )}
@@ -395,8 +395,8 @@ export default function QuestionsPage() {
 
                               {/* Existing answer (already submitted) */}
                               {!isPending && existingAnswer && (
-                                <div className="ml-7 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-3 py-2.5">
-                                  <p className="text-[10px] font-semibold text-emerald-400/70 mb-1">{isPt ? "Sua resposta" : "Your reply"}</p>
+                                <div className="ml-7 bg-ba1-ok/8 border border-ba1-ok/20 rounded-xl px-3 py-2.5">
+                                  <p className="text-[10px] font-semibold text-ba1-ok/70 mb-1">{isPt ? "Sua resposta" : "Your reply"}</p>
                                   <p className="text-sm text-foreground leading-relaxed">{existingAnswer}</p>
                                 </div>
                               )}
@@ -419,7 +419,7 @@ export default function QuestionsPage() {
 
                               {/* Submitted draft */}
                               {isPending && isSubmitted && draftAnswer && (
-                                <div className="ml-7 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-3 py-2.5">
+                                <div className="ml-7 bg-ba1-ok/8 border border-ba1-ok/20 rounded-xl px-3 py-2.5">
                                   <p className="text-sm text-foreground leading-relaxed">{draftAnswer}</p>
                                 </div>
                               )}
@@ -430,10 +430,10 @@ export default function QuestionsPage() {
                         {/* Submit button / success state */}
                         {isPending && (
                           isSubmitted ? (
-                            <div className="flex items-center gap-2.5 p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl">
-                              <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0" />
+                            <div className="flex items-center gap-2.5 p-3 bg-ba1-ok/10 border border-ba1-ok/25 rounded-xl">
+                              <CheckCircle2 className="h-5 w-5 text-ba1-ok flex-shrink-0" />
                               <div>
-                                <p className="text-sm font-semibold text-emerald-400">{isPt ? "Respostas enviadas!" : "Replies sent!"}</p>
+                                <p className="text-sm font-semibold text-ba1-ok">{isPt ? "Respostas enviadas!" : "Replies sent!"}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">{isPt ? "O teu terapeuta vai rever antes da consulta." : "Your therapist will review before your appointment."}</p>
                               </div>
                             </div>
@@ -453,7 +453,7 @@ export default function QuestionsPage() {
                         {/* Already answered footer */}
                         {!isPending && set.answeredAt && (
                           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-1">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                            <CheckCircle2 className="h-3 w-3 text-ba1-ok" />
                             {isPt ? "Respondido em" : "Replied on"}{" "}
                             {new Date(set.answeredAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </div>

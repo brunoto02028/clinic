@@ -32,9 +32,9 @@ export default function PatientGuidePage() {
     {
       num: 1,
       icon: User,
-      color: "from-blue-500 to-cyan-500",
-      bg: "bg-blue-500/10",
-      border: "border-blue-500/20",
+      color: "bg-ba1-health",
+      bg: "bg-ba1-health/10",
+      border: "border-ba1-health/20",
       title: isPt ? "Complete o Seu Perfil" : "Complete Your Profile",
       desc: isPt
         ? "Adicione a sua data de nascimento, endere\u00e7o e n\u00famero de telefone. Isto ajuda o terapeuta a preparar o melhor plano de tratamento."
@@ -48,9 +48,9 @@ export default function PatientGuidePage() {
     {
       num: 2,
       icon: Shield,
-      color: "from-red-500 to-orange-500",
-      bg: "bg-red-500/10",
-      border: "border-red-500/20",
+      color: "bg-ba1-bad",
+      bg: "bg-ba1-bad/10",
+      border: "border-ba1-bad/20",
       title: isPt ? "Preencha a Triagem M\u00e9dica" : "Complete Medical Screening",
       desc: isPt
         ? "Este formul\u00e1rio \u00e9 essencial para a sua seguran\u00e7a. Inclui quest\u00f5es sobre a sua sa\u00fade, dor, hist\u00f3rico m\u00e9dico e consentimento. Demora apenas 5\u201310 minutos."
@@ -80,9 +80,9 @@ export default function PatientGuidePage() {
     {
       num: 3,
       icon: Calendar,
-      color: "from-emerald-500 to-teal-500",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
+      color: "bg-ba1-ok",
+      bg: "bg-ba1-ok/10",
+      border: "border-ba1-ok/20",
       title: isPt ? "Agende a Sua Consulta" : "Book Your Appointment",
       desc: isPt
         ? "Escolha um hor\u00e1rio que lhe convier. A triagem m\u00e9dica deve ser preenchida antes da consulta para que o terapeuta possa preparar o seu plano."
@@ -96,9 +96,9 @@ export default function PatientGuidePage() {
     {
       num: 4,
       icon: Heart,
-      color: "from-purple-500 to-pink-500",
-      bg: "bg-purple-500/10",
-      border: "border-purple-500/20",
+      color: "bg-ba1-warn",
+      bg: "bg-ba1-warn/10",
+      border: "border-ba1-warn/20",
       title: isPt ? "Chegue \u00e0 Consulta Preparado" : "Arrive Prepared",
       desc: isPt
         ? "Chegue 5 minutos antes da hora marcada. Traga roupa confort\u00e1vel e quaisquer exames ou relat\u00f3rios m\u00e9dicos relevantes."
@@ -169,7 +169,7 @@ export default function PatientGuidePage() {
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
       {/* Hero */}
       <div className="text-center space-y-3">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-teal-400 flex items-center justify-center mx-auto shadow-lg">
+        <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto shadow-lg">
           <BookOpen className="h-8 w-8 text-white" />
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
@@ -183,14 +183,14 @@ export default function PatientGuidePage() {
       </div>
 
       {/* Important Notice */}
-      <Card className="border-amber-500/30 bg-amber-500/5">
+      <Card className="border-ba1-warn/30 bg-ba1-warn/5">
         <CardContent className="p-4 sm:p-5">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <div className="w-10 h-10 rounded-full bg-ba1-warn/15 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-ba1-warn" />
             </div>
             <div>
-              <h3 className="font-semibold text-amber-400 text-sm">
+              <h3 className="font-semibold text-ba1-warn text-sm">
                 {isPt ? "Importante: Antes da Sua Consulta" : "Important: Before Your Appointment"}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
@@ -216,7 +216,7 @@ export default function PatientGuidePage() {
               <CardContent className="p-0">
                 <div className="flex flex-col sm:flex-row">
                   {/* Step number */}
-                  <div className={`bg-gradient-to-br ${step.color} w-full sm:w-16 flex items-center justify-center py-3 sm:py-0`}>
+                  <div className={`${step.color} w-full sm:w-16 flex items-center justify-center py-3 sm:py-0`}>
                     <span className="text-2xl font-black text-white">{step.num}</span>
                   </div>
                   {/* Content */}
@@ -263,10 +263,10 @@ export default function PatientGuidePage() {
           </h3>
           <div className="space-y-3">
             {[
-              { time: isPt ? "Assim que criar conta" : "As soon as you sign up", task: isPt ? "Complete o perfil e a triagem m\u00e9dica" : "Complete profile and medical screening", color: "bg-blue-500" },
-              { time: isPt ? "48h antes da consulta" : "48h before appointment", task: isPt ? "Verifique que tudo est\u00e1 preenchido" : "Check everything is filled in", color: "bg-amber-500" },
-              { time: isPt ? "24h antes" : "24h before", task: isPt ? "Prazo final para triagem (evitar reagendamento)" : "Screening deadline (avoid rescheduling)", color: "bg-red-500" },
-              { time: isPt ? "Dia da consulta" : "Appointment day", task: isPt ? "Chegue 5 min mais cedo, roupa confort\u00e1vel" : "Arrive 5 min early, comfortable clothing", color: "bg-emerald-500" },
+              { time: isPt ? "Assim que criar conta" : "As soon as you sign up", task: isPt ? "Complete o perfil e a triagem m\u00e9dica" : "Complete profile and medical screening", color: "bg-ba1-health" },
+              { time: isPt ? "48h antes da consulta" : "48h before appointment", task: isPt ? "Verifique que tudo est\u00e1 preenchido" : "Check everything is filled in", color: "bg-ba1-warn" },
+              { time: isPt ? "24h antes" : "24h before", task: isPt ? "Prazo final para triagem (evitar reagendamento)" : "Screening deadline (avoid rescheduling)", color: "bg-ba1-bad" },
+              { time: isPt ? "Dia da consulta" : "Appointment day", task: isPt ? "Chegue 5 min mais cedo, roupa confort\u00e1vel" : "Arrive 5 min early, comfortable clothing", color: "bg-ba1-ok" },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className={`w-3 h-3 rounded-full ${item.color} flex-shrink-0`} />
@@ -322,7 +322,7 @@ export default function PatientGuidePage() {
       </div>
 
       {/* CTA */}
-      <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-teal-500/10">
+      <Card className="border-primary/30 bg-primary/10">
         <CardContent className="p-6 text-center space-y-3">
           <h3 className="font-bold text-foreground text-lg">
             {isPt ? "Pronto para Come\u00e7ar?" : "Ready to Get Started?"}

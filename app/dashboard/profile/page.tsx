@@ -159,7 +159,7 @@ export default function PatientProfilePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[300px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ba1-health" />
       </div>
     );
   }
@@ -179,11 +179,11 @@ export default function PatientProfilePage() {
       {/* Main profile card */}
       <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
         {/* Header info (read-only) */}
-        <div className="bg-gradient-to-r from-[#607d7d] to-[#5dc9c0] px-6 py-5">
+        <div className="bg-primary px-6 py-5">
           <p className="text-white font-semibold text-lg">
             {profile?.firstName} {profile?.lastName}
           </p>
-          <p className="text-teal-100 text-sm">{profile?.email}</p>
+          <p className="text-white/80 text-sm">{profile?.email}</p>
         </div>
 
         <div className="p-6 space-y-6">
@@ -205,7 +205,7 @@ export default function PatientProfilePage() {
           {/* Language preference */}
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-              <Globe className="h-4 w-4 text-teal-500" />
+              <Globe className="h-4 w-4 text-ba1-health" />
               {isPt ? 'Idioma dos Emails' : 'Email Language'}
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -223,7 +223,7 @@ export default function PatientProfilePage() {
                   <p className="text-xs text-muted-foreground">en-GB</p>
                 </div>
                 {locale === 'en-GB' && (
-                  <CheckCircle className="h-4 w-4 text-teal-500 ml-auto" />
+                  <CheckCircle className="h-4 w-4 text-ba1-health ml-auto" />
                 )}
               </button>
               <button
@@ -240,7 +240,7 @@ export default function PatientProfilePage() {
                   <p className="text-xs text-muted-foreground">pt-BR</p>
                 </div>
                 {locale === 'pt-BR' && (
-                  <CheckCircle className="h-4 w-4 text-teal-500 ml-auto" />
+                  <CheckCircle className="h-4 w-4 text-ba1-health ml-auto" />
                 )}
               </button>
             </div>
@@ -254,7 +254,7 @@ export default function PatientProfilePage() {
           {/* Communication Preference */}
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-              <MessageCircle className="h-4 w-4 text-teal-500" />
+              <MessageCircle className="h-4 w-4 text-ba1-health" />
               {isPt ? 'Canal de Comunicação Preferido' : 'Preferred Communication Channel'}
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -273,7 +273,7 @@ export default function PatientProfilePage() {
               {/* SMS — coming soon */}
               <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-border text-center opacity-50 cursor-not-allowed">
                 <div className="absolute -top-2 -right-1 z-10">
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold">
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-ba1-warn/20 text-ba1-warn text-[9px] font-bold">
                     <Clock className="h-2.5 w-2.5" />
                     {isPt ? 'Em breve' : 'Soon'}
                   </span>
@@ -284,7 +284,7 @@ export default function PatientProfilePage() {
               {/* WhatsApp — coming soon */}
               <div className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-border text-center opacity-50 cursor-not-allowed">
                 <div className="absolute -top-2 -right-1 z-10">
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[9px] font-bold">
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-ba1-warn/20 text-ba1-warn text-[9px] font-bold">
                     <Clock className="h-2.5 w-2.5" />
                     {isPt ? 'Em breve' : 'Soon'}
                   </span>
@@ -303,7 +303,7 @@ export default function PatientProfilePage() {
           {/* Date of Birth */}
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
-              <Calendar className="h-4 w-4 text-teal-500" />
+              <Calendar className="h-4 w-4 text-ba1-health" />
               {isPt ? 'Data de Nascimento' : 'Date of Birth'}
             </label>
             <p className="text-[11px] text-muted-foreground mb-2">
@@ -322,7 +322,7 @@ export default function PatientProfilePage() {
           {/* Phone */}
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
-              <Phone className="h-4 w-4 text-teal-500" />
+              <Phone className="h-4 w-4 text-ba1-health" />
               {T('profile.phone')}
             </label>
             <p className="text-[11px] text-muted-foreground mb-2">
@@ -342,7 +342,7 @@ export default function PatientProfilePage() {
           {/* Address */}
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
-              <MapPin className="h-4 w-4 text-teal-500" />
+              <MapPin className="h-4 w-4 text-ba1-health" />
               {T('profile.address')}
             </label>
             <p className="text-[11px] text-muted-foreground mb-2">
@@ -362,7 +362,7 @@ export default function PatientProfilePage() {
           {/* Emergency Contact */}
           <div className="border-t border-border pt-6">
             <label className="flex items-center gap-2 text-sm font-semibold text-foreground mb-1">
-              <Shield className="h-4 w-4 text-red-500" />
+              <Shield className="h-4 w-4 text-ba1-bad" />
               {isPt ? 'Contato de Emergência' : 'Emergency Contact'}
             </label>
             <p className="text-[11px] text-muted-foreground mb-3">
@@ -424,8 +424,8 @@ export default function PatientProfilePage() {
       <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
         <Link href="/dashboard/consent" className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-xl">
-              <Scale className="h-5 w-5 text-blue-400" />
+            <div className="p-2 bg-ba1-health/10 rounded-xl">
+              <Scale className="h-5 w-5 text-ba1-health" />
             </div>
             <div>
               <p className="font-semibold text-foreground">{isPt ? 'Termos e Consentimento' : 'Terms & Consent'}</p>
@@ -443,8 +443,8 @@ export default function PatientProfilePage() {
           className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-xl">
-              <Mail className="h-5 w-5 text-blue-400" />
+            <div className="p-2 bg-ba1-health/10 rounded-xl">
+              <Mail className="h-5 w-5 text-ba1-health" />
             </div>
             <div>
               <p className="font-semibold text-foreground">{isPt ? 'Alterar Email' : 'Change Email'}</p>
@@ -457,13 +457,13 @@ export default function PatientProfilePage() {
         {showEmailSection && (
           <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
             {emailError && (
-              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-sm text-ba1-bad bg-ba1-bad/10 border border-ba1-bad/20 rounded-lg p-3">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {emailError}
               </div>
             )}
             {emailSuccess && (
-              <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-sm text-ba1-ok bg-ba1-ok/10 border border-ba1-ok/20 rounded-lg p-3">
                 <CheckCircle className="h-4 w-4 shrink-0" />
                 {emailSuccess}
               </div>
@@ -490,7 +490,7 @@ export default function PatientProfilePage() {
             <button
               onClick={handleEmailChange}
               disabled={emailSaving || !newEmail || !emailPassword}
-              className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 bg-ba1-health hover:bg-ba1-health/90 text-white py-3 px-6 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60"
             >
               {emailSaving ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
@@ -512,8 +512,8 @@ export default function PatientProfilePage() {
           className="w-full flex items-center justify-between p-6 text-left hover:bg-muted/50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-500/10 rounded-xl">
-              <Lock className="h-5 w-5 text-amber-400" />
+            <div className="p-2 bg-ba1-warn/10 rounded-xl">
+              <Lock className="h-5 w-5 text-ba1-warn" />
             </div>
             <div>
               <p className="font-semibold text-foreground">{isPt ? 'Alterar Senha' : 'Change Password'}</p>
@@ -526,13 +526,13 @@ export default function PatientProfilePage() {
         {showPwSection && (
           <div className="px-6 pb-6 space-y-4 border-t border-border pt-4">
             {pwError && (
-              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-sm text-ba1-bad bg-ba1-bad/10 border border-ba1-bad/20 rounded-lg p-3">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {pwError}
               </div>
             )}
             {pwSuccess && (
-              <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-sm text-ba1-ok bg-ba1-ok/10 border border-ba1-ok/20 rounded-lg p-3">
                 <CheckCircle className="h-4 w-4 shrink-0" />
                 {isPt ? 'Senha alterada com sucesso!' : 'Password changed successfully!'}
               </div>
@@ -557,12 +557,12 @@ export default function PatientProfilePage() {
               className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-transparent"
             />
             {newPw && confirmPw && newPw === confirmPw && (
-              <p className="text-xs text-emerald-400 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {isPt ? 'Senhas coincidem' : 'Passwords match'}</p>
+              <p className="text-xs text-ba1-ok flex items-center gap-1"><CheckCircle className="h-3 w-3" /> {isPt ? 'Senhas coincidem' : 'Passwords match'}</p>
             )}
             <button
               onClick={handlePasswordChange}
               disabled={pwSaving || !newPw || !confirmPw}
-              className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-3 px-6 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 bg-ba1-warn hover:bg-ba1-warn/90 text-white py-3 px-6 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60"
             >
               {pwSaving ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />

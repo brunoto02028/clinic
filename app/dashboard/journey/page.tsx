@@ -80,8 +80,8 @@ export default function JourneyPage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Hero Section */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="overflow-hidden border-violet-500/20 bg-gradient-to-br from-violet-500/5 via-card to-card">
-          <div className="h-1.5 bg-gradient-to-r from-violet-500 via-purple-500 to-violet-700" />
+        <Card className="overflow-hidden border-ba1-health/20 bg-gradient-to-br from-ba1-health/5 via-card to-card">
+          <div className="h-1.5 bg-ba1-health" />
           <CardContent className="p-5 sm:p-8">
             <div className="flex flex-col sm:flex-row items-center gap-5">
               {/* Avatar */}
@@ -89,17 +89,17 @@ export default function JourneyPage() {
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200 }}
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-violet-500/20 to-violet-500/10 flex items-center justify-center text-4xl sm:text-5xl shadow-lg shadow-violet-500/10"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-ba1-health/15 flex items-center justify-center text-4xl sm:text-5xl shadow-lg shadow-ba1-health/10"
               >
                 {avatarStage.emoji}
               </motion.div>
 
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                  <Badge className="bg-violet-500/15 text-violet-400 border-violet-500/20">
+                  <Badge className="bg-ba1-health/15 text-ba1-health border-ba1-health/20">
                     <Trophy className="h-3 w-3 mr-1" /> {isPt ? "Nível" : "Level"} {p.level}
                   </Badge>
-                  <Badge variant="outline" className="text-amber-400 border-amber-500/20">
+                  <Badge variant="outline" className="text-ba1-warn border-ba1-warn/20">
                     <Star className="h-3 w-3 mr-1" /> {p.bprCredits} {isPt ? "Cr\u00e9ditos" : "Credits"}
                   </Badge>
                 </div>
@@ -112,7 +112,7 @@ export default function JourneyPage() {
                 <div className="mt-3 max-w-sm mx-auto sm:mx-0">
                   <div className="flex justify-between mb-1">
                     <span className="text-[10px] text-muted-foreground">{isPt ? "Progresso XP" : "XP Progress"}</span>
-                    <span className="text-[10px] font-medium text-amber-400">
+                    <span className="text-[10px] font-medium text-ba1-warn">
                       {p.xpInLevel} / {p.xpToNextLevel} XP {isPt ? "para N\u00edvel" : "to Level"} {p.nextLevel?.level || "MAX"}
                     </span>
                   </div>
@@ -121,7 +121,7 @@ export default function JourneyPage() {
                       initial={{ width: 0 }}
                       animate={{ width: `${xpPercent}%` }}
                       transition={{ duration: 1.5, ease: "easeOut" }}
-                      className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500"
+                      className="h-full rounded-full bg-ba1-warn"
                     />
                   </div>
                 </div>
@@ -129,11 +129,11 @@ export default function JourneyPage() {
                 {/* Quick Stats */}
                 <div className="flex items-center justify-center sm:justify-start gap-4 mt-3">
                   <div className="flex items-center gap-1">
-                    <Flame className="h-4 w-4 text-red-500" />
+                    <Flame className="h-4 w-4 text-ba1-bad" />
                     <span className="text-sm font-bold text-foreground">{p.streakDays} {isPt ? "dias seguidos" : "day streak"}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Zap className="h-4 w-4 text-amber-500" />
+                    <Zap className="h-4 w-4 text-ba1-warn" />
                     <span className="text-sm font-bold text-foreground">{p.totalXpEarned} XP {isPt ? "total" : "total"}</span>
                   </div>
                 </div>
@@ -193,7 +193,7 @@ export default function JourneyPage() {
       {/* Predictive Simulator */}
       {prediction?.hasData && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-card">
+          <Card className="border-ba1-health/20 bg-gradient-to-br from-ba1-health/5 to-card">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 🔮 {isPt ? "Projeção de Recuperação" : "Recovery Projection"}
@@ -202,20 +202,20 @@ export default function JourneyPage() {
             <CardContent>
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                  prediction.trend === "up" ? "bg-emerald-500/15" : prediction.trend === "down" ? "bg-red-500/15" : "bg-amber-500/15"
+                  prediction.trend === "up" ? "bg-ba1-ok/15" : prediction.trend === "down" ? "bg-ba1-bad/15" : "bg-ba1-warn/15"
                 }`}>
                   {prediction.trend === "up" ? (
-                    <TrendingUp className="h-6 w-6 text-emerald-400" />
+                    <TrendingUp className="h-6 w-6 text-ba1-ok" />
                   ) : prediction.trend === "down" ? (
-                    <TrendingDown className="h-6 w-6 text-red-400" />
+                    <TrendingDown className="h-6 w-6 text-ba1-bad" />
                   ) : (
-                    <Minus className="h-6 w-6 text-amber-400" />
+                    <Minus className="h-6 w-6 text-ba1-warn" />
                   )}
                 </div>
                 <div className="flex-1">
                   {prediction.trend === "up" && (
                     <>
-                      <p className="text-sm font-medium text-emerald-400">
+                      <p className="text-sm font-medium text-ba1-ok">
                         +{prediction.change}% {isPt ? "melhoria desde a última avaliação" : "improvement since last assessment"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -225,14 +225,14 @@ export default function JourneyPage() {
                   )}
                   {prediction.trend === "stagnant" && (
                     <>
-                      <p className="text-sm font-medium text-amber-400">
+                      <p className="text-sm font-medium text-ba1-warn">
                         ⚠️ {isPt ? "Seu progresso estagnou recentemente" : "Your progress has stalled recently"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {isPt ? "Recomendamos tentar uma abordagem diferente. Considere agendar uma sessão." : "We recommend trying a different approach. Consider booking a session."}
                       </p>
                       <Link href="/dashboard/plans">
-                        <Button size="sm" variant="outline" className="mt-2 text-xs gap-1 border-amber-500/20 text-amber-400 hover:bg-amber-500/10">
+                        <Button size="sm" variant="outline" className="mt-2 text-xs gap-1 border-ba1-warn/20 text-ba1-warn hover:bg-ba1-warn/10">
                           {isPt ? "Agendar com 15% OFF" : "Book with 15% OFF"} <ArrowRight className="h-3 w-3" />
                         </Button>
                       </Link>
@@ -240,7 +240,7 @@ export default function JourneyPage() {
                   )}
                   {prediction.trend === "down" && (
                     <>
-                      <p className="text-sm font-medium text-red-400">
+                      <p className="text-sm font-medium text-ba1-bad">
                         {prediction.change}% {isPt ? "regressão detectada" : "regression detected"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -265,7 +265,7 @@ export default function JourneyPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Award className="h-5 w-5 text-amber-500" /> {isPt ? "Conquistas" : "Achievements"}
+              <Award className="h-5 w-5 text-ba1-warn" /> {isPt ? "Conquistas" : "Achievements"}
               <Badge variant="outline" className="ml-auto text-xs">
                 {data.badges.length}/{BADGE_REGISTRY.length}
               </Badge>
@@ -280,7 +280,7 @@ export default function JourneyPage() {
                     key={badge.key}
                     className={`relative rounded-xl p-3 text-center transition-all ${
                       unlocked
-                        ? "bg-card border border-amber-500/20 shadow-sm"
+                        ? "bg-card border border-ba1-warn/20 shadow-sm"
                         : "bg-muted/30 border border-border"
                     }`}
                   >
@@ -319,23 +319,23 @@ export default function JourneyPage() {
                 const done = tasks.filter((t) => t.completed).length;
                 const total = tasks.length;
                 return (
-                  <div key={mission.id} className={`p-3 rounded-lg border ${mission.completedAt ? "bg-emerald-500/10 border-emerald-500/20" : "bg-card border-border"}`}>
+                  <div key={mission.id} className={`p-3 rounded-lg border ${mission.completedAt ? "bg-ba1-ok/10 border-ba1-ok/20" : "bg-card border-border"}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        {mission.isBonusMission && <Badge className="bg-violet-500/15 text-violet-400 text-[10px]">{isPt ? "Bônus" : "Bonus"}</Badge>}
+                        {mission.isBonusMission && <Badge className="bg-ba1-health/15 text-ba1-health text-[10px]">{isPt ? "Bônus" : "Bonus"}</Badge>}
                         <span className="text-xs text-muted-foreground">{done}/{total} {isPt ? "tarefas" : "tasks"}</span>
                       </div>
-                      <span className="text-[10px] font-bold text-amber-400">+{mission.xpReward} XP</span>
+                      <span className="text-[10px] font-bold text-ba1-warn">+{mission.xpReward} XP</span>
                     </div>
                     <div className="space-y-1">
                       {tasks.map((task: any) => (
                         <div key={task.key} className="flex items-center gap-2">
                           {task.completed ? (
-                            <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <CheckCircle className="h-4 w-4 text-ba1-ok shrink-0" />
                           ) : (
                             <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
                           )}
-                          <span className={`text-xs ${task.completed ? "text-emerald-400 line-through" : "text-muted-foreground"}`}>
+                          <span className={`text-xs ${task.completed ? "text-ba1-ok line-through" : "text-muted-foreground"}`}>
                             {task.label}
                           </span>
                         </div>
@@ -375,7 +375,7 @@ export default function JourneyPage() {
             </CardContent>
           </Card>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-ba1-warn/20 text-ba1-warn border border-ba1-warn/30">
               {isPt ? "Em Breve" : "Coming Soon"}
             </span>
           </div>

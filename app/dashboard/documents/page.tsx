@@ -38,14 +38,18 @@ const DOC_TYPES = [
   { value: "OTHER", labelEn: "Other", labelPt: "Outro" },
 ];
 
+// Only 4 semantic tokens exist in the brand palette (ok/warn/bad/health) for
+// 6 document types that need to stay visually tell-apart-able — two pairs
+// share a color rather than collapsing further, since no real semantic match
+// exists for most of these categories.
 const DOC_TYPE_COLORS: Record<string, string> = {
-  MEDICAL_REFERRAL: "bg-blue-500/15 text-blue-400",
-  MEDICAL_REPORT: "bg-purple-500/15 text-purple-400",
-  PRESCRIPTION: "bg-green-500/15 text-green-400",
-  IMAGING: "bg-amber-500/15 text-amber-400",
-  INSURANCE: "bg-teal-500/15 text-teal-400",
+  MEDICAL_REFERRAL: "bg-ba1-health/15 text-ba1-health",
+  MEDICAL_REPORT: "bg-ba1-warn/15 text-ba1-warn",
+  PRESCRIPTION: "bg-ba1-ok/15 text-ba1-ok",
+  IMAGING: "bg-ba1-bad/15 text-ba1-bad",
+  INSURANCE: "bg-ba1-health/15 text-ba1-health",
   CONSENT_FORM: "bg-muted text-foreground",
-  PREVIOUS_TREATMENT: "bg-orange-500/15 text-orange-400",
+  PREVIOUS_TREATMENT: "bg-ba1-warn/15 text-ba1-warn",
   OTHER: "bg-muted text-muted-foreground",
 };
 
@@ -328,7 +332,7 @@ export default function PatientDocumentsPage() {
                     <Badge className={`text-[9px] ${DOC_TYPE_COLORS[doc.documentType] || ""}`}>
                       {isPt ? DOC_TYPES.find(t => t.value === doc.documentType)?.labelPt : DOC_TYPES.find(t => t.value === doc.documentType)?.labelEn || doc.documentType}
                     </Badge>
-                    {doc.isVerified && <Badge className="text-[9px] bg-green-500/15 text-green-400"><CheckCircle2 className="h-2 w-2 mr-0.5" /> {isPt ? "Verificado" : "Verified"}</Badge>}
+                    {doc.isVerified && <Badge className="text-[9px] bg-ba1-ok/15 text-ba1-ok"><CheckCircle2 className="h-2 w-2 mr-0.5" /> {isPt ? "Verificado" : "Verified"}</Badge>}
                   </div>
                   <h3 className="font-medium text-sm truncate">{doc.title || doc.fileName}</h3>
                   {doc.doctorName && <p className="text-[10px] text-muted-foreground">Dr. {doc.doctorName}</p>}

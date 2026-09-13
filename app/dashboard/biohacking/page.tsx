@@ -19,14 +19,17 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  SLEEP: "bg-indigo-500/15 text-indigo-400 border-indigo-500/20",
-  NUTRITION: "bg-orange-500/15 text-orange-400 border-orange-500/20",
-  EXERCISE: "bg-green-500/15 text-green-400 border-green-500/20",
-  LIGHT: "bg-yellow-500/15 text-yellow-400 border-yellow-500/20",
-  COLD: "bg-cyan-500/15 text-cyan-400 border-cyan-500/20",
-  BREATHWORK: "bg-violet-500/15 text-violet-400 border-violet-500/20",
-  SUPPLEMENT: "bg-teal-500/15 text-teal-400 border-teal-500/20",
-  HRV: "bg-rose-500/15 text-rose-400 border-rose-500/20",
+  // Only 4 semantic tokens exist in the brand palette (ok/warn/bad/health) for
+  // 8 categories that need to stay visually tell-apart-able — cycled rather
+  // than collapsed to one color, since a real semantic match doesn't exist.
+  SLEEP: "bg-ba1-health/15 text-ba1-health border-ba1-health/20",
+  NUTRITION: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/20",
+  EXERCISE: "bg-ba1-ok/15 text-ba1-ok border-ba1-ok/20",
+  LIGHT: "bg-ba1-bad/15 text-ba1-bad border-ba1-bad/20",
+  COLD: "bg-ba1-health/15 text-ba1-health border-ba1-health/20",
+  BREATHWORK: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/20",
+  SUPPLEMENT: "bg-ba1-ok/15 text-ba1-ok border-ba1-ok/20",
+  HRV: "bg-ba1-bad/15 text-ba1-bad border-ba1-bad/20",
 };
 
 function Slider({ label, value, onChange, min = 1, max = 10, color = "emerald" }: any) {
@@ -39,7 +42,7 @@ function Slider({ label, value, onChange, min = 1, max = 10, color = "emerald" }
       <input
         type="range" min={min} max={max} value={value ?? Math.round((min + max) / 2)}
         onChange={e => onChange(Number(e.target.value))}
-        className="w-full h-2 rounded-full appearance-none cursor-pointer accent-emerald-500 bg-muted"
+        className="w-full h-2 rounded-full appearance-none cursor-pointer accent-ba1-ok bg-muted"
       />
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{min}</span><span>{max}</span>
@@ -219,8 +222,8 @@ export default function BiohackingDashboardPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-          <Brain className="h-5 w-5 text-emerald-400" />
+        <div className="w-10 h-10 rounded-xl bg-ba1-ok/15 flex items-center justify-center shrink-0">
+          <Brain className="h-5 w-5 text-ba1-ok" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-foreground">{isPt ? "Biohacking e Performance" : "Biohacking & Performance"}</h1>
@@ -229,17 +232,17 @@ export default function BiohackingDashboardPage() {
       </div>
 
       {/* Wearable Devices */}
-      <Card className="border-violet-500/20">
+      <Card className="border-ba1-health/20">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Watch className="h-4 w-4 text-violet-400" />
+            <Watch className="h-4 w-4 text-ba1-health" />
             {isPt ? "Dispositivos Wearable" : "Wearable Devices"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {wearableMsg && (
             <div className={`text-sm p-3 rounded-lg ${
-              searchParams?.get("connected") === "1" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+              searchParams?.get("connected") === "1" ? "bg-ba1-ok/10 text-ba1-ok border border-ba1-ok/20" : "bg-ba1-bad/10 text-ba1-bad border border-ba1-bad/20"
             }`}>{wearableMsg}</div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -265,7 +268,7 @@ export default function BiohackingDashboardPage() {
       {(latestSleep || latestRecovery || latestActivity) && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Activity className="h-4 w-4 text-emerald-400" />
+            <Activity className="h-4 w-4 text-ba1-ok" />
             {isPt ? "Métricas de Hoje" : "Today's Metrics"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -277,15 +280,15 @@ export default function BiohackingDashboardPage() {
       )}
 
       {/* Daily Check-In */}
-      <Card className="border-emerald-500/20">
+      <Card className="border-ba1-ok/20">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="h-4 w-4 text-emerald-400" />
+              <Activity className="h-4 w-4 text-ba1-ok" />
               {isPt ? "Check-In de Hoje" : "Today's Check-In"}
             </CardTitle>
             {saved && (
-              <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20 text-xs">
+              <Badge className="bg-ba1-ok/15 text-ba1-ok border-ba1-ok/20 text-xs">
                 <CheckCircle2 className="h-3 w-3 mr-1" /> {isPt ? "Salvo" : "Saved"}
               </Badge>
             )}
@@ -305,7 +308,7 @@ export default function BiohackingDashboardPage() {
                 { v: 4, emoji: "🙂" }, { v: 5, emoji: "😄" },
               ].map(({ v, emoji }) => (
                 <button key={v} onClick={() => setMoodLevel(v)}
-                  className={`flex-1 py-2 rounded-lg text-xl transition-all ${moodLevel === v ? "bg-emerald-500/20 ring-1 ring-emerald-500/40 scale-110" : "bg-muted hover:bg-muted/80"}`}>
+                  className={`flex-1 py-2 rounded-lg text-xl transition-all ${moodLevel === v ? "bg-ba1-ok/20 ring-1 ring-ba1-ok/40 scale-110" : "bg-muted hover:bg-muted/80"}`}>
                   {emoji}
                 </button>
               ))}
@@ -318,12 +321,12 @@ export default function BiohackingDashboardPage() {
               type="number" min={20} max={200} step={0.1}
               value={hrv} onChange={e => setHrv(e.target.value)}
               placeholder={isPt ? "ex: 52.4" : "e.g. 52.4"}
-              className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ba1-ok"
             />
           </div>
 
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted border border-border cursor-pointer" onClick={() => setExercisesDone(v => !v)}>
-            <div className={`w-5 h-5 rounded flex items-center justify-center ${exercisesDone ? "bg-emerald-500" : "border border-border"}`}>
+            <div className={`w-5 h-5 rounded flex items-center justify-center ${exercisesDone ? "bg-ba1-ok" : "border border-border"}`}>
               {exercisesDone && <CheckCircle2 className="h-4 w-4 text-white" />}
             </div>
             <span className="text-sm font-medium">{isPt ? "Completou o protocolo de exercícios/movimento de hoje" : "Completed today's exercise / movement protocol"}</span>
@@ -334,11 +337,11 @@ export default function BiohackingDashboardPage() {
             <textarea
               rows={2} value={notes} onChange={e => setNotes(e.target.value)}
               placeholder={isPt ? "Como você está se sentindo hoje? Algum sintoma, observação..." : "How are you feeling today? Any symptoms, observations..."}
-              className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+              className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ba1-ok resize-none"
             />
           </div>
 
-          <Button onClick={handleSave} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+          <Button onClick={handleSave} disabled={saving} className="w-full bg-ba1-ok hover:bg-ba1-ok/90 text-white">
             {saving ? (isPt ? "Salvando..." : "Saving...") : saved ? (isPt ? "Atualizar Check-In" : "Update Check-In") : (isPt ? "Salvar Check-In" : "Save Check-In")}
           </Button>
         </CardContent>
@@ -349,7 +352,7 @@ export default function BiohackingDashboardPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-400" />
+              <TrendingUp className="h-4 w-4 text-ba1-ok" />
               {isPt ? "Tendências dos Últimos 7 Dias" : "7-Day Trends"}
             </CardTitle>
           </CardHeader>
@@ -393,13 +396,13 @@ export default function BiohackingDashboardPage() {
 
       {/* Active Protocol */}
       {protocol ? (
-        <Card className="border-teal-500/20">
+        <Card className="border-ba1-health/20">
           <CardHeader className="pb-0">
             <button className="flex items-center justify-between w-full" onClick={() => setProtocolOpen(v => !v)}>
               <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="h-4 w-4 text-teal-400" />
+                <Brain className="h-4 w-4 text-ba1-health" />
                 {isPt ? "Seu Protocolo Ativo" : "Your Active Protocol"}
-                <span className="ml-1 text-sm font-normal text-teal-400">{protocol.protocol.name}</span>
+                <span className="ml-1 text-sm font-normal text-ba1-health">{protocol.protocol.name}</span>
               </CardTitle>
               {protocolOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
             </button>
@@ -410,7 +413,7 @@ export default function BiohackingDashboardPage() {
                 <p className="text-sm text-muted-foreground">{protocol.protocol.description}</p>
               )}
               {protocol.notes && (
-                <div className="p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-sm text-teal-300">
+                <div className="p-3 rounded-lg bg-ba1-health/10 border border-ba1-health/20 text-sm text-ba1-health">
                   <span className="font-semibold">{isPt ? "Nota do Bruno: " : "Bruno's note: "}</span>{protocol.notes}
                 </div>
               )}

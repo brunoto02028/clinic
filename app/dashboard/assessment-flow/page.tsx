@@ -48,10 +48,10 @@ const STEP_ICONS: Record<string, any> = {
 };
 
 const STEP_COLORS: Record<string, string> = {
-  completed: "bg-green-500/15 text-green-500 border-green-500/30",
-  processing: "bg-blue-500/15 text-blue-500 border-blue-500/30",
-  in_progress: "bg-yellow-500/15 text-yellow-500 border-yellow-500/30",
-  partial: "bg-orange-500/15 text-orange-500 border-orange-500/30",
+  completed: "bg-ba1-ok/15 text-ba1-ok border-ba1-ok/30",
+  processing: "bg-ba1-health/15 text-ba1-health border-ba1-health/30",
+  in_progress: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/30",
+  partial: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/30",
   pending: "bg-muted text-muted-foreground border-border",
 };
 
@@ -172,7 +172,7 @@ export default function AssessmentFlowPage() {
   if (!progress) {
     return (
       <div className="text-center py-12">
-        <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto mb-3" />
+        <AlertTriangle className="h-10 w-10 text-ba1-warn mx-auto mb-3" />
         <p className="text-muted-foreground">
           {isPt ? "Não foi possível carregar o progresso." : "Unable to load progress."}
         </p>
@@ -215,7 +215,7 @@ export default function AssessmentFlowPage() {
           </div>
           <Progress value={progress.progressPercent} className="h-2" />
           {progress.progressPercent === 100 && (
-            <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
+            <p className="text-xs text-ba1-ok mt-2 flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" />
               {isPt
                 ? "Avaliação completa! O seu terapeuta irá rever os resultados."
@@ -246,7 +246,7 @@ export default function AssessmentFlowPage() {
                   {/* Step Number & Icon */}
                   <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${
                     step.status === "completed"
-                      ? "bg-green-500/15 text-green-500"
+                      ? "bg-ba1-ok/15 text-ba1-ok"
                       : isNext
                         ? "bg-primary/15 text-primary"
                         : "bg-muted text-muted-foreground"
@@ -314,10 +314,10 @@ export default function AssessmentFlowPage() {
       </div>
 
       {/* Info Box */}
-      <Card className="border-blue-500/20 bg-blue-500/5">
+      <Card className="border-ba1-health/20 bg-ba1-health/5">
         <CardContent className="p-4">
           <div className="flex gap-3">
-            <Brain className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+            <Brain className="h-5 w-5 text-ba1-health flex-shrink-0 mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-foreground">
                 {isPt ? "Como funciona?" : "How does it work?"}

@@ -147,7 +147,7 @@ export default function PatientQuizzesPage() {
               const bestAttempt = q.attempts.length > 0 ? q.attempts.reduce((best: any, a: any) => (!best || a.score > best.score) ? a : best, null) : null;
               const isPerfect = bestAttempt && bestAttempt.score === bestAttempt.totalQuestions;
               return (
-                <Card key={q.id} className={`hover:shadow-md transition-all cursor-pointer ${isPerfect ? "border-green-500/20 bg-green-500/10" : ""}`} onClick={() => startQuiz(q)}>
+                <Card key={q.id} className={`hover:shadow-md transition-all cursor-pointer ${isPerfect ? "border-ba1-ok/20 bg-ba1-ok/10" : ""}`} onClick={() => startQuiz(q)}>
                   <CardContent className="py-4">
                     <div className="flex items-center gap-4">
                       <div className="text-3xl flex-shrink-0">{q.iconEmoji || "📝"}</div>
@@ -161,10 +161,10 @@ export default function PatientQuizzesPage() {
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           <Badge variant="outline" className="text-[10px]">{q._count.questions} {isPt ? "perguntas" : "questions"}</Badge>
                           <Badge variant="secondary" className="text-[10px]">{q.difficulty}</Badge>
-                          <Badge className="text-[10px] bg-amber-500/15 text-amber-400">{q.xpReward} XP</Badge>
-                          {q.condition && <Badge className="text-[10px] bg-blue-500/15 text-blue-400">{q.condition.iconEmoji} {isPt ? q.condition.namePt : q.condition.nameEn}</Badge>}
+                          <Badge className="text-[10px] bg-ba1-warn/15 text-ba1-warn">{q.xpReward} XP</Badge>
+                          {q.condition && <Badge className="text-[10px] bg-ba1-health/15 text-ba1-health">{q.condition.iconEmoji} {isPt ? q.condition.namePt : q.condition.nameEn}</Badge>}
                           {bestAttempt && (
-                            <Badge className={`text-[10px] ${isPerfect ? "bg-green-500/15 text-green-400" : "bg-muted text-muted-foreground"}`}>
+                            <Badge className={`text-[10px] ${isPerfect ? "bg-ba1-ok/15 text-ba1-ok" : "bg-muted text-muted-foreground"}`}>
                               {isPerfect ? "✅ " : ""}{bestAttempt.score}/{bestAttempt.totalQuestions}
                             </Badge>
                           )}
@@ -208,8 +208,8 @@ export default function PatientQuizzesPage() {
               {q.options.map((opt, oIdx) => {
                 let borderClass = "border-border hover:border-primary/50";
                 if (showExplanation) {
-                  if (opt.isCorrect) borderClass = "border-green-500 bg-green-500/10";
-                  else if (oIdx === selectedOption && !opt.isCorrect) borderClass = "border-red-500 bg-red-500/10";
+                  if (opt.isCorrect) borderClass = "border-ba1-ok bg-ba1-ok/10";
+                  else if (oIdx === selectedOption && !opt.isCorrect) borderClass = "border-ba1-bad bg-ba1-bad/10";
                   else borderClass = "border-border opacity-50";
                 } else if (selectedOption === oIdx) {
                   borderClass = "border-primary bg-primary/5";
@@ -227,8 +227,8 @@ export default function PatientQuizzesPage() {
                         {String.fromCharCode(65 + oIdx)}
                       </span>
                       <span className="text-sm">{isPt ? opt.pt : opt.en}</span>
-                      {showExplanation && opt.isCorrect && <CheckCircle2 className="h-5 w-5 text-green-500 ml-auto flex-shrink-0" />}
-                      {showExplanation && oIdx === selectedOption && !opt.isCorrect && <XCircle className="h-5 w-5 text-red-500 ml-auto flex-shrink-0" />}
+                      {showExplanation && opt.isCorrect && <CheckCircle2 className="h-5 w-5 text-ba1-ok ml-auto flex-shrink-0" />}
+                      {showExplanation && oIdx === selectedOption && !opt.isCorrect && <XCircle className="h-5 w-5 text-ba1-bad ml-auto flex-shrink-0" />}
                     </div>
                   </button>
                 );
@@ -236,8 +236,8 @@ export default function PatientQuizzesPage() {
             </div>
 
             {showExplanation && (q.explanationEn || q.explanationPt) && (
-              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <p className="text-sm text-blue-400">
+              <div className="p-3 bg-ba1-health/10 border border-ba1-health/20 rounded-lg">
+                <p className="text-sm text-ba1-health">
                   <strong>{isPt ? "Explicação:" : "Explanation:"}</strong>{" "}
                   {isPt ? (q.explanationPt || q.explanationEn) : (q.explanationEn || q.explanationPt)}
                 </p>
@@ -281,7 +281,7 @@ export default function PatientQuizzesPage() {
             <div className="text-4xl font-bold text-primary">{result.score}/{result.totalQuestions}</div>
             <Progress value={percentage} className="h-3" />
             <p className="text-muted-foreground text-sm">{percentage}% {isPt ? "correto" : "correct"}</p>
-            <div className="flex items-center justify-center gap-2 text-amber-400">
+            <div className="flex items-center justify-center gap-2 text-ba1-warn">
               <Trophy className="h-5 w-5" />
               <span className="font-semibold">+{result.xpEarned} XP</span>
             </div>

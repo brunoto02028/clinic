@@ -181,7 +181,7 @@ export default function OutcomeMeasuresPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-red-500" />
+            <Activity className="h-5 w-5 text-ba1-bad" />
             {isPt ? "Escala Visual Analógica (VAS)" : "Visual Analogue Scale (VAS)"}
           </CardTitle>
           <CardDescription>
@@ -193,9 +193,9 @@ export default function OutcomeMeasuresPage() {
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-green-500 font-medium">{isPt ? "Sem dor" : "No pain"}</span>
+              <span className="text-ba1-ok font-medium">{isPt ? "Sem dor" : "No pain"}</span>
               <span className="text-3xl font-bold text-foreground">{vasScore}</span>
-              <span className="text-red-500 font-medium">{isPt ? "Dor máxima" : "Worst pain"}</span>
+              <span className="text-ba1-bad font-medium">{isPt ? "Dor máxima" : "Worst pain"}</span>
             </div>
             <Slider
               value={[vasScore]}
@@ -319,9 +319,9 @@ export default function OutcomeMeasuresPage() {
         <CardContent>
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-red-500">0%</span>
+              <span className="text-ba1-bad">0%</span>
               <span className="text-2xl font-bold">{overallFunction}%</span>
-              <span className="text-green-500">100%</span>
+              <span className="text-ba1-ok">100%</span>
             </div>
             <Slider
               value={[overallFunction]}
@@ -339,28 +339,28 @@ export default function OutcomeMeasuresPage() {
         <Card className="bg-muted/30">
           <CardContent className="p-4">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <CheckCircle2 className="h-4 w-4 text-ba1-ok" />
               {isPt ? "Resumo" : "Summary"}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-red-500">{vasScore}/10</p>
+                <p className="text-2xl font-bold text-ba1-bad">{vasScore}/10</p>
                 <p className="text-xs text-muted-foreground">VAS {isPt ? "Dor" : "Pain"}</p>
               </div>
               {faamAdlPercent !== null && (
                 <div>
-                  <p className="text-2xl font-bold text-blue-500">{faamAdlPercent}%</p>
+                  <p className="text-2xl font-bold text-ba1-health">{faamAdlPercent}%</p>
                   <p className="text-xs text-muted-foreground">FAAM ADL</p>
                 </div>
               )}
               {faamSportPercent !== null && (
                 <div>
-                  <p className="text-2xl font-bold text-purple-500">{faamSportPercent}%</p>
+                  <p className="text-2xl font-bold text-ba1-warn">{faamSportPercent}%</p>
                   <p className="text-xs text-muted-foreground">FAAM {isPt ? "Desporto" : "Sport"}</p>
                 </div>
               )}
               <div>
-                <p className="text-2xl font-bold text-emerald-500">{overallFunction}%</p>
+                <p className="text-2xl font-bold text-ba1-ok">{overallFunction}%</p>
                 <p className="text-xs text-muted-foreground">{isPt ? "Função" : "Function"}</p>
               </div>
             </div>
@@ -388,9 +388,9 @@ export default function OutcomeMeasuresPage() {
       </div>
 
       {/* Info */}
-      <Card className="border-blue-500/20 bg-blue-500/5 mb-20">
+      <Card className="border-ba1-health/20 bg-ba1-health/5 mb-20">
         <CardContent className="p-4 flex gap-3">
-          <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          <Info className="h-5 w-5 text-ba1-health flex-shrink-0 mt-0.5" />
           <p className="text-sm text-muted-foreground">
             {isPt
               ? "O FAAM (Foot and Ankle Ability Measure) é um questionário validado internacionalmente para avaliar a função do pé e tornozelo. Os seus resultados serão comparados ao longo do tempo para medir a sua evolução."

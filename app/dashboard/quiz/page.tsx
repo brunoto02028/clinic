@@ -99,7 +99,7 @@ export default function QuizPage() {
       <div className="max-w-lg mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="overflow-hidden">
-            <div className="h-2 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500" />
+            <div className="h-2 bg-ba1-health" />
             <CardContent className="p-8 text-center">
               <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring" }} className="text-6xl mb-4">
                 🧬
@@ -144,7 +144,7 @@ export default function QuizPage() {
           </div>
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
+              className="h-full bg-ba1-health rounded-full"
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.3 }}
             />
@@ -175,11 +175,11 @@ export default function QuizPage() {
                   onClick={() => handleSelectAnswer(opt.key)}
                   className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                     selectedAnswer === opt.key
-                      ? "border-violet-500 bg-violet-500/10 shadow-md shadow-violet-500/10"
+                      ? "border-ba1-health bg-ba1-health/10 shadow-md shadow-ba1-health/10"
                       : "border-border bg-card hover:border-primary/30"
                   }`}
                 >
-                  <p className={`text-sm font-medium ${selectedAnswer === opt.key ? "text-violet-400" : "text-foreground"}`}>
+                  <p className={`text-sm font-medium ${selectedAnswer === opt.key ? "text-ba1-health" : "text-foreground"}`}>
                     {opt.label}
                   </p>
                 </motion.button>
@@ -211,7 +211,7 @@ export default function QuizPage() {
   if (submitting) {
     return (
       <div className="max-w-lg mx-auto text-center py-16">
-        <Loader2 className="h-10 w-10 animate-spin text-violet-500 mx-auto mb-4" />
+        <Loader2 className="h-10 w-10 animate-spin text-ba1-health mx-auto mb-4" />
         <p className="text-muted-foreground">{T("quiz.analyzing")}</p>
       </div>
     );
@@ -260,10 +260,10 @@ export default function QuizPage() {
 
               {result.xpEarned && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-                  className="mt-4 bg-amber-500/10 rounded-lg p-3 flex items-center justify-center gap-2"
+                  className="mt-4 bg-ba1-warn/10 rounded-lg p-3 flex items-center justify-center gap-2"
                 >
-                  <Sparkles className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm font-bold text-amber-400">+{result.xpEarned} {T("quiz.xpEarned")}</span>
+                  <Sparkles className="h-4 w-4 text-ba1-warn" />
+                  <span className="text-sm font-bold text-ba1-warn">+{result.xpEarned} {T("quiz.xpEarned")}</span>
                 </motion.div>
               )}
 

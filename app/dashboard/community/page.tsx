@@ -126,7 +126,7 @@ export default function CommunityPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-          <Trophy className="h-6 w-6 text-amber-500" /> BPR Arena
+          <Trophy className="h-6 w-6 text-ba1-warn" /> BPR Arena
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{isPt ? "Celebre vitórias, participe de desafios e mantenha-se motivado" : "Celebrate victories, join challenges, and stay motivated together"}</p>
       </div>
@@ -134,12 +134,12 @@ export default function CommunityPage() {
       {/* Weekly Challenge */}
       {challenge && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="border-amber-500/20 bg-card/80 overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-amber-400 to-orange-500" />
+          <Card className="border-ba1-warn/20 bg-card/80 overflow-hidden">
+            <div className="h-1.5 bg-ba1-warn" />
             <CardContent className="p-5">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/20 mb-2">
+                  <Badge className="bg-ba1-warn/15 text-ba1-warn border-ba1-warn/20 mb-2">
                     <Trophy className="h-3 w-3 mr-1" /> {isPt ? "Desafio Semanal" : "Weekly Challenge"}
                   </Badge>
                   <h3 className="font-bold text-foreground">{challenge.title}</h3>
@@ -157,14 +157,14 @@ export default function CommunityPage() {
               <div className="mb-3">
                 <div className="flex justify-between mb-1">
                   <span className="text-xs text-muted-foreground">{challenge.current} / {challenge.target}</span>
-                  <span className="text-xs font-bold text-amber-400">{Math.round(challengePercent)}%</span>
+                  <span className="text-xs font-bold text-ba1-warn">{Math.round(challengePercent)}%</span>
                 </div>
-                <div className="h-3 bg-amber-500/10 rounded-full overflow-hidden">
+                <div className="h-3 bg-ba1-warn/10 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${challengePercent}%` }}
                     transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+                    className="h-full rounded-full bg-ba1-warn"
                   />
                 </div>
               </div>
@@ -177,7 +177,7 @@ export default function CommunityPage() {
                   size="sm"
                   onClick={handleContribute}
                   disabled={contributing}
-                  className="gap-1 bg-amber-500 hover:bg-amber-600 text-xs"
+                  className="gap-1 bg-ba1-warn hover:bg-ba1-warn/90 text-xs"
                 >
                   {contributing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Target className="h-3 w-3" />}
                   {isPt ? "Contribuir" : "Contribute"}
@@ -191,10 +191,10 @@ export default function CommunityPage() {
       {/* Ranking */}
       {rank > 0 && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <Card className="border-violet-500/20 bg-violet-500/5">
+          <Card className="border-ba1-health/20 bg-ba1-health/5">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-violet-500/15 flex items-center justify-center">
-                <Medal className="h-5 w-5 text-violet-400" />
+              <div className="w-10 h-10 rounded-full bg-ba1-health/15 flex items-center justify-center">
+                <Medal className="h-5 w-5 text-ba1-health" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-foreground">
@@ -202,7 +202,7 @@ export default function CommunityPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">{isPt ? `De ${totalParticipants} participantes` : `Out of ${totalParticipants} participants`}</p>
               </div>
-              <TrendingUp className="h-5 w-5 text-violet-500" />
+              <TrendingUp className="h-5 w-5 text-ba1-health" />
             </CardContent>
           </Card>
         </motion.div>
@@ -213,7 +213,7 @@ export default function CommunityPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Flame className="h-5 w-5 text-orange-500" /> {isPt ? "Mural de Vitórias" : "Victory Wall"}
+              <Flame className="h-5 w-5 text-ba1-warn" /> {isPt ? "Mural de Vitórias" : "Victory Wall"}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -242,7 +242,7 @@ export default function CommunityPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-foreground">
-                        <span className="font-semibold text-violet-400">{post.anonName || (isPt ? "Anônimo" : "Anonymous")}</span>{" "}
+                        <span className="font-semibold text-ba1-health">{post.anonName || (isPt ? "Anônimo" : "Anonymous")}</span>{" "}
                         {post.content}
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">{timeAgo(post.createdAt, isPt)}</p>
@@ -250,9 +250,9 @@ export default function CommunityPage() {
                     <button
                       onClick={() => handleHighFive(post.id)}
                       disabled={highFiving === post.id}
-                      className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-card border border-border hover:border-amber-500/30 hover:bg-amber-500/10 transition-colors text-xs"
+                      className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-full bg-card border border-border hover:border-ba1-warn/30 hover:bg-ba1-warn/10 transition-colors text-xs"
                     >
-                      <Hand className="h-3.5 w-3.5 text-amber-500" />
+                      <Hand className="h-3.5 w-3.5 text-ba1-warn" />
                       <span className="font-medium text-foreground">{post.highFives}</span>
                     </button>
                   </motion.div>

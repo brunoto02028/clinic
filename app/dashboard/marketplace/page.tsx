@@ -39,12 +39,15 @@ interface CartItem {
 }
 
 const CATEGORY_CONFIG: Record<string, { labelEn: string; labelPt: string; icon: any; color: string }> = {
-  digital_program: { labelEn: "Digital Programs", labelPt: "Programas Digitais", icon: Video, color: "bg-blue-500/15 text-blue-400" },
-  physical_product: { labelEn: "Physical Products", labelPt: "Produtos Físicos", icon: Package, color: "bg-emerald-500/15 text-emerald-400" },
-  equipment: { labelEn: "Equipment", labelPt: "Equipamentos", icon: Box, color: "bg-cyan-500/15 text-cyan-400" },
-  supplement: { labelEn: "Supplements", labelPt: "Suplementos", icon: Plus, color: "bg-pink-500/15 text-pink-400" },
-  special_session: { labelEn: "Special Sessions", labelPt: "Sessões Especiais", icon: Zap, color: "bg-amber-500/15 text-amber-400" },
-  subscription: { labelEn: "Subscriptions", labelPt: "Assinaturas", icon: Crown, color: "bg-violet-500/15 text-violet-400" },
+  // Only 4 semantic tokens exist in the brand palette (ok/warn/bad/health) for
+  // 6 categories that need to stay visually tell-apart-able — cycled rather
+  // than collapsed further, since no real semantic match exists for most.
+  digital_program: { labelEn: "Digital Programs", labelPt: "Programas Digitais", icon: Video, color: "bg-ba1-health/15 text-ba1-health" },
+  physical_product: { labelEn: "Physical Products", labelPt: "Produtos Físicos", icon: Package, color: "bg-ba1-ok/15 text-ba1-ok" },
+  equipment: { labelEn: "Equipment", labelPt: "Equipamentos", icon: Box, color: "bg-ba1-warn/15 text-ba1-warn" },
+  supplement: { labelEn: "Supplements", labelPt: "Suplementos", icon: Plus, color: "bg-ba1-bad/15 text-ba1-bad" },
+  special_session: { labelEn: "Special Sessions", labelPt: "Sessões Especiais", icon: Zap, color: "bg-ba1-warn/15 text-ba1-warn" },
+  subscription: { labelEn: "Subscriptions", labelPt: "Assinaturas", icon: Crown, color: "bg-ba1-health/15 text-ba1-health" },
 };
 
 export default function MarketplacePage() {
@@ -186,15 +189,15 @@ export default function MarketplacePage() {
       {/* Order Success Banner */}
       {orderSuccess && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="border-emerald-500/20 bg-emerald-500/10">
+          <Card className="border-ba1-ok/20 bg-ba1-ok/10">
             <CardContent className="p-4 flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+              <CheckCircle className="h-5 w-5 text-ba1-ok shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-emerald-400">
+                <p className="text-sm font-medium text-ba1-ok">
                   {orderSuccess.message || (isPt ? "Pedido realizado com sucesso!" : "Order placed successfully!")}
                 </p>
                 {orderSuccess.order && (
-                  <p className="text-xs text-emerald-400/80 mt-0.5">{isPt ? "Pedido" : "Order"} #{orderSuccess.order.orderNumber}</p>
+                  <p className="text-xs text-ba1-ok/80 mt-0.5">{isPt ? "Pedido" : "Order"} #{orderSuccess.order.orderNumber}</p>
                 )}
               </div>
               <Button variant="ghost" size="sm" onClick={() => setOrderSuccess(null)}><X className="h-4 w-4" /></Button>
@@ -212,13 +215,13 @@ export default function MarketplacePage() {
           <p className="text-sm text-muted-foreground mt-1">{isPt ? "Produtos e programas personalizados para a sua recuperação" : "Personalised products and programs for your recovery"}</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 flex items-center gap-2">
-            <Star className="h-4 w-4 text-emerald-500" />
-            <span className="text-sm font-bold text-emerald-400">{credits} {isPt ? "Créditos" : "Credits"}</span>
+          <div className="bg-ba1-ok/10 border border-ba1-ok/20 rounded-lg px-3 py-2 flex items-center gap-2">
+            <Star className="h-4 w-4 text-ba1-ok" />
+            <span className="text-sm font-bold text-ba1-ok">{credits} {isPt ? "Créditos" : "Credits"}</span>
           </div>
-          <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2 flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-violet-400" />
-            <span className="text-xs font-medium text-violet-400">Lvl {level}</span>
+          <div className="bg-ba1-health/10 border border-ba1-health/20 rounded-lg px-3 py-2 flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-ba1-health" />
+            <span className="text-xs font-medium text-ba1-health">Lvl {level}</span>
           </div>
           <Button
             variant={showCart ? "default" : "outline"}
@@ -228,7 +231,7 @@ export default function MarketplacePage() {
           >
             <ShoppingCart className="h-4 w-4" />
             {cart.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 bg-ba1-bad text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
                 {cart.reduce((s, i) => s + i.quantity, 0)}
               </span>
             )}
@@ -239,10 +242,10 @@ export default function MarketplacePage() {
       {/* Level discount banner */}
       {level >= 5 && (
         <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-card">
+          <Card className="border-ba1-warn/20 bg-ba1-warn/10">
             <CardContent className="p-3 flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-amber-500 shrink-0" />
-              <p className="text-sm text-amber-400">
+              <Sparkles className="h-5 w-5 text-ba1-warn shrink-0" />
+              <p className="text-sm text-ba1-warn">
                 <span className="font-bold">{isPt ? `Benefício Nível ${level}` : `Level ${level} Benefit`}:</span> {isPt ? "Você tem" : "You have"}{" "}
                 <span className="font-bold">{levelDiscount}% {isPt ? "de desconto" : "discount"}</span> {isPt ? "em todos os produtos!" : "on all products!"}
               </p>
@@ -293,7 +296,7 @@ export default function MarketplacePage() {
                             </Button>
                           </div>
                           <span className="text-sm font-bold w-16 text-right">£{(item.product.price * item.quantity).toFixed(2)}</span>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-400" onClick={() => removeFromCart(item.product.id)}>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-ba1-bad" onClick={() => removeFromCart(item.product.id)}>
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
@@ -320,7 +323,7 @@ export default function MarketplacePage() {
                     {credits > 0 && (
                       <div className="border-t pt-3">
                         <label className="text-xs font-medium text-foreground flex items-center gap-1 mb-1">
-                          <Star className="h-3 w-3 text-emerald-500" /> {isPt ? `Usar Créditos BPR (Disponível: ${credits})` : `Use BPR Credits (Available: ${credits})`}
+                          <Star className="h-3 w-3 text-ba1-ok" /> {isPt ? `Usar Créditos BPR (Disponível: ${credits})` : `Use BPR Credits (Available: ${credits})`}
                         </label>
                         <Input
                           type="number"
@@ -331,7 +334,7 @@ export default function MarketplacePage() {
                           className="text-xs h-8 w-32"
                           placeholder="0"
                         />
-                        {useCredits > 0 && <p className="text-[10px] text-emerald-400 mt-0.5">{isPt ? "Desconto" : "Discount"}: -£{creditsValue.toFixed(2)}</p>}
+                        {useCredits > 0 && <p className="text-[10px] text-ba1-ok mt-0.5">{isPt ? "Desconto" : "Discount"}: -£{creditsValue.toFixed(2)}</p>}
                       </div>
                     )}
 
@@ -339,8 +342,8 @@ export default function MarketplacePage() {
                     <div className="border-t pt-3 space-y-1 text-sm">
                       <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>£{cartSubtotal.toFixed(2)}</span></div>
                       {cartShipping > 0 && <div className="flex justify-between text-muted-foreground"><span>{isPt ? "Frete" : "Shipping"}</span><span>£{cartShipping.toFixed(2)}</span></div>}
-                      {discountAmount > 0 && <div className="flex justify-between text-amber-400"><span>{isPt ? `Desconto Nível ${level}` : `Level ${level} Discount`} (-{levelDiscount}%)</span><span>-£{discountAmount.toFixed(2)}</span></div>}
-                      {creditsValue > 0 && <div className="flex justify-between text-emerald-400"><span>{isPt ? "Créditos" : "Credits"} ({useCredits})</span><span>-£{creditsValue.toFixed(2)}</span></div>}
+                      {discountAmount > 0 && <div className="flex justify-between text-ba1-warn"><span>{isPt ? `Desconto Nível ${level}` : `Level ${level} Discount`} (-{levelDiscount}%)</span><span>-£{discountAmount.toFixed(2)}</span></div>}
+                      {creditsValue > 0 && <div className="flex justify-between text-ba1-ok"><span>{isPt ? "Créditos" : "Credits"} ({useCredits})</span><span>-£{creditsValue.toFixed(2)}</span></div>}
                       <div className="flex justify-between font-bold text-base border-t pt-1"><span>Total</span><span>£{cartTotal.toFixed(2)}</span></div>
                     </div>
 
@@ -406,7 +409,7 @@ export default function MarketplacePage() {
                 <Card className="card-hover h-full flex flex-col overflow-hidden relative">
                   {product.featured && (
                     <div className="absolute top-2 right-2 z-10">
-                      <Badge className="bg-amber-400 text-white text-[10px]">{isPt ? "Destaque" : "Featured"}</Badge>
+                      <Badge className="bg-ba1-warn text-white text-[10px]">{isPt ? "Destaque" : "Featured"}</Badge>
                     </div>
                   )}
 
@@ -427,7 +430,7 @@ export default function MarketplacePage() {
                         {isPt ? (config?.labelPt || product.category) : (config?.labelEn || product.category)}
                       </Badge>
                       {recommended.some((r: any) => r.id === product.id) && (
-                        <Badge className="bg-amber-500/15 text-amber-400 text-[10px]">⭐ {isPt ? "Para Você" : "For You"}</Badge>
+                        <Badge className="bg-ba1-warn/15 text-ba1-warn text-[10px]">⭐ {isPt ? "Para Você" : "For You"}</Badge>
                       )}
                     </div>
 
@@ -445,7 +448,7 @@ export default function MarketplacePage() {
                           <>
                             <span className="text-lg font-bold text-primary">£{discountedPrice.toFixed(2)}</span>
                             <span className="text-xs text-muted-foreground line-through">£{product.price.toFixed(2)}</span>
-                            <Badge className="bg-red-500/15 text-red-400 text-[10px]">-{levelDiscount}%</Badge>
+                            <Badge className="bg-ba1-bad/15 text-ba1-bad text-[10px]">-{levelDiscount}%</Badge>
                           </>
                         ) : product.compareAtPrice ? (
                           <>
@@ -466,7 +469,7 @@ export default function MarketplacePage() {
 
                       {/* Credits option */}
                       {product.creditsCost > 0 && (
-                        <p className="text-[10px] text-emerald-400">
+                        <p className="text-[10px] text-ba1-ok">
                           {isPt ? `Ou use ${product.creditsCost} Créditos BPR` : `Or use ${product.creditsCost} BPR Credits`}
                         </p>
                       )}
@@ -484,7 +487,7 @@ export default function MarketplacePage() {
                           </p>
                         </div>
                       ) : inCart ? (
-                        <Button size="sm" variant="outline" className="w-full gap-1 text-xs text-emerald-400 border-emerald-500/20" onClick={() => setShowCart(true)}>
+                        <Button size="sm" variant="outline" className="w-full gap-1 text-xs text-ba1-ok border-ba1-ok/20" onClick={() => setShowCart(true)}>
                           <CheckCircle className="h-3 w-3" /> {isPt ? "No Carrinho" : "In Cart"} ({inCart.quantity})
                         </Button>
                       ) : (
@@ -505,7 +508,7 @@ export default function MarketplacePage() {
       <Card className="bg-muted/30 border-border">
         <CardContent className="p-4 text-center">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold">{isPt ? "Créditos BPR" : "BPR Credits"}:</span> {isPt ? "Ganhe créditos completando exercícios, missões e sequências. 1 crédito = £0.01 de desconto." : "Earn credits by completing exercises, missions and streaks. 1 credit = £0.01 discount."} {isPt ? "Você tem" : "You have"} <span className="font-bold text-emerald-400">{credits} {isPt ? "créditos" : "credits"}</span> (£{(credits * 0.01).toFixed(2)} {isPt ? "de valor" : "value"}).
+            <span className="font-semibold">{isPt ? "Créditos BPR" : "BPR Credits"}:</span> {isPt ? "Ganhe créditos completando exercícios, missões e sequências. 1 crédito = £0.01 de desconto." : "Earn credits by completing exercises, missions and streaks. 1 credit = £0.01 discount."} {isPt ? "Você tem" : "You have"} <span className="font-bold text-ba1-ok">{credits} {isPt ? "créditos" : "credits"}</span> (£{(credits * 0.01).toFixed(2)} {isPt ? "de valor" : "value"}).
           </p>
         </CardContent>
       </Card>

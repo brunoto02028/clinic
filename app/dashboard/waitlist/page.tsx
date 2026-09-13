@@ -24,9 +24,9 @@ interface WaitlistEntry {
 }
 
 const STATUS_LABEL: Record<string, { en: string; pt: string; color: string; icon: any }> = {
-  ACTIVE: { en: "Waiting for a slot", pt: "Aguardando vaga", color: "bg-amber-100 text-amber-800 border-amber-200", icon: Clock },
-  NOTIFIED: { en: "Slot available — book now!", pt: "Vaga disponível — reserve agora!", color: "bg-blue-100 text-blue-800 border-blue-200", icon: Bell },
-  BOOKED: { en: "Booked", pt: "Reservado", color: "bg-green-100 text-green-800 border-green-200", icon: CheckCircle2 },
+  ACTIVE: { en: "Waiting for a slot", pt: "Aguardando vaga", color: "bg-ba1-warn/15 text-ba1-warn border-ba1-warn/30", icon: Clock },
+  NOTIFIED: { en: "Slot available — book now!", pt: "Vaga disponível — reserve agora!", color: "bg-ba1-health/15 text-ba1-health border-ba1-health/30", icon: Bell },
+  BOOKED: { en: "Booked", pt: "Reservado", color: "bg-ba1-ok/15 text-ba1-ok border-ba1-ok/30", icon: CheckCircle2 },
 };
 
 export default function PatientWaitlistPage() {

@@ -30,8 +30,8 @@ export default function DashboardError({
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-6">
       <div className="max-w-md w-full text-center space-y-6">
-        <div className="mx-auto w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center">
-          <AlertTriangle className="h-7 w-7 text-amber-500" />
+        <div className="mx-auto w-14 h-14 rounded-full bg-ba1-warn/10 flex items-center justify-center">
+          <AlertTriangle className="h-7 w-7 text-ba1-warn" />
         </div>
         <div>
           <h2 className="text-lg font-bold text-foreground mb-2">
@@ -45,7 +45,7 @@ export default function DashboardError({
               : (isPt ? "Ocorreu um erro inesperado. Seus dados estão seguros." : "An unexpected error occurred. Your data is safe.")}
           </p>
           {!isChunkError && error?.message && (
-            <p className="text-xs text-red-400 mt-2 font-mono bg-red-500/10 p-2 rounded">
+            <p className="text-xs text-ba1-bad mt-2 font-mono bg-ba1-bad/10 p-2 rounded">
               {error.message}
             </p>
           )}
