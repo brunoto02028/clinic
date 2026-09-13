@@ -20,7 +20,7 @@ O Bruno quer ser avisado por email de todo evento de paciente que possa exigir u
 | T-4 | Alerta dedicado de pressão alta (BP_HIGH_ALERT) — prioridade, é o gap de segurança | concluído |
 | T-5 | Alerta dedicado de novo cadastro (signup) | concluído |
 | T-6 | Alertas dedicados restantes: cancelamento pela paciente, avaliação corporal, escaneamento de pé, pagamento confirmado, pagamento de pacote, consentimento aceito | concluído |
-| T-7 | QA consolidada (todos os eventos, incl. confirmar que o BCC antigo continua funcionando sem duplicar/quebrar nada) | pendente |
+| T-7 | QA consolidada (todos os eventos, incl. confirmar que o BCC antigo continua funcionando sem duplicar/quebrar nada) | concluído |
 
 ## Suposições
 1. **`SiteSettings.notificationEmail` como novo campo, editável em `/admin/settings`** — é a opção que recomendo (ver "Por que SiteSettings" acima) em vez de só variável de ambiente. Confirma?
