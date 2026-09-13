@@ -97,6 +97,16 @@ COPY --from=builder /app/recovered-content ./recovered-content
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
+# This exact gap — a boot script added to start.sh without a matching COPY
+# line above — has silently no-op'd in production twice now (once with
+# update-chapter-one-content.js, again 13/09/2026 with 4 scripts across
+# activities 34/36/38), because start.sh's own "|| echo warning" pattern
+# swallows a missing-file error without failing the deploy. Fail the BUILD
+# instead, so a future omission is caught here rather than shipped silently.
+RUN for f in $(grep -oE '/app/scripts/[A-Za-z0-9_.-]+\.js' /start.sh | sort -u); do \
+      test -f "$f" || { echo "ERROR: start.sh runs $f but it isn't in this image — add a COPY line for it in the Dockerfile."; exit 1; }; \
+    done && echo "All start.sh boot scripts verified present in image."
+
 EXPOSE 3000
 
 CMD ["/start.sh"]
