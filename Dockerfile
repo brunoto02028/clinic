@@ -81,6 +81,16 @@ COPY --from=builder /app/scripts/update-chapter-one-content.js ./scripts/update-
 COPY --from=builder /app/scripts/seed-recovered-articles.js ./scripts/seed-recovered-articles.js
 COPY --from=builder /app/scripts/seed-site-logo.js ./scripts/seed-site-logo.js
 COPY --from=builder /app/scripts/fix-generic-site-defaults.js ./scripts/fix-generic-site-defaults.js
+# These four were added to start.sh across activities 34/36/38 but never
+# added here — this list is a manual, explicit allowlist (not a wildcard
+# copy of scripts/), so each one silently no-op'd in every production boot
+# since (start.sh's `|| echo warning` pattern swallows a missing-file error
+# without failing the deploy). Found 13/09/2026 chasing why the ACL protocol
+# template and Appointment.clinicId backfill hadn't landed in prod.
+COPY --from=builder /app/scripts/backfill-instagram-import-flag.js ./scripts/backfill-instagram-import-flag.js
+COPY --from=builder /app/scripts/migrate-personal-trainer-colors.js ./scripts/migrate-personal-trainer-colors.js
+COPY --from=builder /app/scripts/backfill-appointment-clinicid.js ./scripts/backfill-appointment-clinicid.js
+COPY --from=builder /app/scripts/seed-acl-protocol.js ./scripts/seed-acl-protocol.js
 COPY --from=builder /app/book ./book
 COPY --from=builder /app/recovered-content ./recovered-content
 
