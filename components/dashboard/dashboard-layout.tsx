@@ -63,17 +63,18 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
         })
         .catch(() => {});
     }
-    // Sync locale from patient's DB preference on first load
-    if (role === "PATIENT" && !forcePatientMode) {
+    // Seed locale from the patient's DB preference the first time this browser
+    // has no saved choice yet (e.g. a new device). Once a local choice exists,
+    // it wins — otherwise a stale/never-persisted DB value (as happens during
+    // read-only admin impersonation, where the save PATCH is blocked) would
+    // silently revert a toggle the user just made on every navigation.
+    if (role === "PATIENT" && !forcePatientMode && !localStorage.getItem("clinic-locale")) {
       fetch("/api/patient/profile")
         .then(res => res.json())
         .then(data => {
           const dbLocale = data?.user?.preferredLocale;
-          if (dbLocale && (dbLocale === "pt-BR" || dbLocale === "en-GB")) {
-            const current = localStorage.getItem("clinic-locale");
-            if (!current || current !== dbLocale) {
-              setLocale(dbLocale);
-            }
+          if (dbLocale && (dbLocale === "pt-BR" || dbLocale === "en-GB") && !localStorage.getItem("clinic-locale")) {
+            setLocale(dbLocale);
           }
         })
         .catch(() => {});
