@@ -381,7 +381,7 @@ export default function PatientTreatmentPage() {
 
               {/* Progressive release notice */}
               {proto.hasMoreComing && (
-                <div className="bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs p-3 rounded-lg flex items-center gap-2">
+                <div className="bg-ba1-health/10 border border-ba1-health/20 text-ba1-health text-xs p-3 rounded-lg flex items-center gap-2">
                   <Clock className="h-4 w-4 shrink-0" />
                   <p>{isPt
                     ? "O seu especialista liberta o plano progressivamente conforme a sua evolução. Novos exercícios e atividades aparecerão aqui."

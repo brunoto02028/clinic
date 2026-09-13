@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Menu, X, Bell, Lock } from "lucide-react";
+import { LogOut, Menu, X, Bell, Lock, Pin, PinOff } from "lucide-react";
 import {
   PATIENT_SECTIONS,
   PATIENT_PROFILE_SECTION,
@@ -20,6 +20,8 @@ import { useVocab } from "@/hooks/use-vocab";
 // personal-trainer studio's students (they get workouts, not clinical notes).
 const CLINICAL_PATIENT_KEYS = new Set(["health", "screening", "mod_screening"]);
 
+const PIN_STORAGE_KEY = "patient-sidebar-pinned";
+
 interface NotificationItem {
   id: string;
   title: string;
@@ -34,12 +36,15 @@ interface PatientSidebarProps {
   notifications?: number;
   notificationItems?: NotificationItem[];
   consentRequired?: boolean;
+  /** Lifted to the layout so it can widen .patient-content-area to match. */
+  onPinnedChange?: (pinned: boolean) => void;
 }
 
 export default function PatientSidebar({
   notifications = 0,
   notificationItems = [],
   consentRequired = false,
+  onPinnedChange,
 }: PatientSidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -56,6 +61,53 @@ export default function PatientSidebar({
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
   const [pendingQuestions, setPendingQuestions] = useState(0);
+
+  // Collapsed-icon rail by default, hover-expands (matches the admin sidebar) —
+  // "pinned" keeps it expanded permanently and is remembered per browser, same
+  // scope as the locale choice (a per-device UI preference, not clinical data).
+  const [pinned, setPinned] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const collapseTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expanded = pinned || hovered;
+
+  useEffect(() => {
+    if (localStorage.getItem(PIN_STORAGE_KEY) === "true") setPinned(true);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimeout.current) clearTimeout(collapseTimeout.current);
+    };
+  }, []);
+
+  const togglePinned = () => {
+    setPinned((prev) => {
+      const next = !prev;
+      localStorage.setItem(PIN_STORAGE_KEY, String(next));
+      onPinnedChange?.(next);
+      return next;
+    });
+  };
+
+  const handleMouseEnter = () => {
+    if (collapseTimeout.current) {
+      clearTimeout(collapseTimeout.current);
+      collapseTimeout.current = null;
+    }
+    setHovered(true);
+  };
+  const handleMouseLeave = () => {
+    collapseTimeout.current = setTimeout(() => setHovered(false), 150);
+  };
+  // Keyboard-only users never trigger mouseenter — without this, tabbing
+  // through the collapsed rail would only ever show icons, with no way to
+  // read the labels.
+  const handleFocus = handleMouseEnter;
+  const handleBlur = handleMouseLeave;
+
+  // The mobile drawer (opened via the hamburger) always renders at full width
+  // via CSS regardless of hover — labels must show there too.
+  const showLabels = expanded || mobileOpen;
 
   const activeSection = getActivePatientSection(pathname);
   const isPt = locale?.startsWith("pt");
@@ -166,11 +218,18 @@ export default function PatientSidebar({
   }, [pathname]);
 
   const navItemClass = (active: boolean) =>
-    `group relative flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors w-full ${
+    `group relative flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors w-full overflow-hidden ${
       active
         ? "bg-[#4F7361]/10 text-[#4F7361] font-medium"
         : "text-[#767B85] hover:text-[#20242D] hover:bg-black/[0.03]"
     }`;
+
+  // Labels fade out (not display:none) so the width transition on the <nav>
+  // stays smooth; collapsed labels are also non-interactive/off-screen so
+  // they can't be tabbed to or accidentally clicked while invisible.
+  const labelClass = `whitespace-nowrap transition-opacity duration-150 ${
+    showLabels ? "opacity-100" : "opacity-0 pointer-events-none"
+  }`;
 
   const activeBar = (
     <span
@@ -236,7 +295,7 @@ export default function PatientSidebar({
                       onClick={() => setNotifOpen(false)}
                       className="block px-4 py-3 hover:bg-black/[0.03] border-b border-black/5 last:border-0"
                     >
-                      <p className={`text-[13px] font-medium ${n.isUrgent ? "text-[#B4413C]" : "text-[#20242D]"}`}>
+                      <p className={`text-[13px] font-medium ${n.isUrgent ? "text-ba1-bad" : "text-[#20242D]"}`}>
                         {isPt ? n.titlePt : n.title}
                       </p>
                       <p className="text-[11px] text-[#767B85] mt-0.5">
@@ -261,9 +320,12 @@ export default function PatientSidebar({
 
       {/* Sidebar */}
       <nav
-        className={`patient-sidebar ${mobileOpen ? "mobile-open" : ""}`}
+        className={`patient-sidebar ${mobileOpen ? "mobile-open" : ""} ${expanded ? "expanded" : ""}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         style={{
-          width: 220,
           position: "fixed",
           top: 0,
           left: 0,
@@ -276,26 +338,42 @@ export default function PatientSidebar({
         }}
         aria-label={isPt ? "Navegação do paciente" : "Patient navigation"}
       >
-        {/* Logo + name */}
+        {/* Logo + name + pin toggle */}
         <div
-          className={`px-4 pt-5 pb-4 border-b border-black/[0.06] transition-opacity duration-200 ${
+          className={`px-4 pt-5 pb-4 border-b border-black/[0.06] transition-opacity duration-200 overflow-hidden ${
             logoReady ? "opacity-100" : "opacity-0"
           }`}
         >
-          <Logo
-            logoUrl={studioLogo ?? logoUrl}
-            darkLogoUrl={studioLogo ? null : darkLogoUrl}
-            size="sm"
-            showText={true}
-            linkTo="/dashboard"
-          />
-          <p className="text-[11px] text-[#767B85] mt-2 truncate">
+          <div className="flex items-center justify-between gap-2">
+            <div className="overflow-hidden" style={{ width: showLabels ? "auto" : 28, transition: "width 0.2s ease" }}>
+              <Logo
+                logoUrl={studioLogo ?? logoUrl}
+                darkLogoUrl={studioLogo ? null : darkLogoUrl}
+                size="sm"
+                showText={showLabels}
+                linkTo="/dashboard"
+              />
+            </div>
+            {/* Pin: keeps the rail expanded permanently instead of only on hover. */}
+            <button
+              type="button"
+              onClick={togglePinned}
+              title={pinned ? (isPt ? "Desafixar menu" : "Unpin menu") : (isPt ? "Fixar menu aberto" : "Pin menu open")}
+              aria-pressed={pinned}
+              className={`flex-shrink-0 p-1 rounded-md transition-colors ${labelClass} ${
+                pinned ? "text-[#4F7361] bg-[#4F7361]/10" : "text-[#767B85] hover:text-[#20242D] hover:bg-black/[0.03]"
+              }`}
+            >
+              {pinned ? <Pin size={14} /> : <PinOff size={14} />}
+            </button>
+          </div>
+          <p className={`text-[11px] text-[#767B85] mt-2 truncate ${labelClass}`}>
             {firstName} {lastName}
           </p>
         </div>
 
         {/* Nav items */}
-        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 space-y-0.5">
           {visibleSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection.key === section.key;
@@ -309,16 +387,16 @@ export default function PatientSidebar({
               >
                 {isActive && activeBar}
                 <Icon size={18} className={`flex-shrink-0 ${section.locked ? "opacity-40" : ""}`} />
-                <span className={`flex-1 ${section.locked ? "opacity-60" : ""}`}>
+                <span className={`flex-1 ${labelClass} ${section.locked ? "opacity-60" : ""}`}>
                   {relabel(isPt ? section.labelPt : section.label)}
                 </span>
                 {/* Still a link: it leads to the upgrade screen, which is where
                     the plans are sold. The lock says why, before the click. */}
                 {section.locked && (
-                  <Lock size={13} className="ml-auto flex-shrink-0 text-[#B9772F]" aria-label={isPt ? "Requer plano" : "Requires a plan"} />
+                  <Lock size={13} className={`ml-auto flex-shrink-0 text-ba1-warn ${labelClass}`} aria-label={isPt ? "Requer plano" : "Requires a plan"} />
                 )}
                 {section.key === "questions" && pendingQuestions > 0 && (
-                  <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-amber-400 text-black text-[10px] font-bold flex items-center justify-center px-1">
+                  <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-ba1-warn text-white text-[10px] font-bold flex items-center justify-center px-1 flex-shrink-0">
                     {pendingQuestions > 9 ? "9+" : pendingQuestions}
                   </span>
                 )}
@@ -328,9 +406,15 @@ export default function PatientSidebar({
         </div>
 
         {/* Footer */}
-        <div className="px-2 py-3 border-t border-black/[0.06] space-y-0.5">
-          {/* Language toggle */}
-          <div className="flex items-center gap-1 px-3 py-2">
+        <div className="px-2 py-3 border-t border-black/[0.06] space-y-0.5 overflow-hidden">
+          {/* Language toggle — same reasoning as the clinic selector on the
+              admin rail: stays mounted, just visually collapsed, so it isn't
+              refetching/remounting on every hover. */}
+          <div
+            className={`flex items-center gap-1 px-3 overflow-hidden transition-[opacity,max-height] duration-150 ${
+              showLabels ? "opacity-100 max-h-12 py-2" : "opacity-0 max-h-0 py-0 pointer-events-none"
+            }`}
+          >
             {(["en-GB", "pt-BR"] as const).map((loc) => (
               <button
                 key={loc}
@@ -358,7 +442,7 @@ export default function PatientSidebar({
           >
             {activeSection.key === "profile" && activeBar}
             <PATIENT_PROFILE_SECTION.icon size={18} className="flex-shrink-0" />
-            <span>
+            <span className={labelClass}>
               {relabel(isPt
                 ? PATIENT_PROFILE_SECTION.labelPt
                 : PATIENT_PROFILE_SECTION.label)}
@@ -366,10 +450,10 @@ export default function PatientSidebar({
           </Link>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-3 px-3 py-2 rounded-md text-[13px] text-[#767B85] hover:text-red-500 hover:bg-black/[0.03] transition-colors w-full"
+            className="flex items-center gap-3 px-3 py-2 rounded-md text-[13px] text-[#767B85] hover:text-ba1-bad hover:bg-black/[0.03] transition-colors w-full overflow-hidden"
           >
             <LogOut size={16} className="flex-shrink-0" />
-            <span>{isPt ? "Sair" : "Sign out"}</span>
+            <span className={labelClass}>{isPt ? "Sair" : "Sign out"}</span>
           </button>
         </div>
       </nav>

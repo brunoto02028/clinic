@@ -154,7 +154,7 @@ export default function PatientMembershipPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-          <Crown className="h-6 w-6 text-violet-400" />
+          <Crown className="h-6 w-6 text-ba1-health" />
           {isPt ? "Planos & Assinatura" : "Membership & Plans"}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -164,15 +164,15 @@ export default function PatientMembershipPage() {
 
       {/* Active Subscription Card */}
       {activeSub && (
-        <Card className="border-violet-500/20 bg-card overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-violet-500 to-violet-700" />
+        <Card className="border-ba1-health/20 bg-card overflow-hidden">
+          <div className="h-1 bg-ba1-health" />
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Crown className="h-5 w-5 text-violet-400" />
+                <Crown className="h-5 w-5 text-ba1-health" />
                 {isPt ? "Seu Plano Atual" : "Your Current Plan"}
               </CardTitle>
-              <Badge className="bg-green-500/15 text-green-400 border-green-500/20">
+              <Badge className="bg-ba1-ok/15 text-ba1-ok border-ba1-ok/20">
                 <CheckCircle className="h-3 w-3 mr-1" /> {isPt ? "Ativo" : "Active"}
               </Badge>
             </div>
@@ -181,7 +181,7 @@ export default function PatientMembershipPage() {
             <div className="flex items-baseline gap-2 flex-wrap">
               <span className="text-2xl font-bold text-foreground">{activeSub.plan.name}</span>
               {activeSub.plan.isFree ? (
-                <span className="text-lg font-semibold text-green-400">{isPt ? "Gratuito" : "Free"}</span>
+                <span className="text-lg font-semibold text-ba1-ok">{isPt ? "Gratuito" : "Free"}</span>
               ) : (
                 <span className="text-lg font-semibold text-foreground">
                   £{activeSub.plan.price.toFixed(2)}
@@ -205,7 +205,7 @@ export default function PatientMembershipPage() {
                   if (!label) return null;
                   return (
                     <div key={key} className="flex items-center gap-2 text-sm text-foreground">
-                      <CheckCircle className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                      <CheckCircle className="h-3.5 w-3.5 text-ba1-ok shrink-0" />
                       {label}
                     </div>
                   );
@@ -228,14 +228,14 @@ export default function PatientMembershipPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs text-red-400 border-red-500/20 hover:bg-red-500/10"
+                  className="text-xs text-ba1-bad border-ba1-bad/20 hover:bg-ba1-bad/10"
                   onClick={handleCancel}
                 >
                   {isPt ? "Cancelar Assinatura" : "Cancel Subscription"}
                 </Button>
               )}
               {activeSub.cancelAtPeriodEnd && (
-                <Badge variant="outline" className="border-amber-500/30 text-amber-400">
+                <Badge variant="outline" className="border-ba1-warn/30 text-ba1-warn">
                   {isPt ? "Cancela no fim do período" : "Cancels at period end"}
                 </Badge>
               )}
@@ -246,11 +246,11 @@ export default function PatientMembershipPage() {
 
       {/* No subscription CTA */}
       {!activeSub && plans.length > 0 && (
-        <Card className="border-amber-500/20 bg-amber-500/10">
+        <Card className="border-ba1-warn/20 bg-ba1-warn/10">
           <CardContent className="p-6 text-center">
-            <Crown className="h-12 w-12 text-amber-500 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-amber-300 mb-1">{isPt ? "Você não tem um plano ativo" : "You don't have an active plan"}</h3>
-            <p className="text-sm text-amber-400/80 max-w-md mx-auto">
+            <Crown className="h-12 w-12 text-ba1-warn mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-ba1-warn mb-1">{isPt ? "Você não tem um plano ativo" : "You don't have an active plan"}</h3>
+            <p className="text-sm text-ba1-warn/80 max-w-md mx-auto">
               {isPt ? "Escolha um plano abaixo para desbloquear exercícios, ferramentas de saúde, conteúdo educacional e mais." : "Choose a membership plan below to unlock exercises, health tools, educational content and more."}
             </p>
           </CardContent>
@@ -274,16 +274,16 @@ export default function PatientMembershipPage() {
                   key={plan.id}
                   className={`relative overflow-hidden transition-all ${
                     isCurrentPlan
-                      ? "border-violet-500/30 bg-violet-500/5 ring-2 ring-violet-500/20"
-                      : "border-border hover:border-violet-500/30 hover:shadow-md"
+                      ? "border-ba1-health/30 bg-ba1-health/5 ring-2 ring-ba1-health/20"
+                      : "border-border hover:border-ba1-health/30 hover:shadow-md"
                   }`}
                 >
                   {isCurrentPlan && (
-                    <div className="absolute top-0 right-0 px-3 py-1 bg-violet-600 text-white text-[10px] font-bold uppercase rounded-bl-lg">
+                    <div className="absolute top-0 right-0 px-3 py-1 bg-ba1-health text-white text-[10px] font-bold uppercase rounded-bl-lg">
                       {isPt ? "Atual" : "Current"}
                     </div>
                   )}
-                  <div className="h-1 bg-gradient-to-r from-violet-400 to-violet-600" />
+                  <div className="h-1 bg-ba1-health" />
                   <CardContent className="p-5 space-y-4">
                     <div>
                       <h3 className="font-bold text-foreground">{plan.name}</h3>
@@ -294,7 +294,7 @@ export default function PatientMembershipPage() {
 
                     <div className="flex items-baseline gap-1">
                       {plan.isFree ? (
-                        <span className="text-2xl font-bold text-green-400">{isPt ? "Gratuito" : "Free"}</span>
+                        <span className="text-2xl font-bold text-ba1-ok">{isPt ? "Gratuito" : "Free"}</span>
                       ) : (
                         <>
                           <span className="text-2xl font-bold text-foreground">£{plan.price.toFixed(2)}</span>
@@ -304,8 +304,8 @@ export default function PatientMembershipPage() {
                     </div>
 
                     <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p className="flex items-center gap-1"><Zap className="h-3 w-3 text-violet-500" /> {moduleCount} {isPt ? "módulos incluídos" : "modules included"}</p>
-                      <p className="flex items-center gap-1"><Shield className="h-3 w-3 text-violet-500" /> {permCount} {isPt ? "permissões" : "permissions"}</p>
+                      <p className="flex items-center gap-1"><Zap className="h-3 w-3 text-ba1-health" /> {moduleCount} {isPt ? "módulos incluídos" : "modules included"}</p>
+                      <p className="flex items-center gap-1"><Shield className="h-3 w-3 text-ba1-health" /> {permCount} {isPt ? "permissões" : "permissions"}</p>
                     </div>
 
                     {/* Show top features */}
@@ -315,7 +315,7 @@ export default function PatientMembershipPage() {
                         if (!label) return null;
                         return (
                           <div key={key} className="flex items-center gap-1.5 text-xs text-foreground">
-                            <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
+                            <CheckCircle className="h-3 w-3 text-ba1-ok shrink-0" />
                             {label}
                           </div>
                         );
@@ -332,7 +332,7 @@ export default function PatientMembershipPage() {
                       </Button>
                     ) : (
                       <Button
-                        className="w-full gap-2 bg-violet-600 hover:bg-violet-700"
+                        className="w-full gap-2 bg-ba1-health hover:bg-ba1-health/90"
                         onClick={() => handleSubscribe(plan.id)}
                         disabled={!!subscribing}
                       >

@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 const IMPERSONATE_COOKIE = "impersonate-patient-id";
 const IMPERSONATE_NAME_COOKIE = "impersonate-patient-name";
 const IMPERSONATE_ADMIN_COOKIE = "impersonate-admin-id";
+const IMPERSONATE_RETURN_PATH_COOKIE = "impersonate-return-path";
 const IMPERSONATE_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
 // POST — Start impersonation session
@@ -76,6 +77,28 @@ export async function POST(req: NextRequest) {
       expires,
     });
 
+    // "View as Patient" opens in a new tab, so there's no browser-history
+    // "back" to rely on there — the exit button reads this instead of always
+    // landing on the generic /admin dashboard. The referer (the admin page the
+    // request came from) is more reliable than trusting every caller to pass
+    // it explicitly, and works the same regardless of which admin screen the
+    // button is on.
+    let returnPath = "/admin";
+    const referer = req.headers.get("referer");
+    if (referer) {
+      try {
+        const refererPath = new URL(referer).pathname;
+        if (refererPath.startsWith("/admin")) returnPath = refererPath;
+      } catch {}
+    }
+    response.cookies.set(IMPERSONATE_RETURN_PATH_COOKIE, returnPath, {
+      path: "/",
+      httpOnly: false, // readable by the exit button
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      expires,
+    });
+
     return response;
   } catch (err: any) {
     console.error("[impersonate] POST error:", err);
@@ -90,6 +113,7 @@ export async function DELETE(req: NextRequest) {
   response.cookies.set(IMPERSONATE_COOKIE, "", { path: "/", maxAge: 0 });
   response.cookies.set(IMPERSONATE_NAME_COOKIE, "", { path: "/", maxAge: 0 });
   response.cookies.set(IMPERSONATE_ADMIN_COOKIE, "", { path: "/", maxAge: 0 });
+  response.cookies.set(IMPERSONATE_RETURN_PATH_COOKIE, "", { path: "/", maxAge: 0 });
 
   return response;
 }

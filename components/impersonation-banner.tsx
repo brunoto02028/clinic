@@ -15,12 +15,18 @@ export default function ImpersonationBanner({ patientName }: { patientName: stri
   const handleExit = async () => {
     setExiting(true);
     try {
+      // Set by the impersonate POST from the admin page's own referer — so
+      // "View as Patient" (which opens in a new tab) returns to that same
+      // patient/list page instead of always dropping back onto /admin.
+      const match = document.cookie.match(/(?:^| )impersonate-return-path=([^;]+)/);
+      const returnPath = match ? decodeURIComponent(match[1]) : "/admin";
       await fetch("/api/admin/impersonate", { method: "DELETE" });
-      // Clear the cookie on the client side too
+      // Clear the cookies on the client side too
       document.cookie = "impersonate-patient-name=; path=/; max-age=0";
       document.cookie = "impersonate-patient-id=; path=/; max-age=0";
       document.cookie = "impersonate-admin-id=; path=/; max-age=0";
-      window.location.href = "/admin";
+      document.cookie = "impersonate-return-path=; path=/; max-age=0";
+      window.location.href = returnPath;
     } catch {
       setExiting(false);
     }

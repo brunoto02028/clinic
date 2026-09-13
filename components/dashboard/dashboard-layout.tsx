@@ -36,6 +36,12 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
   const [consentRequired, setConsentRequired] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [notifItems, setNotifItems] = useState<any[]>([]);
+  // Mirrors PatientSidebar's own localStorage read so .patient-content-area
+  // can widen to match a pinned-open rail instead of the menu overlaying it.
+  const [sidebarPinned, setSidebarPinned] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem("patient-sidebar-pinned") === "true") setSidebarPinned(true);
+  }, []);
 
   // Radix UI portals (Dialog, AlertDialog, DropdownMenu, Select, Toast...) render
   // into document.body, outside the .public-site-scoped wrapper div below — so
@@ -109,10 +115,11 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
         notifications={notifCount}
         notificationItems={notifItems}
         consentRequired={consentRequired}
+        onPinnedChange={setSidebarPinned}
       />
 
       {/* Main content */}
-      <div className="patient-content-area">
+      <div className={`patient-content-area ${sidebarPinned ? "sidebar-pinned" : ""}`}>
         {/* Page content */}
         <main className="p-4 lg:p-8">
           <PullToRefresh disabled={pathname === "/dashboard/screening" || pathname === "/dashboard/profile"}>
