@@ -30,6 +30,14 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const collapseTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The clinic-selector's open dropdown renders through a portal, outside
+  // this <nav>'s DOM subtree — moving the mouse into it fires this rail's
+  // own onMouseLeave (the cursor isn't inside <nav> anymore), collapsing
+  // the rail mid-click and closing the dropdown, which the user reads as
+  // the menu "opening and closing constantly". A ref (not state) so the
+  // collapse timeout's closure always reads the latest value instead of
+  // the one captured when the timer was scheduled.
+  const clinicMenuOpenRef = useRef(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [darkLogoUrl, setDarkLogoUrl] = useState<string | null>(null);
   const [logoReady, setLogoReady] = useState(false);
@@ -103,7 +111,20 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
     setExpanded(true);
   };
   const handleMouseLeave = () => {
-    collapseTimeout.current = setTimeout(() => setExpanded(false), 150);
+    collapseTimeout.current = setTimeout(() => {
+      if (clinicMenuOpenRef.current) return; // dropdown open in a portal — the mouse is still "in" it
+      setExpanded(false);
+    }, 150);
+  };
+
+  // Keep the rail expanded for as long as the clinic dropdown is open, and
+  // re-run the normal leave-collapse check once it closes (the mouse may by
+  // then be well outside the rail, e.g. resting on a dropdown item that has
+  // since unmounted).
+  const handleClinicMenuOpenChange = (open: boolean) => {
+    clinicMenuOpenRef.current = open;
+    if (open) handleMouseEnter();
+    else handleMouseLeave();
   };
 
   // Keyboard-only users never trigger mouseenter — without this, tabbing
@@ -260,7 +281,7 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
                 showLabels ? "opacity-100 max-h-20 py-1" : "opacity-0 max-h-0 py-0 pointer-events-none"
               }`}
             >
-              <ClinicSelector />
+              <ClinicSelector onOpenChange={handleClinicMenuOpenChange} />
             </div>
           )}
 

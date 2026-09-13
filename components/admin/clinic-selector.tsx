@@ -17,7 +17,12 @@ interface Clinic {
     slug: string;
 }
 
-export function ClinicSelector() {
+interface ClinicSelectorProps {
+    /** Notified when the dropdown opens/closes — lets a hover-expand rail (see admin-mini-sidebar.tsx) stay expanded while the menu, rendered in a portal outside its DOM, is open. */
+    onOpenChange?: (open: boolean) => void;
+}
+
+export function ClinicSelector({ onOpenChange }: ClinicSelectorProps = {}) {
     const [clinics, setClinics] = useState<Clinic[]>([]);
     const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -76,7 +81,7 @@ export function ClinicSelector() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
                 Active Clinic
             </p>
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={onOpenChange}>
                 <DropdownMenuTrigger asChild>
                     <Button
                         variant="outline"

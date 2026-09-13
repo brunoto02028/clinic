@@ -97,6 +97,13 @@ node /app/scripts/seed-recovered-articles.js || echo "[start.sh] recovered-artic
 echo "[start.sh] Seeding default logo/favicon..."
 node /app/scripts/seed-site-logo.js || echo "[start.sh] logo seed warning — check logs"
 
+# ACL reconstruction post-op protocol template (13/09/2026 request) — idempotent,
+# skips if a template with this name already exists, no-ops until an
+# ADMIN/SUPERADMIN account exists to attribute authorship to (see
+# scripts/seed-acl-protocol.js).
+echo "[start.sh] Seeding ACL reconstruction protocol template..."
+node /app/scripts/seed-acl-protocol.js || echo "[start.sh] ACL protocol seed warning — check logs"
+
 # Corrects generic template placeholder content (wrong city, fake address,
 # placeholder phone) that app/api/settings/route.ts's auto-create used to
 # fill in on a fresh DB — idempotent, only touches fields still matching the
