@@ -27,12 +27,12 @@ export default function ImpersonationBanner({ patientName }: { patientName: stri
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[9999] bg-blue-600 text-white px-4 py-2 flex items-center justify-center gap-3 text-sm shadow-lg">
+    <div className="fixed top-0 left-0 right-0 z-[9999] bg-ba1-warn text-white px-4 py-2 flex items-center justify-center gap-3 text-sm shadow-lg">
       <Eye className="h-4 w-4 shrink-0" />
       <span className="font-medium">
         Visualizando como: <strong>{patientName}</strong>
       </span>
-      <span className="text-blue-200 text-xs hidden sm:inline">— Você está vendo exatamente o que o paciente vê</span>
+      <span className="text-white/70 text-xs hidden sm:inline">— Você está vendo exatamente o que o paciente vê</span>
       <button
         onClick={handleExit}
         disabled={exiting}

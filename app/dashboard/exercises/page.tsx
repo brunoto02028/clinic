@@ -45,14 +45,14 @@ import { isYoutubeUrl, getYoutubeEmbedUrl } from "@/lib/youtube-embed";
 // ─── Constants ─────────────────────────────────────────
 
 const DIFFICULTIES_EN: Record<string, { label: string; color: string }> = {
-  BEGINNER: { label: "Beginner", color: "bg-green-500/15 text-green-400" },
-  INTERMEDIATE: { label: "Intermediate", color: "bg-amber-500/15 text-amber-400" },
-  ADVANCED: { label: "Advanced", color: "bg-red-500/15 text-red-400" },
+  BEGINNER: { label: "Beginner", color: "bg-ba1-ok/15 text-ba1-ok" },
+  INTERMEDIATE: { label: "Intermediate", color: "bg-ba1-warn/15 text-ba1-warn" },
+  ADVANCED: { label: "Advanced", color: "bg-ba1-bad/15 text-ba1-bad" },
 };
 const DIFFICULTIES_PT: Record<string, { label: string; color: string }> = {
-  BEGINNER: { label: "Iniciante", color: "bg-green-500/15 text-green-400" },
-  INTERMEDIATE: { label: "Intermediário", color: "bg-amber-500/15 text-amber-400" },
-  ADVANCED: { label: "Avançado", color: "bg-red-500/15 text-red-400" },
+  BEGINNER: { label: "Iniciante", color: "bg-ba1-ok/15 text-ba1-ok" },
+  INTERMEDIATE: { label: "Intermediário", color: "bg-ba1-warn/15 text-ba1-warn" },
+  ADVANCED: { label: "Avançado", color: "bg-ba1-bad/15 text-ba1-bad" },
 };
 
 interface Prescription {
@@ -292,7 +292,7 @@ export default function PatientExercisesPage() {
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
-            <CheckCircle2 className="h-6 w-6 mx-auto text-green-500 mb-1" />
+            <CheckCircle2 className="h-6 w-6 mx-auto text-ba1-ok mb-1" />
             <p className="text-2xl font-bold">
               {prescriptions.reduce((sum, p) => sum + p.completedCount, 0)}
             </p>
@@ -301,7 +301,7 @@ export default function PatientExercisesPage() {
         </Card>
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
-            <Video className="h-6 w-6 mx-auto text-blue-500 mb-1" />
+            <Video className="h-6 w-6 mx-auto text-ba1-health mb-1" />
             <p className="text-2xl font-bold">
               {prescriptions.filter((p) => p.exercise.videoUrl).length}
             </p>
@@ -522,7 +522,7 @@ function ExerciseRow({
             <button
               type="button"
               onClick={onRequestUndo}
-              className="flex items-center gap-1 text-green-400 underline underline-offset-2"
+              className="flex items-center gap-1 text-ba1-ok underline underline-offset-2"
             >
               <CheckCircle2 className="h-3 w-3" />
               {T("exercises.completedCount")} {prescription.completedCount}x
@@ -542,7 +542,7 @@ function ExerciseRow({
         <Button
           variant={completing ? "default" : "outline"}
           size="sm"
-          className={`h-8 text-xs ${completing ? "bg-green-600 hover:bg-green-600" : ""}`}
+          className={`h-8 text-xs ${completing ? "bg-ba1-ok hover:bg-ba1-ok" : ""}`}
           onClick={onComplete}
           disabled={completing}
         >
@@ -570,7 +570,7 @@ function ExerciseRow({
         )}
         <Button
           variant={completing ? "default" : "outline"}
-          className={`h-11 flex-1 text-xs ${completing ? "bg-green-600 hover:bg-green-600" : ""}`}
+          className={`h-11 flex-1 text-xs ${completing ? "bg-ba1-ok hover:bg-ba1-ok" : ""}`}
           onClick={onComplete}
           disabled={completing}
           aria-label={completing ? T("exercises.completed") : T("exercises.complete")}
@@ -706,7 +706,7 @@ function VideoPlayerModal({
 
           {/* Complete Button */}
           <Button
-            className={`w-full ${completing ? "bg-green-600 hover:bg-green-600" : ""}`}
+            className={`w-full ${completing ? "bg-ba1-ok hover:bg-ba1-ok" : ""}`}
             size="lg"
             onClick={onComplete}
             disabled={completing}

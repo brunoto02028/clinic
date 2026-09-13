@@ -39,9 +39,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { isYoutubeUrl, getYoutubeEmbedUrl } from "@/lib/youtube-embed";
 
 const PHASE_META: Record<string, { labelEn: string; labelPt: string; color: string; bg: string }> = {
-  SHORT_TERM: { labelEn: "Short-Term (Acute)", labelPt: "Curto Prazo (Agudo)", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
-  MEDIUM_TERM: { labelEn: "Medium-Term (Rehabilitation)", labelPt: "Médio Prazo (Reabilitação)", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
-  LONG_TERM: { labelEn: "Long-Term (Maintenance)", labelPt: "Longo Prazo (Manutenção)", color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
+  SHORT_TERM: { labelEn: "Short-Term (Acute)", labelPt: "Curto Prazo (Agudo)", color: "text-ba1-bad", bg: "bg-ba1-bad/10 border-ba1-bad/20" },
+  MEDIUM_TERM: { labelEn: "Medium-Term (Rehabilitation)", labelPt: "Médio Prazo (Reabilitação)", color: "text-ba1-warn", bg: "bg-ba1-warn/10 border-ba1-warn/20" },
+  LONG_TERM: { labelEn: "Long-Term (Maintenance)", labelPt: "Longo Prazo (Manutenção)", color: "text-ba1-ok", bg: "bg-ba1-ok/10 border-ba1-ok/20" },
 };
 
 const TYPE_ICONS: Record<string, any> = {
@@ -232,21 +232,21 @@ export default function PatientTreatmentPage() {
 
       {/* Payment result banners */}
       {paymentBanner === "success" && (
-        <div className="bg-green-500/10 border border-green-500/20 text-green-300 text-sm p-4 rounded-lg flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-green-400 flex-shrink-0" />
+        <div className="bg-ba1-ok/10 border border-ba1-ok/20 text-ba1-ok text-sm p-4 rounded-lg flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-ba1-ok flex-shrink-0" />
           <div className="flex-1">
             <p className="font-semibold">{isPt ? "Pagamento Confirmado!" : "Payment Confirmed!"}</p>
-            <p className="text-xs text-green-400 mt-0.5">{isPt ? "Seu plano de tratamento será desbloqueado em instantes. Aguarde..." : "Your treatment plan will be unlocked momentarily. Please wait..."}</p>
+            <p className="text-xs text-ba1-ok/80 mt-0.5">{isPt ? "Seu plano de tratamento será desbloqueado em instantes. Aguarde..." : "Your treatment plan will be unlocked momentarily. Please wait..."}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setPaymentBanner(null)}><X className="h-3 w-3" /></Button>
         </div>
       )}
       {paymentBanner === "cancelled" && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm p-4 rounded-lg flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+        <div className="bg-ba1-warn/10 border border-ba1-warn/20 text-ba1-warn text-sm p-4 rounded-lg flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-ba1-warn flex-shrink-0" />
           <div className="flex-1">
             <p className="font-semibold">{isPt ? "Pagamento Cancelado" : "Payment Cancelled"}</p>
-            <p className="text-xs text-amber-400 mt-0.5">{isPt ? "Você pode tentar novamente a qualquer momento." : "You can try again at any time."}</p>
+            <p className="text-xs text-ba1-warn/80 mt-0.5">{isPt ? "Você pode tentar novamente a qualquer momento." : "You can try again at any time."}</p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setPaymentBanner(null)}><X className="h-3 w-3" /></Button>
         </div>
@@ -261,10 +261,10 @@ export default function PatientTreatmentPage() {
 
       {/* ── Proposed Schedule (PENDING_PATIENT) ── */}
       {pendingAppointments.length > 0 && !scheduleConfirmed && (
-        <div className="border-2 border-orange-500/30 bg-orange-500/5 rounded-xl p-4 space-y-3">
+        <div className="border-2 border-ba1-warn/30 bg-ba1-warn/5 rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-orange-400" />
-            <h3 className="font-semibold text-orange-300">{isPt ? "Agenda Proposta — Aguarda a sua confirmação" : "Proposed Schedule — Awaiting your confirmation"}</h3>
+            <Calendar className="h-5 w-5 text-ba1-warn" />
+            <h3 className="font-semibold text-ba1-warn">{isPt ? "Agenda Proposta — Aguarda a sua confirmação" : "Proposed Schedule — Awaiting your confirmation"}</h3>
           </div>
           <p className="text-xs text-muted-foreground">
             {isPt ? "O seu terapeuta sugeriu os seguintes dias e horários para o seu tratamento. Confirme para bloquear a sua agenda." : "Your therapist has suggested the following days and times for your treatment. Confirm to lock in your schedule."}
@@ -272,7 +272,7 @@ export default function PatientTreatmentPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto">
             {pendingAppointments.slice(0, 20).map((a: any, i: number) => (
               <div key={a.id} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 text-xs">
-                <span className="text-orange-400 font-bold w-5 text-right shrink-0">{i + 1}</span>
+                <span className="text-ba1-warn font-bold w-5 text-right shrink-0">{i + 1}</span>
                 <div>
                   <p className="font-medium">{new Date(a.dateTime).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</p>
                   <p className="text-muted-foreground">{new Date(a.dateTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · {a.duration}min</p>
@@ -284,17 +284,17 @@ export default function PatientTreatmentPage() {
             )}
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button className="flex-1 bg-orange-600 hover:bg-orange-700 gap-2" onClick={confirmSchedule} disabled={confirmingSchedule}>
+            <Button className="flex-1 bg-ba1-warn hover:bg-ba1-warn/90 gap-2" onClick={confirmSchedule} disabled={confirmingSchedule}>
               {confirmingSchedule
                 ? <><Loader2 className="h-4 w-4 animate-spin" /> {isPt ? "A confirmar..." : "Confirming..."}</>
                 : <><CalendarCheck className="h-4 w-4" /> {isPt ? "Confirmar Agenda de Tratamento" : "Confirm Treatment Schedule"}</>}
             </Button>
-            <Button variant="outline" className="gap-2 border-orange-500/40 text-orange-300 hover:bg-orange-500/10" onClick={() => setShowChangeRequest(v => !v)} disabled={confirmingSchedule}>
+            <Button variant="outline" className="gap-2 border-ba1-warn/40 text-ba1-warn hover:bg-ba1-warn/10" onClick={() => setShowChangeRequest(v => !v)} disabled={confirmingSchedule}>
               <Clock className="h-4 w-4" /> {isPt ? "Pedir altera\u00e7\u00e3o de hor\u00e1rios" : "Request schedule change"}
             </Button>
           </div>
           {showChangeRequest && (
-            <div className="space-y-2 border-t border-orange-500/20 pt-3">
+            <div className="space-y-2 border-t border-ba1-warn/20 pt-3">
               <Textarea
                 value={changeRequestText}
                 onChange={(e) => setChangeRequestText(e.target.value)}
@@ -314,13 +314,13 @@ export default function PatientTreatmentPage() {
         </div>
       )}
       {changeRequestSent && (
-        <div className="bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm p-4 rounded-lg flex items-center gap-3">
+        <div className="bg-ba1-ok/10 border border-ba1-ok/20 text-ba1-ok text-sm p-4 rounded-lg flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 shrink-0" />
           <p>{isPt ? "Pedido enviado \u00e0 cl\u00ednica! Entraremos em contacto para ajustar os hor\u00e1rios." : "Request sent to the clinic! We will contact you to adjust the schedule."}</p>
         </div>
       )}
       {scheduleConfirmed && (
-        <div className="bg-green-500/10 border border-green-500/20 text-green-300 text-sm p-4 rounded-lg flex items-center gap-3">
+        <div className="bg-ba1-ok/10 border border-ba1-ok/20 text-ba1-ok text-sm p-4 rounded-lg flex items-center gap-3">
           <CalendarCheck className="h-5 w-5 shrink-0" />
           <p>{isPt ? "Agenda confirmada! As suas sessões foram marcadas." : "Schedule confirmed! Your sessions have been booked."}</p>
         </div>
@@ -391,10 +391,10 @@ export default function PatientTreatmentPage() {
 
               {/* ─── Payment Gate ─── */}
               {proto.paymentRequired && proto.activePackage && (
-                <div className="border-2 border-amber-500/30 bg-amber-500/10 rounded-lg p-4 sm:p-6 text-center space-y-3">
-                  <Lock className="h-10 w-10 mx-auto text-amber-400" />
-                  <h3 className="text-lg font-semibold text-amber-300">{T("treatment.paymentRequired")}</h3>
-                  <p className="text-sm text-amber-400/80 max-w-md mx-auto">
+                <div className="border-2 border-ba1-warn/30 bg-ba1-warn/10 rounded-lg p-4 sm:p-6 text-center space-y-3">
+                  <Lock className="h-10 w-10 mx-auto text-ba1-warn" />
+                  <h3 className="text-lg font-semibold text-ba1-warn">{T("treatment.paymentRequired")}</h3>
+                  <p className="text-sm text-ba1-warn/80 max-w-md mx-auto">
                     {isPt ? "Seu protocolo de tratamento está pronto! Conclua o pagamento para desbloquear seu plano personalizado com exercícios, cronogramas e acompanhamento." : "Your treatment protocol is ready! Complete payment to unlock your full personalised treatment plan with exercises, schedules, and progress tracking."}
                   </p>
                   <div className="bg-card rounded-lg p-3 max-w-sm mx-auto space-y-1.5 text-sm">
@@ -433,20 +433,20 @@ export default function PatientTreatmentPage() {
 
               {/* Diagnosis summary */}
               {!proto.paymentRequired && proto.diagnosis?.summary && (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                  <h4 className="text-xs font-semibold text-blue-400 mb-1">{isPt ? "Resumo Clínico" : "Clinical Summary"}</h4>
+                <div className="bg-ba1-health/10 border border-ba1-health/20 rounded-lg p-3">
+                  <h4 className="text-xs font-semibold text-ba1-health mb-1">{isPt ? "Resumo Clínico" : "Clinical Summary"}</h4>
                   <p className="text-sm text-foreground">{proto.diagnosis.summary}</p>
                 </div>
               )}
 
               {/* Precautions (visible even behind gate) */}
               {!proto.paymentRequired && proto.precautions?.length > 0 && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  <h4 className="text-xs font-semibold text-red-400 flex items-center gap-1 mb-1">
+                <div className="bg-ba1-bad/10 border border-ba1-bad/20 rounded-lg p-3">
+                  <h4 className="text-xs font-semibold text-ba1-bad flex items-center gap-1 mb-1">
                     <AlertTriangle className="h-3 w-3" /> {isPt ? "Precauções Importantes" : "Important Precautions"}
                   </h4>
                   {proto.precautions.map((pc: any, i: number) => (
-                    <p key={i} className="text-sm text-red-400/80">• {pc.precaution}</p>
+                    <p key={i} className="text-sm text-ba1-bad/80">• {pc.precaution}</p>
                   ))}
                 </div>
               )}
@@ -581,14 +581,14 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
             return (
               <div
                 key={item.id}
-                className={`border rounded-lg p-3 transition-colors ${item.isCompleted ? "bg-green-500/5 border-green-500/20" : ""}`}
+                className={`border rounded-lg p-3 transition-colors ${item.isCompleted ? "bg-ba1-ok/5 border-ba1-ok/20" : ""}`}
               >
                 <div className="flex items-start gap-3">
                   {/* Checkbox */}
                   {item.itemType !== "IN_CLINIC" && item.itemType !== "ASSESSMENT" ? (
                     <button onClick={() => onToggle(item.id, !item.isCompleted)} className="mt-0.5 shrink-0">
                       {item.isCompleted ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-400" />
+                        <CheckCircle2 className="h-5 w-5 text-ba1-ok" />
                       ) : (
                         <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />
                       )}
@@ -604,7 +604,7 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
                       </span>
                       <Badge variant="outline" className="text-[9px]">{isPt ? TYPE_LABELS_PT[item.itemType] : TYPE_LABELS_EN[item.itemType]}</Badge>
                       {item.completedCount > 0 && (
-                        <span className="text-[10px] text-green-400">{isPt ? "Feito" : "Done"} {item.completedCount}x</span>
+                        <span className="text-[10px] text-ba1-ok">{isPt ? "Feito" : "Done"} {item.completedCount}x</span>
                       )}
                     </div>
 
