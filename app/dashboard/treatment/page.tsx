@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { isYoutubeUrl, getYoutubeEmbedUrl } from "@/lib/youtube-embed";
 
 const PHASE_META: Record<string, { labelEn: string; labelPt: string; color: string; bg: string }> = {
   SHORT_TERM: { labelEn: "Short-Term (Acute)", labelPt: "Curto Prazo (Agudo)", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
@@ -74,6 +75,10 @@ export default function PatientTreatmentPage() {
   // Carries the mute flag alongside the URL: the clip's own setting has to
   // reach the player, or a video the therapist silenced plays out loud here.
   const [videoModal, setVideoModal] = useState<{ url: string; muted: boolean } | null>(null);
+  // A YouTube watch/share URL isn't a playable media file — pointing a bare
+  // <video> tag at one leaves the player spinning forever (found in QA,
+  // 13/09/2026). Shared with app/dashboard/exercises's own video modal.
+  const [videoFailed, setVideoFailed] = useState(false);
   const [paying, setPaying] = useState<string | null>(null); // packageId being paid
   const [paymentBanner, setPaymentBanner] = useState<"success" | "cancelled" | null>(null);
   const [pendingAppointments, setPendingAppointments] = useState<any[]>([]);
@@ -479,7 +484,7 @@ export default function PatientTreatmentPage() {
                     items={items}
                     phaseCompleted={phaseCompleted}
                     onToggle={handleToggleItem}
-                    onPlayVideo={(url: string, muted: boolean) => setVideoModal({ url, muted })}
+                    onPlayVideo={(url: string, muted: boolean) => { setVideoFailed(false); setVideoModal({ url, muted }); }}
                   />
                 );
               })}
@@ -506,13 +511,34 @@ export default function PatientTreatmentPage() {
             >
               <X className="h-5 w-5" /> {isPt ? "Fechar" : "Close"}
             </Button>
-            <video
-              src={videoModal.url}
-              muted={videoModal.muted}
-              controls
-              autoPlay
-              className="w-full rounded-lg"
-            />
+            {isYoutubeUrl(videoModal.url) ? (
+              <div className="aspect-video rounded-lg overflow-hidden">
+                <iframe
+                  src={getYoutubeEmbedUrl(videoModal.url, { muted: videoModal.muted })}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            ) : videoFailed ? (
+              <div className="aspect-video rounded-lg bg-black/40 flex flex-col items-center justify-center text-center px-6 text-white">
+                <p className="text-sm font-medium">{isPt ? "Vídeo indisponível" : "Video unavailable"}</p>
+                <p className="text-xs text-white/70 mt-1">{isPt ? "Tente novamente mais tarde ou avise a clínica." : "Try again later or let the clinic know."}</p>
+              </div>
+            ) : (
+              <video
+                src={videoModal.url}
+                muted={videoModal.muted}
+                controls
+                // Browsers block autoplay of audible media, so an unmuted
+                // clip that "autoplayed" simply never started — wait for a
+                // manual tap instead (same fix already applied to
+                // dashboard/exercises's own video modal).
+                autoPlay={videoModal.muted}
+                className="w-full rounded-lg"
+                onError={() => setVideoFailed(true)}
+              />
+            )}
           </div>
         </div>
       )}

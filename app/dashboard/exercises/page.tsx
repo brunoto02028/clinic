@@ -40,6 +40,7 @@ import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import { regionName, regionIcon, ORDERED_REGION_KEYS } from "@/lib/exercise-regions";
+import { isYoutubeUrl, getYoutubeEmbedUrl } from "@/lib/youtube-embed";
 
 // ─── Constants ─────────────────────────────────────────
 
@@ -607,12 +608,7 @@ function VideoPlayerModal({
   const sets = prescription.sets || ex.defaultSets;
   const reps = prescription.reps || ex.defaultReps;
   const holdSec = prescription.holdSeconds || ex.defaultHoldSec;
-  const isYoutube = ex.videoUrl?.includes("youtube.com") || ex.videoUrl?.includes("youtu.be");
-
-  const getYoutubeEmbedUrl = (url: string) => {
-    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-    return match ? `https://www.youtube.com/embed/${match[1]}` : url;
-  };
+  const isYoutube = !!ex.videoUrl && isYoutubeUrl(ex.videoUrl);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
@@ -636,7 +632,7 @@ function VideoPlayerModal({
           {isYoutube ? (
             <div className="aspect-video rounded-lg overflow-hidden">
               <iframe
-                src={getYoutubeEmbedUrl(ex.videoUrl!)}
+                src={getYoutubeEmbedUrl(ex.videoUrl!, { muted: ex.muteForPatient !== false })}
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
