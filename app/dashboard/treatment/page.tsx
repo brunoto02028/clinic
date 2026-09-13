@@ -585,7 +585,7 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
                     <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
 
                     {item.instructions && (
-                      <p className="text-xs mt-1 bg-muted/50 rounded p-2">{item.instructions}</p>
+                      <p className="text-xs mt-1 bg-muted/50 rounded p-2 whitespace-pre-wrap leading-relaxed">{item.instructions}</p>
                     )}
 
                     {/* Parameters */}

@@ -119,6 +119,7 @@ export default function ProtocolsPage() {
   const [assignPatientId, setAssignPatientId] = useState("");
   const [assignNote, setAssignNote] = useState("");
   const [assignSearch, setAssignSearch] = useState("");
+  const [assignLanguage, setAssignLanguage] = useState<"en-GB" | "pt-BR">("en-GB");
   const [assigning, setAssigning] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
@@ -242,7 +243,7 @@ export default function ProtocolsPage() {
       const r = await fetch(`/api/admin/protocols/${assignOpen.id}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId: assignPatientId, note: assignNote }),
+        body: JSON.stringify({ patientId: assignPatientId, note: assignNote, language: assignLanguage }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "Failed");
@@ -253,6 +254,7 @@ export default function ProtocolsPage() {
       setAssignOpen(null);
       setAssignPatientId("");
       setAssignNote("");
+      setAssignLanguage("en-GB");
     } catch (e: any) {
       toast({ title: "Error assigning", description: e.message, variant: "destructive" });
     } finally {
@@ -399,7 +401,7 @@ export default function ProtocolsPage() {
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-semibold">
                                 {it.title}
-                                {it.exercise && <span className="text-primary"> → {it.exercise.name}</span>}
+                                {it.exercise && it.exercise.name !== it.title && <span className="text-primary"> → {it.exercise.name}</span>}
                               </p>
                               {meta && <p className="text-[10px] text-muted-foreground mt-0.5">{meta}</p>}
                               {it.treatmentTypeName && (
@@ -677,6 +679,25 @@ export default function ProtocolsPage() {
               {filteredPatients.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-4">No patients.</p>
               )}
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Send to patient in</Label>
+              <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setAssignLanguage("en-GB")}
+                  className={`text-[10px] font-medium px-2.5 py-1 rounded transition-colors ${assignLanguage === "en-GB" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  English
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignLanguage("pt-BR")}
+                  className={`text-[10px] font-medium px-2.5 py-1 rounded transition-colors ${assignLanguage === "pt-BR" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Português
+                </button>
+              </div>
             </div>
             <Textarea
               placeholder="Note for the patient (optional)…"
