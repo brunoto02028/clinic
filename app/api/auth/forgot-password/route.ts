@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
                 portalUrl: `${process.env.NEXTAUTH_URL}/dashboard`,
             },
             user.id,
+            user.clinicId,
         );
 
         return NextResponse.json({

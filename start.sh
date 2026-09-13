@@ -26,6 +26,14 @@ SERVER_PID=$!
 # without this trap, only this wrapper shell (PID 1) would receive SIGTERM.
 trap 'echo "[start.sh] Received stop signal, forwarding to server..."; kill -TERM "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID"' TERM INT
 
+# Activity 38 T-2: Appointment.clinicId is now a required column. Unlike
+# every maintenance script below, this one has to run BEFORE the schema sync
+# — a null clinicId still in the DB when `db push` applies the NOT NULL
+# constraint would fail that step (or worse). See
+# scripts/backfill-appointment-clinicid.js for the resolution order.
+echo "[start.sh] Backfilling Appointment.clinicId before schema sync..."
+node /app/scripts/backfill-appointment-clinicid.js || echo "[start.sh] appointment clinicId backfill warning — check logs"
+
 # Sync DB schema — works on fresh DB (Render) and existing DB.
 # prisma db push is idempotent: creates tables if missing, no-ops if already in sync.
 # Pin to 6.7.0 to avoid breaking changes from future Prisma major versions.

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { signAccessToken, issueRefreshToken } from "@/lib/mobile-tokens";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 import { resolveJoinTenant } from "@/lib/join-tenant";
+import { checkPatientLimit } from "@/lib/tenant-limits";
 import type { ValidatedUser } from "@/lib/auth-credentials";
 
 export function OPTIONS() {
@@ -51,6 +52,11 @@ export async function POST(request: NextRequest) {
         { error: "An account with this email already exists" },
         { status: 409 }
       );
+    }
+
+    const limitCheck = await checkPatientLimit(tenant.clinicId);
+    if (!limitCheck.allowed) {
+      return corsJson({ error: limitCheck.message }, { status: 403 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);

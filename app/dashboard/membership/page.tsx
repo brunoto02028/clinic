@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePatientAccess } from "@/hooks/use-patient-access";
 import { MODULE_REGISTRY, PERMISSION_REGISTRY } from "@/lib/module-registry";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface MembershipPlan {
   id: string;
@@ -52,6 +53,10 @@ export default function PatientMembershipPage() {
   const { toast } = useToast();
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
+  const { relabel } = useVocab();
+  // Registry items carry both label (EN) and labelPt (PT); pick by locale, then
+  // apply the tenant vocab (patient→student, treatment→workout, …).
+  const rlabel = (en: string, pt: string) => relabel((isPt ? pt : en) || en || pt);
   const { access, refresh: refreshAccess } = usePatientAccess();
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [activeSub, setActiveSub] = useState<ActiveSubscription | null>(null);
@@ -125,9 +130,9 @@ export default function PatientMembershipPage() {
   // Helper: resolve feature keys to labels
   const getFeatureLabel = (key: string): string | null => {
     const mod = MODULE_REGISTRY.find((m) => m.key === key);
-    if (mod) return mod.label;
+    if (mod) return rlabel(mod.label, mod.labelPt);
     const perm = PERMISSION_REGISTRY.find((p) => p.key === key);
-    if (perm) return perm.label;
+    if (perm) return rlabel(perm.label, perm.labelPt);
     return null;
   };
 
@@ -359,7 +364,7 @@ export default function PatientMembershipPage() {
             <Crown className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-foreground mb-1">{isPt ? "Nenhum plano disponível ainda" : "No plans available yet"}</h3>
             <p className="text-sm text-muted-foreground">
-              {isPt ? "Os planos de assinatura aparecerão aqui quando a clínica configurá-los. Volte mais tarde." : "Membership plans will appear here once your clinic sets them up. Please check back later."}
+              {relabel(isPt ? "Os planos de assinatura aparecerão aqui quando a clínica configurá-los. Volte mais tarde." : "Membership plans will appear here once your clinic sets them up. Please check back later.")}
             </p>
           </CardContent>
         </Card>

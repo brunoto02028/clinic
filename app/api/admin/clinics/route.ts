@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
             include: {
                 _count: {
                     select: { users: true }
+                },
+                subscription: {
+                    select: { maxTherapists: true, maxPatients: true }
                 }
             },
             orderBy: { createdAt: "desc" }

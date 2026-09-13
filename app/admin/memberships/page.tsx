@@ -22,6 +22,9 @@ import {
   ALL_FEATURE_KEYS, DEFAULT_FREE_FEATURES,
   type ModuleDefinition, type PermissionDefinition,
 } from "@/lib/module-registry";
+import { useVocab } from "@/hooks/use-vocab";
+import { useLocale } from "@/hooks/use-locale";
+import { personalizeLabel } from "@/lib/tenant-vocab";
 
 interface Patient { id: string; firstName: string; lastName: string; email: string; }
 interface MembershipPlan {
@@ -42,6 +45,19 @@ type PatientScope = "specific" | "all" | "none";
 
 export default function MembershipsPage() {
   const { toast } = useToast();
+  const { relabel, isPersonal } = useVocab();
+  const { locale } = useLocale();
+  const isPt = locale === "pt-BR";
+  // Registry items carry both label (EN) and labelPt (PT); pick by locale, then
+  // apply the tenant vocab (patient→student, treatment→workout, …).
+  const rlabel = (en: string, pt: string) => relabel((isPt ? pt : en) || en || pt);
+  // This page's own copy (header, empty state, toasts, static option labels)
+  // has no Portuguese translation — it's always English, regardless of the
+  // session locale. `relabel()` picks its regex set from the session locale,
+  // so calling it here under a pt-BR session would match Portuguese patterns
+  // against English text and leave "patients" etc. untouched. Force the EN
+  // vocab set instead, since that's what the text actually is.
+  const relabelEn = (text: string) => personalizeLabel(text, { isPersonal, isPt: false });
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +157,7 @@ export default function MembershipsPage() {
 
   const handleSubmit = async () => {
     if (!form.name) { toast({ title: "Error", description: "Plan name is required", variant: "destructive" }); return; }
-    if (form.patientScope === "specific" && !form.patientId) { toast({ title: "Error", description: "Please select a patient", variant: "destructive" }); return; }
+    if (form.patientScope === "specific" && !form.patientId) { toast({ title: "Error", description: relabelEn("Please select a patient"), variant: "destructive" }); return; }
     if (form.features.length === 0) { toast({ title: "Error", description: "Select at least one feature", variant: "destructive" }); return; }
     setSubmitting(true);
     try {
@@ -188,7 +204,7 @@ export default function MembershipsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><Crown className="h-5 w-5 sm:h-6 sm:w-6 text-violet-600" /> Membership Plans</h1>
-          <p className="text-muted-foreground text-sm mt-1">Recurring subscription plans — give patients access to exercises, health tools, education and more.</p>
+          <p className="text-muted-foreground text-sm mt-1">{relabelEn("Recurring subscription plans — give patients access to exercises, health tools, education and more.")}</p>
         </div>
         <Button onClick={openCreate} className="gap-2 bg-violet-600 hover:bg-violet-700 w-full sm:w-auto"><Plus className="h-4 w-4" /> New Membership</Button>
       </div>
@@ -199,7 +215,7 @@ export default function MembershipsPage() {
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Crown className="h-14 w-14 text-violet-300 mb-4" />
             <h3 className="text-lg font-semibold mb-1">No membership plans yet</h3>
-            <p className="text-sm text-muted-foreground mb-4 text-center max-w-xs">Create a membership plan to offer patients recurring access to your digital health tools.</p>
+            <p className="text-sm text-muted-foreground mb-4 text-center max-w-xs">{relabelEn("Create a membership plan to offer patients recurring access to your digital health tools.")}</p>
             <Button onClick={openCreate} className="gap-2 bg-violet-600 hover:bg-violet-700"><Plus className="h-4 w-4" /> Create First Plan</Button>
           </CardContent>
         </Card>
@@ -218,7 +234,7 @@ export default function MembershipsPage() {
                       {p.patient
                         ? <><Users className="h-3 w-3 inline mr-1" />{p.patient.firstName} {p.patient.lastName}</>
                         : p.patientScope === "all"
-                          ? <><Globe className="h-3 w-3 inline mr-1" /><span className="text-violet-600 font-medium">All Patients</span></>
+                          ? <><Globe className="h-3 w-3 inline mr-1" /><span className="text-violet-600 font-medium">{relabelEn("All Patients")}</span></>
                           : <><ClipboardList className="h-3 w-3 inline mr-1" /><span className="text-amber-600 font-medium">Draft</span></>}
                     </p>
                   </div>
@@ -246,7 +262,7 @@ export default function MembershipsPage() {
                       const mod = MODULE_REGISTRY.find(m => m.key === key);
                       const perm = !mod ? PERMISSION_REGISTRY.find(pr => pr.key === key) : undefined;
                       const feat = mod || perm;
-                      return feat ? <span key={key} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20"><feat.icon className="h-2.5 w-2.5" />{feat.label}</span> : null;
+                      return feat ? <span key={key} className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/20"><feat.icon className="h-2.5 w-2.5" />{rlabel(feat.label, feat.labelPt)}</span> : null;
                     })}
                     {p.features.length > 4 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">+{p.features.length - 4} more</span>}
                   </div>
@@ -289,7 +305,7 @@ export default function MembershipsPage() {
                   <Input
                     value={aiPrompt}
                     onChange={e => setAiPrompt(e.target.value)}
-                    placeholder="e.g. A premium plan with all clinical modules, £29.90/month"
+                    placeholder={relabelEn("e.g. A premium plan with all clinical modules, £29.90/month")}
                     className="flex-1"
                     onKeyDown={e => e.key === "Enter" && handleAiGenerate()}
                   />
@@ -378,17 +394,17 @@ export default function MembershipsPage() {
                   <button key={opt.value} type="button"
                     onClick={() => setForm(f => ({ ...f, patientScope: opt.value, patientId: opt.value !== "specific" ? "" : f.patientId }))}
                     className={`flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border-2 text-xs font-medium transition-all ${form.patientScope === opt.value ? opt.active : "border-border text-muted-foreground hover:border-border/80"}`}>
-                    <opt.icon className="h-4 w-4" /><span>{opt.label}</span>
+                    <opt.icon className="h-4 w-4" /><span>{relabelEn(opt.label)}</span>
                   </button>
                 ))}
               </div>
               {form.patientScope === "specific" && (
                 <Select value={form.patientId} onValueChange={v => setForm(f => ({ ...f, patientId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select patient..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={relabelEn("Select patient...")} /></SelectTrigger>
                   <SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName} — {p.email}</SelectItem>)}</SelectContent>
                 </Select>
               )}
-              {form.patientScope === "all" && <p className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">Available to all patients. Ideal for platform-wide subscriptions like £9.90/month.</p>}
+              {form.patientScope === "all" && <p className="text-xs text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2">{relabelEn("Available to all patients. Ideal for platform-wide subscriptions like £9.90/month.")}</p>}
               {form.patientScope === "none" && <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">Saved as draft — assign later by editing.</p>}
             </div>
             {/* Modules & Permissions */}
@@ -409,7 +425,7 @@ export default function MembershipsPage() {
                   if (mods.length === 0) return null;
                   return (
                     <div key={cat.key}>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">{cat.label}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">{rlabel(cat.label, cat.labelPt)}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {mods.map((mod: ModuleDefinition) => {
                           const checked = form.features.includes(mod.key);
@@ -429,8 +445,8 @@ export default function MembershipsPage() {
                                 <mod.icon className="h-3.5 w-3.5" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className={`text-xs font-semibold ${checked || isCore ? "text-violet-400" : "text-foreground"}`}>{mod.label}</p>
-                                <p className="text-[10px] text-muted-foreground truncate">{mod.description}</p>
+                                <p className={`text-xs font-semibold ${checked || isCore ? "text-violet-400" : "text-foreground"}`}>{rlabel(mod.label, mod.labelPt)}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">{rlabel(mod.description, mod.descriptionPt)}</p>
                               </div>
                               {(checked || isCore) && <CheckCircle className="h-3.5 w-3.5 text-violet-500 shrink-0" />}
                             </button>
@@ -447,7 +463,7 @@ export default function MembershipsPage() {
                   if (perms.length === 0) return null;
                   return (
                     <div key={cat.key}>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">{cat.label}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">{rlabel(cat.label, cat.labelPt)}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {perms.map((perm: PermissionDefinition) => {
                           const checked = form.features.includes(perm.key);
@@ -460,7 +476,7 @@ export default function MembershipsPage() {
                                 <perm.icon className="h-3.5 w-3.5" />
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className={`text-xs font-semibold ${checked ? "text-emerald-400" : "text-foreground"}`}>{perm.label}</p>
+                                <p className={`text-xs font-semibold ${checked ? "text-emerald-400" : "text-foreground"}`}>{rlabel(perm.label, perm.labelPt)}</p>
                               </div>
                               {checked && <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
                             </button>

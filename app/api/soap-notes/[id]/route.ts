@@ -5,6 +5,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { soapNoteAccess } from "@/lib/staff-patient-access";
+import { assertModuleAccess } from "@/lib/module-access";
+import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +23,10 @@ export async function GET(
 
     const tenantAccess = await soapNoteAccess(request, id);
     if (tenantAccess.response) return tenantAccess.response;
+
+    if (tenantAccess.actor.role === "PATIENT") {
+      await assertModuleAccess(tenantAccess.actor.userId, "mod_records");
+    }
 
     const soapNote = await prisma.sOAPNote.findUnique({
       where: { id },
@@ -58,6 +64,7 @@ export async function GET(
 
     return NextResponse.json({ soapNote });
   } catch (error) {
+    if (error instanceof AccessError) return accessErrorResponse(error);
     console.error("Error fetching SOAP note:", error);
     return NextResponse.json(
       { error: "Failed to fetch clinical note" },

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: effectiveUser.userId },
-      select: { id: true, email: true, firstName: true, password: true },
+      select: { id: true, email: true, firstName: true, password: true, clinicId: true },
     });
     if (!user) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
       normalizedNewEmail,
       { patientName: user.firstName, confirmUrl },
       user.id,
+      user.clinicId,
     );
 
     return NextResponse.json({

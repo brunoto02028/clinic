@@ -7,6 +7,7 @@ import { getAppName, getSenderEmail } from "@/lib/utils";
 import { sendEmail } from "@/lib/email";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_USERS, devFallbackResponse } from "@/lib/dev-fallback";
+import { checkTherapistLimit } from "@/lib/tenant-limits";
 
 export const dynamic = 'force-dynamic';
 
@@ -126,6 +127,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // This route creates STAFF only — a caller passing role: "PATIENT" here
+    // would create a patient account through a path that only ever checks
+    // the staff seat limit below, evading the patient limit entirely
+    // (/api/admin/patients is where a patient account belongs).
+    if (role && role !== "ADMIN" && role !== "THERAPIST") {
+      return NextResponse.json({ error: "Invalid role for a staff account" }, { status: 400 });
+    }
+
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -136,6 +145,11 @@ export async function POST(request: NextRequest) {
         { error: "A user with this email already exists" },
         { status: 409 }
       );
+    }
+
+    const limitCheck = await checkTherapistLimit(finalClinicId);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.message }, { status: 403 });
     }
 
     // Hash password

@@ -132,7 +132,7 @@ export const authOptions: NextAuthOptions = {
               patientName: firstName,
               portalUrl: `${appUrl}/dashboard`,
               clinicPhone: "Contact us via the website",
-            }, newUser.id);
+            }, newUser.id, newUser.clinicId);
           } catch (emailErr) {
             console.error("[AUTH] Failed to send welcome email:", emailErr);
           }

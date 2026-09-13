@@ -1001,8 +1001,8 @@ model TherapistAvailability {
 
 model Appointment {
   id          String  @id @default(cuid())
-  clinicId    String?
-  clinic      Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinicId    String
+  clinic      Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   patientId   String
   patient     User    @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
   therapistId String

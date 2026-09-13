@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { assertModuleAccess } from "@/lib/module-access";
+import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,9 @@ export async function GET(req: NextRequest) {
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
     const userId = effectiveUser.userId;
+    if (effectiveUser.role === "PATIENT") {
+      await assertModuleAccess(userId, "mod_treatment");
+    }
 
     const protocols = await (prisma as any).treatmentProtocol.findMany({
       where: {
@@ -99,6 +104,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ protocols: enriched });
   } catch (err: any) {
+    if (err instanceof AccessError) return accessErrorResponse(err);
     console.error("[patient-protocol] GET error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -109,6 +115,10 @@ export async function PATCH(req: NextRequest) {
   try {
     const effectiveUser = await getEffectiveUser();
     if (!effectiveUser) { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+
+    if (effectiveUser.role === "PATIENT") {
+      await assertModuleAccess(effectiveUser.userId, "mod_treatment");
+    }
 
     const { itemId, completed, notes } = await req.json();
     if (!itemId) {
@@ -142,6 +152,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ success: true, item: updated });
   } catch (err: any) {
+    if (err instanceof AccessError) return accessErrorResponse(err);
     console.error("[patient-protocol] PATCH error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

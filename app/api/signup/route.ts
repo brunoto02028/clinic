@@ -10,6 +10,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { resolveJoinTenant } from "@/lib/join-tenant";
 import { sendAdminAlert } from "@/lib/admin-alert-email";
 import { escapeHtml } from "@/lib/admin-notify-email";
+import { checkPatientLimit } from "@/lib/tenant-limits";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -89,9 +90,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
     // Public signup ALWAYS creates PATIENT accounts (admin/therapist created via /api/admin/patients)
     const userRole = UserRole.PATIENT;
 
@@ -108,6 +106,15 @@ export async function POST(request: NextRequest) {
         { status: tenantSlug ? 404 : 503 }
       );
     }
+
+    const limitCheck = await checkPatientLimit(tenant.clinicId);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.message }, { status: 403 });
+    }
+
+    // Hashed only once the request has cleared every rejection path above —
+    // bcrypt's cost factor makes this the most expensive step per request.
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.create({
       data: {

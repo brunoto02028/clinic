@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db';
 import { getEmailContent, isPt } from '@/lib/email-i18n';
+import { getDefaultClinicId } from '@/lib/default-tenant';
+import { escapeHtml } from '@/lib/admin-notify-email';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 const CONTACT_EMAIL = 'admin@bpr.clinic';
@@ -17,36 +19,100 @@ const BRAND_LINE = '#E4E3DF';
 const BRAND_HEALTH_SOFT = '#EDF3EF';
 
 // ─── Dynamic Clinic Settings ───
-async function getClinicSettings(): Promise<{ logoUrl: string; whiteLogoUrl: string; phone: string; email: string }> {
+interface ClinicEmailSettings {
+  logoUrl: string;
+  whiteLogoUrl: string;
+  phone: string;
+  email: string;
+  primaryColor: string;
+  /** False only for a real, resolved tenant that isn't the platform default — gates BPR-specific footer copy (its physical address) that would otherwise leak onto another tenant's email. */
+  isDefaultTenant: boolean;
+}
+
+const toAbs = (url: string | null | undefined) => {
+  if (!url) return '';
+  if (url.startsWith('data:')) return '';
+  if (url.startsWith('http')) return url;
+  return `${BASE_URL}${url}`;
+};
+
+// The global SiteSettings row (screenLogos, dedicated dark-logo variants) —
+// same source every email used before this tenant's own branding existed,
+// and still the answer for the default tenant (activity 37's cascade:
+// SiteSettings only applies to the platform's actual default clinic, never
+// leaks its branding onto anyone else's mail).
+async function getDefaultTenantEmailSettings(): Promise<ClinicEmailSettings> {
+  const s = await prisma.siteSettings.findFirst({ select: { logoUrl: true, phone: true, email: true, screenLogos: true } as any });
+  // Logo for the email header's dark green background — must be the WHITE
+  // logo variant (screenLogos.*.darkLogoUrl = "logo for a dark background",
+  // e.g. /logo-dark.png), never the coloured logoUrl (invisible/low-contrast
+  // on a dark background). Was previously reading emailHeader.logoUrl by
+  // mistake, showing the coloured logo on the green header.
+  const sl = (s as any)?.screenLogos as Record<string, { logoUrl?: string; darkLogoUrl?: string }> | undefined;
+  const whiteLogoUrl = toAbs(
+    sl?.emailHeader?.darkLogoUrl ||
+    sl?.landingHeader?.darkLogoUrl ||
+    sl?.dashboard?.darkLogoUrl ||
+    sl?.login?.darkLogoUrl ||
+    ''
+  );
+  return {
+    logoUrl: toAbs((s as any)?.logoUrl),
+    whiteLogoUrl,
+    phone: (s as any)?.phone || CONTACT_PHONE,
+    // Pinned to the literal, not SiteSettings.email: the footer contact link
+    // was a hardcoded "admin@bpr.clinic" until this activity, never actually
+    // reading this field — keeping it pinned is what "identical to today"
+    // for the default tenant (T-4's own acceptance criterion) means in
+    // practice, regardless of what an admin may have typed into Site Settings.
+    email: CONTACT_EMAIL,
+    primaryColor: BRAND_PRIMARY,
+    isDefaultTenant: true,
+  };
+}
+
+// Resolves whose branding an email should carry. clinicId absent (a
+// call site not yet passing it) or matching the platform's actual default
+// tenant: unchanged behaviour, the global SiteSettings row. Any other
+// tenant: its own Clinic.logoUrl/primaryColor — Clinic has no separate
+// dark-background logo variant, so the same file serves both header and
+// footer; a tenant without one configured falls to the same static PNG
+// every email used before tenants had their own branding.
+async function getClinicSettings(clinicId?: string | null): Promise<ClinicEmailSettings> {
   try {
-    const s = await prisma.siteSettings.findFirst({ select: { logoUrl: true, phone: true, email: true, screenLogos: true } as any });
-    const toAbs = (url: string | null | undefined) => {
-      if (!url) return '';
-      if (url.startsWith('data:')) return '';
-      if (url.startsWith('http')) return url;
-      return `${BASE_URL}${url}`;
-    };
-    // Logo for the email header's dark green background — must be the WHITE
-    // logo variant (screenLogos.*.darkLogoUrl = "logo for a dark background",
-    // e.g. /logo-dark.png), never the coloured logoUrl (invisible/low-contrast
-    // on a dark background). Was previously reading emailHeader.logoUrl by
-    // mistake, showing the coloured logo on the green header.
-    const sl = (s as any)?.screenLogos as Record<string, { logoUrl?: string; darkLogoUrl?: string }> | undefined;
-    const whiteLogoUrl = toAbs(
-      sl?.emailHeader?.darkLogoUrl ||
-      sl?.landingHeader?.darkLogoUrl ||
-      sl?.dashboard?.darkLogoUrl ||
-      sl?.login?.darkLogoUrl ||
-      ''
-    );
-    return {
-      logoUrl: toAbs((s as any)?.logoUrl),
-      whiteLogoUrl,
-      phone: (s as any)?.phone || CONTACT_PHONE,
-      email: (s as any)?.email || CONTACT_EMAIL,
-    };
+    if (clinicId) {
+      const defaultClinicId = await getDefaultClinicId();
+      if (!defaultClinicId || clinicId !== defaultClinicId) {
+        const clinic = await prisma.clinic.findUnique({
+          where: { id: clinicId },
+          select: { logoUrl: true, primaryColor: true, email: true, phone: true },
+        });
+        const logoUrl = toAbs(clinic?.logoUrl);
+        return {
+          logoUrl,
+          whiteLogoUrl: logoUrl,
+          phone: clinic?.phone || CONTACT_PHONE,
+          email: clinic?.email || CONTACT_EMAIL,
+          primaryColor: clinic?.primaryColor || BRAND_PRIMARY,
+          isDefaultTenant: false,
+        };
+      }
+    }
+    return await getDefaultTenantEmailSettings();
   } catch {
-    return { logoUrl: '', whiteLogoUrl: '', phone: CONTACT_PHONE, email: CONTACT_EMAIL };
+    // A real, resolved clinicId that failed to load (DB hiccup, not "no
+    // branding configured") shouldn't fall back to BPR's own green — that's
+    // a leak of BPR's identity through the one path meant to prevent it.
+    // A generic tenant-neutral gray degrades safely instead.
+    const isDefaultTenant = !clinicId;
+    return {
+      logoUrl: '',
+      whiteLogoUrl: '',
+      phone: CONTACT_PHONE,
+      email: CONTACT_EMAIL,
+      primaryColor: isDefaultTenant ? BRAND_PRIMARY : '#6b7280',
+      isDefaultTenant,
+    };
   }
 }
 
@@ -64,21 +130,38 @@ function emailSafeLogoUrl(url: string, bgHex: string): string {
 }
 
 // ─── Base Layout Wrapper ───
-export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB'): Promise<string> {
-  const { logoUrl, whiteLogoUrl, phone, email } = await getClinicSettings();
+export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB', clinicId?: string | null): Promise<string> {
+  const settings = await getClinicSettings(clinicId);
+  const { isDefaultTenant } = settings;
+  // Clinic.primaryColor/email/logoUrl are SUPERADMIN-editable free text that
+  // lands directly in HTML attributes below (bgcolor, style, mailto, src) —
+  // escaped the same way lib/admin-notify-email.ts already escapes
+  // tenant-controlled values reaching alert email HTML, so a stray `"` or
+  // `<` can't break out of the attribute into markup.
+  const primaryColor = escapeHtml(settings.primaryColor);
+  const email = escapeHtml(settings.email);
+  const logoUrl = escapeHtml(settings.logoUrl);
+  const whiteLogoUrl = escapeHtml(settings.whiteLogoUrl);
   const pt = isPt(locale);
+  const logoAlt = isDefaultTenant ? 'BPR Physical Rehabilitation' : 'Clinic logo';
   // Header: white logo only (no caption — the logo carries the name and captions get auto-translated by Gmail)
-  const headerLogoUrl = emailSafeLogoUrl(whiteLogoUrl, BRAND_PRIMARY) || EMAIL_WHITE_LOGO_URL;
-  const logoHtml = `<img src="${headerLogoUrl}" alt="BPR Physical Rehabilitation" style="max-height:70px;max-width:240px;display:block;margin:0 auto;background-color:${BRAND_PRIMARY};" />`;
+  const headerLogoUrl = emailSafeLogoUrl(whiteLogoUrl, primaryColor) || EMAIL_WHITE_LOGO_URL;
+  const logoHtml = `<img src="${headerLogoUrl}" alt="${logoAlt}" style="max-height:70px;max-width:240px;display:block;margin:0 auto;background-color:${primaryColor};" />`;
   // Footer: dynamic clinic logo (falls back to bundled static PNG if not configured)
   const footerLogoUrl = emailSafeLogoUrl(logoUrl, BRAND_HEALTH_SOFT) || EMAIL_LOGO_URL;
-  const footerLogoHtml = `<img src="${footerLogoUrl}" alt="BPR Physical Rehabilitation" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;background-color:${BRAND_HEALTH_SOFT};" />`;
+  const footerLogoHtml = `<img src="${footerLogoUrl}" alt="${logoAlt}" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;background-color:${BRAND_HEALTH_SOFT};" />`;
   const noReplyText = pt
     ? `Esta é uma mensagem automática &mdash; por favor não responda diretamente a este email.<br>Para nos contactar, utilize os dados acima ou aceda ao seu <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">portal do paciente</a>.`
     : `This is an automated message &mdash; please do not reply to this email.<br>To contact us, use the details above or log in to your <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">patient portal</a>.`;
-  const locationText = pt
-    ? 'Cuidados online, onde quer que esteja &nbsp;·&nbsp; Clínica presencial em Ipswich, Suffolk IP1'
-    : 'Online care, wherever you are &nbsp;·&nbsp; In-person clinic in Ipswich, Suffolk IP1';
+  // BPR's own physical address — only true for the default tenant. Every
+  // other tenant either has no in-person location worth stating here or a
+  // different one Clinic doesn't model yet, so this line is omitted rather
+  // than guessed.
+  const locationText = isDefaultTenant
+    ? (pt
+        ? 'Cuidados online, onde quer que esteja &nbsp;·&nbsp; Clínica presencial em Ipswich, Suffolk IP1'
+        : 'Online care, wherever you are &nbsp;·&nbsp; In-person clinic in Ipswich, Suffolk IP1')
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="${pt ? 'pt' : 'en'}">
@@ -91,14 +174,14 @@ ${preheader ? `<span style="display:none!important;visibility:hidden;mso-hide:al
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${BRAND_BONE}" style="background-color:${BRAND_BONE};">
 <tr><td align="center" style="padding:30px 15px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
-  <tr><td bgcolor="${BRAND_PRIMARY}" style="background-color:${BRAND_PRIMARY};padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
+  <tr><td bgcolor="${primaryColor}" style="background-color:${primaryColor};padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
   <tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:36px 32px 24px;">${content}</td></tr>
   <tr><td bgcolor="${BRAND_HEALTH_SOFT}" style="padding:24px 32px 28px;border-top:1px solid ${BRAND_LINE};background-color:${BRAND_HEALTH_SOFT};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr><td style="text-align:center;">
       ${footerLogoHtml}
-      <p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">${locationText}</p>
-      <p style="margin:0 0 8px;font-size:11px;color:#6b7280;">&#128231; <a href="mailto:admin@bpr.clinic" style="color:${BRAND_PRIMARY};text-decoration:none;">admin@bpr.clinic</a></p>
+      ${locationText ? `<p style="margin:0 0 4px;font-size:11px;color:#9ca3af;">${locationText}</p>` : ''}
+      <p style="margin:0 0 8px;font-size:11px;color:#6b7280;">&#128231; <a href="mailto:${email}" style="color:${primaryColor};text-decoration:none;">${email}</a></p>
       <p style="margin:10px 0 0;font-size:10px;color:#d1d5db;line-height:1.5;">${noReplyText}</p>
     </td></tr>
     </table>
@@ -679,7 +762,8 @@ export const DEFAULT_TEMPLATES = [
 // If variables.locale is provided, bilingual content overrides DB htmlBody/subject
 export async function renderTemplate(
   slug: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  clinicId?: string | null
 ): Promise<{ subject: string; html: string } | null> {
   try {
     const template = await (prisma as any).emailTemplate.findUnique({ where: { slug: slug as any } });
@@ -693,7 +777,7 @@ export async function renderTemplate(
 
     const subject = replaceVariables(rawSubject, variables);
     const body    = replaceVariables(rawBody, variables);
-    const html    = await wrapInLayout(body, subject, locale);
+    const html    = await wrapInLayout(body, subject, locale, clinicId);
 
     return { subject, html };
   } catch (err) {
@@ -716,7 +800,7 @@ export async function sendTemplatedEmail(
   to: string,
   variables: Record<string, string>,
   patientId?: string,
-  clinicId?: string,
+  clinicId?: string | null,
 ): Promise<boolean> {
   const { sendEmail } = await import('@/lib/email');
 
@@ -725,7 +809,7 @@ export async function sendTemplatedEmail(
     variables = { ...variables, locale: await getPatientLocale(patientId) };
   }
 
-  const rendered = await renderTemplate(slug, variables);
+  const rendered = await renderTemplate(slug, variables, clinicId);
   if (!rendered) {
     console.warn(`[email-templates] Template ${slug} not found or inactive`);
     return false;

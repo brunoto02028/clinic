@@ -10,6 +10,7 @@ import { getVapiWebhookSecret } from "@/lib/vapi";
 import { sendEmail } from "@/lib/email";
 import { getAppName } from "@/lib/utils";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
+import { getDefaultClinicId } from "@/lib/default-tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -133,10 +134,14 @@ async function handleBookAppointment(
       },
     });
 
-    // Create guest patient if not found
+    // Create guest patient if not found. Resolved the same way the rest of
+    // the platform resolves "no explicit tenant" (lib/default-tenant.ts) —
+    // an arbitrary `findFirst({ isActive: true })` here would hand a voice
+    // caller's booking to whichever clinic Postgres returns first once more
+    // than one tenant exists, physio or personal-trainer alike.
     if (!patient) {
       const guestEmail = patientEmail || `voice_guest_${Date.now()}@bpr.clinic`;
-      const clinic = await prisma.clinic.findFirst({ where: { isActive: true } });
+      const defaultClinicId = await getDefaultClinicId();
 
       patient = await prisma.user.create({
         data: {
@@ -145,15 +150,26 @@ async function handleBookAppointment(
           lastName,
           phone: patientPhone,
           role: "PATIENT",
-          clinicId: clinic?.id || null,
+          clinicId: defaultClinicId,
           password: null,
         },
       });
     }
 
-    // Find therapist
+    // A patient without a clinic (an older guest record, or an ambiguous
+    // tenant above) still needs one on the appointment now that the column
+    // is required — fall back to the platform default rather than leave it
+    // unresolved.
+    const appointmentClinicId = patient.clinicId || (await getDefaultClinicId());
+    if (!appointmentClinicId) {
+      return "I'm sorry, I was unable to complete the booking. Please call back and a member of the team will assist you.";
+    }
+
+    // The therapist must belong to the same tenant as the appointment —
+    // otherwise a clinic with no staff registered as ADMIN/THERAPIST/SUPERADMIN
+    // could pick up a booking meant for a different clinic's therapist.
     const therapist = await prisma.user.findFirst({
-      where: { role: { in: ["ADMIN", "THERAPIST", "SUPERADMIN"] } },
+      where: { role: { in: ["ADMIN", "THERAPIST", "SUPERADMIN"] }, clinicId: appointmentClinicId },
     });
 
     if (!therapist) return "I'm sorry, I was unable to complete the booking. Please call back and a member of the team will assist you.";
@@ -171,6 +187,7 @@ async function handleBookAppointment(
 
     const appointment = await prisma.appointment.create({
       data: {
+        clinicId: appointmentClinicId,
         patientId: patient.id,
         therapistId: therapist.id,
         dateTime: new Date(dateTime),

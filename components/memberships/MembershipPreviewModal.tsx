@@ -1,6 +1,8 @@
 "use client";
 import { CheckCircle, Crown, Lock, Repeat, X } from "lucide-react";
 import { Dumbbell, BookOpen, Heart, Activity, Footprints, Zap, Stethoscope, FileText, ClipboardList, Video, MessageSquare, BarChart3, Star } from "lucide-react";
+import { useVocab } from "@/hooks/use-vocab";
+import { personalizeLabel } from "@/lib/tenant-vocab";
 
 export const FEATURES = [
   { key: "exercise_library",    label: "Exercise Video Library",     icon: Dumbbell },
@@ -40,6 +42,11 @@ interface Props {
 }
 
 export default function MembershipPreviewModal({ plan, branding, onClose }: Props) {
+  const { isPersonal } = useVocab();
+  // This preview is always-English text (it's a mock of the Stripe checkout
+  // page, no PT variant) — forcing isPt: false picks the vocab set that
+  // actually matches the text, regardless of the session's own locale.
+  const relabel = (text: string) => personalizeLabel(text, { isPersonal, isPt: false });
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -51,7 +58,7 @@ export default function MembershipPreviewModal({ plan, branding, onClose }: Prop
             </div>
             <div>
               <h2 className="text-base font-bold">Stripe Checkout Preview</h2>
-              <p className="text-xs text-muted-foreground">How the patient sees the subscription payment page</p>
+              <p className="text-xs text-muted-foreground">{relabel("How the patient sees the subscription payment page")}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted"><X className="h-5 w-5" /></button>
@@ -93,7 +100,7 @@ export default function MembershipPreviewModal({ plan, branding, onClose }: Prop
                     return f ? (
                       <div key={key} className="flex items-center gap-1.5 text-[10px] text-gray-600">
                         <CheckCircle className="h-3 w-3 text-green-500 shrink-0" />
-                        {f.label}
+                        {relabel(f.label)}
                       </div>
                     ) : null;
                   })}

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     // ── ACTION: simulate_signup — simulate full signup email flow ──
     if (action === "simulate_signup") {
       const patient = patientId
-        ? await prisma.user.findUnique({ where: { id: patientId }, select: { id: true, email: true, firstName: true, lastName: true } })
+        ? await prisma.user.findUnique({ where: { id: patientId }, select: { id: true, email: true, firstName: true, lastName: true, clinicId: true } })
         : null;
 
       const name = patient ? `${patient.firstName} ${patient.lastName}` : "Test Patient";
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         patientName: name,
         portalUrl: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/dashboard`,
         clinicPhone: "",
-      }, patient?.id);
+      }, patient?.id, patient?.clinicId);
 
       return NextResponse.json({
         success: sent,
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     // ── ACTION: simulate_screening — simulate screening received email ──
     if (action === "simulate_screening") {
       const patient = patientId
-        ? await prisma.user.findUnique({ where: { id: patientId }, select: { id: true, email: true, firstName: true } })
+        ? await prisma.user.findUnique({ where: { id: patientId }, select: { id: true, email: true, firstName: true, clinicId: true } })
         : null;
 
       const name = patient?.firstName || "Test Patient";
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       const sent = await sendTemplatedEmail("SCREENING_RECEIVED", email, {
         patientName: name,
         portalUrl: `${process.env.NEXTAUTH_URL || "https://bpr.clinic"}/dashboard/screening`,
-      }, patient?.id);
+      }, patient?.id, patient?.clinicId);
 
       return NextResponse.json({
         success: sent,
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // ── ACTION: simulate_template — send any template ──
     if (action === "simulate_template" && templateSlug) {
       const patient = patientId
-        ? await prisma.user.findUnique({ where: { id: patientId }, select: { id: true, email: true, firstName: true, lastName: true } })
+        ? await prisma.user.findUnique({ where: { id: patientId }, select: { id: true, email: true, firstName: true, lastName: true, clinicId: true } })
         : null;
 
       const name = patient ? `${patient.firstName} ${patient.lastName}` : "Test Patient";
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         treatmentType: "Initial Assessment",
         duration: "60",
         clinicPhone: "",
-      }, patient?.id);
+      }, patient?.id, patient?.clinicId);
 
       return NextResponse.json({
         success: sent,

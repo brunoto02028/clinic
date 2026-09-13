@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { assertModuleAccess } from "@/lib/module-access";
+import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,10 @@ export async function GET(req: NextRequest) {
   const userId = effectiveUser.userId;
 
   try {
+    if (effectiveUser.role === "PATIENT") {
+      await assertModuleAccess(userId, "mod_exercises");
+    }
+
     const prescriptions = await prisma.exercisePrescription.findMany({
       where: {
         patientId: userId,
@@ -51,6 +57,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ prescriptions });
   } catch (err: any) {
+    if (err instanceof AccessError) return accessErrorResponse(err);
     console.error("Patient exercises GET error:", err);
     return NextResponse.json({ error: "Failed to fetch exercises" }, { status: 500 });
   }
@@ -69,6 +76,10 @@ export async function PATCH(req: NextRequest) {
   const userId = effectiveUser.userId;
 
   try {
+    if (effectiveUser.role === "PATIENT") {
+      await assertModuleAccess(userId, "mod_exercises");
+    }
+
     const { prescriptionId, action } = await req.json();
 
     if (!prescriptionId) {
@@ -108,6 +119,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ prescription: updated });
   } catch (err: any) {
+    if (err instanceof AccessError) return accessErrorResponse(err);
     return NextResponse.json({ error: "Failed to update progress" }, { status: 500 });
   }
 }

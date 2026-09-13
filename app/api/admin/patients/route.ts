@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { sendTemplatedEmail } from "@/lib/email-templates";
+import { checkPatientLimit } from "@/lib/tenant-limits";
 
 // GET - list patients for admin (same as /api/patients but with clinic filter)
 export async function GET(request: NextRequest) {
@@ -143,6 +144,11 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+    }
+
+    const limitCheck = await checkPatientLimit(currentUser.clinicId);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.message }, { status: 403 });
     }
 
     // Hash password (use default if not provided)

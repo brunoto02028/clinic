@@ -6,6 +6,8 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { isDbUnreachableError, MOCK_SOAP_NOTES, devFallbackResponse } from "@/lib/dev-fallback";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { assertModuleAccess } from "@/lib/module-access";
+import { accessErrorResponse } from "@/lib/tenant-access";
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,6 +24,11 @@ export async function GET(request: NextRequest) {
     let whereClause: any = {};
 
     if (userRole === "PATIENT") {
+      try {
+        await assertModuleAccess(userId, "mod_records");
+      } catch (err) {
+        return accessErrorResponse(err);
+      }
       whereClause.patientId = userId;
     } else if (patientId) {
       whereClause.patientId = patientId;

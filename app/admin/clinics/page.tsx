@@ -43,6 +43,7 @@ interface Clinic {
     city: string;
     createdAt: string;
     instagramImportEnabled: boolean;
+    subscription: { maxTherapists: number; maxPatients: number } | null;
     _count: {
         users: number;
         patients: number;
@@ -152,25 +153,32 @@ export default function ClinicsPage() {
     // feature flags too, rather than each one growing its own dialog).
     const [settingsClinic, setSettingsClinic] = useState<Clinic | null>(null);
     const [settingsInstagramImport, setSettingsInstagramImport] = useState(false);
+    // Empty string = no limit (shown as a blank field, not a 0 the admin has to notice and clear).
+    const [settingsMaxTherapists, setSettingsMaxTherapists] = useState("");
+    const [settingsMaxPatients, setSettingsMaxPatients] = useState("");
     const [savingSettings, setSavingSettings] = useState(false);
 
     const openSettings = (clinic: Clinic) => {
         setSettingsClinic(clinic);
         setSettingsInstagramImport(clinic.instagramImportEnabled);
+        setSettingsMaxTherapists(clinic.subscription?.maxTherapists ? String(clinic.subscription.maxTherapists) : "");
+        setSettingsMaxPatients(clinic.subscription?.maxPatients ? String(clinic.subscription.maxPatients) : "");
     };
 
     const saveSettings = async () => {
         if (!settingsClinic) return;
         setSavingSettings(true);
         try {
+            const maxTherapists = settingsMaxTherapists.trim() === "" ? 0 : parseInt(settingsMaxTherapists, 10) || 0;
+            const maxPatients = settingsMaxPatients.trim() === "" ? 0 : parseInt(settingsMaxPatients, 10) || 0;
             const res = await fetch(`/api/admin/clinics/${settingsClinic.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ instagramImportEnabled: settingsInstagramImport }),
+                body: JSON.stringify({ instagramImportEnabled: settingsInstagramImport, maxTherapists, maxPatients }),
             });
             if (!res.ok) throw new Error("Failed to save");
             toast({ title: "Success", description: "Clinic settings saved", variant: "success" });
-            setClinics((prev) => prev.map((c) => c.id === settingsClinic.id ? { ...c, instagramImportEnabled: settingsInstagramImport } : c));
+            setClinics((prev) => prev.map((c) => c.id === settingsClinic.id ? { ...c, instagramImportEnabled: settingsInstagramImport, subscription: { maxTherapists, maxPatients } } : c));
             setSettingsClinic(null);
         } catch {
             toast({ title: "Error", description: "Failed to save clinic settings", variant: "destructive" });
@@ -416,7 +424,7 @@ export default function ClinicsPage() {
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle>{settingsClinic?.name} — Settings</DialogTitle>
-                        <DialogDescription>Per-tenant feature flags.</DialogDescription>
+                        <DialogDescription>Per-tenant feature flags and plan limits.</DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-1">
@@ -433,6 +441,39 @@ export default function ClinicsPage() {
                                 checked={settingsInstagramImport}
                                 onCheckedChange={setSettingsInstagramImport}
                             />
+                        </div>
+
+                        <div className="rounded-lg border p-3 space-y-3">
+                            <div className="space-y-1">
+                                <Label>Plan limits</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Leave a field blank for no limit. Lowering a limit never removes anyone already registered — it only blocks new sign-ups once the limit is reached.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label htmlFor="max-therapists" className="text-xs text-muted-foreground">Max staff</Label>
+                                    <Input
+                                        id="max-therapists"
+                                        type="number"
+                                        min={0}
+                                        placeholder="No limit"
+                                        value={settingsMaxTherapists}
+                                        onChange={(e) => setSettingsMaxTherapists(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="max-patients" className="text-xs text-muted-foreground">Max patients / students</Label>
+                                    <Input
+                                        id="max-patients"
+                                        type="number"
+                                        min={0}
+                                        placeholder="No limit"
+                                        value={settingsMaxPatients}
+                                        onChange={(e) => setSettingsMaxPatients(e.target.value)}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
