@@ -116,6 +116,7 @@ export default function DashboardLayout({ children, forcePatientMode = false, pr
         notificationItems={notifItems}
         consentRequired={consentRequired}
         onPinnedChange={setSidebarPinned}
+        offsetForBanner={isImpersonating}
       />
 
       {/* Main content */}

@@ -38,6 +38,11 @@ interface PatientSidebarProps {
   consentRequired?: boolean;
   /** Lifted to the layout so it can widen .patient-content-area to match. */
   onPinnedChange?: (pinned: boolean) => void;
+  /** The impersonation banner is `position: fixed; top: 0; z-[9999]` — above
+   * this rail's own z-40, so without pushing the rail down to clear it, the
+   * banner silently eats clicks on anything in the sidebar's top strip (the
+   * pin toggle included), even though it visually looks clickable underneath. */
+  offsetForBanner?: boolean;
 }
 
 export default function PatientSidebar({
@@ -45,6 +50,7 @@ export default function PatientSidebar({
   notificationItems = [],
   consentRequired = false,
   onPinnedChange,
+  offsetForBanner = false,
 }: PatientSidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -327,7 +333,7 @@ export default function PatientSidebar({
         onBlur={handleBlur}
         style={{
           position: "fixed",
-          top: 0,
+          top: offsetForBanner ? 40 : 0,
           left: 0,
           bottom: 0,
           zIndex: 40,
