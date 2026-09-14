@@ -514,6 +514,20 @@ export default function IntakePage() {
                 </span>
               </label>
 
+              {/* The Complete button below is disabled until this is checked —
+                  on a small screen, easy to miss that the checkbox above (inside
+                  a scrollable terms box) is the reason nothing happens when
+                  tapped. Spell it out instead of leaving a silently-disabled
+                  button as the only signal. */}
+              {!acceptConsent && (
+                <p className="text-xs text-amber-600 flex items-center gap-1.5 -mt-2">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {isPt
+                    ? "Marque a caixa acima para poder concluir o cadastro."
+                    : "Check the box above to complete your registration."}
+                </p>
+              )}
+
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep(2)}
