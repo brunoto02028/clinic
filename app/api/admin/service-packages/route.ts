@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { stripe } from '@/lib/stripe';
+import { getCardFeePercent, applyCardFee } from '@/lib/card-fee';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Name, price, and at least one included service are required' }, { status: 400 });
   }
 
-  const finalPrice = parseFloat(price);
+  // Baked into the stored/displayed price itself — see lib/card-fee.ts for why
+  // this can't be a separate checkout line item.
+  const feePercent = await getCardFeePercent();
+  const finalPrice = applyCardFee(parseFloat(price), feePercent);
   const finalCurrency = currency || 'GBP';
 
   const data: any = {

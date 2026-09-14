@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicContext, getClinicContextFromSession, getDefaultClinic } from "@/lib/clinic-context";
 import { stripe } from "@/lib/stripe";
+import { getCardFeePercent, applyCardFee } from "@/lib/card-fee";
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json();
-    const { name, status, totalPrice, isFree, isCombo, totalSessions, completedSessions, notes, endDate, patientId, patientScope, planType, subscriptionInterval, items } = body;
+    const { name, status, totalPrice: rawTotalPrice, isFree, isCombo, totalSessions, completedSessions, notes, endDate, patientId, patientScope, planType, subscriptionInterval, items } = body;
+
+    // Same reasoning as the other price-setting routes: bake the fee into the
+    // stored/displayed price itself, never as a separate checkout line.
+    const willBeFree = isFree !== undefined
+      ? isFree
+      : (await (prisma as any).treatmentPlan.findUnique({ where: { id: params.id }, select: { isFree: true } }))?.isFree;
+    const totalPrice = rawTotalPrice !== undefined
+      ? (willBeFree ? 0 : applyCardFee(rawTotalPrice, await getCardFeePercent()))
+      : undefined;
 
     // If restoring a CANCELLED plan, reactivate Stripe product/price
     let stripeRestored = false;

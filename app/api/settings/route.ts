@@ -268,6 +268,8 @@ export async function PUT(request: NextRequest) {
       businessCurrency: body.businessCurrency || null,
 
       marketingFlyerDefaultsJson: body.marketingFlyerDefaultsJson !== undefined ? (body.marketingFlyerDefaultsJson || null) : undefined,
+
+      cardFeePercent: body.cardFeePercent !== undefined ? (parseFloat(body.cardFeePercent) || 0) : undefined,
     };
     
     if (settings) {

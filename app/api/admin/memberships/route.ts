@@ -4,6 +4,7 @@ import { getClinicContext, getClinicContextFromSession, getDefaultClinic } from 
 import { stripe } from "@/lib/stripe";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
+import { getCardFeePercent, applyCardFee } from "@/lib/card-fee";
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Please select a patient" }, { status: 400 });
     }
 
-    const finalPrice = isFree ? 0 : (price || 0);
+    const finalPrice = isFree ? 0 : applyCardFee(price || 0, await getCardFeePercent());
     const resolvedPatientId = patientScope === "specific" && patientId ? patientId : null;
 
     // Create Stripe recurring product + price

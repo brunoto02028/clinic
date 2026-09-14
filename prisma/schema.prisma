@@ -1478,6 +1478,14 @@ model SiteSettings {
   // Marketing defaults (Flyer Creator)
   marketingFlyerDefaultsJson String? @db.Text
 
+  // Card processing fee pass-through — baked into every admin-entered price
+  // (service prices, packages, membership plans, marketplace products,
+  // treatment plans) at save time via lib/card-fee.ts, never shown as a
+  // separate checkout line item: UK's Payment Services Regulations 2017
+  // ban surcharging consumers for card payments, so the displayed price
+  // and the Stripe charge must always be the same number.
+  cardFeePercent Float @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

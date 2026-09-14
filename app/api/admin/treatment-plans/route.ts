@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicContext, getClinicContextFromSession, getDefaultClinic } from "@/lib/clinic-context";
 import { stripe } from "@/lib/stripe";
+import { getCardFeePercent, applyCardFee } from "@/lib/card-fee";
 
 export const dynamic = 'force-dynamic';
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Please select a patient" }, { status: 400 });
     }
 
-    const finalPrice = isFree ? 0 : (totalPrice || 0);
+    const finalPrice = isFree ? 0 : applyCardFee(totalPrice || 0, await getCardFeePercent());
     const resolvedPatientId = (patientScope === "specific" && patientId) ? patientId : null;
 
     // Create Stripe product + price (only if not free and Stripe key exists)

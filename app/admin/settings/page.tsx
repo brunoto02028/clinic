@@ -240,6 +240,7 @@ export default function AdminSettingsPage() {
     whatsappMessage: "",
     startIntroVideoUrl: "",
     startTestimonialsJson: "",
+    cardFeePercent: 0,
 
     // Footer (Block 9)
     footerText: "",
@@ -403,6 +404,7 @@ export default function AdminSettingsPage() {
           whatsappMessage: data.whatsappMessage || "",
           startIntroVideoUrl: data.startIntroVideoUrl || "",
           startTestimonialsJson: data.startTestimonialsJson || "",
+          cardFeePercent: data.cardFeePercent ?? 0,
           footerText: data.footerText || "",
           footerLinksJson: data.footerLinksJson || "",
           socialLinksJson: data.socialLinksJson || "",
@@ -2112,6 +2114,23 @@ export default function AdminSettingsPage() {
                     WhatsApp button is <strong>active</strong> — visible in the site header and contact section
                   </div>
                 )}
+              </div>
+
+              <div className="p-4 bg-muted/30 rounded-lg border space-y-2">
+                <Label htmlFor="cardFeePercent" className="font-semibold">Card Processing Fee (%)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Baked into every price you set below (service packages, membership plans, treatment plans) so you receive the full amount after Stripe's cut. Never shown to patients as a separate line — UK law bans surcharging for card payments, so the price they see already includes it. Leave at 0 to charge exactly what you type.
+                </p>
+                <Input
+                  id="cardFeePercent"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="20"
+                  value={settings.cardFeePercent}
+                  onChange={(e) => setSettings({ ...settings, cardFeePercent: parseFloat(e.target.value) || 0 })}
+                  className="max-w-[140px]"
+                />
               </div>
 
               <div className="space-y-3 pt-4">
