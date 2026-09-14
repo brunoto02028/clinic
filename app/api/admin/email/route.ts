@@ -47,12 +47,13 @@ export async function GET(req: NextRequest) {
     ]);
 
     // Folder counts
-    const [inboxCount, sentCount, draftCount, spamCount, trashCount] = await Promise.all([
+    const [inboxCount, sentCount, draftCount, spamCount, trashCount, pendingApprovalCount] = await Promise.all([
       (prisma as any).emailMessage.count({ where: { folder: 'INBOX', isSpam: false } }),
       (prisma as any).emailMessage.count({ where: { folder: 'SENT' } }),
       (prisma as any).emailMessage.count({ where: { folder: 'DRAFT' } }),
       (prisma as any).emailMessage.count({ where: { isSpam: true } }),
       (prisma as any).emailMessage.count({ where: { folder: 'TRASH' } }),
+      (prisma as any).emailMessage.count({ where: { folder: 'PENDING_APPROVAL' } }),
     ]);
 
     return NextResponse.json({
@@ -61,7 +62,7 @@ export async function GET(req: NextRequest) {
       page,
       pages: Math.ceil(total / limit),
       unreadCount,
-      folderCounts: { INBOX: inboxCount, SENT: sentCount, DRAFT: draftCount, SPAM: spamCount, TRASH: trashCount },
+      folderCounts: { INBOX: inboxCount, SENT: sentCount, DRAFT: draftCount, SPAM: spamCount, TRASH: trashCount, PENDING_APPROVAL: pendingApprovalCount },
     });
   } catch (err: any) {
     console.error('[email] GET error:', err);
@@ -198,7 +199,74 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ error: 'Invalid action. Use: send, sync, permanentDelete' }, { status: 400 });
+    // ─── Approve & Send a pending financial email (activity 39) ───
+    // The content/attachments were frozen when the pending item was created,
+    // so this sends exactly what the admin previewed — not whatever the
+    // underlying appointment/price looks like now.
+    if (action === 'approveSend') {
+      const { id } = body;
+      if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+      const pending = await (prisma as any).emailMessage.findUnique({ where: { id } });
+      if (!pending || pending.folder !== 'PENDING_APPROVAL') {
+        return NextResponse.json({ error: 'No pending item with this id' }, { status: 404 });
+      }
+
+      // Claim it atomically before sending — a conditional update (only
+      // succeeds if folder is still PENDING_APPROVAL) closes the race where
+      // two near-simultaneous approveSend calls both pass the check above
+      // and both send. Only the request that actually flips the folder
+      // proceeds; the loser gets 409 without ever calling sendEmail.
+      const claim = await (prisma as any).emailMessage.updateMany({
+        where: { id, folder: 'PENDING_APPROVAL' },
+        data: { folder: 'SENT', sentAt: new Date() },
+      });
+      if (claim.count === 0) {
+        return NextResponse.json({ error: 'Already sent or discarded' }, { status: 409 });
+      }
+
+      let attachments: { filename: string; content: Buffer }[] | undefined;
+      if (pending.attachmentsJson) {
+        const parsed = JSON.parse(pending.attachmentsJson) as { filename: string; contentBase64: string }[];
+        attachments = parsed.map((a) => ({ filename: a.filename, content: Buffer.from(a.contentBase64, 'base64') }));
+      }
+
+      const sendResult = await sendEmail({
+        to: pending.toAddress,
+        subject: pending.subject,
+        html: pending.htmlBody || '',
+        from: pending.fromName ? `${pending.fromName} <${pending.fromAddress}>` : pending.fromAddress,
+        attachments,
+      });
+
+      if (!sendResult.success) {
+        // Revert the claim so the admin can see it's still pending and retry.
+        await (prisma as any).emailMessage.update({ where: { id }, data: { folder: 'PENDING_APPROVAL', sentAt: null } });
+        return NextResponse.json({ error: `Failed to send: ${sendResult.error}` }, { status: 502 });
+      }
+
+      const sent = await (prisma as any).emailMessage.update({
+        where: { id },
+        data: { messageId: (sendResult.data as any)?.id || null },
+      });
+      return NextResponse.json({ success: true, message: sent });
+    }
+
+    // ─── Discard a pending financial email without sending it ───
+    if (action === 'discard') {
+      const { id } = body;
+      if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+      const pending = await (prisma as any).emailMessage.findUnique({ where: { id } });
+      if (!pending || pending.folder !== 'PENDING_APPROVAL') {
+        return NextResponse.json({ error: 'No pending item with this id' }, { status: 404 });
+      }
+
+      await (prisma as any).emailMessage.update({ where: { id }, data: { folder: 'TRASH' } });
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: 'Invalid action. Use: send, sync, permanentDelete, approveSend, discard' }, { status: 400 });
   } catch (err: any) {
     console.error('[email] POST error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

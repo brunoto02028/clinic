@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { sendEmail } from "@/lib/email";
 import { getAppName, getSenderEmail } from "@/lib/utils";
 import { buildInvoiceHtml, InvoiceData } from "@/lib/invoice-html";
 
@@ -87,7 +86,9 @@ export async function GET(
   });
 }
 
-// POST — email the invoice to the patient. Body: { amount?: number }
+// POST — queue the invoice for admin approval (activity 39: financial emails
+// never send automatically — see specs/39-fila-aprovacao-email-financeiro).
+// Body: { amount?: number }
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -120,46 +121,31 @@ export async function POST(
   `;
 
   const subject = `Invoice ${result.invoice.invoiceNumber} — ${result.invoice.business.tradingName}`;
-  const sendResult = await sendEmail({
-    to: result.patientEmail,
-    subject,
-    html: emailBody,
-    from: `${result.invoice.business.tradingName} <${getSenderEmail()}>`,
-    attachments: [
-      {
-        filename: `Invoice-${result.invoice.invoiceNumber}.html`,
-        content: Buffer.from(html, "utf-8"),
-      },
-    ],
+  const attachmentsJson = JSON.stringify([
+    {
+      filename: `Invoice-${result.invoice.invoiceNumber}.html`,
+      contentBase64: Buffer.from(html, "utf-8").toString("base64"),
+    },
+  ]);
+
+  const appointment = await prisma.appointment.findUnique({ where: { id: params.id }, select: { patientId: true, clinicId: true } });
+
+  const pending = await (prisma as any).emailMessage.create({
+    data: {
+      direction: "OUTBOUND",
+      folder: "PENDING_APPROVAL",
+      fromAddress: getSenderEmail(),
+      fromName: result.invoice.business.tradingName,
+      toAddress: result.patientEmail,
+      subject,
+      htmlBody: emailBody,
+      attachmentsJson,
+      templateSlug: "INVOICE",
+      isRead: true,
+      patientId: appointment?.patientId || null,
+      clinicId: appointment?.clinicId || null,
+    },
   });
 
-  if (!sendResult.success) {
-    return NextResponse.json({ error: `Failed to send invoice email: ${sendResult.error}` }, { status: 502 });
-  }
-
-  // Logged the same way as every other patient email (app/api/admin/email
-  // route.ts) so "did this actually go out" can be checked later instead of
-  // just trusting this route's own success response.
-  try {
-    const appointment = await prisma.appointment.findUnique({ where: { id: params.id }, select: { patientId: true } });
-    await (prisma as any).emailMessage.create({
-      data: {
-        direction: "OUTBOUND",
-        folder: "SENT",
-        fromAddress: getSenderEmail(),
-        fromName: result.invoice.business.tradingName,
-        toAddress: result.patientEmail,
-        subject,
-        htmlBody: emailBody,
-        isRead: true,
-        patientId: appointment?.patientId || null,
-        sentAt: new Date(),
-        messageId: (sendResult.data as any)?.id || null,
-      },
-    });
-  } catch (logErr) {
-    console.error("[invoice] Failed to log sent email:", logErr);
-  }
-
-  return NextResponse.json({ success: true, invoiceNumber: result.invoice.invoiceNumber, resendId: (sendResult.data as any)?.id || null });
+  return NextResponse.json({ success: true, pendingId: pending.id, invoiceNumber: result.invoice.invoiceNumber });
 }

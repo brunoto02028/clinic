@@ -4145,6 +4145,7 @@ enum EmailFolder {
   DRAFT
   SPAM
   TRASH
+  PENDING_APPROVAL
 }
 
 model EmailTemplate {
@@ -4178,6 +4179,7 @@ model EmailMessage {
   isSpam       Boolean        @default(false)
   spamScore    Float?
   templateSlug String? // Which template was used (for outbound)
+  attachmentsJson String? @db.Text // Frozen [{filename, contentBase64}] — set for PENDING_APPROVAL items so "Approve & Send" sends exactly what was previewed
   patientId    String?
   patient      User?          @relation("PatientEmails", fields: [patientId], references: [id], onDelete: SetNull)
   clinicId     String?

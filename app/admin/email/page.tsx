@@ -8,6 +8,7 @@ import {
   X, Eye, Reply, PenSquare, MailOpen, MailCheck, ShieldAlert,
   ShieldCheck, ChevronLeft, ChevronRight, User, Settings,
   CheckCheck, MailX, Eraser, Image as ImageIcon, Phone, AtSign,
+  Clock3, Ban, Paperclip,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -37,6 +38,7 @@ interface EmailMsg {
   isStarred: boolean;
   isSpam: boolean;
   templateSlug: string | null;
+  attachmentsJson: string | null;
   patientId: string | null;
   patient: { id: string; firstName: string; lastName: string; email: string } | null;
   sentAt: string | null;
@@ -50,6 +52,7 @@ interface FolderCounts {
   DRAFT: number;
   SPAM: number;
   TRASH: number;
+  PENDING_APPROVAL: number;
 }
 
 interface EmailSignature {
@@ -66,6 +69,7 @@ interface EmailSignature {
 
 const FOLDERS = [
   { key: "INBOX", label: "Inbox", icon: Inbox },
+  { key: "PENDING_APPROVAL", label: "Pending Approval", icon: Clock3 },
   { key: "SENT", label: "Sent", icon: Send },
   { key: "DRAFT", label: "Drafts", icon: FileText },
   { key: "SPAM", label: "Spam", icon: AlertOctagon },
@@ -115,7 +119,7 @@ export default function EmailPage() {
   const T = (key: string) => relabel(i18nT(key, locale));
   const [folder, setFolder] = useState("INBOX");
   const [messages, setMessages] = useState<EmailMsg[]>([]);
-  const [folderCounts, setFolderCounts] = useState<FolderCounts>({ INBOX: 0, SENT: 0, DRAFT: 0, SPAM: 0, TRASH: 0 });
+  const [folderCounts, setFolderCounts] = useState<FolderCounts>({ INBOX: 0, SENT: 0, DRAFT: 0, SPAM: 0, TRASH: 0, PENDING_APPROVAL: 0 });
   const [unreadCount, setUnreadCount] = useState(0);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -334,6 +338,46 @@ export default function EmailPage() {
     fetchMessages();
   };
 
+  const [approving, setApproving] = useState(false);
+
+  const approveSend = async (id: string) => {
+    if (!window.confirm("This will actually send the email to the patient. Are you sure?")) return;
+    setApproving(true);
+    try {
+      const res = await fetch("/api/admin/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approveSend", id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccess("Email approved and sent");
+        setSelectedMsg(null);
+        fetchMessages();
+      } else {
+        setError(data.error || "Failed to send");
+      }
+    } catch {
+      setError("Failed to send");
+    } finally {
+      setApproving(false);
+      setTimeout(() => { setSuccess(""); setError(""); }, 3000);
+    }
+  };
+
+  const discardPending = async (id: string) => {
+    if (!window.confirm("Discard this pending email without sending it?")) return;
+    await fetch("/api/admin/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "discard", id }),
+    });
+    setSuccess("Discarded — nothing was sent");
+    setSelectedMsg(null);
+    setTimeout(() => setSuccess(""), 2000);
+    fetchMessages();
+  };
+
   const bulkDelete = async () => {
     if (!selectedIds.size) return;
     const ids = Array.from(selectedIds);
@@ -371,7 +415,7 @@ export default function EmailPage() {
       setTotal(data.total || 0);
       setPages(data.pages || 1);
       setUnreadCount(data.unreadCount || 0);
-      setFolderCounts(data.folderCounts || { INBOX: 0, SENT: 0, DRAFT: 0, SPAM: 0 });
+      setFolderCounts(data.folderCounts || { INBOX: 0, SENT: 0, DRAFT: 0, SPAM: 0, TRASH: 0, PENDING_APPROVAL: 0 });
     } catch {
       setError("Failed to load emails");
     } finally {
@@ -914,9 +958,9 @@ export default function EmailPage() {
           {selectedMsg && !showCompose && (
             <Card className="mb-4">
               <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-base">{selectedMsg.subject}</CardTitle>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <CardTitle className="text-base break-words">{selectedMsg.subject}</CardTitle>
                     <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                       {selectedMsg.direction === "INBOUND" ? (
                         <span>From: <strong className="text-foreground">{selectedMsg.fromName || selectedMsg.fromAddress}</strong></span>
@@ -948,22 +992,36 @@ export default function EmailPage() {
                     </div>
                   </div>
                   <div className="flex gap-1 flex-wrap">
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => startReply(selectedMsg)}>
-                      <Reply className="h-3.5 w-3.5" /> Reply
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => { markUnread(selectedMsg); setSelectedMsg(null); }} title="Mark as Unread">
-                      <MailX className="h-3.5 w-3.5" /> Unread
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8" onClick={() => toggleSpam(selectedMsg)} title={selectedMsg.isSpam ? "Not Spam" : "Mark as Spam"}>
-                      {selectedMsg.isSpam ? <ShieldCheck className="h-3.5 w-3.5 text-green-600" /> : <ShieldAlert className="h-3.5 w-3.5 text-orange-500" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 text-destructive" onClick={() => deleteMsg(selectedMsg)} title="Move to Trash">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                    {selectedMsg.folder === "TRASH" && (
-                      <Button variant="ghost" size="sm" className="h-8 text-destructive gap-1" onClick={() => permanentDelete(selectedMsg.id)} title="Delete Permanently">
-                        <Eraser className="h-3.5 w-3.5" /> Permanent
-                      </Button>
+                    {selectedMsg.folder === "PENDING_APPROVAL" ? (
+                      <>
+                        <Button size="sm" className="h-8 gap-1 bg-ba1-ok hover:bg-ba1-ok/90" disabled={approving} onClick={() => approveSend(selectedMsg.id)}>
+                          {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                          Approve &amp; Send
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 gap-1 text-ba1-bad" onClick={() => discardPending(selectedMsg.id)}>
+                          <Ban className="h-3.5 w-3.5" /> Discard
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => startReply(selectedMsg)}>
+                          <Reply className="h-3.5 w-3.5" /> Reply
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => { markUnread(selectedMsg); setSelectedMsg(null); }} title="Mark as Unread">
+                          <MailX className="h-3.5 w-3.5" /> Unread
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8" onClick={() => toggleSpam(selectedMsg)} title={selectedMsg.isSpam ? "Not Spam" : "Mark as Spam"}>
+                          {selectedMsg.isSpam ? <ShieldCheck className="h-3.5 w-3.5 text-green-600" /> : <ShieldAlert className="h-3.5 w-3.5 text-orange-500" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-destructive" onClick={() => deleteMsg(selectedMsg)} title="Move to Trash">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        {selectedMsg.folder === "TRASH" && (
+                          <Button variant="ghost" size="sm" className="h-8 text-destructive gap-1" onClick={() => permanentDelete(selectedMsg.id)} title="Delete Permanently">
+                            <Eraser className="h-3.5 w-3.5" /> Permanent
+                          </Button>
+                        )}
+                      </>
                     )}
                     <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedMsg(null)}>
                       <X className="h-3.5 w-3.5" />
@@ -972,6 +1030,12 @@ export default function EmailPage() {
                 </div>
               </CardHeader>
               <CardContent>
+                {selectedMsg.folder === "PENDING_APPROVAL" && (
+                  <div className="mb-3 flex items-center gap-2 text-xs text-ba1-warn bg-ba1-warn/10 border border-ba1-warn/30 rounded-lg px-3 py-2">
+                    <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                    Waiting for approval — nothing has been sent to the patient yet.
+                  </div>
+                )}
                 {selectedMsg.htmlBody ? (
                   <iframe
                     srcDoc={selectedMsg.htmlBody}
@@ -984,6 +1048,27 @@ export default function EmailPage() {
                     {selectedMsg.textBody || "(No content)"}
                   </div>
                 )}
+                {selectedMsg.attachmentsJson && (() => {
+                  let atts: { filename: string; contentBase64: string }[] = [];
+                  try { atts = JSON.parse(selectedMsg.attachmentsJson); } catch {}
+                  return atts.map((a, i) => {
+                    const bytes = Uint8Array.from(atob(a.contentBase64), (c) => c.charCodeAt(0));
+                    const html = new TextDecoder("utf-8").decode(bytes);
+                    return (
+                      <div key={i} className="mt-4">
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+                          <Paperclip className="h-3 w-3" /> {a.filename}
+                        </div>
+                        <iframe
+                          srcDoc={html}
+                          className="w-full min-h-[500px] border rounded-lg bg-white"
+                          title={a.filename}
+                          sandbox="allow-same-origin"
+                        />
+                      </div>
+                    );
+                  });
+                })()}
               </CardContent>
             </Card>
           )}
