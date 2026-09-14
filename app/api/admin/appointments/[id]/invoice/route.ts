@@ -119,9 +119,10 @@ export async function POST(
     </div>
   `;
 
-  await sendEmail({
+  const subject = `Invoice ${result.invoice.invoiceNumber} — ${result.invoice.business.tradingName}`;
+  const sendResult = await sendEmail({
     to: result.patientEmail,
-    subject: `Invoice ${result.invoice.invoiceNumber} — ${result.invoice.business.tradingName}`,
+    subject,
     html: emailBody,
     from: `${result.invoice.business.tradingName} <${getSenderEmail()}>`,
     attachments: [
@@ -132,5 +133,33 @@ export async function POST(
     ],
   });
 
-  return NextResponse.json({ success: true, invoiceNumber: result.invoice.invoiceNumber });
+  if (!sendResult.success) {
+    return NextResponse.json({ error: `Failed to send invoice email: ${sendResult.error}` }, { status: 502 });
+  }
+
+  // Logged the same way as every other patient email (app/api/admin/email
+  // route.ts) so "did this actually go out" can be checked later instead of
+  // just trusting this route's own success response.
+  try {
+    const appointment = await prisma.appointment.findUnique({ where: { id: params.id }, select: { patientId: true } });
+    await (prisma as any).emailMessage.create({
+      data: {
+        direction: "OUTBOUND",
+        folder: "SENT",
+        fromAddress: getSenderEmail(),
+        fromName: result.invoice.business.tradingName,
+        toAddress: result.patientEmail,
+        subject,
+        htmlBody: emailBody,
+        isRead: true,
+        patientId: appointment?.patientId || null,
+        sentAt: new Date(),
+        messageId: (sendResult.data as any)?.id || null,
+      },
+    });
+  } catch (logErr) {
+    console.error("[invoice] Failed to log sent email:", logErr);
+  }
+
+  return NextResponse.json({ success: true, invoiceNumber: result.invoice.invoiceNumber, resendId: (sendResult.data as any)?.id || null });
 }

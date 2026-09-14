@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
             isRead: true,
             patientId: patientId || null,
             sentAt: new Date(),
-            messageId: (result.data as any)?.messageId || null,
+            messageId: (result.data as any)?.id || null,
           },
         });
         return NextResponse.json({ success: true, message: `Email sent to ${to}` });
