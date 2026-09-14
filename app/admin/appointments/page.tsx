@@ -52,6 +52,7 @@ import {
   ChevronRight,
   BanIcon,
   X,
+  Receipt,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -297,6 +298,32 @@ export default function AdminAppointmentsPage() {
       toast({ title: "Error", description: "Failed to create appointment", variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const [invoiceSendingId, setInvoiceSendingId] = useState<string | null>(null);
+
+  const sendInvoice = async (appointment: any) => {
+    setInvoiceSendingId(appointment.id);
+    try {
+      const res = await fetch(`/api/admin/appointments/${appointment.id}/invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({
+          title: "Invoice sent",
+          description: `Invoice ${data.invoiceNumber} emailed to ${appointment.patient.firstName} ${appointment.patient.lastName}.`,
+        });
+      } else {
+        toast({ title: "Error", description: data.error || "Failed to send invoice", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to send invoice", variant: "destructive" });
+    } finally {
+      setInvoiceSendingId(null);
     }
   };
 
@@ -725,6 +752,20 @@ export default function AdminAppointmentsPage() {
                           <span className="hidden sm:inline">Complete</span>
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs px-2"
+                        disabled={invoiceSendingId === appointment.id}
+                        onClick={() => sendInvoice(appointment)}
+                      >
+                        {invoiceSendingId === appointment.id ? (
+                          <Loader2 className="h-3.5 w-3.5 sm:mr-1 animate-spin" />
+                        ) : (
+                          <Receipt className="h-3.5 w-3.5 sm:mr-1" />
+                        )}
+                        <span className="hidden sm:inline">Send Invoice</span>
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
