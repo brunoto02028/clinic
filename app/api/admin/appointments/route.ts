@@ -234,7 +234,10 @@ export async function POST(request: NextRequest) {
         const apptDate = new Date(dateTime);
         const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const timeStr = apptDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        const payInfo = paymentMode === "online" && checkoutUrl ? `Online payment link: ${checkoutUrl}` : `In-person payment: £${(price || 0).toFixed(2)}`;
+        // Price is deliberately left out of this alert — it's only the
+        // default/placeholder value at booking time and isn't reviewed
+        // before this fires. The real value belongs on the invoice, sent
+        // separately after review.
         await sendEmail({
           to: adminUser.email,
           subject: `📅 Appointment Created: ${appointment.patient.firstName} ${appointment.patient.lastName} — ${treatmentType || 'Consultation'}`,
@@ -246,8 +249,6 @@ export async function POST(request: NextRequest) {
                 <tr><td style="padding:8px;border:1px solid #333;color:#999;">Treatment</td><td style="padding:8px;border:1px solid #333;">${treatmentType || 'General Consultation'}</td></tr>
                 <tr><td style="padding:8px;border:1px solid #333;color:#999;">Date</td><td style="padding:8px;border:1px solid #333;">${dateStr} at ${timeStr}</td></tr>
                 <tr><td style="padding:8px;border:1px solid #333;color:#999;">Duration</td><td style="padding:8px;border:1px solid #333;">${duration || 60} min</td></tr>
-                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Price</td><td style="padding:8px;border:1px solid #333;">£${(price || 0).toFixed(2)}</td></tr>
-                <tr><td style="padding:8px;border:1px solid #333;color:#999;">Payment</td><td style="padding:8px;border:1px solid #333;">${payInfo}</td></tr>
               </table>
               <p style="color:#666;font-size:12px;">This is an automatic notification from BPR Clinic System.</p>
             </div>
