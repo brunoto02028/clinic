@@ -55,24 +55,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "serviceType, name, and price are required" }, { status: 400 });
     }
 
-    const result = await (prisma as any).servicePrice.upsert({
-      where: { clinicId_serviceType: { clinicId: null, serviceType } },
-      create: {
-        serviceType,
-        name,
-        description: description || null,
-        price: parseFloat(price),
-        currency: currency || "GBP",
-        isActive: isActive !== false,
-      },
-      update: {
-        name,
-        description: description || null,
-        price: parseFloat(price),
-        currency: currency || "GBP",
-        isActive: isActive !== false,
-      },
+    // Prisma refuses a literal `null` inside a compound-unique `where`
+    // (clinicId_serviceType) even though clinicId itself is nullable — these
+    // are the platform's default, clinic-less prices, so a manual
+    // find-then-create/update replaces the upsert that TypeScript's own
+    // generated types already knew was invalid (which is why this was cast
+    // to `any` in the first place).
+    const existing = await (prisma as any).servicePrice.findFirst({
+      where: { clinicId: null, serviceType },
     });
+
+    const data = {
+      serviceType,
+      name,
+      description: description || null,
+      price: parseFloat(price),
+      currency: currency || "GBP",
+      isActive: isActive !== false,
+    };
+
+    const result = existing
+      ? await (prisma as any).servicePrice.update({ where: { id: existing.id }, data })
+      : await (prisma as any).servicePrice.create({ data });
 
     return NextResponse.json(result);
   } catch (error: any) {
