@@ -51,16 +51,18 @@ export function getEmailContent(slug: string, locale: string): EmailContent | nu
       body: pt
         ? H('Consulta Confirmada ✅') +
           P(`${hi} {{patientName}}, a sua consulta foi marcada com sucesso. Estamos ansiosos por vê-lo(a)!`) +
-          C('#EDF3EF','#CFE0D6', R('📅 Data','{{appointmentDate}}')+R('🕐 Hora','{{appointmentTime}}')+R('👨‍⚕️ Terapeuta','{{therapistName}}')+R('💆 Tratamento','{{treatmentType}}')+R('⏱ Duração','{{duration}} min')) +
+          C('#EDF3EF','#CFE0D6', R('📅 Data','{{appointmentDate}}')+R('🕐 Hora','{{appointmentTime}}')+R('📍 Local','{{location}}')+R('👨‍⚕️ Terapeuta','{{therapistName}}')+R('💆 Tratamento','{{treatmentType}}')+R('⏱ Duração','{{duration}} min')) +
+          '{{notesBlockPt}}' +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Lembre-se de:</p>' +
-          '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">• Usar roupa confortável<br>• Chegar 5 minutos antes<br>• Trazer documentos médicos relevantes</p>' +
+          '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">• Usar roupa confortável<br>• Trazer documentos médicos relevantes</p>' +
           B('{{portalUrl}}','Ver no Portal →') +
           P('Precisa de remarcar? Aceda ao portal ou contacte-nos.','12px','#9ca3af')
         : H('Appointment Confirmed ✅') +
           P(`${hi} {{patientName}}, your appointment has been successfully booked. We look forward to seeing you!`) +
-          C('#EDF3EF','#CFE0D6', R('📅 Date','{{appointmentDate}}')+R('🕐 Time','{{appointmentTime}}')+R('👨‍⚕️ Therapist','{{therapistName}}')+R('💆 Treatment','{{treatmentType}}')+R('⏱ Duration','{{duration}} min')) +
+          C('#EDF3EF','#CFE0D6', R('📅 Date','{{appointmentDate}}')+R('🕐 Time','{{appointmentTime}}')+R('📍 Location','{{location}}')+R('👨‍⚕️ Therapist','{{therapistName}}')+R('💆 Treatment','{{treatmentType}}')+R('⏱ Duration','{{duration}} min')) +
+          '{{notesBlock}}' +
           '<p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 6px;">Please remember to:</p>' +
-          '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">• Wear comfortable clothing<br>• Arrive 5 minutes early<br>• Bring any relevant medical documents</p>' +
+          '<p style="color:#6b7280;font-size:14px;line-height:1.9;margin:0 0 20px;">• Wear comfortable clothing<br>• Bring any relevant medical documents</p>' +
           B('{{portalUrl}}','View in Portal →') +
           P('Need to reschedule? Log in to your portal or contact us.','12px','#9ca3af'),
     },

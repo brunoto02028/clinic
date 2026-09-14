@@ -10,6 +10,7 @@ import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 import { getRequestSession } from "@/lib/dual-auth";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
+import { escapeHtml } from "@/lib/admin-notify-email";
 
 export async function GET(
   request: NextRequest,
@@ -151,6 +152,35 @@ async function handleUpdate(
       const plainMsgPt = isCancellation
         ? `Sua consulta em ${dateStr} às ${timeStr} foi cancelada.`
         : `Sua consulta foi atualizada: ${appointment.treatmentType} em ${dateStr} às ${timeStr}.`;
+
+      // Location: the confirmation email used to have no way to say "the
+      // therapist is coming to you" — a home-visit note (see the appointment
+      // Notes field) got no reflection in what the patient actually reads,
+      // and "arrive 5 minutes early" was flatly wrong for that case. Detected
+      // from the notes text rather than a new field, since there's nowhere
+      // else this is recorded today.
+      const isHomeVisit = /domicil|home[\s-]?visit|casa da paciente|patient'?s home/i.test(appointment.notes || '');
+      let location = '';
+      if (isHomeVisit) {
+        location = 'Home visit / Visita domiciliar';
+      } else {
+        const clinic = await prisma.clinic.findUnique({
+          where: { id: (appointment as any).clinicId },
+          select: { name: true, address: true, city: true },
+        });
+        const addr = [clinic?.address, clinic?.city].filter(Boolean).join(', ');
+        location = clinic?.name ? `${clinic.name}${addr ? ' — ' + addr : ''}` : 'BPR Physical Rehabilitation';
+      }
+
+      // Surfaces any admin-written note (e.g. the home-visit detail above)
+      // directly in the email instead of leaving it invisible to the patient.
+      const notesBlockHtml = appointment.notes
+        ? `<p style="color:#374151;font-size:13px;line-height:1.6;margin:0 0 16px;background:#F5F4F1;border-radius:8px;padding:10px 14px;"><strong>Note:</strong> ${escapeHtml(appointment.notes)}</p>`
+        : '';
+      const notesBlockHtmlPt = appointment.notes
+        ? `<p style="color:#374151;font-size:13px;line-height:1.6;margin:0 0 16px;background:#F5F4F1;border-radius:8px;padding:10px 14px;"><strong>Nota:</strong> ${escapeHtml(appointment.notes)}</p>`
+        : '';
+
       await notifyPatient({
         patientId: appointment.patient.id,
         emailTemplateSlug: slug,
@@ -158,6 +188,9 @@ async function handleUpdate(
           patientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
           appointmentDate: dateStr,
           appointmentTime: timeStr,
+          location,
+          notesBlock: notesBlockHtml,
+          notesBlockPt: notesBlockHtmlPt,
           therapistName: `${appointment.therapist.firstName} ${appointment.therapist.lastName}`,
           treatmentType: appointment.treatmentType || '',
           duration: String(appointment.duration || 60),
