@@ -23,7 +23,10 @@ export async function getInvoiceBusinessInfo(clinicId: string): Promise<InvoiceB
       where: { id: clinicId },
       select: { name: true, address: true, city: true, postcode: true, phone: true, email: true },
     }),
-    (prisma as any).siteSettings.findUnique({ where: { clinicId } }),
+    // SiteSettings has no real per-clinic scoping in this app today — every
+    // other reader (app/api/settings, lib/email-templates.ts) treats it as
+    // a single global row via findFirst(), not a findUnique by clinicId.
+    (prisma as any).siteSettings.findFirst(),
   ]);
 
   const screenLogos = (siteSettings as any)?.screenLogos as { emailHeader?: { logoUrl?: string } } | null | undefined;
