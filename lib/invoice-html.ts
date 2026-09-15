@@ -111,10 +111,16 @@ export function buildInvoiceHtml(data: InvoiceData): string {
   table.bank-table td:first-child { color: #777; width: 130px; }
   .notes { margin-top: 24px; font-size: 13px; color: #555; }
   .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #E4E1D8; text-align: center; color: #888; font-size: 11px; }
-  @media print { body { padding: 20px; } }
+  .download-bar { text-align: right; margin-bottom: 16px; }
+  .download-bar button { background: #4F7361; color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .download-bar button:hover { background: #435F52; }
+  @media print { body { padding: 20px; } .no-print { display: none !important; } }
 </style>
 </head>
 <body>
+  <div class="download-bar no-print">
+    <button onclick="window.print()">Download PDF</button>
+  </div>
   <div class="header">
     <div>
       <h1>${data.business.tradingName || data.business.name}</h1>

@@ -302,26 +302,52 @@ export default function AdminAppointmentsPage() {
   };
 
   const [invoiceSendingId, setInvoiceSendingId] = useState<string | null>(null);
+  const [invoiceDialogAppointment, setInvoiceDialogAppointment] = useState<any>(null);
+  const [invoiceExtraItems, setInvoiceExtraItems] = useState<{ description: string; unitPrice: string }[]>([]);
 
-  const sendInvoice = async (appointment: any) => {
+  const openInvoiceDialog = (appointment: any) => {
+    setInvoiceDialogAppointment(appointment);
+    setInvoiceExtraItems([]);
+  };
+
+  const addInvoiceExtraItem = () => {
+    setInvoiceExtraItems((prev) => [...prev, { description: "", unitPrice: "" }]);
+  };
+
+  const updateInvoiceExtraItem = (index: number, field: "description" | "unitPrice", value: string) => {
+    setInvoiceExtraItems((prev) => prev.map((it, i) => (i === index ? { ...it, [field]: value } : it)));
+  };
+
+  const removeInvoiceExtraItem = (index: number) => {
+    setInvoiceExtraItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const sendInvoice = async () => {
+    const appointment = invoiceDialogAppointment;
+    if (!appointment) return;
     setInvoiceSendingId(appointment.id);
     try {
+      const extraItems = invoiceExtraItems
+        .filter((it) => it.description.trim() && parseFloat(it.unitPrice) > 0)
+        .map((it) => ({ description: it.description.trim(), unitPrice: parseFloat(it.unitPrice) }));
+
       const res = await fetch(`/api/admin/appointments/${appointment.id}/invoice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ extraItems }),
       });
       const data = await res.json();
       if (res.ok) {
         toast({
-          title: "Invoice sent",
-          description: `Invoice ${data.invoiceNumber} emailed to ${appointment.patient.firstName} ${appointment.patient.lastName}.`,
+          title: "Invoice queued for approval",
+          description: `Invoice ${data.invoiceNumber} for ${appointment.patient.firstName} ${appointment.patient.lastName} is waiting in Marketing → Email → Pending Approval.`,
         });
+        setInvoiceDialogAppointment(null);
       } else {
-        toast({ title: "Error", description: data.error || "Failed to send invoice", variant: "destructive" });
+        toast({ title: "Error", description: data.error || "Failed to generate invoice", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to send invoice", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to generate invoice", variant: "destructive" });
     } finally {
       setInvoiceSendingId(null);
     }
@@ -756,14 +782,9 @@ export default function AdminAppointmentsPage() {
                         size="sm"
                         variant="outline"
                         className="h-8 text-xs px-2"
-                        disabled={invoiceSendingId === appointment.id}
-                        onClick={() => sendInvoice(appointment)}
+                        onClick={() => openInvoiceDialog(appointment)}
                       >
-                        {invoiceSendingId === appointment.id ? (
-                          <Loader2 className="h-3.5 w-3.5 sm:mr-1 animate-spin" />
-                        ) : (
-                          <Receipt className="h-3.5 w-3.5 sm:mr-1" />
-                        )}
+                        <Receipt className="h-3.5 w-3.5 sm:mr-1" />
                         <span className="hidden sm:inline">Send Invoice</span>
                       </Button>
                       <Button
@@ -793,6 +814,72 @@ export default function AdminAppointmentsPage() {
         </div>
       )}
       </> )}
+
+      {/* Send Invoice Dialog */}
+      <Dialog open={!!invoiceDialogAppointment} onOpenChange={(open) => { if (!open) setInvoiceDialogAppointment(null); }}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              Generate Invoice
+            </DialogTitle>
+            <DialogDescription>
+              This queues the invoice for your approval — nothing is sent to the patient until you approve it in Marketing → Email → Pending Approval.
+            </DialogDescription>
+          </DialogHeader>
+          {invoiceDialogAppointment && (
+            <div className="space-y-4 py-2">
+              <div className="text-sm bg-muted/50 rounded-lg p-3">
+                <p className="font-medium">{invoiceDialogAppointment.patient.firstName} {invoiceDialogAppointment.patient.lastName}</p>
+                <p className="text-muted-foreground">{invoiceDialogAppointment.treatmentType} — £{invoiceDialogAppointment.price}</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Extra items (optional — e.g. a package or plan)</Label>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={addInvoiceExtraItem}>
+                    <Plus className="h-3 w-3" /> Add item
+                  </Button>
+                </div>
+                {invoiceExtraItems.map((item, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Description (e.g. Monthly Rehabilitation Package)"
+                      value={item.description}
+                      onChange={(e) => updateInvoiceExtraItem(i, "description", e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="£"
+                      value={item.unitPrice}
+                      onChange={(e) => updateInvoiceExtraItem(i, "unitPrice", e.target.value)}
+                      className="w-24"
+                    />
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => removeInvoiceExtraItem(i)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-sm font-medium text-right">
+                Total: £{(
+                  Number(invoiceDialogAppointment.price) +
+                  invoiceExtraItems.reduce((sum, it) => sum + (parseFloat(it.unitPrice) || 0), 0)
+                ).toFixed(2)}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInvoiceDialogAppointment(null)}>Cancel</Button>
+            <Button onClick={sendInvoice} disabled={invoiceSendingId === invoiceDialogAppointment?.id} className="gap-1.5">
+              {invoiceSendingId === invoiceDialogAppointment?.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
+              Generate Invoice
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Appointment Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
