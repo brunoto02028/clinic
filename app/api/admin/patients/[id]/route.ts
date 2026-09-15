@@ -64,7 +64,10 @@ export async function GET(
       safe((prisma as any).treatmentProtocol.findMany({
         where: { patientId }, orderBy: { createdAt: "desc" },
         include: {
-          items: { orderBy: { sortOrder: "asc" } },
+          items: {
+            orderBy: { sortOrder: "asc" },
+            include: { completionLogs: { orderBy: { completedDate: "asc" }, select: { completedDate: true } } },
+          },
           therapist: { select: { firstName: true, lastName: true } },
         },
       }), []),

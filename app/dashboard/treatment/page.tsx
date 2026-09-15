@@ -188,6 +188,23 @@ export default function PatientTreatmentPage() {
     }
   };
 
+  // Activity 42 — mark/unmark a specific day (within the current week only)
+  // as done for one item. Optimistic-refetches the whole list rather than
+  // patching local state, same pattern as handleToggleItem above.
+  const handleToggleLog = async (itemId: string, dateStr: string) => {
+    try {
+      const res = await fetch("/api/patient/protocol", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "toggleLog", itemId, date: dateStr }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      fetchProtocols();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const handlePayment = async (packageId: string) => {
     setPaying(packageId);
     try {
@@ -337,12 +354,30 @@ export default function PatientTreatmentPage() {
       )}
 
       {protocols.map((proto: any) => {
-        // Group items by phase
-        const byPhase: Record<string, any[]> = {};
+        // Group items by week range (activity 42) — startWeek-endWeek, in
+        // order. Items with no endWeek are "ongoing" and shown as "Week N+".
+        const byWeek: Record<string, any[]> = {};
         proto.items?.forEach((item: any) => {
-          if (!byPhase[item.phase]) byPhase[item.phase] = [];
-          byPhase[item.phase].push(item);
+          const key = `${item.startWeek || 1}-${item.endWeek || ""}`;
+          if (!byWeek[key]) byWeek[key] = [];
+          byWeek[key].push(item);
         });
+        const weekKeys = Object.keys(byWeek).sort((a, b) => {
+          const [aStart] = a.split("-").map(Number);
+          const [bStart] = b.split("-").map(Number);
+          return aStart - bStart;
+        });
+
+        // "Week 1" starts on the protocol's startDate — not the surgery date,
+        // which matters when a patient restarts adaptively (see Ana Livia's
+        // note: she's day 21 post-op but week 1 of this protocol instance).
+        // Falls back to createdAt for older protocols with no startDate, so
+        // the day strip always has a real date to anchor on instead of
+        // silently rendering "Invalid Date" buttons.
+        const effectiveStartDate = proto.startDate || proto.createdAt;
+        const currentWeek = effectiveStartDate
+          ? Math.max(1, Math.floor((Date.now() - new Date(effectiveStartDate).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1)
+          : 1;
 
         // Progress stats
         const totalItems = proto.items?.length || 0;
@@ -469,22 +504,27 @@ export default function PatientTreatmentPage() {
                 </div>
               )}
 
-              {/* Items by Phase (hidden behind payment gate) */}
-              {!proto.paymentRequired && ["SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"].map((phase) => {
-                const items = byPhase[phase];
-                if (!items?.length) return null;
-                const meta = PHASE_META[phase];
-                const phaseCompleted = items.filter((i: any) => i.isCompleted).length;
+              {/* Items by Week (hidden behind payment gate) */}
+              {!proto.paymentRequired && weekKeys.map((key) => {
+                const items = byWeek[key];
+                const [startWeek, endWeekStr] = key.split("-");
+                const endWeek = endWeekStr ? Number(endWeekStr) : null;
+                const isCurrentWeek = currentWeek >= Number(startWeek) && (endWeek === null || currentWeek <= endWeek);
+                const weekCompleted = items.filter((i: any) => i.isCompleted).length;
 
                 return (
-                  <PhaseSection
-                    key={phase}
-                    phase={phase}
-                    meta={meta}
+                  <WeekSection
+                    key={key}
+                    startWeek={Number(startWeek)}
+                    endWeek={endWeek}
+                    isCurrentWeek={isCurrentWeek}
+                    currentWeek={currentWeek}
                     items={items}
-                    phaseCompleted={phaseCompleted}
+                    weekCompleted={weekCompleted}
                     onToggle={handleToggleItem}
+                    onToggleLog={handleToggleLog}
                     onPlayVideo={(url: string, muted: boolean) => { setVideoFailed(false); setVideoModal({ url, muted }); }}
+                    protocolStartDate={effectiveStartDate}
                   />
                 );
               })}
@@ -546,30 +586,122 @@ export default function PatientTreatmentPage() {
   );
 }
 
-// ─── Phase Section ───
+// ─── Week Section (activity 42 — replaces the old phase grouping) ───
 
-function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVideo }: {
-  phase: string;
-  meta: { labelEn: string; labelPt: string; color: string; bg: string };
+function weekLabel(startWeek: number, endWeek: number | null, isPt: boolean): string {
+  const w = isPt ? "Semana" : "Week";
+  if (endWeek === null) return `${w} ${startWeek}+`;
+  if (endWeek === startWeek) return `${w} ${startWeek}`;
+  return isPt ? `Semanas ${startWeek}-${endWeek}` : `Weeks ${startWeek}-${endWeek}`;
+}
+
+// 7 consecutive days for the given week number, counting from the
+// protocol's startDate as day 1 of week 1 (not necessarily a calendar
+// Monday). Built via setDate() day-increments rather than adding raw
+// milliseconds, so a DST transition inside the range can't skip/duplicate
+// a calendar day the way (ms + 24h*N) would.
+function weekDates(startDate: string, weekNumber: number): Date[] {
+  const base = new Date(startDate);
+  base.setHours(0, 0, 0, 0);
+  const weekStart = new Date(base);
+  weekStart.setDate(weekStart.getDate() + (weekNumber - 1) * 7);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+}
+
+// LOCAL calendar date as YYYY-MM-DD — deliberately NOT toISOString(), which
+// is UTC and silently shifts the date by a day whenever the browser's
+// timezone offset crosses midnight (QA caught this: "today" was saving as
+// "yesterday" for a UK browser). weekDates() below builds each Date at
+// local midnight, so extracting local components here is what keeps them
+// on the same calendar day the patient actually sees on the button.
+function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Indexed by Date.getDay() (0=Sun..6=Sat) rather than position-in-week, so
+// the letter always matches the real weekday even when the protocol's
+// "week 1" doesn't start on a Monday.
+const WEEKDAY_LETTER_EN = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEKDAY_LETTER_PT = ["D", "S", "T", "Q", "Q", "S", "S"];
+
+function DayStrip({ item, startDate, currentWeek, onToggleLog, isPt }: {
+  item: any;
+  startDate: string;
+  currentWeek: number;
+  onToggleLog: (itemId: string, dateStr: string) => void;
+  isPt: boolean;
+}) {
+  const days = weekDates(startDate, currentWeek);
+  const marked = new Set((item.completionLogs || []).map((l: any) => String(l.completedDate).slice(0, 10)));
+  const todayStr = toDateStr(new Date());
+  const dayLabels = isPt ? WEEKDAY_LETTER_PT : WEEKDAY_LETTER_EN;
+
+  return (
+    <div className="flex items-center gap-1 mt-2">
+      {days.map((d) => {
+        const dateStr = toDateStr(d);
+        const isFuture = dateStr > todayStr;
+        const isMarked = marked.has(dateStr);
+        return (
+          <button
+            key={dateStr}
+            disabled={isFuture}
+            onClick={() => onToggleLog(item.id, dateStr)}
+            title={d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}
+            className={`h-7 w-7 rounded-full text-[10px] font-semibold flex items-center justify-center border transition-colors shrink-0 ${
+              isMarked
+                ? "bg-ba1-ok text-white border-ba1-ok"
+                : isFuture
+                  ? "border-muted text-muted-foreground/40 cursor-not-allowed"
+                  : "border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary"
+            }`}
+          >
+            {isMarked ? <CheckCircle2 className="h-3.5 w-3.5" /> : dayLabels[d.getDay()]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, weekCompleted, onToggle, onToggleLog, onPlayVideo, protocolStartDate }: {
+  startWeek: number;
+  endWeek: number | null;
+  isCurrentWeek: boolean;
+  currentWeek: number;
   items: any[];
-  phaseCompleted: number;
+  weekCompleted: number;
   onToggle: (id: string, completed: boolean) => void;
+  onToggleLog: (itemId: string, dateStr: string) => void;
   onPlayVideo: (url: string, muted: boolean) => void;
+  protocolStartDate: string;
 }) {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
   const isPt = locale === "pt-BR";
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(isCurrentWeek);
 
   return (
     <div>
       <button
-        className={`w-full rounded-lg border p-3 flex items-center justify-between ${meta.bg}`}
+        className={`w-full rounded-lg border p-3 flex items-center justify-between ${
+          isCurrentWeek ? "bg-ba1-health/10 border-ba1-health/30" : "bg-muted/30"
+        }`}
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-bold ${meta.color}`}>{isPt ? meta.labelPt : meta.labelEn}</span>
-          <Badge variant="outline" className="text-[10px]">{phaseCompleted}/{items.length}</Badge>
+          <span className={`text-sm font-bold ${isCurrentWeek ? "text-ba1-health" : ""}`}>
+            {weekLabel(startWeek, endWeek, isPt)}
+          </span>
+          {isCurrentWeek && <Badge className="text-[9px] bg-ba1-health text-white">{isPt ? "Semana atual" : "Current week"}</Badge>}
+          <Badge variant="outline" className="text-[10px]">{weekCompleted}/{items.length}</Badge>
         </div>
         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
@@ -584,7 +716,6 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
                 className={`border rounded-lg p-3 transition-colors ${item.isCompleted ? "bg-ba1-ok/5 border-ba1-ok/20" : ""}`}
               >
                 <div className="flex items-start gap-3">
-                  {/* Checkbox */}
                   {item.itemType !== "IN_CLINIC" && item.itemType !== "ASSESSMENT" ? (
                     <button onClick={() => onToggle(item.id, !item.isCompleted)} className="mt-0.5 shrink-0">
                       {item.isCompleted ? (
@@ -633,6 +764,14 @@ function PhaseSection({ phase, meta, items, phaseCompleted, onToggle, onPlayVide
                       >
                         <Play className="h-3 w-3" /> {T("treatment.watchVideo")}
                       </Button>
+                    )}
+
+                    {/* Daily strip — only for the current week */}
+                    {isCurrentWeek && item.itemType !== "IN_CLINIC" && item.itemType !== "ASSESSMENT" && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mt-2">{isPt ? "Marque os dias que fez:" : "Mark the days you did it:"}</p>
+                        <DayStrip item={item} startDate={protocolStartDate} currentWeek={currentWeek} onToggleLog={onToggleLog} isPt={isPt} />
+                      </div>
                     )}
 
                     {/* References */}

@@ -257,15 +257,17 @@ export default function PatientMembershipPage() {
         </Card>
       )}
 
-      {/* Available Plans */}
-      {plans.length > 0 && (
+      {/* Available Plans — only when there's no active plan yet. Once a
+          package is assigned, switching is the clinic's call, not a
+          self-service browse-other-plans option for the patient. */}
+      {!activeSub && plans.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-4">
-            {activeSub ? (isPt ? "Mude de Plano" : "Upgrade Your Plan") : (isPt ? "Planos Disponíveis" : "Available Plans")}
+            {isPt ? "Planos Disponíveis" : "Available Plans"}
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan) => {
-              const isCurrentPlan = activeSub?.plan.id === plan.id;
+              const isCurrentPlan = false; // this section only renders when there's no active plan
               const moduleCount = plan.features.filter((f) => f.startsWith("mod_")).length;
               const permCount = plan.features.filter((f) => f.startsWith("perm_")).length;
 

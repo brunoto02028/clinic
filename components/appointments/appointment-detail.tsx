@@ -106,6 +106,11 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
     notes: "",
   });
 
+  // A patient on an active package is billed by the clinic directly
+  // (invoice, cash, bank transfer) — the per-appointment Payment card below
+  // (including an inoperative "Pay Now") doesn't apply to them.
+  const [hasActivePackage, setHasActivePackage] = useState(false);
+
   const isTherapist =
     (session?.user as any)?.role === "ADMIN" ||
     (session?.user as any)?.role === "THERAPIST";
@@ -118,6 +123,10 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
       fetch("/api/patient/status").then(r => r.json()).then(d => {
         if (d.screeningComplete !== undefined) setScreeningComplete(d.screeningComplete);
       }).catch(() => {});
+      fetch("/api/patient/membership/subscription")
+        .then(r => r.json())
+        .then((data: any) => setHasActivePackage(!!data?.subscription))
+        .catch(() => {});
     }
   }, [appointmentId]);
 
@@ -533,6 +542,16 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                     <p className="font-medium text-emerald-600">{isPt ? "Pagamento Completo" : "Payment Complete"}</p>
                     <p className="text-2xl font-bold text-foreground mt-2">
                       £{(appointment?.payment?.amount ?? 0).toFixed(2)}
+                    </p>
+                  </div>
+                ) : !isTherapist && hasActivePackage ? (
+                  <div className="text-center">
+                    <div className="w-12 h-12 rounded-full bg-ba1-health/15 flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle className="h-6 w-6 text-ba1-health" />
+                    </div>
+                    <p className="font-medium text-ba1-health">{isPt ? "Coberto pelo seu pacote" : "Covered by your package"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {isPt ? "A sua clínica trata a cobrança diretamente." : "Your clinic handles billing directly."}
                     </p>
                   </div>
                 ) : (

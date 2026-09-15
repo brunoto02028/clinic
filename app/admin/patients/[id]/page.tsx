@@ -2109,6 +2109,11 @@ export default function PatientProfilePage() {
                             <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{item.phase || "—"}</Badge>
                             <span className="truncate flex-1">{item.treatmentTypeName || item.title || "—"}</span>
                             {item.sets && item.reps && <span className="text-muted-foreground/60 shrink-0">{item.sets}×{item.reps}</span>}
+                            {item.completionLogs?.length > 0 && (
+                              <span className="text-ba1-ok shrink-0" title="Days marked done by the patient">
+                                ✓ {item.completionLogs.map((l: any) => new Date(l.completedDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })).join(", ")}
+                              </span>
+                            )}
                             {item.hiddenFromPatient && (
                               <button title="Hidden from patient — click to show" className="shrink-0 p-0.5 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
                                 <EyeOff className="h-3 w-3 text-amber-400" />

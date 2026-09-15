@@ -33,6 +33,7 @@ export async function GET(
           orderBy: [{ phase: "asc" }, { sortOrder: "asc" }],
           include: {
             exercise: { select: { id: true, name: true, videoUrl: true, thumbnailUrl: true } },
+            completionLogs: { orderBy: { completedDate: "asc" as const }, select: { completedDate: true } },
           },
         },
         packages: {
@@ -331,6 +332,7 @@ Respond in this exact JSON format (no markdown, no code blocks):
           orderBy: [{ phase: "asc" }, { sortOrder: "asc" }],
           include: {
             exercise: { select: { id: true, name: true, videoUrl: true, thumbnailUrl: true } },
+            completionLogs: { orderBy: { completedDate: "asc" as const }, select: { completedDate: true } },
           },
         },
       },

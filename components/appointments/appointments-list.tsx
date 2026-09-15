@@ -62,6 +62,10 @@ export default function AppointmentsList() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [mounted, setMounted] = useState(false);
   const [initialAssessmentDone, setInitialAssessmentDone] = useState<boolean | null>(null);
+  // A patient on an active package is billed by the clinic directly
+  // (invoice, cash, bank transfer), never per-appointment via Stripe — so
+  // the price/"Payment Pending" badge below is replaced for them.
+  const [hasActivePackage, setHasActivePackage] = useState(false);
 
   const isTherapist =
     (session?.user as any)?.role === "ADMIN" ||
@@ -70,6 +74,12 @@ export default function AppointmentsList() {
   useEffect(() => {
     setMounted(true);
     fetchAppointments();
+    if (!isTherapist) {
+      fetch("/api/patient/membership/subscription")
+        .then(r => r.json())
+        .then((data: any) => setHasActivePackage(!!data?.subscription))
+        .catch(() => {});
+    }
   }, [statusFilter]);
 
   const fetchAppointments = async () => {
@@ -270,16 +280,24 @@ export default function AppointmentsList() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-4 mt-2 md:mt-0 ml-0">
-                        <div className="text-right">
-                          <p className="font-semibold text-sm sm:text-base text-foreground">
-                            £{(appointment?.price ?? 0).toFixed(2)}
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">
-                            {appointment?.payment?.status === "SUCCEEDED"
-                              ? (isPt ? "Pago" : "Paid")
-                              : (isPt ? "Pagamento Pendente" : "Payment Pending")}
-                          </p>
-                        </div>
+                        {hasActivePackage ? (
+                          <div className="text-right">
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">
+                              {isPt ? "A confirmar" : "To be confirmed"}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-right">
+                            <p className="font-semibold text-sm sm:text-base text-foreground">
+                              £{(appointment?.price ?? 0).toFixed(2)}
+                            </p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">
+                              {appointment?.payment?.status === "SUCCEEDED"
+                                ? (isPt ? "Pago" : "Paid")
+                                : (isPt ? "Pagamento Pendente" : "Payment Pending")}
+                            </p>
+                          </div>
+                        )}
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       </div>
                     </div>

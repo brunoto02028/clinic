@@ -50,6 +50,10 @@ export default function BookingForm() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [noAvailability, setNoAvailability] = useState(false);
   const [consultationPrice, setConsultationPrice] = useState<number | null>(null);
+  // A patient already on an active package/plan is billed by the clinic
+  // directly (invoice, cash, bank transfer) — not per-appointment online —
+  // so the per-appointment price/payment framing here would be misleading.
+  const [hasActivePackage, setHasActivePackage] = useState(false);
   const [patientState, setPatientState] = useState<PatientState>("loading");
   const [existingAppointments, setExistingAppointments] = useState<PatientAppointment[]>([]);
   const [totalPastCount, setTotalPastCount] = useState(0);
@@ -86,6 +90,11 @@ export default function BookingForm() {
         const consultation = data?.find((p: any) => p.serviceType === "CONSULTATION");
         if (consultation?.price) setConsultationPrice(consultation.price);
       })
+      .catch(() => {});
+
+    fetch("/api/patient/membership/subscription")
+      .then(r => r.json())
+      .then((data: any) => setHasActivePackage(!!data?.subscription))
       .catch(() => {});
 
     // Determine patient state based on appointment history
@@ -452,7 +461,7 @@ export default function BookingForm() {
                   <span className="text-muted-foreground">{isPt ? "Duração" : "Duration"}</span>
                   <span className="font-medium">60 {isPt ? "minutos" : "min"}</span>
                 </div>
-                {consultationPrice != null && (
+                {!hasActivePackage && consultationPrice != null && (
                   <div className="flex justify-between pt-2 border-t mt-2">
                     <span className="font-semibold">{isPt ? "Preço estimado" : "Estimated price"}</span>
                     <span className="font-bold text-primary">£{consultationPrice}</span>
@@ -493,9 +502,13 @@ export default function BookingForm() {
                 {isPt ? "Pedido Enviado!" : "Request Sent!"}
               </h3>
               <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
-                {isPt
-                  ? "Recebemos o seu pedido de consulta. Irá receber um email de confirmação com os detalhes e o link de pagamento."
-                  : "We've received your appointment request. You'll receive a confirmation email with details and a payment link shortly."}
+                {hasActivePackage
+                  ? (isPt
+                      ? "Recebemos o seu pedido de consulta. A sua clínica irá confirmar os detalhes em breve."
+                      : "We've received your appointment request. Your clinic will confirm the details shortly.")
+                  : (isPt
+                      ? "Recebemos o seu pedido de consulta. Irá receber um email de confirmação com os detalhes e o link de pagamento."
+                      : "We've received your appointment request. You'll receive a confirmation email with details and a payment link shortly.")}
               </p>
               <div className="bg-muted/30 rounded-lg p-4 mb-6 text-sm text-left space-y-2">
                 <div className="flex justify-between">
