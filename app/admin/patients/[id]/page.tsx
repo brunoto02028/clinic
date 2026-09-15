@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
   BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
-  Dumbbell, Apple, CreditCard,
+  Dumbbell, Apple, CreditCard, Receipt,
 } from "lucide-react";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
@@ -689,6 +689,37 @@ export default function PatientProfilePage() {
     if (r) { setEditingThermoId(null); flash("Thermography notes updated"); fetchData(); }
   };
 
+  // Send Invoice (standalone, not tied to an appointment — activity 40)
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [invoiceItems, setInvoiceItems] = useState<{ description: string; unitPrice: string }[]>([{ description: "", unitPrice: "" }]);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+
+  const submitPatientInvoice = async () => {
+    const items = invoiceItems
+      .filter((it) => it.description.trim() && parseFloat(it.unitPrice) > 0)
+      .map((it) => ({ description: it.description.trim(), unitPrice: parseFloat(it.unitPrice) }));
+    if (items.length === 0) {
+      setError("Add at least one item with a description and price");
+      return;
+    }
+    setSendingInvoice(true);
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed to generate invoice");
+      flash(`Invoice ${d.invoiceNumber} queued — approve it in Marketing → Email → Pending Approval.`);
+      setShowInvoiceDialog(false);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSendingInvoice(false);
+    }
+  };
+
   // Impersonate Patient
   const handleImpersonate = async () => {
     try {
@@ -812,7 +843,68 @@ export default function PatientProfilePage() {
         <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-blue-500/40 text-blue-400 hover:bg-blue-500/10" onClick={handleImpersonate}>
           <Eye className="h-3 w-3" /> {relabel("View as Patient")}
         </Button>
+        {/* Send Invoice */}
+        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-primary/40 text-primary hover:bg-primary/10" onClick={() => { setShowInvoiceDialog(true); setInvoiceItems([{ description: "", unitPrice: "" }]); }}>
+          <Receipt className="h-3 w-3" /> Send Invoice
+        </Button>
       </div>
+
+      {/* Send Invoice Dialog */}
+      {showInvoiceDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowInvoiceDialog(false)}>
+          <div className="bg-background border rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" /> Generate Invoice</h3>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowInvoiceDialog(false)}><X className="h-4 w-4" /></Button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Queues the invoice for approval — nothing is sent to {p.firstName} until you approve it in Marketing → Email → Pending Approval.
+            </p>
+
+            <div className="space-y-2">
+              {invoiceItems.map((item, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <Input
+                    placeholder="Description (e.g. Monthly Rehabilitation Package)"
+                    value={item.description}
+                    onChange={(e) => setInvoiceItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, description: e.target.value } : it)))}
+                    className="flex-1 h-9 text-sm"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="£"
+                    value={item.unitPrice}
+                    onChange={(e) => setInvoiceItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, unitPrice: e.target.value } : it)))}
+                    className="w-24 h-9 text-sm"
+                  />
+                  <Button
+                    variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive shrink-0"
+                    onClick={() => setInvoiceItems((prev) => prev.filter((_, idx) => idx !== i))}
+                    disabled={invoiceItems.length === 1}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setInvoiceItems((prev) => [...prev, { description: "", unitPrice: "" }])}>
+                <Plus className="h-3 w-3" /> Add item
+              </Button>
+            </div>
+
+            <div className="text-sm font-medium text-right mt-3">
+              Total: £{invoiceItems.reduce((sum, it) => sum + (parseFloat(it.unitPrice) || 0), 0).toFixed(2)}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" size="sm" onClick={() => setShowInvoiceDialog(false)}>Cancel</Button>
+              <Button size="sm" className="gap-1.5" disabled={sendingInvoice} onClick={submitPatientInvoice}>
+                {sendingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
+                Generate Invoice
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Inline Reset Password */}
       {showResetPw && (

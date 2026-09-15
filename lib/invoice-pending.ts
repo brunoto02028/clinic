@@ -1,0 +1,54 @@
+import { prisma } from "@/lib/db";
+import { getSenderEmail } from "@/lib/utils";
+import { buildInvoiceHtml, InvoiceData } from "@/lib/invoice-html";
+
+/** Shared by every invoice-generating route (activity 39/40): never call
+ * sendEmail directly for a financial email — always queue it here so the
+ * admin previews and approves the exact frozen content before it sends. */
+export async function queueInvoiceForApproval(opts: {
+  invoice: InvoiceData;
+  patientEmail: string;
+  patientId?: string | null;
+  clinicId?: string | null;
+}): Promise<{ pendingId: string; invoiceNumber: string }> {
+  const { invoice, patientEmail, patientId, clinicId } = opts;
+  const html = buildInvoiceHtml(invoice);
+  const total = invoice.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+
+  const emailBody = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#26332B;">
+      <p>Dear ${invoice.clientName},</p>
+      <p>Please find attached your invoice <strong>${invoice.invoiceNumber}</strong> for <strong>£${total.toFixed(2)}</strong>.</p>
+      <p>You can pay by cash at your appointment, or by bank transfer using the details in the attached invoice.</p>
+      <p>If you have any questions, just reply to this email.</p>
+      <p>Kind regards,<br>${invoice.business.tradingName}</p>
+    </div>
+  `;
+
+  const subject = `Invoice ${invoice.invoiceNumber} — ${invoice.business.tradingName}`;
+  const attachmentsJson = JSON.stringify([
+    {
+      filename: `Invoice-${invoice.invoiceNumber}.html`,
+      contentBase64: Buffer.from(html, "utf-8").toString("base64"),
+    },
+  ]);
+
+  const pending = await (prisma as any).emailMessage.create({
+    data: {
+      direction: "OUTBOUND",
+      folder: "PENDING_APPROVAL",
+      fromAddress: getSenderEmail(),
+      fromName: invoice.business.tradingName,
+      toAddress: patientEmail,
+      subject,
+      htmlBody: emailBody,
+      attachmentsJson,
+      templateSlug: "INVOICE",
+      isRead: true,
+      patientId: patientId || null,
+      clinicId: clinicId || null,
+    },
+  });
+
+  return { pendingId: pending.id, invoiceNumber: invoice.invoiceNumber };
+}

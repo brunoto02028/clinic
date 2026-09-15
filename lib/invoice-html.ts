@@ -2,6 +2,20 @@
 // pattern as app/api/soap-notes/[id]/pdf/route.ts, since no PDF library is
 // installed. English-only by design (UK patients/clients).
 
+// Item descriptions and client/business names are free text an admin types
+// into a form — escaped before interpolation so this can't become stored
+// XSS against whoever later opens the invoice (admin preview or the
+// patient's emailed attachment).
+function esc(input: string | null | undefined): string {
+  if (!input) return "";
+  return String(input)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export interface InvoiceItem {
   description: string;
   quantity: number;
@@ -11,6 +25,7 @@ export interface InvoiceItem {
 export interface InvoiceBusinessInfo {
   name: string;
   tradingName?: string | null;
+  logoUrl?: string | null;
   addressLines?: string[];
   email?: string | null;
   phone?: string | null;
@@ -48,7 +63,7 @@ export function buildInvoiceHtml(data: InvoiceData): string {
     .map(
       (it) => `
         <tr>
-          <td class="desc">${it.description}</td>
+          <td class="desc">${esc(it.description)}</td>
           <td class="num">${it.quantity}</td>
           <td class="num">${fmtMoney(it.unitPrice)}</td>
           <td class="num">${fmtMoney(it.quantity * it.unitPrice)}</td>
@@ -56,7 +71,7 @@ export function buildInvoiceHtml(data: InvoiceData): string {
     )
     .join("");
 
-  const addressBlock = (data.business.addressLines || []).filter(Boolean).join("<br>");
+  const addressBlock = (data.business.addressLines || []).filter(Boolean).map(esc).join("<br>");
 
   const paymentBlocks: string[] = [];
   if (data.acceptsCash) {
@@ -71,11 +86,11 @@ export function buildInvoiceHtml(data: InvoiceData): string {
       <div class="pay-option">
         <h4>Bank Transfer</h4>
         <table class="bank-table">
-          <tr><td>Account name</td><td>${data.business.bankAccountName || data.business.name}</td></tr>
-          <tr><td>Bank</td><td>${data.business.bankName || ""}</td></tr>
-          <tr><td>Sort code</td><td>${data.business.bankSortCode || ""}</td></tr>
-          <tr><td>Account number</td><td>${data.business.bankAccountNumber || ""}</td></tr>
-          <tr><td>Reference</td><td>${data.invoiceNumber}</td></tr>
+          <tr><td>Account name</td><td>${esc(data.business.bankAccountName || data.business.name)}</td></tr>
+          <tr><td>Bank</td><td>${esc(data.business.bankName)}</td></tr>
+          <tr><td>Sort code</td><td>${esc(data.business.bankSortCode)}</td></tr>
+          <tr><td>Account number</td><td>${esc(data.business.bankAccountNumber)}</td></tr>
+          <tr><td>Reference</td><td>${esc(data.invoiceNumber)}</td></tr>
         </table>
       </div>`);
   }
@@ -84,10 +99,11 @@ export function buildInvoiceHtml(data: InvoiceData): string {
 <html lang="en-GB">
 <head>
 <meta charset="UTF-8">
-<title>Invoice ${data.invoiceNumber}</title>
+<title>Invoice ${esc(data.invoiceNumber)}</title>
 <style>
   body { font-family: Arial, Helvetica, sans-serif; max-width: 720px; margin: 0 auto; padding: 40px; color: #26332B; background: #fff; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #4F7361; padding-bottom: 20px; margin-bottom: 30px; }
+  .header .logo { max-height: 56px; max-width: 220px; margin-bottom: 10px; display: block; }
   .header h1 { color: #4F7361; margin: 0 0 6px; font-size: 22px; }
   .header p { margin: 2px 0; color: #555; font-size: 13px; }
   .invoice-meta { text-align: right; }
@@ -123,14 +139,15 @@ export function buildInvoiceHtml(data: InvoiceData): string {
   </div>
   <div class="header">
     <div>
-      <h1>${data.business.tradingName || data.business.name}</h1>
+      ${data.business.logoUrl ? `<img class="logo" src="${esc(data.business.logoUrl)}" alt="${esc(data.business.tradingName || data.business.name)}">` : ""}
+      <h1>${esc(data.business.tradingName || data.business.name)}</h1>
       ${addressBlock ? `<p>${addressBlock}</p>` : ""}
-      ${data.business.phone ? `<p>${data.business.phone}</p>` : ""}
-      ${data.business.email ? `<p>${data.business.email}</p>` : ""}
+      ${data.business.phone ? `<p>${esc(data.business.phone)}</p>` : ""}
+      ${data.business.email ? `<p>${esc(data.business.email)}</p>` : ""}
     </div>
     <div class="invoice-meta">
       <h2>INVOICE</h2>
-      <p><strong>Number:</strong> ${data.invoiceNumber}</p>
+      <p><strong>Number:</strong> ${esc(data.invoiceNumber)}</p>
       <p><strong>Date:</strong> ${fmtDate(data.issueDate)}</p>
       ${data.dueDate ? `<p><strong>Due:</strong> ${fmtDate(data.dueDate)}</p>` : ""}
     </div>
@@ -138,8 +155,8 @@ export function buildInvoiceHtml(data: InvoiceData): string {
 
   <div class="bill-to">
     <h3>Billed to</h3>
-    <p>${data.clientName}</p>
-    ${data.clientEmail ? `<p>${data.clientEmail}</p>` : ""}
+    <p>${esc(data.clientName)}</p>
+    ${data.clientEmail ? `<p>${esc(data.clientEmail)}</p>` : ""}
   </div>
 
   <table class="items">
@@ -154,10 +171,10 @@ export function buildInvoiceHtml(data: InvoiceData): string {
 
   ${paymentBlocks.length ? `<div class="payment-section"><h3>How to pay</h3>${paymentBlocks.join("")}</div>` : ""}
 
-  ${data.notes ? `<div class="notes">${data.notes}</div>` : ""}
+  ${data.notes ? `<div class="notes">${esc(data.notes)}</div>` : ""}
 
   <div class="footer">
-    <p>${data.business.tradingName || data.business.name}${data.business.email ? " · " + data.business.email : ""}</p>
+    <p>${esc(data.business.tradingName || data.business.name)}${data.business.email ? " · " + esc(data.business.email) : ""}</p>
     <p>Thank you for your trust in our care.</p>
   </div>
 </body>

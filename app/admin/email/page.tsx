@@ -1063,7 +1063,7 @@ export default function EmailPage() {
                           srcDoc={html}
                           className="w-full min-h-[500px] border rounded-lg bg-white"
                           title={a.filename}
-                          sandbox="allow-same-origin"
+                          sandbox="allow-same-origin allow-scripts allow-modals"
                         />
                       </div>
                     );
