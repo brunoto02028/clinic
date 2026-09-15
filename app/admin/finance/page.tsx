@@ -7,12 +7,13 @@ import {
   CheckCircle, XCircle, Search, FileText, Download, Edit, MoreVertical,
   Wallet, Receipt, PiggyBank, BarChart3, Calendar, Upload, Key, Tag,
   Copy, Shield, ShieldCheck, Eye, EyeOff, Sparkles, Building2, Save,
-  Wand2, Loader2, ExternalLink, SearchCheck, MessageCircle, Send, Bot, Link2,
+  Wand2, Loader2, ExternalLink, SearchCheck, MessageCircle, Send, Bot, Link2, X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -155,6 +156,61 @@ export default function FinancePage() {
   // OCR state
   const [ocrProcessing, setOcrProcessing] = useState(false);
   const [ocrResult, setOcrResult] = useState<any>(null);
+
+  // Send Invoice (patient invoice, not tied to an appointment — activity 40)
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [invoicePatients, setInvoicePatients] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [invoicePatientId, setInvoicePatientId] = useState("");
+  const [invoiceItems, setInvoiceItems] = useState<{ description: string; unitPrice: string }[]>([{ description: "", unitPrice: "" }]);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+
+  const openInvoiceDialog = async () => {
+    setShowInvoiceDialog(true);
+    setInvoicePatientId("");
+    setInvoiceItems([{ description: "", unitPrice: "" }]);
+    if (invoicePatients.length === 0) {
+      try {
+        const res = await fetch("/api/admin/patients");
+        if (res.ok) {
+          const data = await res.json();
+          setInvoicePatients(Array.isArray(data) ? data : data.patients || []);
+        }
+      } catch {}
+    }
+  };
+
+  const submitInvoice = async () => {
+    if (!invoicePatientId) {
+      toast({ title: "Select a patient", variant: "destructive" });
+      return;
+    }
+    const items = invoiceItems
+      .filter((it) => it.description.trim() && parseFloat(it.unitPrice) > 0)
+      .map((it) => ({ description: it.description.trim(), unitPrice: parseFloat(it.unitPrice) }));
+    if (items.length === 0) {
+      toast({ title: "Add at least one item with a description and price", variant: "destructive" });
+      return;
+    }
+    setSendingInvoice(true);
+    try {
+      const res = await fetch(`/api/admin/patients/${invoicePatientId}/invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Invoice queued for approval", description: `Invoice ${data.invoiceNumber} is waiting in Marketing → Email → Pending Approval.` });
+        setShowInvoiceDialog(false);
+      } else {
+        toast({ title: "Error", description: data.error || "Failed to generate invoice", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to generate invoice", variant: "destructive" });
+    } finally {
+      setSendingInvoice(false);
+    }
+  };
 
   // Company Profile state
   const [companyProfile, setCompanyProfile] = useState<any>({});
@@ -609,6 +665,9 @@ export default function FinancePage() {
           <p className="text-sm text-muted-foreground mt-1">{T("finance.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="default" size="sm" className="gap-1.5" onClick={openInvoiceDialog}>
+            <Receipt className="h-3.5 w-3.5" /> Send Invoice
+          </Button>
           <label className="cursor-pointer">
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="hidden" onChange={handleOcrUpload} disabled={ocrProcessing} />
             <Button variant="outline" size="sm" className="gap-1.5" asChild disabled={ocrProcessing}>
@@ -1406,6 +1465,80 @@ export default function FinancePage() {
                 <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }} className="flex-1">{T("common.cancel")}</Button>
                 <Button onClick={saveEntry} disabled={!formData.description || !formData.amount} className="flex-1">{T("common.save")}</Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Invoice Dialog */}
+      {showInvoiceDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowInvoiceDialog(false)}>
+          <div className="bg-background border rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" /> Send Invoice</h3>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowInvoiceDialog(false)}><X className="h-4 w-4" /></Button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Queues the invoice for approval — nothing is sent until you approve it in Marketing → Email → Pending Approval.
+            </p>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Patient</label>
+                <Select value={invoicePatientId} onValueChange={setInvoicePatientId}>
+                  <SelectTrigger><SelectValue placeholder="Select patient..." /></SelectTrigger>
+                  <SelectContent>
+                    {invoicePatients.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium">Items</label>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setInvoiceItems((prev) => [...prev, { description: "", unitPrice: "" }])}>
+                    <Plus className="h-3 w-3" /> Add item
+                  </Button>
+                </div>
+                {invoiceItems.map((item, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Description (e.g. Monthly Rehabilitation Package)"
+                      value={item.description}
+                      onChange={(e) => setInvoiceItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, description: e.target.value } : it)))}
+                      className="flex-1 h-9 text-sm"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="£"
+                      value={item.unitPrice}
+                      onChange={(e) => setInvoiceItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, unitPrice: e.target.value } : it)))}
+                      className="w-24 h-9 text-sm"
+                    />
+                    <Button
+                      variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive shrink-0"
+                      onClick={() => setInvoiceItems((prev) => prev.filter((_, idx) => idx !== i))}
+                      disabled={invoiceItems.length === 1}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-sm font-medium text-right">
+                Total: £{invoiceItems.reduce((sum, it) => sum + (parseFloat(it.unitPrice) || 0), 0).toFixed(2)}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" size="sm" onClick={() => setShowInvoiceDialog(false)}>Cancel</Button>
+              <Button size="sm" className="gap-1.5" disabled={sendingInvoice} onClick={submitInvoice}>
+                {sendingInvoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
+                Generate Invoice
+              </Button>
             </div>
           </div>
         </div>
