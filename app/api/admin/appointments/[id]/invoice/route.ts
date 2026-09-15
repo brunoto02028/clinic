@@ -7,9 +7,16 @@ import { prisma } from "@/lib/db";
 import { getAppName, getSenderEmail } from "@/lib/utils";
 import { buildInvoiceHtml, InvoiceData } from "@/lib/invoice-html";
 
+interface ExtraItem {
+  description: string;
+  unitPrice: number;
+  quantity?: number;
+}
+
 async function buildInvoiceForAppointment(
   appointmentId: string,
-  overrideAmount?: number
+  overrideAmount?: number,
+  extraItems?: ExtraItem[]
 ): Promise<{ invoice: InvoiceData; patientEmail: string | null } | null> {
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
@@ -53,6 +60,11 @@ async function buildInvoiceForAppointment(
         quantity: 1,
         unitPrice: amount,
       },
+      ...(extraItems || []).map((it) => ({
+        description: it.description,
+        quantity: it.quantity || 1,
+        unitPrice: it.unitPrice,
+      })),
     ],
     acceptsCash: true,
     acceptsBankTransfer: true,
@@ -88,7 +100,7 @@ export async function GET(
 
 // POST — queue the invoice for admin approval (activity 39: financial emails
 // never send automatically — see specs/39-fila-aprovacao-email-financeiro).
-// Body: { amount?: number }
+// Body: { amount?: number, extraItems?: { description: string; unitPrice: number; quantity?: number }[] }
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -99,7 +111,12 @@ export async function POST(
   }
 
   const body = await request.json().catch(() => ({}));
-  const result = await buildInvoiceForAppointment(params.id, body?.amount ? parseFloat(body.amount) : undefined);
+  const extraItems: ExtraItem[] | undefined = Array.isArray(body?.extraItems)
+    ? body.extraItems
+        .filter((it: any) => it && typeof it.description === "string" && typeof it.unitPrice === "number")
+        .map((it: any) => ({ description: it.description, unitPrice: it.unitPrice, quantity: it.quantity }))
+    : undefined;
+  const result = await buildInvoiceForAppointment(params.id, body?.amount ? parseFloat(body.amount) : undefined, extraItems);
   if (!result) {
     return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
   }
