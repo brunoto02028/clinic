@@ -177,7 +177,7 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions);
 
-    if ((session?.user as { role?: string })?.role !== "ADMIN") {
+    if (!["SUPERADMIN", "ADMIN"].includes((session?.user as { role?: string })?.role || "")) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
