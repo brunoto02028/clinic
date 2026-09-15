@@ -103,7 +103,7 @@ export function buildInvoiceHtml(data: InvoiceData): string {
 <style>
   body { font-family: Arial, Helvetica, sans-serif; max-width: 720px; margin: 0 auto; padding: 40px; color: #26332B; background: #fff; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #4F7361; padding-bottom: 20px; margin-bottom: 30px; }
-  .header .logo { max-height: 56px; max-width: 220px; margin-bottom: 10px; display: block; }
+  .header .logo { max-height: 96px; max-width: 300px; margin-bottom: 10px; display: block; }
   .header h1 { color: #4F7361; margin: 0 0 6px; font-size: 22px; }
   .header p { margin: 2px 0; color: #555; font-size: 13px; }
   .invoice-meta { text-align: right; }
