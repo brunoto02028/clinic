@@ -334,16 +334,17 @@ export async function PATCH(
     }
 
     // Default: update patient info
-    const { firstName, lastName, phone } = body;
+    const { firstName, lastName, phone, preferredLocale } = body;
     const updateData: any = {};
     if (firstName !== undefined) updateData.firstName = firstName;
     if (lastName !== undefined) updateData.lastName = lastName;
     if (phone !== undefined) updateData.phone = phone;
+    if (preferredLocale !== undefined) updateData.preferredLocale = preferredLocale;
 
     const updated = await prisma.user.update({
       where: { id: patientId },
       data: updateData,
-      select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+      select: { id: true, firstName: true, lastName: true, email: true, phone: true, preferredLocale: true },
     });
 
     return NextResponse.json({ success: true, patient: updated });
