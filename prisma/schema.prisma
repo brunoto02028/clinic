@@ -2959,6 +2959,8 @@ model ExercisePrescription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  completionLogs ExerciseCompletionLog[]
+
   @@index([clinicId])
   @@index([patientId])
   @@index([therapistId])
@@ -3888,22 +3890,33 @@ model ProtocolItem {
 }
 
 // Per-day "did it today" mark (activity 42) — completedCount/lastCompletedAt
-// on ProtocolItem only ever held a running total, never which specific days.
-// One row per day per item per patient (unique below), so the patient's
-// weekly strip and the clinic's adherence view read the same source of truth.
+// on ProtocolItem/ExercisePrescription only ever held a running total, never
+// which specific days. One row per day per item per patient, so the
+// patient's weekly strip and the clinic's adherence view read the same
+// source of truth. Exactly one of protocolItemId/exercisePrescriptionId is
+// set (activity 43 added the latter, for exercises prescribed without a
+// TreatmentProtocol) — both nullable so a Postgres unique index treats every
+// NULL as distinct, letting the two item types share one uniqueness rule
+// each without colliding on the other's null column.
 model ExerciseCompletionLog {
-  id             String       @id @default(cuid())
-  protocolItemId String
-  protocolItem   ProtocolItem @relation(fields: [protocolItemId], references: [id], onDelete: Cascade)
-  patientId      String
-  patient        User         @relation("ExerciseCompletionLogs", fields: [patientId], references: [id], onDelete: Cascade)
+  id             String        @id @default(cuid())
+  protocolItemId String?
+  protocolItem   ProtocolItem? @relation(fields: [protocolItemId], references: [id], onDelete: Cascade)
+
+  exercisePrescriptionId String?
+  exercisePrescription   ExercisePrescription? @relation(fields: [exercisePrescriptionId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("ExerciseCompletionLogs", fields: [patientId], references: [id], onDelete: Cascade)
 
   completedDate DateTime @db.Date
 
   createdAt DateTime @default(now())
 
   @@unique([protocolItemId, patientId, completedDate])
+  @@unique([exercisePrescriptionId, patientId, completedDate])
   @@index([protocolItemId])
+  @@index([exercisePrescriptionId])
   @@index([patientId])
 }
 

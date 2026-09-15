@@ -50,6 +50,11 @@ export async function GET(req: NextRequest) {
         },
         patient: { select: { id: true, firstName: true, lastName: true, email: true } },
         therapist: { select: { id: true, firstName: true, lastName: true } },
+        // No date cap for admin — the clinic may want the full adherence history.
+        completionLogs: {
+          orderBy: { completedDate: "asc" },
+          select: { completedDate: true },
+        },
       },
     });
 

@@ -52,6 +52,12 @@ export async function GET(req: NextRequest) {
           },
         },
         therapist: { select: { firstName: true, lastName: true } },
+        // Last 14 days is enough for the "this week" strip (activity 43) —
+        // mirrors the same window used for protocol items (activity 42).
+        completionLogs: {
+          where: { completedDate: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) } },
+          select: { completedDate: true },
+        },
       },
     });
 
@@ -63,7 +69,11 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// PATCH - Mark exercise as completed (patient action)
+// PATCH - Patient toggles "did it today" (or a given date) for one
+// prescription (activity 43 — mirrors the toggleLog on
+// app/api/patient/protocol/route.ts for protocol items). Marks on the first
+// call for a given date, unmarks on the second — replaces the old
+// increment-only counter, which never recorded which day.
 export async function PATCH(req: NextRequest) {
   // Must be impersonation-aware like the GET above, otherwise a staff member
   // previewing a patient hits their own (empty) prescriptions and every
@@ -80,7 +90,7 @@ export async function PATCH(req: NextRequest) {
       await assertModuleAccess(userId, "mod_exercises");
     }
 
-    const { prescriptionId, action } = await req.json();
+    const { prescriptionId, date } = await req.json();
 
     if (!prescriptionId) {
       return NextResponse.json({ error: "Prescription ID required" }, { status: 400 });
@@ -95,29 +105,47 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Prescription not found" }, { status: 404 });
     }
 
-    // "undo" reverts an accidental tap — decrements the counter (never below 0)
-    // and clears the completed timestamp once back at 0.
-    if (action === "undo") {
-      const nextCount = Math.max(0, prescription.completedCount - 1);
-      const updated = await prisma.exercisePrescription.update({
-        where: { id: prescriptionId },
-        data: {
-          completedCount: nextCount,
-          lastCompletedAt: nextCount === 0 ? null : prescription.lastCompletedAt,
-        },
-      });
-      return NextResponse.json({ prescription: updated });
-    }
+    // Truncate to a bare date (no time) — Europe/London, matching the clinic.
+    const dateStr = typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? date
+      : new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" }); // en-CA gives YYYY-MM-DD
+    const completedDate = new Date(`${dateStr}T00:00:00.000Z`);
 
-    const updated = await prisma.exercisePrescription.update({
-      where: { id: prescriptionId },
-      data: {
-        completedCount: { increment: 1 },
-        lastCompletedAt: new Date(),
+    const existing = await (prisma as any).exerciseCompletionLog.findUnique({
+      where: {
+        exercisePrescriptionId_patientId_completedDate: {
+          exercisePrescriptionId: prescriptionId,
+          patientId: userId,
+          completedDate,
+        },
       },
     });
 
-    return NextResponse.json({ prescription: updated });
+    if (existing) {
+      await (prisma as any).exerciseCompletionLog.delete({ where: { id: existing.id } });
+    } else {
+      await (prisma as any).exerciseCompletionLog.create({
+        data: { exercisePrescriptionId: prescriptionId, patientId: userId, completedDate },
+      });
+    }
+
+    // completedCount/lastCompletedAt derive from the actual log rows after
+    // every toggle — an independent increment-only counter would drift the
+    // moment a day gets unmarked.
+    const remaining = await (prisma as any).exerciseCompletionLog.findMany({
+      where: { exercisePrescriptionId: prescriptionId, patientId: userId },
+      orderBy: { completedDate: "desc" },
+      select: { completedDate: true },
+    });
+    const updated = await prisma.exercisePrescription.update({
+      where: { id: prescriptionId },
+      data: {
+        completedCount: remaining.length,
+        lastCompletedAt: remaining[0]?.completedDate || null,
+      },
+    });
+
+    return NextResponse.json({ prescription: updated, marked: !existing, date: dateStr });
   } catch (err: any) {
     if (err instanceof AccessError) return accessErrorResponse(err);
     return NextResponse.json({ error: "Failed to update progress" }, { status: 500 });
