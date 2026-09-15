@@ -2107,6 +2107,10 @@ model PatientSubscription {
   endDate     DateTime?
   cancelledAt DateTime?
 
+  // When the last auto-generated recurring invoice was created for this
+  // subscription (activity 41) — null means none yet.
+  lastInvoicedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
