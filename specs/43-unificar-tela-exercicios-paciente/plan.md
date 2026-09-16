@@ -1,6 +1,6 @@
 # Ativ. 43 — Unificar a tela de exercícios do paciente
 
-**Status:** pendente (aguardando aprovação)
+**Status:** concluído
 
 ## Objetivo
 Hoje o paciente tem DUAS telas de exercícios que não conversam entre si:
@@ -50,10 +50,10 @@ pra todo mundo — sem quebrar o acesso de quem não tem protocolo.
 | T-N | Nome | Status |
 |-----|------|--------|
 | T-1 | Schema — log diário aceita prescrições soltas | concluído |
-| T-2 | API — toggle diário unificado + GET com logs | implementado, aguardando QA |
-| T-3 | UI — card "Hoje" + seção de exercícios soltos na Treatment Plan | implementado, aguardando QA |
-| T-4 | Aposentar "My Exercises" (redirect + remover do menu) | implementado, aguardando QA |
-| T-5 | Admin — ver histórico diário das prescrições soltas | implementado, aguardando QA |
+| T-2 | API — toggle diário unificado + GET com logs | concluído |
+| T-3 | UI — card "Hoje" + seção de exercícios soltos na Treatment Plan | concluído |
+| T-4 | Aposentar "My Exercises" (redirect + remover do menu) | concluído |
+| T-5 | Admin — ver histórico diário das prescrições soltas | concluído |
 
 ## Suposições (validar com o usuário)
 

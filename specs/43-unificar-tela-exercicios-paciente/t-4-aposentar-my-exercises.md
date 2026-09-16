@@ -1,6 +1,6 @@
 # T-4: Aposentar "My Exercises"
 
-**Status:** implementado — aguardando QA
+**Status:** concluído
 **Depende de:** T-3 (só faz sentido depois que a tela unificada cobre os dois casos)
 
 ## Objetivo

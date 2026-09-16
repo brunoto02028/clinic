@@ -1,6 +1,6 @@
 # T-3: UI — card "Hoje" + seção de exercícios soltos na Treatment Plan
 
-**Status:** implementado — aguardando QA
+**Status:** concluído
 **Depende de:** T-2
 
 ## Objetivo
