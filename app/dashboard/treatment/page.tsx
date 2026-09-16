@@ -82,6 +82,18 @@ export default function PatientTreatmentPage() {
   // `poster` is the exercise's own thumbnail — without it the player opens on
   // a black frame until playback starts.
   const [videoModal, setVideoModal] = useState<{ url: string; muted: boolean; poster?: string | null } | null>(null);
+  // Fire-and-forget: the modal must open immediately, not wait on this write.
+  const handlePlayVideo = (url: string, muted: boolean, poster?: string | null, exerciseId?: string | null) => {
+    setVideoFailed(false);
+    setVideoModal({ url, muted, poster });
+    if (exerciseId) {
+      fetch("/api/patient/activity/video-watched", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exerciseId }),
+      }).catch(() => {});
+    }
+  };
   // A YouTube watch/share URL isn't a playable media file — pointing a bare
   // <video> tag at one leaves the player spinning forever (found in QA,
   // 13/09/2026). Shared with app/dashboard/exercises's own video modal.
@@ -325,6 +337,7 @@ export default function PatientTreatmentPage() {
         videoUrl: item.exercise?.videoUrl,
         thumbnailUrl: item.exercise?.thumbnailUrl,
         muteForPatient: item.exercise?.muteForPatient,
+        exerciseId: item.exercise?.id,
         doneToday: (item.completionLogs || []).some((l: any) => String(l.completedDate).slice(0, 10) === todayStr),
       }));
   });
@@ -342,6 +355,7 @@ export default function PatientTreatmentPage() {
     videoUrl: p.exercise?.videoUrl,
     thumbnailUrl: p.exercise?.thumbnailUrl,
     muteForPatient: p.exercise?.muteForPatient,
+    exerciseId: p.exercise?.id,
     doneToday: (p.completionLogs || []).some((l: any) => String(l.completedDate).slice(0, 10) === todayStr),
   }));
   const todayTasks: TodayTask[] = [...todayProtocolTasks, ...todayPrescriptionTasks];
@@ -393,7 +407,7 @@ export default function PatientTreatmentPage() {
         </div>
       )}
 
-      <TodayCard tasks={todayTasks} onToggle={handleToggleToday} onPlayVideo={(url, muted, poster) => { setVideoFailed(false); setVideoModal({ url, muted, poster }); }} isPt={isPt} />
+      <TodayCard tasks={todayTasks} onToggle={handleToggleToday} onPlayVideo={handlePlayVideo} isPt={isPt} />
 
       {/* ── Proposed Schedule (PENDING_PATIENT) ── */}
       {pendingAppointments.length > 0 && !scheduleConfirmed && (
@@ -640,7 +654,7 @@ export default function PatientTreatmentPage() {
                     weekCompleted={weekCompleted}
                     onToggle={handleToggleItem}
                     onToggleLog={handleToggleLog}
-                    onPlayVideo={(url: string, muted: boolean, poster?: string | null) => { setVideoFailed(false); setVideoModal({ url, muted, poster }); }}
+                    onPlayVideo={handlePlayVideo}
                     protocolStartDate={effectiveStartDate}
                   />
                 );
@@ -659,7 +673,7 @@ export default function PatientTreatmentPage() {
       <PrescriptionSection
         prescriptions={standaloneRx}
         onToggleLog={handleTogglePrescriptionLog}
-        onPlayVideo={(url: string, muted: boolean, poster?: string | null) => { setVideoFailed(false); setVideoModal({ url, muted, poster }); }}
+        onPlayVideo={handlePlayVideo}
       />
 
       {/* Video Modal */}
@@ -876,7 +890,7 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
   weekCompleted: number;
   onToggle: (id: string, completed: boolean) => void;
   onToggleLog: (itemId: string, dateStr: string) => void;
-  onPlayVideo: (url: string, muted: boolean, poster?: string | null) => void;
+  onPlayVideo: (url: string, muted: boolean, poster?: string | null, exerciseId?: string | null) => void;
   protocolStartDate: string;
 }) {
   const { locale } = useLocale();
@@ -957,7 +971,7 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
                     {item.exercise?.videoUrl && (
                       <VideoThumb
                         thumbnailUrl={item.exercise.thumbnailUrl}
-                        onPlay={() => onPlayVideo(item.exercise.videoUrl, item.exercise.muteForPatient !== false, item.exercise.thumbnailUrl)}
+                        onPlay={() => onPlayVideo(item.exercise.videoUrl, item.exercise.muteForPatient !== false, item.exercise.thumbnailUrl, item.exercise.id)}
                         isPt={isPt}
                       />
                     )}
@@ -1014,13 +1028,14 @@ type TodayTask = {
   videoUrl?: string | null;
   thumbnailUrl?: string | null;
   muteForPatient?: boolean;
+  exerciseId?: string | null;
   doneToday: boolean;
 };
 
 function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
   tasks: TodayTask[];
   onToggle: (task: TodayTask) => void;
-  onPlayVideo: (url: string, muted: boolean, poster?: string | null) => void;
+  onPlayVideo: (url: string, muted: boolean, poster?: string | null, exerciseId?: string | null) => void;
   isPt: boolean;
 }) {
   const { locale } = useLocale();
@@ -1065,7 +1080,7 @@ function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
               {task.videoUrl && (
                 <VideoThumb
                   thumbnailUrl={task.thumbnailUrl}
-                  onPlay={() => onPlayVideo(task.videoUrl!, task.muteForPatient !== false, task.thumbnailUrl)}
+                  onPlay={() => onPlayVideo(task.videoUrl!, task.muteForPatient !== false, task.thumbnailUrl, task.exerciseId)}
                   isPt={isPt}
                 />
               )}
@@ -1085,7 +1100,7 @@ function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
 function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo }: {
   prescriptions: any[];
   onToggleLog: (prescriptionId: string, dateStr: string) => void;
-  onPlayVideo: (url: string, muted: boolean, poster?: string | null) => void;
+  onPlayVideo: (url: string, muted: boolean, poster?: string | null, exerciseId?: string | null) => void;
 }) {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
@@ -1124,7 +1139,7 @@ function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo }: {
               {p.exercise?.videoUrl && (
                 <VideoThumb
                   thumbnailUrl={p.exercise.thumbnailUrl}
-                  onPlay={() => onPlayVideo(p.exercise.videoUrl, p.exercise.muteForPatient !== false, p.exercise.thumbnailUrl)}
+                  onPlay={() => onPlayVideo(p.exercise.videoUrl, p.exercise.muteForPatient !== false, p.exercise.thumbnailUrl, p.exercise.id)}
                   isPt={isPt}
                 />
               )}

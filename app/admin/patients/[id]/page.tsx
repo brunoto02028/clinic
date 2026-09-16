@@ -16,6 +16,7 @@ import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
 import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
 import AssignProtocolDialog from "@/components/admin/assign-protocol-dialog";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
+import { PatientActivityTab } from "@/components/admin/patient-activity-tab";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
 import AssessmentPanel from "@/components/assessments/assessment-panel";
@@ -1005,6 +1006,9 @@ export default function PatientProfilePage() {
                     <Stethoscope className="h-3 w-3" />Evidence
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="atividade" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                  <Activity className="h-3 w-3" />Activity
+                </TabsTrigger>
                 {isPersonal && (
                   <TabsTrigger value="workouts" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                     <Dumbbell className="h-3 w-3" />Workouts
@@ -2134,6 +2138,11 @@ export default function PatientProfilePage() {
         {/* ── Tab: Evidência ── */}
         <TabsContent value="evidencia" className="mt-4">
           <EvidenceReportTab patientId={patientId} />
+        </TabsContent>
+
+        {/* ── Tab: Atividade ── */}
+        <TabsContent value="atividade" className="mt-4">
+          <PatientActivityTab patientId={patientId} />
         </TabsContent>
 
         {isPersonal && (
