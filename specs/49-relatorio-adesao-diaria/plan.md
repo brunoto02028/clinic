@@ -1,6 +1,6 @@
 # Ativ. 49 — Relatório diário de adesão + lembrete ao paciente
 
-**Status:** pendente (plano aguardando aprovação)
+**Status:** T-1/T-2/T-3/T-5/T-6 concluídos e no ar (16/09/2026) — T-4 (WhatsApp) adiada
 
 ## Objetivo
 Todo fim de dia: (1) avisar o Bruno, por e-mail + WhatsApp + um painel no admin, quem completou e
@@ -58,12 +58,28 @@ que ainda não completou.
 
 | T-N | Nome | Status |
 |-----|------|--------|
-| T-1 | Função server-side "o que é esperado hoje" por paciente | pendente |
-| T-2 | Agregação de adesão diária por clínica | pendente |
-| T-3 | Cron `daily-adherence`: lembrete ao paciente + e-mail ao Bruno + agendamento no Coolify | pendente |
+| T-1 | Função server-side "o que é esperado hoje" por paciente | concluído |
+| T-2 | Agregação de adesão diária por clínica | concluído |
+| T-3 | Cron `daily-adherence`: lembrete ao paciente + e-mail ao Bruno + agendamento no Coolify | concluído |
 | T-4 | Resumo diário por WhatsApp ao Bruno | adiada (depois do e-mail estar rodando) |
-| T-5 | Painel "Adesão de hoje" no admin | pendente |
-| T-6 | QA de ponta a ponta | pendente |
+| T-5 | Painel "Adesão de hoje" no admin | concluído |
+| T-6 | QA de ponta a ponta | concluído |
+
+## Resultado (16/09/2026)
+- Implementado e no ar: `lib/patient-daily-adherence.ts` (T-1), `lib/clinic-daily-adherence.ts` (T-2),
+  `app/api/cron/daily-adherence` + agendamento ativo no Coolify às 21h/BST (T-3),
+  `app/api/admin/adherence/today` + card no dashboard (T-5).
+- Durante o QA, achados e corrigidos: e-mail-resumo duplicava se o cron rodasse 2x no mesmo dia
+  (dedupe adicionado, igual ao do lembrete); `limit=0`/mapeamento de `AuditLog.action` não se
+  aplicam aqui (isso foi achado da Ativ. 48).
+- O template do e-mail passou por 3 rodadas de ajuste visual a pedido do usuário, terminando num
+  rebrand do **cabeçalho compartilhado** de todos os e-mails do sistema (`lib/email-templates.ts`,
+  `wrapInLayout`) — fundo creme + logo escuro/colorido + linha fina de destaque, em vez do bloco
+  verde sólido com logo branco de antes. Detalhes completos em `qa/report-t-6.md`.
+- Endpoint novo `GET /api/admin/adherence/preview-email` (gated por sessão de admin, não pela chave
+  do cron) para revisar o e-mail sem enviar — decisão de segurança: a chave do cron nunca pode
+  aparecer numa URL aberta em navegador.
+- T-4 (WhatsApp pro Bruno) segue adiada, sem código escrito ainda.
 
 ## Suposições (validar com o usuário)
 1. **Item "esperado hoje"**: mesma regra do "Today" do paciente — itens `HOME_EXERCISE`/`HOME_CARE`

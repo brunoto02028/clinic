@@ -1,6 +1,6 @@
 # T-2: Agregação de adesão diária por clínica
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-1
 
 ## Objetivo

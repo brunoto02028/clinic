@@ -1,6 +1,6 @@
 # T-5: Painel "Adesão de hoje" no admin
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-2
 
 ## Objetivo

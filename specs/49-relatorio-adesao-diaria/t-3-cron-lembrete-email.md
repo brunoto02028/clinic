@@ -1,6 +1,6 @@
 # T-3: Cron `daily-adherence` — lembrete ao paciente + e-mail ao Bruno
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-2
 
 ## Objetivo

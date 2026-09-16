@@ -1,7 +1,8 @@
 # T-6: QA de ponta a ponta
 
-**Status:** pendente
-**Depende de:** T-1, T-2, T-3, T-4, T-5
+**Status:** concluído
+**Depende de:** T-1, T-2, T-3, T-5 (T-4 adiada — QA cobre e-mail + painel, WhatsApp fica pra quando
+essa tarefa entrar)
 
 ## Objetivo
 Confirmar os 3 canais (e-mail, WhatsApp, painel) batendo entre si e com a realidade, num dia real.

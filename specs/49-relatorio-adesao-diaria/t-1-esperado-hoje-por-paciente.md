@@ -1,6 +1,6 @@
 # T-1: Função server-side "o que é esperado hoje" por paciente
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** nenhuma
 
 ## Objetivo
