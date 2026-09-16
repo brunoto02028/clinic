@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     let fbError: string | null = null
     if (publishToFacebook) {
       try {
-        const fbResult = await publishToFacebookPage({ clinicId: clinicId!, imageUrl, caption: fullCaption })
+        const fbResult = await publishToFacebookPage({ clinicId, imageUrl, caption: fullCaption })
         if (fbResult) fbPostId = fbResult.id
         else fbError = 'No Facebook Page connected. Reconnect via Instagram Connect using the "Conectar Instagram" OAuth button (not the manual token).'
       } catch (e: any) {
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     // posts never showed up alongside those.
     await prisma.socialPost.create({
       data: {
-        clinicId: clinicId!,
+        clinicId,
         accountId: igAccount.id,
         caption: fullCaption,
         postType: 'IMAGE',

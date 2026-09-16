@@ -59,9 +59,7 @@ export async function POST(req: NextRequest) {
 
     const user = session.user as any;
     const clinicId = await sessionClinicId(session);
-    if (!clinicId) {
-      return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
-    }
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     const body = await req.json();
     const {

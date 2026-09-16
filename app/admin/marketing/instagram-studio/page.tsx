@@ -452,7 +452,7 @@ export default function InstagramStudioPage() {
       const data = await res.json();
       setDrafts(prev => {
         const ids = new Set(prev.map((d: any) => d.id));
-        return [...prev, ...data.posts.filter((p: any) => !ids.has(p.id))];
+        return [...prev, ...(data.posts || []).filter((p: any) => !ids.has(p.id))];
       });
     } catch {} finally { setDraftsLoading(false); }
   }

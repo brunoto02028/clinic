@@ -68,9 +68,14 @@ export async function DELETE(req: NextRequest) {
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const clinicId = await sessionClinicId(session);
+  if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  await (prisma as any).therapistBlock.delete({ where: { id } });
+  // Scoped delete: this used to remove a block by id alone, so an id from
+  // another clinic deleted that clinic's absence.
+  const removed = await (prisma as any).therapistBlock.deleteMany({ where: { id, clinicId } });
+  if (removed.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

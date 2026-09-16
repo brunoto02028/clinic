@@ -16,6 +16,7 @@ jest.mock("next/headers", () => ({ cookies: jest.fn() }));
 
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
+import { getDefaultClinicId } from "@/lib/default-tenant";
 import { sessionClinicId } from "@/lib/session-clinic";
 
 const users = (prisma as any).user;
@@ -35,7 +36,8 @@ it("gives staff their own clinic, whatever clinic is selected", async () => {
   withCookie("clinicB");
   expect(await sessionClinicId(session("THERAPIST", "clinicA"))).toBe("clinicA");
   expect(await sessionClinicId(session("ADMIN", "clinicA"))).toBe("clinicA");
-  expect(clinics.findFirst).not.toHaveBeenCalled();
+  // The selected clinic is never even looked up for them.
+  expect(clinics.findUnique).not.toHaveBeenCalled();
 });
 
 it("gives a SUPERADMIN the active clinic, and their own when none is selected", async () => {
@@ -66,6 +68,21 @@ it("answers null for an account with no clinic — never the first clinic in the
   users.findUnique.mockResolvedValue({ clinicId: null });
   expect(await sessionClinicId(session("ADMIN", null))).toBeNull();
   expect(clinics.findFirst).not.toHaveBeenCalled();
+});
+
+it("falls back to the platform's default tenant only for a SUPERADMIN with no clinic of their own", async () => {
+  users.findUnique.mockResolvedValue({ clinicId: null });
+  (getDefaultClinicId as jest.Mock).mockResolvedValue("defaultClinic");
+  expect(await sessionClinicId(session("SUPERADMIN", null))).toBe("defaultClinic");
+
+  // …and null when the platform has no default either (DEFAULT_CLINIC_SLUG
+  // unset with several active clinics), rather than somebody else's clinic.
+  (getDefaultClinicId as jest.Mock).mockResolvedValue(null);
+  expect(await sessionClinicId(session("SUPERADMIN", null))).toBeNull();
+
+  // An ADMIN never reaches the default tenant.
+  (getDefaultClinicId as jest.Mock).mockResolvedValue("defaultClinic");
+  expect(await sessionClinicId(session("ADMIN", null))).toBeNull();
 });
 
 it("survives cookies() being unavailable (scripts, tests)", async () => {
