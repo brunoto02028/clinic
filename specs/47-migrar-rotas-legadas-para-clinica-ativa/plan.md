@@ -53,6 +53,7 @@ consulta sem filtro de clínica.
 | T-2 | Migrar as 11 rotas de social/marketing | concluído |
 | T-3 | Migrar equipamentos, agenda/bloqueios, Atlas e artigos/instagram (7 chamadas) | concluído |
 | T-4 | Testes e varredura final (nenhum `resolve-clinic-id` sobrando) | concluído |
+| T-5 | Rotas de manutenção da biblioteca (pedido depois da T-4) | concluído |
 
 ## Suposições (validar com o usuário)
 - Responder 403 (em vez de lista vazia) quando não há clínica é aceitável: em produção toda conta
@@ -68,6 +69,12 @@ consulta sem filtro de clínica.
   agenda apagava por id, sem clínica — corrigido (apaga só dentro da clínica, 404 fora).
 - Produção antes × depois com a BPR ativa: respostas idênticas; com a clínica "Bruno" ativa, cada
   rota passa a devolver os dados dessa clínica.
+
+## T-5 (16/09/2026, pedido depois da T-4)
+As quatro rotas de manutenção também entraram: `backfill-duration` e `normalize-videos` não
+filtravam clínica nenhuma e agora ficam na clínica ativa (com `?allClinics=true` para a plataforma
+inteira), `reset-library` passou ao mesmo helper e à mesma recusa, e `voice-parse` ficou como está
+porque não toca em dados. Detalhes em `t-5-rotas-de-manutencao.md` e `qa/report-t-5.md`.
 
 ## Pendências
 1. `DEFAULT_CLINIC_SLUG` continua indefinido em produção — hoje inofensivo (os dois SUPERADMIN têm
