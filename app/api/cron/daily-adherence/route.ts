@@ -1,0 +1,83 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
+import { notifyPatient } from "@/lib/notify-patient";
+import { sendEmail } from "@/lib/email";
+import { logAudit } from "@/lib/system-logger";
+
+export const dynamic = "force-dynamic";
+
+const REPORT_TO = "admin@bpr.clinic";
+const REMINDER_ACTION = "DAILY_ADHERENCE_REMINDER_SENT";
+
+// POST /api/cron/daily-adherence — once a day (intended: 21h clinic time, see
+// specs/49-relatorio-adesao-diaria): reminds every patient still missing
+// today's activities, and e-mails the clinic a completed/missing summary.
+// Call via cron: curl -X POST https://bpr.clinic/api/cron/daily-adherence?key=SECRET
+export async function POST(req: NextRequest) {
+  const key = req.nextUrl.searchParams.get("key");
+  const cronSecret = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET;
+  if (key !== cronSecret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // "Today" is computed in the server's own timezone — close enough to the
+  // clinic's (Europe/London) for a job meant to fire well away from
+  // midnight, but not exact across a DST-shifted boundary. Flagged in the
+  // plan (decision 7) as something to tighten once this is running for real.
+  const now = new Date();
+
+  const clinics = await prisma.clinic.findMany({ where: { isActive: true }, select: { id: true, name: true } });
+
+  const results: { clinicId: string; completed: number; missing: number; remindersSent: number }[] = [];
+
+  for (const clinic of clinics) {
+    const { completed, missing } = await getClinicDailyAdherence(clinic.id, now);
+    if (completed.length === 0 && missing.length === 0) continue; // nothing scheduled anywhere today
+
+    let remindersSent = 0;
+    for (const patient of missing) {
+      const dayStart = new Date(now);
+      dayStart.setHours(0, 0, 0, 0);
+      const already = await prisma.auditLog.findFirst({
+        where: { userId: patient.patientId, action: REMINDER_ACTION, createdAt: { gte: dayStart } },
+        select: { id: true },
+      });
+      if (already) continue;
+
+      await notifyPatient({
+        patientId: patient.patientId,
+        plainMessage: "You still have activities left in today's plan — a couple of minutes now keeps your progress on track.",
+        plainMessagePt: "Ainda faltam atividades do seu plano de hoje — alguns minutos agora mantêm seu progresso em dia.",
+      });
+      await logAudit({
+        userId: patient.patientId,
+        userEmail: "",
+        userRole: "PATIENT",
+        action: REMINDER_ACTION,
+        entity: "User",
+        entityId: patient.patientId,
+        description: `Daily adherence reminder sent to ${patient.name}`,
+      });
+      remindersSent++;
+    }
+
+    const listItem = (p: { name: string; missingItems: { title: string }[] }) =>
+      `<li>${p.name} — missing: ${p.missingItems.map((i) => i.title).join(", ")}</li>`;
+    const html = `
+      <h2>${clinic.name} — today's adherence</h2>
+      <p><strong>${completed.length}</strong> completed everything, <strong>${missing.length}</strong> did not.</p>
+      ${missing.length ? `<h3>Missing something</h3><ul>${missing.map(listItem).join("")}</ul>` : ""}
+      ${completed.length ? `<h3>Completed everything</h3><ul>${completed.map((p) => `<li>${p.name}</li>`).join("")}</ul>` : ""}
+    `;
+    await sendEmail({
+      to: REPORT_TO,
+      subject: `${clinic.name}: ${completed.length} completed, ${missing.length} missing today`,
+      html,
+    });
+
+    results.push({ clinicId: clinic.id, completed: completed.length, missing: missing.length, remindersSent });
+  }
+
+  return NextResponse.json({ results });
+}

@@ -35,6 +35,7 @@ import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import StudioLinksCard from "@/components/admin/studio-links-card";
 import StudioGettingStarted from "@/components/admin/studio-getting-started";
+import DailyAdherenceCard from "@/components/admin/daily-adherence-card";
 
 interface AdminStats {
   totalUsers: number;
@@ -219,6 +220,7 @@ export default function AdminDashboard() {
             {new Date().toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </Badge>
         </div>
+        <DailyAdherenceCard />
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <StatCard
             title={T("admin.todaySessions")}
