@@ -79,7 +79,9 @@ export default function PatientTreatmentPage() {
   const [error, setError] = useState("");
   // Carries the mute flag alongside the URL: the clip's own setting has to
   // reach the player, or a video the therapist silenced plays out loud here.
-  const [videoModal, setVideoModal] = useState<{ url: string; muted: boolean } | null>(null);
+  // `poster` is the exercise's own thumbnail — without it the player opens on
+  // a black frame until playback starts.
+  const [videoModal, setVideoModal] = useState<{ url: string; muted: boolean; poster?: string | null } | null>(null);
   // A YouTube watch/share URL isn't a playable media file — pointing a bare
   // <video> tag at one leaves the player spinning forever (found in QA,
   // 13/09/2026). Shared with app/dashboard/exercises's own video modal.
@@ -321,6 +323,7 @@ export default function PatientTreatmentPage() {
         restSeconds: item.restSeconds,
         frequency: item.frequency,
         videoUrl: item.exercise?.videoUrl,
+        thumbnailUrl: item.exercise?.thumbnailUrl,
         muteForPatient: item.exercise?.muteForPatient,
         doneToday: (item.completionLogs || []).some((l: any) => String(l.completedDate).slice(0, 10) === todayStr),
       }));
@@ -337,6 +340,7 @@ export default function PatientTreatmentPage() {
     restSeconds: p.restSeconds ?? p.exercise?.defaultRestSec,
     frequency: p.frequency,
     videoUrl: p.exercise?.videoUrl,
+    thumbnailUrl: p.exercise?.thumbnailUrl,
     muteForPatient: p.exercise?.muteForPatient,
     doneToday: (p.completionLogs || []).some((l: any) => String(l.completedDate).slice(0, 10) === todayStr),
   }));
@@ -389,7 +393,7 @@ export default function PatientTreatmentPage() {
         </div>
       )}
 
-      <TodayCard tasks={todayTasks} onToggle={handleToggleToday} onPlayVideo={(url, muted) => { setVideoFailed(false); setVideoModal({ url, muted }); }} isPt={isPt} />
+      <TodayCard tasks={todayTasks} onToggle={handleToggleToday} onPlayVideo={(url, muted, poster) => { setVideoFailed(false); setVideoModal({ url, muted, poster }); }} isPt={isPt} />
 
       {/* ── Proposed Schedule (PENDING_PATIENT) ── */}
       {pendingAppointments.length > 0 && !scheduleConfirmed && (
@@ -636,7 +640,7 @@ export default function PatientTreatmentPage() {
                     weekCompleted={weekCompleted}
                     onToggle={handleToggleItem}
                     onToggleLog={handleToggleLog}
-                    onPlayVideo={(url: string, muted: boolean) => { setVideoFailed(false); setVideoModal({ url, muted }); }}
+                    onPlayVideo={(url: string, muted: boolean, poster?: string | null) => { setVideoFailed(false); setVideoModal({ url, muted, poster }); }}
                     protocolStartDate={effectiveStartDate}
                   />
                 );
@@ -655,7 +659,7 @@ export default function PatientTreatmentPage() {
       <PrescriptionSection
         prescriptions={standaloneRx}
         onToggleLog={handleTogglePrescriptionLog}
-        onPlayVideo={(url: string, muted: boolean) => { setVideoFailed(false); setVideoModal({ url, muted }); }}
+        onPlayVideo={(url: string, muted: boolean, poster?: string | null) => { setVideoFailed(false); setVideoModal({ url, muted, poster }); }}
       />
 
       {/* Video Modal */}
@@ -687,6 +691,7 @@ export default function PatientTreatmentPage() {
             ) : (
               <video
                 src={videoModal.url}
+                poster={videoModal.poster || undefined}
                 muted={videoModal.muted}
                 controls
                 // Browsers block autoplay of audible media, so an unmuted
@@ -702,6 +707,38 @@ export default function PatientTreatmentPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Video thumbnail button — a real preview instead of a plain text
+// button, so the exercise list reads like a proper video library. Falls
+// back to a plain play icon when the exercise has no thumbnail yet.
+function VideoThumb({ thumbnailUrl, onPlay, isPt }: {
+  thumbnailUrl?: string | null;
+  onPlay: () => void;
+  isPt: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onPlay}
+      className="mt-2 relative w-28 h-[4.5rem] rounded-lg overflow-hidden border border-border shrink-0 group"
+    >
+      {thumbnailUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full bg-muted" />
+      )}
+      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors flex items-center justify-center">
+        <span className="h-7 w-7 rounded-full bg-white shadow flex items-center justify-center">
+          <Play className="h-3.5 w-3.5 text-foreground ml-0.5" fill="currentColor" />
+        </span>
+      </div>
+      <span className="absolute bottom-1 left-1 right-1 text-[9px] font-medium text-white bg-black/55 rounded px-1 py-0.5 text-center truncate">
+        {isPt ? "Ver vídeo" : "Watch video"}
+      </span>
+    </button>
   );
 }
 
@@ -839,7 +876,7 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
   weekCompleted: number;
   onToggle: (id: string, completed: boolean) => void;
   onToggleLog: (itemId: string, dateStr: string) => void;
-  onPlayVideo: (url: string, muted: boolean) => void;
+  onPlayVideo: (url: string, muted: boolean, poster?: string | null) => void;
   protocolStartDate: string;
 }) {
   const { locale } = useLocale();
@@ -918,14 +955,11 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
 
                     {/* Exercise video */}
                     {item.exercise?.videoUrl && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 h-7 text-xs gap-1"
-                        onClick={() => onPlayVideo(item.exercise.videoUrl, item.exercise.muteForPatient !== false)}
-                      >
-                        <Play className="h-3 w-3" /> {T("treatment.watchVideo")}
-                      </Button>
+                      <VideoThumb
+                        thumbnailUrl={item.exercise.thumbnailUrl}
+                        onPlay={() => onPlayVideo(item.exercise.videoUrl, item.exercise.muteForPatient !== false, item.exercise.thumbnailUrl)}
+                        isPt={isPt}
+                      />
                     )}
 
                     {/* Daily strip — only for the current week */}
@@ -978,6 +1012,7 @@ type TodayTask = {
   restSeconds?: number | null;
   frequency?: string | null;
   videoUrl?: string | null;
+  thumbnailUrl?: string | null;
   muteForPatient?: boolean;
   doneToday: boolean;
 };
@@ -985,7 +1020,7 @@ type TodayTask = {
 function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
   tasks: TodayTask[];
   onToggle: (task: TodayTask) => void;
-  onPlayVideo: (url: string, muted: boolean) => void;
+  onPlayVideo: (url: string, muted: boolean, poster?: string | null) => void;
   isPt: boolean;
 }) {
   const { locale } = useLocale();
@@ -1028,14 +1063,11 @@ function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
                 {task.frequency && <Badge variant="secondary" className="text-[10px]">{task.frequency}</Badge>}
               </div>
               {task.videoUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 h-7 text-xs gap-1"
-                  onClick={() => onPlayVideo(task.videoUrl!, task.muteForPatient !== false)}
-                >
-                  <Play className="h-3 w-3" /> {T("treatment.watchVideo")}
-                </Button>
+                <VideoThumb
+                  thumbnailUrl={task.thumbnailUrl}
+                  onPlay={() => onPlayVideo(task.videoUrl!, task.muteForPatient !== false, task.thumbnailUrl)}
+                  isPt={isPt}
+                />
               )}
             </div>
           </div>
@@ -1053,7 +1085,7 @@ function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
 function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo }: {
   prescriptions: any[];
   onToggleLog: (prescriptionId: string, dateStr: string) => void;
-  onPlayVideo: (url: string, muted: boolean) => void;
+  onPlayVideo: (url: string, muted: boolean, poster?: string | null) => void;
 }) {
   const { locale } = useLocale();
   const T = (key: string) => i18nT(key, locale);
@@ -1090,14 +1122,11 @@ function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo }: {
               </div>
 
               {p.exercise?.videoUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 h-7 text-xs gap-1"
-                  onClick={() => onPlayVideo(p.exercise.videoUrl, p.exercise.muteForPatient !== false)}
-                >
-                  <Play className="h-3 w-3" /> {T("treatment.watchVideo")}
-                </Button>
+                <VideoThumb
+                  thumbnailUrl={p.exercise.thumbnailUrl}
+                  onPlay={() => onPlayVideo(p.exercise.videoUrl, p.exercise.muteForPatient !== false, p.exercise.thumbnailUrl)}
+                  isPt={isPt}
+                />
               )}
 
               <div>
