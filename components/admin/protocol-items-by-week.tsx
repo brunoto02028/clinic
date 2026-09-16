@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
-const PHASES = ["IMMEDIATE", "SHORT_TERM", "MEDIUM_TERM", "LONG_TERM", "MAINTENANCE"];
+// Must match the ProtocolPhase enum — anything else fails the Prisma write.
+const PHASES = ["SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"];
 const ITEM_TYPES: Record<string, string> = {
   HOME_EXERCISE: "Home exercise",
   HOME_CARE: "Self-care",
@@ -42,15 +43,27 @@ function patientCanSee(item: any, releasedThroughWeek: number | null): boolean {
   return releasedThroughWeek == null || (item.startWeek || 1) <= releasedThroughWeek;
 }
 
+// Mirrors app/api/patient/protocol/route.ts: nothing unless sent, nothing
+// while the latest package is unpaid, otherwise the visible items' weeks —
+// as separate ranges, so 1–2 and 7–8 don't read as "1–8".
 function visibleSummary(protocol: any): string {
   if (protocol.status !== "SENT_TO_PATIENT") return "nothing — protocol not sent to the patient yet";
+  const pkg = protocol.packages?.[0];
+  if (pkg && !pkg.isPaid) return "nothing — package payment pending";
   const seen = (protocol.items || []).filter((i: any) => patientCanSee(i, protocol.releasedThroughWeek));
   if (seen.length === 0) return "nothing yet";
-  const start = Math.min(...seen.map((i: any) => i.startWeek || 1));
-  const ends = seen.map((i: any) => (i.endWeek == null ? Infinity : i.endWeek));
-  const end = Math.max(...ends);
-  if (end === Infinity) return `Weeks ${start}+`;
-  return start === end ? `Week ${start}` : `Weeks ${start}–${end}`;
+  const ranges = seen
+    .map((i: any) => [i.startWeek || 1, i.endWeek == null ? Infinity : i.endWeek] as [number, number])
+    .sort((a: [number, number], b: [number, number]) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const [s, e] of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && s <= last[1] + 1) last[1] = Math.max(last[1], e);
+    else merged.push([s, e]);
+  }
+  const fmt = ([s, e]: [number, number]) => (e === Infinity ? `${s}+` : s === e ? `${s}` : `${s}–${e}`);
+  const single = merged.length === 1 && merged[0][0] === merged[0][1];
+  return `${single ? "Week" : "Weeks"} ${merged.map(fmt).join(", ")}`;
 }
 
 export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, flash, onError }: {
@@ -62,6 +75,8 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
 }) {
   const items: any[] = protocol.items || [];
   const rtw: number | null = protocol.releasedThroughWeek ?? null;
+  // Released items still don't reach the patient until the protocol is sent and paid.
+  const gated = protocol.status !== "SENT_TO_PATIENT" || (protocol.packages?.[0] && !protocol.packages[0].isPaid);
   const [busy, setBusy] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [editId, setEditId] = useState<string | null>(null);
@@ -101,8 +116,17 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
 
   const setWeekHidden = async (key: string, hidden: boolean) => {
     setBusy("week-" + key);
+    const { start, end } = parseKey(key);
+    const label = weekLabel(start, end);
     const r = await patch({ bulkHidden: { itemIds: groups[key].map((i) => i.id), hidden } });
-    if (r) { flash(hidden ? `${weekLabel(parseKey(key).start, parseKey(key).end)} hidden from the patient` : `${weekLabel(parseKey(key).start, parseKey(key).end)} released to the patient`); onChanged(); }
+    if (r) {
+      flash(
+        hidden ? `${label} hidden from the patient`
+        : rtw != null && start > rtw ? `${label} released, but the patient won't see it until the release limit (week ${rtw}) reaches it`
+        : `${label} released to the patient`
+      );
+      onChanged();
+    }
     setBusy("");
   };
 
@@ -163,10 +187,12 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
       movedHidden = !(dest.length > 0 && dest.every((i) => !i.hiddenFromPatient));
       itemUpdate.hiddenFromPatient = movedHidden;
     }
-    setBusy(editId);
-    const r = await patch({ itemId: editId, itemUpdate });
+    const savingId = editId;
+    setBusy(savingId);
+    const r = await patch({ itemId: savingId, itemUpdate });
     if (r) {
-      setEditId(null);
+      // Another item's editor may have been opened while this save was in flight.
+      setEditId((cur) => (cur === savingId ? null : cur));
       const label = weekLabel(start, end);
       flash(movedHidden === null ? "Item updated" : movedHidden ? `Moved to ${label} (hidden until released)` : `Moved to ${label}`);
       setOpen((o) => ({ ...o, [k]: true }));
@@ -261,15 +287,15 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
         return (
           <div key={key} className="rounded-lg border">
             <div className="flex flex-wrap items-center gap-2 px-2.5 py-2 bg-muted/20">
-              <button className="flex items-center gap-2 flex-1 min-w-0 text-left" onClick={() => setOpen((o) => ({ ...o, [key]: !expanded }))}>
+              <button className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 min-w-[11rem] text-left" onClick={() => setOpen((o) => ({ ...o, [key]: !expanded }))}>
                 {expanded ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
-                <span className="text-xs font-semibold">{weekLabel(start, end)}</span>
-                <span className="text-[10px] text-muted-foreground">{group.length} item{group.length === 1 ? "" : "s"}</span>
+                <span className="text-xs font-semibold whitespace-nowrap">{weekLabel(start, end)}</span>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">{group.length} item{group.length === 1 ? "" : "s"}</span>
                 <Badge
                   variant="outline"
-                  className={`text-[9px] ${state === "visible" ? "border-emerald-500/40 text-emerald-400" : state === "hidden" ? "border-amber-500/40 text-amber-400" : "border-sky-500/40 text-sky-400"}`}
+                  className={`text-[9px] whitespace-nowrap ${state === "visible" ? "border-emerald-500/40 text-emerald-400" : state === "hidden" ? "border-amber-500/40 text-amber-400" : "border-sky-500/40 text-sky-400"}`}
                 >
-                  {state === "visible" ? "Visible to patient" : state === "hidden" ? "Hidden" : "Partly visible"}
+                  {state === "visible" ? (gated ? "Released" : "Visible to patient") : state === "hidden" ? "Hidden" : gated ? "Partly released" : "Partly visible"}
                 </Badge>
                 {rtw != null && start > rtw && <span className="text-[9px] text-muted-foreground">beyond release limit</span>}
               </button>

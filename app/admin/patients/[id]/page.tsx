@@ -267,16 +267,21 @@ export default function PatientProfilePage() {
   // page mounted, so open editors/expanded sections in child tabs survive
   // (the Protocol tab opens a new item's editor right after creating it).
   const loadedOnce = useRef(false);
+  // Refreshes no longer block the page, so two can overlap — only the most
+  // recent one may write state.
+  const fetchSeq = useRef(0);
   const fetchData = useCallback(async () => {
+    const seq = ++fetchSeq.current;
     if (!loadedOnce.current) setLoading(true);
     try {
       const res = await fetch(`/api/admin/patients/${patientId}`);
       const d = await res.json();
+      if (seq !== fetchSeq.current) return;
       if (!res.ok) throw new Error(d.error);
       setData(d);
       loadedOnce.current = true;
-    } catch (err: any) { setError(err.message); }
-    finally { setLoading(false); }
+    } catch (err: any) { if (seq === fetchSeq.current) setError(err.message); }
+    finally { if (seq === fetchSeq.current) setLoading(false); }
   }, [patientId]);
 
   // Declared before the fetch effect so a different patient loads with the spinner again.
@@ -401,10 +406,10 @@ export default function PatientProfilePage() {
 
   const saveProtoFull = async () => {
     if (!protoFullEditing) return;
-    // Send only what the therapist changed. The form is prefilled with the
-    // current status and with scheduling defaults (09:00, 12 sessions…);
-    // resubmitting those unchanged used to write defaults the protocol never
-    // had and, for the status, re-run the whole "send to patient" flow.
+    // Send only what differs from the stored protocol (protoFullInitial). An
+    // unchanged status is never resubmitted, so saving doesn't look like a
+    // fresh "send to patient"; defaults shown in empty fields still count as
+    // changes, so what the therapist saw is what gets stored.
     const changed: any = {};
     for (const [k, v] of Object.entries(protoFullForm)) {
       if (JSON.stringify(v) !== JSON.stringify(protoFullInitial[k])) changed[k] = v;
@@ -1919,22 +1924,32 @@ export default function PatientProfilePage() {
                     ) : (
                       <>
                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
-                          const initial = {
+                          // The snapshot holds what is stored; the form shows defaults
+                          // for empty fields. Diffing against the stored values means
+                          // a default the therapist saw and kept (e.g. 09:00) is saved.
+                          const stored = {
                             title: pr.title || "",
                             summary: pr.summary || "",
                             therapistComments: pr.therapistComments || "",
                             status: pr.status,
-                            deliveryMode: pr.deliveryMode || "IN_CLINIC",
-                            totalSessions: pr.totalSessions || 12,
-                            sessionsPerWeek: pr.sessionsPerWeek || 2,
-                            sessionDuration: pr.sessionDuration || 60,
+                            deliveryMode: pr.deliveryMode ?? null,
+                            totalSessions: pr.totalSessions ?? null,
+                            sessionsPerWeek: pr.sessionsPerWeek ?? null,
+                            sessionDuration: pr.sessionDuration ?? null,
                             startDate: pr.startDate ? new Date(pr.startDate).toISOString().split("T")[0] : "",
-                            sessionTime: pr.sessionTime || "09:00",
+                            sessionTime: pr.sessionTime ?? null,
                             sessionDays: (() => { try { return JSON.parse(pr.sessionDays || "[]"); } catch { return []; } })(),
                           };
                           setProtoFullEditing(pr.id);
-                          setProtoFullForm(initial);
-                          setProtoFullInitial(initial);
+                          setProtoFullForm({
+                            ...stored,
+                            deliveryMode: stored.deliveryMode || "IN_CLINIC",
+                            totalSessions: stored.totalSessions || 12,
+                            sessionsPerWeek: stored.sessionsPerWeek || 2,
+                            sessionDuration: stored.sessionDuration || 60,
+                            sessionTime: stored.sessionTime || "09:00",
+                          });
+                          setProtoFullInitial(stored);
                         }}>
                           <Pencil className="h-3 w-3 mr-1" /> Edit
                         </Button>

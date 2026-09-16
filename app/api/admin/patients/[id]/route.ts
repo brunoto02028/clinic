@@ -72,6 +72,8 @@ export async function GET(
             },
           },
           therapist: { select: { firstName: true, lastName: true } },
+          // Same "latest package" the patient API gates on — an unpaid one hides every item from her.
+          packages: { select: { isPaid: true }, orderBy: { createdAt: "desc" }, take: 1 },
         },
       }), []),
       safe((prisma as any).bloodPressureReading.findMany({

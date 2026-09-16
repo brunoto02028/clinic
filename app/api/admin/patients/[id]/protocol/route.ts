@@ -452,6 +452,9 @@ export async function PATCH(
 
     // Update a specific protocol item (e.g. patient marks as completed)
     if (itemId && itemUpdate) {
+      if (typeof itemUpdate !== "object" || Array.isArray(itemUpdate)) {
+        return NextResponse.json({ error: "itemUpdate must be an object" }, { status: 400 });
+      }
       if (!(await recordOfPatient("protocolItem", itemId, params.id))) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
@@ -482,13 +485,15 @@ export async function PATCH(
     }
     const current = await (prisma as any).treatmentProtocol.findUnique({
       where: { id: protocolId },
-      select: { status: true, startDate: true, sessionDays: true, sessionTime: true },
+      select: { status: true, sentToPatientAt: true, startDate: true, sessionDays: true, sessionTime: true },
     });
-    // Sending is an event, not a state to re-assert: the edit form resubmits
-    // the current status on every save, and treating that as a fresh send
-    // blocked edits on protocols with no session schedule and re-created the
-    // whole block of PENDING_PATIENT appointments (and the email) each time.
-    const firstSend = status === "SENT_TO_PATIENT" && PRE_SEND_STATUSES.includes(current?.status);
+    // Sending is a one-time event, not a state to re-assert: re-saving a sent
+    // protocol, restoring an archived one, or taking one back to draft and
+    // sending it again must not re-check the schedule, re-create the whole
+    // block of PENDING_PATIENT appointments or re-send the email.
+    const firstSend = status === "SENT_TO_PATIENT"
+      && PRE_SEND_STATUSES.includes(current?.status)
+      && !current?.sentToPatientAt;
 
     // Guard: cannot send to patient without complete scheduling
     if (firstSend) {

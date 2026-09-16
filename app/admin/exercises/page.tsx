@@ -244,16 +244,20 @@ export default function ExercisesPage() {
     }
   }, [page, search, bodyRegion, difficulty, translatedFilter, sort, isGroupedMode]);
 
-  useEffect(() => {
-    fetchExercises();
-  }, [fetchExercises]);
-
   // ?search= prefills the search box — the patient Protocol tab links here to
-  // find an item's exercise and upload its video (activity 44).
+  // find an item's exercise and upload its video (activity 44). The first
+  // fetch waits for it: otherwise the unfiltered 2000-item load can land after
+  // the filtered one and replace it.
+  const [urlReady, setUrlReady] = useState(false);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search).get("search");
     if (q) setSearch(q);
+    setUrlReady(true);
   }, []);
+
+  useEffect(() => {
+    if (urlReady) fetchExercises();
+  }, [fetchExercises, urlReady]);
 
   const fetchFolders = useCallback(async () => {
     try {
