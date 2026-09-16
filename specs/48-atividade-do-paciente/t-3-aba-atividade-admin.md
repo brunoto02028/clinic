@@ -1,6 +1,6 @@
 # T-3: Aba "Atividade" no perfil do paciente (admin)
 
-**Status:** em andamento
+**Status:** concluído
 **Depende de:** T-1
 
 ## Objetivo

@@ -1,8 +1,8 @@
 # QA Report — T-4: QA de ponta a ponta + checagem cross-tenant (Ativ. 48)
 
 **Data:** 16/09/2026
-**Ambiente:** Produção — https://bpr.clinic (commit `1c77e8b`, confirmado via `GET /api/health`: uptime 280s no início e 737s ao final do teste, sem reinício no meio — mesma instância o tempo todo)
-**Resultado geral:** ⚠️ aprovado com ressalvas — **nenhum vazamento cross-tenant** (o ponto crítico); duas divergências entre a spec e o comportamento observado, ambas documentadas, nenhuma é falha de segurança.
+**Ambiente:** Produção — https://bpr.clinic (rodada 1: commit `1c77e8b`; rodada 2, após o code review: commit `2649fa7`)
+**Resultado geral:** ✅ aprovado com ressalvas de documentação — **nenhum vazamento cross-tenant** (o ponto crítico) em nenhuma das duas rodadas; os 4 achados do code review (rodada 2) foram corrigidos e revalidados (3 ao vivo, 1 por leitura de código — sem caminho real em produção pra testá-lo ao vivo hoje).
 
 ## Resumo
 
@@ -101,3 +101,37 @@ Nenhuma falha funcional ou de segurança. Recomendações de documentação:
 
 ## Evidências
 Screenshots em `specs/48-atividade-do-paciente/qa/screenshots/`: `t-4-activity-tab-ana.png`, `t-4-activity-estado-vazio.png`, `t-4-video-modal-abriu.png`.
+
+---
+
+## Rodada 2 (16/09/2026) — revalidação dos 4 achados do code review
+
+**Ambiente:** Produção, commit `2649fa7` (uptime 87s no início da checagem, deploy novo confirmado).
+
+| # | Achado do code review | Resultado |
+|---|------------------------|-----------|
+| 1 | `hasMore` falso mesmo havendo mais eventos além da página | ✅ corrigido, validado por consistência de paginação |
+| 2 | `AuditLog.action` desconhecida virava "Logged in" | ⚠️ corrigido por leitura de código; não reproduzível ao vivo (ver nota) |
+| 3 | `video-watched` aceitava `exerciseId` de outra clínica | ✅ corrigido, `404` confirmado |
+| 4 | `limit=0` era ignorado e virava 50 | ✅ corrigido, confirmado |
+
+### 1. `hasMore` — paginação consistente ✅
+Paciente Ana, 18 eventos reais no total:
+- `?limit=100&offset=0` → 18 eventos, `hasMore:false` (bate com o total real).
+- `?limit=3&offset=0` → 3 eventos, `hasMore:true`.
+- `?limit=3&offset=3` → 3 eventos diferentes (zero IDs repetidos entre as duas páginas), `hasMore:true`.
+
+O cenário exato do achado (uma fonte só, sozinha, com mais linhas que o `take`) não é reproduzível com o volume real da Ana (18 eventos no total, longe de estourar `take`). A correção (`take = offset + limit + 1`, top-k merge de 5 listas ordenadas) foi conferida por leitura de código — é a técnica padrão para essa classe de problema — e a consistência de paginação acima (sem duplicar, sem pular) é evidência indireta de que o merge continua correto após a mudança.
+
+### 2. Fallback `OTHER` para ações desconhecidas ⚠️ não reproduzível ao vivo
+Hoje, em toda a base de código, **só dois pontos** escrevem `AuditLog` com `userId` de um paciente: login (`LOGIN_SUCCESS`, `lib/auth-credentials.ts`/`lib/auth-options.ts`) e vídeo assistido (`VIDEO_WATCHED`, esta atividade). Login falho (`LOGIN_FAILED`) não grava `AuditLog` hoje (só `sysLog`/`trackFailedLogin`), então não existe nenhuma ação real capaz de disparar o fallback `OTHER` em produção agora. Não escrevi uma linha sintética direto no banco de produção pra forçar esse caminho — é fora do padrão de teste desta atividade (todo teste até aqui usou os próprios endpoints da aplicação, nunca escrita direta no banco) e o achado era de baixo risco (rótulo errado, não vazamento). Confirmado por leitura do código (`AUDIT_LABELS` com fallback `{ type: "OTHER", title: log.action }`) que a lógica está correta; fica registrado que a validação ao vivo depende de uma ação futura realmente gravar uma `AuditLog` com outro `action` para um paciente.
+
+### 3. Isolamento de clínica no vídeo assistido ✅
+1. Como SUPERADMIN, troquei a Active Clinic para "Bruno" (`cmtwr3qw9000soa07hzxu48zs`, PERSONAL_TRAINER) só pra ler o id de um exercício de lá (`cmtyixwao0001s408ml7v7rcd`, "Exercise 1") — e devolvi a Active Clinic pra BPR (`cmska2rj90000sb4gqbfqzb0o`) logo em seguida, confirmado via cookie.
+2. Como Ana (View as Patient): `POST /api/patient/activity/video-watched` com esse `exerciseId` de outra clínica.
+- **Obtido:** `404 {"error":"Exercise not found"}` — confirma que a checagem `exercise.clinicId !== actor.clinicId` está funcionando.
+
+### 4. `limit=0` respeitado ✅
+`GET .../activity?limit=0` → `200`, 1 evento (clampado ao mínimo 1, `Math.max(0, 1) = 1`), `hasMore:true`. Antes da correção isso teria devolvido até 50 eventos (o padrão), ignorando o valor pedido.
+
+**Resultado da rodada 2:** 3 de 4 achados confirmados corrigidos ao vivo; o 4º (fallback `OTHER`) confirmado por leitura de código, sem caminho real em produção hoje para disparar o teste ao vivo. Nenhuma regressão nos cenários da rodada 1 (reconferidos junto: cross-tenant, paginação normal, estado vazio).

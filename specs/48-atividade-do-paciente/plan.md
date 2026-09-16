@@ -1,6 +1,6 @@
 # Ativ. 48 — Linha do tempo de atividade do paciente
 
-**Status:** pendente (plano aguardando aprovação)
+**Status:** concluído (16/09/2026) — commits `1c77e8b`, `2649fa7`
 
 ## Objetivo
 Dar à equipe uma aba "Atividade" no perfil do paciente (admin) mostrando tudo que o paciente fez no
@@ -43,10 +43,26 @@ sistema: exercícios marcados como feitos, vídeos assistidos, login, mensagens 
 
 | T-N | Nome | Status |
 |-----|------|--------|
-| T-1 | Endpoint agregador da timeline | pendente |
-| T-2 | Registrar "assistiu vídeo" | pendente |
-| T-3 | Aba "Atividade" no perfil do paciente (admin) | pendente |
-| T-4 | QA de ponta a ponta + checagem cross-tenant | pendente |
+| T-1 | Endpoint agregador da timeline | concluído |
+| T-2 | Registrar "assistiu vídeo" | concluído |
+| T-3 | Aba "Atividade" no perfil do paciente (admin) | concluído |
+| T-4 | QA de ponta a ponta + checagem cross-tenant | concluído |
+
+## Resultado (16/09/2026)
+- As 3 tarefas de implementação saíram como planejado, com uma correção de escopo na T-3: a tela real
+  do perfil do paciente é `app/admin/patients/[id]/page.tsx`, não `components/patients/patient-detail.tsx`
+  (citado por engano no plano original) — corrigido durante a implementação, sem mudar o resultado
+  pro usuário.
+- Code review (commit `1c77e8b`) achou 4 pontos, todos corrigidos no commit `2649fa7`: `hasMore`
+  ficava `false` mesmo havendo mais eventos quando uma única fonte dominava a página; qualquer ação de
+  `AuditLog` fora de login/vídeo virava "Logged in" por engano; `video-watched` aceitava o id de um
+  exercício de outra clínica sem checagem; `limit=0` era ignorado e virava 50. QA da rodada 2
+  confirmou 3 dos 4 ao vivo em produção; o 4º (fallback `OTHER`) não tem, hoje, nenhuma ação real que
+  o dispare em produção — confirmado só por leitura de código (`qa/report-t-4.md`, rodada 2).
+- QA de ponta a ponta (rodada 1) confirmou o ponto crítico: **sem vazamento cross-tenant** — paciente
+  de outra clínica devolve 404. Duas divergências entre a spec e o comportamento real da aplicação
+  foram documentadas (307 de redirect do middleware global em vez de 401 puro; cenário "403 sem
+  clínica resolvida" inatingível para um SUPERADMIN real) — nenhuma das duas é falha de segurança.
 
 ## Suposições (validar com o usuário)
 1. **Mensagens**: a timeline mostra tanto as que o paciente enviou quanto as que recebeu da equipe

@@ -1,6 +1,6 @@
 # T-2: Registrar "assistiu vídeo"
 
-**Status:** em andamento
+**Status:** concluído
 **Depende de:** nenhuma
 
 ## Objetivo

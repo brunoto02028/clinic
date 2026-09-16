@@ -1,6 +1,6 @@
 # T-1: Endpoint agregador da timeline
 
-**Status:** em andamento
+**Status:** concluído
 **Depende de:** nenhuma
 
 ## Objetivo

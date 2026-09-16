@@ -1,6 +1,6 @@
 # T-4: QA de ponta a ponta + checagem cross-tenant
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-1, T-2, T-3
 
 ## Objetivo
