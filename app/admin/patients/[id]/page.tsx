@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
+import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
@@ -192,13 +193,11 @@ export default function PatientProfilePage() {
   // Protocol tab full editor
   const [protoFullEditing, setProtoFullEditing] = useState<string | null>(null);
   const [protoFullForm, setProtoFullForm] = useState<any>({});
+  const [protoFullInitial, setProtoFullInitial] = useState<any>({});
+  const [showArchivedProtos, setShowArchivedProtos] = useState(false);
+  const [restoringProto, setRestoringProto] = useState<string | null>(null);
   const [protoFullSaving, setProtoFullSaving] = useState(false);
   const [sendingProto, setSendingProto] = useState(false);
-  // Protocol item editor
-  const [protoItemEditId, setProtoItemEditId] = useState<string | null>(null);
-  const [protoItemForm, setProtoItemForm] = useState<any>({});
-  const [protoItemBusy, setProtoItemBusy] = useState<string>("");
-  const [protoItemsExpanded, setProtoItemsExpanded] = useState<Record<string, boolean>>({});
 
   // Atlas document generator
   const [showAtlasDoc, setShowAtlasDoc] = useState(false);
@@ -395,65 +394,34 @@ export default function PatientProfilePage() {
 
   const saveProtoFull = async () => {
     if (!protoFullEditing) return;
+    // Send only what the therapist changed. The form is prefilled with the
+    // current status and with scheduling defaults (09:00, 12 sessions…);
+    // resubmitting those unchanged used to write defaults the protocol never
+    // had and, for the status, re-run the whole "send to patient" flow.
+    const changed: any = {};
+    for (const [k, v] of Object.entries(protoFullForm)) {
+      if (JSON.stringify(v) !== JSON.stringify(protoFullInitial[k])) changed[k] = v;
+    }
+    if (Object.keys(changed).length === 0) { setProtoFullEditing(null); return; }
     setProtoFullSaving(true);
-    const r = await patchProtocol(protoFullEditing, protoFullForm);
+    const r = await patchProtocol(protoFullEditing, changed);
     if (r) { setProtoFullEditing(null); flash("Protocol saved!"); fetchData(); }
     setProtoFullSaving(false);
   };
 
-  const saveProtoItem = async () => {
-    if (!protoItemEditId) return;
-    setProtoItemBusy(protoItemEditId);
-    const upd: any = { ...protoItemForm };
-    // Only convert numeric fields that are present in the form; never inject nulls for absent fields
-    ["sets", "reps", "holdSeconds", "restSeconds", "endWeek"].forEach(k => {
-      if (!(k in upd)) return;
-      if (upd[k] === "" || upd[k] == null) upd[k] = null;
-      else upd[k] = parseInt(upd[k]) || null;
-    });
-    // startWeek is NOT nullable in the schema — only send it when it has a valid value
-    if ("startWeek" in upd) {
-      const sw = parseInt(upd.startWeek);
-      if (Number.isFinite(sw) && sw >= 1) upd.startWeek = sw; else delete upd.startWeek;
-    }
-    const r = await patchProtocol("", { itemId: protoItemEditId, itemUpdate: upd });
-    if (r) { setProtoItemEditId(null); flash("Item updated"); fetchData(); }
-    setProtoItemBusy("");
-  };
-
-  const toggleProtoItemHidden = async (item: any) => {
-    setProtoItemBusy(item.id);
-    const r = await patchProtocol("", { itemId: item.id, itemUpdate: { hiddenFromPatient: !item.hiddenFromPatient } });
-    if (r) { flash(item.hiddenFromPatient ? "Item visible to patient" : "Item hidden from patient"); fetchData(); }
-    setProtoItemBusy("");
-  };
-
-  const duplicateProtoItem = async (pr: any, item: any) => {
-    setProtoItemBusy(item.id);
-    const { id, createdAt, updatedAt, protocolId: _p, ...rest } = item;
-    const r = await patchProtocol(pr.id, { newItem: { ...rest, title: `${item.title} (copy)` } });
-    if (r) { flash("Item duplicated"); fetchData(); }
-    setProtoItemBusy("");
-  };
-
-  const deleteProtoItem = async (item: any) => {
-    if (!confirm(`Delete "${item.title}"?`)) return;
-    setProtoItemBusy(item.id);
-    const r = await patchProtocol("", { deleteItemId: item.id });
-    if (r) { flash("Item deleted"); fetchData(); }
-    setProtoItemBusy("");
-  };
-
-  const addProtoItem = async (pr: any) => {
-    setProtoItemBusy("new-" + pr.id);
-    const r = await patchProtocol(pr.id, { newItem: { title: "New item", phase: "SHORT_TERM", itemType: "HOME_EXERCISE" } });
-    if (r) {
-      flash("Item added");
-      setProtoItemsExpanded(x => ({ ...x, [pr.id]: true }));
-      fetchData();
-      if (r.item?.id) { setProtoItemEditId(r.item.id); setProtoItemForm({ title: r.item.title, phase: r.item.phase, itemType: r.item.itemType, sets: "", reps: "", frequency: "", description: "" }); }
-    }
-    setProtoItemBusy("");
+  // Back to "sent" only if it had been sent before; otherwise to draft, so a
+  // protocol archived before review never reaches the patient by restoring.
+  // The API doesn't treat ARCHIVED → SENT as a new send (no appointments/email).
+  const restoreProtocol = async (pr: any) => {
+    const target = pr.sentToPatientAt ? "SENT_TO_PATIENT" : "DRAFT";
+    const msg = target === "SENT_TO_PATIENT"
+      ? `Restore "${pr.title}"? The patient will see it again.`
+      : `Restore "${pr.title}" as a draft?`;
+    if (!confirm(msg)) return;
+    setRestoringProto(pr.id);
+    const r = await patchProtocol(pr.id, { status: target });
+    if (r) { flash("Protocol restored"); fetchData(); }
+    setRestoringProto(null);
   };
 
   const sendProtocol = async (pr: any) => {
@@ -751,6 +719,8 @@ export default function PatientProfilePage() {
 
   const p = data.patient;
   const btnCls = "h-6 text-[10px] px-2";
+  const activeProtocols = (data.protocols || []).filter((pr: any) => pr.status !== "ARCHIVED");
+  const archivedProtocols = (data.protocols || []).filter((pr: any) => pr.status === "ARCHIVED");
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto">
@@ -1899,10 +1869,10 @@ export default function PatientProfilePage() {
 
         {/* ── Tab: Protocolo ── */}
         <TabsContent value="protocolo" className="space-y-4 mt-4">
-          {(!data.protocols || data.protocols.length === 0) ? (
+          {activeProtocols.length === 0 ? (
             <div className="border-dashed border rounded-xl p-10 text-center text-muted-foreground space-y-3">
               <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground/30" />
-              <p className="font-medium text-sm">No treatment protocol created</p>
+              <p className="font-medium text-sm">No active treatment protocol</p>
               <p className="text-xs">Generate an AI assessment, then create the protocol from the diagnosis page.</p>
               {data.diagnoses?.length > 0 && (
                 <Button variant="outline" size="sm" onClick={() => generateProtocol(data.diagnoses[0].id)} disabled={genProtocol}>
@@ -1911,7 +1881,7 @@ export default function PatientProfilePage() {
               )}
               <div><a href={`/admin/patients/${patientId}/diagnosis`} className="text-xs text-primary hover:underline">→ Go to Assessments & Diagnosis</a></div>
             </div>
-          ) : data.protocols.map((pr: any) => {
+          ) : activeProtocols.map((pr: any) => {
             const STATUS_STEPS = ["DRAFT", "UNDER_REVIEW", "APPROVED", "SENT_TO_PATIENT"];
             const STATUS_LABELS: Record<string, string> = { DRAFT: "Draft", UNDER_REVIEW: "Under Review", APPROVED: "Approved", SENT_TO_PATIENT: "Sent" };
             const currentStep = STATUS_STEPS.indexOf(pr.status);
@@ -1942,8 +1912,7 @@ export default function PatientProfilePage() {
                     ) : (
                       <>
                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
-                          setProtoFullEditing(pr.id);
-                          setProtoFullForm({
+                          const initial = {
                             title: pr.title || "",
                             summary: pr.summary || "",
                             therapistComments: pr.therapistComments || "",
@@ -1955,7 +1924,10 @@ export default function PatientProfilePage() {
                             startDate: pr.startDate ? new Date(pr.startDate).toISOString().split("T")[0] : "",
                             sessionTime: pr.sessionTime || "09:00",
                             sessionDays: (() => { try { return JSON.parse(pr.sessionDays || "[]"); } catch { return []; } })(),
-                          });
+                          };
+                          setProtoFullEditing(pr.id);
+                          setProtoFullForm(initial);
+                          setProtoFullInitial(initial);
                         }}>
                           <Pencil className="h-3 w-3 mr-1" /> Edit
                         </Button>
@@ -2063,86 +2035,8 @@ export default function PatientProfilePage() {
                       </select>
                     </div>
                   )}
-                  {/* Items */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Protocol Items ({pr.items?.length || 0})</p>
-                      <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => addProtoItem(pr)} disabled={protoItemBusy === "new-" + pr.id}>
-                        {protoItemBusy === "new-" + pr.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 mr-0.5" />} Add item
-                      </Button>
-                    </div>
-                    <div className="space-y-0.5">
-                      {(protoItemsExpanded[pr.id] ? pr.items : pr.items?.slice(0, 6))?.map((item: any, i: number) => (
-                        protoItemEditId === item.id ? (
-                          <div key={item.id} className="border border-primary/40 rounded-lg p-2 space-y-2 bg-muted/20">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-1 col-span-2"><Label className="text-[10px]">Title</Label>
-                                <Input value={protoItemForm.title || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, title: e.target.value }))} className="h-7 text-xs" />
-                              </div>
-                              <div className="space-y-1"><Label className="text-[10px]">Phase</Label>
-                                <select value={protoItemForm.phase || "SHORT_TERM"} onChange={e => setProtoItemForm((f: any) => ({ ...f, phase: e.target.value }))} className="w-full h-7 rounded-md border border-input bg-background px-2 text-[10px]">
-                                  {["IMMEDIATE","SHORT_TERM","MEDIUM_TERM","LONG_TERM","MAINTENANCE"].map(p => <option key={p} value={p}>{p}</option>)}
-                                </select>
-                              </div>
-                              <div className="space-y-1"><Label className="text-[10px]">Frequency</Label>
-                                <Input value={protoItemForm.frequency || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, frequency: e.target.value }))} className="h-7 text-xs" placeholder="e.g. 3x/week" />
-                              </div>
-                              <div className="space-y-1"><Label className="text-[10px]">Sets</Label>
-                                <Input type="number" value={protoItemForm.sets ?? ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, sets: e.target.value }))} className="h-7 text-xs" />
-                              </div>
-                              <div className="space-y-1"><Label className="text-[10px]">Reps</Label>
-                                <Input type="number" value={protoItemForm.reps ?? ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, reps: e.target.value }))} className="h-7 text-xs" />
-                              </div>
-                              <div className="space-y-1 col-span-2"><Label className="text-[10px]">Description</Label>
-                                <Textarea value={protoItemForm.description || ""} onChange={e => setProtoItemForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="text-xs" />
-                              </div>
-                            </div>
-                            <div className="flex gap-1.5">
-                              <Button size="sm" className="h-6 text-[10px]" onClick={saveProtoItem} disabled={protoItemBusy === item.id}>
-                                {protoItemBusy === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-0.5" />} Save
-                              </Button>
-                              <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setProtoItemEditId(null)}>Cancel</Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div key={item.id || i} className={`group flex items-center gap-2 text-[10px] py-1 border-b border-border/30 last:border-0 ${item.hiddenFromPatient ? "opacity-50" : ""}`}>
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0">{item.phase || "—"}</Badge>
-                            <span className="truncate flex-1">{item.treatmentTypeName || item.title || "—"}</span>
-                            {item.sets && item.reps && <span className="text-muted-foreground/60 shrink-0">{item.sets}×{item.reps}</span>}
-                            {item.completionLogs?.length > 0 && (
-                              <span className="text-ba1-ok shrink-0" title="Days marked done by the patient">
-                                ✓ {item.completionLogs.map((l: any) => new Date(l.completedDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })).join(", ")}
-                              </span>
-                            )}
-                            {item.hiddenFromPatient && (
-                              <button title="Hidden from patient — click to show" className="shrink-0 p-0.5 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
-                                <EyeOff className="h-3 w-3 text-amber-400" />
-                              </button>
-                            )}
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <button title="Edit" className="p-1 rounded hover:bg-muted" onClick={() => { setProtoItemEditId(item.id); setProtoItemForm({ title: item.title || "", phase: item.phase || "SHORT_TERM", frequency: item.frequency || "", sets: item.sets ?? "", reps: item.reps ?? "", description: item.description || "" }); }}>
-                                <Pencil className="h-3 w-3" />
-                              </button>
-                              <button title={item.hiddenFromPatient ? "Show to patient" : "Hide from patient"} className="p-1 rounded hover:bg-muted" onClick={() => toggleProtoItemHidden(item)} disabled={protoItemBusy === item.id}>
-                                {item.hiddenFromPatient ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                              </button>
-                              <button title="Duplicate" className="p-1 rounded hover:bg-muted" onClick={() => duplicateProtoItem(pr, item)} disabled={protoItemBusy === item.id}>
-                                <Copy className="h-3 w-3" />
-                              </button>
-                              <button title="Delete" className="p-1 rounded hover:bg-red-500/20 text-red-400" onClick={() => deleteProtoItem(item)} disabled={protoItemBusy === item.id}>
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      ))}
-                      {(pr.items?.length || 0) > 6 && (
-                        <button className="text-[10px] text-primary hover:underline pt-0.5" onClick={() => setProtoItemsExpanded(x => ({ ...x, [pr.id]: !x[pr.id] }))}>
-                          {protoItemsExpanded[pr.id] ? "Show less" : `View all ${pr.items.length} items`}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  {/* Items — grouped by week, release/hide per week (activity 44) */}
+                  <ProtocolItemsByWeek patientId={patientId} protocol={pr} onChanged={fetchData} flash={flash} onError={setError} />
                   {/* Sent banner */}
                   {pr.status === "SENT_TO_PATIENT" && (
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 flex items-center gap-2">
@@ -2154,6 +2048,35 @@ export default function PatientProfilePage() {
               </div>
             );
           })}
+
+          {/* Archived protocols — kept out of the way, read-only, restorable (activity 44) */}
+          {archivedProtocols.length > 0 && (
+            <div className="border rounded-xl">
+              <button className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-muted-foreground" onClick={() => setShowArchivedProtos(v => !v)}>
+                <span>Archived ({archivedProtocols.length})</span>
+                {showArchivedProtos ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+              {showArchivedProtos && (
+                <div className="border-t divide-y">
+                  {archivedProtocols.map((pr: any) => (
+                    <div key={pr.id} className="p-3 space-y-1.5 opacity-80">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline" className="text-[9px] border-muted-foreground/40">Archived</Badge>
+                        <span className="text-sm font-medium flex-1 min-w-0 truncate">{pr.title}</span>
+                        <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => restoreProtocol(pr)} disabled={restoringProto === pr.id}>
+                          {restoringProto === pr.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />} Restore
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {pr.items?.length || 0} items · created {new Date(pr.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                      {pr.summary && <p className="text-[11px] text-muted-foreground line-clamp-2 whitespace-pre-line">{pr.summary}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         {/* ── Tab: Exercícios ── */}

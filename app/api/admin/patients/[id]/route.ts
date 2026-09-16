@@ -66,7 +66,10 @@ export async function GET(
         include: {
           items: {
             orderBy: { sortOrder: "asc" },
-            include: { completionLogs: { orderBy: { completedDate: "asc" }, select: { completedDate: true } } },
+            include: {
+              completionLogs: { orderBy: { completedDate: "asc" }, select: { completedDate: true } },
+              exercise: { select: { id: true, name: true, videoUrl: true } },
+            },
           },
           therapist: { select: { firstName: true, lastName: true } },
         },

@@ -9,6 +9,27 @@ import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
 
+// exerciseId is a foreign key, so pickEditable (rightly) drops it from item
+// edits — this is the one validated way to set it: undefined leaves it alone,
+// null/"" unlinks, an id must be an exercise of the protocol's own clinic.
+async function resolveExerciseId(
+  value: unknown,
+  clinicId: string
+): Promise<{ ok: true; value: string | null | undefined } | { ok: false }> {
+  if (value === undefined) return { ok: true, value: undefined };
+  if (value === null || value === "") return { ok: true, value: null };
+  if (typeof value !== "string") return { ok: false };
+  const exercise = await prisma.exercise.findUnique({ where: { id: value }, select: { clinicId: true } });
+  if (!exercise || exercise.clinicId !== clinicId) return { ok: false };
+  return { ok: true, value };
+}
+
+const BAD_EXERCISE = { error: "Exercise not found in this clinic" };
+
+// Statuses a protocol can be "sent" from for the first time. Re-saving an
+// already-sent protocol, or restoring an archived one, is not a send.
+const PRE_SEND_STATUSES = ["GENERATING", "DRAFT", "UNDER_REVIEW", "APPROVED"];
+
 // ─── GET — List protocols for a patient ───
 export async function GET(
   req: NextRequest,
@@ -361,7 +382,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { protocolId, status, therapistComments, itemId, itemUpdate, deleteItemId, newItem } = body;
+    const { protocolId, status, therapistComments, itemId, itemUpdate, deleteItemId, newItem, bulkHidden } = body;
 
     // Delete a specific protocol item
     if (deleteItemId) {
@@ -372,11 +393,35 @@ export async function PATCH(
       return NextResponse.json({ success: true, deleted: deleteItemId });
     }
 
+    // Release/hide a whole week at once — one updateMany, scoped to this
+    // protocol so an id from anywhere else is simply not touched.
+    if (bulkHidden && protocolId) {
+      const { itemIds, hidden } = bulkHidden;
+      if (
+        !Array.isArray(itemIds) || itemIds.length === 0 || itemIds.length > 200
+        || !itemIds.every((x: unknown) => typeof x === "string")
+        || typeof hidden !== "boolean"
+      ) {
+        return NextResponse.json({ error: "bulkHidden needs itemIds (1-200 ids) and hidden (boolean)" }, { status: 400 });
+      }
+      if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      const result = await (prisma as any).protocolItem.updateMany({
+        where: { id: { in: itemIds }, protocolId },
+        data: { hiddenFromPatient: hidden },
+      });
+      return NextResponse.json({ success: true, count: result.count });
+    }
+
     // Create a new protocol item (manual add or duplicate)
     if (newItem && protocolId) {
       if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
+      const parent = await (prisma as any).treatmentProtocol.findUnique({ where: { id: protocolId }, select: { clinicId: true } });
+      const newExercise = await resolveExerciseId(newItem.exerciseId, parent.clinicId);
+      if (!newExercise.ok) return NextResponse.json(BAD_EXERCISE, { status: 400 });
       const created = await (prisma as any).protocolItem.create({
         data: {
           protocolId,
@@ -391,7 +436,7 @@ export async function PATCH(
           treatmentTypeName: newItem.treatmentTypeName || null,
           sessionDuration: newItem.sessionDuration ?? null,
           sessionsPerWeek: newItem.sessionsPerWeek ?? null,
-          exerciseId: newItem.exerciseId || null,
+          exerciseId: newExercise.value ?? null,
           sets: newItem.sets ?? null,
           reps: newItem.reps ?? null,
           holdSeconds: newItem.holdSeconds ?? null,
@@ -410,9 +455,19 @@ export async function PATCH(
       if (!(await recordOfPatient("protocolItem", itemId, params.id))) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
+      const data: any = pickEditable("ProtocolItem", itemUpdate);
+      if ("exerciseId" in itemUpdate) {
+        const owner = await (prisma as any).protocolItem.findUnique({
+          where: { id: itemId },
+          select: { protocol: { select: { clinicId: true } } },
+        });
+        const linked = await resolveExerciseId(itemUpdate.exerciseId, owner.protocol.clinicId);
+        if (!linked.ok) return NextResponse.json(BAD_EXERCISE, { status: 400 });
+        data.exerciseId = linked.value;
+      }
       const updated = await (prisma as any).protocolItem.update({
         where: { id: itemId },
-        data: pickEditable("ProtocolItem", itemUpdate),
+        data,
       });
       return NextResponse.json({ success: true, item: updated });
     }
@@ -425,12 +480,18 @@ export async function PATCH(
     if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    const current = await (prisma as any).treatmentProtocol.findUnique({
+      where: { id: protocolId },
+      select: { status: true, startDate: true, sessionDays: true, sessionTime: true },
+    });
+    // Sending is an event, not a state to re-assert: the edit form resubmits
+    // the current status on every save, and treating that as a fresh send
+    // blocked edits on protocols with no session schedule and re-created the
+    // whole block of PENDING_PATIENT appointments (and the email) each time.
+    const firstSend = status === "SENT_TO_PATIENT" && PRE_SEND_STATUSES.includes(current?.status);
+
     // Guard: cannot send to patient without complete scheduling
-    if (status === "SENT_TO_PATIENT") {
-      const current = await (prisma as any).treatmentProtocol.findUnique({
-        where: { id: protocolId },
-        select: { startDate: true, sessionDays: true, sessionTime: true },
-      });
+    if (firstSend) {
       const effStartDate = body.startDate !== undefined ? body.startDate : current?.startDate;
       const effSessionDays = body.sessionDays !== undefined ? body.sessionDays : current?.sessionDays;
       const effSessionTime = body.sessionTime !== undefined ? body.sessionTime : current?.sessionTime;
@@ -447,7 +508,7 @@ export async function PATCH(
     if (status) {
       updateData.status = status;
       if (status === "APPROVED") updateData.approvedAt = new Date();
-      if (status === "SENT_TO_PATIENT") updateData.sentToPatientAt = new Date();
+      if (firstSend) updateData.sentToPatientAt = new Date();
     }
     if (therapistComments !== undefined) updateData.therapistComments = therapistComments;
     // Session delivery fields
@@ -535,7 +596,7 @@ export async function PATCH(
     }
 
     // Create PENDING_PATIENT appointments when protocol is sent to patient
-    if (status === "SENT_TO_PATIENT") {
+    if (firstSend) {
       try {
         const proto = await (prisma as any).treatmentProtocol.findUnique({
           where: { id: protocolId },
@@ -581,7 +642,7 @@ export async function PATCH(
     }
 
     // Notify patient when protocol is sent to them
-    if (status === "SENT_TO_PATIENT") {
+    if (firstSend) {
       try {
         const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
         notifyPatient({

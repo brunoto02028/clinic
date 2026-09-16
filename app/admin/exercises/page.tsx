@@ -248,6 +248,13 @@ export default function ExercisesPage() {
     fetchExercises();
   }, [fetchExercises]);
 
+  // ?search= prefills the search box — the patient Protocol tab links here to
+  // find an item's exercise and upload its video (activity 44).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("search");
+    if (q) setSearch(q);
+  }, []);
+
   const fetchFolders = useCallback(async () => {
     try {
       const [treeRes, flatRes] = await Promise.all([
