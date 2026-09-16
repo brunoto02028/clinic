@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
 import { notifyPatient } from "@/lib/notify-patient";
 import { sendEmail } from "@/lib/email";
+import { wrapInLayout } from "@/lib/email-templates";
+import { escapeHtml } from "@/lib/admin-notify-email";
 import { logAudit } from "@/lib/system-logger";
 
 export const dynamic = "force-dynamic";
@@ -70,14 +72,36 @@ export async function POST(req: NextRequest) {
     });
     let reportSent = false;
     if (!reportAlreadySent) {
-      const listItem = (p: { name: string; missingItems: { title: string }[] }) =>
-        `<li>${p.name} — missing: ${p.missingItems.map((i) => i.title).join(", ")}</li>`;
-      const html = `
-        <h2>${clinic.name} — today's adherence</h2>
-        <p><strong>${completed.length}</strong> completed everything, <strong>${missing.length}</strong> did not.</p>
-        ${missing.length ? `<h3>Missing something</h3><ul>${missing.map(listItem).join("")}</ul>` : ""}
-        ${completed.length ? `<h3>Completed everything</h3><ul>${completed.map((p) => `<li>${p.name}</li>`).join("")}</ul>` : ""}
+      const missingItem = (p: { name: string; missingItems: { title: string }[] }) => `
+        <li style="margin:0 0 10px;">
+          <span style="color:#20242D;font-weight:600;">${escapeHtml(p.name)}</span><br>
+          <span style="color:#A85A4B;font-size:13px;">${escapeHtml(p.missingItems.map((i) => i.title).join(", "))}</span>
+        </li>`;
+      const completedItem = (p: { name: string }) =>
+        `<li style="color:#20242D;margin:0 0 6px;">${escapeHtml(p.name)}</li>`;
+      const content = `
+        <h2 style="color:#20242D;font-size:20px;margin:0 0 4px;">${escapeHtml(clinic.name)}</h2>
+        <p style="color:#6b7280;font-size:13px;margin:0 0 20px;">Today's adherence</p>
+        <p style="font-size:15px;margin:0 0 20px;">
+          <span style="color:#4F7361;font-weight:700;">${completed.length} completed everything</span>
+          &nbsp;·&nbsp;
+          <span style="color:#A85A4B;font-weight:700;">${missing.length} did not</span>
+        </p>
+        ${missing.length ? `
+          <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">Missing something</h3>
+          <ul style="list-style:none;padding:0;margin:0 0 24px;">${missing.map(missingItem).join("")}</ul>
+        ` : ""}
+        ${completed.length ? `
+          <h3 style="color:#20242D;font-size:15px;margin:0 0 10px;">Completed everything</h3>
+          <ul style="list-style:none;padding:0;margin:0;">${completed.map(completedItem).join("")}</ul>
+        ` : ""}
       `;
+      const html = await wrapInLayout(
+        content,
+        `${completed.length} completed, ${missing.length} missing today`,
+        "en-GB",
+        clinic.id
+      );
       await sendEmail({
         to: REPORT_TO,
         subject: `${clinic.name}: ${completed.length} completed, ${missing.length} missing today`,
