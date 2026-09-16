@@ -24,7 +24,7 @@ async function resolveExerciseId(
   return { ok: true, value };
 }
 
-const BAD_EXERCISE = { error: "Exercise not found in this clinic" };
+const BAD_EXERCISE = { error: "Exercise not found in this clinic", code: "EXERCISE_NOT_IN_CLINIC" };
 
 // Statuses a protocol can be "sent" from for the first time. Re-saving an
 // already-sent protocol, or restoring an archived one, is not a send.

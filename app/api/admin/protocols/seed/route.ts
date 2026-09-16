@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { staffTenantAccess } from "@/lib/protocol-template-access";
 
 export const dynamic = "force-dynamic";
 
@@ -513,17 +512,15 @@ const PROTOCOLS = [
 ];
 
 // ─── POST /api/admin/protocols/seed ────────────────────────────
-export async function POST() {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const role = (session.user as any).role;
+export async function POST(req: NextRequest) {
+  // Seeded templates belong to the clinic the caller works in (SUPERADMIN:
+  // the one selected in "Active Clinic"), like any other template.
+  const access = await staffTenantAccess(req);
+  if (access.response) return access.response;
+  const { role, userId, clinicId } = access.actor;
   if (!["ADMIN", "SUPERADMIN"].includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  const userId = (session.user as any).id;
-  const clinicId = (session.user as any).clinicId ?? null;
 
   const created: string[] = [];
   const errors: string[] = [];

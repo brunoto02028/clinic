@@ -14,6 +14,7 @@ import {
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
 import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
+import AssignProtocolDialog from "@/components/admin/assign-protocol-dialog";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
@@ -217,6 +218,7 @@ export default function PatientProfilePage() {
   // Generating AI
   const [generating, setGenerating] = useState(false);
   const [genProtocol, setGenProtocol] = useState(false);
+  const [assignTemplateOpen, setAssignTemplateOpen] = useState(false);
 
   // Atlas SOAP pre-fill
   const [atlasPrefilling, setAtlasPrefilling] = useState(false);
@@ -1881,16 +1883,34 @@ export default function PatientProfilePage() {
 
         {/* ── Tab: Protocolo ── */}
         <TabsContent value="protocolo" className="space-y-4 mt-4">
+          <AssignProtocolDialog
+            open={assignTemplateOpen}
+            onOpenChange={setAssignTemplateOpen}
+            patient={p}
+            onAssigned={() => fetchData()}
+          />
+          {activeProtocols.length > 0 && (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAssignTemplateOpen(true)}>
+                <ClipboardList className="h-3.5 w-3.5" /> Assign template
+              </Button>
+            </div>
+          )}
           {activeProtocols.length === 0 ? (
             <div className="border-dashed border rounded-xl p-10 text-center text-muted-foreground space-y-3">
               <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground/30" />
               <p className="font-medium text-sm">No active treatment protocol</p>
-              <p className="text-xs">Generate an AI assessment, then create the protocol from the diagnosis page.</p>
-              {data.diagnoses?.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => generateProtocol(data.diagnoses[0].id)} disabled={genProtocol}>
-                  {genProtocol ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />} Generate Protocol
+              <p className="text-xs">Assign a template from the protocol library, or generate an AI assessment and create the protocol from the diagnosis page.</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button size="sm" className="gap-1.5" onClick={() => setAssignTemplateOpen(true)}>
+                  <ClipboardList className="h-3.5 w-3.5" /> Assign template
                 </Button>
-              )}
+                {data.diagnoses?.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => generateProtocol(data.diagnoses[0].id)} disabled={genProtocol}>
+                    {genProtocol ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />} Generate Protocol
+                  </Button>
+                )}
+              </div>
               <div><a href={`/admin/patients/${patientId}/diagnosis`} className="text-xs text-primary hover:underline">→ Go to Assessments & Diagnosis</a></div>
             </div>
           ) : activeProtocols.map((pr: any) => {

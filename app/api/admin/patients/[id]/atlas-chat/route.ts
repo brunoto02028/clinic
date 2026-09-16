@@ -84,9 +84,9 @@ export async function POST(
     select: { senderRole: true, content: true, createdAt: true },
   });
 
-  // Fetch available protocol templates (names + conditions + equipment)
+  // Fetch available protocol templates (names + conditions + equipment) — this clinic's only
   const protocols = await (prisma as any).protocolTemplate.findMany({
-    where: { isActive: true },
+    where: { isActive: true, clinicId: tenantAccess.actor.clinicId },
     select: { name: true, condition: true, bodyRegion: true, equipment: true, estimatedWeeks: true, sessionsPerWeek: true },
     orderBy: { name: "asc" },
     take: 20,

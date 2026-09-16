@@ -37,7 +37,7 @@ export async function GET(
           id: true, firstName: true, lastName: true, email: true, phone: true,
           role: true, isActive: true, createdAt: true, updatedAt: true,
           fullAccessOverride: true, profileCompleted: true, consentAcceptedAt: true,
-          intakeToken: true, intakeTokenExpiry: true, password: true,
+          intakeToken: true, intakeTokenExpiry: true, password: true, preferredLocale: true,
         },
       }),
       safe(prisma.medicalScreening.findUnique({ where: { userId: patientId } }), null),
@@ -308,13 +308,22 @@ export async function PATCH(
       if (goals !== undefined) updateD.goals = goals;
       if (precautions !== undefined) updateD.precautions = precautions;
       if (estimatedWeeks !== undefined) updateD.estimatedWeeks = estimatedWeeks;
+      if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
       if (status) {
         updateD.status = status;
         if (status === "APPROVED") updateD.approvedAt = new Date();
-        if (status === "SENT_TO_PATIENT") updateD.sentToPatientAt = new Date();
-      }
-      if (!(await recordOfPatient("treatmentProtocol", protocolId, params.id))) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (status === "SENT_TO_PATIENT") {
+          // Keep the real first-send date — this form resubmits the status on
+          // every save, and the protocol route relies on it to tell a first
+          // send from a re-save.
+          const current = await (prisma as any).treatmentProtocol.findUnique({
+            where: { id: protocolId },
+            select: { sentToPatientAt: true },
+          });
+          if (!current?.sentToPatientAt) updateD.sentToPatientAt = new Date();
+        }
       }
       const updated = await (prisma as any).treatmentProtocol.update({
         where: { id: protocolId },

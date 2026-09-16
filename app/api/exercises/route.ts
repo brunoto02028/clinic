@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { assertModuleAccess } from "@/lib/module-access";
 import { AccessError, accessErrorResponse } from "@/lib/tenant-access";
+import { gatedProtocolExerciseIds } from "@/lib/protocol-exercise-gating";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +21,13 @@ export async function GET(req: NextRequest) {
       await assertModuleAccess(userId, "mod_exercises");
     }
 
+    // Exercises of protocol weeks not released yet stay out, like the items themselves.
+    const gated = await gatedProtocolExerciseIds(userId);
     const prescriptions = await prisma.exercisePrescription.findMany({
       where: {
         patientId: userId,
         isActive: true,
+        ...(gated.size ? { exerciseId: { notIn: [...gated] } } : {}),
       },
       orderBy: [{ exercise: { bodyRegion: "asc" } }, { createdAt: "desc" }],
       include: {

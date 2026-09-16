@@ -1,31 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import {
+  staffTenantAccess,
+  templateInTenant,
+  clinicExerciseIds,
+  templateItemsError,
+  templateItemRows,
+  TEMPLATE_NOT_FOUND,
+} from "@/lib/protocol-template-access";
 
 export const dynamic = "force-dynamic";
-const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "STAFF", "THERAPIST"];
 
-// GET — single template with items
+// GET — single template with items (caller's clinic only)
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const access = await staffTenantAccess(req);
+  if (access.response) return access.response;
 
-  const template = await (prisma as any).protocolTemplate.findUnique({
-    where: { id: params.id },
-    include: {
-      items: {
-        orderBy: [{ phase: "asc" }, { sortOrder: "asc" }],
-        include: { exercise: { select: { id: true, name: true, videoUrl: true, thumbnailUrl: true } } },
-      },
+  const template = await templateInTenant(params.id, access.actor.clinicId, {
+    items: {
+      orderBy: [{ phase: "asc" }, { sortOrder: "asc" }],
+      include: { exercise: { select: { id: true, name: true, videoUrl: true, thumbnailUrl: true } } },
     },
   });
-  if (!template) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!template) return NextResponse.json(TEMPLATE_NOT_FOUND, { status: 404 });
   return NextResponse.json(template);
 }
 
@@ -34,13 +34,23 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await staffTenantAccess(req);
+  if (access.response) return access.response;
+  const { clinicId } = access.actor;
+
+  if (!(await templateInTenant(params.id, clinicId))) {
+    return NextResponse.json(TEMPLATE_NOT_FOUND, { status: 404 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
   const { name, description, condition, bodyRegion, equipment, category, estimatedWeeks, sessionsPerWeek, isActive, items } = body;
+  if (items !== undefined) {
+    const itemsError = templateItemsError(items);
+    if (itemsError) return NextResponse.json({ error: itemsError }, { status: 400 });
+  }
 
   const data: any = {};
   if (name !== undefined) data.name = name;
@@ -54,28 +64,9 @@ export async function PATCH(
   if (isActive !== undefined) data.isActive = isActive;
 
   if (items !== undefined) {
-    await (prisma as any).protocolTemplateItem.deleteMany({ where: { templateId: params.id } });
-    data.items = {
-      create: items.map((it: any, idx: number) => ({
-        phase: it.phase || "SHORT_TERM",
-        itemType: it.itemType || "HOME_EXERCISE",
-        sortOrder: it.sortOrder ?? idx,
-        title: it.title,
-        description: it.description || null,
-        instructions: it.instructions || null,
-        treatmentTypeName: it.treatmentTypeName || null,
-        sessionDuration: it.sessionDuration ?? null,
-        sessionsPerWeek: it.sessionsPerWeek ?? null,
-        exerciseId: it.exerciseId || null,
-        sets: it.sets ?? null,
-        reps: it.reps ?? null,
-        holdSeconds: it.holdSeconds ?? null,
-        restSeconds: it.restSeconds ?? null,
-        frequency: it.frequency || null,
-        startWeek: it.startWeek ?? 1,
-        endWeek: it.endWeek ?? null,
-      })),
-    };
+    // A template may only link exercises from its own clinic's library.
+    const ownExercises = await clinicExerciseIds(items.map((it: any) => it?.exerciseId), clinicId);
+    data.items = { deleteMany: {}, create: templateItemRows(items, ownExercises) };
   }
 
   const updated = await (prisma as any).protocolTemplate.update({
@@ -87,14 +78,15 @@ export async function PATCH(
   return NextResponse.json(updated);
 }
 
-// DELETE — remove template
+// DELETE — remove template (caller's clinic only)
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await staffTenantAccess(req);
+  if (access.response) return access.response;
+  if (!(await templateInTenant(params.id, access.actor.clinicId))) {
+    return NextResponse.json(TEMPLATE_NOT_FOUND, { status: 404 });
   }
   await (prisma as any).protocolTemplate.delete({ where: { id: params.id } });
   return NextResponse.json({ deleted: true });

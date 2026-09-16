@@ -97,6 +97,12 @@ node /app/scripts/seed-recovered-articles.js || echo "[start.sh] recovered-artic
 echo "[start.sh] Seeding default logo/favicon..."
 node /app/scripts/seed-site-logo.js || echo "[start.sh] logo seed warning — check logs"
 
+# Activity 45: protocol templates are per clinic now and every template route
+# filters by it — older templates without a clinic get their author's clinic.
+# Idempotent (only rows still without one); see the script.
+echo "[start.sh] Backfilling ProtocolTemplate.clinicId..."
+node /app/scripts/backfill-protocol-template-clinicid.js || echo "[start.sh] protocol template clinicId backfill warning — check logs"
+
 # ACL reconstruction post-op protocol template (13/09/2026 request) — idempotent,
 # skips if a template with this name already exists, no-ops until an
 # ADMIN/SUPERADMIN account exists to attribute authorship to (see

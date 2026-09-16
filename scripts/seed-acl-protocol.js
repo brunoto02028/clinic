@@ -484,6 +484,8 @@ async function main() {
 
     const template = await tx.protocolTemplate.create({
       data: {
+        // Templates belong to a clinic (activity 45) — the same one its exercises live in.
+        clinicId: clinic.id,
         name: TEMPLATE_NAME,
         namePt: 'Reabilitação Pós-Operatória de Reconstrução do LCA',
         description: 'Full 9-month, hybrid clinic + home rehabilitation programme following ACL reconstruction, with weekly progression across 6 evidence-based phases: protection, early ROM/strength, progressive strengthening, running progression, plyometrics/agility, and return-to-sport testing. Assumes graft protection and weight-bearing status are confirmed with the operating surgeon before starting.',

@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
         phone: true,
         createdAt: true,
         isActive: true,
+        preferredLocale: true,
       },
       orderBy: { firstName: "asc" },
       take: limit,

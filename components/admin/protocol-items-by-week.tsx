@@ -46,20 +46,23 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
 
   const { groups, keys } = groupItems(items);
 
-  const patch = async (body: any) => {
+  const request = async (body: any): Promise<{ ok: boolean; data: any }> => {
     try {
       const res = await fetch(`/api/admin/patients/${patientId}/protocol`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ protocolId: protocol.id, ...body }),
       });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || "Request failed");
-      return d;
+      return { ok: res.ok, data: await res.json().catch(() => ({})) };
     } catch (err: any) {
-      onError(err.message);
-      return null;
+      return { ok: false, data: { error: err.message } };
     }
+  };
+
+  const patch = async (body: any) => {
+    const r = await request(body);
+    if (!r.ok) { onError(r.data?.error || "Request failed"); return null; }
+    return r.data;
   };
 
   const isOpen = (key: string) =>
@@ -168,8 +171,22 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
     const copy = Object.fromEntries(fields.map((f) => [f, item[f]]));
     // A copy starts hidden like any new item — it only reaches the patient
     // once released.
-    const r = await patch({ newItem: { ...copy, title: `${item.title} (copy)`, hiddenFromPatient: true } });
-    if (r) { flash("Item duplicated (hidden until released)"); onChanged(); }
+    const newItem: Record<string, any> = { ...copy, title: `${item.title} (copy)`, hiddenFromPatient: true };
+    let r = await request({ newItem });
+    // An exercise from outside this clinic's library can't be linked — copy
+    // the item anyway, just without the link, rather than failing.
+    let unlinked = false;
+    if (!r.ok && r.data?.code === "EXERCISE_NOT_IN_CLINIC" && newItem.exerciseId) {
+      r = await request({ newItem: { ...newItem, exerciseId: null } });
+      unlinked = true;
+    }
+    if (!r.ok) onError(r.data?.error || "Request failed");
+    else {
+      flash(unlinked
+        ? "Item duplicated without its linked exercise (not in this clinic's library) — hidden until released"
+        : "Item duplicated (hidden until released)");
+      onChanged();
+    }
     setBusy("");
   };
 

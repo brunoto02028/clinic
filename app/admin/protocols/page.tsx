@@ -3,7 +3,7 @@
 // Admin — Treatment Protocol Library (reusable templates per service/equipment/condition)
 import { useState, useEffect, useMemo } from "react";
 import {
-  Loader2, Plus, Pencil, Trash2, Search, ClipboardList, Send, X, Dumbbell,
+  Loader2, Plus, Pencil, Trash2, Search, ClipboardList, X, Dumbbell,
   Building2, Home, Stethoscope, ChevronDown, ChevronUp, UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import AssignProtocolDialog from "@/components/admin/assign-protocol-dialog";
 
 const PHASES = [
   { value: "SHORT_TERM", label: "Short-Term (1-4 wks)" },
@@ -84,13 +85,6 @@ interface ExerciseLite {
   defaultReps: number | null;
 }
 
-interface PatientLite {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
 const emptyItem = (): TemplateItem => ({
   phase: "SHORT_TERM",
   itemType: "HOME_EXERCISE",
@@ -102,7 +96,6 @@ export default function ProtocolsPage() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [exercises, setExercises] = useState<ExerciseLite[]>([]);
-  const [patients, setPatients] = useState<PatientLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -114,13 +107,9 @@ export default function ProtocolsPage() {
   const [items, setItems] = useState<TemplateItem[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Assign state
-  const [assignOpen, setAssignOpen] = useState<Template | null>(null);
-  const [assignPatientId, setAssignPatientId] = useState("");
-  const [assignNote, setAssignNote] = useState("");
-  const [assignSearch, setAssignSearch] = useState("");
-  const [assignLanguage, setAssignLanguage] = useState<"en-GB" | "pt-BR">("en-GB");
-  const [assigning, setAssigning] = useState(false);
+  // Kept after closing so the dialog doesn't change while it animates out.
+  const [assignTemplate, setAssignTemplate] = useState<Template | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
   const seedProtocols = async () => {
@@ -146,12 +135,10 @@ export default function ProtocolsPage() {
     Promise.all([
       fetch("/api/admin/protocols").then((r) => (r.ok ? r.json() : [])),
       fetch("/api/admin/exercises?all=true").then((r) => (r.ok ? r.json() : { exercises: [] })),
-      fetch("/api/admin/patients?limit=500").then((r) => (r.ok ? r.json() : [])),
     ])
-      .then(([tpl, ex, pts]) => {
+      .then(([tpl, ex]) => {
         setTemplates(Array.isArray(tpl) ? tpl : []);
         setExercises(ex.exercises || []);
-        setPatients(Array.isArray(pts) ? pts : []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -170,13 +157,6 @@ export default function ProtocolsPage() {
     );
   }, [templates, search]);
 
-  const filteredPatients = useMemo(() => {
-    if (!assignSearch.trim()) return patients;
-    const q = assignSearch.toLowerCase();
-    return patients.filter(
-      (p) => `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) || (p.email || "").toLowerCase().includes(q)
-    );
-  }, [patients, assignSearch]);
 
   const openCreate = () => {
     setEditing(null);
@@ -232,34 +212,13 @@ export default function ProtocolsPage() {
 
   const remove = async (t: Template) => {
     if (!confirm(`Delete the protocol "${t.name}"?`)) return;
-    await fetch(`/api/admin/protocols/${t.id}`, { method: "DELETE" });
-    setTemplates((prev) => prev.filter((x) => x.id !== t.id));
-  };
-
-  const assign = async () => {
-    if (!assignOpen || !assignPatientId) return;
-    setAssigning(true);
-    try {
-      const r = await fetch(`/api/admin/protocols/${assignOpen.id}/assign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId: assignPatientId, note: assignNote, language: assignLanguage }),
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Failed");
-      toast({
-        title: "Protocol assigned!",
-        description: `The patient has been notified. ${data.prescriptions > 0 ? `${data.prescriptions} exercise(s) prescribed.` : ""}`,
-      });
-      setAssignOpen(null);
-      setAssignPatientId("");
-      setAssignNote("");
-      setAssignLanguage("en-GB");
-    } catch (e: any) {
-      toast({ title: "Error assigning", description: e.message, variant: "destructive" });
-    } finally {
-      setAssigning(false);
+    const r = await fetch(`/api/admin/protocols/${t.id}`, { method: "DELETE" });
+    if (!r.ok) {
+      const data = await r.json().catch(() => ({}));
+      toast({ title: "Error deleting", description: data.error || "Failed", variant: "destructive" });
+      return;
     }
+    setTemplates((prev) => prev.filter((x) => x.id !== t.id));
   };
 
   const updateItem = (idx: number, patch: Partial<TemplateItem>) => {
@@ -359,7 +318,7 @@ export default function ProtocolsPage() {
                 <Button
                   size="sm"
                   className="gap-1.5 h-8 shrink-0"
-                  onClick={(e) => { e.stopPropagation(); setAssignOpen(t); }}
+                  onClick={(e) => { e.stopPropagation(); setAssignTemplate(t); setAssignOpen(true); }}
                 >
                   <UserPlus className="h-3.5 w-3.5" />
                   Assign
@@ -647,74 +606,11 @@ export default function ProtocolsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Assign Dialog ── */}
-      <Dialog open={Boolean(assignOpen)} onOpenChange={(o) => { if (!o) setAssignOpen(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Assign &quot;{assignOpen?.name}&quot;</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search patient…"
-                value={assignSearch}
-                onChange={(e) => setAssignSearch(e.target.value)}
-                className="pl-8 h-9 text-sm"
-              />
-            </div>
-            <div className="max-h-[200px] overflow-y-auto border border-border rounded-lg divide-y divide-border/50">
-              {filteredPatients.map((p) => (
-                <button
-                  key={p.id}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/30 transition-colors ${
-                    assignPatientId === p.id ? "bg-primary/10 border-l-2 border-primary" : ""
-                  }`}
-                  onClick={() => setAssignPatientId(p.id)}
-                >
-                  <p className="font-medium">{p.firstName} {p.lastName}</p>
-                  <p className="text-[10px] text-muted-foreground">{p.email}</p>
-                </button>
-              ))}
-              {filteredPatients.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">No patients.</p>
-              )}
-            </div>
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">Send to patient in</Label>
-              <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setAssignLanguage("en-GB")}
-                  className={`text-[10px] font-medium px-2.5 py-1 rounded transition-colors ${assignLanguage === "en-GB" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  English
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAssignLanguage("pt-BR")}
-                  className={`text-[10px] font-medium px-2.5 py-1 rounded transition-colors ${assignLanguage === "pt-BR" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  Português
-                </button>
-              </div>
-            </div>
-            <Textarea
-              placeholder="Note for the patient (optional)…"
-              value={assignNote}
-              onChange={(e) => setAssignNote(e.target.value)}
-              className="text-sm min-h-[60px]"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignOpen(null)}>Cancel</Button>
-            <Button onClick={assign} disabled={assigning || !assignPatientId} className="gap-2">
-              {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Assign & Notify
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AssignProtocolDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        template={assignTemplate}
+      />
     </div>
   );
 }
