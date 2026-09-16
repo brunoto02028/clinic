@@ -105,6 +105,15 @@ export async function GET(req: NextRequest) {
         hasMoreComing, // patient UI can show "your specialist releases the plan progressively"
         // If payment required, hide detailed items (only show summary)
         items: paymentRequired ? [] : visibleItems,
+        // Every exercise this protocol covers, INCLUDING items hidden by
+        // hiddenFromPatient/releasedThroughWeek/payment gating above — used
+        // client-side only to hide the standalone ExercisePrescription that
+        // protocol assignment auto-creates per exercise (activity 43), so a
+        // not-yet-released item's duplicate doesn't leak into "today" via
+        // its standalone copy while the item itself stays correctly hidden.
+        // Just IDs, not the gated item details, so this doesn't reveal
+        // anything the visibility rules above are meant to withhold.
+        allExerciseIds: (p.items || []).map((it: any) => it.exercise?.id).filter(Boolean),
       };
     });
 

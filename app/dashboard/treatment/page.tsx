@@ -283,14 +283,18 @@ export default function PatientTreatmentPage() {
   // Assigning a protocol template also auto-creates a matching standalone
   // ExercisePrescription per exercise (so the exercise-library video/notes
   // stay reachable) — every one of those exercises is ALSO a protocol item,
-  // just possibly for a future week that's meant to stay hidden until the
-  // therapist releases it. Without this filter every future-week exercise
-  // would leak into "today" via its standalone duplicate, defeating
-  // progressive release entirely (found in QA, activity 43). A prescription
-  // only counts as "standalone" here when its exercise isn't already
-  // governed by ANY of the patient's protocol items, current week or not.
+  // just possibly for a future/unreleased week that's meant to stay hidden.
+  // Without this filter every hidden exercise would leak into "today" via
+  // its standalone duplicate, defeating progressive release entirely (found
+  // in QA, activity 43). Deliberately built from `allExerciseIds` — which
+  // the API includes for every item regardless of hiddenFromPatient /
+  // releasedThroughWeek / payment gating — NOT from `proto.items` (already
+  // filtered by all three), or an item hidden by any of those would drop
+  // out of this set and its standalone duplicate would leak right back in
+  // (a second QA pass caught this: the first fix only covered the implicit
+  // by-date week filter, not the therapist's explicit release controls).
   const protocolExerciseIds = new Set(
-    protocols.flatMap((proto: any) => (proto.items || []).map((item: any) => item.exercise?.id).filter(Boolean))
+    protocols.flatMap((proto: any) => proto.allExerciseIds || [])
   );
   const standaloneRx = prescriptions.filter((p: any) => !p.exercise?.id || !protocolExerciseIds.has(p.exercise.id));
 
@@ -319,7 +323,6 @@ export default function PatientTreatmentPage() {
         videoUrl: item.exercise?.videoUrl,
         muteForPatient: item.exercise?.muteForPatient,
         doneToday: (item.completionLogs || []).some((l: any) => String(l.completedDate).slice(0, 10) === todayStr),
-        weekCount: weekCountFrom(item.completionLogs),
       }));
   });
   const todayPrescriptionTasks: TodayTask[] = standaloneRx.map((p: any) => ({
@@ -336,7 +339,6 @@ export default function PatientTreatmentPage() {
     videoUrl: p.exercise?.videoUrl,
     muteForPatient: p.exercise?.muteForPatient,
     doneToday: (p.completionLogs || []).some((l: any) => String(l.completedDate).slice(0, 10) === todayStr),
-    weekCount: weekCountFrom(p.completionLogs),
   }));
   const todayTasks: TodayTask[] = [...todayProtocolTasks, ...todayPrescriptionTasks];
   const handleToggleToday = (task: TodayTask) => {
@@ -773,15 +775,21 @@ function rollingDays(): Date[] {
   });
 }
 
-// Distinct days logged within the same trailing-7-day window rollingDays()
-// covers — the "X/7 this week" label (activity 43), replacing the old
-// lifetime "Done Nx"/"Completed 1x" counters that carried no time context.
-function weekCountFrom(logs: any[] | undefined): number {
-  const cutoff = toDateStr(rollingDays()[0]);
-  const today = toDateStr(new Date());
+// Distinct days logged within an arbitrary 7-day window — the "X/7 this
+// week" label (activity 43), replacing the old lifetime "Done Nx"/
+// "Completed 1x" counters that carried no time context. Takes the window
+// explicitly rather than assuming rollingDays(): a protocol item's real
+// "this week" is the SAME range its day strip below shows
+// (weekDates(protocolStartDate, currentWeek), anchored to the protocol's
+// start date), not the rolling last-7-days window standalone prescriptions
+// use — a second QA pass caught the two being conflated, which could show
+// a badge count the visible day strip right below it didn't agree with.
+function countMarkedInWindow(logs: any[] | undefined, days: Date[]): number {
+  const first = toDateStr(days[0]);
+  const last = toDateStr(days[days.length - 1]);
   const dates = new Set((logs || []).map((l: any) => String(l.completedDate).slice(0, 10)));
   let count = 0;
-  dates.forEach((d) => { if (d >= cutoff && d <= today) count++; });
+  dates.forEach((d) => { if (d >= first && d <= last) count++; });
   return count;
 }
 
@@ -885,9 +893,12 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
                         {item.title}
                       </span>
                       <Badge variant="outline" className="text-[9px]">{isPt ? TYPE_LABELS_PT[item.itemType] : TYPE_LABELS_EN[item.itemType]}</Badge>
-                      {weekCountFrom(item.completionLogs) > 0 && (
-                        <span className="text-[10px] text-ba1-ok font-medium">{weekCountFrom(item.completionLogs)}/7 {isPt ? "esta semana" : "this week"}</span>
-                      )}
+                      {isCurrentWeek && (() => {
+                        const count = countMarkedInWindow(item.completionLogs, weekDates(protocolStartDate, currentWeek));
+                        return count > 0 ? (
+                          <span className="text-[10px] text-ba1-ok font-medium">{count}/7 {isPt ? "esta semana" : "this week"}</span>
+                        ) : null;
+                      })()}
                     </div>
 
                     <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
@@ -969,7 +980,6 @@ type TodayTask = {
   videoUrl?: string | null;
   muteForPatient?: boolean;
   doneToday: boolean;
-  weekCount: number;
 };
 
 function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
@@ -1063,7 +1073,7 @@ function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo }: {
       <CardContent className="space-y-2 pt-0">
         {prescriptions.map((p: any) => {
           const marked = new Set<string>((p.completionLogs || []).map((l: any) => String(l.completedDate).slice(0, 10)));
-          const weekCount = weekCountFrom(p.completionLogs);
+          const weekCount = countMarkedInWindow(p.completionLogs, days);
           return (
             <div key={p.id} className="border rounded-lg p-3">
               <div className="flex items-center gap-2 flex-wrap">
