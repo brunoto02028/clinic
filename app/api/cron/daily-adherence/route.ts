@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 const REPORT_TO = "admin@bpr.clinic";
 const REMINDER_ACTION = "DAILY_ADHERENCE_REMINDER_SENT";
+const REPORT_ACTION = "DAILY_ADHERENCE_REPORT_SENT";
 
 // POST /api/cron/daily-adherence — once a day (intended: 21h clinic time, see
 // specs/49-relatorio-adesao-diaria): reminds every patient still missing
@@ -29,7 +30,10 @@ export async function POST(req: NextRequest) {
 
   const clinics = await prisma.clinic.findMany({ where: { isActive: true }, select: { id: true, name: true } });
 
-  const results: { clinicId: string; completed: number; missing: number; remindersSent: number }[] = [];
+  const results: { clinicId: string; completed: number; missing: number; remindersSent: number; reportSent?: boolean }[] = [];
+
+  const dayStart = new Date(now);
+  dayStart.setHours(0, 0, 0, 0);
 
   for (const clinic of clinics) {
     const { completed, missing } = await getClinicDailyAdherence(clinic.id, now);
@@ -37,8 +41,6 @@ export async function POST(req: NextRequest) {
 
     let remindersSent = 0;
     for (const patient of missing) {
-      const dayStart = new Date(now);
-      dayStart.setHours(0, 0, 0, 0);
       const already = await prisma.auditLog.findFirst({
         where: { userId: patient.patientId, action: REMINDER_ACTION, createdAt: { gte: dayStart } },
         select: { id: true },
@@ -62,21 +64,38 @@ export async function POST(req: NextRequest) {
       remindersSent++;
     }
 
-    const listItem = (p: { name: string; missingItems: { title: string }[] }) =>
-      `<li>${p.name} — missing: ${p.missingItems.map((i) => i.title).join(", ")}</li>`;
-    const html = `
-      <h2>${clinic.name} — today's adherence</h2>
-      <p><strong>${completed.length}</strong> completed everything, <strong>${missing.length}</strong> did not.</p>
-      ${missing.length ? `<h3>Missing something</h3><ul>${missing.map(listItem).join("")}</ul>` : ""}
-      ${completed.length ? `<h3>Completed everything</h3><ul>${completed.map((p) => `<li>${p.name}</li>`).join("")}</ul>` : ""}
-    `;
-    await sendEmail({
-      to: REPORT_TO,
-      subject: `${clinic.name}: ${completed.length} completed, ${missing.length} missing today`,
-      html,
+    const reportAlreadySent = await prisma.auditLog.findFirst({
+      where: { entityId: clinic.id, action: REPORT_ACTION, createdAt: { gte: dayStart } },
+      select: { id: true },
     });
+    let reportSent = false;
+    if (!reportAlreadySent) {
+      const listItem = (p: { name: string; missingItems: { title: string }[] }) =>
+        `<li>${p.name} — missing: ${p.missingItems.map((i) => i.title).join(", ")}</li>`;
+      const html = `
+        <h2>${clinic.name} — today's adherence</h2>
+        <p><strong>${completed.length}</strong> completed everything, <strong>${missing.length}</strong> did not.</p>
+        ${missing.length ? `<h3>Missing something</h3><ul>${missing.map(listItem).join("")}</ul>` : ""}
+        ${completed.length ? `<h3>Completed everything</h3><ul>${completed.map((p) => `<li>${p.name}</li>`).join("")}</ul>` : ""}
+      `;
+      await sendEmail({
+        to: REPORT_TO,
+        subject: `${clinic.name}: ${completed.length} completed, ${missing.length} missing today`,
+        html,
+      });
+      await logAudit({
+        userId: "system",
+        userEmail: "",
+        userRole: "SYSTEM",
+        action: REPORT_ACTION,
+        entity: "Clinic",
+        entityId: clinic.id,
+        description: `Daily adherence report e-mailed for ${clinic.name}`,
+      });
+      reportSent = true;
+    }
 
-    results.push({ clinicId: clinic.id, completed: completed.length, missing: missing.length, remindersSent });
+    results.push({ clinicId: clinic.id, completed: completed.length, missing: missing.length, remindersSent, reportSent });
   }
 
   return NextResponse.json({ results });
