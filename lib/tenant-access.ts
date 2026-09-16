@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { resolveActorTenant } from "@/lib/actor-tenant";
@@ -54,6 +56,32 @@ export async function getActor(request: NextRequest): Promise<Actor | null> {
     clinicId,
     isImpersonating: effective.isImpersonating,
   };
+}
+
+/**
+ * The signed-in staff member themself, ignoring "View as Patient" — for
+ * staff-only routes NOT under /api/admin, where the middleware swaps the
+ * identity headers for the impersonated patient's (getActor would answer as
+ * that patient and lock the admin out of their own lists).
+ */
+export async function getSessionStaffActor(request: NextRequest): Promise<Actor | null> {
+  const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id as string | undefined;
+  if (!userId) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, clinicId: true, isActive: true },
+  });
+  if (!user || !user.isActive || !isStaff({ role: user.role } as Actor)) return null;
+
+  const clinicId = await resolveActorTenant(
+    user.role,
+    user.clinicId,
+    request.cookies.get("selected-clinic-id")?.value
+  );
+
+  return { userId: user.id, role: user.role as ActorRole, clinicId, isImpersonating: false };
 }
 
 export function requireStaff(actor: Actor): void {

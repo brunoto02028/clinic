@@ -28,9 +28,13 @@ describe("visibleAdminSections", () => {
     expect(keys).not.toContain("protocols");
     expect(keys).not.toContain("rehab-agent");
     // The useful ones stay. (equipment/screening became clinicalOnly in act.26.)
-    expect(keys).toEqual(expect.arrayContaining(["exercises", "treatments", "list", "challenges-list"]));
+    expect(keys).toEqual(expect.arrayContaining(["exercises", "list", "challenges-list"]));
     expect(keys).not.toContain("equipment");
     expect(keys).not.toContain("screening");
+    // Treatments joined them on 12/09 (31435a0): its checkout charges through
+    // the clinic's global Stripe account, not the trainer's Connect one.
+    expect(keys).not.toContain("treatments");
+    expect(tabKeys(visibleAdminSections(false))).toContain("treatments");
   });
 
   it("keeps the Training/Clinical section (it still has workout tabs)", () => {

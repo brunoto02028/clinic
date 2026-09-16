@@ -1,44 +1,33 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
+import { getSessionStaffActor } from "@/lib/tenant-access";
 import { prisma } from "@/lib/db";
 import { isDbUnreachableError, MOCK_PATIENTS, devFallbackResponse } from "@/lib/dev-fallback";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
+    // The signed-in staff member, never the patient they may be previewing as
+    // (this route is outside /api/admin, so the middleware would hand us the
+    // impersonated identity).
+    const actor = await getSessionStaffActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
-
-    const userRole = (session.user as any).role;
-    const userClinicId = (session.user as any).clinicId;
-
-    // Only therapists and admins can view patient list
-    if (userRole === "PATIENT") {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
+    if (!actor.clinicId) {
+      return NextResponse.json({ error: "No clinic resolved for this account" }, { status: 403 });
     }
 
     const searchQuery = request.nextUrl.searchParams.get("search");
     const clinicFilter = request.nextUrl.searchParams.get("clinicId");
 
+    // One clinic at a time, always. `?clinicId=` used to be honoured for every
+    // caller, so any staff member could list another clinic's patients (names,
+    // emails, phones); only a SUPERADMIN may point it at another clinic now.
     let whereClause: any = {
       role: "PATIENT",
+      clinicId: actor.role === "SUPERADMIN" && clinicFilter ? clinicFilter : actor.clinicId,
     };
-
-    // Filter by clinic: use query param if provided, otherwise use user's clinic
-    const effectiveClinicId = clinicFilter || userClinicId;
-    if (effectiveClinicId && userRole !== "SUPERADMIN") {
-      whereClause.clinicId = effectiveClinicId;
-    } else if (effectiveClinicId && userRole === "SUPERADMIN" && clinicFilter) {
-      whereClause.clinicId = clinicFilter;
-    }
 
     if (searchQuery) {
       whereClause.OR = [

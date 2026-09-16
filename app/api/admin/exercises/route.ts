@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { resolveClinicId } from "@/lib/exercise-folders";
 import path from "path";
 import { assertValidExerciseFolder } from "@/lib/exercise-folders";
 import {
@@ -25,7 +26,8 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const clinicId = (session.user as any)?.clinicId;
+  // The clinic the caller works in ("Active Clinic" for a SUPERADMIN).
+  const clinicId = await resolveClinicId(session);
   const bodyRegion = searchParams.get("bodyRegion");
   const difficulty = searchParams.get("difficulty");
   const search = searchParams.get("search") || "";
@@ -35,8 +37,12 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "50");
   const all = searchParams.get("all") === "true"; // For select dropdowns
 
-  const where: any = { isActive: true };
-  if (clinicId) where.clinicId = clinicId;
+  // Fails closed: no clinic resolved means no library, never every tenant's.
+  if (!clinicId) {
+    return NextResponse.json({ error: "No clinic resolved for this account" }, { status: 403 });
+  }
+
+  const where: any = { isActive: true, clinicId };
   if (bodyRegion && bodyRegion !== "ALL") where.bodyRegion = bodyRegion;
   if (difficulty && difficulty !== "ALL") where.difficulty = difficulty;
   if (translated === "yes") where.namePt = { not: null };
@@ -118,7 +124,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const formData = await req.formData();
-    const clinicId = (session.user as any)?.clinicId;
+    const clinicId = await resolveClinicId(session);
     const userId = (session.user as any)?.id;
 
     if (!clinicId) {

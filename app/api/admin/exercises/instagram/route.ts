@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { resolveClinicId } from "@/lib/exercise-folders";
 import { mkdir, readFile, unlink } from "fs/promises";
 import path from "path";
 import { processAndStoreExerciseVideo } from "@/lib/exercise-media";
@@ -111,11 +112,7 @@ export async function POST(req: NextRequest) {
     // (prisma.clinic.findFirst()) here, as older code in this route used to,
     // meant the copyright-risk gate below could read a completely unrelated
     // clinic's flag and import videos into the wrong tenant's library.
-    let clinicId = (session.user as any)?.clinicId;
-    if (!clinicId && userRole === "SUPERADMIN") {
-      const { cookies } = await import("next/headers");
-      clinicId = cookies().get("selected-clinic-id")?.value || null;
-    }
+    const clinicId = await resolveClinicId(session);
     if (!clinicId) {
       return NextResponse.json({ error: "No clinic context" }, { status: 400 });
     }

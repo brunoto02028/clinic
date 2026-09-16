@@ -163,6 +163,9 @@ export async function POST(
             therapistId: actor.userId,
             patientId,
             exerciseId,
+            // Ties it to this plan, so it follows the plan's visibility and
+            // disappears with it when archived (activity 46).
+            protocolId: created.id,
             sets: it.sets,
             reps: it.reps,
             holdSeconds: it.holdSeconds,

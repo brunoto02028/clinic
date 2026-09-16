@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
-import { gatedProtocolExerciseIds } from "@/lib/protocol-exercise-gating";
+import { patientPrescriptionWhere } from "@/lib/protocol-exercise-gating";
 
 export async function GET(request: NextRequest) {
   try {
@@ -165,13 +165,12 @@ export async function GET(request: NextRequest) {
     // otherwise bury every other notification. It clears itself once the
     // patient completes any one of them, so nothing has to be marked as read.
     try {
-      const gated = await gatedProtocolExerciseIds(userId);
       const fresh = await (prisma as any).exercisePrescription.findMany({
         where: {
           patientId: userId,
           isActive: true,
           completedCount: 0,
-          ...(gated.size ? { exerciseId: { notIn: [...gated] } } : {}),
+          ...(await patientPrescriptionWhere(userId)),
         },
         orderBy: { createdAt: "desc" },
         select: { id: true, createdAt: true },

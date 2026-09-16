@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
+import { getActor, isStaff } from "@/lib/tenant-access";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { sendTemplatedEmail } from "@/lib/email-templates";
@@ -11,19 +12,19 @@ import { checkPatientLimit } from "@/lib/tenant-limits";
 // GET - list patients for admin (same as /api/patients but with clinic filter)
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    // The clinic the caller works in — for a SUPERADMIN, the one selected in
+    // "Active Clinic". Listing patients the caller then can't open (every
+    // /api/admin/patients/[id] route answers 404 outside that clinic) is what
+    // made "Patient not found" look like a bug.
+    const actor = await getActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const userId = (session.user as any).id;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true, clinicId: true },
-    });
-
-    if (!user || user.role === "PATIENT") {
+    if (!isStaff(actor)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+    if (!actor.clinicId) {
+      return NextResponse.json({ error: "No clinic resolved for this account" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -31,10 +32,7 @@ export async function GET(request: NextRequest) {
     const letter = searchParams.get("letter") || "";
     const limit = parseInt(searchParams.get("limit") || "100");
 
-    const where: any = { role: "PATIENT" };
-    if (user.clinicId && user.role !== "SUPERADMIN") {
-      where.clinicId = user.clinicId;
-    }
+    const where: any = { role: "PATIENT", clinicId: actor.clinicId };
 
     // Search filter
     if (search) {
@@ -76,19 +74,18 @@ export async function GET(request: NextRequest) {
 // POST - create a new patient (admin/staff only)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const actor = await getActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const userId = (session.user as any).id;
-    const currentUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { role: true, clinicId: true },
-    });
-
-    if (!currentUser || currentUser.role === "PATIENT") {
+    if (!isStaff(actor)) {
       return NextResponse.json({ error: "Only staff can create patients" }, { status: 403 });
+    }
+    // The patient joins the clinic the caller is working in, not the one on
+    // their account — otherwise a SUPERADMIN adding a patient while working in
+    // another clinic files them in the wrong one.
+    if (!actor.clinicId) {
+      return NextResponse.json({ error: "No clinic resolved for this account" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -147,7 +144,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const limitCheck = await checkPatientLimit(currentUser.clinicId);
+    const limitCheck = await checkPatientLimit(actor.clinicId);
     if (!limitCheck.allowed) {
       return NextResponse.json({ error: limitCheck.message }, { status: 403 });
     }
@@ -167,7 +164,7 @@ export async function POST(request: NextRequest) {
         role: "PATIENT",
         isActive: true,
         emailVerified: new Date(), // Mark as verified since admin created it
-        clinicId: currentUser.clinicId,
+        clinicId: actor.clinicId,
       },
       select: {
         id: true,
@@ -186,7 +183,7 @@ export async function POST(request: NextRequest) {
         patientName: firstName.trim(),
         portalUrl: `${appUrl}/dashboard`,
         clinicPhone: '+44 7XXX XXXXXX',
-      }, patient.id, currentUser.clinicId || undefined);
+      }, patient.id, actor.clinicId);
     } catch (emailErr) {
       console.warn('[patients] Failed to send welcome email:', emailErr);
     }

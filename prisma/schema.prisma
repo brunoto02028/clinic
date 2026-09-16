@@ -2933,6 +2933,14 @@ model ExercisePrescription {
   exerciseId String
   exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
+  /// Set when this prescription was created by assigning a protocol, so the
+  /// patient only sees it while that plan still shows the exercise (activity
+  /// 46): a plan archived or pulled back to draft used to hand back every
+  /// exercise of it, including weeks never released. Null = prescribed on its
+  /// own (Exercises tab, body-assessment export), never gated by a plan.
+  protocolId String?
+  protocol   TreatmentProtocol? @relation(fields: [protocolId], references: [id], onDelete: SetNull)
+
   // Prescription details (override exercise defaults)
   sets        Int?
   reps        Int?
@@ -2966,6 +2974,7 @@ model ExercisePrescription {
   @@index([therapistId])
   @@index([exerciseId])
   @@index([isActive])
+  @@index([protocolId])
 }
 
 // ============================================
@@ -3826,6 +3835,8 @@ model TreatmentProtocol {
   // Relations
   items    ProtocolItem[]
   packages TreatmentPackage[]
+  /// Standalone prescriptions this protocol's assignment created (activity 46).
+  prescriptions ExercisePrescription[]
 
   @@index([clinicId])
   @@index([patientId])

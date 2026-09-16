@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { resolveClinicId } from "@/lib/exercise-folders";
 import { notifyPatient } from "@/lib/notify-patient";
 
 export const dynamic = "force-dynamic";
@@ -15,13 +16,16 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const clinicId = (session.user as any)?.clinicId;
+  const clinicId = await resolveClinicId(session);
   const patientId = searchParams.get("patientId");
   const exerciseId = searchParams.get("exerciseId");
   const activeOnly = searchParams.get("active") !== "false";
 
-  const where: any = {};
-  if (clinicId) where.clinicId = clinicId;
+  if (!clinicId) {
+    return NextResponse.json({ error: "No clinic resolved for this account" }, { status: 403 });
+  }
+
+  const where: any = { clinicId };
   if (patientId) where.patientId = patientId;
   if (exerciseId) where.exerciseId = exerciseId;
   if (activeOnly) where.isActive = true;
@@ -75,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const clinicId = (session.user as any)?.clinicId;
+    const clinicId = await resolveClinicId(session);
     const therapistId = (session.user as any)?.id;
 
     if (!clinicId) {

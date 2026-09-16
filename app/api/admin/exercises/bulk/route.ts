@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { resolveClinicId } from "@/lib/exercise-folders";
 import path from "path";
 import { assertValidExerciseFolder } from "@/lib/exercise-folders";
 import {
@@ -22,13 +23,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const formData = await req.formData();
-    let clinicId = (session.user as any)?.clinicId;
+    // The clinic the caller works in — never "whichever clinic came first",
+    // which used to drop a SUPERADMIN's upload into another tenant's library.
+    const clinicId = await resolveClinicId(session);
     const userId = (session.user as any)?.id;
 
-    if (!clinicId) {
-      const anyClinic = await (prisma as any).clinic.findFirst({ select: { id: true } });
-      clinicId = anyClinic?.id || null;
-    }
     if (!clinicId) {
       return NextResponse.json({ error: "No clinic context" }, { status: 400 });
     }

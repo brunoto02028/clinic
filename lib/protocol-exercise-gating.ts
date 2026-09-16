@@ -13,12 +13,14 @@ type GatingProtocol = {
   packages: { isPaid: boolean }[];
 };
 
-/**
- * Exercise ids linked by a protocol item the patient can't see yet (hidden,
- * beyond the released week, or behind an unpaid package) and by no item she
- * can see.
- */
-export function gatedExerciseIds(protocols: GatingProtocol[]): Set<string> {
+export interface ProtocolExerciseVisibility {
+  /** Exercises the patient can see right now in a sent protocol. */
+  visible: string[];
+  /** Exercises only a sent protocol's hidden/unreleased items link. */
+  gated: string[];
+}
+
+export function exerciseVisibility(protocols: GatingProtocol[]): ProtocolExerciseVisibility {
   const unseen = new Set<string>();
   const seen = new Set<string>();
   for (const p of protocols) {
@@ -33,11 +35,11 @@ export function gatedExerciseIds(protocols: GatingProtocol[]): Set<string> {
     }
   }
   for (const id of seen) unseen.delete(id);
-  return unseen;
+  return { visible: [...seen], gated: [...unseen] };
 }
 
-/** The patient's gated exercise ids, across her sent protocols. */
-export async function gatedProtocolExerciseIds(patientId: string): Promise<Set<string>> {
+/** The patient's exercise visibility across her sent protocols. */
+export async function protocolExerciseVisibility(patientId: string): Promise<ProtocolExerciseVisibility> {
   const protocols = await (prisma as any).treatmentProtocol.findMany({
     where: { patientId, status: "SENT_TO_PATIENT" },
     select: {
@@ -46,5 +48,27 @@ export async function gatedProtocolExerciseIds(patientId: string): Promise<Set<s
       packages: { select: { isPaid: true }, orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
-  return gatedExerciseIds(protocols);
+  return exerciseVisibility(protocols);
+}
+
+/**
+ * Where-clause fragment for the prescriptions a patient may see:
+ * - created by assigning a protocol (`protocolId` set) → only while a sent
+ *   protocol still shows that exercise, so archiving a plan or pulling it back
+ *   to draft takes its exercises with it (activity 46);
+ * - prescribed on its own → visible unless the exercise exists only in weeks a
+ *   sent protocol keeps hidden (activity 45).
+ */
+export function visiblePrescriptionWhere({ visible, gated }: ProtocolExerciseVisibility) {
+  return {
+    OR: [
+      { protocolId: null, ...(gated.length ? { exerciseId: { notIn: gated } } : {}) },
+      { protocolId: { not: null }, exerciseId: { in: visible } },
+    ],
+  };
+}
+
+/** The same filter, straight from the patient id. */
+export async function patientPrescriptionWhere(patientId: string) {
+  return visiblePrescriptionWhere(await protocolExerciseVisibility(patientId));
 }

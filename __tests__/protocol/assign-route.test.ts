@@ -255,4 +255,12 @@ describe("exercise links", () => {
     expect(prescribed).toEqual(["own-ex"]);
     expect((await res.json()).prescriptions).toBe(1);
   });
+
+  it("ties each prescription to the protocol it came from", async () => {
+    await call({ patientId: "p1" });
+    for (const [args] of tx.exercisePrescription.create.mock.calls) {
+      expect(args.data.protocolId).toBe("proto1");
+    }
+    expect(tx.exercisePrescription.create).toHaveBeenCalled();
+  });
 });

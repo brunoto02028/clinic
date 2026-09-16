@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { resolveClinicId } from "@/lib/exercise-folders";
 import { claudeGenerate } from "@/lib/claude";
 
 export const dynamic = "force-dynamic";
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { exerciseId, all } = await req.json();
-    const clinicId = (session.user as any).clinicId;
+    const clinicId = await resolveClinicId(session);
 
     if (exerciseId) {
       const ex = await prisma.exercise.findUnique({

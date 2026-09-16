@@ -97,6 +97,12 @@ node /app/scripts/seed-recovered-articles.js || echo "[start.sh] recovered-artic
 echo "[start.sh] Seeding default logo/favicon..."
 node /app/scripts/seed-site-logo.js || echo "[start.sh] logo seed warning — check logs"
 
+# Activity 46: prescriptions created by assigning a protocol now carry that
+# protocol's id, so archiving the plan takes its exercises out of the patient's
+# app too. Older rows get the link here. Idempotent (only rows without one).
+echo "[start.sh] Backfilling ExercisePrescription.protocolId..."
+node /app/scripts/backfill-prescription-protocolid.js || echo "[start.sh] prescription protocolId backfill warning — check logs"
+
 # Activity 45: protocol templates are per clinic now and every template route
 # filters by it — older templates without a clinic get their author's clinic.
 # Idempotent (only rows still without one); see the script.

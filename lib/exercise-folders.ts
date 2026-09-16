@@ -1,16 +1,33 @@
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { resolveActorTenant } from "@/lib/actor-tenant";
 
 /**
- * A SUPERADMIN in "Global View" has no clinicId on the session. Every route
- * that reads or writes folders resolves it the same way — a route that reads
+ * The clinic whose library a caller is working in. Every route that reads or
+ * writes folders or exercises resolves it the same way — a route that reads
  * with one rule and writes with another lets the UI list categories it then
  * cannot create folders under.
+ *
+ * Since activity 46 this is the same rule as patients and protocols: a
+ * SUPERADMIN works in the clinic selected in "Active Clinic" (own clinic when
+ * none is selected), everyone else in their own. It used to fall back to
+ * whichever clinic came first in the table, which could point the library at
+ * another tenant's exercises.
  */
 export async function resolveClinicId(session: any): Promise<string | null> {
-  const fromSession = (session?.user as any)?.clinicId;
-  if (fromSession) return fromSession;
-  const anyClinic = await prisma.clinic.findFirst({ select: { id: true } });
-  return anyClinic?.id || null;
+  const role = (session?.user as any)?.role;
+  const ownClinicId = (session?.user as any)?.clinicId ?? null;
+  // Only a SUPERADMIN's clinic can come from the cookie, and cookies() throws
+  // outside a request (scripts, tests) — everyone else skips it.
+  let selected: string | undefined;
+  if (role === "SUPERADMIN") {
+    try {
+      selected = cookies().get("selected-clinic-id")?.value;
+    } catch {
+      selected = undefined;
+    }
+  }
+  return resolveActorTenant(role, ownClinicId, selected);
 }
 
 /**
