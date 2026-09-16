@@ -271,6 +271,21 @@ export default function PatientTreatmentPage() {
   // every protocol, plus every active standalone prescription, normalised
   // into one shape so the card doesn't need to branch per item type.
   const todayStr = toDateStr(new Date());
+
+  // Assigning a protocol template also auto-creates a matching standalone
+  // ExercisePrescription per exercise (so the exercise-library video/notes
+  // stay reachable) — every one of those exercises is ALSO a protocol item,
+  // just possibly for a future week that's meant to stay hidden until the
+  // therapist releases it. Without this filter every future-week exercise
+  // would leak into "today" via its standalone duplicate, defeating
+  // progressive release entirely (found in QA, activity 43). A prescription
+  // only counts as "standalone" here when its exercise isn't already
+  // governed by ANY of the patient's protocol items, current week or not.
+  const protocolExerciseIds = new Set(
+    protocols.flatMap((proto: any) => (proto.items || []).map((item: any) => item.exercise?.id).filter(Boolean))
+  );
+  const standaloneRx = prescriptions.filter((p: any) => !p.exercise?.id || !protocolExerciseIds.has(p.exercise.id));
+
   const todayProtocolTasks: TodayTask[] = protocols.flatMap((proto: any) => {
     if (proto.paymentRequired) return [];
     const currentWeek = currentWeekOf(proto);
@@ -299,7 +314,7 @@ export default function PatientTreatmentPage() {
         weekCount: weekCountFrom(item.completionLogs),
       }));
   });
-  const todayPrescriptionTasks: TodayTask[] = prescriptions.map((p: any) => ({
+  const todayPrescriptionTasks: TodayTask[] = standaloneRx.map((p: any) => ({
     key: `x-${p.id}`,
     kind: "prescription" as const,
     refId: p.id,
@@ -628,7 +643,7 @@ export default function PatientTreatmentPage() {
       })}
 
       <PrescriptionSection
-        prescriptions={prescriptions}
+        prescriptions={standaloneRx}
         onToggleLog={handleTogglePrescriptionLog}
         onPlayVideo={(url: string, muted: boolean) => { setVideoFailed(false); setVideoModal({ url, muted }); }}
       />
