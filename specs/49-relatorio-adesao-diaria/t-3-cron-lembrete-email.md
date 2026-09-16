@@ -45,6 +45,11 @@ passarem — ativo só depois, pra não disparar contra uma rota ainda não publ
   Coolify aceita fuso IANA direto na expressão; até lá, ajustar manualmente pra `0 21 * * *` na volta
   ao horário de inverno, ou resolver isso de vez numa iteração futura.
 
+## Nota (16/09/2026)
+Adicionado `?force=true` (mesma checagem de `key`) — reenvia o relatório do dia mesmo já tendo sido
+enviado, sem nunca duplicar o lembrete ao paciente. Serve tanto pra recuperar uma execução perdida
+quanto pra testar mudanças no template sem esperar o próximo dia (usado no QA desta atividade).
+
 ## Critérios de aceite
 - [ ] Sem `key` correta → 401, nada é enviado.
 - [ ] Paciente em `missing` recebe o lembrete no canal certo (conferir com a preferência da Ana

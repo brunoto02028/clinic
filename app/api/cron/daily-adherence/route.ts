@@ -23,6 +23,11 @@ export async function POST(req: NextRequest) {
   if (key !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Manual override for a missed run or (as here) testing a template change
+  // without waiting for tomorrow — re-sends the clinic report even if
+  // already sent today. Never re-sends patient reminders; those stay
+  // deduped regardless, so this can't spam a patient by being called twice.
+  const force = req.nextUrl.searchParams.get("force") === "true";
 
   // "Today" is computed in the server's own timezone — close enough to the
   // clinic's (Europe/London) for a job meant to fire well away from
@@ -66,7 +71,7 @@ export async function POST(req: NextRequest) {
       remindersSent++;
     }
 
-    const reportAlreadySent = await prisma.auditLog.findFirst({
+    const reportAlreadySent = !force && await prisma.auditLog.findFirst({
       where: { entityId: clinic.id, action: REPORT_ACTION, createdAt: { gte: dayStart } },
       select: { id: true },
     });
