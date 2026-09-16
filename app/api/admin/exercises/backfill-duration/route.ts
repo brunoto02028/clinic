@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
 // TEMPORARY — one-off backfill for exercises created before video duration
 // was auto-computed at upload time. Run once in production, confirm
 // failCount === 0 (or investigate remaining failures), then delete this route.
+// Scoped to the clinic the caller is working in; `?allClinics=true` (SUPERADMIN
+// only, like the whole route) for the platform-wide run.
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
@@ -50,9 +52,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const clinic = allClinics ? null : await prisma.clinic.findUnique({ where: { id: clinicId! }, select: { name: true } });
   const successCount = results.filter((r) => r.success).length;
   return NextResponse.json({
-    scope: allClinics ? "all clinics" : clinicId,
+    scope: allClinics ? "all clinics" : clinic?.name || clinicId,
     total: results.length,
     successCount,
     failCount: results.length - successCount,

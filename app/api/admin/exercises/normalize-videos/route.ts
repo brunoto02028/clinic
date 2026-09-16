@@ -19,6 +19,9 @@ export const maxDuration = 300;
  * in batches (`?limit=20&offset=0`, `offset=20`, …) — transcoding the whole
  * library in one request would outlive the proxy timeout.
  *
+ * Scoped to the clinic the caller is working in; `?allClinics=true` (SUPERADMIN
+ * only, like the whole route) for the platform-wide sweep.
+ *
  * Delete this route once the library reports clean.
  */
 export async function POST(req: NextRequest) {
@@ -136,7 +139,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const clinic = allClinics ? null : await prisma.clinic.findUnique({ where: { id: clinicId! }, select: { name: true } });
+
   return NextResponse.json({
+    // Says what was scanned: "clean" for one clinic doesn't mean clean overall.
+    scope: allClinics ? "all clinics" : clinic?.name || clinicId,
     dryRun,
     total,
     examined: exercises.length,
