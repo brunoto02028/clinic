@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { groupItems, groupKey, hiddenAfterMove, parseKey, patientCanSee, protocolGated, visibleSummary, weekLabel } from "@/lib/protocol-weeks";
 
 // Must match the ProtocolPhase enum — anything else fails the Prisma write.
 const PHASES = ["SHORT_TERM", "MEDIUM_TERM", "LONG_TERM"];
@@ -22,50 +23,6 @@ const ITEM_TYPES: Record<string, string> = {
 
 type LinkedExercise = { id: string; name: string; videoUrl?: string | null } | null;
 
-// Same key and label as weekLabel() on app/dashboard/treatment/page.tsx.
-function groupKey(item: any): string {
-  return `${item.startWeek || 1}-${item.endWeek || ""}`;
-}
-function parseKey(key: string): { start: number; end: number | null } {
-  const [s, e] = key.split("-");
-  return { start: Number(s), end: e ? Number(e) : null };
-}
-function weekLabel(start: number, end: number | null): string {
-  if (end === null) return `Week ${start}+`;
-  if (end === start) return `Week ${start}`;
-  return `Weeks ${start}-${end}`;
-}
-
-// What the patient's API actually returns: not hidden, and within
-// releasedThroughWeek when that limit is set.
-function patientCanSee(item: any, releasedThroughWeek: number | null): boolean {
-  if (item.hiddenFromPatient) return false;
-  return releasedThroughWeek == null || (item.startWeek || 1) <= releasedThroughWeek;
-}
-
-// Mirrors app/api/patient/protocol/route.ts: nothing unless sent, nothing
-// while the latest package is unpaid, otherwise the visible items' weeks —
-// as separate ranges, so 1–2 and 7–8 don't read as "1–8".
-function visibleSummary(protocol: any): string {
-  if (protocol.status !== "SENT_TO_PATIENT") return "nothing — protocol not sent to the patient yet";
-  const pkg = protocol.packages?.[0];
-  if (pkg && !pkg.isPaid) return "nothing — package payment pending";
-  const seen = (protocol.items || []).filter((i: any) => patientCanSee(i, protocol.releasedThroughWeek));
-  if (seen.length === 0) return "nothing yet";
-  const ranges = seen
-    .map((i: any) => [i.startWeek || 1, i.endWeek == null ? Infinity : i.endWeek] as [number, number])
-    .sort((a: [number, number], b: [number, number]) => a[0] - b[0]);
-  const merged: [number, number][] = [];
-  for (const [s, e] of ranges) {
-    const last = merged[merged.length - 1];
-    if (last && s <= last[1] + 1) last[1] = Math.max(last[1], e);
-    else merged.push([s, e]);
-  }
-  const fmt = ([s, e]: [number, number]) => (e === Infinity ? `${s}+` : s === e ? `${s}` : `${s}–${e}`);
-  const single = merged.length === 1 && merged[0][0] === merged[0][1];
-  return `${single ? "Week" : "Weeks"} ${merged.map(fmt).join(", ")}`;
-}
-
 export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, flash, onError }: {
   patientId: string;
   protocol: any;
@@ -76,7 +33,7 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
   const items: any[] = protocol.items || [];
   const rtw: number | null = protocol.releasedThroughWeek ?? null;
   // Released items still don't reach the patient until the protocol is sent and paid.
-  const gated = protocol.status !== "SENT_TO_PATIENT" || (protocol.packages?.[0] && !protocol.packages[0].isPaid);
+  const gated = protocolGated(protocol);
   const [busy, setBusy] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [editId, setEditId] = useState<string | null>(null);
@@ -87,13 +44,7 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
   const [originalKey, setOriginalKey] = useState("");
   const [newWeek, setNewWeek] = useState({ start: "", end: "" });
 
-  const groups: Record<string, any[]> = {};
-  for (const item of items) (groups[groupKey(item)] ||= []).push(item);
-  const keys = Object.keys(groups).sort((a, b) => {
-    const pa = parseKey(a), pb = parseKey(b);
-    if (pa.start !== pb.start) return pa.start - pb.start;
-    return (pa.end ?? Infinity) - (pb.end ?? Infinity);
-  });
+  const { groups, keys } = groupItems(items);
 
   const patch = async (body: any) => {
     try {
@@ -183,8 +134,7 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
     const k = `${start}-${end ?? ""}`;
     let movedHidden: boolean | null = null;
     if (k !== originalKey) {
-      const dest = (groups[k] || []).filter((i) => i.id !== editId);
-      movedHidden = !(dest.length > 0 && dest.every((i) => !i.hiddenFromPatient));
+      movedHidden = hiddenAfterMove((groups[k] || []).filter((i) => i.id !== editId));
       itemUpdate.hiddenFromPatient = movedHidden;
     }
     const savingId = editId;
