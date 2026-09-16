@@ -183,10 +183,13 @@ export async function POST(req: NextRequest) {
     }
     const alreadyPrescribed = new Set(existing.map((e) => e.exerciseId));
     const toCreate = exercises.filter((ex: any) => !alreadyPrescribed.has(ex.exerciseId));
-    const skipped = exercises.length - toCreate.length;
+    // An adopted row reaches the patient again, so it isn't "already
+    // prescribed" from her side — report it as restored, not skipped.
+    const restored = adopt.length;
+    const skipped = exercises.length - toCreate.length - restored;
 
     if (toCreate.length === 0) {
-      return NextResponse.json({ prescriptions: [], count: 0, skipped, folderName }, { status: 200 });
+      return NextResponse.json({ prescriptions: [], count: 0, skipped, restored, folderName }, { status: 200 });
     }
 
     const created = await prisma.$transaction(
@@ -244,7 +247,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { prescriptions: created, count: created.length, skipped, folderName, notified },
+      { prescriptions: created, count: created.length, skipped, restored, folderName, notified },
       { status: 201 }
     );
   } catch (err: any) {

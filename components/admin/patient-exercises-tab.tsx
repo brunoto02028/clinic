@@ -122,6 +122,7 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
       // Say plainly what happened: prescribing the same folder twice is a
       // normal thing to do, and silence about the skipped ones reads as a bug.
       const parts = [`${data.count} exercise${data.count === 1 ? "" : "s"} prescribed`];
+      if (data.restored > 0) parts.push(`${data.restored} back from an archived plan`);
       if (data.skipped > 0) parts.push(`${data.skipped} already prescribed`);
       toast({ description: `${chosenFolder.name}: ${parts.join(", ")}.` });
 
