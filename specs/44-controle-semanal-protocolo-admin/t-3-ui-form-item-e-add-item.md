@@ -1,6 +1,6 @@
 # T-3: UI — form de item completo + "Add item" escondido
 
-**Status:** implementado — aguardando QA
+**Status:** concluído
 **Depende de:** T-1, T-2
 
 ## Objetivo

@@ -27,9 +27,16 @@ cache limpo via CDP antes de confiar no que renderiza.
 ## Achado e correção
 Em 390px o selo "Visible to patient" quebrava em 3 linhas e encostava no botão "Hide week".
 Cabeçalho do grupo passou a quebrar linha (o botão desce quando falta espaço; selo e contagem
-sem quebra interna). Reverificado após deploy — ver `t2-mobile-390-c.png`.
+sem quebra interna). Reverificado após deploy — ver `t2-mobile-390-apos-ajuste.png` (selo em uma linha, botão abaixo, sem sobreposição medida pelo DOM).
 
 ## Nota sobre as evidências
 Durante a sessão, a aba automatizada parou de repintar depois de um redimensionamento (os prints
 saíam idênticos/pretos). Checagens dessa fase foram feitas pelo DOM (textos, `elementFromPoint`) e
 pela API; os prints finais foram tirados numa aba nova da mesma sessão.
+
+## Reverificação após o code review (build 12:02, 16/09)
+- Protocolo em rascunho: resumo "nothing — protocol not sent to the patient yet" e selos
+  "Released" (não "Visible to patient") ✅ — `t2-mobile-390-apos-ajuste.png`
+- Pagamento pendente e semanas com buraco: cobertos por teste unitário
+  (`__tests__/protocol/protocol-weeks.test.ts`) — criar um pacote de teste real dispararia e-mail
+  financeiro pra fila de aprovação do admin.

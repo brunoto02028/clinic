@@ -1,6 +1,6 @@
 # T-2: UI — itens agrupados por semana + liberar/esconder semana
 
-**Status:** implementado — aguardando QA
+**Status:** concluído
 **Depende de:** T-1
 
 ## Objetivo

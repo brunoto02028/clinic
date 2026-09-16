@@ -37,3 +37,7 @@ reverificados
 - `screenshots/t3-paciente-watch-video.png` — "Watch video" na tela da paciente.
 - Resultados de API/DOM de cada cenário registrados na sessão (valores enviados no PATCH lidos da
   própria requisição).
+
+## Reverificação após o code review (build 12:02, 16/09)
+- Fases oferecidas no editor: só `SHORT_TERM`, `MEDIUM_TERM`, `LONG_TERM` ✅
+- `itemUpdate: "x"` → 400 (antes 500) ✅

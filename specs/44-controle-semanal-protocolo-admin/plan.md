@@ -1,6 +1,6 @@
 # Ativ. 44 — Controle semana a semana do protocolo no admin
 
-**Status:** em andamento
+**Status:** concluído
 
 ## Objetivo
 Dar ao fisioterapeuta, na aba **Protocol** da ficha do paciente (`app/admin/patients/[id]/page.tsx`),
@@ -52,11 +52,29 @@ biblioteca** (é isso que faz o vídeo aparecer pra paciente).
 
 | T-N | Nome | Status |
 |-----|------|--------|
-| T-1 | API — ligar exercício ao item + liberar/esconder semana em lote | implementado, aguardando QA |
-| T-2 | UI — itens agrupados por semana + liberar/esconder semana | implementado, aguardando QA |
-| T-3 | UI — form de item completo (semana, instruções, exercício/vídeo) + "Add item" escondido | implementado, aguardando QA |
-| T-4 | Checagem de agenda e criação de consultas só no primeiro envio | implementado, aguardando QA |
-| T-5 | UI — protocolos arquivados recolhidos (com "Restore") | implementado, aguardando QA |
+| T-1 | API — ligar exercício ao item + liberar/esconder semana em lote | concluído |
+| T-2 | UI — itens agrupados por semana + liberar/esconder semana | concluído |
+| T-3 | UI — form de item completo (semana, instruções, exercício/vídeo) + "Add item" escondido | concluído |
+| T-4 | Checagem de agenda e criação de consultas só no primeiro envio | concluído |
+| T-5 | UI — protocolos arquivados recolhidos (com "Restore") | concluído |
+
+## QA e code review (16/09/2026)
+- QA em produção com pacientes descartáveis (apagados depois): relatórios `qa/report-t-1..5.md`.
+  A 1ª rodada achou 2 bugs (editor do item novo não abria; mover item pra semana futura deixava
+  ele visível) — corrigidos (44a446d) e reverificados.
+- Code review independente achou, e foi corrigido (0f0f9fa) e reverificado em produção:
+  - "Edit → Save" não gravava um padrão mantido (09:00) → protocolo não podia ser enviado;
+  - desenviar (voltar a rascunho) e reenviar recriava as consultas e o e-mail;
+  - resumo ignorava pagamento pendente e juntava semanas com buraco ("1–8");
+  - fases inexistentes no editor (500); corridas entre recarregamentos; corrida no `?search=`
+    da biblioteca; `itemUpdate` não-objeto dava 500.
+- Lógica de semanas/visibilidade movida pra `lib/protocol-weeks.ts` com testes
+  (`__tests__/protocol/protocol-weeks.test.ts`, 9 passando).
+- **Achado fora do escopo (não corrigido, reportado ao usuário):**
+  `app/api/admin/protocols/[id]/assign/route.ts` não confere se o paciente e o template são da
+  clínica de quem chama.
+- **Limitação conhecida:** duplicar um item cujo exercício é de outra clínica (templates são
+  globais) dá erro — editar funciona.
 
 ## Suposições (validar com o usuário)
 - "Liberar semana" desesconde **todos** os itens daquele grupo, inclusive algum que você tenha

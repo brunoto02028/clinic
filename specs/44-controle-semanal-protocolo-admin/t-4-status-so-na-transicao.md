@@ -1,6 +1,6 @@
 # T-4: Checagem de agenda e criação de consultas só na primeira vez que o protocolo é enviado
 
-**Status:** implementado — aguardando QA
+**Status:** concluído
 **Depende de:** nenhuma
 
 ## Objetivo

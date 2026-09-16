@@ -1,6 +1,6 @@
 # T-1: API — ligar exercício ao item + liberar/esconder semana em lote
 
-**Status:** implementado — aguardando QA
+**Status:** concluído
 **Depende de:** nenhuma
 
 ## Objetivo

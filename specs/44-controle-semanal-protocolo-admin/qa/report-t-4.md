@@ -20,3 +20,10 @@ via `GET /api/admin/appointments` filtrado pelo paciente; tudo apagado ao final.
 ## Observação
 O e-mail "protocolo compartilhado" também passou a sair só no primeiro envio (antes saía a cada
 "Save"). Os e-mails dos testes foram para endereços `@example.test`.
+
+## Reverificação após o code review (build 12:02, 16/09)
+- Protocolo enviado (com `sentToPatientAt`) com agenda completa → DRAFT → SENT_TO_PATIENT: 200 e
+  **0** consultas criadas (antes recriava o bloco inteiro e reenviava o e-mail) ✅
+- UI: protocolo sem horário salvo; Edit mostra 09:00; definir data + MON e salvar → corpo enviado
+  inclui `"sessionTime":"09:00"` e o banco passou a ter 09:00 / `["MON"]` / 28/09 (antes o 09:00
+  mantido não era enviado e o protocolo ficava sem horário) ✅

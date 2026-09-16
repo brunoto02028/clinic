@@ -1,6 +1,6 @@
 # T-5: UI — protocolos arquivados recolhidos
 
-**Status:** implementado — aguardando QA
+**Status:** concluído
 **Depende de:** T-4 (o "Restore" depende da correção de status)
 
 ## Objetivo
