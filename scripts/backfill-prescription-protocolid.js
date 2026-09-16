@@ -12,8 +12,18 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const WINDOW_MS = 2 * 60 * 1000;
+// Rows that are legitimately standalone never get a protocol, so "still null"
+// keeps growing — a marker makes this run once instead of scanning them on
+// every boot. Assignment fills the link in from here on.
+const MARKER_KEY = 'prescription-protocolid-backfill-done';
 
 async function main() {
+  const marker = await prisma.systemConfig.findUnique({ where: { key: MARKER_KEY } });
+  if (marker) {
+    console.log('[backfill-prescription-protocolid] Already ran — skipping.');
+    return;
+  }
+
   const orphans = await prisma.exercisePrescription.findMany({
     where: { protocolId: null },
     select: { id: true, patientId: true, exerciseId: true, createdAt: true },
@@ -21,6 +31,7 @@ async function main() {
   });
   if (orphans.length === 0) {
     console.log('[backfill-prescription-protocolid] No prescriptions without a protocol — nothing to do.');
+    await markDone(0, 0);
     return;
   }
 
@@ -62,10 +73,26 @@ async function main() {
         where: { id: rx.id, protocolId: null },
         data: { protocolId: match.id },
       });
+      if (res.count) console.log(`[backfill-prescription-protocolid] ${rx.id} -> ${match.id}`);
       linked += res.count;
     }
   }
   console.log(`[backfill-prescription-protocolid] Linked ${linked} prescription(s) to their protocol, left ${standalone} standalone.`);
+  await markDone(linked, standalone);
+}
+
+async function markDone(linked, standalone) {
+  await prisma.systemConfig.upsert({
+    where: { key: MARKER_KEY },
+    update: {},
+    create: {
+      key: MARKER_KEY,
+      value: 'true',
+      label: 'Prescription protocolId backfill done',
+      description: `One-time marker (activity 46) — linked ${linked} prescription(s), left ${standalone} standalone.`,
+      category: 'migration',
+    },
+  });
 }
 
 main()

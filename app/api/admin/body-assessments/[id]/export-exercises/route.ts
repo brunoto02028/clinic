@@ -91,6 +91,14 @@ export async function POST(
       });
 
       if (existing) {
+        // A copy left by a protocol the patient can no longer see would block
+        // this one while showing her nothing — hand it over instead (act. 46).
+        if (existing.protocolId) {
+          await (prisma as any).exercisePrescription.update({
+            where: { id: existing.id },
+            data: { protocolId: null },
+          });
+        }
         created.push({ ...existing, _status: "already_exists" });
         continue;
       }

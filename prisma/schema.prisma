@@ -2938,8 +2938,10 @@ model ExercisePrescription {
   /// 46): a plan archived or pulled back to draft used to hand back every
   /// exercise of it, including weeks never released. Null = prescribed on its
   /// own (Exercises tab, body-assessment export), never gated by a plan.
+  /// Cascade, not SetNull: an orphaned copy would turn back into a standalone
+  /// prescription and hand the patient every exercise of the deleted plan.
   protocolId String?
-  protocol   TreatmentProtocol? @relation(fields: [protocolId], references: [id], onDelete: SetNull)
+  protocol   TreatmentProtocol? @relation(fields: [protocolId], references: [id], onDelete: Cascade)
 
   // Prescription details (override exercise defaults)
   sets        Int?

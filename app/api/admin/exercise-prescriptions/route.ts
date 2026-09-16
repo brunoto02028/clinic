@@ -168,8 +168,19 @@ export async function POST(req: NextRequest) {
         isActive: true,
         exerciseId: { in: exercises.map((ex: any) => ex.exerciseId) },
       },
-      select: { exerciseId: true },
+      select: { id: true, exerciseId: true, protocolId: true },
     });
+    // One of those may be a copy left by a protocol the patient can no longer
+    // see (archived plan): it blocks the new prescription while showing the
+    // patient nothing. Prescribing it by hand hands that row over — it becomes
+    // a standalone prescription and reaches her again (activity 46).
+    const adopt = existing.filter((e) => e.protocolId);
+    if (adopt.length > 0) {
+      await prisma.exercisePrescription.updateMany({
+        where: { id: { in: adopt.map((e) => e.id) } },
+        data: { protocolId: null },
+      });
+    }
     const alreadyPrescribed = new Set(existing.map((e) => e.exerciseId));
     const toCreate = exercises.filter((ex: any) => !alreadyPrescribed.has(ex.exerciseId));
     const skipped = exercises.length - toCreate.length;
