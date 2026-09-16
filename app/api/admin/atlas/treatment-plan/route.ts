@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { claudeGenerate } from "@/lib/claude";
-import { resolveClinicId } from "@/lib/resolve-clinic-id";
+import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 import { patientPseudonym } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const clinicId = await resolveClinicId(session);
+  const clinicId = await sessionClinicId(session);
+  if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
   const { patientId, soap } = await req.json();
   if (!patientId) return NextResponse.json({ error: "patientId required" }, { status: 400 });
 

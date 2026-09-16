@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { resolveClinicId } from '@/lib/resolve-clinic-id';
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +20,10 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const clinicId = await resolveClinicId(session);
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
-    const where: any = {};
-    if (clinicId) where.clinicId = clinicId;
+    const where: any = { clinicId };
     if (status) where.status = status;
     if (campaignId) where.campaignId = campaignId;
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = session.user as any;
-    const clinicId = await resolveClinicId(session);
+    const clinicId = await sessionClinicId(session);
     if (!clinicId) {
       return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
     }

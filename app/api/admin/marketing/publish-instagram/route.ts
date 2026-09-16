@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import { publishPhoto, publishStory, publishToFacebookPage } from '@/lib/instagram'
-import { resolveClinicId } from '@/lib/resolve-clinic-id'
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic'
 
 export const dynamic = 'force-dynamic';
 
@@ -22,10 +22,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Caption and imageUrl are required' }, { status: 400 })
     }
 
-    const clinicId = await resolveClinicId(session)
-    const igAccount = clinicId
-      ? await prisma.socialAccount.findFirst({ where: { clinicId, platform: 'INSTAGRAM', isActive: true } })
-      : null
+    const clinicId = await sessionClinicId(session)
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
+    const igAccount = await prisma.socialAccount.findFirst({ where: { clinicId, platform: 'INSTAGRAM', isActive: true } })
     if (!igAccount) {
       return NextResponse.json({ error: 'No connected Instagram account. Go to Instagram Connect first.' }, { status: 400 })
     }

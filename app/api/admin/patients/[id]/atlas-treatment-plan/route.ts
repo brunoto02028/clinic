@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { claudeGenerate } from "@/lib/claude";
-import { resolveClinicId } from "@/lib/resolve-clinic-id";
+import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 
 export const dynamic = "force-dynamic";
@@ -144,7 +144,8 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const clinicId = (await resolveClinicId(session)) || "";
+  const clinicId = await sessionClinicId(session);
+  if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
   const { action, message, history = [], planData } = await req.json();
 
   // ── action: "generate" → produce a full structured plan ──

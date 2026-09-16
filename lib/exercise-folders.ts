@@ -1,34 +1,14 @@
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { resolveActorTenant } from "@/lib/actor-tenant";
+import { sessionClinicId } from "@/lib/session-clinic";
 
 /**
- * The clinic whose library a caller is working in. Every route that reads or
- * writes folders or exercises resolves it the same way — a route that reads
- * with one rule and writes with another lets the UI list categories it then
- * cannot create folders under.
- *
- * Since activity 46 this is the same rule as patients and protocols: a
- * SUPERADMIN works in the clinic selected in "Active Clinic" (own clinic when
- * none is selected), everyone else in their own. It used to fall back to
- * whichever clinic came first in the table, which could point the library at
- * another tenant's exercises.
+ * The clinic whose library a caller is working in — the one helper every
+ * route that reads or writes folders or exercises uses, so reads and writes
+ * can't drift apart (the UI listing categories it then cannot create folders
+ * under). Same rule as patients and protocols since activity 46; kept here as
+ * an alias so the library routes read naturally.
  */
-export async function resolveClinicId(session: any): Promise<string | null> {
-  const role = (session?.user as any)?.role;
-  const ownClinicId = (session?.user as any)?.clinicId ?? null;
-  // Only a SUPERADMIN's clinic can come from the cookie, and cookies() throws
-  // outside a request (scripts, tests) — everyone else skips it.
-  let selected: string | undefined;
-  if (role === "SUPERADMIN") {
-    try {
-      selected = cookies().get("selected-clinic-id")?.value;
-    } catch {
-      selected = undefined;
-    }
-  }
-  return resolveActorTenant(role, ownClinicId, selected);
-}
+export const resolveClinicId = sessionClinicId;
 
 /**
  * Exercises live in folders, never loose and never directly in a category.

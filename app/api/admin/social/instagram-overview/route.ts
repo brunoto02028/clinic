@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
-import { resolveClinicId } from '@/lib/resolve-clinic-id';
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +13,11 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const clinicId = await resolveClinicId(session);
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     const account = await prisma.socialAccount.findFirst({
-      where: { clinicId: clinicId || undefined, platform: 'INSTAGRAM', isActive: true },
+      where: { clinicId, platform: 'INSTAGRAM', isActive: true },
     });
 
     if (!account) {
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     // Posts published via our system
     const publishedPosts = await prisma.socialPost.count({
-      where: { clinicId: clinicId || undefined, status: 'PUBLISHED' },
+      where: { clinicId, status: 'PUBLISHED' },
     });
 
     return NextResponse.json({

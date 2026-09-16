@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { getInstagramAuthUrl } from '@/lib/instagram';
-import { resolveClinicId } from '@/lib/resolve-clinic-id';
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic';
 import { getConfigValue } from '@/lib/system-config';
 
 export const dynamic = 'force-dynamic';
@@ -14,14 +14,15 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const clinicId = await resolveClinicId(session);
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     // Explicit select, never the access token: it grants control of the
     // Instagram account, and the browser has no use for it — publishing happens
     // server-side. Anything running in the admin's browser (an extension, an
     // injected script) could otherwise walk away with the account.
     const accounts = await prisma.socialAccount.findMany({
-      where: clinicId ? { clinicId } : {},
+      where: { clinicId },
       select: {
         id: true,
         clinicId: true,
@@ -50,8 +51,8 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const clinicId = await resolveClinicId(session);
-    if (!clinicId) return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     const body = await req.json();
     const { platform } = body;

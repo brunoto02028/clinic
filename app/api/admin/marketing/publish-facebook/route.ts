@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { publishToFacebookPage } from '@/lib/instagram'
-import { resolveClinicId } from '@/lib/resolve-clinic-id'
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic'
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
     const { imageUrl, caption } = await req.json()
     if (!imageUrl) return NextResponse.json({ error: 'imageUrl required' }, { status: 400 })
 
-    const clinicId = await resolveClinicId(session)
-    if (!clinicId) return NextResponse.json({ error: 'No clinic context' }, { status: 400 })
+    const clinicId = await sessionClinicId(session)
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     // Reuses the shared, tested Facebook Page publish helper (the account's
     // real pageId/accessToken columns on SocialAccount) — the previous

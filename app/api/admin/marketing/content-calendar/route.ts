@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import { claudeGenerate } from '@/lib/claude'
 import { BPR_SYSTEM_CONTEXT } from '@/lib/marketing-prompts'
-import { resolveClinicId } from '@/lib/resolve-clinic-id'
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic'
 
 export const dynamic = 'force-dynamic';
 
@@ -142,7 +142,8 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const clinicId = await resolveClinicId(session)
+    const clinicId = await sessionClinicId(session)
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     const { searchParams } = new URL(req.url)
     const from = searchParams.get('from')
@@ -150,7 +151,7 @@ export async function GET(req: NextRequest) {
 
     const posts = await prisma.socialPost.findMany({
       where: {
-        ...(clinicId ? { clinicId } : {}),
+        clinicId,
         status: { in: ['SCHEDULED', 'DRAFT', 'PUBLISHED'] },
         ...(from && to ? {
           scheduledAt: {

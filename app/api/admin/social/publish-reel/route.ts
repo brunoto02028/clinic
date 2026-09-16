@@ -8,7 +8,7 @@ import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { publishReel } from '@/lib/instagram';
-import { resolveClinicId } from '@/lib/resolve-clinic-id';
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic';
 
 // POST /api/admin/social/publish-reel
 // multipart/form-data: video (webm, e.g. from the Ken Burns exporter), caption
@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const clinicId = await resolveClinicId(session);
-    if (!clinicId) return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     const igAccount = await prisma.socialAccount.findFirst({
       where: { clinicId, platform: 'INSTAGRAM', isActive: true },

@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { callAI, callAIChat } from '@/lib/ai-provider';
 import { publishPhoto, publishCarousel, publishStory, publishToFacebookPage } from '@/lib/instagram';
-import { resolveClinicId } from '@/lib/resolve-clinic-id';
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic';
 
 // ─── POST: publish or schedule an article to Instagram ───
 export async function POST(req: NextRequest) {
@@ -106,12 +106,11 @@ Write ONLY the caption text, nothing else.`;
     // ── Instagram credentials required for publish/schedule — same connected
     // account used by Instagram Studio (see /admin/marketing/instagram-connect),
     // not a separately configured token. ──
-    const clinicId = await resolveClinicId(session);
-    const igAccount = clinicId
-      ? await (prisma as any).socialAccount.findFirst({
-          where: { clinicId, platform: 'INSTAGRAM', isActive: true },
-        })
-      : null;
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
+    const igAccount = await (prisma as any).socialAccount.findFirst({
+      where: { clinicId, platform: 'INSTAGRAM', isActive: true },
+    });
 
     if (!igAccount) {
       return NextResponse.json({
@@ -220,10 +219,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const clinicId = await resolveClinicId(session);
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     const posts = await prisma.socialPost.findMany({
-      where: { clinicId: clinicId || undefined },
+      where: { clinicId },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });

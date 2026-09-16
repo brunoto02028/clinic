@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { refreshInstagramToken } from '@/lib/instagram';
-import { resolveClinicId } from '@/lib/resolve-clinic-id';
+import { sessionClinicId, NO_CLINIC } from '@/lib/session-clinic';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const clinicId = await resolveClinicId(session);
-    if (!clinicId) return NextResponse.json({ error: 'No clinic context' }, { status: 400 });
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     // Find active Instagram accounts for this clinic
     const accounts = await prisma.socialAccount.findMany({
@@ -42,8 +42,8 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
 
-    const clinicId = await resolveClinicId(session);
-    if (!clinicId) return NextResponse.json({ refreshed: 0 }, { status: 200 });
+    const clinicId = await sessionClinicId(session);
+    if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
     // Find accounts expiring in less than 10 days
     const tenDaysFromNow = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);

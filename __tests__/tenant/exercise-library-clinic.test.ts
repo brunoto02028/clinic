@@ -8,7 +8,12 @@
  */
 
 jest.mock("@/lib/db", () => ({
-  prisma: { exercise: { findMany: jest.fn(), count: jest.fn() }, clinic: { findFirst: jest.fn(), findUnique: jest.fn() } },
+  prisma: {
+    exercise: { findMany: jest.fn(), count: jest.fn() },
+    clinic: { findFirst: jest.fn(), findUnique: jest.fn() },
+    // sessionClinicId looks the clinic up when the session doesn't carry one.
+    user: { findUnique: jest.fn() },
+  },
 }));
 jest.mock("next-auth", () => ({ getServerSession: jest.fn() }));
 jest.mock("@/lib/auth-options", () => ({ authOptions: {} }));
@@ -37,6 +42,7 @@ beforeEach(() => {
   withCookie();
   exercises.findMany.mockResolvedValue([]);
   exercises.count.mockResolvedValue(0);
+  (prisma as any).user.findUnique.mockResolvedValue({ clinicId: null });
 });
 
 describe("resolveClinicId", () => {
