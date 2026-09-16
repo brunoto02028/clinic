@@ -116,6 +116,14 @@ export default function PatientTreatmentPage() {
     try {
       const res = await fetch("/api/patient/protocol");
       const data = await res.json();
+      // A 403 here means mod_treatment isn't in this patient's plan — not an
+      // error. Since this page is now also where mod_exercises-only patients
+      // land (activity 43 retired the separate "My Exercises" page), that's
+      // routine: they simply have no protocols, same as fetchPrescriptions
+      // below treats a missing mod_exercises the same way. Surfacing it as
+      // an error banner would break the page for exactly the patients T-4
+      // needs to keep working.
+      if (res.status === 403) { setProtocols([]); return; }
       if (!res.ok) throw new Error(data.error);
       setProtocols(data.protocols || []);
     } catch (err: any) {

@@ -213,7 +213,12 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: "View prescribed exercises with video guidance",
     descriptionPt: "Ver exercícios prescritos com vídeos de orientação",
     icon: Dumbbell,
-    href: "/dashboard/exercises",
+    // Activity 43 — "My Exercises" (the separate page) is retired; this
+    // module's exercises now live on the Treatment Plan page alongside any
+    // protocol items. fetchProtocols() there treats a missing mod_treatment
+    // as "no protocols" rather than an error, so an exercises-only patient
+    // (this module without mod_treatment) still gets a working page.
+    href: "/dashboard/treatment",
     category: "wellness",
     defaultEnabled: true,
   },
