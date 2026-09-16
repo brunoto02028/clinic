@@ -504,7 +504,7 @@ export default function PatientTreatmentPage() {
                 <div className="min-w-0">
                   <CardTitle className="text-base sm:text-lg truncate">{proto.title}</CardTitle>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    {isPt ? "Por Dr." : "By Dr."} {proto.therapist.firstName} {proto.therapist.lastName}
+                    {isPt ? "Por" : "By"} {proto.therapist.firstName}
                     {proto.estimatedWeeks && <> · <Clock className="h-3 w-3 inline" /> {proto.estimatedWeeks} {isPt ? "semanas" : "weeks"}</>}
                   </p>
                 </div>
