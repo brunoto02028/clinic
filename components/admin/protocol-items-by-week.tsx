@@ -69,6 +69,7 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
   const [formError, setFormError] = useState("");
   const [linked, setLinked] = useState<LinkedExercise>(null);
   const [originalExerciseId, setOriginalExerciseId] = useState<string | null>(null);
+  const [originalKey, setOriginalKey] = useState("");
   const [newWeek, setNewWeek] = useState({ start: "", end: "" });
 
   const groups: Record<string, any[]> = {};
@@ -123,6 +124,7 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
     });
     setLinked(item.exercise ? { id: item.exercise.id, name: item.exercise.name, videoUrl: item.exercise.videoUrl } : null);
     setOriginalExerciseId(item.exerciseId || item.exercise?.id || null);
+    setOriginalKey(groupKey(item));
   };
 
   const toInt = (v: any) => (v === "" || v == null ? null : parseInt(v) || null);
@@ -151,12 +153,22 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
     // Only send the link when it changed — the API re-validates it, and an
     // untouched legacy link shouldn't block saving the rest of the item.
     if (exerciseId !== originalExerciseId) itemUpdate.exerciseId = exerciseId;
+    // Moving to another week takes that week's visibility: shown only if the
+    // destination week is already fully released, hidden otherwise. Keeping
+    // its old visibility would quietly release part of a future week.
+    const k = `${start}-${end ?? ""}`;
+    let movedHidden: boolean | null = null;
+    if (k !== originalKey) {
+      const dest = (groups[k] || []).filter((i) => i.id !== editId);
+      movedHidden = !(dest.length > 0 && dest.every((i) => !i.hiddenFromPatient));
+      itemUpdate.hiddenFromPatient = movedHidden;
+    }
     setBusy(editId);
     const r = await patch({ itemId: editId, itemUpdate });
     if (r) {
       setEditId(null);
-      flash("Item updated");
-      const k = `${start}-${end ?? ""}`;
+      const label = weekLabel(start, end);
+      flash(movedHidden === null ? "Item updated" : movedHidden ? `Moved to ${label} (hidden until released)` : `Moved to ${label}`);
       setOpen((o) => ({ ...o, [k]: true }));
       onChanged();
     }
@@ -225,8 +237,8 @@ export default function ProtocolItemsByWeek({ patientId, protocol, onChanged, fl
         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Protocol Items ({items.length})</p>
         <div className="flex flex-wrap items-center gap-1">
           <span className="text-[10px] text-muted-foreground">Add to week</span>
-          <Input type="number" min={1} value={newWeek.start} onChange={(e) => setNewWeek((w) => ({ ...w, start: e.target.value }))} className="h-6 w-14 text-[10px]" placeholder="from" />
-          <Input type="number" min={1} value={newWeek.end} onChange={(e) => setNewWeek((w) => ({ ...w, end: e.target.value }))} className="h-6 w-14 text-[10px]" placeholder="to" />
+          <Input type="number" min={1} value={newWeek.start} onChange={(e) => setNewWeek((w) => ({ ...w, start: e.target.value }))} className="h-6 w-16 text-[10px]" placeholder="from" />
+          <Input type="number" min={1} value={newWeek.end} onChange={(e) => setNewWeek((w) => ({ ...w, end: e.target.value }))} className="h-6 w-16 text-[10px]" placeholder="to" />
           <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={addToNewWeek} disabled={busy.startsWith("add-")}>
             <Plus className="h-3 w-3 mr-0.5" /> Add item
           </Button>

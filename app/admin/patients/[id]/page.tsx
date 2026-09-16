@@ -263,17 +263,24 @@ export default function PatientProfilePage() {
   const [showResetPwText, setShowResetPwText] = useState(false);
   const [resettingPw, setResettingPw] = useState(false);
 
+  // Full-page spinner only on the first load. Refreshes after an edit keep the
+  // page mounted, so open editors/expanded sections in child tabs survive
+  // (the Protocol tab opens a new item's editor right after creating it).
+  const loadedOnce = useRef(false);
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    if (!loadedOnce.current) setLoading(true);
     try {
       const res = await fetch(`/api/admin/patients/${patientId}`);
       const d = await res.json();
       if (!res.ok) throw new Error(d.error);
       setData(d);
+      loadedOnce.current = true;
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
   }, [patientId]);
 
+  // Declared before the fetch effect so a different patient loads with the spinner again.
+  useEffect(() => { loadedOnce.current = false; }, [patientId]);
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const flash = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(""), 3000); };
