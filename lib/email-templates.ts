@@ -7,8 +7,6 @@ const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 const CONTACT_EMAIL = 'admin@bpr.clinic';
 const CONTACT_PHONE = '';
 const EMAIL_LOGO_URL = `${BASE_URL}/uploads/email-logo.png`;
-// Bundled white logo (see .dockerignore exceptions) — email clients need a hosted PNG, not a data URI
-const EMAIL_WHITE_LOGO_URL = `${BASE_URL}/uploads/email-logo-white.png`;
 
 // Brand palette — matches the public site's `.public-site` theme (app/globals.css):
 // bone background, health-moss primary/header, greige secondary, ink text, line borders.
@@ -141,13 +139,18 @@ export async function wrapInLayout(content: string, preheader?: string, locale =
   const primaryColor = escapeHtml(settings.primaryColor);
   const email = escapeHtml(settings.email);
   const logoUrl = escapeHtml(settings.logoUrl);
-  const whiteLogoUrl = escapeHtml(settings.whiteLogoUrl);
   const pt = isPt(locale);
   const logoAlt = isDefaultTenant ? 'BPR Physical Rehabilitation' : 'Clinic logo';
-  // Header: white logo only (no caption — the logo carries the name and captions get auto-translated by Gmail)
-  const headerLogoUrl = emailSafeLogoUrl(whiteLogoUrl, primaryColor) || EMAIL_WHITE_LOGO_URL;
-  const logoHtml = `<img src="${headerLogoUrl}" alt="${logoAlt}" style="max-height:70px;max-width:240px;display:block;margin:0 auto;background-color:${primaryColor};" />`;
-  // Footer: dynamic clinic logo (falls back to bundled static PNG if not configured)
+  // Header: the clinic's own (dark/coloured) logo on a light background, a
+  // thin primaryColor rule underneath as the only block of brand colour —
+  // matching the public site's own look (bone background, ink text, moss
+  // green as an accent, never as a fill). A solid-primaryColor header with
+  // the white logo variant used to be the whole header; that read as "not
+  // the brand" next to the real site, and doubled as a transparent-PNG trap
+  // for e-mail clients' dark-mode colour inversion (see emailSafeLogoUrl).
+  const headerLogoUrl = emailSafeLogoUrl(logoUrl, BRAND_BONE) || EMAIL_LOGO_URL;
+  const logoHtml = `<img src="${headerLogoUrl}" alt="${logoAlt}" style="max-height:56px;max-width:200px;display:block;margin:0 auto;background-color:${BRAND_BONE};" />`;
+  // Footer: same logo, smaller, on its own soft-green band.
   const footerLogoUrl = emailSafeLogoUrl(logoUrl, BRAND_HEALTH_SOFT) || EMAIL_LOGO_URL;
   const footerLogoHtml = `<img src="${footerLogoUrl}" alt="${logoAlt}" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;background-color:${BRAND_HEALTH_SOFT};" />`;
   const noReplyText = pt
@@ -174,7 +177,7 @@ ${preheader ? `<span style="display:none!important;visibility:hidden;mso-hide:al
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${BRAND_BONE}" style="background-color:${BRAND_BONE};">
 <tr><td align="center" style="padding:30px 15px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
-  <tr><td bgcolor="${primaryColor}" style="background-color:${primaryColor};padding:28px 32px;text-align:center;">${logoHtml}</td></tr>
+  <tr><td bgcolor="${BRAND_BONE}" style="background-color:${BRAND_BONE};padding:28px 32px;text-align:center;border-bottom:3px solid ${primaryColor};">${logoHtml}</td></tr>
   <tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:36px 32px 24px;">${content}</td></tr>
   <tr><td bgcolor="${BRAND_HEALTH_SOFT}" style="padding:24px 32px 28px;border-top:1px solid ${BRAND_LINE};background-color:${BRAND_HEALTH_SOFT};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
