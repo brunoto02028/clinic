@@ -5,6 +5,11 @@ import { parseExerciseFromVoice } from "@/lib/gemini";
 
 export const dynamic = "force-dynamic";
 
+// No clinic is resolved here on purpose: this route reads nothing and writes
+// nothing — it hands a spoken transcript to Gemini and returns the parsed
+// fields for the form the caller is filling in. The exercise it ends up
+// creating goes through POST /api/admin/exercises, which is clinic-scoped.
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

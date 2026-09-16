@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { resolveClinicId } from "@/lib/exercise-folders";
+import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 import { deleteR2Url, isR2Configured, listR2, deleteFromR2, keyFromR2Url } from "@/lib/r2";
 import path from "path";
 import { existsSync, statSync, unlinkSync, readdirSync } from "fs";
@@ -69,13 +69,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Scoped to one clinic by default. A SUPERADMIN in Global View resolves to
-  // the first clinic, so `?allClinics=true` is required to reach beyond it —
-  // wiping every tenant's library must be asked for, never inferred.
+  // Scoped to the clinic the caller is working in ("Active Clinic"), so
+  // `?allClinics=true` is required to reach beyond it — wiping every tenant's
+  // library must be asked for, never inferred.
   const allClinics = searchParams.get("allClinics") === "true";
-  const clinicId = await resolveClinicId(session);
+  const clinicId = await sessionClinicId(session);
   if (!allClinics && !clinicId) {
-    return NextResponse.json({ error: "No clinic context" }, { status: 400 });
+    return NextResponse.json(NO_CLINIC, { status: 403 });
   }
   const clinicWhere = allClinics ? {} : { clinicId: clinicId! };
 

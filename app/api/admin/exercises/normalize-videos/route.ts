@@ -6,6 +6,7 @@ import path from "path";
 import { existsSync } from "fs";
 import { probeVideo, ensureWebSafeVideo } from "@/lib/video-web-safe";
 import { generateVideoThumbnail } from "@/lib/video-thumbnail";
+import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -34,7 +35,19 @@ export async function POST(req: NextRequest) {
 
   const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
 
-  const where = { isActive: true, videoUrl: { startsWith: "/uploads/" } } as const;
+  // The clinic the caller is working in, like every other library route —
+  // `?allClinics=true` for the platform-wide run this was written for.
+  const allClinics = searchParams.get("allClinics") === "true";
+  const clinicId = await sessionClinicId(session);
+  if (!allClinics && !clinicId) {
+    return NextResponse.json(NO_CLINIC, { status: 403 });
+  }
+
+  const where = {
+    isActive: true,
+    videoUrl: { startsWith: "/uploads/" },
+    ...(allClinics ? {} : { clinicId: clinicId! }),
+  };
   const total = await prisma.exercise.count({ where });
 
   const exercises = await prisma.exercise.findMany({

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import path from "path";
 import { getVideoDuration } from "@/lib/video-thumbnail";
+import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,20 @@ export async function POST(req: NextRequest) {
 
   const uploadsBase = process.env.UPLOADS_DIR || path.join(process.cwd(), "public", "uploads");
 
+  // The clinic the caller is working in, like every other library route —
+  // `?allClinics=true` for the platform-wide run this was written for.
+  const allClinics = new URL(req.url).searchParams.get("allClinics") === "true";
+  const clinicId = await sessionClinicId(session);
+  if (!allClinics && !clinicId) {
+    return NextResponse.json(NO_CLINIC, { status: 403 });
+  }
+
   const exercises = await prisma.exercise.findMany({
-    where: { duration: null, videoUrl: { startsWith: "/uploads/" } },
+    where: {
+      duration: null,
+      videoUrl: { startsWith: "/uploads/" },
+      ...(allClinics ? {} : { clinicId: clinicId! }),
+    },
     select: { id: true, name: true, videoUrl: true },
   });
 
@@ -39,6 +52,7 @@ export async function POST(req: NextRequest) {
 
   const successCount = results.filter((r) => r.success).length;
   return NextResponse.json({
+    scope: allClinics ? "all clinics" : clinicId,
     total: results.length,
     successCount,
     failCount: results.length - successCount,
