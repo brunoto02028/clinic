@@ -50,10 +50,10 @@ pra todo mundo — sem quebrar o acesso de quem não tem protocolo.
 | T-N | Nome | Status |
 |-----|------|--------|
 | T-1 | Schema — log diário aceita prescrições soltas | concluído |
-| T-2 | API — toggle diário unificado + GET com logs | pendente |
-| T-3 | UI — card "Hoje" + seção de exercícios soltos na Treatment Plan | pendente |
-| T-4 | Aposentar "My Exercises" (redirect + remover do menu) | pendente |
-| T-5 | Admin — ver histórico diário das prescrições soltas | pendente |
+| T-2 | API — toggle diário unificado + GET com logs | implementado, aguardando QA |
+| T-3 | UI — card "Hoje" + seção de exercícios soltos na Treatment Plan | implementado, aguardando QA |
+| T-4 | Aposentar "My Exercises" (redirect + remover do menu) | implementado, aguardando QA |
+| T-5 | Admin — ver histórico diário das prescrições soltas | implementado, aguardando QA |
 
 ## Suposições (validar com o usuário)
 

@@ -8,7 +8,6 @@ const AppointmentsList = dynamic(() => import("@/components/appointments/appoint
 const AssessmentScreeningForm = dynamic(() => import("@/components/screening/medical-screening-form"));
 const PatientRecords = dynamic(() => import("@/components/records/patient-records"));
 const PatientEducationPage = dynamic(() => import("@/app/dashboard/education/page"));
-const PatientExercisesPage = dynamic(() => import("@/app/dashboard/exercises/page"));
 const PatientTreatmentPage = dynamic(() => import("@/app/dashboard/treatment/page"));
 const PatientDocumentsPage = dynamic(() => import("@/app/dashboard/documents/page"));
 const PatientBloodPressurePage = dynamic(() => import("@/app/dashboard/blood-pressure/page"));
@@ -28,7 +27,12 @@ const ROUTE_MAP: Record<string, React.ComponentType> = {
   screening: AssessmentScreeningForm,
   records: PatientRecords,
   education: PatientEducationPage,
-  exercises: PatientExercisesPage,
+  // Activity 43 — "My Exercises" retired in favour of the unified Treatment
+  // Plan page; the "exercises" preview slug (old bookmarks/links) now shows
+  // the same component "treatment" does, instead of importing the retired
+  // page's own redirect() as a reusable component (which only works mounted
+  // inside its own route, not embedded here).
+  exercises: PatientTreatmentPage,
   treatment: PatientTreatmentPage,
   documents: PatientDocumentsPage,
   "blood-pressure": PatientBloodPressurePage,

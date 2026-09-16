@@ -1,6 +1,6 @@
 # T-2: API — toggle diário unificado + GET com logs
 
-**Status:** pendente
+**Status:** implementado — aguardando QA
 **Depende de:** T-1
 
 ## Objetivo

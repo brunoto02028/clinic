@@ -1,6 +1,6 @@
 # T-5: Admin — ver histórico diário das prescrições soltas
 
-**Status:** pendente
+**Status:** implementado — aguardando QA
 **Depende de:** T-2
 
 ## Objetivo

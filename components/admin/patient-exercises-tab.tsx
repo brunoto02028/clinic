@@ -27,6 +27,7 @@ interface Prescription {
   isActive: boolean;
   completedCount: number;
   createdAt: string;
+  completionLogs?: { completedDate: string }[];
   exercise: {
     id: string;
     name: string;
@@ -386,7 +387,12 @@ export default function PatientExercisesTab({ patientId }: { patientId: string }
             )}
 
             <p className="text-[10px] text-muted-foreground mt-1">
-              Prescribed by {p.therapist.firstName} · {p.completedCount > 0 ? `Completed ${p.completedCount}x` : "Not completed yet"}
+              Prescribed by {p.therapist.firstName}
+              {p.completionLogs && p.completionLogs.length > 0 && (
+                <> · <span className="text-ba1-ok" title="Days marked done by the patient">
+                  ✓ {p.completionLogs.map((l) => new Date(l.completedDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" })).join(", ")}
+                </span></>
+              )}
             </p>
           </div>
         </div>

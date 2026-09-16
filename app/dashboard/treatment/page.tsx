@@ -70,6 +70,11 @@ export default function PatientTreatmentPage() {
   const T = (key: string) => relabel(i18nT(key, locale));
   const isPt = locale === "pt-BR";
   const [protocols, setProtocols] = useState<any[]>([]);
+  // Standalone exercises (activity 43) — ExercisePrescription rows with no
+  // TreatmentProtocol behind them. Some patients (no protocol at all) only
+  // ever have these; this page used to be the only one that showed them
+  // (`/dashboard/exercises`, now retired — see activity 43/T-4).
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   // Carries the mute flag alongside the URL: the clip's own setting has to
@@ -130,6 +135,19 @@ export default function PatientTreatmentPage() {
     } catch {}
   }, []);
 
+  // Silent on failure (e.g. mod_exercises not in the patient's plan) — same
+  // pattern as fetchPendingAppointments above, this page still works with
+  // just protocol items if standalone prescriptions aren't available.
+  const fetchPrescriptions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/exercises");
+      if (res.ok) {
+        const data = await res.json();
+        setPrescriptions((data.prescriptions || []).filter((p: any) => p.isActive));
+      }
+    } catch {}
+  }, []);
+
   const confirmSchedule = async () => {
     setConfirmingSchedule(true);
     try {
@@ -172,7 +190,7 @@ export default function PatientTreatmentPage() {
     }
   };
 
-  useEffect(() => { fetchProtocols(); fetchPendingAppointments(); }, [fetchProtocols, fetchPendingAppointments]);
+  useEffect(() => { fetchProtocols(); fetchPendingAppointments(); fetchPrescriptions(); }, [fetchProtocols, fetchPendingAppointments, fetchPrescriptions]);
 
   const handleToggleItem = async (itemId: string, completed: boolean) => {
     try {
@@ -205,6 +223,22 @@ export default function PatientTreatmentPage() {
     }
   };
 
+  // Activity 43 — same toggle-by-date pattern as handleToggleLog above, for
+  // exercises prescribed without a TreatmentProtocol behind them.
+  const handleTogglePrescriptionLog = async (prescriptionId: string, dateStr: string) => {
+    try {
+      const res = await fetch("/api/exercises", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prescriptionId, date: dateStr }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      fetchPrescriptions();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const handlePayment = async (packageId: string) => {
     setPaying(packageId);
     try {
@@ -232,6 +266,60 @@ export default function PatientTreatmentPage() {
       </div>
     );
   }
+
+  // ── "Today" card (activity 43) — current-week home-exercise items across
+  // every protocol, plus every active standalone prescription, normalised
+  // into one shape so the card doesn't need to branch per item type.
+  const todayStr = toDateStr(new Date());
+  const todayProtocolTasks: TodayTask[] = protocols.flatMap((proto: any) => {
+    if (proto.paymentRequired) return [];
+    const currentWeek = currentWeekOf(proto);
+    return (proto.items || [])
+      .filter((item: any) => {
+        if (item.hiddenFromPatient) return false;
+        if (item.itemType === "IN_CLINIC" || item.itemType === "ASSESSMENT") return false;
+        const startWeek = item.startWeek || 1;
+        const endWeek = item.endWeek;
+        return currentWeek >= startWeek && (endWeek == null || currentWeek <= endWeek);
+      })
+      .map((item: any) => ({
+        key: `p-${item.id}`,
+        kind: "protocol" as const,
+        refId: item.id,
+        name: item.title,
+        description: item.description,
+        sets: item.sets,
+        reps: item.reps,
+        holdSeconds: item.holdSeconds,
+        restSeconds: item.restSeconds,
+        frequency: item.frequency,
+        videoUrl: item.exercise?.videoUrl,
+        muteForPatient: item.exercise?.muteForPatient,
+        doneToday: (item.completionLogs || []).some((l: any) => String(l.completedDate).slice(0, 10) === todayStr),
+        weekCount: weekCountFrom(item.completionLogs),
+      }));
+  });
+  const todayPrescriptionTasks: TodayTask[] = prescriptions.map((p: any) => ({
+    key: `x-${p.id}`,
+    kind: "prescription" as const,
+    refId: p.id,
+    name: p.exercise?.name,
+    description: p.exercise?.description,
+    sets: p.sets ?? p.exercise?.defaultSets,
+    reps: p.reps ?? p.exercise?.defaultReps,
+    holdSeconds: p.holdSeconds ?? p.exercise?.defaultHoldSec,
+    restSeconds: p.restSeconds ?? p.exercise?.defaultRestSec,
+    frequency: p.frequency,
+    videoUrl: p.exercise?.videoUrl,
+    muteForPatient: p.exercise?.muteForPatient,
+    doneToday: (p.completionLogs || []).some((l: any) => String(l.completedDate).slice(0, 10) === todayStr),
+    weekCount: weekCountFrom(p.completionLogs),
+  }));
+  const todayTasks: TodayTask[] = [...todayProtocolTasks, ...todayPrescriptionTasks];
+  const handleToggleToday = (task: TodayTask) => {
+    if (task.kind === "protocol") handleToggleLog(task.refId, todayStr);
+    else handleTogglePrescriptionLog(task.refId, todayStr);
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -275,6 +363,8 @@ export default function PatientTreatmentPage() {
           <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setError("")}><X className="h-3 w-3" /></Button>
         </div>
       )}
+
+      <TodayCard tasks={todayTasks} onToggle={handleToggleToday} onPlayVideo={(url, muted) => { setVideoFailed(false); setVideoModal({ url, muted }); }} isPt={isPt} />
 
       {/* ── Proposed Schedule (PENDING_PATIENT) ── */}
       {pendingAppointments.length > 0 && !scheduleConfirmed && (
@@ -343,7 +433,7 @@ export default function PatientTreatmentPage() {
         </div>
       )}
 
-      {protocols.length === 0 && (
+      {protocols.length === 0 && prescriptions.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center text-muted-foreground">
             <ClipboardCheck className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
@@ -375,9 +465,7 @@ export default function PatientTreatmentPage() {
         // the day strip always has a real date to anchor on instead of
         // silently rendering "Invalid Date" buttons.
         const effectiveStartDate = proto.startDate || proto.createdAt;
-        const currentWeek = effectiveStartDate
-          ? Math.max(1, Math.floor((Date.now() - new Date(effectiveStartDate).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1)
-          : 1;
+        const currentWeek = currentWeekOf(proto);
 
         // Progress stats
         const totalItems = proto.items?.length || 0;
@@ -539,6 +627,12 @@ export default function PatientTreatmentPage() {
         );
       })}
 
+      <PrescriptionSection
+        prescriptions={prescriptions}
+        onToggleLog={handleTogglePrescriptionLog}
+        onPlayVideo={(url: string, muted: boolean) => { setVideoFailed(false); setVideoModal({ url, muted }); }}
+      />
+
       {/* Video Modal */}
       {videoModal && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setVideoModal(null)}>
@@ -588,6 +682,17 @@ export default function PatientTreatmentPage() {
 
 // ─── Week Section (activity 42 — replaces the old phase grouping) ───
 
+// "Week 1" starts on the protocol's startDate — not the surgery date, which
+// matters when a patient restarts adaptively. Falls back to createdAt for
+// older protocols with no startDate. Shared by the per-protocol render below
+// and the top-level "Today" card, which needs it for every protocol at once.
+function currentWeekOf(proto: any): number {
+  const effectiveStartDate = proto.startDate || proto.createdAt;
+  return effectiveStartDate
+    ? Math.max(1, Math.floor((Date.now() - new Date(effectiveStartDate).getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1)
+    : 1;
+}
+
 function weekLabel(startWeek: number, endWeek: number | null, isPt: boolean): string {
   const w = isPt ? "Semana" : "Week";
   if (endWeek === null) return `${w} ${startWeek}+`;
@@ -631,15 +736,38 @@ function toDateStr(d: Date): string {
 const WEEKDAY_LETTER_EN = ["S", "M", "T", "W", "T", "F", "S"];
 const WEEKDAY_LETTER_PT = ["D", "S", "T", "Q", "Q", "S", "S"];
 
-function DayStrip({ item, startDate, currentWeek, onToggleLog, isPt }: {
-  item: any;
-  startDate: string;
-  currentWeek: number;
-  onToggleLog: (itemId: string, dateStr: string) => void;
+// Last 7 calendar days ending today, oldest first (activity 43) — the
+// window used for standalone prescriptions, which have no protocol
+// startDate/week to anchor a calendar-week strip on. Same day-count as
+// weekDates() above, just not aligned to a fixed week boundary.
+function rollingDays(): Date[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (6 - i));
+    return d;
+  });
+}
+
+// Distinct days logged within the same trailing-7-day window rollingDays()
+// covers — the "X/7 this week" label (activity 43), replacing the old
+// lifetime "Done Nx"/"Completed 1x" counters that carried no time context.
+function weekCountFrom(logs: any[] | undefined): number {
+  const cutoff = toDateStr(rollingDays()[0]);
+  const today = toDateStr(new Date());
+  const dates = new Set((logs || []).map((l: any) => String(l.completedDate).slice(0, 10)));
+  let count = 0;
+  dates.forEach((d) => { if (d >= cutoff && d <= today) count++; });
+  return count;
+}
+
+function DayStrip({ days, marked, onToggleDate, isPt }: {
+  days: Date[];
+  marked: Set<string>;
+  onToggleDate: (dateStr: string) => void;
   isPt: boolean;
 }) {
-  const days = weekDates(startDate, currentWeek);
-  const marked = new Set((item.completionLogs || []).map((l: any) => String(l.completedDate).slice(0, 10)));
   const todayStr = toDateStr(new Date());
   const dayLabels = isPt ? WEEKDAY_LETTER_PT : WEEKDAY_LETTER_EN;
 
@@ -653,7 +781,7 @@ function DayStrip({ item, startDate, currentWeek, onToggleLog, isPt }: {
           <button
             key={dateStr}
             disabled={isFuture}
-            onClick={() => onToggleLog(item.id, dateStr)}
+            onClick={() => onToggleDate(dateStr)}
             title={d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}
             className={`h-7 w-7 rounded-full text-[10px] font-semibold flex items-center justify-center border transition-colors shrink-0 ${
               isMarked
@@ -734,8 +862,8 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
                         {item.title}
                       </span>
                       <Badge variant="outline" className="text-[9px]">{isPt ? TYPE_LABELS_PT[item.itemType] : TYPE_LABELS_EN[item.itemType]}</Badge>
-                      {item.completedCount > 0 && (
-                        <span className="text-[10px] text-ba1-ok">{isPt ? "Feito" : "Done"} {item.completedCount}x</span>
+                      {weekCountFrom(item.completionLogs) > 0 && (
+                        <span className="text-[10px] text-ba1-ok font-medium">{weekCountFrom(item.completionLogs)}/7 {isPt ? "esta semana" : "this week"}</span>
                       )}
                     </div>
 
@@ -770,7 +898,12 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
                     {isCurrentWeek && item.itemType !== "IN_CLINIC" && item.itemType !== "ASSESSMENT" && (
                       <div>
                         <p className="text-[10px] text-muted-foreground mt-2">{isPt ? "Marque os dias que fez:" : "Mark the days you did it:"}</p>
-                        <DayStrip item={item} startDate={protocolStartDate} currentWeek={currentWeek} onToggleLog={onToggleLog} isPt={isPt} />
+                        <DayStrip
+                          days={weekDates(protocolStartDate, currentWeek)}
+                          marked={new Set((item.completionLogs || []).map((l: any) => String(l.completedDate).slice(0, 10)))}
+                          onToggleDate={(dateStr) => onToggleLog(item.id, dateStr)}
+                          isPt={isPt}
+                        />
                       </div>
                     )}
 
@@ -792,6 +925,157 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Today Card (activity 43) — everything due today in one place, from ───
+// both current-week protocol items and standalone prescriptions, with a
+// much bigger tap target than the day-strip circle below.
+
+type TodayTask = {
+  key: string;
+  kind: "protocol" | "prescription";
+  refId: string;
+  name: string;
+  description?: string | null;
+  sets?: number | null;
+  reps?: number | null;
+  holdSeconds?: number | null;
+  restSeconds?: number | null;
+  frequency?: string | null;
+  videoUrl?: string | null;
+  muteForPatient?: boolean;
+  doneToday: boolean;
+  weekCount: number;
+};
+
+function TodayCard({ tasks, onToggle, onPlayVideo, isPt }: {
+  tasks: TodayTask[];
+  onToggle: (task: TodayTask) => void;
+  onPlayVideo: (url: string, muted: boolean) => void;
+  isPt: boolean;
+}) {
+  const { locale } = useLocale();
+  const T = (key: string) => i18nT(key, locale);
+  if (tasks.length === 0) return null;
+
+  const todayLabel = new Date().toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
+  const doneCount = tasks.filter((t) => t.doneToday).length;
+
+  return (
+    <Card className="border-2 border-ba1-health/30 bg-ba1-health/5">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base capitalize flex items-center gap-1.5">
+            <CalendarCheck className="h-4 w-4 text-ba1-health" /> {isPt ? "Hoje" : "Today"} · {todayLabel}
+          </CardTitle>
+          <Badge className="bg-ba1-health text-white text-[10px]">{doneCount}/{tasks.length}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-2 space-y-2">
+        {tasks.map((task) => (
+          <div key={task.key} className={`rounded-lg border p-3 flex items-start gap-3 ${task.doneToday ? "bg-ba1-ok/5 border-ba1-ok/20" : "bg-card"}`}>
+            <button
+              onClick={() => onToggle(task)}
+              className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${
+                task.doneToday
+                  ? "bg-ba1-ok border-ba1-ok text-white"
+                  : "border-ba1-health text-ba1-health hover:bg-ba1-health/10"
+              }`}
+              title={isPt ? "Marcar como feito hoje" : "Mark as done today"}
+            >
+              <CheckCircle2 className="h-6 w-6" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className={`font-medium text-sm ${task.doneToday ? "line-through text-muted-foreground" : ""}`}>{task.name}</p>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {task.sets && <Badge variant="secondary" className="text-[10px]">{task.sets} {T("exercises.sets")}</Badge>}
+                {task.reps && <Badge variant="secondary" className="text-[10px]">{task.reps} {T("exercises.reps")}</Badge>}
+                {task.holdSeconds && <Badge variant="secondary" className="text-[10px]">{T("exercises.hold")} {task.holdSeconds}s</Badge>}
+                {task.frequency && <Badge variant="secondary" className="text-[10px]">{task.frequency}</Badge>}
+              </div>
+              {task.videoUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-7 text-xs gap-1"
+                  onClick={() => onPlayVideo(task.videoUrl!, task.muteForPatient !== false)}
+                >
+                  <Play className="h-3 w-3" /> {T("treatment.watchVideo")}
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── General Exercises (activity 43) — standalone ExercisePrescription ───
+// rows, no TreatmentProtocol behind them. Same day-strip UI as a protocol's
+// WeekSection, but windowed on the last 7 rolling days instead of a
+// protocol-anchored calendar week (these have no startWeek/endWeek).
+
+function PrescriptionSection({ prescriptions, onToggleLog, onPlayVideo }: {
+  prescriptions: any[];
+  onToggleLog: (prescriptionId: string, dateStr: string) => void;
+  onPlayVideo: (url: string, muted: boolean) => void;
+}) {
+  const { locale } = useLocale();
+  const T = (key: string) => i18nT(key, locale);
+  const isPt = locale === "pt-BR";
+  const days = rollingDays();
+
+  if (prescriptions.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-base sm:text-lg">{isPt ? "Exercícios Gerais" : "General Exercises"}</CardTitle>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          {isPt ? "Prescritos diretamente pela clínica, sem um plano semanal associado." : "Prescribed directly by the clinic, not tied to a weekly plan."}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2 pt-0">
+        {prescriptions.map((p: any) => {
+          const marked = new Set<string>((p.completionLogs || []).map((l: any) => String(l.completedDate).slice(0, 10)));
+          const weekCount = weekCountFrom(p.completionLogs);
+          return (
+            <div key={p.id} className="border rounded-lg p-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-sm">{p.exercise?.name}</span>
+                {weekCount > 0 && <span className="text-[10px] text-ba1-ok font-medium">{weekCount}/7 {isPt ? "esta semana" : "this week"}</span>}
+              </div>
+              {p.exercise?.description && <p className="text-xs text-muted-foreground mt-0.5">{p.exercise.description}</p>}
+
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {p.frequency && <Badge variant="secondary" className="text-[10px]">{p.frequency}</Badge>}
+                {(p.sets ?? p.exercise?.defaultSets) && <Badge variant="secondary" className="text-[10px]">{p.sets ?? p.exercise?.defaultSets} {T("exercises.sets")}</Badge>}
+                {(p.reps ?? p.exercise?.defaultReps) && <Badge variant="secondary" className="text-[10px]">{p.reps ?? p.exercise?.defaultReps} {T("exercises.reps")}</Badge>}
+                {(p.holdSeconds ?? p.exercise?.defaultHoldSec) && <Badge variant="secondary" className="text-[10px]">{T("exercises.hold")} {p.holdSeconds ?? p.exercise?.defaultHoldSec}s</Badge>}
+              </div>
+
+              {p.exercise?.videoUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-7 text-xs gap-1"
+                  onClick={() => onPlayVideo(p.exercise.videoUrl, p.exercise.muteForPatient !== false)}
+                >
+                  <Play className="h-3 w-3" /> {T("treatment.watchVideo")}
+                </Button>
+              )}
+
+              <div>
+                <p className="text-[10px] text-muted-foreground mt-2">{isPt ? "Marque os dias que fez:" : "Mark the days you did it:"}</p>
+                <DayStrip days={days} marked={marked} onToggleDate={(dateStr) => onToggleLog(p.id, dateStr)} isPt={isPt} />
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
 

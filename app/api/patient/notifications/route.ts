@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
           titlePt: n === 1 ? "Novo exercício para começar" : `${n} novos exercícios para começar`,
           message: "Your therapist prescribed these for you — each one has a video.",
           messagePt: "O seu fisioterapeuta prescreveu estes para si — cada um tem vídeo.",
-          link: "/dashboard/exercises",
+          link: "/dashboard/treatment",
           icon: "Dumbbell",
           color: "emerald",
           createdAt: fresh[0].createdAt?.toISOString?.() || now.toISOString(),

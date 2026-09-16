@@ -106,7 +106,10 @@ export const PATIENT_SECTIONS: PatientSection[] = [
     label: "Exercises",
     labelPt: "Exercícios",
     icon: Dumbbell,
-    href: "/dashboard/exercises",
+    // Activity 43 — "My Exercises" is retired in favour of the unified
+    // Treatment Plan page; this entry still covers the Journey/Tasks/
+    // Achievements/Quizzes routes below, so it stays, just repointed.
+    href: "/dashboard/treatment",
     matchRoutes: [
       "/dashboard/exercises",
       "/dashboard/tasks",
