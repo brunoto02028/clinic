@@ -21,13 +21,17 @@ export async function POST(req: NextRequest) {
   }
 
   const [exercise, patient] = await Promise.all([
-    prisma.exercise.findUnique({ where: { id: exerciseId }, select: { name: true } }),
+    prisma.exercise.findUnique({ where: { id: exerciseId }, select: { name: true, clinicId: true } }),
     prisma.user.findUnique({
       where: { id: actor.userId },
       select: { email: true, role: true, firstName: true, lastName: true },
     }),
   ]);
-  if (!exercise || !patient) {
+  // Scoped to the patient's own clinic, same as every other route reading an
+  // exercise for a patient (e.g. app/api/patient/protocol/route.ts) — without
+  // this, any authenticated patient could log having watched an arbitrary
+  // exercise from another clinic into their own timeline.
+  if (!exercise || !patient || !actor.clinicId || exercise.clinicId !== actor.clinicId) {
     return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
   }
 
