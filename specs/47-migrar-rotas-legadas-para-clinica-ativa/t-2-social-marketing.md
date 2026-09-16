@@ -1,6 +1,6 @@
 # T-2: Migrar as rotas de social/marketing
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-1
 
 ## Objetivo
@@ -18,6 +18,6 @@ As 11 rotas de social/marketing trabalham na clínica ativa e falham fechado.
 3. `posts` GET passa a filtrar sempre por `clinicId`; `accounts/[id]` compara sempre o dono.
 
 ## Critérios de aceite
-- [ ] Nenhuma consulta dessas rotas roda sem `clinicId`
-- [ ] Telas de Marketing/Social continuam funcionando na BPR
-- [ ] Trocando a Active Clinic, as listas passam a ser da outra clínica
+- [x] Nenhuma consulta dessas rotas roda sem `clinicId`
+- [x] Telas de Marketing/Social continuam funcionando na BPR
+- [x] Trocando a Active Clinic, as listas passam a ser da outra clínica

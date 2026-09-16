@@ -1,6 +1,6 @@
 # T-3: Migrar equipamentos, agenda, Atlas e artigos
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-1
 
 ## Objetivo
@@ -14,7 +14,7 @@ As 7 chamadas restantes seguem a clínica ativa e falham fechado.
 - `app/api/admin/articles/instagram/route.ts`
 
 ## Critérios de aceite
-- [ ] Equipamentos: lista e edição só da clínica ativa; sem clínica → 403 (hoje `[]`)
-- [ ] Bloqueios de agenda criados e lidos na clínica ativa
-- [ ] Atlas monta o contexto com a clínica ativa, nunca com `""`
-- [ ] Importação de artigos do Instagram grava na clínica ativa
+- [x] Equipamentos: lista e edição só da clínica ativa; sem clínica → 403 (hoje `[]`)
+- [x] Bloqueios de agenda criados e lidos na clínica ativa
+- [x] Atlas monta o contexto com a clínica ativa, nunca com `""`
+- [x] Importação de artigos do Instagram grava na clínica ativa

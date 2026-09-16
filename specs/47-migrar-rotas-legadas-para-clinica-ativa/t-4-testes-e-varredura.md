@@ -1,6 +1,6 @@
 # T-4: Testes e varredura
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-2, T-3
 
 ## Passos
@@ -11,5 +11,5 @@
 3. `grep -r "resolve-clinic-id"` sem resultados; `npx jest`, `tsc` e lint limpos.
 
 ## Critérios de aceite
-- [ ] Testes novos passando e suíte completa verde
-- [ ] Nenhuma referência ao helper legado
+- [x] Testes novos passando e suíte completa verde
+- [x] Nenhuma referência ao helper legado

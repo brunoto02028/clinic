@@ -1,6 +1,6 @@
 # Ativ. 47 — Migrar as 18 rotas legadas para a clínica ativa
 
-**Status:** em andamento (aprovado 16/09/2026: "pode migrar as 18 rotas")
+**Status:** concluído (16/09/2026) — commits cd30d75, 77497f0
 
 ## Objetivo
 Tirar `lib/resolve-clinic-id.ts` de circulação: as 18 rotas que ainda o usam passam a trabalhar na
@@ -49,10 +49,10 @@ consulta sem filtro de clínica.
 
 | T-N | Nome | Status |
 |-----|------|--------|
-| T-1 | `lib/session-clinic.ts` único + apagar o legado + reexportar em exercise-folders | em andamento |
-| T-2 | Migrar as 11 rotas de social/marketing | pendente |
-| T-3 | Migrar equipamentos, agenda/bloqueios, Atlas e artigos/instagram (7 chamadas) | pendente |
-| T-4 | Testes e varredura final (nenhum `resolve-clinic-id` sobrando) | pendente |
+| T-1 | `lib/session-clinic.ts` único + apagar o legado + reexportar em exercise-folders | concluído |
+| T-2 | Migrar as 11 rotas de social/marketing | concluído |
+| T-3 | Migrar equipamentos, agenda/bloqueios, Atlas e artigos/instagram (7 chamadas) | concluído |
+| T-4 | Testes e varredura final (nenhum `resolve-clinic-id` sobrando) | concluído |
 
 ## Suposições (validar com o usuário)
 - Responder 403 (em vez de lista vazia) quando não há clínica é aceitável: em produção toda conta
@@ -60,3 +60,16 @@ consulta sem filtro de clínica.
 - Nenhuma tela quebra com 403: as que consomem essas rotas já tratam resposta de erro (conferir no
   QA, Marketing/Social e Equipamentos são as principais).
 - O cookie "Active Clinic" continua sendo a fonte da clínica do SUPERADMIN, como nas ativ. 45/46.
+
+## Resultado (16/09/2026)
+- `lib/resolve-clinic-id.ts` apagado; 18 rotas e 27 chamadas passaram para `lib/session-clinic.ts`,
+  todas falhando fechado. QA local + produção aprovado (`qa/report-t-1..4.md`).
+- Revisão de código independente achou um vazamento que não estava na lista: `DELETE` de bloqueio de
+  agenda apagava por id, sem clínica — corrigido (apaga só dentro da clínica, 404 fora).
+- Produção antes × depois com a BPR ativa: respostas idênticas; com a clínica "Bruno" ativa, cada
+  rota passa a devolver os dados dessa clínica.
+
+## Pendências
+1. `DEFAULT_CLINIC_SLUG` continua indefinido em produção — hoje inofensivo (os dois SUPERADMIN têm
+   clínica na conta), mas passa a ser obrigatório se existir uma conta SUPERADMIN sem clínica.
+2. `scripts/seed-clinic.js` cita o helper antigo num comentário histórico; sem efeito no código.

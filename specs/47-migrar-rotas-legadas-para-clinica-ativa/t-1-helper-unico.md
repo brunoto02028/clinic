@@ -1,6 +1,6 @@
 # T-1: Um helper só para a clínica da sessão
 
-**Status:** em andamento
+**Status:** concluído
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -15,7 +15,7 @@ Uma única função resolve a clínica de trabalho a partir da sessão, com a me
 3. `lib/resolve-clinic-id.ts`: apagado depois que as 18 rotas migrarem (T-2/T-3).
 
 ## Critérios de aceite
-- [ ] ADMIN/THERAPIST: clínica da conta, mesmo com cookie de outra clínica
-- [ ] SUPERADMIN: clínica ativa; sem seleção, a própria
-- [ ] Conta sem clínica: `null` (nunca "a primeira clínica da tabela")
-- [ ] Nenhum arquivo importa `@/lib/resolve-clinic-id`
+- [x] ADMIN/THERAPIST: clínica da conta, mesmo com cookie de outra clínica
+- [x] SUPERADMIN: clínica ativa; sem seleção, a própria
+- [x] Conta sem clínica: `null` (nunca "a primeira clínica da tabela")
+- [x] Nenhum arquivo importa `@/lib/resolve-clinic-id`
