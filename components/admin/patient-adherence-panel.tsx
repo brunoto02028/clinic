@@ -16,8 +16,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CheckCircle2, AlertCircle, Loader2, Send, Eye } from "lucide-react";
 
 type MissingItem = { id: string; title: string };
-type DayStatus = { hasPlan: boolean; allDone: boolean; missing: MissingItem[] };
+type DayStatus = { hasPlan: boolean; allDone: boolean; missing: MissingItem[]; reminderSentAt: string | null };
 type AdherenceToday = DayStatus & { yesterday: DayStatus };
+
+function formatSentAt(iso: string) {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function AdherenceSection({
   title,
@@ -38,7 +47,9 @@ function AdherenceSection({
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sentAt, setSentAt] = useState(status.reminderSentAt);
+
+  useEffect(() => setSentAt(status.reminderSentAt), [status.reminderSentAt]);
 
   const send = async () => {
     setSending(true);
@@ -48,13 +59,17 @@ function AdherenceSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patientId }),
       });
-      if (res.ok) setSent(true);
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.sent !== false) setSentAt(new Date().toISOString());
+      }
     } finally {
       setSending(false);
     }
   };
 
   if (!status.hasPlan) return null;
+  const sent = !!sentAt;
 
   return (
     <div className="space-y-2 pt-3 first:pt-0 border-t first:border-t-0">
@@ -75,7 +90,7 @@ function AdherenceSection({
             </Button>
             <Button size="sm" disabled={sending || sent} onClick={send}>
               {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : sent ? <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-              {sent ? "Sent" : "Send now"}
+              {sent && sentAt ? `Sent ${formatSentAt(sentAt)}` : "Send now"}
             </Button>
           </div>
         </>
@@ -100,7 +115,7 @@ function AdherenceSection({
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setPreviewOpen(false)}>Close</Button>
             <Button disabled={sending || sent} onClick={async () => { await send(); setPreviewOpen(false); }}>
-              {sent ? "Sent" : "Looks good — send it"}
+              {sent && sentAt ? `Sent ${formatSentAt(sentAt)}` : "Looks good — send it"}
             </Button>
           </div>
         </DialogContent>
@@ -109,15 +124,21 @@ function AdherenceSection({
   );
 }
 
-type OnboardingPending = { profileIncomplete: boolean; screeningMissing: boolean; consentMissing: boolean; anyPending: boolean };
+type OnboardingPending = {
+  profileIncomplete: boolean;
+  screeningMissing: boolean;
+  consentMissing: boolean;
+  anyPending: boolean;
+  reminderSentAt: string | null;
+};
 
 function onboardingStatus(p: OnboardingPending | null): DayStatus {
-  if (!p) return { hasPlan: false, allDone: true, missing: [] };
+  if (!p) return { hasPlan: false, allDone: true, missing: [], reminderSentAt: null };
   const missing: MissingItem[] = [];
   if (p.profileIncomplete) missing.push({ id: "profile", title: "Complete profile" });
   if (p.screeningMissing) missing.push({ id: "screening", title: "Submit medical screening" });
   if (p.consentMissing) missing.push({ id: "consent", title: "Accept consent terms" });
-  return { hasPlan: true, allDone: !p.anyPending, missing };
+  return { hasPlan: true, allDone: !p.anyPending, missing, reminderSentAt: p.reminderSentAt };
 }
 
 export default function PatientAdherencePanel({ patientId }: { patientId: string }) {
@@ -147,7 +168,7 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
           title="Today"
           doneLabel="Completed everything today."
           missingLabel={(n) => `Missing ${n} ${n === 1 ? "activity" : "activities"} today`}
-          status={{ hasPlan: data.hasPlan, allDone: data.allDone, missing: data.missing }}
+          status={{ hasPlan: data.hasPlan, allDone: data.allDone, missing: data.missing, reminderSentAt: data.reminderSentAt }}
           previewUrl={`/api/admin/adherence/preview-patient-email?patientId=${patientId}`}
           sendUrl="/api/admin/adherence/send-reminder"
           patientId={patientId}
