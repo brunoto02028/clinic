@@ -113,6 +113,14 @@ export default function AdminHeader({ user }: AdminHeaderProps) {
                     </Link>
                   ))
                 )}
+                <a
+                  href="/api/admin/adherence/preview-email"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block px-4 py-2 text-xs text-center text-muted-foreground hover:text-primary bg-muted/30"
+                >
+                  {isPt ? "Ver modelo do e-mail diário" : "Preview the daily e-mail"}
+                </a>
               </div>
             </>
           )}
