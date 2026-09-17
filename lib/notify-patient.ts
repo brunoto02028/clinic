@@ -7,6 +7,7 @@
 import { prisma } from "@/lib/db";
 import { sendTemplatedEmail, wrapInLayout } from "@/lib/email-templates";
 import { buildPatientReminderEmail, buildTodayReminderText, buildYesterdayFollowupEmail, buildYesterdayFollowupText } from "@/lib/daily-adherence-email";
+import { buildOnboardingReminderEmail, buildOnboardingReminderText, type OnboardingPending } from "@/lib/onboarding-reminder";
 import { sendWhatsAppMessage, isWhatsAppConfigured, isWhatsAppConfiguredAsync } from "@/lib/whatsapp";
 import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
@@ -36,6 +37,9 @@ interface NotifyPatientParams {
    *  channel — takes over plainMessage/plainMessagePt/useReminderTemplate
    *  entirely when set, since the message content depends on this list. */
   yesterdayMissingTitles?: string[];
+  /** Onboarding reminder (profile/screening/consent still pending) — same
+   *  "takes over the message" rule as yesterdayMissingTitles. */
+  onboardingPending?: OnboardingPending;
 }
 
 export async function notifyPatient({
@@ -48,6 +52,7 @@ export async function notifyPatient({
   useReminderTemplate,
   todayMissingTitles,
   yesterdayMissingTitles,
+  onboardingPending,
 }: NotifyPatientParams): Promise<{ channel: string; success: boolean; error?: string }> {
   try {
     const user = await prisma.user.findUnique({
@@ -71,7 +76,9 @@ export async function notifyPatient({
     const firstName: string = u.firstName || "Patient";
     const locale: string = u.preferredLocale || "en-GB";
     const isPt = locale === "pt-BR" || locale.startsWith("pt");
-    const msg = yesterdayMissingTitles
+    const msg = onboardingPending
+      ? (isPt ? buildOnboardingReminderText(onboardingPending).pt : buildOnboardingReminderText(onboardingPending).en)
+      : yesterdayMissingTitles
       ? (isPt ? buildYesterdayFollowupText(yesterdayMissingTitles).pt : buildYesterdayFollowupText(yesterdayMissingTitles).en)
       : useReminderTemplate
       ? (isPt ? buildTodayReminderText(todayMissingTitles || []).pt : buildTodayReminderText(todayMissingTitles || []).en)
@@ -166,7 +173,9 @@ export async function notifyPatient({
       try {
         const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
         const adminBcc = await getAdminNotificationEmail(u.clinicId);
-        const html = yesterdayMissingTitles
+        const html = onboardingPending
+          ? await buildOnboardingReminderEmail(firstName, onboardingPending, locale, u.clinicId)
+          : yesterdayMissingTitles
           ? await buildYesterdayFollowupEmail(firstName, yesterdayMissingTitles, locale, u.clinicId)
           : useReminderTemplate
           ? await buildPatientReminderEmail(firstName, todayMissingTitles || [], locale, u.clinicId)

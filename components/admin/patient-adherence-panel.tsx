@@ -109,18 +109,33 @@ function AdherenceSection({
   );
 }
 
+type OnboardingPending = { profileIncomplete: boolean; screeningMissing: boolean; consentMissing: boolean; anyPending: boolean };
+
+function onboardingStatus(p: OnboardingPending | null): DayStatus {
+  if (!p) return { hasPlan: false, allDone: true, missing: [] };
+  const missing: MissingItem[] = [];
+  if (p.profileIncomplete) missing.push({ id: "profile", title: "Complete profile" });
+  if (p.screeningMissing) missing.push({ id: "screening", title: "Submit medical screening" });
+  if (p.consentMissing) missing.push({ id: "consent", title: "Accept consent terms" });
+  return { hasPlan: true, allDone: !p.anyPending, missing };
+}
+
 export default function PatientAdherencePanel({ patientId }: { patientId: string }) {
   const [data, setData] = useState<AdherenceToday | null>(null);
+  const [onboarding, setOnboarding] = useState<OnboardingPending | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/admin/patients/${patientId}/adherence-today`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setData)
+    Promise.all([
+      fetch(`/api/admin/patients/${patientId}/adherence-today`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/admin/patients/${patientId}/onboarding-pending`).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([adherence, onboardingData]) => { setData(adherence); setOnboarding(onboardingData); })
       .finally(() => setLoading(false));
   }, [patientId]);
 
-  if (loading || !data || (!data.hasPlan && !data.yesterday.hasPlan)) return null;
+  const onboardingReady = onboarding !== null;
+  if (loading || !data || (!data.hasPlan && !data.yesterday.hasPlan && !onboarding?.anyPending)) return null;
 
   return (
     <Card>
@@ -146,6 +161,17 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
           sendUrl="/api/admin/adherence/send-yesterday-followup"
           patientId={patientId}
         />
+        {onboardingReady && (
+          <AdherenceSection
+            title="Onboarding"
+            doneLabel="Profile, screening and consent all done."
+            missingLabel={(n) => `${n} onboarding ${n === 1 ? "step" : "steps"} pending`}
+            status={onboardingStatus(onboarding)}
+            previewUrl={`/api/admin/adherence/preview-onboarding-email?patientId=${patientId}`}
+            sendUrl="/api/admin/adherence/send-onboarding-reminder"
+            patientId={patientId}
+          />
+        )}
       </CardContent>
     </Card>
   );

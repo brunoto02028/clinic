@@ -21,14 +21,17 @@ type ActivityEvent = {
   at: string;
 };
 
-// Only these two AuditLog actions are ever written with userId = a patient
-// today (login, and video-watched from this same activity) — but the model
-// is generic and explicitly meant to be reused for future patient-scoped
-// actions (plan.md), so anything else falls back to OTHER/the raw action
-// instead of being silently mislabeled "Logged in".
+// Any AuditLog action not listed here falls back to OTHER/the raw action
+// instead of being silently mislabeled "Logged in" — the model is generic
+// and explicitly meant to be reused for future patient-scoped actions
+// (plan.md), so this list grows as new ones get written with userId = a
+// patient (activity 49's reminder/follow-up sends, most recently).
 const AUDIT_LABELS: Record<string, { type: ActivityEvent["type"]; title: string }> = {
   LOGIN_SUCCESS: { type: "LOGIN", title: "Logged in" },
   VIDEO_WATCHED: { type: "VIDEO_WATCHED", title: "Watched an exercise video" },
+  DAILY_ADHERENCE_REMINDER_SENT: { type: "OTHER", title: "Sent: still time today reminder" },
+  YESTERDAY_FOLLOWUP_SENT: { type: "OTHER", title: "Sent: yesterday follow-up" },
+  ONBOARDING_REMINDER_SENT: { type: "OTHER", title: "Sent: onboarding reminder" },
 };
 
 // Unifies five existing per-domain logs into one timeline — see

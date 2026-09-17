@@ -1,6 +1,8 @@
 # Ativ. 49 — Relatório diário de adesão + lembrete ao paciente
 
-**Status:** T-1/T-2/T-3/T-5/T-6 concluídos e no ar (16/09/2026) — T-4 (WhatsApp) adiada
+**Status:** T-1/T-2/T-3/T-5/T-6 concluídos e no ar (16/09/2026) — T-4 (WhatsApp) adiada. Ampliada em
+17/09/2026 com follow-up de "ontem", painel por paciente, lembretes com itens detalhados, e lembrete
+de onboarding pendente a cada 2 dias — ver "Extensões" no final.
 
 ## Objetivo
 Todo fim de dia: (1) avisar o Bruno, por e-mail + WhatsApp + um painel no admin, quem completou e
@@ -87,3 +89,37 @@ que ainda não completou.
    Itens `IN_CLINIC`/`ASSESSMENT` não contam (não são "adesão em casa").
 2. **"Completou tudo"** = todo item esperado hoje tem uma linha em `ExerciseCompletionLog` com
    `completedDate` = hoje. Não é "fez alguma coisa", é "fez tudo que foi pedido".
+
+## Extensões (17/09/2026, mesma sessão)
+
+A partir do preview real, o usuário pediu ajustes e um recurso novo, todos implementados na mesma
+atividade em vez de uma nova, por serem extensão direta do mesmo domínio:
+
+1. **Follow-up de "ontem"** (`lib/daily-adherence-email.ts` — `buildYesterdayFollowupEmail`/
+   `buildYesterdayFollowupText`): mensagem de apoio, não de cobrança, nomeando o que ficou pendente
+   ontem e convidando a pedir ajuda. Mesma máquina de `getExpectedToday`/`getClinicDailyAdherence`,
+   só com `date` = ontem. Dedupe próprio (`YESTERDAY_FOLLOWUP_SENT`).
+2. **Painel por paciente** (`components/admin/patient-adherence-panel.tsx`, na aba Summary do perfil):
+   card "Adherence" com uma seção por tipo de lembrete (Today / Yesterday / Onboarding), cada uma com
+   "Preview" (abre o e-mail de verdade num modal, sem sair da página) e "Send now" — pedido explícito
+   do usuário: "eu preciso ver o preview aqui antes".
+3. **Preview sem enviar**, um endpoint por tipo de e-mail, todos gated por sessão de admin (nunca
+   pela chave do cron — decisão de segurança, a chave nunca pode aparecer numa URL de navegador).
+4. **Cabeçalho de e-mail rebrandado**: o `wrapInLayout` compartilhado (usado por todo e-mail do
+   sistema) tinha um bloco verde sólido com logo branco que não batia com a home real do site —
+   trocado por fundo creme + logo colorido da clínica + linha fina de destaque.
+5. **Itens detalhados no e-mail de "hoje"**: `buildPatientReminderEmail` passou a listar os itens
+   pendentes (antes só dizia "you still have activities left", sem dizer quais).
+6. **Aviso de risco no sino do paciente**: a notificação in-app de "sobrou atividade hoje" passou a
+   mencionar risco de complicações/atraso na recuperação, marcada como urgente.
+7. **Lembrete de onboarding pendente, a cada 2 dias** (`lib/onboarding-reminder.ts`,
+   `app/api/cron/onboarding-reminder`): perfil incompleto, triagem não enviada, consentimento não
+   aceito — mesmo formato de e-mail/preview/send-now dos outros dois. Dedupe por janela de 48h (não
+   "hoje"), então um cron diário só acaba lembrando o paciente a cada 2 dias de fato. Pedido do
+   usuário: "precisamos dos registros dentro do log" — por isso os `AuditLog` dessas ações agora
+   também aparecem com título legível na aba Activity (Ativ. 48) do paciente, em vez de "OTHER".
+8. **Dois bugs achados e corrigidos durante o próprio teste do usuário**: (a) preview em `<iframe>`
+   ficava preso num 404 em cache do navegador mesmo com a rota já funcionando — corrigido com
+   `Cache-Control: no-store` + cache-busting + montar o iframe só enquanto o modal está aberto; (b) o
+   botão de call-to-action navegava o próprio iframe do preview (em vez de abrir aba nova), o que
+   parecia o mesmo erro de novo quando testado como staff — corrigido com `target="_blank"`.
