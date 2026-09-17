@@ -70,8 +70,8 @@ export default function DailyAdherenceCard() {
         {data.missing.length > 0 && (
           <ul className="space-y-1">
             {data.missing.map((p) => (
-              <li key={p.patientId} className="text-sm flex items-start justify-between gap-2">
-                <div>
+              <li key={p.patientId} className="text-sm flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 basis-64">
                   <Link href={`/admin/patients/${p.patientId}`} className="text-primary hover:underline">{p.name}</Link>
                   <span className="text-muted-foreground"> — {p.missingItems.map((i) => i.title).join(", ")}</span>
                   <a
