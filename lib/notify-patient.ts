@@ -6,6 +6,7 @@
 
 import { prisma } from "@/lib/db";
 import { sendTemplatedEmail, wrapInLayout } from "@/lib/email-templates";
+import { buildPatientReminderEmail } from "@/lib/daily-adherence-email";
 import { sendWhatsAppMessage, isWhatsAppConfigured, isWhatsAppConfiguredAsync } from "@/lib/whatsapp";
 import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
@@ -23,6 +24,11 @@ interface NotifyPatientParams {
   plainMessagePt?: string;
   /** Optional: override the channel (skip preference lookup) */
   forceChannel?: "EMAIL" | "SMS" | "WHATSAPP" | "TELEGRAM";
+  /** Daily-adherence reminder: EMAIL fallback uses buildPatientReminderEmail
+   *  (a "View My Exercises" button back into the app) instead of the bare
+   *  plainMessage paragraph — the only caller today, but any future
+   *  reminder needing a way back into the app can opt in the same way. */
+  useReminderTemplate?: boolean;
 }
 
 export async function notifyPatient({
@@ -32,6 +38,7 @@ export async function notifyPatient({
   plainMessage,
   plainMessagePt,
   forceChannel,
+  useReminderTemplate,
 }: NotifyPatientParams): Promise<{ channel: string; success: boolean; error?: string }> {
   try {
     const user = await prisma.user.findUnique({
@@ -146,8 +153,14 @@ export async function notifyPatient({
       try {
         const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
         const adminBcc = await getAdminNotificationEmail(u.clinicId);
-        const bodyHtml = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">${isPt ? "Olá" : "Hi"} ${firstName},<br><br>${msg}</p>`;
-        const html = await wrapInLayout(bodyHtml, msg.slice(0, 100), locale, u.clinicId);
+        const html = useReminderTemplate
+          ? await buildPatientReminderEmail(firstName, locale, u.clinicId)
+          : await wrapInLayout(
+              `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">${isPt ? "Olá" : "Hi"} ${firstName},<br><br>${msg}</p>`,
+              msg.slice(0, 100),
+              locale,
+              u.clinicId
+            );
         // sendEmail reports failure in its return value rather than throwing,
         // so the catch below never sees a rejected send.
         const result = await sendEmail({

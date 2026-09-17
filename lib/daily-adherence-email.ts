@@ -59,3 +59,22 @@ export async function buildDailyAdherenceEmail(
   `;
   return wrapInLayout(content, `${completed.length} completed, ${missing.length} missing today`, "en-GB", clinicId);
 }
+
+const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
+
+// Shared by the real send (notify-patient's e-mail fallback) and the admin
+// preview (app/api/admin/adherence/preview-patient-email) — same reason as
+// buildDailyAdherenceEmail above. The plain-text reminder had no way back
+// into the app at all before this; every other branded e-mail has a button.
+export async function buildPatientReminderEmail(firstName: string, locale: string, clinicId: string | null) {
+  const isPt = locale === "pt-BR" || locale.startsWith("pt");
+  const msg = isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN;
+  const cta = isPt ? "Ver Meus Exercícios →" : "View My Exercises →";
+  const content = `
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${isPt ? "Olá" : "Hi"} ${firstName},<br><br>${msg}</p>
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
+      <a href="${BASE_URL}/dashboard/treatment" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
+    </td></tr></table>
+  `;
+  return wrapInLayout(content, msg.slice(0, 100), locale, clinicId);
+}

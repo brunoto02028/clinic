@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     patientId,
     plainMessage: REMINDER_MESSAGE_EN,
     plainMessagePt: REMINDER_MESSAGE_PT,
+    useReminderTemplate: true,
   });
   await logAudit({
     userId: patientId,
