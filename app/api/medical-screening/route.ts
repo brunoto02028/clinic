@@ -10,6 +10,7 @@ import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 import { getEffectiveUser } from "@/lib/get-effective-user";
+import { relinkBrokenEvidenceReport } from "@/lib/evidence-report";
 
 export async function GET(request: NextRequest) {
   try {
@@ -201,6 +202,8 @@ export async function POST(request: NextRequest) {
               data: { clinicId: pr.clinicId, patientId: userId, screeningId: screening.id, status: "GENERATING" },
             });
           }
+        } else {
+          await relinkBrokenEvidenceReport(userId, screening.id);
         }
       } catch (e) {
         console.error('[screening] evidence-report enqueue-on-update failed (non-blocking):', e);

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { pickEditable } from "@/lib/tenant-field-guard";
+import { relinkBrokenEvidenceReport } from "@/lib/evidence-report";
 
 export const dynamic = "force-dynamic";
 
@@ -195,6 +196,16 @@ export async function PATCH(
         where: { id: screeningId },
         data: pickEditable("MedicalScreening", fields),
       });
+
+      // Same relink as the patient-facing screening resubmission path — a
+      // staff edit can be the thing that finally fills in the data a report
+      // was waiting on. See lib/evidence-report.ts for the exact criteria.
+      try {
+        await relinkBrokenEvidenceReport(params.id, updated.id);
+      } catch (e) {
+        console.error('[admin/patients edit_screening] evidence-report relink failed (non-blocking):', e);
+      }
+
       return NextResponse.json({ success: true, screening: updated });
     }
 

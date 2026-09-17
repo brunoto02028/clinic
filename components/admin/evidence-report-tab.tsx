@@ -329,10 +329,10 @@ export function EvidenceReportTab({ patientId }: { patientId: string }) {
           {busy === "regen" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}{t.regenerate}
         </Button>
         {report.status === "DRAFT" && (
-          <Button size="sm" variant="outline" onClick={() => setStatus("UNDER_REVIEW")} disabled={!!busy}>{t.markReview}</Button>
+          <Button size="sm" variant="outline" onClick={() => setStatus("UNDER_REVIEW")} disabled={!!busy || !!report.error}>{t.markReview}</Button>
         )}
         {report.status !== "APPROVED" && (
-          <Button size="sm" onClick={() => setStatus("APPROVED")} disabled={!!busy}>
+          <Button size="sm" onClick={() => setStatus("APPROVED")} disabled={!!busy || !!report.error}>
             {busy === "APPROVED" ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <TrendingUp className="h-4 w-4 mr-1" />}{t.approve}
           </Button>
         )}

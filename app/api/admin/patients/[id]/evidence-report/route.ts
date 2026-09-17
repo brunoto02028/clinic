@@ -60,6 +60,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data.approvedAt = new Date();
     data.reviewedById = (session.user as any).id ?? null;
   }
+  // error is intentionally left as-is here — it's not cleared on approval.
+  // Silently wiping it would erase the only visible record that a report
+  // was approved despite a real generation failure. The UI is responsible
+  // for not letting that happen (see evidence-report-tab.tsx), not this
+  // route papering over it after the fact.
 
   if (!(await recordOfPatient("clinicalEvidenceReport", reportId, params.id))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

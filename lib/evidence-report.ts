@@ -23,6 +23,34 @@ clinic can do now (from its catalogue) from what the literature mentions but the
 not currently offer. Output is reviewed by a human before any patient contact. Respond with
 ONLY valid JSON, no prose outside it.`;
 
+/**
+ * Relinks a patient's stuck evidence report to a screening that was just
+ * created/edited, when the report is stuck for exactly the known reason: it
+ * was generated before any screening existed for this patient. Called from
+ * both the patient-facing screening submit route and the admin edit-screening
+ * route — kept here as the single place this narrow, safety-sensitive
+ * criterion lives, instead of duplicated inline in each caller.
+ *
+ * Deliberately conservative: only ever touches a report that is
+ * `status === "DRAFT"` with no `screeningId` at all. GENERATING (a
+ * generation may be mid-flight), UNDER_REVIEW and APPROVED (a clinician has
+ * already reviewed it) are never touched, regardless of `error` — `error` is
+ * not a reliable "broken" signal by itself, it isn't cleared on approval.
+ */
+export async function relinkBrokenEvidenceReport(patientId: string, screeningId: string): Promise<void> {
+  const existingReport = await prisma.clinicalEvidenceReport.findFirst({
+    where: { patientId, status: { in: ["GENERATING", "DRAFT", "UNDER_REVIEW", "APPROVED"] } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, status: true, screeningId: true },
+  });
+  if (existingReport && existingReport.status === "DRAFT" && !existingReport.screeningId) {
+    await prisma.clinicalEvidenceReport.update({
+      where: { id: existingReport.id },
+      data: { screeningId, status: "GENERATING", error: null, attempts: 0 },
+    });
+  }
+}
+
 function pick(sel: LiteratureResult[]) {
   const sr = sel.filter((r) => r.evidenceRank === 5).slice(0, 3);
   const rct = sel.filter((r) => r.evidenceRank === 4).slice(0, 3);
@@ -60,13 +88,31 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
   if (!report) return;
 
   try {
-    const s: any = report.screening;
+    let s: any = report.screening;
     if (!s) {
-      await prisma.clinicalEvidenceReport.update({
-        where: { id: reportId },
-        data: { status: "DRAFT", error: "No screening linked to this report." },
+      // The report can end up with no screeningId if it was generated (or
+      // regenerated) at a moment the patient's triage didn't exist yet —
+      // self-heal by relinking to whatever MedicalScreening exists for this
+      // patient now, instead of leaving the report permanently broken.
+      // Only a submitted, consented screening qualifies — an in-progress
+      // autosave draft is not something this should turn into a clinical
+      // document behind the patient's back.
+      const current = await prisma.medicalScreening.findFirst({
+        where: { userId: report.patientId, isSubmitted: true, consentGiven: true },
       });
-      return;
+      if (current) {
+        await prisma.clinicalEvidenceReport.update({
+          where: { id: reportId },
+          data: { screeningId: current.id },
+        });
+        s = current;
+      } else {
+        await prisma.clinicalEvidenceReport.update({
+          where: { id: reportId },
+          data: { status: "DRAFT", error: "No screening linked to this report." },
+        });
+        return;
+      }
     }
 
     // 1. Safety analysis (reuses the existing engine)
@@ -99,6 +145,7 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
         where: { id: reportId },
         data: {
           status: "DRAFT",
+          error: null,
           redFlag: true,
           redFlagDetails: flags.flags as any,
           caseSummary: caseSummary as any,
