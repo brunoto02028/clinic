@@ -6,7 +6,7 @@
 
 import { prisma } from "@/lib/db";
 import { sendTemplatedEmail, wrapInLayout } from "@/lib/email-templates";
-import { buildPatientReminderEmail, buildYesterdayFollowupEmail, buildYesterdayFollowupText } from "@/lib/daily-adherence-email";
+import { buildPatientReminderEmail, buildTodayReminderText, buildYesterdayFollowupEmail, buildYesterdayFollowupText } from "@/lib/daily-adherence-email";
 import { sendWhatsAppMessage, isWhatsAppConfigured, isWhatsAppConfiguredAsync } from "@/lib/whatsapp";
 import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
@@ -29,6 +29,9 @@ interface NotifyPatientParams {
    *  plainMessage paragraph — the only caller today, but any future
    *  reminder needing a way back into the app can opt in the same way. */
   useReminderTemplate?: boolean;
+  /** Named misses for today's reminder (useReminderTemplate) — same idea
+   *  as yesterdayMissingTitles below, one day earlier. */
+  todayMissingTitles?: string[];
   /** Yesterday follow-up: named misses + a supportive tone, on every
    *  channel — takes over plainMessage/plainMessagePt/useReminderTemplate
    *  entirely when set, since the message content depends on this list. */
@@ -43,6 +46,7 @@ export async function notifyPatient({
   plainMessagePt,
   forceChannel,
   useReminderTemplate,
+  todayMissingTitles,
   yesterdayMissingTitles,
 }: NotifyPatientParams): Promise<{ channel: string; success: boolean; error?: string }> {
   try {
@@ -69,6 +73,8 @@ export async function notifyPatient({
     const isPt = locale === "pt-BR" || locale.startsWith("pt");
     const msg = yesterdayMissingTitles
       ? (isPt ? buildYesterdayFollowupText(yesterdayMissingTitles).pt : buildYesterdayFollowupText(yesterdayMissingTitles).en)
+      : useReminderTemplate
+      ? (isPt ? buildTodayReminderText(todayMissingTitles || []).pt : buildTodayReminderText(todayMissingTitles || []).en)
       : (isPt && plainMessagePt) ? plainMessagePt : plainMessage;
 
     // ─── WhatsApp ───
@@ -163,7 +169,7 @@ export async function notifyPatient({
         const html = yesterdayMissingTitles
           ? await buildYesterdayFollowupEmail(firstName, yesterdayMissingTitles, locale, u.clinicId)
           : useReminderTemplate
-          ? await buildPatientReminderEmail(firstName, locale, u.clinicId)
+          ? await buildPatientReminderEmail(firstName, todayMissingTitles || [], locale, u.clinicId)
           : await wrapInLayout(
               `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">${isPt ? "Olá" : "Hi"} ${firstName},<br><br>${msg}</p>`,
               msg.slice(0, 100),

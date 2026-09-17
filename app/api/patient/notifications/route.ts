@@ -206,13 +206,13 @@ export async function GET(request: NextRequest) {
           type: "adherence",
           title: remaining === 1 ? "1 activity left today" : `${remaining} activities left today`,
           titlePt: remaining === 1 ? "1 atividade restando hoje" : `${remaining} atividades restando hoje`,
-          message: "A couple of minutes now keeps your progress on track.",
-          messagePt: "Alguns minutos agora mantêm seu progresso em dia.",
+          message: "Skipping days can slow your recovery and increase the risk of complications — a few minutes now makes a real difference.",
+          messagePt: "Pular dias pode atrasar sua recuperação e aumentar o risco de complicações — alguns minutos agora fazem toda a diferença.",
           link: "/dashboard/treatment",
           icon: "Activity",
           color: "amber",
           createdAt: now.toISOString(),
-          isUrgent: false,
+          isUrgent: true,
         });
       }
     } catch {}

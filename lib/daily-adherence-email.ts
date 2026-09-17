@@ -62,21 +62,47 @@ export async function buildDailyAdherenceEmail(
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
+function todayPlainMessage(missingTitles: string[], isPt: boolean): string {
+  if (missingTitles.length === 0) return isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN;
+  const list = missingTitles.join(" · ");
+  return isPt
+    ? `Ainda faltam hoje: ${list}. Alguns minutos agora mantêm seu progresso em dia.`
+    : `Still left today: ${list}. A couple of minutes now keeps your progress on track.`;
+}
+
+/** Plain-text version, for the WhatsApp/SMS/Telegram channels. */
+export function buildTodayReminderText(missingTitles: string[]) {
+  return {
+    en: todayPlainMessage(missingTitles, false),
+    pt: todayPlainMessage(missingTitles, true),
+  };
+}
+
 // Shared by the real send (notify-patient's e-mail fallback) and the admin
 // preview (app/api/admin/adherence/preview-patient-email) — same reason as
-// buildDailyAdherenceEmail above. The plain-text reminder had no way back
-// into the app at all before this; every other branded e-mail has a button.
-export async function buildPatientReminderEmail(firstName: string, locale: string, clinicId: string | null) {
+// buildDailyAdherenceEmail above. Used to be a generic "you still have
+// activities left" with no detail — named misses, like the yesterday
+// follow-up below, so the patient sees exactly what's pending, not just that
+// something is.
+export async function buildPatientReminderEmail(firstName: string, missingTitles: string[], locale: string, clinicId: string | null) {
   const isPt = locale === "pt-BR" || locale.startsWith("pt");
-  const msg = isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN;
   const cta = isPt ? "Ver Meus Exercícios →" : "View My Exercises →";
+  const itemsHtml = missingTitles.map((t) => `<p style="margin:0 0 4px;color:#8A4438;font-size:13px;">&bull;&nbsp; ${escapeHtml(t)}</p>`).join("");
   const content = `
-    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${isPt ? "Olá" : "Hi"} ${firstName},<br><br>${msg}</p>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
+    ${missingTitles.length ? `
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ainda falta hoje:" : "Still left today:"}</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+        <tr><td style="background-color:#FBEEEC;border-left:3px solid #A85A4B;border-radius:8px;padding:14px 16px;">${itemsHtml}</td></tr>
+      </table>
+    ` : `
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN}</p>
+    `}
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
       <a href="${BASE_URL}/dashboard/treatment" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
     </td></tr></table>
   `;
-  return wrapInLayout(content, msg.slice(0, 100), locale, clinicId);
+  return wrapInLayout(content, todayPlainMessage(missingTitles, isPt).slice(0, 100), locale, clinicId);
 }
 
 // ─── Yesterday follow-up — a second, morning touchpoint ────────────────

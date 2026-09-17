@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
+import { getExpectedToday } from "@/lib/patient-daily-adherence";
 import { buildPatientReminderEmail } from "@/lib/daily-adherence-email";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,9 @@ export async function GET(req: NextRequest) {
   });
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
-  const html = await buildPatientReminderEmail(patient.firstName || "", patient.preferredLocale || "en-GB", patient.clinicId);
+  const { expected, completed } = await getExpectedToday(patientId, new Date());
+  const missingTitles = expected.filter((e) => !completed.some((c) => c.id === e.id)).map((e) => e.title);
+
+  const html = await buildPatientReminderEmail(patient.firstName || "", missingTitles, patient.preferredLocale || "en-GB", patient.clinicId);
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }

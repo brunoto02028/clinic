@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
         plainMessage: REMINDER_MESSAGE_EN,
         plainMessagePt: REMINDER_MESSAGE_PT,
         useReminderTemplate: true,
+        todayMissingTitles: patient.missingItems.map((i) => i.title),
       });
       await logAudit({
         userId: patient.patientId,

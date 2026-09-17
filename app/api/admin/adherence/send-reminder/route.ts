@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
+import { getExpectedToday } from "@/lib/patient-daily-adherence";
 import { notifyPatient } from "@/lib/notify-patient";
 import { logAudit } from "@/lib/system-logger";
 import { REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT, REMINDER_ACTION } from "@/lib/daily-adherence-email";
@@ -30,11 +31,15 @@ export async function POST(req: NextRequest) {
   const patient = await prisma.user.findUnique({ where: { id: patientId }, select: { firstName: true, lastName: true } });
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
+  const { expected, completed } = await getExpectedToday(patientId, new Date());
+  const missingTitles = expected.filter((e) => !completed.some((c) => c.id === e.id)).map((e) => e.title);
+
   const result = await notifyPatient({
     patientId,
     plainMessage: REMINDER_MESSAGE_EN,
     plainMessagePt: REMINDER_MESSAGE_PT,
     useReminderTemplate: true,
+    todayMissingTitles: missingTitles,
   });
   await logAudit({
     userId: patientId,
