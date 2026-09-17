@@ -24,7 +24,7 @@ export function PullToRefresh({ children, disabled = false }: PullToRefreshProps
       startY.current = e.touches[0].clientY;
       setPulling(true);
     }
-  }, []);
+  }, [disabled]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!pulling || refreshing) return;

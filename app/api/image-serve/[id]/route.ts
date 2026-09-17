@@ -1,23 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { flattenToPng, isValidHexColor } from "@/lib/image-flatten";
 
 export const dynamic = "force-dynamic";
-
-/**
- * Flattens image bytes onto a solid background and re-encodes as PNG.
- * Used for email logos: many email clients (notably Gmail's mobile apps)
- * mis-render WebP — especially WebP with alpha transparency, which can show
- * up as a solid black box instead of transparent. Baking the intended
- * background colour into a real PNG sidesteps both problems.
- */
-async function flattenToPng(buffer: Buffer, bgHex: string): Promise<Buffer> {
-  const sharp = (await import("sharp")).default;
-  const hex = bgHex.replace(/^#/, "");
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  return sharp(buffer).flatten({ background: { r, g, b } }).png().toBuffer();
-}
 
 /**
  * Serve images stored as base64 dataURL in the ImageLibrary table.
@@ -32,7 +17,14 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     // Optional: ?bg=RRGGBB flattens transparency onto a solid colour and
     // forces PNG output — used for email logos (see flattenToPng above).
-    const bg = searchParams.get("bg");
+    // Validated up front: an invalid value used to reach the ETag header
+    // unvalidated (a CRLF or other bad byte there throws when NextResponse
+    // builds the Headers, which escaped this function's own try/catch).
+    const bgParam = searchParams.get("bg")?.replace(/^#/, "") || null;
+    if (bgParam && !isValidHexColor(bgParam)) {
+      return new NextResponse(null, { status: 400 });
+    }
+    const bg = bgParam;
 
     const image = await prisma.imageLibrary.findUnique({
       where: { id },

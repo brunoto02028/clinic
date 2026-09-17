@@ -64,7 +64,7 @@ function ResetPasswordContent() {
     if (!token) return null;
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+        <div className="patient-form-area flex min-h-screen items-center justify-center bg-muted/40 p-4">
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>

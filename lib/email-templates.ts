@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { getEmailContent, isPt } from '@/lib/email-i18n';
 import { getDefaultClinicId } from '@/lib/default-tenant';
 import { escapeHtml } from '@/lib/admin-notify-email';
+import { resolveSameOriginUrl, DEFAULT_FLATTEN_BG } from '@/lib/image-flatten';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 const CONTACT_EMAIL = 'admin@bpr.clinic';
@@ -10,7 +11,10 @@ const EMAIL_LOGO_URL = `${BASE_URL}/uploads/email-logo.png`;
 
 // Brand palette — matches the public site's `.public-site` theme (app/globals.css):
 // bone background, health-moss primary/header, greige secondary, ink text, line borders.
-const BRAND_BONE = '#F5F4F1';
+// BRAND_BONE is derived from DEFAULT_FLATTEN_BG (lib/image-flatten.ts), not
+// redefined here — that's the one place a lightweight image route can read
+// the same colour from without importing this whole module.
+export const BRAND_BONE = `#${DEFAULT_FLATTEN_BG}`;
 const BRAND_PRIMARY = '#4F7361';
 const BRAND_PRIMARY_DARK = '#3B5A49';
 const BRAND_LINE = '#E4E3DF';
@@ -114,17 +118,30 @@ async function getClinicSettings(clinicId?: string | null): Promise<ClinicEmailS
   }
 }
 
-// Dynamic clinic logos are served via /api/image-serve and are often stored as
-// WebP with alpha transparency — many email clients (notably Gmail's mobile
-// apps) mis-render that combination, showing a solid black box instead of a
-// transparent background. Appending ?bg=<hex> makes image-serve flatten the
-// image onto the matching brand colour and re-encode it as a plain PNG,
-// which every email client renders correctly. Bundled static PNGs and other
-// external URLs are left untouched.
+// Whatever the logo's own background is — transparent, or just a colour
+// that doesn't match the header — email clients (notably Gmail's apps)
+// don't reliably honour the header cell's own background-color/bgcolor
+// under dark mode, producing a logo that looks like it's floating in a
+// mismatched box instead of blending into the header band. Baking the
+// intended colour directly into the served image sidesteps that, since
+// clients don't recolour image pixels. Dynamic clinic logos go through
+// /api/image-serve (?bg=<hex> flattens there); anything else same-origin
+// (the bundled /logo.png, a legacy /uploads/* file) goes through
+// /api/email-logo, which does the identical flatten for non-ImageLibrary
+// sources. A non-same-origin URL is left untouched — flattening requires
+// fetching the bytes server-side, which this deliberately won't do for an
+// arbitrary external host.
 function emailSafeLogoUrl(url: string, bgHex: string): string {
-  if (!url || !url.includes('/api/image-serve/')) return url;
-  const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}bg=${bgHex.replace('#', '')}`;
+  if (!url) return url;
+  const bg = bgHex.replace('#', '');
+  if (url.includes('/api/image-serve/')) {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}bg=${bg}`;
+  }
+  // Same trusted-origin check the route itself re-applies on the way in
+  // (see resolveSameOriginUrl) — kept in one place so the two can't drift.
+  if (!resolveSameOriginUrl(url)) return url;
+  return `${BASE_URL}/api/email-logo?src=${encodeURIComponent(url)}&bg=${bg}`;
 }
 
 // ─── Base Layout Wrapper ───
@@ -138,7 +155,12 @@ export async function wrapInLayout(content: string, preheader?: string, locale =
   // `<` can't break out of the attribute into markup.
   const primaryColor = escapeHtml(settings.primaryColor);
   const email = escapeHtml(settings.email);
-  const logoUrl = escapeHtml(settings.logoUrl);
+  // Not escaped here — resolveSameOriginUrl/emailSafeLogoUrl below need the
+  // raw value to parse and URL-encode it correctly (escapeHtml running first
+  // would turn a literal `&` into `&amp;`, corrupting the querystring it
+  // gets embedded into). The *result* is escaped right before it lands in
+  // the <img src="..."> attribute instead.
+  const rawLogoUrl = settings.logoUrl;
   const pt = isPt(locale);
   const logoAlt = isDefaultTenant ? 'BPR Physical Rehabilitation' : 'Clinic logo';
   // Header: the clinic's own (dark/coloured) logo on a light background, a
@@ -148,10 +170,10 @@ export async function wrapInLayout(content: string, preheader?: string, locale =
   // the white logo variant used to be the whole header; that read as "not
   // the brand" next to the real site, and doubled as a transparent-PNG trap
   // for e-mail clients' dark-mode colour inversion (see emailSafeLogoUrl).
-  const headerLogoUrl = emailSafeLogoUrl(logoUrl, BRAND_BONE) || EMAIL_LOGO_URL;
+  const headerLogoUrl = escapeHtml(emailSafeLogoUrl(rawLogoUrl, BRAND_BONE) || EMAIL_LOGO_URL);
   const logoHtml = `<img src="${headerLogoUrl}" alt="${logoAlt}" style="max-height:80px;max-width:280px;display:block;margin:0 auto;background-color:${BRAND_BONE};" />`;
   // Footer: same logo, smaller, on its own soft-green band.
-  const footerLogoUrl = emailSafeLogoUrl(logoUrl, BRAND_HEALTH_SOFT) || EMAIL_LOGO_URL;
+  const footerLogoUrl = escapeHtml(emailSafeLogoUrl(rawLogoUrl, BRAND_HEALTH_SOFT) || EMAIL_LOGO_URL);
   const footerLogoHtml = `<img src="${footerLogoUrl}" alt="${logoAlt}" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;background-color:${BRAND_HEALTH_SOFT};" />`;
   const noReplyText = pt
     ? `Esta é uma mensagem automática &mdash; por favor não responda diretamente a este email.<br>Para nos contactar, utilize os dados acima ou aceda ao seu <a href="${BASE_URL}/dashboard" style="color:#9ca3af;">portal do paciente</a>.`

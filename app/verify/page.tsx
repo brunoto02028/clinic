@@ -233,7 +233,7 @@ function VerifyPage() {
 
   if (!userId) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="patient-form-area min-h-screen bg-background flex flex-col">
         <SiteHeader currentPage="other" />
         <main className="flex-1 flex items-center justify-center p-4">
           <Card className="w-full max-w-md text-center">
@@ -251,7 +251,7 @@ function VerifyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="patient-form-area min-h-screen bg-background flex flex-col">
       <SiteHeader currentPage="other" />
       <main className="flex-1 flex items-center justify-center p-4 py-8">
         <div className="w-full max-w-md">

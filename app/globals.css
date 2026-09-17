@@ -839,6 +839,34 @@ html.native-app select {
   min-height: 48px;
 }
 
+/* Same fix as above, but for the plain mobile browser (not just the
+   packaged native app) — a patient filling in their profile on iOS Safari
+   focusing a sub-16px input gets force-zoomed in with no way back out, which
+   reads as "the screen and text are too small and I can't scroll further".
+   Scoped to .patient-content-area (the patient /dashboard/* wrapper, see
+   dashboard-layout.tsx), .patient-form-area (intake — the same trap on the
+   very first screen a new patient sees, before they're even inside
+   /dashboard), and .public-site (login/signup/forgot-password/reset-
+   password/verify — every other unauthenticated form a patient fills in)
+   rather than every input on the site — the admin side has deliberately
+   compact grids (protocol items, exercise prescriptions) with small
+   selects/inputs sized to fit multiple per row, uses its own separate
+   .admin-content-area wrapper, and never uses .public-site; forcing those
+   to 16px would cut off their text instead of helping anyone. */
+@media (max-width: 768px) {
+  .patient-content-area input,
+  .patient-content-area textarea,
+  .patient-content-area select,
+  .patient-form-area input,
+  .patient-form-area textarea,
+  .patient-form-area select,
+  .public-site input,
+  .public-site textarea,
+  .public-site select {
+    font-size: 16px !important;
+  }
+}
+
 html.native-app button,
 html.native-app [role="button"],
 html.native-app a {

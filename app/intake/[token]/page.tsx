@@ -182,7 +182,7 @@ export default function IntakePage() {
   const totalSteps = alreadyAccepted ? 2 : 3;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 py-8 px-4">
+    <div className="patient-form-area min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 py-8 px-4">
       <div className="max-w-lg mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">

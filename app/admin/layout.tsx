@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import AdminMiniSidebar from "@/components/admin/admin-mini-sidebar";
 import AdminHeader from "@/components/admin/admin-header";
 import SectionTabs from "@/components/admin/section-tabs";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 // Staff portal — private, keep out of the index (P4.1).
 // Title reflects the tenant (studio/clinic) name so a personal trainer doesn't
@@ -17,6 +17,21 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: false, follow: true },
   };
 }
+
+// Overrides the root layout's maximumScale: 5 (unlocked so patients aren't
+// trapped zoomed-in on a small input — see app/layout.tsx and the
+// .patient-content-area/.patient-form-area/.public-site rules in
+// globals.css). Admin's compact grids (protocol items, exercise
+// prescriptions) were the whole reason that CSS fix stayed scoped away from
+// /admin in the first place; an unscoped viewport-level zoom unlock would
+// have undercut that by letting a pinch/double-tap zoom the same tight
+// layout anyway. Back to the original locked behaviour here.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
 
 export default async function AdminLayout({
   children,

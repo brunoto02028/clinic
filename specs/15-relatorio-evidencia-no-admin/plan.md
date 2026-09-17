@@ -89,3 +89,31 @@ Ciclo por tarefa: implementar → **qa-tester** gera `qa/report-t-N.md` → code
 - **Export PDF/impressão** do relatório (fase futura; se quiser, viraria uma t-N).
 - Envio automático ao paciente / qualquer conduta sem revisão humana.
 - Substituir o fluxo manual de `AIDiagnosis`/`protocol` (continuam como estão).
+
+## Bug encontrado e corrigido (17/09/2026)
+
+Achado ao vivo na ficha da Ana Livia Pessin Prata: um relatório podia nascer com `screeningId:
+null` se gerado antes da `MedicalScreening` existir (ex.: dados preenchidos depois via edição
+do staff), ficando travado pra sempre em "No screening linked to this report." — e um guard
+que deveria autocorrigir isso no reenvio da triagem tratava o relatório quebrado como "já
+existe", nunca substituindo.
+
+**Correção** (`lib/evidence-report.ts`, `app/api/medical-screening/route.ts`,
+`app/api/admin/patients/[id]/route.ts`, `app/api/admin/patients/[id]/evidence-report/route.ts`,
+`components/admin/evidence-report-tab.tsx`):
+- `generateEvidenceReport()` agora re-vincula a triagem atual do paciente antes de desistir —
+  mas só se ela for `isSubmitted && consentGiven` (nunca um rascunho não enviado).
+- Guard de relink extraído pra `relinkBrokenEvidenceReport()` (compartilhado entre o reenvio da
+  triagem pelo paciente e a edição da triagem pelo admin) — critério estrito:
+  `status === "DRAFT" && !screeningId`. Nunca toca `GENERATING`/`UNDER_REVIEW`/`APPROVED`,
+  mesmo com `error` preenchido (uma primeira versão desse fix foi pega no code review derrubando
+  silenciosamente relatórios já **aprovados** por um terapeuta — corrigido antes de ir pra
+  produção).
+- `error` não é mais limpo automaticamente ao aprovar (mascararia falha real de geração); os
+  botões Approve/Mark under review ficam desabilitados enquanto `error` estiver preenchido.
+- Branch de red-flag urgente também limpa `error`, evitando banner de erro obsoleto junto do
+  alerta de segurança.
+
+QA completo (3 rodadas, incluindo o cenário do bug do code review) em
+`qa/screenshots/selfheal-guard-*.png` e `uibuttons-error-disabled*.png`. Deploy: commit
+`d2cc18e`.

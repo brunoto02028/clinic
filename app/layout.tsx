@@ -50,7 +50,14 @@ const lora = Lora({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // Was 1 (no zoom allowed at all). iOS Safari force-zooms in when a patient
+  // focuses any input under 16px font-size regardless of this setting — with
+  // maximumScale: 1, they were then stuck zoomed in with no way to pinch
+  // back out, which read as "the screen and text are too small and I can't
+  // scroll past this field" (a real patient hit this on /dashboard/profile).
+  // Allowing zoom doesn't cause the auto-zoom; it just stops trapping
+  // patients in it once it happens.
+  maximumScale: 5,
   viewportFit: "cover",
   themeColor: "#0a0f1e",
 };
