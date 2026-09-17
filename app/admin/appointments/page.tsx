@@ -72,6 +72,7 @@ interface Appointment {
   treatmentType: string;
   status: string;
   price: number;
+  paymentMethod?: string;
   notes: string | null;
   patient: { id: string; firstName: string; lastName: string; email: string };
   therapist: { id: string; firstName: string; lastName: string };
@@ -719,6 +720,11 @@ export default function AdminAppointmentsPage() {
                           <StatusIcon className="h-3 w-3" />
                           {appointment.status}
                         </span>
+                        {appointment.paymentMethod === "IN_PERSON" && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600">
+                            {isPt ? "Pagar no local" : "Pay in person"}
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {appointment.treatmentType}

@@ -34,6 +34,7 @@ interface Appointment {
   treatmentType: string;
   status: string;
   price: number;
+  paymentMethod?: string;
   patient: {
     id: string;
     firstName: string;
@@ -241,6 +242,11 @@ export default function AppointmentsList() {
                               {appointment?.treatmentType ?? (isPt ? "Consulta" : "Appointment")}
                             </h3>
                             {getStatusBadge(appointment?.status ?? "")}
+                            {appointment?.paymentMethod === "IN_PERSON" && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-600">
+                                {isPt ? "Pagar no local" : "Pay in person"}
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-2 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">

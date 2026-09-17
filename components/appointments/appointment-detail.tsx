@@ -18,6 +18,7 @@ import {
   Edit,
   Shield,
   ExternalLink,
+  Banknote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +57,7 @@ interface Appointment {
   status: string;
   notes: string | null;
   price: number;
+  paymentMethod?: string;
   patient: {
     id: string;
     firstName: string;
@@ -556,26 +558,53 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                   </div>
                 ) : (
                   <div className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto mb-3">
-                      <AlertCircle className="h-6 w-6 text-amber-600" />
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                      appointment?.paymentMethod === "IN_PERSON" ? "bg-blue-500/15" : "bg-amber-500/15"
+                    }`}>
+                      {appointment?.paymentMethod === "IN_PERSON" ? (
+                        <Banknote className="h-6 w-6 text-blue-600" />
+                      ) : (
+                        <AlertCircle className="h-6 w-6 text-amber-600" />
+                      )}
                     </div>
-                    <p className="font-medium text-amber-600">{isPt ? "Pagamento Pendente" : "Payment Pending"}</p>
+                    <p className={`font-medium ${appointment?.paymentMethod === "IN_PERSON" ? "text-blue-600" : "text-amber-600"}`}>
+                      {appointment?.paymentMethod === "IN_PERSON"
+                        ? (isPt ? "A pagar presencialmente" : "To be paid in person")
+                        : (isPt ? "Pagamento Pendente" : "Payment Pending")}
+                    </p>
+                    {appointment?.paymentMethod === "IN_PERSON" && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {isPt ? "Pague na clínica no dia da consulta." : "Pay at the clinic on the day of your appointment."}
+                      </p>
+                    )}
                     <p className="text-2xl font-bold text-foreground mt-2">
                       £{(appointment?.price ?? 0).toFixed(2)}
                     </p>
                     {!isTherapist && appointment?.status !== "CANCELLED" && (
-                      <Button
-                        className="w-full mt-4 gap-2"
-                        onClick={handleProceedToPayment}
-                        disabled={updating}
-                      >
-                        {updating ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <CreditCard className="h-4 w-4" />
+                      <>
+                        {appointment?.paymentMethod === "IN_PERSON" && (
+                          <p className="text-xs text-muted-foreground mt-3">
+                            {isPt
+                              ? "Já escolheu pagar na clínica — só use o botão abaixo se preferir pagar online em vez disso, para evitar cobrança em duplicado."
+                              : "You chose to pay at the clinic — only use the button below if you'd rather pay online instead, to avoid being charged twice."}
+                          </p>
                         )}
-                        {isPt ? "Pagar Agora" : "Pay Now"}
-                      </Button>
+                        <Button
+                          className="w-full mt-2 gap-2"
+                          variant={appointment?.paymentMethod === "IN_PERSON" ? "outline" : "default"}
+                          onClick={handleProceedToPayment}
+                          disabled={updating}
+                        >
+                          {updating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CreditCard className="h-4 w-4" />
+                          )}
+                          {appointment?.paymentMethod === "IN_PERSON"
+                            ? (isPt ? "Pagar Online Mesmo Assim" : "Pay Online Instead")
+                            : (isPt ? "Pagar Agora" : "Pay Now")}
+                        </Button>
+                      </>
                     )}
                   </div>
                 )}

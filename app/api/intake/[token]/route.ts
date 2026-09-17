@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const user = await prisma.user.findUnique({
     where: { intakeToken: token },
-    select: { id: true, intakeTokenExpiry: true, email: true },
+    select: { id: true, intakeTokenExpiry: true, email: true, moduleOverrides: true, profileCompleted: true },
   });
 
   if (!user) {
@@ -128,6 +128,26 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     profileCompleted: true,
   };
 
+  // Auto-unlock consultation booking, but only on the patient's first-ever
+  // intake completion — not on a link re-sent later (e.g. to update contact
+  // details), which would otherwise silently re-grant free booking access to
+  // an established patient an admin may have already restricted. See
+  // activity 50.
+  const isFirstCompletion = !user.profileCompleted;
+
+  if (isFirstCompletion) {
+    // mod_appointments is gated behind an active subscription/treatment
+    // package (see lib/patient-access.ts) — a brand-new patient has neither,
+    // so without this override ModuleGate blocks /dashboard/appointments
+    // before the ServiceAccess grant below is ever reached. Only set it if
+    // it was never touched — `undefined` means "never set"; `false` means an
+    // admin explicitly revoked it, which this must not override.
+    const existingOverrides = (user.moduleOverrides as Record<string, boolean | string> | null) || {};
+    if (existingOverrides.mod_appointments === undefined) {
+      updateData.moduleOverrides = { ...existingOverrides, mod_appointments: true };
+    }
+  }
+
   if (dateOfBirth) {
     updateData.dateOfBirth = new Date(dateOfBirth);
   }
@@ -158,6 +178,26 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     where: { id: user.id },
     data: updateData,
   });
+
+  // Auto-grant consultation booking access so a new patient can go straight
+  // to /dashboard/appointments without the admin liberating it manually per
+  // patient (activity 50). Only on first completion (see isFirstCompletion
+  // above) and best-effort: never fails the signup itself.
+  try {
+    if (isFirstCompletion) {
+      const existingAccess = await prisma.serviceAccess.findFirst({
+        where: { patientId: user.id, serviceType: "CONSULTATION" },
+        select: { id: true },
+      });
+      if (!existingAccess) {
+        await prisma.serviceAccess.create({
+          data: { patientId: user.id, serviceType: "CONSULTATION", granted: true, paid: false },
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Failed to auto-grant consultation access on intake:", err);
+  }
 
   return NextResponse.json({ success: true, message: "Profile updated successfully" });
 }

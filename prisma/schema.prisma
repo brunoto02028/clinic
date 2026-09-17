@@ -229,6 +229,11 @@ enum AppointmentMode {
   VIDEO
 }
 
+enum PaymentMethod {
+  ONLINE
+  IN_PERSON
+}
+
 enum TreatmentPlanStatus {
   ACTIVE
   COMPLETED
@@ -1014,6 +1019,7 @@ model Appointment {
   treatmentType   String
   status          AppointmentStatus @default(PENDING)
   mode            AppointmentMode   @default(IN_PERSON)
+  paymentMethod   PaymentMethod     @default(ONLINE)
   videoRoomId     String? // For video consultations
   videoRoomUrl    String? // Join URL for video call
   notes           String?

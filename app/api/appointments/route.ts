@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { dateTime, duration, treatmentType, notes, therapistId, price } = body ?? {};
+    const { dateTime, duration, treatmentType, notes, therapistId, price, paymentMethod } = body ?? {};
 
     if (!dateTime || !treatmentType) {
       return NextResponse.json(
@@ -127,6 +127,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Defaults to ONLINE — preserves current behaviour for callers that don't
+    // send this (e.g. staff booking on a patient's behalf), see activity 50.
+    if (paymentMethod !== undefined && paymentMethod !== "ONLINE" && paymentMethod !== "IN_PERSON") {
+      return NextResponse.json({ error: "Invalid paymentMethod" }, { status: 400 });
+    }
+    const resolvedPaymentMethod: "ONLINE" | "IN_PERSON" = paymentMethod === "IN_PERSON" ? "IN_PERSON" : "ONLINE";
 
     const actor = await getActor(request);
     if (!actor) {
@@ -180,7 +187,8 @@ export async function POST(request: NextRequest) {
         treatmentType,
         notes: notes || null,
         price: price || 60,
-        status: "PENDING",
+        paymentMethod: resolvedPaymentMethod,
+        status: resolvedPaymentMethod === "IN_PERSON" ? "CONFIRMED" : "PENDING",
       },
       include: {
         patient: {
@@ -224,8 +232,12 @@ export async function POST(request: NextRequest) {
           duration: String(duration || 60),
           portalUrl: `${appUrl}/dashboard/appointments/${appointment.id}`,
         },
-        plainMessage: `Your appointment request has been received: ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. View details and pay at: ${appUrl}/dashboard/appointments/${appointment.id}`,
-        plainMessagePt: `O seu pedido de consulta foi recebido: ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Veja os detalhes em: ${appUrl}/dashboard/appointments/${appointment.id}`,
+        plainMessage: resolvedPaymentMethod === "IN_PERSON"
+          ? `Your appointment is confirmed: ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. Pay at the clinic on the day. Details: ${appUrl}/dashboard/appointments/${appointment.id}`
+          : `Your appointment request has been received: ${dateStr} at ${timeStr} with ${appointment.therapist.firstName}. View details and pay at: ${appUrl}/dashboard/appointments/${appointment.id}`,
+        plainMessagePt: resolvedPaymentMethod === "IN_PERSON"
+          ? `A sua consulta está confirmada: ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Pague na clínica no dia. Detalhes: ${appUrl}/dashboard/appointments/${appointment.id}`
+          : `O seu pedido de consulta foi recebido: ${dateStr} às ${timeStr} com ${appointment.therapist.firstName}. Veja os detalhes em: ${appUrl}/dashboard/appointments/${appointment.id}`,
       });
     } catch (emailError) {
       console.error('Failed to send patient notification:', emailError);
@@ -250,6 +262,7 @@ export async function POST(request: NextRequest) {
             <p style="margin: 10px 0;"><strong>Date & Time:</strong> ${new Date(dateTime).toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" })}</p>
             <p style="margin: 10px 0;"><strong>Duration:</strong> ${duration || 60} minutes</p>
             <p style="margin: 10px 0;"><strong>Price:</strong> £${price || 60}</p>
+            <p style="margin: 10px 0;"><strong>Payment:</strong> ${resolvedPaymentMethod === "IN_PERSON" ? "Pay in person" : "Online"}</p>
             <p style="margin: 10px 0;"><strong>Status:</strong> ${appointment.status}</p>
           </div>
           <div style="text-align: center; margin: 30px 0;">

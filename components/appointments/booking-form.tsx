@@ -14,6 +14,8 @@ import {
   RefreshCw,
   Info,
   User,
+  CreditCard,
+  Banknote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +47,7 @@ export default function BookingForm() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [createdAppointmentId, setCreatedAppointmentId] = useState<string>("");
+  const [confirmedPaymentMethod, setConfirmedPaymentMethod] = useState<"ONLINE" | "IN_PERSON">("ONLINE");
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -54,6 +57,7 @@ export default function BookingForm() {
   // directly (invoice, cash, bank transfer) — not per-appointment online —
   // so the per-appointment price/payment framing here would be misleading.
   const [hasActivePackage, setHasActivePackage] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"ONLINE" | "IN_PERSON">("ONLINE");
   const [patientState, setPatientState] = useState<PatientState>("loading");
   const [existingAppointments, setExistingAppointments] = useState<PatientAppointment[]>([]);
   const [totalPastCount, setTotalPastCount] = useState(0);
@@ -179,11 +183,13 @@ export default function BookingForm() {
           treatmentType: isPt ? "Consulta" : "Consultation",
           price: consultationPrice ?? 0,
           therapistId: selectedTherapistId || undefined,
+          paymentMethod: hasActivePackage ? "ONLINE" : paymentMethod,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed");
       setCreatedAppointmentId(data?.appointment?.id ?? "");
+      setConfirmedPaymentMethod(data?.appointment?.paymentMethod === "IN_PERSON" ? "IN_PERSON" : "ONLINE");
       setStep(3);
     } catch (err: any) {
       alert(isPt ? "Falha ao criar consulta. Tente novamente." : "Failed to book appointment. Please try again.");
@@ -470,6 +476,46 @@ export default function BookingForm() {
               </div>
             )}
 
+            {/* Payment method choice — a patient on an active package is billed
+                by the clinic directly, so this choice doesn't apply to them. */}
+            {selectedTime && !hasActivePackage && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-foreground mb-2">
+                  {isPt ? "Como você vai pagar?" : "How will you pay?"}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("ONLINE")}
+                    className={`p-3 rounded-lg border-2 text-left transition-all flex items-start gap-2 ${
+                      paymentMethod === "ONLINE"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <CreditCard className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-sm font-medium">
+                      {isPt ? "Pagar online agora" : "Pay online now"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("IN_PERSON")}
+                    className={`p-3 rounded-lg border-2 text-left transition-all flex items-start gap-2 ${
+                      paymentMethod === "IN_PERSON"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <Banknote className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-sm font-medium">
+                      {isPt ? "Pagar presencialmente" : "Pay in person"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3 mt-5">
               <Button variant="outline" onClick={() => setStep(1)}>
                 {isPt ? "Voltar" : "Back"}
@@ -499,13 +545,19 @@ export default function BookingForm() {
                 <CheckCircle className="h-9 w-9 text-emerald-500" />
               </div>
               <h3 className="text-xl font-semibold text-foreground mb-2">
-                {isPt ? "Pedido Enviado!" : "Request Sent!"}
+                {!hasActivePackage && confirmedPaymentMethod === "IN_PERSON"
+                  ? (isPt ? "Consulta Confirmada!" : "Appointment Confirmed!")
+                  : (isPt ? "Pedido Enviado!" : "Request Sent!")}
               </h3>
               <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
                 {hasActivePackage
                   ? (isPt
                       ? "Recebemos o seu pedido de consulta. A sua clínica irá confirmar os detalhes em breve."
                       : "We've received your appointment request. Your clinic will confirm the details shortly.")
+                  : confirmedPaymentMethod === "IN_PERSON"
+                  ? (isPt
+                      ? "A sua consulta já está confirmada. Pague na clínica no dia da consulta."
+                      : "Your appointment is already confirmed. Pay at the clinic on the day.")
                   : (isPt
                       ? "Recebemos o seu pedido de consulta. Irá receber um email de confirmação com os detalhes e o link de pagamento."
                       : "We've received your appointment request. You'll receive a confirmation email with details and a payment link shortly.")}
