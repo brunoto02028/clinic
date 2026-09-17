@@ -224,6 +224,7 @@ export default function PatientProfilePage() {
 
   // Atlas SOAP pre-fill
   const [atlasPrefilling, setAtlasPrefilling] = useState(false);
+  const [atlasPrefilled, setAtlasPrefilled] = useState(false);
   // Atlas treatment plan
   const [atlasPlanLoading, setAtlasPlanLoading] = useState(false);
   const [atlasPlan, setAtlasPlan] = useState<any>(null);
@@ -354,6 +355,7 @@ export default function PatientProfilePage() {
     setNewNote({ subjective: "", objective: "", assessment: "", plan: "" });
     setAutoSavedNoteId(null);
     setAutoSaveStatus("idle");
+    setAtlasPrefilled(false);
     flash("SOAP note saved");
     fetchData();
   };
@@ -1062,7 +1064,7 @@ export default function PatientProfilePage() {
       <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-muted/30 rounded-lg border">
         <span className="text-[10px] font-medium text-muted-foreground mr-1">Actions:</span>
         {!isPersonal && (
-          <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("notas"); setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
+          <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("notas"); setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); setAtlasPrefilled(false); }}><Stethoscope className="h-2.5 w-2.5 mr-0.5" /> SOAP Note</Button>
         )}
         {!isPersonal && (
           <Button variant="outline" size="sm" className={btnCls} onClick={() => { setActiveTab("docs"); setShowManualDoc(true); }}><FileText className="h-2.5 w-2.5 mr-0.5" /> Write History</Button>
@@ -1581,6 +1583,7 @@ export default function PatientProfilePage() {
                           assessment: d.assessment || "",
                           plan: d.plan || "",
                         });
+                        setAtlasPrefilled(true);
                       }
                     } catch {}
                     finally { setAtlasPrefilling(false); }
@@ -1592,6 +1595,12 @@ export default function PatientProfilePage() {
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowNewNote(false)}><X className="h-3 w-3" /></Button>
               </div>
             </div>
+            {atlasPrefilled && (
+              <div className="flex items-start gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[10px] text-amber-300">
+                <TriangleAlert className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                <span>AI-generated draft — Atlas was not present for the session and has no exam findings of its own. Review and correct every field, especially Objective, before saving.</span>
+              </div>
+            )}
             <EF label="S — Subjective (patient complaints)" value={newNote.subjective} onChange={(v) => setNewNote({ ...newNote, subjective: v })} placeholder="Complaints, reported symptoms..." />
             <EF label="O — Objective (clinical findings)" value={newNote.objective} onChange={(v) => setNewNote({ ...newNote, objective: v })} placeholder="Physical assessment, tests..." />
             <EF label="A — Assessment / Diagnosis" value={newNote.assessment} onChange={(v) => setNewNote({ ...newNote, assessment: v })} placeholder="Diagnostic hypothesis, clinical reasoning..." />
@@ -1668,6 +1677,7 @@ export default function PatientProfilePage() {
                   ].filter(Boolean).join("\n");
                   setNewNote(n => ({ ...n, plan: planText }));
                   setAtlasPlan(null);
+                  setAtlasPrefilled(true);
                 }}>
                   <CheckCircle2 className="h-2.5 w-2.5" /> Copy to P field
                 </Button>
@@ -1677,7 +1687,7 @@ export default function PatientProfilePage() {
         )}
 
         <Sec title="Clinical Notes (SOAP)" icon={Stethoscope} badge={data.soapNotes?.length ? `${data.soapNotes.length}` : "None"} open={true}
-          actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => { setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); }}><Plus className="h-2.5 w-2.5 mr-0.5" /> Add</Button>}
+          actions={<Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => { setShowNewNote(true); setNewNote({ subjective: "", objective: "", assessment: "", plan: "" }); setAtlasPrefilled(false); }}><Plus className="h-2.5 w-2.5 mr-0.5" /> Add</Button>}
         >
           {data.soapNotes?.length > 0 ? data.soapNotes.map((n: any) => (
             <div key={n.id} className="border rounded-lg p-2.5 mb-2 space-y-1">

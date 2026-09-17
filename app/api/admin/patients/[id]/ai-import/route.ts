@@ -189,7 +189,10 @@ Rules:
     if (parsed.soapNotes && Array.isArray(parsed.soapNotes)) {
       for (const note of parsed.soapNotes) {
         if (note.subjective || note.objective || note.assessment || note.plan) {
-          await (prisma as any).clinicalNote.create({
+          // Not tied to a specific appointment — this is historical data
+          // pulled from imported documents/notes, not a single visit.
+          // appointmentId stays unset (the field is optional on SOAPNote).
+          await prisma.sOAPNote.create({
             data: {
               clinicId: patient.clinicId,
               patientId,
