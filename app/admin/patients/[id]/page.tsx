@@ -17,6 +17,7 @@ import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
 import AssignProtocolDialog from "@/components/admin/assign-protocol-dialog";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import { PatientActivityTab } from "@/components/admin/patient-activity-tab";
+import PatientAdherencePanel from "@/components/admin/patient-adherence-panel";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
 import AssessmentPanel from "@/components/assessments/assessment-panel";
@@ -1084,6 +1085,8 @@ export default function PatientProfilePage() {
           </Button>
         )}
       </div>
+
+      <PatientAdherencePanel patientId={patientId} />
 
       {/* AI Import Panel */}
       {!isPersonal && showAIImport && (
