@@ -3,6 +3,11 @@ import { escapeHtml } from "@/lib/admin-notify-email";
 
 export type AdherencePatientSummary = { name: string; missingItems: { title: string }[] };
 
+// Shared with the preview route so what's shown always matches what the
+// cron actually sends via notifyPatient().
+export const REMINDER_MESSAGE_EN = "You still have activities left in today's plan — a couple of minutes now keeps your progress on track.";
+export const REMINDER_MESSAGE_PT = "Ainda faltam atividades do seu plano de hoje — alguns minutos agora mantêm seu progresso em dia.";
+
 // Shared by the real send (app/api/cron/daily-adherence) and the admin
 // preview (app/api/admin/adherence/preview-email) — so what gets eyeballed
 // before sending is exactly what the clinic would receive, never a close

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
-import { buildDailyAdherenceEmail } from "@/lib/daily-adherence-email";
+import { buildDailyAdherenceEmail, REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT } from "@/lib/daily-adherence-email";
 import { notifyPatient } from "@/lib/notify-patient";
 import { sendEmail } from "@/lib/email";
 import { logAudit } from "@/lib/system-logger";
@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
 
       await notifyPatient({
         patientId: patient.patientId,
-        plainMessage: "You still have activities left in today's plan — a couple of minutes now keeps your progress on track.",
-        plainMessagePt: "Ainda faltam atividades do seu plano de hoje — alguns minutos agora mantêm seu progresso em dia.",
+        plainMessage: REMINDER_MESSAGE_EN,
+        plainMessagePt: REMINDER_MESSAGE_PT,
       });
       await logAudit({
         userId: patient.patientId,

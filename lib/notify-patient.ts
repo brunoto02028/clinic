@@ -5,7 +5,7 @@
  */
 
 import { prisma } from "@/lib/db";
-import { sendTemplatedEmail } from "@/lib/email-templates";
+import { sendTemplatedEmail, wrapInLayout } from "@/lib/email-templates";
 import { sendWhatsAppMessage, isWhatsAppConfigured, isWhatsAppConfiguredAsync } from "@/lib/whatsapp";
 import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
@@ -139,16 +139,21 @@ export async function notifyPatient({
     }
 
     {
-      // Plain email — the fallback, and the path when no template was asked for
+      // Plain email — the fallback, and the path when no template was asked for.
+      // Still goes through the branded layout (logo, clinic colour) — this used
+      // to be a bare <p>, the one place a patient could get an e-mail that
+      // looked like nothing else in the app.
       try {
         const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
         const adminBcc = await getAdminNotificationEmail(u.clinicId);
+        const bodyHtml = `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">${isPt ? "Olá" : "Hi"} ${firstName},<br><br>${msg}</p>`;
+        const html = await wrapInLayout(bodyHtml, msg.slice(0, 100), locale, u.clinicId);
         // sendEmail reports failure in its return value rather than throwing,
         // so the catch below never sees a rejected send.
         const result = await sendEmail({
           to: email,
           subject: isPt ? "BPR Rehab — Notificação" : "BPR Rehab — Notification",
-          html: `<p>${isPt ? "Olá" : "Hi"} ${firstName},</p><p>${msg}</p>`,
+          html,
           bcc: email.toLowerCase() !== adminBcc.toLowerCase() ? adminBcc : undefined,
         });
         return { channel: "EMAIL", success: result.success === true, error: (result as any).error };

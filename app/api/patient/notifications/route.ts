@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { patientPrescriptionWhere } from "@/lib/protocol-exercise-gating";
+import { getExpectedToday } from "@/lib/patient-daily-adherence";
 
 export async function GET(request: NextRequest) {
   try {
@@ -188,6 +189,29 @@ export async function GET(request: NextRequest) {
           icon: "Dumbbell",
           color: "emerald",
           createdAt: fresh[0].createdAt?.toISOString?.() || now.toISOString(),
+          isUrgent: false,
+        });
+      }
+    } catch {}
+
+    // 7. Today's plan not finished yet (activity 49 — same rule as the
+    // "Today" card and the clinic's daily-adherence report, so this notice
+    // never disagrees with either).
+    try {
+      const today = await getExpectedToday(userId, now);
+      const remaining = today.expected.length - today.completed.length;
+      if (remaining > 0) {
+        notifications.push({
+          id: `today-pending-${now.toDateString()}`,
+          type: "adherence",
+          title: remaining === 1 ? "1 activity left today" : `${remaining} activities left today`,
+          titlePt: remaining === 1 ? "1 atividade restando hoje" : `${remaining} atividades restando hoje`,
+          message: "A couple of minutes now keeps your progress on track.",
+          messagePt: "Alguns minutos agora mantêm seu progresso em dia.",
+          link: "/dashboard/treatment",
+          icon: "Activity",
+          color: "amber",
+          createdAt: now.toISOString(),
           isUrgent: false,
         });
       }
