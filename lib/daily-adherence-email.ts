@@ -99,7 +99,7 @@ export async function buildPatientReminderEmail(firstName: string, missingTitles
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN}</p>
     `}
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
-      <a href="${BASE_URL}/dashboard/treatment" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
+      <a href="${BASE_URL}/dashboard/treatment" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
     </td></tr></table>
   `;
   return wrapInLayout(content, todayPlainMessage(missingTitles, isPt).slice(0, 100), locale, clinicId);
@@ -151,7 +151,7 @@ export async function buildYesterdayFollowupEmail(
         : "If you need any help or support, we're here for you — just reach out. It's important to log in to your portal and complete your exercises."}
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
-      <a href="${BASE_URL}/dashboard/treatment" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
+      <a href="${BASE_URL}/dashboard/treatment" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
     </td></tr></table>
   `;
   return wrapInLayout(content, isPt ? "Precisamos de você por aqui" : "We miss you in your plan", locale, clinicId);
