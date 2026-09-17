@@ -8,6 +8,12 @@ export type AdherencePatientSummary = { name: string; missingItems: { title: str
 export const REMINDER_MESSAGE_EN = "You still have activities left in today's plan — a couple of minutes now keeps your progress on track.";
 export const REMINDER_MESSAGE_PT = "Ainda faltam atividades do seu plano de hoje — alguns minutos agora mantêm seu progresso em dia.";
 
+// Same AuditLog action + dedupe window whether the reminder went out from
+// the 21h cron or a manual "Send now" click — a manual send today means the
+// cron won't also remind the same patient later, and vice versa.
+export const REMINDER_ACTION = "DAILY_ADHERENCE_REMINDER_SENT";
+export const REPORT_ACTION = "DAILY_ADHERENCE_REPORT_SENT";
+
 // Shared by the real send (app/api/cron/daily-adherence) and the admin
 // preview (app/api/admin/adherence/preview-email) — so what gets eyeballed
 // before sending is exactly what the clinic would receive, never a close

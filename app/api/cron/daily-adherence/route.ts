@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
-import { buildDailyAdherenceEmail, REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT } from "@/lib/daily-adherence-email";
+import { buildDailyAdherenceEmail, REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT, REMINDER_ACTION, REPORT_ACTION } from "@/lib/daily-adherence-email";
 import { notifyPatient } from "@/lib/notify-patient";
 import { sendEmail } from "@/lib/email";
 import { logAudit } from "@/lib/system-logger";
@@ -9,8 +9,6 @@ import { logAudit } from "@/lib/system-logger";
 export const dynamic = "force-dynamic";
 
 const REPORT_TO = "admin@bpr.clinic";
-const REMINDER_ACTION = "DAILY_ADHERENCE_REMINDER_SENT";
-const REPORT_ACTION = "DAILY_ADHERENCE_REPORT_SENT";
 
 // POST /api/cron/daily-adherence — once a day (intended: 21h clinic time, see
 // specs/49-relatorio-adesao-diaria): reminds every patient still missing

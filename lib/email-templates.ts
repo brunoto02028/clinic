@@ -149,7 +149,7 @@ export async function wrapInLayout(content: string, preheader?: string, locale =
   // the brand" next to the real site, and doubled as a transparent-PNG trap
   // for e-mail clients' dark-mode colour inversion (see emailSafeLogoUrl).
   const headerLogoUrl = emailSafeLogoUrl(logoUrl, BRAND_BONE) || EMAIL_LOGO_URL;
-  const logoHtml = `<img src="${headerLogoUrl}" alt="${logoAlt}" style="max-height:56px;max-width:200px;display:block;margin:0 auto;background-color:${BRAND_BONE};" />`;
+  const logoHtml = `<img src="${headerLogoUrl}" alt="${logoAlt}" style="max-height:80px;max-width:280px;display:block;margin:0 auto;background-color:${BRAND_BONE};" />`;
   // Footer: same logo, smaller, on its own soft-green band.
   const footerLogoUrl = emailSafeLogoUrl(logoUrl, BRAND_HEALTH_SOFT) || EMAIL_LOGO_URL;
   const footerLogoHtml = `<img src="${footerLogoUrl}" alt="${logoAlt}" style="max-height:52px;max-width:180px;margin:0 auto 12px;display:block;background-color:${BRAND_HEALTH_SOFT};" />`;

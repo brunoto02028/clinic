@@ -6,7 +6,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, AlertCircle, Loader2, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, AlertCircle, Loader2, Mail, Send } from "lucide-react";
 
 type PatientSummary = { patientId: string; name: string; missingItems: { title: string }[] };
 type Adherence = { completed: PatientSummary[]; missing: PatientSummary[] };
@@ -14,6 +15,8 @@ type Adherence = { completed: PatientSummary[]; missing: PatientSummary[] };
 export default function DailyAdherenceCard() {
   const [data, setData] = useState<Adherence | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState<string | null>(null);
+  const [sent, setSent] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch("/api/admin/adherence/today")
@@ -21,6 +24,20 @@ export default function DailyAdherenceCard() {
       .then(setData)
       .finally(() => setLoading(false));
   }, []);
+
+  const sendReminder = async (patientId: string) => {
+    setSending(patientId);
+    try {
+      const res = await fetch("/api/admin/adherence/send-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId }),
+      });
+      if (res.ok) setSent((prev) => new Set(prev).add(patientId));
+    } finally {
+      setSending(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -53,17 +70,34 @@ export default function DailyAdherenceCard() {
         {data.missing.length > 0 && (
           <ul className="space-y-1">
             {data.missing.map((p) => (
-              <li key={p.patientId} className="text-sm">
-                <Link href={`/admin/patients/${p.patientId}`} className="text-primary hover:underline">{p.name}</Link>
-                <span className="text-muted-foreground"> — {p.missingItems.map((i) => i.title).join(", ")}</span>
-                <a
-                  href={`/api/admin/adherence/preview-patient-email?patientId=${p.patientId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-2 text-xs text-muted-foreground hover:text-primary underline"
+              <li key={p.patientId} className="text-sm flex items-start justify-between gap-2">
+                <div>
+                  <Link href={`/admin/patients/${p.patientId}`} className="text-primary hover:underline">{p.name}</Link>
+                  <span className="text-muted-foreground"> — {p.missingItems.map((i) => i.title).join(", ")}</span>
+                  <a
+                    href={`/api/admin/adherence/preview-patient-email?patientId=${p.patientId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 text-xs text-muted-foreground hover:text-primary underline"
+                  >
+                    their e-mail
+                  </a>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs shrink-0"
+                  disabled={sending === p.patientId || sent.has(p.patientId)}
+                  onClick={() => sendReminder(p.patientId)}
                 >
-                  their e-mail
-                </a>
+                  {sending === p.patientId ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : sent.has(p.patientId) ? (
+                    <><CheckCircle2 className="h-3 w-3 mr-1" /> Sent</>
+                  ) : (
+                    <><Send className="h-3 w-3 mr-1" /> Send now</>
+                  )}
+                </Button>
               </li>
             ))}
           </ul>
