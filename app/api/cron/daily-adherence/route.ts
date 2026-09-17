@@ -1,30 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
-import { buildDailyAdherenceEmail, REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT, REMINDER_ACTION, REPORT_ACTION } from "@/lib/daily-adherence-email";
+import { REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT, REMINDER_ACTION } from "@/lib/daily-adherence-email";
 import { notifyPatient } from "@/lib/notify-patient";
-import { sendEmail } from "@/lib/email";
 import { logAudit } from "@/lib/system-logger";
 
 export const dynamic = "force-dynamic";
 
-const REPORT_TO = "admin@bpr.clinic";
-
-// POST /api/cron/daily-adherence — once a day (intended: 21h clinic time, see
-// specs/49-relatorio-adesao-diaria): reminds every patient still missing
-// today's activities, and e-mails the clinic a completed/missing summary.
-// Call via cron: curl -X POST https://bpr.clinic/api/cron/daily-adherence?key=SECRET
+// POST /api/cron/daily-adherence — reminds every patient still missing
+// today's activities (see specs/49-relatorio-adesao-diaria). The clinic
+// summary e-mail used to live here too; split out to /api/cron/daily-report
+// on 17/09/2026 so that one can stay on an automatic schedule while this
+// one — the one that actually messages a patient — is only ever triggered
+// manually via the per-patient "Send now" button, never by a cron.
+// Call via cron/manual: curl -X POST https://bpr.clinic/api/cron/daily-adherence?key=SECRET
 export async function POST(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
   const cronSecret = process.env.CRON_SECRET || process.env.NEXTAUTH_SECRET;
   if (key !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // Manual override for a missed run or testing a template change without
-  // waiting for tomorrow — re-sends the clinic report even if already sent
-  // today. Never re-sends patient reminders; those stay deduped regardless,
-  // so this can't spam a patient by being called twice.
-  const force = req.nextUrl.searchParams.get("force") === "true";
 
   // "Today" is computed in the server's own timezone — close enough to the
   // clinic's (Europe/London) for a job meant to fire well away from
@@ -34,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   const clinics = await prisma.clinic.findMany({ where: { isActive: true }, select: { id: true, name: true } });
 
-  const results: { clinicId: string; completed: number; missing: number; remindersSent: number; reportSent?: boolean }[] = [];
+  const results: { clinicId: string; completed: number; missing: number; remindersSent: number }[] = [];
 
   const dayStart = new Date(now);
   dayStart.setHours(0, 0, 0, 0);
@@ -70,31 +65,7 @@ export async function POST(req: NextRequest) {
       remindersSent++;
     }
 
-    const reportAlreadySent = !force && await prisma.auditLog.findFirst({
-      where: { entityId: clinic.id, action: REPORT_ACTION, createdAt: { gte: dayStart } },
-      select: { id: true },
-    });
-    let reportSent = false;
-    if (!reportAlreadySent) {
-      const html = await buildDailyAdherenceEmail(clinic.name, clinic.id, completed, missing, now);
-      await sendEmail({
-        to: REPORT_TO,
-        subject: `${clinic.name}: ${completed.length} completed, ${missing.length} missing today`,
-        html,
-      });
-      await logAudit({
-        userId: "system",
-        userEmail: "",
-        userRole: "SYSTEM",
-        action: REPORT_ACTION,
-        entity: "Clinic",
-        entityId: clinic.id,
-        description: `Daily adherence report e-mailed for ${clinic.name}`,
-      });
-      reportSent = true;
-    }
-
-    results.push({ clinicId: clinic.id, completed: completed.length, missing: missing.length, remindersSent, reportSent });
+    results.push({ clinicId: clinic.id, completed: completed.length, missing: missing.length, remindersSent });
   }
 
   return NextResponse.json({ results });

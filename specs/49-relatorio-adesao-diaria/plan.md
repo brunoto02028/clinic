@@ -126,3 +126,19 @@ atividade em vez de uma nova, por serem extensão direta do mesmo domínio:
    `Cache-Control: no-store` + cache-busting + montar o iframe só enquanto o modal está aberto; (b) o
    botão de call-to-action navegava o próprio iframe do preview (em vez de abrir aba nova), o que
    parecia o mesmo erro de novo quando testado como staff — corrigido com `target="_blank"`.
+9. **Estado "já enviado" persistente no painel** (`components/admin/patient-adherence-panel.tsx`):
+   os botões "Send now" resetavam ao recarregar a página porque o "enviado" era só estado local do
+   React. As rotas `GET /api/admin/patients/[id]/adherence-today` e
+   `GET /api/admin/patients/[id]/onboarding-pending` passaram a devolver `reminderSentAt` (lido do
+   mesmo `AuditLog` que as rotas de envio já usam pra dedupe), e o painel inicializa o estado a partir
+   dele — o botão mostra "Sent 17 Sept, 10:49" em vez de resetar para "Send now".
+10. **Regra nova do usuário (17/09/2026): nenhum envio automático a paciente.** "nunca enviar nada a
+    ninguem sem eu apertar o botao, pois nao sei onde fica registrado os envios" — os agendamentos do
+    Coolify `daily-adherence` (lembrete "hoje") e `onboarding-reminder` foram **desativados**. Como o
+    cron `daily-adherence` também carregava o e-mail-resumo pro Bruno (não é um envio a paciente), essa
+    parte foi separada numa rota própria, **`app/api/cron/daily-report`**, que continua rodando
+    automático (mesmo dedupe `REPORT_ACTION`, suporta `?force=true`); `app/api/cron/daily-adherence`
+    ficou só com o lembrete ao paciente e seu agendamento no Coolify permanece desativado — só dispara
+    pelo botão manual no painel do paciente. Reativar qualquer lembrete automático a paciente fica
+    condicionado a existir antes um painel de acompanhamento mais visível no dashboard da paciente
+    (ver memória `feedback_no-automatic-patient-sends`).
