@@ -119,7 +119,8 @@ atividade em vez de uma nova, por serem extensão direta do mesmo domínio:
    usuário: "precisamos dos registros dentro do log" — por isso os `AuditLog` dessas ações agora
    também aparecem com título legível na aba Activity (Ativ. 48) do paciente, em vez de "OTHER".
    Scheduled task `onboarding-reminder` criada no Coolify (uuid `mefyxrlxovqtrqbnoipge6mn`), mesmo
-   horário do cron principal (`0 20 * * *` UTC = 21h BST), **desativada** até validar manualmente.
+   horário do cron principal (`0 20 * * *` UTC = 21h BST) — validada manualmente via preview e
+   **ativada** em 17/09/2026.
 8. **Dois bugs achados e corrigidos durante o próprio teste do usuário**: (a) preview em `<iframe>`
    ficava preso num 404 em cache do navegador mesmo com a rota já funcionando — corrigido com
    `Cache-Control: no-store` + cache-busting + montar o iframe só enquanto o modal está aberto; (b) o
