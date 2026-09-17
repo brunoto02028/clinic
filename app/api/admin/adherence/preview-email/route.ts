@@ -28,5 +28,5 @@ export async function GET() {
   const now = new Date();
   const { completed, missing } = await getClinicDailyAdherence(clinic.id, now);
   const html = await buildDailyAdherenceEmail(clinic.name, clinic.id, completed, missing, now);
-  return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }

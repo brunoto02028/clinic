@@ -86,7 +86,17 @@ function AdherenceSection({
           <DialogHeader>
             <DialogTitle>{title} — e-mail preview</DialogTitle>
           </DialogHeader>
-          <iframe src={previewUrl} title={`${title} preview`} className="flex-1 w-full rounded-md border bg-white" />
+          {/* Cache-busted and only mounted while open — an <iframe> navigation
+              can get served from the browser's disk cache even with
+              Cache-Control: no-store on the response, so a stale 404 from
+              before this route existed could otherwise stick around. */}
+          {previewOpen && (
+            <iframe
+              src={`${previewUrl}&_=${Date.now()}`}
+              title={`${title} preview`}
+              className="flex-1 w-full rounded-md border bg-white"
+            />
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setPreviewOpen(false)}>Close</Button>
             <Button disabled={sending || sent} onClick={async () => { await send(); setPreviewOpen(false); }}>

@@ -28,5 +28,5 @@ export async function GET(req: NextRequest) {
   const missing = expected.filter((e) => !completed.some((c) => c.id === e.id)).map((e) => e.title);
 
   const html = await buildYesterdayFollowupEmail(patient.firstName || "", missing, patient.preferredLocale || "en-GB", patient.clinicId);
-  return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
