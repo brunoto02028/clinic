@@ -6,7 +6,7 @@
 
 import { prisma } from "@/lib/db";
 import { sendTemplatedEmail, wrapInLayout } from "@/lib/email-templates";
-import { buildPatientReminderEmail } from "@/lib/daily-adherence-email";
+import { buildPatientReminderEmail, buildYesterdayFollowupEmail, buildYesterdayFollowupText } from "@/lib/daily-adherence-email";
 import { sendWhatsAppMessage, isWhatsAppConfigured, isWhatsAppConfiguredAsync } from "@/lib/whatsapp";
 import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
@@ -29,6 +29,10 @@ interface NotifyPatientParams {
    *  plainMessage paragraph — the only caller today, but any future
    *  reminder needing a way back into the app can opt in the same way. */
   useReminderTemplate?: boolean;
+  /** Yesterday follow-up: named misses + a supportive tone, on every
+   *  channel — takes over plainMessage/plainMessagePt/useReminderTemplate
+   *  entirely when set, since the message content depends on this list. */
+  yesterdayMissingTitles?: string[];
 }
 
 export async function notifyPatient({
@@ -39,6 +43,7 @@ export async function notifyPatient({
   plainMessagePt,
   forceChannel,
   useReminderTemplate,
+  yesterdayMissingTitles,
 }: NotifyPatientParams): Promise<{ channel: string; success: boolean; error?: string }> {
   try {
     const user = await prisma.user.findUnique({
@@ -62,7 +67,9 @@ export async function notifyPatient({
     const firstName: string = u.firstName || "Patient";
     const locale: string = u.preferredLocale || "en-GB";
     const isPt = locale === "pt-BR" || locale.startsWith("pt");
-    const msg = (isPt && plainMessagePt) ? plainMessagePt : plainMessage;
+    const msg = yesterdayMissingTitles
+      ? (isPt ? buildYesterdayFollowupText(yesterdayMissingTitles).pt : buildYesterdayFollowupText(yesterdayMissingTitles).en)
+      : (isPt && plainMessagePt) ? plainMessagePt : plainMessage;
 
     // ─── WhatsApp ───
     const waConfigured = isWhatsAppConfigured() || await isWhatsAppConfiguredAsync();
@@ -153,7 +160,9 @@ export async function notifyPatient({
       try {
         const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
         const adminBcc = await getAdminNotificationEmail(u.clinicId);
-        const html = useReminderTemplate
+        const html = yesterdayMissingTitles
+          ? await buildYesterdayFollowupEmail(firstName, yesterdayMissingTitles, locale, u.clinicId)
+          : useReminderTemplate
           ? await buildPatientReminderEmail(firstName, locale, u.clinicId)
           : await wrapInLayout(
               `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">${isPt ? "Olá" : "Hi"} ${firstName},<br><br>${msg}</p>`,

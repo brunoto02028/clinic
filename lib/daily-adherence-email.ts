@@ -78,3 +78,55 @@ export async function buildPatientReminderEmail(firstName: string, locale: strin
   `;
   return wrapInLayout(content, msg.slice(0, 100), locale, clinicId);
 }
+
+// ─── Yesterday follow-up — a second, morning touchpoint ────────────────
+// Different from the 21h "still time today" reminder: this looks back at
+// what didn't get done yesterday, names it, and leads with support rather
+// than urgency. Same dedupe pattern (one AuditLog action, once per day),
+// same getExpectedToday/getClinicDailyAdherence machinery — they already
+// take an arbitrary date, so "yesterday" is just that date minus one day.
+
+export const YESTERDAY_ACTION = "YESTERDAY_FOLLOWUP_SENT";
+
+function yesterdayPlainMessage(missingTitles: string[], isPt: boolean): string {
+  const list = missingTitles.join(isPt ? " · " : " · ");
+  return isPt
+    ? `Ontem ficou pendente: ${list}. Se precisar de qualquer ajuda ou suporte, estamos aqui — é só entrar em contato. É importante acessar o seu portal e completar os exercícios. Qualquer dúvida, é só nos chamar.`
+    : `Yesterday these were left undone: ${list}. If you need any help or support, we're here for you — just reach out. It's important to log in to your portal and complete your exercises. If you have any questions, don't hesitate to contact us.`;
+}
+
+/** Plain-text version, for the WhatsApp/SMS/Telegram channels. */
+export function buildYesterdayFollowupText(missingTitles: string[]) {
+  return {
+    en: yesterdayPlainMessage(missingTitles, false),
+    pt: yesterdayPlainMessage(missingTitles, true),
+  };
+}
+
+/** Shared by the real send and its admin preview, same reason as the others above. */
+export async function buildYesterdayFollowupEmail(
+  firstName: string,
+  missingTitles: string[],
+  locale: string,
+  clinicId: string | null
+) {
+  const isPt = locale === "pt-BR" || locale.startsWith("pt");
+  const cta = isPt ? "Completar Meus Exercícios →" : "Complete My Exercises →";
+  const itemsHtml = missingTitles.map((t) => `<p style="margin:0 0 4px;color:#8A4438;font-size:13px;">&bull;&nbsp; ${escapeHtml(t)}</p>`).join("");
+  const content = `
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ontem ficou pendente:" : "Yesterday these were left undone:"}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+      <tr><td style="background-color:#FBEEEC;border-left:3px solid #A85A4B;border-radius:8px;padding:14px 16px;">${itemsHtml}</td></tr>
+    </table>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">
+      ${isPt
+        ? "Se precisar de qualquer ajuda ou suporte, estamos aqui — é só entrar em contato. É importante acessar o seu portal e completar os exercícios."
+        : "If you need any help or support, we're here for you — just reach out. It's important to log in to your portal and complete your exercises."}
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
+      <a href="${BASE_URL}/dashboard/treatment" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
+    </td></tr></table>
+  `;
+  return wrapInLayout(content, isPt ? "Precisamos de você por aqui" : "We miss you in your plan", locale, clinicId);
+}
