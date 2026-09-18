@@ -53,7 +53,7 @@ function timeAgo(dateStr: string, isPt: boolean): string {
 export default function CommunityPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const [posts, setPosts] = useState<Post[]>([]);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [rank, setRank] = useState(0);
@@ -223,11 +223,14 @@ export default function CommunityPage() {
               <div className="text-center py-8">
                 <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">{isPt ? "Nenhuma vitória ainda. Seja o primeiro!" : "No victories yet. Be the first!"}</p>
+                {/* A studio student has no Journey (activity 58). */}
+                {!isPersonal && (
                 <Link href="/dashboard/journey">
                   <Button variant="outline" size="sm" className="mt-3 gap-1 text-xs">
                     {isPt ? "Comece sua jornada" : "Start your journey"} <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
+                )}
               </div>
             ) : (
               <div className="space-y-3">

@@ -79,6 +79,10 @@ export const PERSONAL_BLOCKED_PATIENT_ROUTES = [
   "/dashboard/recordings",
   "/api/patient/consultation-recording",
   "/dashboard/guide",
+  // The Journey and its archetype quiz (not /dashboard/quizzes) — activity 58.
+  // /api/patient/journey stays open: Community reads /api/patient/journey/community.
+  "/dashboard/journey",
+  "/dashboard/quiz",
 ];
 
 // Clinical generators nested under a patient: /api/admin/patients/<id>/<sub>.
