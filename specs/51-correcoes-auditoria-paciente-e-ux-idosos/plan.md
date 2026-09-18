@@ -79,3 +79,14 @@ achados sérios**, ambos corrigidos e re-testados antes do deploy:
 Também corrigido: o banner de erro do T-2 usava um estado `error` compartilhado por ~9
 handlers do `RehabAgentTab`, podendo mostrar o erro de uma ação não relacionada — extraído pra
 um estado próprio (`tpError`).
+
+## Deploy
+
+Deploy: commit `bd4efa8` (2026-09-18). Schema (`consentTextsJsonPt`) aplicado em produção via
+`prisma db push` antes do push. Health check pós-deploy: `healthy`, uptime fresco. QA online
+limitado a rotas públicas/smoke-test nesta sessão (sem sessão admin autenticada disponível —
+Cloudflare bloqueia acesso automatizado a `/login`/`/admin` em produção): homepage 200, guards
+de auth em `/api/medical-screening` e `/api/patient/protocol` redirecionando corretamente sem
+sessão, rota `/api/email-logo` respondendo normalmente (sem regressão). A verificação funcional
+completa (cross-tenant, tradução PT, alvos de toque, prefill) já tinha sido confirmada nas
+rodadas de QA/code review antes do deploy.
