@@ -36,6 +36,8 @@ const CLINICAL_PATIENT_KEYS = new Set([
   // BPR's rehab gamification (pain check-ins, treatment-plan missions, the
   // archetype quiz that sells the BPR shop) — hidden for studios (activity 58).
   "mod_journey",
+  // Community's feed is the Journey's wins — empty without it (activity 59).
+  "mod_community",
 ]);
 
 const PIN_STORAGE_KEY = "patient-sidebar-pinned";

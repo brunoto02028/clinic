@@ -6,7 +6,7 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **059**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **060**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > Reorganizado em 18/09/2026. As pastas eram `1-…`, `10-…` sem zeros e existiam **duas** "1".
 > - `1-mobile-fundacao` (jun/2026, abre a série mobile 001–006) manteve o **001**.
@@ -39,6 +39,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [056](056-email-boas-vindas-estudio/) | E-mail de boas-vindas do estúdio (personal) | ✅ |
 | [057](057-superadmin-visao-estudio/) | Superadmin enxerga o estúdio como o personal vê | ✅ |
 | [058](058-esconder-jornada-aluno-estudio/) | Esconder a Jornada do aluno de estúdio | ✅ |
+| [059](059-limpeza-jornada-comunidade-estudio/) | Comunidade fora do aluno de estúdio e limpeza do Journey do personal | ✅ |
 
 ## Plataforma (multi-tenant, segurança, design, custos)
 

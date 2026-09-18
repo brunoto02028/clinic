@@ -137,6 +137,23 @@ export const ADMIN_SECTIONS: AdminSection[] = [
           "/admin/quizzes",
           "/admin/achievements",
         ],
+        // BPR's rehab gamification — a studio's students don't have it (activity 59).
+        clinicalOnly: true,
+      },
+      {
+        // What a studio's students still use from that area, reachable directly.
+        key: "quizzes",
+        label: "Quizzes",
+        labelPt: "Quizzes",
+        href: "/admin/quizzes",
+        personalOnly: true,
+      },
+      {
+        key: "achievements",
+        label: "Achievements",
+        labelPt: "Conquistas",
+        href: "/admin/achievements",
+        personalOnly: true,
       },
     ],
     matchRoutes: [
@@ -511,7 +528,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
  * "/admin" only matches exactly "/admin" (not "/admin/patients").
  * All other routes match as prefix (e.g. "/admin/patients" matches "/admin/patients/123").
  */
-function routeMatches(pathname: string, route: string): boolean {
+export function routeMatches(pathname: string, route: string): boolean {
   // Exact "/admin" should only match the root dashboard, not all admin routes
   if (route === "/admin") {
     return pathname === "/admin";

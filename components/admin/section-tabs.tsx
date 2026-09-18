@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getActiveAdminNav, tabAllowedFor } from "@/lib/admin-sections";
+import { getActiveAdminNav, tabAllowedFor, routeMatches } from "@/lib/admin-sections";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 
@@ -18,18 +18,27 @@ export default function SectionTabs({ role }: { role: string | undefined }) {
 
   const { section, tab: activeTab } = activeNav;
   const isPt = locale?.startsWith("pt");
+  // Same rule as the sidebar (visibleAdminSections): clinical tabs off for a
+  // studio, studio tabs off for a clinic.
+  const tabs = section.tabs.filter(
+    (tab) => (isPersonal ? !tab.clinicalOnly : !tab.personalOnly) && tabAllowedFor(tab, role)
+  );
+  // The route's first matching tab may be one this tenant can't see (e.g. the
+  // clinic's Journey on /admin/quizzes for a studio) — highlight a visible one.
+  const clean = pathname.replace(/\/$/, "") || "/admin";
+  const activeKey = tabs.some((t) => t.key === activeTab?.key)
+    ? activeTab?.key
+    : tabs.find((t) => [t.href, ...(t.matchRoutes || [])].some((r) => routeMatches(clean, r)))?.key;
 
   return (
     <div className="section-tabs" role="tablist" aria-label={relabel(isPt ? section.labelPt : section.label)}>
-      {section.tabs
-        .filter((tab) => (!isPersonal || !tab.clinicalOnly) && tabAllowedFor(tab, role))
-        .map((tab) => (
+      {tabs.map((tab) => (
           <Link
             key={tab.key}
             href={tab.href}
-            className={`section-tab ${activeTab?.key === tab.key ? "active" : ""}`}
+            className={`section-tab ${activeKey === tab.key ? "active" : ""}`}
             role="tab"
-            aria-selected={activeTab?.key === tab.key}
+            aria-selected={activeKey === tab.key}
           >
             {relabel(isPt ? tab.labelPt : tab.label)}
           </Link>

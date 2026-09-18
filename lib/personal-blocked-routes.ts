@@ -25,8 +25,14 @@ export const PERSONAL_BLOCKED_ROUTES = [
   "/api/foot-scans", // clinical biomechanics (its upload accepted any file type — activity 52, T-9)
   "/api/admin/body-assessments", // clinical AI body scan (not the studio's assessments)
   "/api/admin/appointments/generate-notes",
-  "/api/admin/journey/ai-coach",
-  "/api/admin/journey/products", // shop products, synced to BPR's Stripe (same as /api/admin/marketplace)
+  // The whole Journey Control Centre: XP, community challenges, the shop (synced
+  // to BPR's Stripe), triggers, leaderboard, AI coach — gamification a studio's
+  // students no longer have (activity 59).
+  "/admin/journey",
+  "/api/admin/journey",
+  // The clinical conditions library page; its API stays — Quizzes and
+  // Achievements read it to target content.
+  "/admin/conditions",
   // BPR's own Stripe account (activity 52, T-7): treatment plans, memberships,
   // packages, the shop and online session payment all charge the platform, so
   // a studio's money would land in BPR's account. A studio charges through its
@@ -79,10 +85,13 @@ export const PERSONAL_BLOCKED_PATIENT_ROUTES = [
   "/dashboard/recordings",
   "/api/patient/consultation-recording",
   "/dashboard/guide",
-  // The Journey and its archetype quiz (not /dashboard/quizzes) — activity 58.
-  // /api/patient/journey stays open: Community reads /api/patient/journey/community.
+  // The Journey and its archetype quiz (not /dashboard/quizzes) — activity 58 —
+  // and Community, which lives on the Journey's wins (activity 59); its API
+  // covers the journey dashboard, community, quiz and shop.
   "/dashboard/journey",
   "/dashboard/quiz",
+  "/dashboard/community",
+  "/api/patient/journey",
 ];
 
 // Clinical generators nested under a patient: /api/admin/patients/<id>/<sub>.
