@@ -36,26 +36,68 @@ const DEFAULT_CONSENT_TEXTS = {
   ],
 };
 
+// Draft translation, not a legal review — see specs/51-correcoes-auditoria-paciente-e-ux-idosos/t-6-termos-bilingue.md.
+// A patient reading this in Portuguese should still confirm anything
+// contentious with the clinic directly; this exists so the document isn't
+// pure English for someone who reads neither confidently.
+const DEFAULT_CONSENT_TEXTS_PT = {
+  termsTitle: "Termos e Condições de Serviço",
+  privacyTitle: "Proteção de Dados e Privacidade (RGPD)",
+  liabilityTitle: "Limitação de Responsabilidade e Termos Gerais",
+  consentCheckboxText: "Li e compreendi os Termos de Uso, o Consentimento para Tratamento e a Política de Proteção de Dados e Privacidade. Consinto expressamente o processamento dos meus dados pessoais e de saúde conforme descrito acima, incluindo o uso de IA para análise clínica. Compreendo os meus direitos ao abrigo do RGPD do Reino Unido e reconheço que posso retirar o meu consentimento a qualquer momento.",
+  termsSections: [
+    { number: 1, title: "Introdução", body: "Estes termos regem a utilização da plataforma clínica da Bruno Physical Rehabilitation (\"a Plataforma\"). Ao aceder ou utilizar a Plataforma, concorda em ficar vinculado a estes termos, de acordo com as leis de Inglaterra e País de Gales." },
+    { number: 2, title: "Serviços Clínicos", body: "A Plataforma fornece serviços de saúde digital, incluindo mas não limitado a: questionários de triagem médica, marcação de consultas, escaneamento biomecânico do pé, avaliações posturais corporais, gestão de protocolos de tratamento, prescrições de exercícios, monitorização da pressão arterial e gestão de documentos. Estes serviços digitais são complementares e não substituem a avaliação clínica presencial por um especialista qualificado em reabilitação física." },
+    { number: 3, title: "Aviso Médico", body: "As análises, pontuações e recomendações geradas por IA através da Plataforma destinam-se apenas a fins informativos e de apoio clínico. Não constituem um diagnóstico médico. Todas as decisões clínicas são tomadas pelo seu especialista qualificado em reabilitação física. Se tiver uma emergência médica, contacte o 999 ou dirija-se imediatamente ao serviço de urgências mais próximo." },
+    { number: 4, title: "Consentimento Informado para Tratamento", body: "Ao utilizar esta Plataforma e marcar consultas, consente a avaliação e o tratamento de reabilitação física conforme recomendado pelo seu especialista. Compreende que: (a) os resultados do tratamento não podem ser garantidos; (b) tem o direito de recusar qualquer tratamento a qualquer momento; (c) será informado(a) sobre os riscos e alternativas de tratamento; (d) deve comunicar prontamente qualquer reação adversa." },
+    { number: 5, title: "Exatidão da Informação", body: "Concorda em fornecer informação médica e pessoal exata, completa e atualizada. Informação incorreta pode afetar a segurança e a eficácia do seu tratamento. Deve informar-nos de quaisquer alterações ao seu historial médico, medicação ou condições de saúde." },
+  ],
+  privacySections: [
+    { number: 6, title: "Responsável pelo Tratamento de Dados", body: "A Bruno Physical Rehabilitation Ltd é a responsável pelo tratamento dos seus dados pessoais, registada em Inglaterra. Processamos os seus dados de acordo com o Regulamento Geral de Proteção de Dados do Reino Unido (UK GDPR) e o Data Protection Act 2018." },
+    { number: 7, title: "Base Legal para o Processamento", body: "Processamos os seus dados pessoais e de saúde com base em: (a) Consentimento — consente expressamente o processamento dos seus dados de saúde; (b) Interesse Legítimo — para prestar e melhorar os nossos serviços clínicos; (c) Obrigação Legal — para cumprir a regulamentação de saúde e requisitos de manutenção de registos; (d) Interesses Vitais — em emergências em que a sua saúde possa estar em risco." },
+    { number: 8, title: "Dados que Recolhemos", body: "Recolhemos e processamos: dados de identificação pessoal (nome, e-mail, telefone); dados de triagem médica (histórico de saúde, medicação, alergias, sinais de alerta); dados de avaliação clínica (imagens corporais, escaneamentos do pé, pontuações posturais); registos de tratamento (diagnósticos, protocolos, prescrições de exercícios); documentos médicos carregados; leituras de pressão arterial; registos de consultas; e informação de pagamento." },
+    { number: 9, title: "Uso de IA e Processamento Automatizado", body: "A Plataforma utiliza inteligência artificial (incluindo Google Gemini e MediaPipe) para: analisar imagens de postura corporal, gerar avaliações clínicas, criar recomendações de tratamento e processar documentos médicos. Tem o direito de não ficar sujeito a uma decisão baseada exclusivamente em processamento automatizado. Todos os resultados de IA são revistos por um especialista qualificado em reabilitação física antes de qualquer decisão clínica." },
+    { number: 10, title: "Retenção de Dados", body: "Os registos clínicos são conservados por um mínimo de 8 anos a partir da data do último tratamento (ou até aos 25 anos, no caso de crianças), de acordo com as diretrizes de manutenção de registos de saúde do Reino Unido e o código de prática de gestão de registos do NHS. Pode solicitar a eliminação de dados não clínicos a qualquer momento." },
+    { number: 11, title: "Os Seus Direitos ao Abrigo do RGPD do Reino Unido", body: "Tem o direito de: (a) Aceder aos seus dados pessoais (Pedido de Acesso do Titular); (b) Retificação de dados incorretos; (c) Apagamento (\"direito ao esquecimento\") quando aplicável; (d) Restringir o processamento dos seus dados; (e) Portabilidade dos dados — receber os seus dados num formato estruturado; (f) Opor-se ao processamento; (g) Retirar o consentimento a qualquer momento, sem afetar o processamento anterior; (h) Apresentar reclamação junto do Information Commissioner's Office (ICO), em ico.org.uk." },
+    { number: 12, title: "Segurança dos Dados", body: "Implementamos medidas técnicas e organizacionais adequadas para proteger os seus dados, incluindo: transmissão de dados encriptada (TLS/SSL), infraestrutura de servidores segura, controlos de acesso baseados em função, revisões de segurança regulares e formação da equipa em proteção de dados. Imagens corporais e documentos médicos são armazenados em servidores seguros com acesso restrito." },
+    { number: 13, title: "Partilha de Dados com Terceiros", body: "Podemos partilhar os seus dados com: (a) o seu médico de família ou outros prestadores de cuidados de saúde (com o seu consentimento explícito); (b) processadores de pagamento (Stripe) para processamento de transações; (c) fornecedores de serviços de IA (Google) para análise clínica — anonimizados sempre que possível; (d) entidades reguladoras, se exigido por lei. Não vendemos os seus dados a terceiros." },
+  ],
+  liabilitySections: [
+    { number: 14, title: "Limitação de Responsabilidade", body: "Na máxima medida permitida por lei: a Plataforma é fornecida \"tal como está\"; não somos responsáveis por quaisquer danos indiretos, incidentais ou consequenciais decorrentes da utilização da Plataforma; a nossa responsabilidade total não excederá os valores pagos por si nos 12 meses anteriores à reclamação. Nada nestes termos exclui a responsabilidade por morte ou lesão pessoal causada por negligência, fraude, ou qualquer outra responsabilidade que não possa ser excluída por lei." },
+    { number: 15, title: "Pagamentos e Cancelamentos", body: "Os pacotes de serviços e as consultas estão sujeitos à nossa política de cancelamento. Os reembolsos são processados de acordo com o Consumer Rights Act 2015. Tem 14 dias para cancelar um pacote de serviços a partir da data de compra, caso nenhum serviço tenha sido utilizado (período de reflexão ao abrigo do Consumer Contracts Regulations 2013)." },
+    { number: 16, title: "Lei Aplicável", body: "Estes termos são regidos pelas leis de Inglaterra e País de Gales. Quaisquer litígios estarão sujeitos à jurisdição exclusiva dos tribunais de Inglaterra e País de Gales." },
+    { number: 17, title: "Alterações aos Termos", body: "Reservamo-nos o direito de atualizar estes termos. Alterações materiais serão notificadas por e-mail ou notificação na Plataforma. A utilização continuada após as alterações constitui aceitação dos termos atualizados." },
+    { number: 18, title: "Contacto", body: "Para questões de proteção de dados ou para exercer os seus direitos, contacte: Bruno Physical Rehabilitation, E-mail: admin@bpr.clinic. Para comunicar uma violação de dados ou reclamação: Information Commissioner's Office (ICO), Tel: 0303 123 1113, Website: ico.org.uk." },
+  ],
+};
+
 /**
  * GET /api/admin/consent-texts — Get consent texts (public for patient page too)
+ * ?locale=pt-BR returns the Portuguese text (configured or the built-in
+ * draft translation); anything else keeps the original English-only
+ * behaviour unchanged.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const isPt = req.nextUrl.searchParams.get("locale") === "pt-BR";
+  const fallback = isPt ? DEFAULT_CONSENT_TEXTS_PT : DEFAULT_CONSENT_TEXTS;
+
   try {
     const settings = await prisma.siteSettings.findFirst({
-      select: { consentTextsJson: true },
+      select: { consentTextsJson: true, consentTextsJsonPt: true },
     });
 
-    if (settings?.consentTextsJson) {
+    const raw = isPt ? settings?.consentTextsJsonPt : settings?.consentTextsJson;
+    if (raw) {
       try {
-        return NextResponse.json(JSON.parse(settings.consentTextsJson));
+        return NextResponse.json(JSON.parse(raw));
       } catch {
-        return NextResponse.json(DEFAULT_CONSENT_TEXTS);
+        return NextResponse.json(fallback);
       }
     }
 
-    return NextResponse.json(DEFAULT_CONSENT_TEXTS);
+    return NextResponse.json(fallback);
   } catch {
-    return NextResponse.json(DEFAULT_CONSENT_TEXTS);
+    return NextResponse.json(fallback);
   }
 }
 

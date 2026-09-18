@@ -32,6 +32,9 @@ const AUDIT_LABELS: Record<string, { type: ActivityEvent["type"]; title: string 
   DAILY_ADHERENCE_REMINDER_SENT: { type: "OTHER", title: "Sent: still time today reminder" },
   YESTERDAY_FOLLOWUP_SENT: { type: "OTHER", title: "Sent: yesterday follow-up" },
   ONBOARDING_REMINDER_SENT: { type: "OTHER", title: "Sent: onboarding reminder" },
+  SOAP_NOTE_CREATED: { type: "OTHER", title: "SOAP note added" },
+  PROTOCOL_ASSIGNED: { type: "OTHER", title: "Treatment protocol assigned" },
+  EXERCISE_PRESCRIBED: { type: "OTHER", title: "Exercise prescribed" },
 };
 
 // Unifies five existing per-domain logs into one timeline — see

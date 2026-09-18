@@ -1515,7 +1515,7 @@ export default function PatientProfilePage() {
               ) : (
                 <>
                   {pr.summary && <p className="text-[10px] text-muted-foreground">{pr.summary?.substring(0, 300)}</p>}
-                  <p className="text-[9px] text-muted-foreground">{pr.items?.length || 0} items · {pr.estimatedWeeks || "?"} weeks</p>
+                  <p className="text-[9px] text-muted-foreground">{pr.items?.length || 0} items · {pr.estimatedWeeks || "—"} weeks</p>
                   {pr.therapistComments && <p className="text-[10px] bg-amber-50 p-1.5 rounded text-amber-800">{pr.therapistComments}</p>}
                 </>
               )}
@@ -1948,7 +1948,7 @@ export default function PatientProfilePage() {
                     ) : (
                       <h3 className="text-sm font-semibold truncate">{pr.title}</h3>
                     )}
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{pr.items?.length || 0} items · {pr.totalSessions || "?"} sessions · {pr.estimatedWeeks || "?"} weeks</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{pr.items?.length || 0} items · {pr.totalSessions || "—"} sessions · {pr.estimatedWeeks || "—"} weeks</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {isEditing ? (
@@ -2220,6 +2220,11 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
   const [chatMsg, setChatMsg]           = useState("");
   const [chatLoading, setChatLoading]   = useState(false);
   const [error, setError]               = useState("");
+  // Own state for handleGenerateTreatmentPlan specifically — `error` above
+  // is shared by ~9 unrelated handlers in this component (quick chat, send
+  // questions, etc.), so the Treatment Plan card's error banner needs its
+  // own state or it'll show a failure from a completely different action.
+  const [tpError, setTpError]           = useState("");
 
   // Send to patient state
   const [sendNote, setSendNote]         = useState("");
@@ -2247,6 +2252,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
     setTreatmentPlan(null);
     setTpChatHistory([]);
     setTpSentOk(false);
+    setTpError("");
     try {
       const r = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan`, {
         method: "POST",
@@ -2258,7 +2264,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
       setTreatmentPlan(d.plan);
       setTpView("viewing");
     } catch (e: any) {
-      setError(e.message || "Failed to generate plan");
+      setTpError(e.message || "Failed to generate plan");
       setTpView("idle");
     }
   };
@@ -2603,6 +2609,12 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
             Atlas is analysing all the patient's data and creating the plan...
+          </div>
+        )}
+
+        {tpView !== "generating" && !treatmentPlan && tpError && (
+          <div className="p-3 bg-red-500/10 border-t border-red-500/20 text-xs text-red-400">
+            {tpError}
           </div>
         )}
 

@@ -19,9 +19,15 @@ export async function GET(req: NextRequest) {
       await assertModuleAccess(userId, "mod_treatment");
     }
 
-    const protocols = await (prisma as any).treatmentProtocol.findMany({
+    // Same cross-tenant gap fixed in lib/patient-daily-adherence.ts's
+    // getExpectedToday (activity 51): a TreatmentProtocol row filtered by
+    // patientId alone would still render a stray, other-clinic protocol
+    // directly on this patient's own dashboard.
+    const me = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+    const protocols = me?.clinicId ? await (prisma as any).treatmentProtocol.findMany({
       where: {
         patientId: userId,
+        clinicId: me.clinicId,
         status: "SENT_TO_PATIENT",
       },
       orderBy: { createdAt: "desc" },
@@ -85,7 +91,7 @@ export async function GET(req: NextRequest) {
           },
         },
       },
-    });
+    }) : [];
 
     // For each protocol, check payment + apply visibility rules
     const enriched = protocols.map((p: any) => {

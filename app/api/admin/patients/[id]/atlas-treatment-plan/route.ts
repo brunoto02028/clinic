@@ -200,14 +200,35 @@ Return this exact JSON structure:
 
     const reply = await claudeGenerate(
       [{ role: "user", content: prompt }],
-      { systemPrompt: ATLAS_SYSTEM, maxTokens: 4000 }
+      { systemPrompt: ATLAS_SYSTEM, maxTokens: 6000 }
     );
 
-    let plan: any = {};
+    // A patient with an extensive history can push the response past the
+    // token budget, truncating mid-JSON. Used to swallow that as
+    // `{ notes: reply }` and still return 200 — the UI has no other field to
+    // show, so it just looked like an empty card, and `notes` itself was a
+    // dangling JSON fragment rather than readable text. Surfacing this as a
+    // real error lets the existing `if (!r.ok) throw new Error(d.error)` on
+    // the client actually fire instead of masking the failure as success.
+    let plan: any;
     try {
-      const match = reply.match(/\{[\s\S]*\}/);
-      if (match) plan = JSON.parse(match[0]);
-    } catch { plan = { notes: reply }; }
+      // Try the whole reply first — the common case is a clean JSON object
+      // with nothing around it. Only fall back to the greedy brace-match
+      // (which can span into unrelated trailing text containing its own
+      // braces, e.g. an example the model added) if that fails.
+      try {
+        plan = JSON.parse(reply.trim());
+      } catch {
+        const match = reply.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("no JSON object in response");
+        plan = JSON.parse(match[0]);
+      }
+    } catch {
+      return NextResponse.json(
+        { error: "Atlas didn't return a complete plan — the response may have been cut off. Try again." },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({ plan });
   }

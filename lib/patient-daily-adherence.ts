@@ -27,13 +27,31 @@ function startOfDay(d: Date): Date {
   return x;
 }
 
-/** What a patient's protocols + standalone prescriptions expect on `date`, and what's already logged. */
-export async function getExpectedToday(patientId: string, date: Date): Promise<DailyAdherence> {
+/**
+ * What a patient's protocols + standalone prescriptions expect on `date`, and what's already logged.
+ * `knownClinicId`: pass it when the caller already has it (e.g. iterating a
+ * clinic's own patient list) to skip the lookup below — saves a redundant
+ * per-patient query in loops like getClinicDailyAdherence's.
+ */
+export async function getExpectedToday(patientId: string, date: Date, knownClinicId?: string): Promise<DailyAdherence> {
   const dayStart = startOfDay(date);
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
+  // Both queries below used to filter by patientId alone. A stray
+  // TreatmentProtocol/ExercisePrescription row belonging to a different
+  // clinic (bad data from elsewhere) would still surface here as something
+  // "expected today" — confirmed live: the Exercises tab (correctly scoped
+  // by clinicId) showed 0 exercises for a patient while this function
+  // showed a pending item from another clinic's leftover prescription.
+  let clinicId = knownClinicId;
+  if (!clinicId) {
+    const patient = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+    if (!patient?.clinicId) return { expected: [], completed: [], allDone: false };
+    clinicId = patient.clinicId;
+  }
+
   const protocols = await (prisma as any).treatmentProtocol.findMany({
-    where: { patientId, status: "SENT_TO_PATIENT" },
+    where: { patientId, clinicId, status: "SENT_TO_PATIENT" },
     select: {
       startDate: true,
       createdAt: true,
@@ -79,6 +97,7 @@ export async function getExpectedToday(patientId: string, date: Date): Promise<D
   const prescriptions = await prisma.exercisePrescription.findMany({
     where: {
       patientId,
+      clinicId,
       isActive: true,
       OR: [
         { protocolId: null, exerciseId: { notIn: [...protocolExerciseIds] as string[] } },

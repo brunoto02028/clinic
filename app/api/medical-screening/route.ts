@@ -11,6 +11,7 @@ import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { relinkBrokenEvidenceReport } from "@/lib/evidence-report";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
     const isPreview = effectiveUser.isImpersonating;
 
     let screening;
+    let targetPatientId = userId;
 
     if (userRole === "PATIENT" || isPreview) {
       screening = await prisma.medicalScreening.findUnique({
@@ -32,17 +34,39 @@ export async function GET(request: NextRequest) {
     } else {
       const patientId = request.nextUrl.searchParams.get("patientId");
       if (patientId) {
-        screening = await prisma.medicalScreening.findUnique({
-          where: { userId: patientId },
-        });
-      } else {
-        screening = await prisma.medicalScreening.findUnique({
-          where: { userId },
-        });
+        // Pre-existing gap: this branch trusted ?patientId= with no check the
+        // caller's clinic actually has this patient — any authenticated staff
+        // session could read any patient's screening (and, since this
+        // activity, their emergency contact) across tenants.
+        const access = await staffPatientAccess(request, patientId);
+        if (access.response) return access.response;
+        targetPatientId = patientId;
+      }
+      screening = await prisma.medicalScreening.findUnique({
+        where: { userId: targetPatientId },
+      });
+    }
+
+    // The intake/profile forms already collect an emergency contact, saved
+    // on User. The triage form used to ask a third time with no memory of
+    // that. Returned as a separate field rather than merged into `screening`
+    // itself — the frontend uses `screening` being non-null as "this patient
+    // already has a submitted triage" (skips draft restore, shows "Update"
+    // instead of "Submit"); folding prefill data in there would make a
+    // brand-new patient look like a returning one just because they'd
+    // already filled in an emergency contact elsewhere.
+    let emergencyContactDefault: { name: string | null; phone: string | null } | null = null;
+    if (!screening?.emergencyContact || !screening?.emergencyContactPhone) {
+      const contact = await prisma.user.findUnique({
+        where: { id: targetPatientId },
+        select: { emergencyContactName: true, emergencyContactPhone: true },
+      });
+      if (contact?.emergencyContactName || contact?.emergencyContactPhone) {
+        emergencyContactDefault = { name: contact.emergencyContactName, phone: contact.emergencyContactPhone };
       }
     }
 
-    return NextResponse.json({ screening });
+    return NextResponse.json({ screening, emergencyContactDefault });
   } catch (error) {
     console.error("Error fetching medical screening:", error);
     return NextResponse.json(

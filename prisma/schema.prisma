@@ -1427,7 +1427,8 @@ model SiteSettings {
   patientPortalJson String? @db.Text // JSON config for patient portal modules
 
   // Consent / Legal Texts
-  consentTextsJson String? @db.Text // JSON config for terms, privacy, liability texts
+  consentTextsJson   String? @db.Text // JSON config for terms, privacy, liability texts
+  consentTextsJsonPt String? @db.Text // Same shape, Portuguese translation
   termsContentHtml String? @db.Text // Full HTML content for /terms page (editable from admin)
 
   // SEO - Basic

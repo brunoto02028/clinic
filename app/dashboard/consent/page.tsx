@@ -38,11 +38,17 @@ export default function ConsentPage() {
   const T = (key: string) => relabel(i18nT(key, locale));
 
   useEffect(() => {
+    // Guards against an earlier request (still in flight when `locale`
+    // changed) landing after a newer one and overwriting it — without this,
+    // a fast locale toggle right after mount could show the English terms
+    // even with Portuguese selected until the next reload.
+    let cancelled = false;
     Promise.all([
       fetch("/api/patient/consent").then((r) => r.json()),
-      fetch("/api/admin/consent-texts").then((r) => r.json()),
+      fetch(`/api/admin/consent-texts?locale=${locale}`).then((r) => r.json()),
     ])
       .then(([consentData, textsData]) => {
+        if (cancelled) return;
         if (consentData.consentAcceptedAt) {
           setAlreadyAccepted(true);
           setAcceptedDate(consentData.consentAcceptedAt);
@@ -50,8 +56,9 @@ export default function ConsentPage() {
         setTexts(textsData);
       })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [locale]);
 
   const handleAccept = async () => {
     setSaving(true);

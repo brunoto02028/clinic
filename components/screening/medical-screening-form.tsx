@@ -291,9 +291,10 @@ export default function AssessmentScreeningForm() {
   };
 
   const fetchExistingScreening = async () => {
+    let data: any;
     try {
       const response = await fetch("/api/medical-screening");
-      const data = await response.json();
+      data = await response.json();
 
       if (data?.screening) {
         const s = data.screening;
@@ -347,8 +348,8 @@ export default function AssessmentScreeningForm() {
           surgicalHistory: s.surgicalHistory ?? "",
           otherConditions: s.otherConditions ?? "",
           gpDetails: s.gpDetails ?? "",
-          emergencyContact: s.emergencyContact ?? "",
-          emergencyContactPhone: s.emergencyContactPhone ?? "",
+          emergencyContact: s.emergencyContact || data.emergencyContactDefault?.name || "",
+          emergencyContactPhone: s.emergencyContactPhone || data.emergencyContactDefault?.phone || "",
           consentGiven: s.consentGiven ?? false,
         });
         setHasExisting(true);
@@ -366,6 +367,15 @@ export default function AssessmentScreeningForm() {
           setFormData(draft);
           setRestoredDraft(true);
           isDirty.current = true;
+        } else if (data?.emergencyContactDefault) {
+          // No screening, no draft — a genuinely first-time fill. Only
+          // source of a pre-fillable emergency contact is what the patient
+          // already gave us at intake/on their profile.
+          setFormData(prev => ({
+            ...prev,
+            emergencyContact: prev.emergencyContact || data.emergencyContactDefault.name || "",
+            emergencyContactPhone: prev.emergencyContactPhone || data.emergencyContactDefault.phone || "",
+          }));
         }
       }
       setLoading(false);
@@ -611,7 +621,7 @@ export default function AssessmentScreeningForm() {
                     <button
                       type="button"
                       onClick={() => handleCheckboxChange(q.key, true)}
-                      className={`px-4 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                      className={`min-h-[44px] px-4 flex items-center justify-center rounded-md text-xs font-medium border transition-colors ${
                         isYes
                           ? "bg-amber-500 text-white border-amber-500"
                           : "border-border text-muted-foreground hover:border-amber-500/50"
@@ -625,7 +635,7 @@ export default function AssessmentScreeningForm() {
                         setFormData(prev => { const next = { ...prev, [q.key]: false, redFlagDetails: { ...prev.redFlagDetails, [q.key]: "" } }; isDirty.current = true; saveDraft(next); return next; });
                         triggerAutoSave();
                       }}
-                      className={`px-4 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                      className={`min-h-[44px] px-4 flex items-center justify-center rounded-md text-xs font-medium border transition-colors ${
                         !isYes && formData[q.key as keyof ScreeningData] !== undefined
                           ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
                           : "border-border text-muted-foreground hover:border-emerald-500/50"
@@ -709,15 +719,29 @@ export default function AssessmentScreeningForm() {
             {/* Pain Score Slider */}
             <div>
               <Label>{isPt ? `Intensidade da dor: ${formData.painScore}/10` : `Pain score: ${formData.painScore}/10`}</Label>
-              <div className="mt-2 space-y-1">
-                <input
-                  type="range"
-                  min={0}
-                  max={10}
-                  value={formData.painScore}
-                  onChange={(e) => { const v = parseInt(e.target.value); setFormData(prev => { const next = { ...prev, painScore: v }; isDirty.current = true; saveDraft(next); return next; }); triggerAutoSave(); }}
-                  className="w-full accent-primary"
-                />
+              <div className="mt-2 space-y-2">
+                {/* Tap targets, not a drag gesture — a thin slider handle is
+                    hard to grab precisely for anyone with reduced fine motor
+                    control. h-11 (44px) is the recommended minimum touch
+                    target, taller than the h-7 used for the same pattern in
+                    daily-checkin-card.tsx (that one's a quick daily check-in,
+                    this is a clinical intake form). */}
+                <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5">
+                  {Array.from({ length: 11 }, (_, v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => { setFormData(prev => { const next = { ...prev, painScore: v }; isDirty.current = true; saveDraft(next); return next; }); triggerAutoSave(); }}
+                      className={`h-11 rounded-md text-sm font-semibold border transition-colors ${
+                        formData.painScore === v
+                          ? v >= 7 ? "bg-red-500 text-white border-red-500" : v >= 4 ? "bg-amber-500 text-white border-amber-500" : "bg-green-500 text-white border-green-500"
+                          : "border-border text-muted-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
                 <div className="flex justify-between text-[10px] text-muted-foreground">
                   <span>{isPt ? "0 - Sem dor" : "0 - No pain"}</span>
                   <span className={`font-semibold ${formData.painScore >= 7 ? "text-red-400" : formData.painScore >= 4 ? "text-amber-400" : "text-green-400"}`}>
@@ -737,7 +761,7 @@ export default function AssessmentScreeningForm() {
                     key={pt}
                     type="button"
                     onClick={() => handleInputChange("painType", formData.painType === pt ? "" : pt)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                    className={`min-h-[44px] px-3 flex items-center justify-center rounded-full text-xs font-medium border transition-colors ${
                       formData.painType === pt
                         ? "bg-primary text-primary-foreground border-primary"
                         : "border-border text-muted-foreground hover:border-primary/50"
@@ -758,7 +782,7 @@ export default function AssessmentScreeningForm() {
                     key={pp}
                     type="button"
                     onClick={() => handleInputChange("painPattern", formData.painPattern === pp ? "" : pp)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                    className={`flex-1 min-h-[44px] flex items-center justify-center rounded-lg text-xs font-medium border transition-colors ${
                       formData.painPattern === pp
                         ? "bg-primary text-primary-foreground border-primary"
                         : "border-border text-muted-foreground hover:border-primary/50"
@@ -870,7 +894,7 @@ export default function AssessmentScreeningForm() {
                   ].map((opt) => (
                     <button key={opt.v} type="button"
                       onClick={() => handleInputChange("dominantSide", opt.v)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${formData.dominantSide === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                      className={`flex-1 min-h-[44px] flex items-center justify-center rounded-lg text-xs font-medium border transition-colors ${formData.dominantSide === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                       {opt.l}
                     </button>
                   ))}
@@ -886,7 +910,7 @@ export default function AssessmentScreeningForm() {
                   ].map((opt) => (
                     <button key={opt.v} type="button"
                       onClick={() => handleInputChange("dominantFootSide", opt.v)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${formData.dominantFootSide === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                      className={`flex-1 min-h-[44px] flex items-center justify-center rounded-lg text-xs font-medium border transition-colors ${formData.dominantFootSide === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                       {opt.l}
                     </button>
                   ))}
@@ -900,7 +924,7 @@ export default function AssessmentScreeningForm() {
                 {ACTIVITY_LEVELS.map((level) => (
                   <button key={level} type="button"
                     onClick={() => handleInputChange("activityLevel", level)}
-                    className={`py-2 px-2 rounded-lg text-xs font-medium border transition-colors text-center ${formData.activityLevel === level ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                    className={`min-h-[44px] px-2 flex items-center justify-center rounded-lg text-xs font-medium border transition-colors text-center ${formData.activityLevel === level ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                     {level}
                   </button>
                 ))}
@@ -965,7 +989,7 @@ export default function AssessmentScreeningForm() {
                 {ALCOHOL_OPTIONS.map((opt) => (
                   <button key={opt} type="button"
                     onClick={() => handleInputChange("alcoholUse", opt)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${formData.alcoholUse === opt ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+                    className={`flex-1 min-h-[44px] flex items-center justify-center rounded-lg text-xs font-medium border transition-colors ${formData.alcoholUse === opt ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50"}`}>
                     {opt}
                   </button>
                 ))}

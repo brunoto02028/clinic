@@ -28,7 +28,7 @@ export async function getClinicDailyAdherence(clinicId: string, date: Date): Pro
 
   await Promise.all(
     patients.map(async (patient) => {
-      const adherence = await getExpectedToday(patient.id, date);
+      const adherence = await getExpectedToday(patient.id, date, clinicId);
       if (adherence.expected.length === 0) return; // nothing scheduled today — out of the report
       const summary: PatientSummary = {
         patientId: patient.id,

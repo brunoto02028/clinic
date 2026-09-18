@@ -8,6 +8,7 @@ import { isDbUnreachableError, MOCK_SOAP_NOTES, devFallbackResponse } from "@/li
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { assertModuleAccess } from "@/lib/module-access";
 import { accessErrorResponse } from "@/lib/tenant-access";
+import { logAudit } from "@/lib/system-logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -178,6 +179,18 @@ export async function POST(request: NextRequest) {
         data: { status: "COMPLETED" },
       });
     }
+
+    // logAudit swallows its own failures (see lib/system-logger.ts) — never
+    // a reason to fail the note itself, no extra try/catch needed here.
+    await logAudit({
+      userId: patientId,
+      userEmail: "",
+      userRole: "PATIENT",
+      action: "SOAP_NOTE_CREATED",
+      entity: "SOAPNote",
+      entityId: soapNote.id,
+      description: `SOAP note added by ${soapNote.therapist.firstName} ${soapNote.therapist.lastName}`,
+    });
 
     return NextResponse.json({
       success: true,

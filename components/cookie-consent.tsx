@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Shield, Settings, X, Check, Cookie } from "lucide-react";
+import { useLocale } from "@/hooks/use-locale";
 
 // ─── Consent types ───
 export interface CookieConsent {
@@ -50,6 +51,7 @@ function saveConsent(consent: CookieConsent) {
 
 // ─── Component ───
 export function CookieConsentBanner() {
+  const { t } = useLocale();
   const [visible, setVisible] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
@@ -118,17 +120,17 @@ export function CookieConsentBanner() {
                   <Cookie className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground text-sm sm:text-base">We value your privacy</h3>
+                  <h3 className="font-semibold text-foreground text-sm sm:text-base">{t("cookies.title")}</h3>
                   {/* Kept short on purpose: on a phone this sits over the
                       bottom of the page, and every extra line hides more of
                       whatever the visitor came for. */}
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
-                    We use cookies to improve your experience and analyse traffic.{" "}
+                    {t("cookies.body")}{" "}
                     {/* prefetch off: this banner shows on the first visit, so
                         prefetching two policy pages competes with the hero
                         image for bandwidth at the worst possible moment. */}
-                    <Link href="/privacy" prefetch={false} className="text-primary hover:underline">Privacy</Link> ·{" "}
-                    <Link href="/cookies" prefetch={false} className="text-primary hover:underline">Cookies</Link>
+                    <Link href="/privacy" prefetch={false} className="text-primary hover:underline">{t("cookies.privacy")}</Link> ·{" "}
+                    <Link href="/cookies" prefetch={false} className="text-primary hover:underline">{t("cookies.cookiesLink")}</Link>
                   </p>
                 </div>
               </div>
@@ -136,23 +138,23 @@ export function CookieConsentBanner() {
               <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
                 <button
                   onClick={() => setShowPreferences(true)}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  className="min-h-[44px] text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                 >
                   <Settings className="h-3.5 w-3.5" />
-                  Manage preferences
+                  {t("cookies.managePreferences")}
                 </button>
                 <div className="flex gap-2">
                   <button
                     onClick={rejectNonEssential}
-                    className="px-4 py-2 text-xs sm:text-sm font-medium rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-foreground"
+                    className="min-h-[44px] px-4 py-2 flex items-center justify-center text-xs sm:text-sm font-medium rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-foreground"
                   >
-                    Reject non-essential
+                    {t("cookies.rejectNonEssential")}
                   </button>
                   <button
                     onClick={acceptAll}
-                    className="px-4 py-2 text-xs sm:text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="min-h-[44px] px-4 py-2 flex items-center justify-center text-xs sm:text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
-                    Accept all
+                    {t("cookies.acceptAll")}
                   </button>
                 </div>
               </div>
@@ -163,7 +165,7 @@ export function CookieConsentBanner() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground text-sm sm:text-base flex items-center gap-2">
                   <Shield className="h-4 w-4 text-primary" />
-                  Cookie Preferences
+                  {t("cookies.preferencesTitle")}
                 </h3>
                 <button
                   onClick={() => setShowPreferences(false)}
@@ -177,24 +179,23 @@ export function CookieConsentBanner() {
                 {/* Necessary — always on */}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
                   <div className="pr-4">
-                    <p className="text-sm font-medium text-foreground">Strictly necessary</p>
+                    <p className="text-sm font-medium text-foreground">{t("cookies.necessaryTitle")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Essential for the website to function. Includes authentication, security tokens, and session management.
+                      {t("cookies.necessaryDesc")}
                     </p>
                   </div>
                   <div className="shrink-0 flex items-center gap-1 text-xs text-emerald-400">
                     <Check className="h-3.5 w-3.5" />
-                    Always on
+                    {t("cookies.alwaysOn")}
                   </div>
                 </div>
 
                 {/* Analytics */}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
                   <div className="pr-4">
-                    <p className="text-sm font-medium text-foreground">Analytics</p>
+                    <p className="text-sm font-medium text-foreground">{t("cookies.analyticsTitle")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Help us understand how visitors interact with our website. This includes page views, 
-                      click tracking, scroll depth, and browser fingerprinting. Data is anonymised and never sold.
+                      {t("cookies.analyticsDesc")}
                     </p>
                   </div>
                   <button
@@ -214,9 +215,9 @@ export function CookieConsentBanner() {
                 {/* Marketing */}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
                   <div className="pr-4">
-                    <p className="text-sm font-medium text-foreground">Marketing</p>
+                    <p className="text-sm font-medium text-foreground">{t("cookies.marketingTitle")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Used to deliver relevant advertisements and track their effectiveness. Currently not in use.
+                      {t("cookies.marketingDesc")}
                     </p>
                   </div>
                   <button
@@ -236,21 +237,21 @@ export function CookieConsentBanner() {
 
               <div className="flex justify-between items-center">
                 <p className="text-[10px] text-muted-foreground">
-                  Learn more in our{" "}
-                  <Link href="/cookies" className="text-primary hover:underline">Cookie Policy</Link>
+                  {t("cookies.learnMore")}{" "}
+                  <Link href="/cookies" className="text-primary hover:underline">{t("cookies.cookiePolicy")}</Link>
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={rejectNonEssential}
-                    className="px-4 py-2 text-xs font-medium rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-foreground"
+                    className="min-h-[44px] px-4 py-2 flex items-center justify-center text-xs font-medium rounded-lg border border-white/10 hover:bg-white/5 transition-colors text-foreground"
                   >
-                    Reject all
+                    {t("cookies.rejectAll")}
                   </button>
                   <button
                     onClick={savePreferences}
-                    className="px-4 py-2 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="min-h-[44px] px-4 py-2 flex items-center justify-center text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
-                    Save preferences
+                    {t("cookies.savePreferences")}
                   </button>
                 </div>
               </div>
@@ -264,6 +265,7 @@ export function CookieConsentBanner() {
 
 // ─── Small button to re-open cookie preferences ───
 export function CookiePreferencesButton() {
+  const { t } = useLocale();
   const [hasConsent, setHasConsent] = useState(false);
 
   useEffect(() => {
@@ -284,10 +286,10 @@ export function CookiePreferencesButton() {
     <button
       onClick={reopenBanner}
       className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-      title="Manage cookie preferences"
+      title={t("cookies.settingsTooltip")}
     >
       <Cookie className="h-3 w-3" />
-      Cookie Settings
+      {t("cookies.settingsButton")}
     </button>
   );
 }

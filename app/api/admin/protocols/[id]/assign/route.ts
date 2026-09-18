@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { notifyPatient } from "@/lib/notify-patient";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { templateInTenant, mapExercisesToClinic, TEMPLATE_NOT_FOUND } from "@/lib/protocol-template-access";
+import { logAudit } from "@/lib/system-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -180,6 +181,19 @@ export async function POST(
     },
     { timeout: 30000 }
   );
+
+  // logAudit swallows its own failures (see lib/system-logger.ts) — never a
+  // reason to fail the assignment itself, no extra try/catch needed here.
+  const assignedBy = await prisma.user.findUnique({ where: { id: actor.userId }, select: { firstName: true, lastName: true } });
+  await logAudit({
+    userId: patientId,
+    userEmail: "",
+    userRole: "PATIENT",
+    action: "PROTOCOL_ASSIGNED",
+    entity: "TreatmentProtocol",
+    entityId: protocol.id,
+    description: `Protocol "${title}" assigned by ${assignedBy ? `${assignedBy.firstName} ${assignedBy.lastName}` : actor.userId}`,
+  });
 
   // Notify patient
   const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";

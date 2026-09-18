@@ -1283,6 +1283,29 @@ const translations: Record<string, Record<Locale, string>> = {
   "finance.apiDocs": { "en-GB": "API Documentation", "pt-BR": "Documentação da API" },
   "finance.readOnly": { "en-GB": "Read Only", "pt-BR": "Somente Leitura" },
   "finance.readWrite": { "en-GB": "Read & Write", "pt-BR": "Leitura e Escrita" },
+
+  // ─── Cookie consent banner ───
+  "cookies.title": { "en-GB": "We value your privacy", "pt-BR": "Valorizamos a sua privacidade" },
+  "cookies.body": { "en-GB": "We use cookies to improve your experience and analyse traffic.", "pt-BR": "Usamos cookies para melhorar a sua experiência e analisar o tráfego." },
+  "cookies.privacy": { "en-GB": "Privacy", "pt-BR": "Privacidade" },
+  "cookies.cookiesLink": { "en-GB": "Cookies", "pt-BR": "Cookies" },
+  "cookies.managePreferences": { "en-GB": "Manage preferences", "pt-BR": "Gerir preferências" },
+  "cookies.rejectNonEssential": { "en-GB": "Reject non-essential", "pt-BR": "Rejeitar não essenciais" },
+  "cookies.acceptAll": { "en-GB": "Accept all", "pt-BR": "Aceitar tudo" },
+  "cookies.preferencesTitle": { "en-GB": "Cookie Preferences", "pt-BR": "Preferências de Cookies" },
+  "cookies.necessaryTitle": { "en-GB": "Strictly necessary", "pt-BR": "Estritamente necessários" },
+  "cookies.necessaryDesc": { "en-GB": "Essential for the website to function. Includes authentication, security tokens, and session management.", "pt-BR": "Essenciais para o funcionamento do site. Incluem autenticação, tokens de segurança e gestão de sessão." },
+  "cookies.alwaysOn": { "en-GB": "Always on", "pt-BR": "Sempre ativo" },
+  "cookies.analyticsTitle": { "en-GB": "Analytics", "pt-BR": "Análise" },
+  "cookies.analyticsDesc": { "en-GB": "Help us understand how visitors interact with our website. This includes page views, click tracking, scroll depth, and browser fingerprinting. Data is anonymised and never sold.", "pt-BR": "Ajudam-nos a entender como os visitantes interagem com o nosso site. Inclui visualizações de página, rastreamento de cliques, profundidade de rolagem e identificação do navegador. Os dados são anonimizados e nunca vendidos." },
+  "cookies.marketingTitle": { "en-GB": "Marketing", "pt-BR": "Marketing" },
+  "cookies.marketingDesc": { "en-GB": "Used to deliver relevant advertisements and track their effectiveness. Currently not in use.", "pt-BR": "Usados para entregar anúncios relevantes e acompanhar a sua eficácia. Atualmente não estão em uso." },
+  "cookies.learnMore": { "en-GB": "Learn more in our", "pt-BR": "Saiba mais na nossa" },
+  "cookies.cookiePolicy": { "en-GB": "Cookie Policy", "pt-BR": "Política de Cookies" },
+  "cookies.rejectAll": { "en-GB": "Reject all", "pt-BR": "Rejeitar tudo" },
+  "cookies.savePreferences": { "en-GB": "Save preferences", "pt-BR": "Guardar preferências" },
+  "cookies.settingsButton": { "en-GB": "Cookie Settings", "pt-BR": "Definições de Cookies" },
+  "cookies.settingsTooltip": { "en-GB": "Manage cookie preferences", "pt-BR": "Gerir preferências de cookies" },
 };
 
 // Default locale

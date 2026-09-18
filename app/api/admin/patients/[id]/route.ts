@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { pickEditable } from "@/lib/tenant-field-guard";
 import { relinkBrokenEvidenceReport } from "@/lib/evidence-report";
+import { logAudit } from "@/lib/system-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -149,6 +150,17 @@ export async function PATCH(
         include: {
           therapist: { select: { firstName: true, lastName: true } },
         },
+      });
+      // logAudit swallows its own failures (see lib/system-logger.ts) —
+      // never a reason to fail the note itself, no extra try/catch needed here.
+      await logAudit({
+        userId: patientId,
+        userEmail: "",
+        userRole: "PATIENT",
+        action: "SOAP_NOTE_CREATED",
+        entity: "SOAPNote",
+        entityId: note.id,
+        description: `SOAP note added by ${note.therapist.firstName} ${note.therapist.lastName}`,
       });
       return NextResponse.json({ success: true, note });
     }

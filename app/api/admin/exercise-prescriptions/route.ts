@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { resolveClinicId } from "@/lib/exercise-folders";
 import { notifyPatient } from "@/lib/notify-patient";
+import { logAudit } from "@/lib/system-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -216,6 +217,21 @@ export async function POST(req: NextRequest) {
         })
       )
     );
+
+    // One audit entry per call, same reasoning as the notification below: a
+    // folder of twenty exercises should read as one event on the patient's
+    // timeline, not twenty. logAudit swallows its own failures (see
+    // lib/system-logger.ts) — no extra try/catch needed here.
+    const prescribedBy = await prisma.user.findUnique({ where: { id: therapistId }, select: { firstName: true, lastName: true } });
+    await logAudit({
+      userId: patientId,
+      userEmail: "",
+      userRole: "PATIENT",
+      action: "EXERCISE_PRESCRIBED",
+      entity: "ExercisePrescription",
+      entityId: created[0].id,
+      description: `${created.length} exercise${created.length === 1 ? "" : "s"} prescribed${folderName ? ` (${folderName})` : ""} by ${prescribedBy ? `${prescribedBy.firstName} ${prescribedBy.lastName}` : therapistId}`,
+    });
 
     // Tell the patient the work arrived. Once per call, never once per
     // exercise: prescribing a folder of twenty would otherwise land as twenty
