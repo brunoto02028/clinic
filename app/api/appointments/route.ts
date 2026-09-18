@@ -13,6 +13,7 @@ import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant-access";
 import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
+import { patientBookingPrice } from "@/lib/service-price";
 
 export async function GET(request: NextRequest) {
   try {
@@ -177,6 +178,15 @@ export async function POST(request: NextRequest) {
     }
     const selectedTherapistId = therapist.id;
 
+    // A patient never sets their own price — it's the tenant's consultation
+    // price, the same figure the booking form shows (activity 52, T-4). Staff
+    // booking on a patient's behalf may still set one.
+    const staffPriceNum = price === undefined || price === null || price === "" ? NaN : Number(price);
+    const staffPrice = Number.isFinite(staffPriceNum) && staffPriceNum >= 0 ? staffPriceNum : null;
+    const resolvedPrice = !isPatient && staffPrice !== null
+      ? staffPrice
+      : await patientBookingPrice(actor.clinicId);
+
     const appointment = await prisma.appointment.create({
       data: {
         clinicId: actor.clinicId,
@@ -186,7 +196,7 @@ export async function POST(request: NextRequest) {
         duration: duration || 60,
         treatmentType,
         notes: notes || null,
-        price: price || 60,
+        price: resolvedPrice,
         paymentMethod: resolvedPaymentMethod,
         status: resolvedPaymentMethod === "IN_PERSON" ? "CONFIRMED" : "PENDING",
       },

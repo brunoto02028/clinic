@@ -66,6 +66,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Patient and date/time are required" }, { status: 400 });
     }
 
+    // The patient must belong to the tenant booking them — otherwise staff of
+    // one tenant could book (and e-mail) another tenant's patient (activity 52, T-4).
+    const patient = await prisma.user.findFirst({
+      where: { id: patientId, role: "PATIENT", clinicId },
+      select: { id: true },
+    });
+    if (!patient) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
         clinicId,

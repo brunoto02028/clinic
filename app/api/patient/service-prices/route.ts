@@ -1,33 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
-import { prisma } from "@/lib/db";
-import { getEffectiveUser } from '@/lib/get-effective-user';
+import { getActor } from "@/lib/tenant-access";
+import { servicePricesForClinic } from "@/lib/service-price";
 
 export const dynamic = "force-dynamic";
 
-// GET — patient can see active service prices
-export async function GET() {
+// GET — the active service prices of the caller's own tenant (activity 52,
+// T-4). This used to list every tenant's prices, so the booking form could
+// show — and charge — another tenant's consultation fee.
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const actor = await getActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const prices = await (prisma as any).servicePrice.findMany({
-      where: { isActive: true },
-      orderBy: { serviceType: "asc" },
-      select: {
-        id: true,
-        serviceType: true,
-        name: true,
-        description: true,
-        price: true,
-        currency: true,
-      },
-    });
-
-    return NextResponse.json(prices);
+    return NextResponse.json(await servicePricesForClinic(actor.clinicId));
   } catch (error: any) {
     console.error("[patient/service-prices GET]", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

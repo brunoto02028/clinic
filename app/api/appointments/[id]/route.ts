@@ -1,31 +1,57 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
-import { getAppName, getSenderEmail } from "@/lib/utils";
-import { sendEmail } from "@/lib/email";
-import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
-import { getRequestSession } from "@/lib/dual-auth";
 import { notifyWaitlistForCancelledAppointment } from "@/lib/waitlist";
 import { escapeHtml } from "@/lib/admin-notify-email";
+import {
+  getActor,
+  getSessionStaffActor,
+  assertRecordAccess,
+  accessErrorResponse,
+  AccessError,
+  type Actor,
+} from "@/lib/tenant-access";
+
+// Staff keep their real identity even with "View as Patient" active — the
+// middleware swaps the headers to the patient's on every non-/api/admin
+// route, and an admin editing the calendar in another tab must not be treated
+// as that patient. Everyone else (patient on web or app) via getActor.
+async function resolveActor(request: NextRequest): Promise<Actor | null> {
+  return (await getSessionStaffActor(request)) ?? (await getActor(request));
+}
+
+// Loads the appointment's owner/tenant and checks the actor may touch it: the
+// patient it belongs to, or staff of its tenant (activity 52, T-4). Anything
+// else is a 404, so another tenant's appointment ids don't reveal they exist.
+async function assertAppointmentAccess(actor: Actor, id: string) {
+  const appt = await prisma.appointment.findUnique({
+    where: { id },
+    select: { id: true, clinicId: true, patientId: true, status: true },
+  });
+  // Same message as an unreachable one, so the response doesn't reveal the id exists.
+  if (!appt) throw new AccessError(404, "Not found");
+  assertRecordAccess(actor, appt);
+  return appt;
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getRequestSession(request);
-
-    if (!session?.user) {
+    const actor = await resolveActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
     const { id } = params;
-    const userId = (session.user as any).id;
-    const userRole = (session.user as any).role;
+    try {
+      await assertAppointmentAccess(actor, id);
+    } catch (err) {
+      return accessErrorResponse(err);
+    }
 
     const appointment = await prisma.appointment.findUnique({
       where: { id },
@@ -59,17 +85,6 @@ export async function GET(
       );
     }
 
-    // Check access
-    if (
-      userRole === "PATIENT" &&
-      appointment.patientId !== userId
-    ) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
-    }
-
     return NextResponse.json({ appointment });
   } catch (error) {
     console.error("Error fetching appointment:", error);
@@ -85,23 +100,41 @@ async function handleUpdate(
   params: { id: string }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
+    const actor = await resolveActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
     const { id } = params;
-    const body = await request.json();
-    const userRole = (session.user as any).role;
+    const body = await request.json().catch(() => undefined);
+    if (body === undefined) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const userRole = actor.role;
 
-    // Only therapists and admins can update appointments
+    let current: { status: string };
+    try {
+      current = await assertAppointmentAccess(actor, id);
+    } catch (err) {
+      return accessErrorResponse(err);
+    }
+
+    // A patient may only cancel their own upcoming appointment — never change
+    // its price, time or anything else (a patient set their own session to
+    // £0.30), nor "cancel" one already completed. Rescheduling goes through
+    // /reschedule, which applies the fee rules.
     if (userRole === "PATIENT") {
-      // Patients can only cancel their appointments
-      if (body?.status && body.status !== "CANCELLED") {
+      const keys = Object.keys(body ?? {});
+      if (body?.status !== "CANCELLED" || keys.some((k) => k !== "status")) {
         return NextResponse.json(
           { error: "Patients can only cancel appointments" },
           { status: 403 }
+        );
+      }
+      if (!["PENDING", "PENDING_PATIENT", "CONFIRMED"].includes(current.status)) {
+        return NextResponse.json(
+          { error: "Only upcoming appointments can be cancelled" },
+          { status: 409 }
         );
       }
     }
@@ -275,21 +308,25 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
+    const actor = await resolveActor(request);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
     }
 
     const { id } = params;
-    const userRole = (session.user as any).role;
 
     // Only therapists and admins can delete appointments
-    if (userRole === "PATIENT") {
+    if (actor.role === "PATIENT") {
       return NextResponse.json(
         { error: "Patients cannot delete appointments" },
         { status: 403 }
       );
+    }
+
+    try {
+      await assertAppointmentAccess(actor, id);
+    } catch (err) {
+      return accessErrorResponse(err);
     }
 
     await prisma.appointment.delete({

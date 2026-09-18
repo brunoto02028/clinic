@@ -1,6 +1,6 @@
 # T-3: Marca do estúdio editável pelo próprio personal
 
-**Status:** pendente
+**Status:** em andamento
 **Depende de:** nenhuma (vai para prod junto com a T-2)
 
 ## Objetivo
@@ -21,6 +21,15 @@ O personal (ADMIN do tenant) edita **a marca do próprio estúdio**: nome, logo 
 3. Tela: aba "Studio" / "Estúdio" em Settings, visível para o tenant personal (e para ADMIN de clínica, que também é dono da própria marca). Pré-visualização simples: login do estúdio com logo e cor.
 4. Getting-started: "Personalise your studio" aponta para a aba nova e fica marcado como feito quando `logoUrl` ou uma cor diferente do default estiver salva.
 5. A sessão reflete a mudança sem novo login (refresh da sessão ou leitura do `Clinic` nas telas branded). Conferir o que as telas usam hoje.
+
+## Decisões tomadas na implementação
+- **Rota:** `/admin/studio-branding`, que vira a aba "Branding / Marca" do menu Settings. Para o personal ela é a primeira aba de Settings (General, Studios, AI, Security e Logs ficam só para SUPERADMIN, T-2).
+- **Logo:** sobe pelo `/api/upload` existente (só staff, só imagem, 10 MB, convertido para WebP) e é servido em `/api/image-serve/<id>`. O filtro de logo da sessão (`sessionLogoUrl` em `lib/auth-credentials.ts`) passa a aceitar esse caminho interno além de `https://`. Antes, só URL absoluta era aceita e o logo enviado seria descartado.
+- **Sessão:** depois de salvar, a tela chama `useSession().update()`, e o callback `jwt` (trigger `update`) relê nome/logo/cor do `Clinic`. O personal vê a marca nova na hora. **Alunos já logados** veem no próximo login.
+- **Admin do personal:** a barra lateral mostra o logo do estúdio quando existe, em vez do logo da BPR.
+- **Painel `/admin`:** o atalho "Site Settings" vira "Marca do estúdio" para o personal, e "View Website" (site da BPR) some.
+- **Getting started / Studio guide:** apontam para a tela nova. O passo "Personalise" fica feito quando há logo ou cor diferente do default `#4F7361`.
+- **Papel:** só ADMIN e SUPERADMIN editam (THERAPIST → 403 na API e redirect na página).
 
 ## Arquivos afetados
 - `app/api/admin/studio-branding/route.ts` (novo)

@@ -1,6 +1,6 @@
 # T-4: Agendamentos — tenant + dono no `[id]`, preço no servidor
 
-**Status:** em andamento
+**Status:** concluído (QA aprovado `qa/report-t-4.md` + code review aplicado)
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -22,14 +22,14 @@ Outros pontos:
 ## Passos
 1. `GET /api/appointments/[id]`:
    - PATIENT só lê a própria sessão (como hoje);
-   - staff só lê sessões do próprio `clinicId` (`getActor`);
-   - SUPERADMIN lê tudo;
-   - staff de tenant personal não recebe `soapNote`.
+   - staff só lê sessões do próprio `clinicId` (`getActor` + `assertRecordAccess`);
+   - SUPERADMIN segue o padrão do projeto (`lib/tenant-access.ts`): age na clínica ativa (selecionada), não na plataforma inteira;
+   - (o item "staff personal sem `soapNote`" ficou sem objeto: o staff personal só alcança sessões do próprio tenant, que não tem módulo SOAP).
 2. `PATCH`/`PUT`:
    - PATIENT: só na própria sessão, e só `status: "CANCELLED"`. Qualquer outro campo → 400/403 (não é ignorado em silêncio);
    - staff: só sessões do próprio tenant.
 3. `DELETE`: staff do mesmo tenant (ou SUPERADMIN).
-4. `POST /api/appointments` (aluno/paciente agendando):
+4. `POST /api/appointments` (aluno/paciente agendando) — preço via `lib/service-price.ts` (`patientBookingPrice`), e `GET /api/patient/service-prices` passa a devolver só os preços do tenant do chamador (antes listava os de todos os tenants, então o formulário podia mostrar o preço de outro tenant):
    - ignorar `price` do corpo;
    - resolver o preço no servidor pela mesma fonte que a tela de agendamento mostra (preço do serviço/tipo da clínica do paciente);
    - documentar a fonte no código.
@@ -42,10 +42,10 @@ Outros pontos:
 - possivelmente `components/.../booking-form.tsx` (parar de mandar `price`, opcional)
 
 ## Critérios de aceite
-- [ ] Aluno: `PATCH {"price":0.3}` na própria sessão → recusado; preço no banco inalterado.
-- [ ] Aluno: `PATCH {"status":"CANCELLED"}` na própria sessão → 200 (regressão do cancelamento).
-- [ ] Aluno: `PATCH`/`GET` na sessão de outro aluno do mesmo tenant → 403/404.
-- [ ] Personal (tenant B): `GET`/`PATCH`/`DELETE` numa sessão do tenant A → 404; nenhum dado do A na resposta.
-- [ ] Aluno agenda com `price: 0.3` no corpo → sessão criada com o preço do servidor.
-- [ ] Personal: `POST /api/admin/appointments` com `patientId` do tenant A → 404; nenhum e-mail disparado.
-- [ ] Clínica BPR: criar, remarcar e cancelar sessão pelo admin e pelo paciente continuam funcionando (regressão).
+- [x] Aluno: `PATCH {"price":0.3}` na própria sessão → recusado; preço no banco inalterado.
+- [x] Aluno: `PATCH {"status":"CANCELLED"}` na própria sessão → 200 (regressão do cancelamento).
+- [x] Aluno: `PATCH`/`GET` na sessão de outro aluno do mesmo tenant → 403/404.
+- [x] Personal (tenant B): `GET`/`PATCH`/`DELETE` numa sessão do tenant A → 404; nenhum dado do A na resposta.
+- [x] Aluno agenda com `price: 0.3` no corpo → sessão criada com o preço do servidor.
+- [x] Personal: `POST /api/admin/appointments` com `patientId` do tenant A → 404; nenhum e-mail disparado.
+- [x] Clínica BPR: criar, remarcar e cancelar sessão pelo admin e pelo paciente continuam funcionando (regressão).

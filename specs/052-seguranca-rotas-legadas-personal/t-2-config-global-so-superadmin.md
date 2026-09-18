@@ -1,6 +1,6 @@
 # T-2: Configuração global da BPR só para SUPERADMIN
 
-**Status:** pendente
+**Status:** em andamento
 **Depende de:** nenhuma (vai para prod junto com a T-3)
 
 ## Objetivo
@@ -31,6 +31,13 @@ Menu: `lib/admin-sections.ts` → Settings mostra General, Users, Studios, AI, S
 4. Artigos: escrita → SUPERADMIN. `notifySubscribers` → SUPERADMIN.
 5. Menu (`lib/admin-sections.ts`): tabs `general`, `clinics`, `ai`, `security`, `logs` de Settings marcadas como só SUPERADMIN (novo flag, ex.: `superadminOnly`). O filtro de seções respeita o flag. Para o personal, Settings mostra Users e a aba de marca do estúdio (T-3).
 6. As páginas dessas abas redirecionam o não-SUPERADMIN para `/admin` (defesa por URL, não só menu).
+
+## Decisões tomadas na implementação
+- **Helper:** `getSuperadminActor(request)` em `lib/tenant-access.ts`. Relê o papel do banco e ignora impersonação.
+- **Pricing & Plans Hub** (`service-prices`, `service-packages` (+`/ai`), `patient-packages`, `service-access`): **inteiro só SUPERADMIN**. São os preços globais da BPR e pacotes criados na conta Stripe da BPR. Preço por clínica/estúdio fica para depois (o personal cobra pelo Connect, ativ. 28). A página `/admin/service-pricing` e a aba Finance → Pricing seguem a mesma regra.
+- **Config do portal do aluno** (`/admin/patient-portal`, aba Students → Portal): é uma linha só para todos os tenants, então passa a ser só SUPERADMIN. Um personal configurar os módulos dos **próprios** alunos exige config por tenant, o que fica para a atividade 055.
+- **Bloqueio por URL:** lista em `lib/superadmin-routes.ts` (Edge-safe), aplicada no `middleware.ts` para ADMIN/THERAPIST.
+- **Menu:** flag `superadminOnly` em `AdminTab`, respeitado por `visibleAdminSections(isPersonal, isSuperadmin)` e por `SectionTabs` (recebe `role` do layout).
 
 ## Arquivos afetados
 - `app/api/settings/route.ts`, `app/api/admin/consent-texts/route.ts`, `app/api/patient-portal-config/route.ts`, `app/api/admin/stripe-branding/route.ts`

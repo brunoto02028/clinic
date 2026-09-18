@@ -37,18 +37,18 @@
 | 2.3 | API | `qa.fisioa` (THERAPIST de clínica): PUT `/api/settings` | 403 |
 | 2.4 | API | `qa.superadmin`: PUT `/api/settings` com o mesmo corpo | 200 (regressão) |
 | 2.5 | API | anônimo: GET `/api/settings`; aluno: termos | 200 (leitura pública preservada) |
-| 2.6 | UI | `qa.trainer`: menu Settings | sem General/Studios/AI/Security/Logs; com Users e Estúdio |
-| 2.7 | UI | `qa.trainer`: abre por URL `/admin/settings`, `/admin/clinics`, `/admin/ai-settings`, `/admin/security`, `/admin/system-logs` | redireciona para `/admin` |
+| 2.6 | UI | `qa.trainer`: menu Settings; menu Students; menu Finance | Settings: sem General/Studios/AI/Security/Logs, com Branding e Users; Students: sem Portal; Finance: sem Pricing |
+| 2.7 | UI | `qa.trainer`: abre por URL `/admin/settings`, `/admin/clinics`, `/admin/ai-settings`, `/admin/security`, `/admin/system-logs`, `/admin/patient-portal`, `/admin/service-pricing` | redireciona para `/admin` |
 | 2.8 | UI | `qa.superadmin`: Settings | todas as abas; salvar o site funciona |
-| 2.9 | API | `qa.trainer`: GET service-packages / patient-packages | só itens do tenant B (ou vazio) |
+| 2.9 | API | `qa.trainer`: GET service-prices, service-packages, patient-packages, service-access | 403 (hub de preços da BPR é só SUPERADMIN); `qa.superadmin` → 200 |
 
 ## T-3 — Marca do estúdio
 
 | # | Tipo | Passos | Esperado |
 |---|---|---|---|
-| 3.1 | UI | `qa.trainer`: Settings → Estúdio → troca nome, sobe logo, cor `#1E6091` → salva | sucesso; pré-visualização atualiza |
+| 3.1 | UI | `qa.trainer`: Settings → Branding → troca nome, sobe logo, cor `#1E6091` → salva | sucesso; pré-visualização atualiza; logo e nome novos no admin sem relogar |
 | 3.2 | UI | anônimo: `/studio/qa-studio-pt` e `/join/qa-studio-pt` | nome, logo e cor novos |
-| 3.3 | UI | `qa.aluno`: portal | marca nova no menu/cabeçalho |
+| 3.3 | UI | `qa.aluno` faz login **depois** da mudança | marca nova (logo/cor) no menu do portal |
 | 3.4 | API | `qa.trainer`: PATCH `/api/admin/studio-branding` com `{"slug":"x","type":"CLINIC","clinicId":"<A>","primaryColor":"#000000"}` | só a cor muda; slug/type/tenant inalterados |
 | 3.5 | API | `primaryColor: "vermelho"` | 400 com mensagem |
 | 3.6 | API | `qa.aluno`: PATCH | 403 |
