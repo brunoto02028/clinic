@@ -29,6 +29,7 @@ Resultado: "Manu Training" aparece com "Clinic", "Clinical Notes", "Patients" e 
 | T-1 | Sessão do superadmin reflete o tenant selecionado (campos de exibição) | concluído |
 | T-2 | Faixa "vendo o estúdio X · Voltar para a BPR" no admin | concluído |
 | T-3 | Regressão: contexto BPR igual a hoje; contexto estúdio = visão do personal; "View as Student" dentro do estúdio | concluído |
+| T-4 | Atalhos rápidos do personal quando o superadmin está vendo um estúdio (pedido do Bruno após o QA, O-2) | concluído |
 
 ## Fora de escopo
 - Migrar rotas legadas que usam `session.user.clinicId` para o `getActor` (alerta antigo; ver memória "vazamento-lista-pacientes-clinicid").
@@ -45,3 +46,16 @@ Resultado: "Manu Training" aparece com "Clinic", "Clinical Notes", "Patients" e 
 
 ## Alertas (fora do escopo, não mexido)
 - **`x-clinic-id` aceita tenant inativo:** as rotas legadas que leem esse cabeçalho (`getClinicContext`, ex.: `/api/admin/stats`) aceitam o cookie `selected-clinic-id` sem checar `isActive`, e o `getActor` checa. Com um tenant inativo selecionado, essas rotas mostram os dados dele. Caso raro (superadmin selecionando tenant desativado).
+
+## T-4 — Atalhos do personal na visão de estúdio (18/09)
+Pedido do Bruno depois do QA (O-2). Em `app/admin/page.tsx`, os atalhos da plataforma ("New Article", "Site Settings", "View Website") só aparecem para o superadmin **fora** de um estúdio (`platformActions = SUPERADMIN && !isPersonal`).
+
+**Verificado localmente no Playwright, nas 4 visões:**
+| Visão | Atalhos |
+|---|---|
+| superadmin, plataforma | Manage Patients, Clinical Notes, New Article, Site Settings, Users & Staff, Appointments, View Website (igual a antes) |
+| superadmin, estúdio | **idênticos aos do `qa.trainer`**: Personalise your studio, Invite your first student, Build a workout, Record an assessment, Track progress, Manage Students, Studio branding, Users & Staff, Sessions |
+| `qa.trainer` | os mesmos, sem mudança |
+| `qa.admina` (clínica) | sem mudança |
+
+Screenshot: `qa/screenshots/t-4-atalhos-superadmin-estudio.png`. O "Studio branding" na visão de estúdio edita o estúdio selecionado (a API usa o tenant do `getSessionStaffActor`).

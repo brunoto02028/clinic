@@ -134,7 +134,9 @@ export default function AdminDashboard() {
   const { relabel, isPersonal } = useVocab();
   const { data: dashSession } = useSession();
   const dashRole = (dashSession?.user as any)?.role;
-  const isSuperadmin = dashRole === "SUPERADMIN";
+  // Platform shortcuts (articles, BPR site) — not while the platform owner is
+  // looking at a studio's panel, which shows the trainer's own (activity 57).
+  const platformActions = dashRole === "SUPERADMIN" && !isPersonal;
   const T = (key: string) => relabel(i18nT(key, locale));
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -522,7 +524,7 @@ export default function AdminDashboard() {
                 </div>
               </Link>
               )}
-              {isSuperadmin && (
+              {platformActions && (
               <Link href="/admin/articles/new" className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">
                 <div className="p-2 bg-orange-100 rounded-lg"><PenLine className="h-4 w-4 text-orange-600" /></div>
                 <div>
@@ -534,11 +536,11 @@ export default function AdminDashboard() {
               {/* A studio edits its own brand; the BPR site itself is the platform
                   owner's; a therapist sets neither (activity 52, T-2/T-3). */}
               {dashRole !== "THERAPIST" && (
-              <Link href={isSuperadmin ? "/admin/settings" : "/admin/studio-branding"} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">
+              <Link href={platformActions ? "/admin/settings" : "/admin/studio-branding"} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">
                 <div className="p-2 bg-slate-100 rounded-lg"><Settings className="h-4 w-4 text-slate-600" /></div>
                 <div>
-                  <p className="font-medium text-sm">{isSuperadmin ? T("admin.siteSettings") : (locale === "pt-BR" ? "Marca do estúdio" : "Studio branding")}</p>
-                  <p className="text-[11px] text-muted-foreground">{isSuperadmin ? T("admin.logoTextsSEO") : (locale === "pt-BR" ? "Logo e cores" : "Logo and colours")}</p>
+                  <p className="font-medium text-sm">{platformActions ? T("admin.siteSettings") : (locale === "pt-BR" ? "Marca do estúdio" : "Studio branding")}</p>
+                  <p className="text-[11px] text-muted-foreground">{platformActions ? T("admin.logoTextsSEO") : (locale === "pt-BR" ? "Logo e cores" : "Logo and colours")}</p>
                 </div>
               </Link>
               )}
@@ -556,7 +558,7 @@ export default function AdminDashboard() {
                   <p className="text-[11px] text-muted-foreground">{T("admin.scheduleManage")}</p>
                 </div>
               </Link>
-              {isSuperadmin && (
+              {platformActions && (
               <Link href="/" className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group">
                 <div className="p-2 bg-primary/10 rounded-lg"><Eye className="h-4 w-4 text-primary" /></div>
                 <div>
