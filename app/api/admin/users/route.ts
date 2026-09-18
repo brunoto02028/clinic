@@ -152,6 +152,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: limitCheck.message }, { status: 403 });
     }
 
+    // A studio's trainer is who its students book with; created unbookable, a
+    // new studio's booking screen had nobody to pick (activity 55). The trainer
+    // can still switch "Sees patients" off. Clinic staff keep the default.
+    const targetClinic = finalClinicId
+      ? await prisma.clinic.findUnique({ where: { id: finalClinicId }, select: { type: true } })
+      : null;
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -165,6 +172,7 @@ export async function POST(request: NextRequest) {
         phone: phone || null,
         role: role || "THERAPIST",
         clinicId: finalClinicId,
+        ...(targetClinic?.type === "PERSONAL_TRAINER" ? { bookable: true } : {}),
         canManageUsers: canManageUsers ?? false,
         canManageAppointments: canManageAppointments ?? true,
         canManageArticles: canManageArticles ?? false,

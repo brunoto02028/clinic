@@ -48,6 +48,7 @@ Todas as tarefas têm QA aprovado (`qa/report-t-1-t-5.md`, `qa/report-t-6-t-10.m
 - **Títulos:** "<página> · <Estúdio>" em todas as páginas do portal.
 - **Vocabulário:** as regras EN também valem no idioma PT (telas só em inglês), gênero em PT ("do estúdio") e sem "BPR" em Journey/Arena/Ambassador.
 - **Orientação da biblioteca:** deixa claro que o vídeo é **opcional**. Treino manual funciona com qualquer exercício; só a IA exige vídeo.
+- **Dono do estúdio agendável** (achado ao preparar o estúdio do Emanuel): a equipe criada num estúdio (`POST /api/admin/users`) já nasce com "Sees patients" (`bookable`) ligado. Antes, o dono nascia `false` e os alunos não tinham com quem agendar; o estúdio `bruno` em produção está assim. Testado localmente: dono do estúdio `true`, fisioterapeuta da clínica `false` (sem mudança).
 - **Único efeito na clínica:** acento no rótulo PT do menu ("Clinico" → "Clínico").
 
 ## Pendências para o Bruno
