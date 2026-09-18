@@ -36,7 +36,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [038](038-fechamento-gaps-personal/) | Fechamento dos gaps da atividade 20 | ✅ |
 | [052](052-seguranca-rotas-legadas-personal/) | Segurança das rotas legadas antes do 1º personal externo | ✅ concluída (deploy 18/09) |
 | [055](055-primeiro-uso-personal/) | Destravar o 1º uso do personal e do aluno | ✅ |
-| [056](056-email-boas-vindas-estudio/) | E-mail de boas-vindas do estúdio (personal) | 🟡 |
+| [056](056-email-boas-vindas-estudio/) | E-mail de boas-vindas do estúdio (personal) | ✅ |
 | [057](057-superadmin-visao-estudio/) | Superadmin enxerga o estúdio como o personal vê | ✅ |
 
 ## Plataforma (multi-tenant, segurança, design, custos)

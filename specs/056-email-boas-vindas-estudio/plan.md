@@ -45,7 +45,7 @@ Isso contraria a regra de que o produto do personal é independente da clínica.
 | T-3 | Ação "Send welcome e-mail to owner" para estúdio existente (nova senha + envio) | concluído |
 | T-4 | Envio para o Emanuel em produção (Bruno clica) e confirmação de entrega | concluído (1º envio sem logo; ver T-5) |
 | T-5 | Logo da BPR no e-mail + etapa de prévia antes de qualquer envio (criação e reenvio) | concluído |
-| T-6 | Reenviar ao Emanuel a versão com logo (Bruno, pela tela com prévia) | pendente |
+| T-6 | Reenviar ao Emanuel a versão com logo (Bruno, pela tela com prévia) | concluído |
 
 ## Fora de escopo
 - E-mails para os **alunos** do estúdio (lembretes etc.), que continuam com a marca BPR (achado da 055). Fica para uma atividade própria.
@@ -70,3 +70,9 @@ O que muda:
 - **Prévia no reenvio:** o diálogo carrega `GET /api/admin/clinics/[id]/welcome-email?locale=` (o mesmo e-mail, senha mascarada, nada enviado) e mostra De/Para/Assunto e o corpo (`components/admin/email-preview.tsx`, iframe em sandbox). "Send e-mail" só habilita depois da prévia.
 - **Prévia na criação:** um estúdio com dono passa por "Review e-mail" (`POST /api/admin/clinics/welcome-email-preview`) antes de "Create studio and send e-mail".
 - **Validação do Bruno:** a prévia EN/PT, com o logo real de produção, foi aberta no navegador dele para aprovar antes do deploy.
+
+## T-6 — Reenvio com logo (18/09)
+O Bruno reenviou pela tela com prévia, depois do deploy `3e3254cb` (versão `Fk0xcID3JgsdC61Myqb8n`).
+- **Log de produção:** `[EMAIL] Sent via Resend to mannisilva@dibiafitness.co.uk — id 01a0b537-3aaf-72ad-b458-2926724cde44`.
+- **Senha:** a do dono foi atualizada às 15:51:30Z. A senha anterior, incluindo a que passou pelo chat, não vale mais.
+- **Atividade concluída.**
