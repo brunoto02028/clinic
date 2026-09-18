@@ -12,7 +12,8 @@ import {
     Trash2,
     ExternalLink,
     ShieldCheck,
-    AlertCircle
+    AlertCircle,
+    Mail
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -60,7 +61,7 @@ export default function ClinicsPage() {
     const [search, setSearch] = useState("");
 
     // Create-tenant dialog (SUPERADMIN provisions a clinic or a personal studio).
-    const emptyForm = { name: "", slug: "", type: "CLINIC", email: "", ownerFirst: "", ownerLast: "", ownerEmail: "" };
+    const emptyForm = { name: "", slug: "", type: "CLINIC", email: "", ownerFirst: "", ownerLast: "", ownerEmail: "", ownerLocale: "en" };
     const [createOpen, setCreateOpen] = useState(false);
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState(emptyForm);
@@ -101,7 +102,7 @@ export default function ClinicsPage() {
                     body: JSON.stringify({
                         firstName: form.ownerFirst.trim(), lastName: form.ownerLast.trim(),
                         email: form.ownerEmail.trim(), password: tempPassword,
-                        role: "ADMIN", targetClinicId: clinic.id,
+                        role: "ADMIN", targetClinicId: clinic.id, locale: form.ownerLocale,
                     }),
                 });
                 if (!ures.ok) {
@@ -136,6 +137,31 @@ export default function ClinicsPage() {
             toast({ title: "Error", description: "Failed to load clinics", variant: "destructive" });
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Studio welcome e-mail to the owner, with a new temporary password (activity 56).
+    const [welcomeFor, setWelcomeFor] = useState<Clinic | null>(null);
+    const [welcomeLocale, setWelcomeLocale] = useState("en");
+    const [sendingWelcome, setSendingWelcome] = useState(false);
+
+    const sendWelcome = async () => {
+        if (!welcomeFor) return;
+        setSendingWelcome(true);
+        try {
+            const res = await fetch(`/api/admin/clinics/${welcomeFor.id}/welcome-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ locale: welcomeLocale }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data?.error || `Failed (${res.status})`);
+            toast({ title: "Sent", description: `Welcome e-mail sent to ${data.to}`, variant: "success" });
+            setWelcomeFor(null);
+        } catch (e: any) {
+            toast({ title: "Error", description: e?.message || "Failed to send", variant: "destructive" });
+        } finally {
+            setSendingWelcome(false);
         }
     };
 
@@ -332,6 +358,10 @@ export default function ClinicsPage() {
                                                                     <UserPlus className="mr-2 h-4 w-4" />
                                                                     Copy invite link
                                                                 </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => { setWelcomeLocale("en"); setWelcomeFor(clinic); }}>
+                                                                    <Mail className="mr-2 h-4 w-4" />
+                                                                    Send welcome e-mail to owner
+                                                                </DropdownMenuItem>
                                                             </>
                                                         )}
                                                         <DropdownMenuItem onClick={() => openSettings(clinic)}>
@@ -408,6 +438,18 @@ export default function ClinicsPage() {
                                 <Input value={form.ownerLast} onChange={(e) => setForm((f) => ({ ...f, ownerLast: e.target.value }))} placeholder="Last name" />
                             </div>
                             <Input type="email" value={form.ownerEmail} onChange={(e) => setForm((f) => ({ ...f, ownerEmail: e.target.value }))} placeholder="owner.email@example.com" />
+                            {isStudio && (
+                                <div className="flex items-center justify-between gap-3">
+                                    <Label className="text-xs text-muted-foreground font-normal">Welcome e-mail language</Label>
+                                    <Select value={form.ownerLocale} onValueChange={(v) => setForm((f) => ({ ...f, ownerLocale: v }))}>
+                                        <SelectTrigger className="w-40 h-8"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="en">English</SelectItem>
+                                            <SelectItem value="pt">Português</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -481,6 +523,33 @@ export default function ClinicsPage() {
                         <Button variant="outline" onClick={() => setSettingsClinic(null)} disabled={savingSettings}>Cancel</Button>
                         <Button onClick={saveSettings} disabled={savingSettings}>
                             {savingSettings ? "Saving…" : "Save"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!welcomeFor} onOpenChange={(o) => { if (!o && !sendingWelcome) setWelcomeFor(null); }}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Send welcome e-mail</DialogTitle>
+                        <DialogDescription>
+                            The owner of {welcomeFor?.name} gets the studio welcome e-mail with a <strong>new temporary password</strong>. Their current password stops working once it is sent.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex items-center justify-between gap-3 py-2">
+                        <Label className="font-normal">Language</Label>
+                        <Select value={welcomeLocale} onValueChange={setWelcomeLocale}>
+                            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="en">English</SelectItem>
+                                <SelectItem value="pt">Português</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setWelcomeFor(null)} disabled={sendingWelcome}>Cancel</Button>
+                        <Button onClick={sendWelcome} disabled={sendingWelcome}>
+                            {sendingWelcome ? "Sending…" : "Send e-mail"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

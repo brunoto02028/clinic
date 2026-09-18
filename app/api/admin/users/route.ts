@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { getAppName, getSenderEmail } from "@/lib/utils";
 import { sendEmail } from "@/lib/email";
+import { studioWelcomeEmail } from "@/lib/studio-welcome-email";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_USERS, devFallbackResponse } from "@/lib/dev-fallback";
 import { checkTherapistLimit } from "@/lib/tenant-limits";
@@ -116,6 +117,7 @@ export async function POST(request: NextRequest) {
       canManageSettings,
       canViewAllPatients,
       canCreateClinicalNotes,
+      locale, // "pt" | "en" — the studio owner's welcome e-mail language
     } = body;
 
     const finalClinicId = userRole === "SUPERADMIN" ? targetClinicId : clinicId;
@@ -156,7 +158,7 @@ export async function POST(request: NextRequest) {
     // new studio's booking screen had nobody to pick (activity 55). The trainer
     // can still switch "Sees patients" off. Clinic staff keep the default.
     const targetClinic = finalClinicId
-      ? await prisma.clinic.findUnique({ where: { id: finalClinicId }, select: { type: true } })
+      ? await prisma.clinic.findUnique({ where: { id: finalClinicId }, select: { type: true, name: true, slug: true, primaryColor: true } })
       : null;
 
     // Hash password
@@ -198,6 +200,30 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     });
+
+    // A studio's owner gets the studio's own welcome (activity 56), not the
+    // clinic staff e-mail below, which names BPR and lists clinical permissions.
+    // Only the "Add Clinic / Studio" flow sends a locale — a second admin added
+    // from the Users page is not the owner and keeps the staff e-mail.
+    if (targetClinic?.type === "PERSONAL_TRAINER" && user.role === "ADMIN" && (locale === "pt" || locale === "en")) {
+      try {
+        const mail = studioWelcomeEmail({
+          studioName: targetClinic.name,
+          slug: targetClinic.slug,
+          firstName,
+          email,
+          tempPassword: password,
+          isPt: locale === "pt",
+          appUrl: process.env.NEXTAUTH_URL || "https://bpr.clinic",
+          primaryColor: targetClinic.primaryColor,
+        });
+        const sent = await sendEmail({ to: email, subject: mail.subject, html: mail.html, from: mail.from });
+        if (!sent.success) console.error("Studio welcome email not accepted:", sent.error);
+      } catch (emailError) {
+        console.error("Failed to send studio welcome email:", emailError);
+      }
+      return NextResponse.json(user, { status: 201 });
+    }
 
     // Send bilingual email notification to the new staff member
     try {
