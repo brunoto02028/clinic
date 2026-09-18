@@ -55,3 +55,16 @@ Todas as tarefas têm QA aprovado (`qa/report-t-1-t-5.md`, `qa/report-t-6-t-10.m
 - **Revisar o termo de treino** (`lib/studio-terms.ts`, página `/studio/<slug>/terms`) antes do Emanuel convidar alunos.
 - **Decidir a Jornada e a Comunidade do aluno de estúdio:** hoje ficam visíveis, sem "BPR" e com o vocabulário trocado, mas as missões ("check-in de dor", "ler artigo") são pensadas para reabilitação.
 - **Fora do escopo** (anotado): e-mail de lembrete com a marca BPR (envio manual), logo BPR no menu do aluno (marca do estúdio no portal), "Notificacoes" sem acento.
+
+## Deploy e QA online (18/09/2026)
+- **Deploys:**
+  - `e04c0bb` (055) no ar às 13:24, versão `GwMaiBfSKLl78xaqw6-yb`, health ok;
+  - `17a0884b` (dono do estúdio agendável) na sequência.
+- **QA online:** 14 checagens só de leitura, sem login (`scratchpad/online-qa-055.sh`), todas ok:
+  - estúdio `bruno`: título do estúdio em `/studio` e `/join`, "Powered by BPR", termos de treino EN/PT;
+  - clínica: sem página de termos de treino (404), `/join` com a marca BPR, `/terms` 200;
+  - bloqueios para anônimo: `/dashboard/recordings`, `/api/patient/consultation-recording`, `/api/admin/consent-texts`;
+  - estúdio inexistente: 404.
+  - Ajustes de expectativa: `/api/patient/status` anônimo dá 307 para o login, e não 401; `/login` tem o desafio anti-bot do Cloudflare para curl, o que é infra.
+- **Estúdio do Emanuel criado em produção:** "Manu Training", slug `manu-training`, dono Emanuel Silva (ADMIN, `bookable: true`). Mesmos registros do "Add Clinic / Studio", sem o e-mail de boas-vindas; a senha temporária foi entregue ao Bruno.
+  - **Verificado em produção:** `/studio/manu-training`, `/join/manu-training` e os termos respondem 200 com o nome do estúdio; login 200 com sessão `clinicType: PERSONAL_TRAINER`; `/api/therapists` lista o Emanuel. Depois, signout.
