@@ -144,6 +144,14 @@ function emailSafeLogoUrl(url: string, bgHex: string): string {
   return `${BASE_URL}/api/email-logo?src=${encodeURIComponent(url)}&bg=${bg}`;
 }
 
+// BPR's header logo exactly as wrapInLayout prints it for the platform — for
+// e-mails built outside that layout (the studio welcome, activity 56). Every
+// e-mail BPR sends carries it.
+export async function getBprEmailLogoUrl(): Promise<string> {
+  const settings = await getDefaultTenantEmailSettings().catch(() => null);
+  return emailSafeLogoUrl(settings?.logoUrl || '', BRAND_BONE) || EMAIL_LOGO_URL;
+}
+
 // ─── Base Layout Wrapper ───
 export async function wrapInLayout(content: string, preheader?: string, locale = 'en-GB', clinicId?: string | null): Promise<string> {
   const settings = await getClinicSettings(clinicId);

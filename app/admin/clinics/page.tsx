@@ -33,6 +33,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import EmailPreview, { type EmailPreviewData } from "@/components/admin/email-preview";
 
 interface Clinic {
     id: string;
@@ -114,7 +115,7 @@ export default function ClinicsPage() {
             } else {
                 toast({ title: "Success", description: isStudio ? "Studio created" : "Clinic created", variant: "success" });
             }
-            setCreateOpen(false); setForm(emptyForm); setSlugEdited(false); fetchClinics();
+            setCreateOpen(false); setForm(emptyForm); setSlugEdited(false); setCreateReview(null); fetchClinics();
         } catch (e: any) {
             toast({ title: "Error", description: e?.message || "Failed to create", variant: "destructive" });
         } finally {
@@ -140,10 +141,55 @@ export default function ClinicsPage() {
         }
     };
 
+    const [createReview, setCreateReview] = useState<EmailPreviewData | null>(null);
+    const [loadingReview, setLoadingReview] = useState(false);
+    const willEmailOwner = isStudio && !!form.ownerEmail.trim();
+
+    const reviewThenCreate = async () => {
+        if (!willEmailOwner) return handleCreate();
+        if (!form.ownerFirst.trim() || !form.ownerLast.trim()) {
+            toast({ title: "Error", description: "Fill in the owner's first and last name", variant: "destructive" });
+            return;
+        }
+        setLoadingReview(true);
+        try {
+            const res = await fetch("/api/admin/clinics/welcome-email-preview", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ studioName: form.name, slug: form.slug, firstName: form.ownerFirst, email: form.ownerEmail, locale: form.ownerLocale }),
+            });
+            const d = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(d?.error || `Preview failed (${res.status})`);
+            setCreateReview(d);
+        } catch (e: any) {
+            toast({ title: "Error", description: e?.message || "Preview failed", variant: "destructive" });
+        } finally {
+            setLoadingReview(false);
+        }
+    };
+
     // Studio welcome e-mail to the owner, with a new temporary password (activity 56).
     const [welcomeFor, setWelcomeFor] = useState<Clinic | null>(null);
     const [welcomeLocale, setWelcomeLocale] = useState("en");
     const [sendingWelcome, setSendingWelcome] = useState(false);
+    const [welcomePreview, setWelcomePreview] = useState<EmailPreviewData | null>(null);
+    const [welcomePreviewError, setWelcomePreviewError] = useState("");
+
+    useEffect(() => {
+        setWelcomePreview(null);
+        setWelcomePreviewError("");
+        if (!welcomeFor) return;
+        let live = true;
+        fetch(`/api/admin/clinics/${welcomeFor.id}/welcome-email?locale=${welcomeLocale}`)
+            .then(async (r) => {
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(d?.error || `Preview failed (${r.status})`);
+                return d;
+            })
+            .then((d) => { if (live) setWelcomePreview(d); })
+            .catch((e) => { if (live) setWelcomePreviewError(e?.message || "Preview failed"); });
+        return () => { live = false; };
+    }, [welcomeFor, welcomeLocale]);
 
     const sendWelcome = async () => {
         if (!welcomeFor) return;
@@ -385,8 +431,8 @@ export default function ClinicsPage() {
                 </CardContent>
             </Card>
 
-            <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setForm(emptyForm); setSlugEdited(false); } }}>
-                <DialogContent className="max-w-lg">
+            <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setForm(emptyForm); setSlugEdited(false); setCreateReview(null); } }}>
+                <DialogContent className={createReview ? "max-w-2xl" : "max-w-lg"}>
                     <DialogHeader>
                         <DialogTitle>Add clinic or studio</DialogTitle>
                         <DialogDescription>
@@ -394,6 +440,12 @@ export default function ClinicsPage() {
                         </DialogDescription>
                     </DialogHeader>
 
+                    {createReview ? (
+                    <div className="space-y-2 py-1">
+                        <p className="text-sm text-muted-foreground">This is the e-mail the owner gets when you create the studio. The password is generated on send.</p>
+                        <EmailPreview preview={createReview} />
+                    </div>
+                    ) : (
                     <div className="space-y-4 py-1">
                         <div className="space-y-2">
                             <Label>Type</Label>
@@ -452,12 +504,24 @@ export default function ClinicsPage() {
                             )}
                         </div>
                     </div>
+                    )}
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
-                        <Button onClick={handleCreate} disabled={creating || !form.name.trim() || !form.slug.trim()}>
-                            {creating ? "Creating…" : (isStudio ? "Create studio" : "Create clinic")}
-                        </Button>
+                        {createReview ? (
+                            <>
+                                <Button variant="outline" onClick={() => setCreateReview(null)} disabled={creating}>Back</Button>
+                                <Button onClick={handleCreate} disabled={creating}>
+                                    {creating ? "Creating…" : "Create studio and send e-mail"}
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
+                                <Button onClick={reviewThenCreate} disabled={creating || loadingReview || !form.name.trim() || !form.slug.trim()}>
+                                    {creating ? "Creating…" : loadingReview ? "Loading preview…" : willEmailOwner ? "Review e-mail" : (isStudio ? "Create studio" : "Create clinic")}
+                                </Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -529,7 +593,7 @@ export default function ClinicsPage() {
             </Dialog>
 
             <Dialog open={!!welcomeFor} onOpenChange={(o) => { if (!o && !sendingWelcome) setWelcomeFor(null); }}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Send welcome e-mail</DialogTitle>
                         <DialogDescription>
@@ -546,9 +610,16 @@ export default function ClinicsPage() {
                             </SelectContent>
                         </Select>
                     </div>
+                    {welcomePreview ? (
+                        <EmailPreview preview={welcomePreview} />
+                    ) : (
+                        <p className={`py-10 text-center text-sm ${welcomePreviewError ? "text-destructive" : "text-muted-foreground"}`}>
+                            {welcomePreviewError || "Loading preview…"}
+                        </p>
+                    )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setWelcomeFor(null)} disabled={sendingWelcome}>Cancel</Button>
-                        <Button onClick={sendWelcome} disabled={sendingWelcome}>
+                        <Button onClick={sendWelcome} disabled={sendingWelcome || !welcomePreview}>
                             {sendingWelcome ? "Sending…" : "Send e-mail"}
                         </Button>
                     </DialogFooter>

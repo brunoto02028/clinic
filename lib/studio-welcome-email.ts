@@ -10,6 +10,8 @@ const MUTED = "#6B7280";
 const LINE = "#E4E3DF";
 const MOSS = "#4F7361";
 const SENDER_ADDRESS = "noreply@bpr.clinic";
+/** Stands in for the real temporary password in previews. */
+export const MASKED_PASSWORD = "St-••••••••••••••";
 
 // Local, like lib/book.ts — keeps this a pure module (the shared one pulls in prisma).
 function escapeHtml(value: string): string {
@@ -30,6 +32,8 @@ export interface StudioWelcomeInput {
   isPt: boolean;
   appUrl: string;
   primaryColor?: string | null;
+  /** BPR's header logo (getBprEmailLogoUrl) — nothing BPR sends goes out without it. */
+  logoUrl: string;
 }
 
 export function studioWelcomeEmail(input: StudioWelcomeInput): { subject: string; html: string; from: string } {
@@ -110,8 +114,9 @@ export function studioWelcomeEmail(input: StudioWelcomeInput): { subject: string
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="${BONE}" style="background-color:${BONE};">
 <tr><td align="center" style="padding:30px 15px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;">
-  <tr><td bgcolor="${BONE}" style="background-color:${BONE};padding:28px 32px;text-align:center;border-bottom:3px solid ${accent};">
-    <div style="font-size:26px;font-weight:bold;color:${INK};letter-spacing:-0.3px;">${studio}</div>
+  <tr><td bgcolor="${BONE}" style="background-color:${BONE};padding:28px 32px 22px;text-align:center;border-bottom:3px solid ${accent};">
+    <img src="${escapeHtml(input.logoUrl)}" alt="BPR" style="max-height:72px;max-width:260px;display:block;margin:0 auto 14px;background-color:${BONE};" />
+    <div style="font-size:24px;font-weight:bold;color:${INK};letter-spacing:-0.3px;">${studio}</div>
   </td></tr>
   <tr><td style="padding:32px 32px 8px;">
     <h1 style="margin:0 0 12px;font-size:22px;color:${INK};">${t.hello}</h1>

@@ -43,7 +43,9 @@ Isso contraria a regra de que o produto do personal é independente da clínica.
 | T-1 | Template do e-mail de boas-vindas do estúdio (EN/PT) | concluído |
 | T-2 | "Add Clinic / Studio" envia o e-mail do estúdio, com o idioma escolhido | concluído |
 | T-3 | Ação "Send welcome e-mail to owner" para estúdio existente (nova senha + envio) | concluído |
-| T-4 | Envio para o Emanuel em produção (Bruno clica) e confirmação de entrega | em andamento |
+| T-4 | Envio para o Emanuel em produção (Bruno clica) e confirmação de entrega | concluído (1º envio sem logo; ver T-5) |
+| T-5 | Logo da BPR no e-mail + etapa de prévia antes de qualquer envio (criação e reenvio) | concluído |
+| T-6 | Reenviar ao Emanuel a versão com logo (Bruno, pela tela com prévia) | pendente |
 
 ## Fora de escopo
 - E-mails para os **alunos** do estúdio (lembretes etc.), que continuam com a marca BPR (achado da 055). Fica para uma atividade própria.
@@ -54,3 +56,17 @@ Isso contraria a regra de que o produto do personal é independente da clínica.
 2. O reenvio **gera senha nova**: a que foi passada no chat deixa de valer.
 3. Plano aprovado.
 4. Remetente "<Estúdio> via BPR", conforme a decisão de design.
+
+## T-4 — Envio em produção (18/09)
+O Bruno enviou pelo menu "Send welcome e-mail to owner". Log de produção: `[EMAIL] Sent via Resend to mannisilva@dibiafitness.co.uk — id 01a0b51f-01eb-770e-9b5a-deca9a81d042`. Ele disse que enviou "sem saber o que enviou": o diálogo não tinha prévia, e o e-mail saiu **sem o logo da BPR**.
+
+## T-5 — Logo + prévia obrigatória (pedido do Bruno, 18/09)
+Regras do Bruno:
+- "sempre qualquer comunicação que criarmos eu preciso ver um preview antes de enviar";
+- "nunca enviamos algo a alguém sem nosso logo, revisado e validado aqui".
+
+O que muda:
+- **Logo:** o template recebe `logoUrl` de `getBprEmailLogoUrl()` (novo em `lib/email-templates.ts`), o mesmo logo e fundo do cabeçalho do `wrapInLayout`. Ele aparece acima do nome do estúdio.
+- **Prévia no reenvio:** o diálogo carrega `GET /api/admin/clinics/[id]/welcome-email?locale=` (o mesmo e-mail, senha mascarada, nada enviado) e mostra De/Para/Assunto e o corpo (`components/admin/email-preview.tsx`, iframe em sandbox). "Send e-mail" só habilita depois da prévia.
+- **Prévia na criação:** um estúdio com dono passa por "Review e-mail" (`POST /api/admin/clinics/welcome-email-preview`) antes de "Create studio and send e-mail".
+- **Validação do Bruno:** a prévia EN/PT, com o logo real de produção, foi aberta no navegador dele para aprovar antes do deploy.

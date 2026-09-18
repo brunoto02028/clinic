@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { getAppName, getSenderEmail } from "@/lib/utils";
 import { sendEmail } from "@/lib/email";
 import { studioWelcomeEmail } from "@/lib/studio-welcome-email";
+import { getBprEmailLogoUrl } from "@/lib/email-templates";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_USERS, devFallbackResponse } from "@/lib/dev-fallback";
 import { checkTherapistLimit } from "@/lib/tenant-limits";
@@ -216,6 +217,7 @@ export async function POST(request: NextRequest) {
           isPt: locale === "pt",
           appUrl: process.env.NEXTAUTH_URL || "https://bpr.clinic",
           primaryColor: targetClinic.primaryColor,
+          logoUrl: await getBprEmailLogoUrl(),
         });
         const sent = await sendEmail({ to: email, subject: mail.subject, html: mail.html, from: mail.from });
         if (!sent.success) console.error("Studio welcome email not accepted:", sent.error);
