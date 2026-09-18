@@ -62,3 +62,27 @@ Ordem sugerida: T-1 → T-4 (expostos hoje) → T-2 + T-3 (juntas) → T-5 → T
    - rotas clínicas: rehab plans, triagem médica, body assessments clínicos, notas geradas por IA, relatório/documentos clínicos gerados, `journey/ai-coach`, `patient/protocol`, `patient/rehab-plan`.
    - `exercise-prescriptions` **não** é bloqueada: a aba "Exercises" da ficha do aluno usa essa rota. A decisão de unificar Exercises × Workouts fica para a atividade de 1º uso.
 6. **T-10:** a assinatura órfã (duas abas de checkout) é resolvida expirando a sessão anterior e recusando checkout novo quando já existe assinatura INCOMPLETE/ACTIVE/PAST_DUE. Não mexo em quem já pagou em duplicidade (não há ninguém em prod).
+
+## Deploy e QA online (18/09/2026)
+- **Commits:** `40d3025` (T-1), `20b6ec4` (T-4), `1c80a6b` (T-2, T-3, T-5 a T-10). Push para `main`; Coolify publicou a versão `g8SC2TzULRguk2Ra5o8ym` em ~10 min. Health `healthy`, banco ok.
+- **QA online (sem login, sem escrita):** 18/18 passaram (`scratchpad/online-qa.cjs`):
+  - health, home, `/studio/bruno`, `/join/bruno`, blog público e settings públicos → 200;
+  - `PUT /api/settings` e `POST /api/articles` anônimos → 403 (marca do código novo; antes era 401);
+  - `/api/admin/*` e `/admin/studio-branding`/`/admin/settings` anônimos → redirect para login;
+  - Bearer com payload de estúdio em `/api/patient/protocol` e `/api/foot-scans` → 404 (gate da T-7 no app); payload de clínica → 401 da própria rota.
+- **Prints:** ![studio](qa/screenshots/online-studio-bruno.png) ![join](qa/screenshots/online-join-bruno.png)
+- **Pendente de QA online logado:** não há conta de teste em produção. Os fluxos logados (personal e aluno) serão conferidos no primeiro acesso do Emanuel ou num estúdio de teste em prod, se o Bruno autorizar.
+
+## Alertas para outras frentes (não executados nesta branch)
+- **Clínica:**
+  - quantidade negativa/fracionária no checkout da loja (`app/api/patient/marketplace/checkout`);
+  - `rehab-plans/recent` lista entre clínicas;
+  - upload do foot-scan aceita SVG (`foot-scans/[id]/upload-local`, `body-assessments/[id]/upload-photo`);
+  - aba Stripe e card Articles visíveis para ADMIN de clínica;
+  - `/admin/treatment-plans` chama `stripe-branding`.
+- **Plataforma/infra:**
+  - `/uploads/*` servido direto em prod, sem nosniff/attachment;
+  - `version/update` sem auth (revertido aqui);
+  - caminhos com ponto pulam o middleware;
+  - rate limit por IP em memória (NAT de academia).
+- **Blog:** slug de artigo global (colisão → 500).
