@@ -32,10 +32,10 @@ Parte disso é explorável **hoje** em prod por qualquer paciente logado da BPR:
 
 | T-N | Nome | Achados | Status |
 |-----|------|---------|--------|
-| T-1 | Middleware: aluno/paciente fora de `/api/admin/*` (+ allowlist) | S5, S6, S10, lado aluno de S11/S12 | pendente |
+| T-1 | Middleware: aluno/paciente fora de `/api/admin/*` (+ allowlist) | S5, S6, S10, lado aluno de S11/S12 | concluído |
 | T-2 | Configuração global da BPR só para SUPERADMIN (+ abas de plataforma escondidas) | S1, S2, S12, P2 | pendente |
 | T-3 | Marca do estúdio editável pelo próprio personal | consequência de T-2 | pendente |
-| T-4 | Agendamentos: tenant + dono no `[id]`, preço no servidor, `patientId` do tenant | S3, parte de S7/S8 | pendente |
+| T-4 | Agendamentos: tenant + dono no `[id]`, preço no servidor, `patientId` do tenant | S3, parte de S7/S8 | em andamento |
 | T-5 | Tarefas em massa (`patient-tasks`) presas à clínica de quem chama | S4 | pendente |
 | T-6 | Financeiro legado: treatment-plans, memberships, invoices, marketplace, finance | S7, S8, S10, M1 | pendente |
 | T-7 | Personal isolado do Stripe e das rotas clínicas da BPR (bloqueio + menu) | S7, S9, P3, P10 | pendente |

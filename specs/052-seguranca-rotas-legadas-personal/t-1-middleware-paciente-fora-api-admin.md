@@ -1,6 +1,6 @@
 # T-1: Middleware — aluno/paciente fora de `/api/admin/*`
 
-**Status:** pendente
+**Status:** concluído (QA aprovado `qa/report-t-1.md` + code review sem achados)
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -27,9 +27,9 @@ Um usuário `PATIENT` (paciente da clínica ou aluno do personal) recebe **403 J
 - rota nova em `app/api/patient/...` (só se o levantamento pedir)
 
 ## Critérios de aceite
-- [ ] Aluno (cookie) → `GET /api/admin/finance`, `/api/admin/finance/stripe`, `/api/admin/marketplace/products`, `POST /api/admin/social/upload` → **403**.
-- [ ] Aluno (Bearer, `/api/mobile/login`) → qualquer `/api/admin/*` fora da allowlist → **403**.
-- [ ] Aluno continua conseguindo ver os termos em `/dashboard/consent` (allowlist ou rota nova).
-- [ ] Portal web do aluno inteiro (crawl das rotas do menu) sem nenhum 403 novo no console/rede.
-- [ ] Personal (ADMIN) e SUPERADMIN: nenhuma rota `/api/admin/*` que funcionava passa a dar 403.
-- [ ] Impersonação ("View as Student") continua funcionando.
+- [x] Aluno (cookie) → `GET /api/admin/finance`, `/api/admin/finance/stripe`, `/api/admin/marketplace/products`, `POST /api/admin/social/upload` → **403**.
+- [x] Aluno (Bearer, `/api/mobile/login`) → qualquer `/api/admin/*` não passa (o middleware só aceita Bearer nas rotas mobile; sem cookie → redirect para login/401).
+- [x] Aluno continua conseguindo ver os termos em `/dashboard/consent` (allowlist ou rota nova).
+- [x] Portal web do aluno inteiro (crawl das rotas do menu) sem nenhum 403 novo no console/rede.
+- [x] Personal (ADMIN) e SUPERADMIN: nenhuma rota `/api/admin/*` que funcionava passa a dar 403.
+- [x] Impersonação ("View as Student") continua funcionando.

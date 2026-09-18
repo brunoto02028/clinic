@@ -20,7 +20,7 @@
 |---|---|---|---|
 | 1.1 | API | `qa.aluno` (cookie): GET `/api/admin/finance`, `/api/admin/finance/stripe`, `/api/admin/marketplace/products`, `/api/admin/patient-tasks` | 403 JSON em todas |
 | 1.2 | API | `qa.aluno` (cookie): POST `/api/admin/social/upload` com um `.jpg` | 403 |
-| 1.3 | API | `qa.aluno` (Bearer): GET `/api/admin/finance` e `/api/admin/workouts` | 403 |
+| 1.3 | API | `qa.aluno` (Bearer): GET `/api/admin/finance` e `/api/admin/workouts` | não autorizado (redirect para login/401/403) |
 | 1.4 | API | `qa.aluno`: rota da allowlist (termos) | 200, conteúdo dos termos |
 | 1.5 | UI | `qa.aluno` percorre todas as rotas do menu do portal (desktop e 390px) | nenhum 403/4xx novo na rede; páginas renderizam |
 | 1.6 | UI | `qa.aluno` abre `/dashboard/consent` | termos aparecem |

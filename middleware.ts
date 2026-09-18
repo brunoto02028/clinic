@@ -145,6 +145,19 @@ const superadminRoutes = ['/superadmin'];
 // Routes that require ADMIN or THERAPIST access
 const staffRoutes = ['/admin'];
 
+// The only /api/admin calls a patient legitimately makes: the consent page
+// reads the current terms text, and /signout clears any leftover
+// impersonation cookies (that DELETE only expires cookies). Method-specific —
+// the consent-texts PUT and the impersonate POST stay staff-only.
+const PATIENT_ALLOWED_ADMIN_APIS: { method: string; path: string }[] = [
+  { method: 'GET', path: '/api/admin/consent-texts' },
+  { method: 'DELETE', path: '/api/admin/impersonate' },
+];
+
+function isPatientAllowedAdminApi(path: string, method: string): boolean {
+  return PATIENT_ALLOWED_ADMIN_APIS.some((r) => r.method === method && r.path === path);
+}
+
 // Check if path starts with any of the given prefixes
 function matchesRoute(path: string, routes: string[]): boolean {
   return routes.some(route => {
@@ -343,6 +356,22 @@ export async function middleware(request: NextRequest) {
     if (userRole === 'PATIENT') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+  }
+
+  // A patient/student must not reach the staff APIs either (activity 52, T-1):
+  // several legacy /api/admin routes only check "has a session", so without
+  // this a logged-in patient could read the clinic's finances or edit shop
+  // products. Staff impersonating a patient keep their staff role in the JWT,
+  // so this doesn't affect "View as patient".
+  if (
+    userRole === 'PATIENT' &&
+    matchesRoute(pathname, ['/api/admin']) &&
+    !isPatientAllowedAdminApi(pathname, request.method)
+  ) {
+    return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', ...SECURITY_HEADERS },
+    });
   }
 
   if (pathname.startsWith('/dashboard')) {

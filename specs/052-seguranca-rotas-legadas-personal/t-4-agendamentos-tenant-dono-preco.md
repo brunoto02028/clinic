@@ -1,6 +1,6 @@
 # T-4: Agendamentos — tenant + dono no `[id]`, preço no servidor
 
-**Status:** pendente
+**Status:** em andamento
 **Depende de:** nenhuma
 
 ## Objetivo
