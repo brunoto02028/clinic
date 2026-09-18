@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST — Patient toggles "did it today" (or a given date) for one item
-// (activity 42 — see specs/42-protocolo-semanal-checklist-diario).
+// (activity 42 — see specs/042-protocolo-semanal-checklist-diario).
 export async function POST(req: NextRequest) {
   try {
     const effectiveUser = await getEffectiveUser();

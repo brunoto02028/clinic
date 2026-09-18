@@ -6,7 +6,7 @@ import { wrapInLayout } from "@/lib/email-templates";
 // checks the "Welcome to BPR!" checklist on the patient's own dashboard
 // already uses (app/dashboard/page.tsx), plus a reminder every 2 days
 // while any stay unfinished. Every send is logged via AuditLog, same
-// pattern as the daily-adherence reminders (specs/49-relatorio-adesao-diaria).
+// pattern as the daily-adherence reminders (specs/049-relatorio-adesao-diaria).
 
 export const ONBOARDING_REMINDER_ACTION = "ONBOARDING_REMINDER_SENT";
 const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const REPORT_TO = "admin@bpr.clinic";
 
 // POST /api/cron/daily-report — once a day (intended: 21h clinic time, see
-// specs/49-relatorio-adesao-diaria): e-mails the clinic a completed/missing
+// specs/049-relatorio-adesao-diaria): e-mails the clinic a completed/missing
 // summary. Split out from /api/cron/daily-adherence (17/09/2026) so this can
 // stay on an automatic schedule while patient-facing reminders stay
 // manual-only — this route never touches a patient, only sends to REPORT_TO.

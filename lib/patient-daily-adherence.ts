@@ -4,7 +4,7 @@ import { exerciseVisibility } from "@/lib/protocol-exercise-gating";
 // What's on a patient's "Today" card, computed server-side — same rules as
 // GET /api/patient/protocol + app/dashboard/treatment/page.tsx's
 // todayProtocolTasks/todayPrescriptionTasks, so activity 49's report never
-// disagrees with what the patient themselves sees. See specs/49-relatorio-adesao-diaria.
+// disagrees with what the patient themselves sees. See specs/049-relatorio-adesao-diaria.
 
 export type ExpectedItem = { id: string; title: string; kind: "protocol" | "prescription" };
 

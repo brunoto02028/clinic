@@ -36,7 +36,7 @@ const DEFAULT_CONSENT_TEXTS = {
   ],
 };
 
-// Draft translation, not a legal review — see specs/51-correcoes-auditoria-paciente-e-ux-idosos/t-6-termos-bilingue.md.
+// Draft translation, not a legal review — see specs/051-correcoes-auditoria-paciente-e-ux-idosos/t-6-termos-bilingue.md.
 // A patient reading this in Portuguese should still confirm anything
 // contentious with the clinic directly; this exists so the document isn't
 // pure English for someone who reads neither confidently.

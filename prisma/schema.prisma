@@ -4621,7 +4621,7 @@ model BookChapter {
 // an auto-subscribe. referrerContactId/friendContactId are loose links to
 // EmailContact (same pattern as EmailContact.patientId), not enforced FKs,
 // since the referrer may be an anonymous /beyond-pain visitor with no
-// EmailContact row at all. See specs/1-book-referral-and-homepage-cta/.
+// EmailContact row at all. See specs/054-book-referral-and-homepage-cta/.
 model BookReferral {
   id                String    @id @default(cuid())
   referrerContactId String? // EmailContact.id, when they arrived via a ?refFrom= email link

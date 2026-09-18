@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/system-logger";
 export const dynamic = "force-dynamic";
 
 // The only new write of activity 48 — everything else in the patient
-// timeline (specs/48-atividade-do-paciente) already had a source to read
+// timeline (specs/048-atividade-do-paciente) already had a source to read
 // from; "watched a video" didn't. Reuses the AuditLog model, same as login.
 export async function POST(req: NextRequest) {
   const actor = await getActor(req);

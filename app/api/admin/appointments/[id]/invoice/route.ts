@@ -82,7 +82,7 @@ export async function GET(
 }
 
 // POST — queue the invoice for admin approval (activity 39: financial emails
-// never send automatically — see specs/39-fila-aprovacao-email-financeiro).
+// never send automatically — see specs/039-fila-aprovacao-email-financeiro).
 // Body: { amount?: number, extraItems?: { description: string; unitPrice: number; quantity?: number }[] }
 export async function POST(
   request: NextRequest,

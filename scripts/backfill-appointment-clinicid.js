@@ -5,7 +5,7 @@
 // call in start.sh, ahead of the "Syncing database schema" step, unlike
 // every other maintenance script here which runs after it.
 //
-// Resolution order per Suposição 3 of specs/38-fechamento-gaps-personal:
+// Resolution order per Suposição 3 of specs/038-fechamento-gaps-personal:
 // the PATIENT's own clinicId first (an appointment belongs to the clinic
 // that owns the patient's care, not necessarily the therapist's — relevant
 // once a therapist can work across tenants), then the platform's default

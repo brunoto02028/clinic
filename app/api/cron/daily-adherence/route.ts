@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/system-logger";
 export const dynamic = "force-dynamic";
 
 // POST /api/cron/daily-adherence — reminds every patient still missing
-// today's activities (see specs/49-relatorio-adesao-diaria). The clinic
+// today's activities (see specs/049-relatorio-adesao-diaria). The clinic
 // summary e-mail used to live here too; split out to /api/cron/daily-report
 // on 17/09/2026 so that one can stay on an automatic schedule while this
 // one — the one that actually messages a patient — is only ever triggered

@@ -38,7 +38,7 @@ const AUDIT_LABELS: Record<string, { type: ActivityEvent["type"]; title: string 
 };
 
 // Unifies five existing per-domain logs into one timeline — see
-// specs/48-atividade-do-paciente/plan.md. No new table: only "video watched"
+// specs/048-atividade-do-paciente/plan.md. No new table: only "video watched"
 // (an AuditLog row, written by /api/patient/activity/video-watched) didn't
 // already have a source to read from.
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
