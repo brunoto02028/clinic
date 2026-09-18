@@ -7,6 +7,8 @@ import { sysLog, logAudit } from "@/lib/system-logger";
 import { validateCredentials, sessionLogoUrl } from "@/lib/auth-credentials";
 import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { resolveJoinTenant } from "@/lib/join-tenant";
+import { cookies } from "next/headers";
+import { resolveActorTenant } from "@/lib/actor-tenant";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -221,6 +223,39 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      // A SUPERADMIN managing another tenant through the clinic selector sees
+      // that tenant's panel — menu, vocabulary, brand (activity 57). Data already
+      // follows the selection (selected-clinic-id → x-clinic-id / getActor); only
+      // the display fields move here. clinicId, role and permissions stay theirs.
+      if (token.role === "SUPERADMIN") {
+        let selected: string | null;
+        try {
+          selected = cookies().get("selected-clinic-id")?.value || null;
+        } catch {
+          // No request scope (e.g. a script) — keep what the token has.
+          return token;
+        }
+        if (selected !== (token.viewSelected ?? null) || token.viewClinicId === undefined || trigger === "update") {
+          const ownClinicId = (token.clinicId as string | null) ?? null;
+          // A selection resolves exactly like the data routes do (only an active
+          // tenant counts), so the panel never shows one tenant over another's data.
+          const viewId = selected ? await resolveActorTenant("SUPERADMIN", ownClinicId, selected) : ownClinicId;
+          const view = viewId
+            ? await prisma.clinic.findUnique({
+                where: { id: viewId },
+                select: { id: true, name: true, slug: true, type: true, logoUrl: true, primaryColor: true },
+              })
+            : null;
+          token.viewSelected = selected;
+          token.viewClinicId = view?.id ?? null;
+          token.clinicName = view?.name ?? null;
+          token.clinicSlug = view?.slug ?? null;
+          token.clinicType = view?.type ?? null;
+          token.clinicLogoUrl = sessionLogoUrl(view?.logoUrl);
+          token.clinicPrimaryColor = view?.primaryColor ?? null;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -235,6 +270,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).clinicType = token.clinicType;
         (session.user as any).clinicLogoUrl = token.clinicLogoUrl;
         (session.user as any).clinicPrimaryColor = token.clinicPrimaryColor;
+        // The tenant whose panel a SUPERADMIN is looking at (activity 57).
+        if (token.role === "SUPERADMIN") (session.user as any).viewClinicId = token.viewClinicId ?? null;
         (session.user as any).instagramImportEnabled = token.instagramImportEnabled;
         (session.user as any).permissions = token.permissions;
       }

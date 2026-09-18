@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import AdminMiniSidebar from "@/components/admin/admin-mini-sidebar";
 import AdminHeader from "@/components/admin/admin-header";
 import SectionTabs from "@/components/admin/section-tabs";
+import TenantViewBanner from "@/components/admin/tenant-view-banner";
 import type { Metadata, Viewport } from "next";
 
 // Staff portal — private, keep out of the index (P4.1).
@@ -58,6 +59,9 @@ export default async function AdminLayout({
     clinicName: (session.user as any)?.clinicName,
     permissions: (session.user as any)?.permissions,
   };
+  // A SUPERADMIN looking at another tenant's panel (activity 57).
+  const viewClinicId = (session.user as any)?.viewClinicId;
+  const viewingOther = userRole === "SUPERADMIN" && !!viewClinicId && viewClinicId !== user.clinicId;
 
   return (
     <div className="min-h-screen bg-background bg-grid-pattern">
@@ -66,6 +70,7 @@ export default async function AdminLayout({
         {/* Mobile spacer for hamburger button */}
         <div className="h-14 lg:hidden" />
         <AdminHeader user={user} />
+        {viewingOther && <TenantViewBanner tenantName={user.clinicName || ""} />}
         <SectionTabs role={userRole} />
         <div className="admin-page-content">
           {children}
