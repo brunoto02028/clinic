@@ -323,12 +323,16 @@ export default function SimplifiedSignupForm({ tenantSlug, tenantName, isPersona
                     <span>{isPt ? "Termos de Uso" : "Terms of Use"}</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {isPt
-                      ? "Ao criar sua conta, você concorda com nossos Termos de Uso e Política de Privacidade."
-                      : "By creating your account, you agree to our Terms of Use and Privacy Policy."}
+                    {isPersonal && tenantName
+                      ? (isPt
+                          ? `Ao criar sua conta, você concorda com os Termos de Treino de ${tenantName}.`
+                          : `By creating your account, you agree to ${tenantName}'s Training Terms.`)
+                      : isPt
+                        ? "Ao criar sua conta, você concorda com nossos Termos de Uso e Política de Privacidade."
+                        : "By creating your account, you agree to our Terms of Use and Privacy Policy."}
                   </p>
                   <Link
-                    href="/terms"
+                    href={isPersonal && tenantSlug ? `/studio/${tenantSlug}/terms?lang=${isPt ? "pt" : "en"}` : "/terms"}
                     target="_blank"
                     className="text-xs text-primary font-medium hover:underline inline-block"
                   >

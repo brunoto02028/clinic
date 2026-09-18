@@ -21,7 +21,19 @@ import { useVocab } from "@/hooks/use-vocab";
 // Hidden from a personal-trainer studio's students: the clinic's clinical
 // modules, and the BPR plans/shop — both charge on BPR's Stripe account, never
 // the trainer's (activity 52, T-7).
-const CLINICAL_PATIENT_KEYS = new Set(["health", "screening", "mod_screening", "mod_plans", "mod_marketplace"]);
+const CLINICAL_PATIENT_KEYS = new Set([
+  "health", "screening", "mod_screening", "mod_plans", "mod_marketplace",
+  // "Exercises" points at the clinic's treatment page (blocked for studios —
+  // their workouts have their own entry) and "How It Works" is BPR's clinical
+  // guide (activity 55, T-2).
+  "exercises", "mod_guide",
+  // Studio students hold every module (activity 55, T-1), so the clinical ones
+  // with no curated entry would otherwise surface as extras.
+  "mod_recordings", "mod_records", "mod_documents", "mod_clinical_notes",
+  // "Learn" lists the tenant's own education content, and a studio can't
+  // author any (/admin/education is blocked for it) — always an empty page.
+  "learn",
+]);
 
 const PIN_STORAGE_KEY = "patient-sidebar-pinned";
 

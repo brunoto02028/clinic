@@ -37,8 +37,15 @@ export async function GET(req: NextRequest) {
     // ── 1. Check fullAccessOverride and moduleOverrides on User ──
     const patient = await (prisma as any).user.findUnique({
       where: { id: userId },
-      select: { fullAccessOverride: true, moduleOverrides: true },
+      select: { fullAccessOverride: true, moduleOverrides: true, clinic: { select: { type: true } } },
     });
+
+    // A studio's student books sessions by default — no plan to buy (activity
+    // 55, T-1). The trainer can still lock or hide Sessions for them.
+    if (patient?.clinic?.type === "PERSONAL_TRAINER") {
+      const o = (patient.moduleOverrides as Record<string, unknown> | null)?.mod_appointments;
+      accessMap.CONSULTATION = !(o === false || o === "locked" || o === "hidden");
+    }
 
     if (patient?.fullAccessOverride) {
       // Admin master toggle: grant everything

@@ -169,7 +169,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   {
     key: "clinical",
     label: "Clinical",
-    labelPt: "Clinico",
+    labelPt: "Clínico",
     icon: Stethoscope,
     tabs: [
       {

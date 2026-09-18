@@ -48,6 +48,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
           where: { isPaid: true, status: { in: ["PAID", "ACTIVE"] } },
           select: { id: true, status: true },
         },
+        clinic: { select: { type: true } },
       },
     });
 

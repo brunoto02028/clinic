@@ -176,7 +176,7 @@ export default function PatientProfilePage() {
   // and every entry point are hidden, but a stale/forced value would otherwise
   // mount clinical content). Force back to the summary if it ever happens.
   useEffect(() => {
-    const CLINICAL_TABS = ["screening", "avaliacoes", "notas", "protocolo", "rehab", "evidencia"];
+    const CLINICAL_TABS = ["screening", "avaliacoes", "notas", "protocolo", "rehab", "evidencia", "exercicios"];
     if (isPersonal && CLINICAL_TABS.includes(activeTab)) setActiveTab("resumo");
   }, [isPersonal, activeTab]);
   const [showNewNote, setShowNewNote] = useState(false);
@@ -996,9 +996,13 @@ export default function PatientProfilePage() {
                     )}
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="exercicios" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
-                  <Dumbbell className="h-3 w-3" />Exercises
-                </TabsTrigger>
+                {/* A studio prescribes through Workouts; the clinic's Exercises tab
+                    would be a second, disconnected way (activity 55, T-6). */}
+                {!isPersonal && (
+                  <TabsTrigger value="exercicios" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    <Dumbbell className="h-3 w-3" />Exercises
+                  </TabsTrigger>
+                )}
                 {!isPersonal && (
                   <TabsTrigger value="rehab" className="text-xs data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400 flex items-center gap-1">
                     <Bot className="h-3 w-3" />Rehab Agent

@@ -21,10 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BADGE_REGISTRY, ARCHETYPES } from "@/lib/journey";
+import { useVocab } from "@/hooks/use-vocab";
 
 type Tab = "overview" | "challenges" | "products" | "notifications" | "players" | "ai-coach";
 
 export default function AdminJourneyPage() {
+  const { isPersonal, relabel } = useVocab();
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -225,9 +227,9 @@ export default function AdminJourneyPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Trophy className="h-6 w-6 text-amber-500" /> BPR Journey Control Centre
+            <Trophy className="h-6 w-6 text-amber-500" /> {isPersonal ? "Journey Control Centre" : "BPR Journey Control Centre"}
           </h1>
-          <p className="text-sm text-slate-500">Manage gamification, challenges, marketplace, and patient engagement</p>
+          <p className="text-sm text-slate-500">{relabel("Manage gamification, challenges, marketplace, and patient engagement")}</p>
         </div>
         <Button variant="outline" onClick={fetchDashboard} className="gap-2">
           <RefreshCw className="h-4 w-4" /> Refresh
@@ -356,7 +358,7 @@ export default function AdminJourneyPage() {
                     <thead>
                       <tr className="text-left text-xs text-slate-500 border-b">
                         <th className="pb-2 pr-3">#</th>
-                        <th className="pb-2 pr-3">Patient</th>
+                        <th className="pb-2 pr-3">{relabel("Patient")}</th>
                         <th className="pb-2 pr-3">Level</th>
                         <th className="pb-2 pr-3">XP</th>
                         <th className="pb-2 pr-3">Streak</th>
@@ -753,7 +755,7 @@ export default function AdminJourneyPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-slate-500 border-b bg-slate-50">
-                        <th className="p-3">Patient</th>
+                        <th className="p-3">{relabel("Patient")}</th>
                         <th className="p-3">Score</th>
                         <th className="p-3">Risk</th>
                         <th className="p-3">Level</th>
@@ -908,7 +910,7 @@ export default function AdminJourneyPage() {
                 <thead>
                   <tr className="text-left text-xs text-slate-500 border-b bg-slate-50">
                     <th className="p-3">#</th>
-                    <th className="p-3">Patient</th>
+                    <th className="p-3">{relabel("Patient")}</th>
                     <th className="p-3">Email</th>
                     <th className="p-3">Level</th>
                     <th className="p-3">Total XP</th>

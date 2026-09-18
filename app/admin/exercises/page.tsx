@@ -144,7 +144,7 @@ interface CategoryNode extends FolderNode {
 
 export default function ExercisesPage() {
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const { data: sessionData } = useSession();
   // Opt-in per clinic (activity 36) — the scraper downloads video from any
   // Instagram post/profile, not just the tenant's own, so it's off by
@@ -814,6 +814,23 @@ export default function ExercisesPage() {
         <div className="bg-primary/10 text-primary text-sm p-2.5 rounded-lg flex items-center gap-2">
           <Sparkles className="h-4 w-4 shrink-0" /> {bulkResult}
           <button className="ml-auto" onClick={() => setBulkResult("")}><X className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
+
+      {/* A new studio starts with an empty library and the AI workout builder
+          only uses exercises that have a video (activity 55, T-8). Only judged
+          when the whole unfiltered library is loaded — one page can't tell. */}
+      {isPersonal && !loading && !search && !bodyRegion && !difficulty && !translatedFilter &&
+        exercises.length >= total && !exercises.some((ex) => ex.videoUrl) && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-1">
+          <p className="font-medium">
+            {locale === "pt-BR" ? "Monte a sua biblioteca de exercícios" : "Build your exercise library"}
+          </p>
+          <p>
+            {locale === "pt-BR"
+              ? "Cadastre seus exercícios em \"Add Exercise\" (um por vez) ou \"Bulk Upload\" (vários de uma vez). O vídeo é opcional e pode entrar depois: você já monta treinos à mão com qualquer exercício, e a IA de treino usa só os que têm vídeo."
+              : "Add your exercises using \"Add Exercise\" (one at a time) or \"Bulk Upload\" (many at once). The video is optional and can come later: you can build workouts by hand with any exercise, and the AI workout builder only uses the ones that have a video."}
+          </p>
         </div>
       )}
 

@@ -73,6 +73,12 @@ export const PERSONAL_BLOCKED_PATIENT_ROUTES = [
   "/dashboard/documents",
   "/dashboard/outcome-measures",
   "/dashboard/follow-up",
+  // Symptom recording for the physio, and BPR's clinical "How It Works"
+  // guide — now that a studio student holds every module (activity 55, T-1)
+  // only the URL block keeps them out.
+  "/dashboard/recordings",
+  "/api/patient/consultation-recording",
+  "/dashboard/guide",
 ];
 
 // Clinical generators nested under a patient: /api/admin/patients/<id>/<sub>.

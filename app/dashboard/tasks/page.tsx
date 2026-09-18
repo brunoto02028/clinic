@@ -10,6 +10,7 @@ import {
   FileText, Mic, Shield, User, CreditCard, CalendarCheck,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 const TYPE_ICONS: Record<string, any> = {
   UPLOAD_DOCUMENT: FileText,
@@ -33,6 +34,7 @@ export default function PatientTasksPage() {
   const { toast } = useToast();
   const { locale } = useLocale();
   const isPt = locale?.startsWith("pt");
+  const { relabel } = useVocab();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -76,9 +78,9 @@ export default function PatientTasksPage() {
           {isPt ? "Acoes Pendentes" : "Pending Actions"}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {isPt
-            ? "Acoes solicitadas pela sua clinica. Complete-as para um melhor atendimento."
-            : "Actions requested by your clinic. Complete them for the best care experience."}
+          {relabel(isPt
+            ? "Ações solicitadas pela sua clínica. Complete-as para um melhor atendimento."
+            : "Actions requested by your clinic. Complete them for the best care experience.")}
         </p>
       </div>
 

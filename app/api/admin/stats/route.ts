@@ -3,6 +3,11 @@ import { prisma } from "@/lib/db";
 import { getClinicContext, withClinicFilter } from "@/lib/clinic-context";
 import { isDbUnreachableError, MOCK_APPOINTMENTS, MOCK_PATIENTS, MOCK_FOOT_SCANS, devFallbackResponse } from "@/lib/dev-fallback";
 
+// Staff who see clients: therapists, plus an ADMIN who takes sessions — a
+// personal trainer owns their studio as ADMIN and was counted as 0 trainers
+// (activity 55, T-10).
+const PRACTITIONERS = { OR: [{ role: "THERAPIST" }, { role: "ADMIN", bookable: true }] };
+
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
@@ -27,7 +32,7 @@ export async function GET() {
     ] = await Promise.all([
       prisma.user.count({ where: withClinicFilter({}, clinicId) }),
       prisma.user.count({ where: withClinicFilter({ role: "PATIENT" }, clinicId) as any }),
-      prisma.user.count({ where: withClinicFilter({ role: "THERAPIST" }, clinicId) as any }),
+      prisma.user.count({ where: withClinicFilter(PRACTITIONERS, clinicId) as any }),
       prisma.appointment.findMany({
         where: withClinicFilter({}, clinicId),
         orderBy: { dateTime: "desc" },

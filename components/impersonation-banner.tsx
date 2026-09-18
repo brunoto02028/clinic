@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Eye, ArrowLeft } from "lucide-react";
+import { useVocab } from "@/hooks/use-vocab";
 
 /**
  * Presentational only. Whether impersonation is genuinely active is decided
@@ -11,6 +12,7 @@ import { Eye, ArrowLeft } from "lucide-react";
  */
 export default function ImpersonationBanner({ patientName }: { patientName: string }) {
   const [exiting, setExiting] = useState(false);
+  const { isPersonal } = useVocab();
 
   const handleExit = async () => {
     setExiting(true);
@@ -38,7 +40,7 @@ export default function ImpersonationBanner({ patientName }: { patientName: stri
       <span className="font-medium">
         Visualizando como: <strong>{patientName}</strong>
       </span>
-      <span className="text-white/70 text-xs hidden sm:inline">— Você está vendo exatamente o que o paciente vê</span>
+      <span className="text-white/70 text-xs hidden sm:inline">— Você está vendo exatamente o que o {isPersonal ? "aluno" : "paciente"} vê</span>
       <button
         onClick={handleExit}
         disabled={exiting}

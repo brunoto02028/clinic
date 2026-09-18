@@ -6,6 +6,7 @@ import { Loader2, CheckCircle2, Send, MessageCircleQuestion, ChevronDown, Chevro
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface QuestionSet {
   id: string;
@@ -57,6 +58,7 @@ function formatTime(dateStr: string, isPt: boolean) {
 export default function QuestionsPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
+  const { relabel } = useVocab();
   const [sets, setSets] = useState<QuestionSet[]>([]);
   const [msgs, setMsgs] = useState<ClinicMsg[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,10 +210,10 @@ export default function QuestionsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight">
-            {isPt ? "Mensagens da Clínica" : "Clinic Messages"}
+            {relabel(isPt ? "Mensagens da Clínica" : "Clinic Messages")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isPt ? "Comunicações do seu terapeuta" : "Communications from your therapist"}
+            {relabel(isPt ? "Comunicações do seu terapeuta" : "Communications from your therapist")}
           </p>
         </div>
         {pendingCount > 0 && (
@@ -434,7 +436,7 @@ export default function QuestionsPage() {
                               <CheckCircle2 className="h-5 w-5 text-ba1-ok flex-shrink-0" />
                               <div>
                                 <p className="text-sm font-semibold text-ba1-ok">{isPt ? "Respostas enviadas!" : "Replies sent!"}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{isPt ? "O teu terapeuta vai rever antes da consulta." : "Your therapist will review before your appointment."}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{relabel(isPt ? "O teu terapeuta vai rever antes da consulta." : "Your therapist will review before your appointment.")}</p>
                               </div>
                             </div>
                           ) : (
@@ -499,7 +501,7 @@ export default function QuestionsPage() {
           <Textarea
             value={chatDraft}
             onChange={e => setChatDraft(e.target.value)}
-            placeholder={isPt ? "Escreva uma mensagem à clínica…" : "Write a message to the clinic…"}
+            placeholder={relabel(isPt ? "Escreva uma mensagem à clínica…" : "Write a message to the clinic…")}
             className="text-sm min-h-[44px] max-h-32 resize-none rounded-xl flex-1"
             rows={1}
             onKeyDown={e => {

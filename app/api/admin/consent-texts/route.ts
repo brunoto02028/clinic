@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSuperadminActor } from "@/lib/tenant-access";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
+import { studioConsentTexts } from "@/lib/studio-terms";
 
 export const dynamic = "force-dynamic";
 
@@ -76,11 +79,32 @@ const DEFAULT_CONSENT_TEXTS_PT = {
  * draft translation); anything else keeps the original English-only
  * behaviour unchanged.
  */
+// The studio whose training terms apply: the one named by ?studio=<slug>
+// (its public sign-up page), or the signed-in user's own studio. A clinic —
+// or no studio at all — keeps the clinic's consent texts below.
+async function studioForTerms(req: NextRequest): Promise<{ name: string } | null> {
+  const slug = req.nextUrl.searchParams.get("studio");
+  const where = slug
+    ? { slug }
+    : await getServerSession(authOptions).then((s) => {
+        const clinicId = (s?.user as any)?.clinicId as string | undefined;
+        return clinicId ? { id: clinicId } : null;
+      });
+  if (!where) return null;
+  const clinic = await prisma.clinic.findUnique({ where, select: { name: true, type: true } });
+  return clinic?.type === "PERSONAL_TRAINER" ? { name: clinic.name } : null;
+}
+
 export async function GET(req: NextRequest) {
   const isPt = req.nextUrl.searchParams.get("locale") === "pt-BR";
   const fallback = isPt ? DEFAULT_CONSENT_TEXTS_PT : DEFAULT_CONSENT_TEXTS;
 
   try {
+    // A studio's students accept training terms, not the clinic's consent for
+    // treatment (activity 55, T-3).
+    const studio = await studioForTerms(req);
+    if (studio) return NextResponse.json(studioConsentTexts(studio.name, isPt));
+
     const settings = await prisma.siteSettings.findFirst({
       select: { consentTextsJson: true, consentTextsJsonPt: true },
     });

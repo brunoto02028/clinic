@@ -82,6 +82,8 @@ export default function WorkoutBuilder({ studentId }: { studentId: string }) {
   const [aiForm, setAiForm] = useState({ goal: "", level: "intermediate", daysPerWeek: "", focus: "", notes: "" });
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState("");
+  // The AI only picks from the studio's own exercises that have a video.
+  const [aiLibraryEmpty, setAiLibraryEmpty] = useState(false);
   const [aiFallbackNotice, setAiFallbackNotice] = useState("");
 
   // Fetches and stores the list; returns it so callers can (re)select a row.
@@ -192,6 +194,7 @@ export default function WorkoutBuilder({ studentId }: { studentId: string }) {
 
     setAiGenerating(true);
     setAiError("");
+    setAiLibraryEmpty(false);
     setAiFallbackNotice("");
     // B2: capture the focus used for THIS request — aiForm isn't reset after
     // success, so referencing the live state in the notice below could show a
@@ -211,6 +214,10 @@ export default function WorkoutBuilder({ studentId }: { studentId: string }) {
         }),
       });
       const data = await r.json().catch(() => ({}));
+      if (data?.code === "EMPTY_LIBRARY") {
+        setAiLibraryEmpty(true);
+        return;
+      }
       if (!r.ok) throw new Error(data?.error || String(r.status));
 
       const gen = data.generated as { name: string; phase: string | null; exercises: Array<Omit<WEx, "_uid">> };
@@ -447,6 +454,16 @@ export default function WorkoutBuilder({ studentId }: { studentId: string }) {
                   <button onClick={() => setAiOpen(false)} className="p-1 hover:text-red-500" title={t("Close", "Fechar")}><X className="h-4 w-4" /></button>
                 </div>
                 {aiError && <div className="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700">{aiError}</div>}
+                {aiLibraryEmpty && (
+                  <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-1">
+                    <p className="font-medium">{t("Your exercise library has no exercises with video yet.", "Sua biblioteca ainda não tem exercícios com vídeo.")}</p>
+                    <p>{t(
+                      "The AI builds workouts only from your own exercises that have a video. You can still build this workout by hand with \"Add exercise\" — the video is optional and can be added later in the library.",
+                      "A IA monta treinos só com os seus exercícios que têm vídeo. Você pode montar este treino à mão em \"Adicionar exercício\" — o vídeo é opcional e pode entrar depois na biblioteca."
+                    )}</p>
+                    <a href="/admin/exercises" className="inline-block font-medium text-primary underline">{t("Open exercise library →", "Abrir biblioteca de exercícios →")}</a>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <div className="col-span-2">
                     <Label className="text-[10px] text-muted-foreground">{t("Goal", "Objetivo")}</Label>

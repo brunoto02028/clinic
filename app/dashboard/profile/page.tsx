@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { User, Globe, Phone, MapPin, Save, CheckCircle, Calendar, Shield, Lock, Eye, EyeOff, AlertCircle, Mail, MessageSquare, MessageCircle, Scale, ArrowRight, Info, Clock } from 'lucide-react';
 import { useLocale } from '@/hooks/use-locale';
 import { t as i18nT } from '@/lib/i18n';
+import { useVocab } from "@/hooks/use-vocab";
 
 export default function PatientProfilePage() {
   const { locale: siteLocale } = useLocale();
   const isPt = siteLocale === 'pt-BR';
+  const { relabel } = useVocab();
   const T = (key: string) => i18nT(key, siteLocale);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -195,9 +197,9 @@ export default function PatientProfilePage() {
                 {isPt ? 'Por que preencher seus dados?' : 'Why complete your profile?'}
               </p>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                {isPt
+                {relabel(isPt
                   ? 'Precisamos das suas informações para entrar em contato sobre consultas, enviar resultados de exames e garantir que o seu terapeuta tenha todos os dados necessários para o melhor atendimento. Seus dados são protegidos e nunca serão compartilhados sem o seu consentimento.'
-                  : 'We need your information to contact you about appointments, send examination results, and ensure your therapist has all the data needed for the best care. Your data is protected and will never be shared without your consent.'}
+                  : 'We need your information to contact you about appointments, send examination results, and ensure your therapist has all the data needed for the best care. Your data is protected and will never be shared without your consent.')}
               </p>
             </div>
           </div>
@@ -294,9 +296,9 @@ export default function PatientProfilePage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {isPt
+              {relabel(isPt
                 ? 'Lembretes de consulta e atualizações serão enviados por este canal. SMS e WhatsApp serão disponibilizados em breve.'
-                : 'Appointment reminders and updates will be sent via this channel. SMS and WhatsApp will be available soon.'}
+                : 'Appointment reminders and updates will be sent via this channel. SMS and WhatsApp will be available soon.')}
             </p>
           </div>
 
@@ -307,9 +309,9 @@ export default function PatientProfilePage() {
               {isPt ? 'Data de Nascimento' : 'Date of Birth'}
             </label>
             <p className="text-[11px] text-muted-foreground mb-2">
-              {isPt
+              {relabel(isPt
                 ? 'Necessária para confirmar a sua identidade e adequar o tratamento à sua faixa etária.'
-                : 'Required to confirm your identity and tailor treatment to your age group.'}
+                : 'Required to confirm your identity and tailor treatment to your age group.')}
             </p>
             <input
               type="date"
@@ -346,9 +348,9 @@ export default function PatientProfilePage() {
               {T('profile.address')}
             </label>
             <p className="text-[11px] text-muted-foreground mb-2">
-              {isPt
+              {relabel(isPt
                 ? 'Utilizado para referências médicas, correspondência e para auxiliar no planeamento do seu tratamento.'
-                : 'Used for medical referrals, correspondence, and to help plan your treatment.'}
+                : 'Used for medical referrals, correspondence, and to help plan your treatment.')}
             </p>
             <textarea
               value={address}
@@ -366,9 +368,9 @@ export default function PatientProfilePage() {
               {isPt ? 'Contato de Emergência' : 'Emergency Contact'}
             </label>
             <p className="text-[11px] text-muted-foreground mb-3">
-              {isPt
+              {relabel(isPt
                 ? 'Pessoa que devemos contactar em caso de emergência durante o seu tratamento. Esta informação é obrigatória por segurança.'
-                : 'Person we should contact in case of emergency during your treatment. This information is required for safety.'}
+                : 'Person we should contact in case of emergency during your treatment. This information is required for safety.')}
             </p>
             <div className="space-y-3">
               <input

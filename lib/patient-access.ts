@@ -26,6 +26,7 @@ export type GrantReason =
   | "free" // active subscription on a free plan
   | "fullAccess" // per-patient full access override
   | "staff" // the viewer is not a patient
+  | "studio" // student of a personal-trainer studio: everything by default (activity 55)
   | "override"; // per-patient admin override
 
 export interface PatientAccessInput {
@@ -36,6 +37,8 @@ export interface PatientAccessInput {
   medicalScreening?: { isSubmitted?: boolean | null } | null;
   patientSubscriptions?: Array<{ plan?: { isFree?: boolean | null; features?: string[] | null } | null }> | null;
   packagesAsPatient?: Array<unknown> | null;
+  /** The patient's tenant — a studio's students start with everything. */
+  clinic?: { type?: string | null } | null;
 }
 
 export interface PatientAccessResult {
@@ -139,6 +142,15 @@ export function computePatientAccess(patient: PatientAccessInput): PatientAccess
 
   for (const mod of ALWAYS_VISIBLE_MODULES) grantModule(mod.key, "always");
 
+  // A personal-trainer studio doesn't sell the clinic's plans: its students get
+  // every module and permission by default (activity 55, T-1). The trainer can
+  // still hide or lock one per student below, and clinical modules stay out of
+  // the menu and blocked by URL for studios anyway.
+  if (patient.clinic?.type === "PERSONAL_TRAINER") {
+    for (const m of MODULE_REGISTRY) grantModule(m.key, "studio");
+    for (const p of PERMISSION_REGISTRY) grantPermission(p.key, "studio");
+  }
+
   for (const sub of subscriptions) {
     for (const featureKey of sub.plan?.features || []) {
       if (featureKey.startsWith("mod_")) grantModule(featureKey, "plan");
@@ -220,4 +232,5 @@ export const PATIENT_ACCESS_SELECT = {
     where: { isPaid: true, status: { in: ["PAID", "ACTIVE"] } },
     select: { id: true, status: true, protocol: { select: { id: true, status: true } } },
   },
+  clinic: { select: { type: true } },
 } as const;

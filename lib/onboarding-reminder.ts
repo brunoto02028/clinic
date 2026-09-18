@@ -22,12 +22,15 @@ export async function getOnboardingPending(patientId: string): Promise<Onboardin
   const [user, screening] = await Promise.all([
     prisma.user.findUnique({
       where: { id: patientId },
-      select: { dateOfBirth: true, address: true, consentAcceptedAt: true },
+      select: { dateOfBirth: true, address: true, consentAcceptedAt: true, clinic: { select: { type: true } } },
     }),
     prisma.medicalScreening.findUnique({ where: { userId: patientId }, select: { isSubmitted: true } }),
   ]);
   const profileIncomplete = !user?.dateOfBirth || !user?.address;
-  const screeningMissing = screening?.isSubmitted !== true;
+  // A studio's students have no medical screening — it's a clinic step and
+  // its pages are blocked for studios (activity 55, T-4).
+  const isStudio = user?.clinic?.type === "PERSONAL_TRAINER";
+  const screeningMissing = !isStudio && screening?.isSubmitted !== true;
   const consentMissing = !user?.consentAcceptedAt;
   return {
     profileIncomplete,

@@ -321,7 +321,7 @@ export default function QuizzesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Quizzes</h1>
-          <p className="text-muted-foreground text-sm">Create educational quizzes for patients — manually or with AI</p>
+          <p className="text-muted-foreground text-sm">{relabel("Create educational quizzes for patients — manually or with AI")}</p>
         </div>
         <Button onClick={openCreate} className="gap-2"><Plus className="h-4 w-4" /> Create Quiz</Button>
       </div>

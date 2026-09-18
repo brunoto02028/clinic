@@ -6,7 +6,7 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **055**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **056**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > Reorganizado em 18/09/2026. As pastas eram `1-…`, `10-…` sem zeros e existiam **duas** "1".
 > - `1-mobile-fundacao` (jun/2026, abre a série mobile 001–006) manteve o **001**.
@@ -35,6 +35,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [033](033-program-templates-calendar/) | Program Templates (multi-semana + atribuição em massa) | ✅ |
 | [038](038-fechamento-gaps-personal/) | Fechamento dos gaps da atividade 20 | ✅ |
 | [052](052-seguranca-rotas-legadas-personal/) | Segurança das rotas legadas antes do 1º personal externo | ✅ concluída (deploy 18/09) |
+| [055](055-primeiro-uso-personal/) | Destravar o 1º uso do personal e do aluno | ✅ |
 
 ## Plataforma (multi-tenant, segurança, design, custos)
 
@@ -95,6 +96,5 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 
 ## Próximas (ainda sem pasta)
 
-- **055 — Destravar o 1º uso do personal.** Biblioteca inicial de exercícios, paywall de sessões do aluno, termos do aluno, guia BPR, exercícios × treinos, vocabulário. Depende de 3 decisões do Bruno. Ver `docs/personal-review-2026-09-18.md`.
 - **Cardápio com IA** (nutrição), depois da 053.
 - **App mobile:** correções M1–M7 da revisão, antes do build EAS.

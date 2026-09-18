@@ -7,9 +7,14 @@ import type { Metadata } from "next";
 
 // Branded login for a personal-trainer studio: /studio/[slug]. The trainer and
 // their students sign in here. Utility page — keep it out of the index.
-export const metadata: Metadata = {
-  robots: { index: false, follow: true },
-};
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  // The browser tab shows the studio, not BPR (activity 55, T-5).
+  const clinic = await prisma.clinic.findUnique({ where: { slug: params.slug }, select: { name: true, type: true } });
+  return {
+    ...(clinic?.type === "PERSONAL_TRAINER" ? { title: { absolute: clinic.name } } : {}),
+    robots: { index: false, follow: true },
+  };
+}
 
 export default async function StudioLoginPage({ params }: { params: { slug: string } }) {
   // Resolve the tenant by slug, branding included. Studio pages are personal-only:

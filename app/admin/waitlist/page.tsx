@@ -6,6 +6,7 @@ import {
   RefreshCw, Calendar, User, Trash2, UserPlus, Mail, Phone,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface WaitlistEntry {
   id: string;
@@ -35,6 +36,7 @@ function formatDate(d: string | null) {
 }
 
 export default function AdminWaitlistPage() {
+  const { relabel } = useVocab();
   const { toast } = useToast();
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,7 @@ export default function AdminWaitlistPage() {
             Waitlist
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Patients waiting for a slot. When a matching appointment is cancelled, they're notified automatically.
+            {relabel("Patients waiting for a slot. When a matching appointment is cancelled, they're notified automatically.")}
           </p>
         </div>
         <button onClick={fetchEntries} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors self-start sm:self-auto">

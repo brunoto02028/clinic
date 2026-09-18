@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface Post {
   id: string;
@@ -52,6 +53,7 @@ function timeAgo(dateStr: string, isPt: boolean): string {
 export default function CommunityPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
+  const { relabel } = useVocab();
   const [posts, setPosts] = useState<Post[]>([]);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [rank, setRank] = useState(0);
@@ -126,7 +128,7 @@ export default function CommunityPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
-          <Trophy className="h-6 w-6 text-ba1-warn" /> BPR Arena
+          <Trophy className="h-6 w-6 text-ba1-warn" /> {relabel("BPR Arena")}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{isPt ? "Celebre vitórias, participe de desafios e mantenha-se motivado" : "Celebrate victories, join challenges, and stay motivated together"}</p>
       </div>

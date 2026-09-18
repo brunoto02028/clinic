@@ -50,7 +50,9 @@ export async function POST(request: NextRequest) {
       select: { id: true, name: true, namePt: true, bodyRegion: true, difficulty: true, tags: true, videoUrl: true, defaultSets: true, defaultReps: true, defaultRestSec: true },
     });
     if (exercises.length === 0) {
-      return NextResponse.json({ error: "Add exercises with video to your library first." }, { status: 400 });
+      // A code the builder turns into a guided message with a link to the
+      // library (activity 55, T-8) — a new studio starts with an empty one.
+      return NextResponse.json({ error: "Add exercises with video to your library first.", code: "EMPTY_LIBRARY" }, { status: 400 });
     }
 
     const catalog: CatalogExercise[] = exercises as CatalogExercise[];

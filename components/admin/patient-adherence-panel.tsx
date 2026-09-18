@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2, AlertCircle, Loader2, Send, Eye } from "lucide-react";
+import { useVocab } from "@/hooks/use-vocab";
 
 type MissingItem = { id: string; title: string };
 type DayStatus = { hasPlan: boolean; allDone: boolean; missing: MissingItem[]; reminderSentAt: string | null };
@@ -144,6 +145,7 @@ function onboardingStatus(p: OnboardingPending | null): DayStatus {
 export default function PatientAdherencePanel({ patientId }: { patientId: string }) {
   const [data, setData] = useState<AdherenceToday | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingPending | null>(null);
+  const { isPersonal } = useVocab();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -185,7 +187,7 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
         {onboardingReady && (
           <AdherenceSection
             title="Onboarding"
-            doneLabel="Profile, screening and consent all done."
+            doneLabel={isPersonal ? "Profile and consent all done." : "Profile, screening and consent all done."}
             missingLabel={(n) => `${n} onboarding ${n === 1 ? "step" : "steps"} pending`}
             status={onboardingStatus(onboarding)}
             previewUrl={`/api/admin/adherence/preview-onboarding-email?patientId=${patientId}`}

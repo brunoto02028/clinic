@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/hooks/use-locale";
 import { CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
+import { useVocab } from "@/hooks/use-vocab";
 import {
   Select,
   SelectContent,
@@ -58,6 +59,7 @@ export default function AppointmentsList() {
   const { data: session } = useSession() || {};
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
+  const { relabel, isPersonal } = useVocab();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -148,14 +150,14 @@ export default function AppointmentsList() {
           <Link href="/dashboard/appointments/book" className="w-full sm:w-auto">
             <Button className="gap-2 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
-              {isPt ? "Agendar Consulta" : "Book Appointment"}
+              {relabel(isPt ? "Agendar Consulta" : "Book Appointment")}
             </Button>
           </Link>
         </div>
       </div>
 
       {/* Initial Assessment Banner for patients */}
-      {!isTherapist && initialAssessmentDone === false && !loading && (
+      {!isTherapist && !isPersonal && initialAssessmentDone === false && !loading && (
         <Card className="border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-card to-amber-500/5 overflow-hidden">
           <div className="h-1 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400" />
           <CardContent className="p-4 sm:p-5">
@@ -220,7 +222,7 @@ export default function AppointmentsList() {
                 : (isPt ? "Agende sua primeira consulta para começar" : "Book your first appointment to get started")}
             </p>
             <Link href="/dashboard/appointments/book">
-              <Button>{isPt ? "Agendar Consulta" : "Book Appointment"}</Button>
+              <Button>{relabel(isPt ? "Agendar Consulta" : "Book Appointment")}</Button>
             </Link>
           </CardContent>
         </Card>

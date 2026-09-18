@@ -353,9 +353,9 @@ export default function AvailabilityPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {isPt
+            {relabel(isPt
               ? "Bloqueie feriados, férias ou dias de ausência. Pacientes não verão nenhum horário disponível nesse período."
-              : "Block holidays, vacation or absence days. Patients won't see any available slots during that period."}
+              : "Block holidays, vacation or absence days. Patients won't see any available slots during that period.")}
           </p>
 
           {/* Add block form */}

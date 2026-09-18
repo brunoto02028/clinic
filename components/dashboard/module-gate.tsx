@@ -26,8 +26,13 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
   const router = useRouter();
   const { access, loading, hasModule, canAccessHref } = usePatientAccess();
   const { locale } = useLocale();
-  const { relabel } = useVocab();
+  const { relabel, isPersonal } = useVocab();
   const T = (key: string) => relabel(i18nT(key, locale));
+  // A studio student has every module unless their trainer locked it, and a
+  // studio sells no BPR plans — so no upgrade pitch, just who to ask.
+  const studioLocked = locale === "pt-BR"
+    ? "Esta área ainda não foi liberada pelo seu personal. Se precisar dela, é só pedir."
+    : "Your trainer hasn't opened this area for you yet. Just ask them if you need it.";
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -123,10 +128,10 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
               {(locale === "pt-BR" ? moduleDef?.descriptionPt : moduleDef?.description) || T("gate.lockedDesc")}
             </p>
             <p className="text-xs text-muted-foreground mb-6">
-              {T("gate.upgradeDesc")}
+              {isPersonal ? studioLocked : T("gate.upgradeDesc")}
             </p>
 
-            {!access.hasActiveSubscription ? (
+            {isPersonal ? null : !access.hasActiveSubscription ? (
               <div className="space-y-3">
                 <Button
                   onClick={() => router.push("/dashboard/membership")}
@@ -182,14 +187,16 @@ export default function ModuleGate({ children, moduleKey }: ModuleGateProps) {
                 {(locale === "pt-BR" ? moduleDef?.labelPt : moduleDef?.label) || T("gate.lockedResource")}
               </h2>
               <p className="text-sm text-muted-foreground mb-6">
-                {T("gate.requiresUpgrade")}
+                {isPersonal ? studioLocked : T("gate.requiresUpgrade")}
               </p>
-              <Button
-                onClick={() => router.push("/dashboard/membership")}
-                className="gap-2 bg-violet-600 hover:bg-violet-700"
-              >
-                <Crown className="h-4 w-4" /> {T("gate.viewPlans")}
-              </Button>
+              {!isPersonal && (
+                <Button
+                  onClick={() => router.push("/dashboard/membership")}
+                  className="gap-2 bg-violet-600 hover:bg-violet-700"
+                >
+                  <Crown className="h-4 w-4" /> {T("gate.viewPlans")}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>

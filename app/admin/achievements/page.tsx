@@ -19,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useVocab } from "@/hooks/use-vocab";
 
 const ACH_CATEGORIES = [
   { value: "general", label: "General" },
@@ -71,6 +72,7 @@ interface Condition {
 
 export default function AchievementsPage() {
   const { locale } = useLocale();
+  const { relabel } = useVocab();
   const { toast } = useToast();
 
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -208,7 +210,7 @@ export default function AchievementsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Achievements</h1>
-          <p className="text-muted-foreground text-sm">Create badges and achievements for patient gamification</p>
+          <p className="text-muted-foreground text-sm">{relabel("Create badges and achievements for patient gamification")}</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => { openCreate(); }} variant="outline" className="gap-2">

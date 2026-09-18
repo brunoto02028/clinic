@@ -17,6 +17,7 @@ import {
   AlertCircle,
   UserCheck,
   Stethoscope,
+  Dumbbell,
   ArrowRight,
   Activity,
   CalendarCheck,
@@ -274,7 +275,7 @@ export default function AdminDashboard() {
       {/* ═══ MODULE: CLINIC ═══ */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <Stethoscope className="h-5 w-5 text-primary" />
+          {isPersonal ? <Dumbbell className="h-5 w-5 text-primary" /> : <Stethoscope className="h-5 w-5 text-primary" />}
           <h2 className="text-lg font-semibold">{T("admin.clinic")}</h2>
         </div>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
@@ -411,7 +412,7 @@ export default function AdminDashboard() {
             title={T("admin.therapists")}
             value={stats?.totalTherapists || 0}
             subtitle={T("admin.activeClinicians")}
-            icon={Stethoscope}
+            icon={isPersonal ? Dumbbell : Stethoscope}
             color="text-cyan-600"
             bgColor="bg-cyan-100"
             href="/admin/users"

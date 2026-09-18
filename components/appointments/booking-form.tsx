@@ -61,7 +61,7 @@ export default function BookingForm() {
   const [paymentMethod, setPaymentMethod] = useState<"ONLINE" | "IN_PERSON">("ONLINE");
   // A personal studio's sessions are paid in person — there is no online
   // option to offer (activity 52, T-7; the server enforces it too).
-  const { isPersonal } = useVocab();
+  const { isPersonal, relabel } = useVocab();
   const [patientState, setPatientState] = useState<PatientState>("loading");
   const [existingAppointments, setExistingAppointments] = useState<PatientAppointment[]>([]);
   const [totalPastCount, setTotalPastCount] = useState(0);
@@ -213,7 +213,7 @@ export default function BookingForm() {
         </Link>
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-            {isPt ? "Agendar Consulta" : "Book an Appointment"}
+            {relabel(isPt ? "Agendar Consulta" : "Book an Appointment")}
           </h1>
           <p className="text-sm text-muted-foreground">
             {isPt ? "Escolha o dia e horário disponíveis" : "Choose an available date and time"}
@@ -275,7 +275,7 @@ export default function BookingForm() {
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {isPt ? "Podes continuar e agendar outra consulta se precisares." : "You can still book an additional appointment if needed."}
+              {relabel(isPt ? "Podes continuar e agendar outra consulta se precisares." : "You can still book an additional appointment if needed.")}
             </p>
             <Link href="/dashboard/appointments" className="text-xs text-primary hover:underline mt-1 inline-block">
               {isPt ? "Ver as minhas consultas →" : "View my appointments →"}
@@ -558,6 +558,8 @@ export default function BookingForm() {
                   ? (isPt
                       ? "Recebemos o seu pedido de consulta. A sua clínica irá confirmar os detalhes em breve."
                       : "We've received your appointment request. Your clinic will confirm the details shortly.")
+                  : isPersonal
+                  ? (isPt ? "A sua sessão já está confirmada." : "Your session is already confirmed.")
                   : confirmedPaymentMethod === "IN_PERSON"
                   ? (isPt
                       ? "A sua consulta já está confirmada. Pague na clínica no dia da consulta."

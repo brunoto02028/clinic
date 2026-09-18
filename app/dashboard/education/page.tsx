@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface ContentItem {
   id: string;
@@ -56,6 +57,7 @@ const TYPE_ICON: Record<string, any> = {
 export default function PatientEducationPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
+  const { relabel } = useVocab();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [published, setPublished] = useState<ContentItem[]>([]);
   const [progress, setProgress] = useState<Record<string, Progress>>({});
@@ -261,7 +263,7 @@ export default function PatientEducationPage() {
                 <BookOpen className="h-8 w-8 text-primary/40" />
               </div>
               <p className="text-muted-foreground font-medium">{isPt ? "Nenhuma atribuição pendente" : "No pending assignments"}</p>
-              <p className="text-sm text-muted-foreground/60 max-w-xs mx-auto">{isPt ? "Seu terapeuta irá atribuir conteúdo educativo após suas sessões." : "Your therapist will assign educational content after your sessions."}</p>
+              <p className="text-sm text-muted-foreground/60 max-w-xs mx-auto">{relabel(isPt ? "Seu terapeuta irá atribuir conteúdo educativo após suas sessões." : "Your therapist will assign educational content after your sessions.")}</p>
             </div>
           ) : (
             <div className="space-y-3">

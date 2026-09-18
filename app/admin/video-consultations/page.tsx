@@ -215,7 +215,7 @@ export default function VideoConsultationsPage() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <VideoOff className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-medium mb-1">No upcoming video consultations</h3>
-              <p className="text-sm text-muted-foreground mb-4">Schedule a video call with a patient</p>
+              <p className="text-sm text-muted-foreground mb-4">{relabel("Schedule a video call with a patient")}</p>
               <Button onClick={() => setShowDialog(true)} className="gap-2"><Plus className="h-4 w-4" /> Schedule Call</Button>
             </CardContent>
           </Card>
@@ -279,9 +279,9 @@ export default function VideoConsultationsPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Patient *</Label>
+              <Label>{relabel("Patient")} *</Label>
               <Select value={form.patientId} onValueChange={(v) => setForm({ ...form, patientId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select patient..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={relabel("Select patient...")} /></SelectTrigger>
                 <SelectContent>
                   {patients.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>

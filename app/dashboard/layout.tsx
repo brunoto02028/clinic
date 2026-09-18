@@ -8,9 +8,16 @@ import ImpersonationBanner from "@/components/impersonation-banner";
 import type { Metadata } from "next";
 
 // Patient portal — private, keep out of the index (P4.1)
-export const metadata: Metadata = {
-  robots: { index: false, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // A studio's students see their studio in the browser tab, not BPR
+  // (activity 55, T-5). Clinic patients keep the site title.
+  const session = await getServerSession(authOptions);
+  const user = session?.user as any;
+  return {
+    ...(user?.clinicType === "PERSONAL_TRAINER" && user?.clinicName ? { title: { absolute: user.clinicName, template: `%s · ${user.clinicName}` } } : {}),
+    robots: { index: false, follow: true },
+  };
+}
 
 export default async function DashboardRootLayout({
   children,

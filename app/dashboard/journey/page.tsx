@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import RecoveryRing from "@/components/dashboard/recovery-ring";
 import { BADGE_REGISTRY, ARCHETYPES, getArchetype, type BadgeDef } from "@/lib/journey";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 
 interface JourneyData {
   progress: any;
@@ -36,6 +37,7 @@ const AVATAR_STAGES = [
 export default function JourneyPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
+  const { relabel } = useVocab();
   const [data, setData] = useState<JourneyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [prediction, setPrediction] = useState<any>(null);
@@ -105,7 +107,7 @@ export default function JourneyPage() {
                 </div>
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground">{p.levelTitle}</h1>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {isPt ? `Voc\u00ea est\u00e1 entre os ${percentile}% pacientes mais consistentes` : `You're among the top ${percentile}% most consistent patients`}
+                  {relabel(isPt ? `Voc\u00ea est\u00e1 entre os ${percentile}% pacientes mais consistentes` : `You're among the top ${percentile}% most consistent patients`)}
                 </p>
 
                 {/* XP Bar */}
@@ -291,7 +293,7 @@ export default function JourneyPage() {
                     )}
                     <div className="text-2xl mb-1">{badge.emoji}</div>
                     <p className={`text-[11px] font-semibold ${unlocked ? "text-foreground" : "text-muted-foreground"}`}>
-                      {badge.label}
+                      {relabel(badge.label)}
                     </p>
                     <p className="text-[9px] text-muted-foreground mt-0.5">
                       {unlocked ? (isPt ? "Desbloqueado ✅" : "Unlocked ✅") : badge.condition}
@@ -336,7 +338,7 @@ export default function JourneyPage() {
                             <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
                           )}
                           <span className={`text-xs ${task.completed ? "text-ba1-ok line-through" : "text-muted-foreground"}`}>
-                            {task.label}
+                            {relabel(task.label)}
                           </span>
                         </div>
                       ))}

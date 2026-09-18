@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Menu, X, UserCog } from "lucide-react";
+import { LogOut, Menu, X, UserCog, Dumbbell } from "lucide-react";
 import { ADMIN_SECTIONS, visibleAdminSections, getActiveAdminNav, type AdminSection } from "@/lib/admin-sections";
 import { Logo } from "@/components/ui/logo";
 import { ClinicSelector } from "./clinic-selector";
@@ -234,7 +234,8 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
         {/* Nav items */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 space-y-0.5">
           {mainSections.map((section) => {
-            const Icon = section.icon;
+            // The studio's "Training" section, not a stethoscope (activity 55, T-10).
+            const Icon = isPersonal && section.key === "clinical" ? Dumbbell : section.icon;
             const isActive = activeNav?.section.key === section.key;
 
             return (
