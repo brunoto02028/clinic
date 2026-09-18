@@ -1,11 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { isDbUnreachableError, MOCK_SETTINGS, devFallbackResponse } from "@/lib/dev-fallback";
+import { getSuperadminActor } from "@/lib/tenant-access";
 
 const DEFAULT_ABOUT_TEXT = `My name is Bruno, and I'm based in the UK with a strong foundation in physical rehabilitation, sports recovery, and human performance.
 
@@ -100,14 +99,10 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const userRole = (session?.user as { role?: string })?.role;
-    if (!session || !userRole || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes(userRole)) {
-      return NextResponse.json(
-        { error: "Unauthorised" },
-        { status: 401 }
-      );
+    // The single SiteSettings row is BPR's public website — only the platform
+    // owner edits it, never a tenant's ADMIN/THERAPIST (activity 52, T-2).
+    if (!(await getSuperadminActor(request))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     
     const body = await request.json();

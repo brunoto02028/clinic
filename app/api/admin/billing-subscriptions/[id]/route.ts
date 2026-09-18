@@ -7,6 +7,12 @@ import { getActor, assertRecordAccess, accessErrorResponse, AccessError } from "
 import { assertNutritionAccess } from "@/lib/nutrition-access";
 import { resolveConnectedAccount } from "@/lib/connect";
 
+// Stripe says the subscription is already cancelled or doesn't exist — the
+// state we want, so it counts as done.
+function stripeSubscriptionAlreadyGone(err: any): boolean {
+  return err?.code === "resource_missing" || /cancel+ed subscription/i.test(err?.message || "");
+}
+
 // POST — the trainer cancels or refunds a student's billing subscription. Runs
 // on the trainer's OWN connected account (G7): only staff of that tenant, never
 // BPR. Body: { action: "cancel" | "refund", immediate?: boolean }.
@@ -14,6 +20,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   try {
     const actor = await getActor(request);
     if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Money moves (cancel/refund) are the owner's call, not every therapist's
+    // (activity 52, T-10).
+    if (actor.role !== "ADMIN" && actor.role !== "SUPERADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const clinicId = await assertNutritionAccess(actor);
 
     const sub = await prisma.billingSubscription.findUnique({ where: { id: params.id } });
@@ -25,11 +36,29 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (action === "cancel") {
       if (sub!.stripeSubscriptionId) {
+        // If Stripe refuses, say so and change nothing here: marking it
+        // cancelled while Stripe keeps charging the student is the worst outcome
+        // (activity 52, T-10).
+        try {
+          if (body?.immediate) {
+            await stripe.subscriptions.cancel(sub!.stripeSubscriptionId, { stripeAccount });
+          } else {
+            await stripe.subscriptions.update(sub!.stripeSubscriptionId, { cancel_at_period_end: true }, { stripeAccount });
+          }
+        } catch (err: any) {
+          // Already gone on Stripe (the student cancelled, or it lapsed and the
+          // webhook was lost): that is the state we want, so record it here.
+          const alreadyGone = stripeSubscriptionAlreadyGone(err);
+          if (!alreadyGone) {
+            console.error("[billing-subscriptions] Stripe cancel failed:", err?.message);
+            return NextResponse.json({ error: "Stripe could not cancel this subscription. Nothing was changed — try again." }, { status: 502 });
+          }
+          await prisma.billingSubscription.update({ where: { id: sub!.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+          return NextResponse.json({ success: true, alreadyCancelled: true });
+        }
         if (body?.immediate) {
-          await stripe.subscriptions.cancel(sub!.stripeSubscriptionId, { stripeAccount }).catch(() => {});
           await prisma.billingSubscription.update({ where: { id: sub!.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
         } else {
-          await stripe.subscriptions.update(sub!.stripeSubscriptionId, { cancel_at_period_end: true }, { stripeAccount }).catch(() => {});
           await prisma.billingSubscription.update({ where: { id: sub!.id }, data: { cancelAtPeriodEnd: true } });
         }
       } else {
@@ -57,12 +86,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         paymentIntent = session.payment_intent as string | null;
       }
       if (!paymentIntent) return NextResponse.json({ error: "No payment to refund" }, { status: 400 });
-      await stripe.refunds.create({ payment_intent: paymentIntent }, { stripeAccount });
-      // Also cancel any live subscription so it doesn't keep charging.
+      // Stop the subscription first, so a refund never leaves it charging: if
+      // Stripe won't cancel, nothing is refunded or changed (activity 52, T-10).
       if (sub!.stripeSubscriptionId) {
-        await stripe.subscriptions.cancel(sub!.stripeSubscriptionId, { stripeAccount }).catch(() => {});
+        try {
+          await stripe.subscriptions.cancel(sub!.stripeSubscriptionId, { stripeAccount });
+        } catch (err: any) {
+          if (!stripeSubscriptionAlreadyGone(err)) {
+            console.error("[billing-subscriptions] Stripe cancel before refund failed:", err?.message);
+            return NextResponse.json({ error: "Stripe could not cancel this subscription, so nothing was refunded. Try again." }, { status: 502 });
+          }
+        }
       }
       await prisma.billingSubscription.update({ where: { id: sub!.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+      await stripe.refunds.create({ payment_intent: paymentIntent }, { stripeAccount });
       return NextResponse.json({ success: true });
     }
 

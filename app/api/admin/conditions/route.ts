@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { tenantStaff, ownedByTenant, pickCatalogFields } from "@/lib/tenant-owned";
+
+const CONDITION_FIELDS = ["nameEn","namePt","slug","descriptionEn","descriptionPt","bodyRegion","category","icdCode","iconEmoji","isActive","sortOrder"] as const;
 
 export const dynamic = 'force-dynamic';
 
@@ -10,12 +11,12 @@ function slugify(text: string): string {
 }
 
 // GET — list all conditions
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
+export async function GET(req: NextRequest) {
+  const actor = await tenantStaff(req, ["ADMIN", "SUPERADMIN", "THERAPIST"]);
+  if (!actor) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  const clinicId = (session.user as any).clinicId;
+  const clinicId = actor.clinicId;
   const conditions = await (prisma as any).condition.findMany({
     where: { clinicId },
     orderBy: [{ sortOrder: "asc" }, { nameEn: "asc" }],
@@ -26,12 +27,12 @@ export async function GET() {
 
 // POST — create a condition
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
+  const actor = await tenantStaff(req, ["ADMIN", "SUPERADMIN", "THERAPIST"]);
+  if (!actor) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  const clinicId = (session.user as any).clinicId;
-  const userId = (session.user as any).id;
+  const clinicId = actor.clinicId;
+  const userId = actor.userId;
   const body = await req.json();
 
   const { nameEn, namePt, descriptionEn, descriptionPt, bodyRegion, category, icdCode, iconEmoji } = body;
@@ -64,13 +65,17 @@ export async function POST(req: NextRequest) {
 
 // PATCH — update a condition
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
+  const actor = await tenantStaff(req, ["ADMIN", "SUPERADMIN", "THERAPIST"]);
+  if (!actor) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   const body = await req.json();
-  const { id, ...data } = body;
+  const { id } = body;
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!(await ownedByTenant("condition", id, actor.clinicId))) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const picked = await pickCatalogFields(body, CONDITION_FIELDS, actor.clinicId);
+  if ("error" in picked) return NextResponse.json({ error: picked.error }, { status: 404 });
+  const data = picked.data;
 
   const condition = await (prisma as any).condition.update({
     where: { id },
@@ -81,13 +86,14 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE — delete a condition
 export async function DELETE(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["ADMIN", "SUPERADMIN"].includes((session.user as any).role)) {
+  const actor = await tenantStaff(req, ["ADMIN", "SUPERADMIN"]);
+  if (!actor) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!(await ownedByTenant("condition", id, actor.clinicId))) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await (prisma as any).condition.delete({ where: { id } });
   return NextResponse.json({ success: true });

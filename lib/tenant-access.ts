@@ -84,6 +84,17 @@ export async function getSessionStaffActor(request: NextRequest): Promise<Actor 
   return { userId: user.id, role: user.role as ActorRole, clinicId, isImpersonating: false };
 }
 
+/**
+ * The platform owner (SUPERADMIN) themself, or null — for anything that writes
+ * BPR/platform-wide state (the site, consent texts, global prices, the
+ * platform Stripe account): a tenant's ADMIN must not reach those (activity
+ * 52, T-2). Role re-read from the database, impersonation ignored.
+ */
+export async function getSuperadminActor(request: NextRequest): Promise<Actor | null> {
+  const actor = await getSessionStaffActor(request);
+  return actor?.role === "SUPERADMIN" ? actor : null;
+}
+
 export function requireStaff(actor: Actor): void {
   if (!isStaff(actor)) throw new AccessError(403, "Forbidden");
 }

@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { tenantStaff, ownedByTenant, pickCatalogFields } from "@/lib/tenant-owned";
+
+const ACHIEVEMENT_FIELDS = ["conditionId","titleEn","titlePt","descriptionEn","descriptionPt","category","triggerType","triggerValue","xpReward","iconEmoji","badgeColor","isActive","isPublished","sortOrder"] as const;
 
 export const dynamic = 'force-dynamic';
 
 // GET — list all achievements
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
+  const actor = await tenantStaff(req, ["ADMIN", "SUPERADMIN", "THERAPIST"]);
+  if (!actor) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  const clinicId = (session.user as any).clinicId;
+  const clinicId = actor.clinicId;
   const { searchParams } = new URL(req.url);
   const conditionId = searchParams.get("conditionId");
 
@@ -31,15 +32,18 @@ export async function GET(req: NextRequest) {
 
 // POST — create achievement
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
+  const actor = await tenantStaff(req, ["ADMIN", "SUPERADMIN", "THERAPIST"]);
+  if (!actor) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  const clinicId = (session.user as any).clinicId;
-  const userId = (session.user as any).id;
+  const clinicId = actor.clinicId;
+  const userId = actor.userId;
   const body = await req.json();
 
   const { titleEn, titlePt, descriptionEn, descriptionPt, conditionId, category, triggerType, triggerValue, xpReward, iconEmoji, badgeColor, isPublished } = body;
+  if (conditionId && !(await ownedByTenant("condition", conditionId, actor.clinicId))) {
+    return NextResponse.json({ error: "Condition not found" }, { status: 404 });
+  }
   if (!titleEn || !titlePt) {
     return NextResponse.json({ error: "titleEn and titlePt are required" }, { status: 400 });
   }
@@ -69,13 +73,17 @@ export async function POST(req: NextRequest) {
 
 // PATCH — update achievement
 export async function PATCH(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["ADMIN", "SUPERADMIN", "THERAPIST"].includes((session.user as any).role)) {
+  const actor = await tenantStaff(req, ["ADMIN", "SUPERADMIN", "THERAPIST"]);
+  if (!actor) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   const body = await req.json();
-  const { id, ...data } = body;
+  const { id } = body;
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!(await ownedByTenant("achievement", id, actor.clinicId))) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const picked = await pickCatalogFields(body, ACHIEVEMENT_FIELDS, actor.clinicId);
+  if ("error" in picked) return NextResponse.json({ error: picked.error }, { status: 404 });
+  const data = picked.data;
 
   const achievement = await (prisma as any).achievement.update({
     where: { id },
@@ -87,13 +95,14 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE — delete achievement
 export async function DELETE(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["ADMIN", "SUPERADMIN"].includes((session.user as any).role)) {
+  const actor = await tenantStaff(req, ["ADMIN", "SUPERADMIN"]);
+  if (!actor) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (!(await ownedByTenant("achievement", id, actor.clinicId))) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await (prisma as any).achievement.delete({ where: { id } });
   return NextResponse.json({ success: true });

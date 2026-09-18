@@ -67,10 +67,16 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const sex = merged.sex === "M" || merged.sex === "F" ? merged.sex : dbStudent?.sex ?? null;
     const derived = deriveAssessment({ ...merged, sex }, ageFromDob(dbStudent?.dateOfBirth));
 
+    // An unparseable date used to reach Prisma as Invalid Date and 500 (activity 52, T-10).
+    const performedAtDate = body.performedAt ? new Date(body.performedAt) : null;
+    if (performedAtDate && isNaN(performedAtDate.getTime())) {
+      return NextResponse.json({ error: "performedAt must be a valid date" }, { status: 400 });
+    }
+
     const updated = await prisma.studentAssessment.update({
       where: { id: params.id },
       data: {
-        performedAt: has("performedAt") && body.performedAt ? new Date(body.performedAt) : undefined,
+        performedAt: has("performedAt") && performedAtDate ? performedAtDate : undefined,
         assessmentType: typeof merged.assessmentType === "string" && merged.assessmentType.trim() ? merged.assessmentType : null,
         weightKg: merged.weightKg ?? null,
         heightCm: merged.heightCm ?? null,

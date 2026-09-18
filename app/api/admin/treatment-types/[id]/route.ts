@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicContext } from "@/lib/clinic-context";
+import { ownedByTenant } from "@/lib/tenant-owned";
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { clinicId, userRole } = await getClinicContext();
     if (!userRole || !["SUPERADMIN", "ADMIN"].includes(userRole)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // Only this tenant's own treatment types (activity 52, T-8).
+    if (!clinicId || !(await ownedByTenant("treatmentType", params.id, clinicId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const body = await request.json();
@@ -46,9 +51,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userRole } = await getClinicContext();
+    const { clinicId, userRole } = await getClinicContext();
     if (!userRole || !["SUPERADMIN", "ADMIN"].includes(userRole)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!clinicId || !(await ownedByTenant("treatmentType", params.id, clinicId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     await (prisma.treatmentType as any).delete({

@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { getValidatedUserById } from "@/lib/auth-credentials";
 import { signAccessToken, rotateRefreshToken } from "@/lib/mobile-tokens";
+import { withAbsoluteLogo } from "@/lib/mobile-user";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 
 export function OPTIONS() {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     return corsJson({
       accessToken,
       refreshToken: rotated.refreshToken,
-      user,
+      user: withAbsoluteLogo(user),
     });
   } catch (error: any) {
     console.error("[AUTH/mobile/refresh] error:", error?.message);

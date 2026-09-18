@@ -38,7 +38,10 @@ export async function GET(
       },
     });
 
-    if (!exercise) {
+    // Same tenant rule as PATCH: the response lists the patients this exercise
+    // is prescribed to, so another tenant's exercise must stay unreachable
+    // (activity 52, T-8).
+    if (!exercise || exercise.clinicId !== (await resolveClinicId(session))) {
       return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
     }
 

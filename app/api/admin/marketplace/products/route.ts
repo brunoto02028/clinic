@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getSessionStaffActor } from "@/lib/tenant-access";
+
+// The shop is per tenant, and only staff run it (activity 52, T-6): these
+// handlers only asked "is there a session", so any logged-in patient could
+// list, edit — including the price — or delete another tenant's products.
+async function shopStaff(req: NextRequest) {
+  const actor = await getSessionStaffActor(req);
+  if (!actor || !actor.clinicId || actor.role === "THERAPIST") return null;
+  return actor;
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await shopStaff(req);
+    if (!actor) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const products = await prisma.marketplaceProduct.findMany({
+      where: { clinicId: actor.clinicId },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
 
@@ -23,22 +32,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await shopStaff(req);
+    if (!actor) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
 
-    // Get clinic ID
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email! },
-      include: { clinic: true },
-    });
-
-    if (!user?.clinicId) {
-      return NextResponse.json({ error: "No clinic found" }, { status: 400 });
-    }
 
     // Parse numeric fields
     const price = parseFloat(body.price) || 0;
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
 
     const product = await prisma.marketplaceProduct.create({
       data: {
-        clinicId: user.clinicId,
+        clinicId: actor.clinicId,
         name: body.name,
         slug,
         description: body.description || null,
@@ -154,9 +154,9 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await shopStaff(req);
+    if (!actor) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -220,6 +220,14 @@ export async function PATCH(req: NextRequest) {
         .replace(/^-|-$/g, "");
     }
 
+    const owned = await prisma.marketplaceProduct.findFirst({
+      where: { id, clinicId: actor.clinicId },
+      select: { id: true },
+    });
+    if (!owned) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
     const product = await prisma.marketplaceProduct.update({
       where: { id },
       data: updates,
@@ -234,9 +242,9 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await shopStaff(req);
+    if (!actor) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -246,9 +254,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Product ID required" }, { status: 400 });
     }
 
-    await prisma.marketplaceProduct.delete({
-      where: { id },
+    const { count } = await prisma.marketplaceProduct.deleteMany({
+      where: { id, clinicId: actor.clinicId },
     });
+    if (!count) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

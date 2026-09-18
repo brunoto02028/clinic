@@ -32,10 +32,11 @@ export async function POST(request: NextRequest) {
     const stripeAccount = await assertChargesEnabled(plan.clinicId); // 409 if trainer not onboarded
     const recurring = isRecurring(plan.interval);
 
-    // G6 — one ACTIVE recurring subscription per student.
+    // G6 — one live recurring subscription per student. PAST_DUE is still a
+    // live subscription (Stripe keeps retrying the card), so it counts too.
     if (recurring) {
       const existing = await prisma.billingSubscription.findFirst({
-        where: { studentId: actor.userId, status: "ACTIVE" },
+        where: { studentId: actor.userId, status: { in: ["ACTIVE", "PAST_DUE"] } },
         include: { billingPlan: { select: { interval: true } } },
       });
       if (existing && existing.billingPlan.interval !== "ONE_TIME") {
@@ -57,6 +58,29 @@ export async function POST(request: NextRequest) {
       await prisma.studentStripeCustomer.create({
         data: { studentId: actor.userId, stripeAccountId: stripeAccount, customerId },
       });
+    }
+
+    // One open checkout per student on this account (activity 52, T-10): a
+    // second tab (or a second plan) used to open another session while the
+    // first stayed payable, so paying both left an orphan subscription the
+    // trainer couldn't see, cancel or refund. Expire the earlier ones first;
+    // an already-completed or expired session just fails and is skipped.
+    const openCheckouts = await prisma.billingSubscription.findMany({
+      where: { studentId: actor.userId, clinicId: plan.clinicId, status: "INCOMPLETE", stripeCheckoutSessionId: { not: null } },
+      select: { stripeCheckoutSessionId: true },
+    });
+    for (const open of openCheckouts) {
+      try {
+        await stripe.checkout.sessions.expire(open.stripeCheckoutSessionId!, {}, { stripeAccount });
+      } catch (err: any) {
+        // "Not open any more" (already paid/expired/missing) is a 4xx invalid
+        // request — fine to skip. A network or Stripe-side failure means the
+        // old session may still be payable, so don't open a second one.
+        if (err?.type !== "StripeInvalidRequestError") {
+          console.error("[billing/checkout] could not expire previous session:", err?.message);
+          return NextResponse.json({ error: "Could not start checkout right now. Please try again." }, { status: 502 });
+        }
+      }
     }
 
     // G5 — reuse the one INCOMPLETE row for (student, plan) instead of piling up.

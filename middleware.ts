@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isPersonalTenant } from '@/lib/tenant-type';
 import { isPersonalBlockedRoute, isPersonalBlockedPatientRoute } from '@/lib/personal-blocked-routes';
+import { isSuperadminOnlyAdminPage } from '@/lib/superadmin-routes';
 
 // ─── INLINE SECURITY (Edge Runtime compatible) ───
 const rateLimitStore = new Map<string, { count: number; first: number; blocked: boolean; until?: number }>();
@@ -51,6 +52,18 @@ const MOBILE_CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
+// clinicType from a mobile access token's payload (unverified — see its use).
+function bearerClinicType(authHeader: string): string | null {
+  try {
+    const payload = authHeader.slice(7).trim().split('.')[1];
+    if (!payload) return null;
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return typeof json?.clinicType === 'string' ? json.clinicType : null;
+  } catch {
+    return null;
+  }
+}
+
 function isMobileApiPath(pathname: string): boolean {
   return MOBILE_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
@@ -273,6 +286,15 @@ export async function middleware(request: NextRequest) {
   // rate limiting above still apply.
   const authHeader = request.headers.get('authorization');
   if (authHeader?.toLowerCase().startsWith('bearer ') && isMobileApiPath(pathname)) {
+    // The personal-studio block must hold for the app too (activity 52, T-7).
+    // The token's payload is read here without verifying it: that's enough to
+    // *restrict* — a forged token still fails the route's own verification.
+    if (isPersonalTenant(bearerClinicType(authHeader)) && isPersonalBlockedRoute(pathname)) {
+      return new NextResponse(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': MOBILE_CORS_ORIGIN, ...SECURITY_HEADERS },
+      });
+    }
     const safeHeaders = new Headers(request.headers);
     safeHeaders.delete('x-user-id');
     safeHeaders.delete('x-user-role');
@@ -343,6 +365,13 @@ export async function middleware(request: NextRequest) {
       }
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+  }
+
+  // Platform-wide admin pages (BPR site, tenant list, platform AI/logs) are the
+  // platform owner's only — a tenant's ADMIN/THERAPIST goes back to /admin
+  // (activity 52, T-2; the APIs behind them check SUPERADMIN themselves).
+  if (userRole !== 'SUPERADMIN' && userRole !== 'PATIENT' && isSuperadminOnlyAdminPage(pathname)) {
+    return NextResponse.redirect(new URL('/admin', request.url));
   }
 
   // ── ROLE-BASED ROUTING ──

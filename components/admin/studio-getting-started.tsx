@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useVocab } from "@/hooks/use-vocab";
 import { useLocale } from "@/hooks/use-locale";
@@ -22,6 +23,10 @@ interface Step {
 
 export default function StudioGettingStarted({ studentCount = 0 }: { studentCount?: number }) {
   const { isPersonal } = useVocab();
+  const { data: session } = useSession();
+  const sUser = session?.user as any;
+  // Branded once the studio has its own logo or moved off the default moss colour.
+  const hasBranding = !!sUser?.clinicLogoUrl || (!!sUser?.clinicPrimaryColor && sUser.clinicPrimaryColor.toUpperCase() !== "#4F7361");
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid a flash before we read storage
@@ -38,7 +43,7 @@ export default function StudioGettingStarted({ studentCount = 0 }: { studentCoun
   };
 
   const steps: Step[] = [
-    { icon: Palette, en: "Personalise your studio", pt: "Personalize seu estúdio", descEn: "Add your logo and brand colour.", descPt: "Adicione seu logo e a cor da marca.", href: "/admin/settings" },
+    { icon: Palette, en: "Personalise your studio", pt: "Personalize seu estúdio", descEn: "Add your logo and brand colour.", descPt: "Adicione seu logo e a cor da marca.", href: "/admin/studio-branding", done: hasBranding },
     { icon: UserPlus, en: "Invite your first student", pt: "Convide seu primeiro aluno", descEn: "Share your studio link so they can join.", descPt: "Compartilhe o link do estúdio para eles entrarem.", href: "/admin/patients", done: studentCount > 0 },
     { icon: Dumbbell, en: "Build a workout", pt: "Monte um treino", descEn: "Open a student and add exercises with sets, reps and load.", descPt: "Abra um aluno e adicione exercícios com séries, reps e carga.", href: "/admin/patients" },
     { icon: ClipboardList, en: "Record an assessment", pt: "Registre uma avaliação", descEn: "Log measurements, body composition and photos.", descPt: "Registre medidas, composição corporal e fotos.", href: "/admin/patients" },

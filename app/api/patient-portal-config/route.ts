@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getSuperadminActor } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
@@ -282,13 +281,10 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role;
-    if (userRole !== "SUPERADMIN" && userRole !== "ADMIN") {
+    // Stored on the single SiteSettings row, so it applies to every tenant's
+    // patients — SUPERADMIN only until the portal config is per tenant
+    // (activity 52, T-2).
+    if (!(await getSuperadminActor(request))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

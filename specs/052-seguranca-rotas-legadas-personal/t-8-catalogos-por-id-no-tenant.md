@@ -1,6 +1,6 @@
 # T-8: Catálogos e listas por id presos ao tenant
 
-**Status:** pendente
+**Status:** concluído (QA aprovado `qa/report-t-8.md` + code review aplicado)
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -31,8 +31,8 @@ Da auditoria de 18/09. Todas exigem o id, mas esses ids vazam pelas listagens ab
 - `app/api/admin/equipment/[id]/route.ts`, `app/api/admin/exercises/[id]/route.ts`, `app/api/admin/exercises/translate/route.ts`
 
 ## Critérios de aceite
-- [ ] Personal B → `rehab-plans/recent` → só do B (vazio no QA Studio PT).
-- [ ] Personal B → update/delete por id de achievement/condition/quiz/journey/treatment-type do A → 404; banco inalterado.
-- [ ] Update com `clinicId` no corpo → campo ignorado.
-- [ ] Personal B → `GET exercises/<id do A>` e `equipment/<id do A>` → 404; `exercises/translate` com id do A → nada traduzido.
-- [ ] Clínica BPR: editar os próprios catálogos funciona (regressão).
+- [x] Personal B → `rehab-plans/recent` → só do B (vazio no QA Studio PT).
+- [x] Personal B → update/delete por id de achievement/condition/quiz/journey/treatment-type do A → 404; banco inalterado.
+- [x] Update com `clinicId` no corpo → campo ignorado.
+- [x] Personal B → `GET exercises/<id do A>` e `equipment/<id do A>` → 404; `exercises/translate` com id do A → nada traduzido.
+- [x] Clínica BPR: editar os próprios catálogos funciona (regressão).

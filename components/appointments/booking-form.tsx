@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { useLocale } from "@/hooks/use-locale";
+import { useVocab } from "@/hooks/use-vocab";
 import { zonedTimeToUtc, getZonedDateString, CLINIC_TIMEZONE } from "@/lib/clinic-timezone";
 
 type PatientState = "loading" | "new" | "returning" | "active";
@@ -58,6 +59,9 @@ export default function BookingForm() {
   // so the per-appointment price/payment framing here would be misleading.
   const [hasActivePackage, setHasActivePackage] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"ONLINE" | "IN_PERSON">("ONLINE");
+  // A personal studio's sessions are paid in person — there is no online
+  // option to offer (activity 52, T-7; the server enforces it too).
+  const { isPersonal } = useVocab();
   const [patientState, setPatientState] = useState<PatientState>("loading");
   const [existingAppointments, setExistingAppointments] = useState<PatientAppointment[]>([]);
   const [totalPastCount, setTotalPastCount] = useState(0);
@@ -183,7 +187,7 @@ export default function BookingForm() {
           treatmentType: isPt ? "Consulta" : "Consultation",
           price: consultationPrice ?? 0,
           therapistId: selectedTherapistId || undefined,
-          paymentMethod: hasActivePackage ? "ONLINE" : paymentMethod,
+          paymentMethod: isPersonal ? "IN_PERSON" : hasActivePackage ? "ONLINE" : paymentMethod,
         }),
       });
       const data = await res.json();
@@ -478,7 +482,7 @@ export default function BookingForm() {
 
             {/* Payment method choice — a patient on an active package is billed
                 by the clinic directly, so this choice doesn't apply to them. */}
-            {selectedTime && !hasActivePackage && (
+            {selectedTime && !hasActivePackage && !isPersonal && (
               <div className="mt-4">
                 <p className="text-sm font-medium text-foreground mb-2">
                   {isPt ? "Como você vai pagar?" : "How will you pay?"}

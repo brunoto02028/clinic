@@ -1,17 +1,17 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
+import { getSuperadminActor } from '@/lib/tenant-access';
 
 // GET: fetch current Stripe branding settings
-export async function GET() {
+// Reads/writes the platform's own Stripe account profile (shown on BPR's
+// receipts and Checkout) — SUPERADMIN only (activity 52, T-2).
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!(await getSuperadminActor(req))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Get current Stripe account branding
@@ -51,9 +51,8 @@ export async function GET() {
 // POST: update Stripe account branding
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!(await getSuperadminActor(req))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json();

@@ -1,6 +1,6 @@
 # T-5: Tarefas em massa (`patient-tasks`) presas à clínica de quem chama
 
-**Status:** pendente
+**Status:** concluído (QA aprovado `qa/report-t-5.md` + code review aplicado)
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -25,8 +25,8 @@ A correção de broadcast (`/api/admin/broadcasts`) é o padrão a seguir.
 - `app/api/admin/patient-tasks/route.ts` (+ `[id]` se houver)
 
 ## Critérios de aceite
-- [ ] Personal B: `GET ?limit=100000` → só tarefas de alunos do B; resposta limitada ao teto.
-- [ ] Personal B: `POST {"audience":"all"}` → destinatários = só alunos ativos do B (verificado nos registros criados, **com envio real desligado**).
-- [ ] Personal B: `POST` com `patientIds` contendo paciente do A → 400/404, nada criado.
-- [ ] `actionUrl: "https://phish.example"` → 400.
-- [ ] Clínica BPR: criar tarefa para um paciente e para "todos" continua funcionando dentro da clínica (regressão).
+- [x] Personal B: `GET ?limit=100000` → só tarefas de alunos do B; resposta limitada ao teto.
+- [x] Personal B: `POST {"audience":"all"}` → destinatários = só alunos ativos do B (verificado nos registros criados, **com envio real desligado**).
+- [x] Personal B: `POST` com `patientIds` contendo paciente do A → 400/404, nada criado.
+- [x] `actionUrl: "https://phish.example"` → 400.
+- [x] Clínica BPR: criar tarefa para um paciente e para "todos" continua funcionando dentro da clínica (regressão).

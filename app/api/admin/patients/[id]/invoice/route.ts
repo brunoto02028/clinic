@@ -1,12 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { InvoiceData, InvoiceItem } from "@/lib/invoice-html";
 import { getInvoiceBusinessInfo } from "@/lib/invoice-business-info";
 import { queueInvoiceForApproval } from "@/lib/invoice-pending";
+import { staffPatientAccess } from "@/lib/staff-patient-access";
 
 // Standalone invoice generator — not tied to any appointment (activity 40).
 // The admin types the line items directly (e.g. a monthly package agreed
@@ -15,10 +14,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  // Every other /api/admin/patients/[id]/** route starts here; this one didn't,
+  // so staff of any tenant could queue an invoice against another tenant's
+  // patient (activity 52, T-6).
+  const guard = await staffPatientAccess(request, params.id);
+  if (guard.response) return guard.response;
 
   const body = await request.json().catch(() => ({}));
   const items: InvoiceItem[] = Array.isArray(body?.items)

@@ -6,6 +6,14 @@ import { getCardFeePercent, applyCardFee } from "@/lib/card-fee";
 
 export const dynamic = 'force-dynamic';
 
+// A named patient must belong to the tenant creating the plan (activity 52,
+// T-6): the id was taken as given, so staff of one tenant could attach a plan
+// to — and notify — another tenant's patient.
+async function patientInTenant(patientId: string, clinicId: string) {
+  return !!(await prisma.user.findFirst({ where: { id: patientId, role: "PATIENT", clinicId }, select: { id: true } }));
+}
+
+
 async function resolveClinicContext() {
   let ctx = await getClinicContext();
   if (!ctx.clinicId) ctx = await getClinicContextFromSession();
@@ -71,6 +79,9 @@ export async function POST(request: NextRequest) {
 
     const finalPrice = isFree ? 0 : applyCardFee(totalPrice || 0, await getCardFeePercent());
     const resolvedPatientId = (patientScope === "specific" && patientId) ? patientId : null;
+    if (resolvedPatientId && !(await patientInTenant(resolvedPatientId, clinicId!))) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
 
     // Create Stripe product + price (only if not free and Stripe key exists)
     let stripeProductId: string | undefined;

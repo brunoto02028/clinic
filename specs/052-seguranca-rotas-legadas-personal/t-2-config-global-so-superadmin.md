@@ -1,6 +1,6 @@
 # T-2: Configuração global da BPR só para SUPERADMIN
 
-**Status:** em andamento
+**Status:** concluído (QA aprovado na rodada 3 — `qa/report-t-2-t-3.md` — + code review aplicado)
 **Depende de:** nenhuma (vai para prod junto com a T-3)
 
 ## Objetivo
@@ -38,6 +38,11 @@ Menu: `lib/admin-sections.ts` → Settings mostra General, Users, Studios, AI, S
 - **Config do portal do aluno** (`/admin/patient-portal`, aba Students → Portal): é uma linha só para todos os tenants, então passa a ser só SUPERADMIN. Um personal configurar os módulos dos **próprios** alunos exige config por tenant, o que fica para a atividade 055.
 - **Bloqueio por URL:** lista em `lib/superadmin-routes.ts` (Edge-safe), aplicada no `middleware.ts` para ADMIN/THERAPIST.
 - **Menu:** flag `superadminOnly` em `AdminTab`, respeitado por `visibleAdminSections(isPersonal, isSuperadmin)` e por `SectionTabs` (recebe `role` do layout).
+- **Ajustes do code review:**
+  - **Artigos são por tenant** (`Article.clinicId`), então não viraram só SUPERADMIN. O staff escreve e apaga os artigos **do próprio tenant** (o create grava o `clinicId`); artigo de outro tenant → 404; artigos antigos sem `clinicId` ficam com o SUPERADMIN; `notifySubscribers` (newsletter da plataforma) só dispara para SUPERADMIN.
+  - A aba Portal saiu para SUPERADMIN, mas journey/conditions/quizzes/achievements (por tenant) ganharam a aba própria "Journey".
+  - `/admin/analytics` e `/admin/service-pages` **não** são bloqueadas (são por tenant). `/admin/stripe-branding` é.
+  - Atalho "Site Settings" e "View Website" do painel: decididos por papel (SUPERADMIN), não por tipo de tenant.
 
 ## Arquivos afetados
 - `app/api/settings/route.ts`, `app/api/admin/consent-texts/route.ts`, `app/api/patient-portal-config/route.ts`, `app/api/admin/stripe-branding/route.ts`
@@ -47,9 +52,9 @@ Menu: `lib/admin-sections.ts` → Settings mostra General, Users, Studios, AI, S
 - `lib/tenant-access.ts` (helper)
 
 ## Critérios de aceite
-- [ ] Personal (ADMIN) → escritas de todas as rotas da tabela → **403**; SUPERADMIN → continua funcionando.
-- [ ] `SiteSettings` e artigos inalterados depois das tentativas do personal (conferido no banco).
-- [ ] `GET /api/settings` (site público) e termos do aluno continuam funcionando sem login/como aluno.
-- [ ] Personal: menu Settings **não** mostra General/Studios/AI/Security/Logs; acessar essas URLs → redireciona para `/admin`.
-- [ ] SUPERADMIN: vê todas as abas como antes.
-- [ ] Clínica BPR (SUPERADMIN): editar e salvar o site funciona (regressão).
+- [x] Personal (ADMIN) → escritas de todas as rotas da tabela → **403**; SUPERADMIN → continua funcionando.
+- [x] `SiteSettings` e artigos inalterados depois das tentativas do personal (conferido no banco).
+- [x] `GET /api/settings` (site público) e termos do aluno continuam funcionando sem login/como aluno.
+- [x] Personal: menu Settings **não** mostra General/Studios/AI/Security/Logs; acessar essas URLs → redireciona para `/admin`.
+- [x] SUPERADMIN: vê todas as abas como antes.
+- [x] Clínica BPR (SUPERADMIN): editar e salvar o site funciona (regressão).

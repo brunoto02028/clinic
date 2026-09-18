@@ -16,7 +16,10 @@ export async function GET(
   if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const eq = await (prisma as any).clinicEquipment.findUnique({ where: { id: params.id } });
+  // Same tenant rule as PATCH/DELETE below (activity 52, T-8).
+  const clinicId = await sessionClinicId(session);
+  if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
+  const eq = await (prisma as any).clinicEquipment.findFirst({ where: { id: params.id, clinicId } });
   if (!eq) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(eq);
 }

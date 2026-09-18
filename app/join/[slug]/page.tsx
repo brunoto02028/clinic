@@ -34,7 +34,7 @@ export default async function JoinPage({ params }: { params: { slug: string } })
   // to the branded /studio/[slug] rather than the generic /login.
   const isPersonal = tenant.type === "PERSONAL_TRAINER";
   const branding = isPersonal
-    ? await prisma.clinic.findUnique({ where: { id: tenant.clinicId }, select: { primaryColor: true } })
+    ? await prisma.clinic.findUnique({ where: { id: tenant.clinicId }, select: { primaryColor: true, logoUrl: true } })
     : null;
 
   return (
@@ -46,6 +46,7 @@ export default async function JoinPage({ params }: { params: { slug: string } })
           tenantName={tenant.name}
           isPersonal={isPersonal}
           primaryColor={branding?.primaryColor ?? null}
+          logoUrl={branding?.logoUrl ?? null}
         />
       </main>
       <SiteFooter />

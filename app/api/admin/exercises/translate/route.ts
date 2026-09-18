@@ -68,10 +68,13 @@ export async function POST(req: NextRequest) {
 
     const { exerciseId, all } = await req.json();
     const clinicId = await resolveClinicId(session);
+    // Only this tenant's own library — a missing tenant used to mean "every
+    // tenant's exercises" for the bulk run (activity 52, T-8).
+    if (!clinicId) return NextResponse.json({ error: "No clinic resolved for this account" }, { status: 403 });
 
     if (exerciseId) {
-      const ex = await prisma.exercise.findUnique({
-        where: { id: exerciseId },
+      const ex = await prisma.exercise.findFirst({
+        where: { id: exerciseId, clinicId },
         select: { id: true, name: true, description: true, instructions: true },
       });
       if (!ex) return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
@@ -87,8 +90,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (all) {
-      const where: any = { isActive: true, namePt: null };
-      if (clinicId) where.clinicId = clinicId;
+      const where: any = { isActive: true, namePt: null, clinicId };
 
       const pending = await (prisma as any).exercise.findMany({
         where,

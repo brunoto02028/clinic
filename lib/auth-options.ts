@@ -4,7 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { sysLog, logAudit } from "@/lib/system-logger";
-import { validateCredentials } from "@/lib/auth-credentials";
+import { validateCredentials, sessionLogoUrl } from "@/lib/auth-credentials";
 import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { resolveJoinTenant } from "@/lib/join-tenant";
 
@@ -188,7 +188,7 @@ export const authOptions: NextAuthOptions = {
           token.clinicName = dbUser.clinic?.name || null;
           token.clinicSlug = dbUser.clinic?.slug || null;
           token.clinicType = dbUser.clinic?.type || null;
-          token.clinicLogoUrl = dbUser.clinic?.logoUrl && /^https?:\/\//.test(dbUser.clinic.logoUrl) ? dbUser.clinic.logoUrl : null;
+          token.clinicLogoUrl = sessionLogoUrl(dbUser.clinic?.logoUrl);
           token.clinicPrimaryColor = dbUser.clinic?.primaryColor || null;
           token.instagramImportEnabled = dbUser.clinic?.instagramImportEnabled || false;
           token.permissions = {
@@ -201,6 +201,23 @@ export const authOptions: NextAuthOptions = {
             canManageFootScans: dbUser.canManageFootScans,
             canManageOrders: dbUser.canManageOrders,
           };
+        }
+      }
+
+      // The studio edited its brand (activity 52, T-3): the branding page calls
+      // useSession().update(), and the tenant fields are re-read here so the
+      // new name/logo/colour show without signing out. Always the token's own
+      // tenant — a SUPERADMIN editing another tenant (via the clinic selector)
+      // keeps their own brand in their session, which is what they should see.
+      if (trigger === "update" && token.clinicId) {
+        const clinic = await prisma.clinic.findUnique({
+          where: { id: token.clinicId as string },
+          select: { name: true, logoUrl: true, primaryColor: true },
+        });
+        if (clinic) {
+          token.clinicName = clinic.name;
+          token.clinicLogoUrl = sessionLogoUrl(clinic.logoUrl);
+          token.clinicPrimaryColor = clinic.primaryColor || null;
         }
       }
 

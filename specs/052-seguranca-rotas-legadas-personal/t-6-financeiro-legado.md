@@ -1,6 +1,6 @@
 # T-6: Financeiro legado — treatment plans, memberships, invoices, marketplace, finance
 
-**Status:** pendente
+**Status:** concluído (QA aprovado `qa/report-t-6.md` + code review aplicado)
 **Depende de:** T-1 (a parte "aluno" já cai no 403 da T-1; aqui fechamos a parte staff entre tenants)
 
 ## Objetivo
@@ -44,11 +44,11 @@ Toda rota financeira legada respeita tenant e papel: um staff só mexe no que é
 - `app/api/patient/membership/subscribe/route.ts`
 
 ## Critérios de aceite
-- [ ] Personal B → GET/PUT/DELETE de treatment plan e membership do A → 404; banco inalterado.
-- [ ] Personal B → POST treatment plan/membership com `patientId` do A → 404; nenhuma notificação.
-- [ ] Personal B → invoice de sessão do A → 404; `POST patients/<A>/invoice` → 404; fila de aprovação sem item novo.
-- [ ] Personal (ADMIN) → `GET /api/admin/finance/stripe` → 403; SUPERADMIN → 200.
-- [ ] Staff B → produto/pedido do A → 404.
-- [ ] Checkout de marketplace com total 0 num produto pago → não vira `paid`.
-- [ ] Aluno assina plano de outro tenant → 404. Plano pago sem preço Stripe → erro, sem `ServiceAccess` criado.
-- [ ] Clínica BPR (SUPERADMIN): treatment plans, memberships, invoices, marketplace e finance funcionam como antes (regressão).
+- [x] Personal B → GET/PUT/DELETE de treatment plan e membership do A → 404; banco inalterado.
+- [x] Personal B → POST treatment plan/membership com `patientId` do A → 404; nenhuma notificação.
+- [x] Personal B → invoice de sessão do A → 404; `POST patients/<A>/invoice` → 404; fila de aprovação sem item novo.
+- [x] Personal (ADMIN) → `GET /api/admin/finance/stripe` → 403; SUPERADMIN → 200.
+- [x] Staff B → produto/pedido do A → 404.
+- [x] Checkout de marketplace com total 0 num produto pago → não vira `paid`.
+- [x] Aluno assina plano de outro tenant → 404. Plano pago sem preço Stripe → erro, sem `ServiceAccess` criado.
+- [x] Clínica BPR (SUPERADMIN): treatment plans, memberships, invoices, marketplace e finance funcionam como antes (regressão).

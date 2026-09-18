@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getSuperadminActor } from "@/lib/tenant-access";
 import { getLevelForXP, XP_REWARDS, getBadgeDef } from "@/lib/journey";
 
 export const dynamic = "force-dynamic";
@@ -11,17 +12,15 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   try {
-    // Simple API key auth for cron jobs
+    // These sweeps run over every patient on the platform, so only a cron with
+    // the configured secret or the platform owner may start one (activity 52,
+    // T-10). There's no default secret: a known fallback ("bpr-cron-secret")
+    // was as good as none, and no scheduled task calls this route.
     const authHeader = req.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET || "bpr-cron-secret";
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      // Also allow admin session-based auth
-      const { getServerSession } = await import("next-auth");
-      const { authOptions } = await import("@/lib/auth-options");
-      const session = await getServerSession(authOptions);
-      if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    const cronSecret = process.env.CRON_SECRET;
+    const byCron = !!cronSecret && authHeader === `Bearer ${cronSecret}`;
+    if (!byCron && !(await getSuperadminActor(req))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { type } = await req.json();

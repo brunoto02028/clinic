@@ -66,7 +66,7 @@ export default async function AdminLayout({
         {/* Mobile spacer for hamburger button */}
         <div className="h-14 lg:hidden" />
         <AdminHeader user={user} />
-        <SectionTabs />
+        <SectionTabs role={userRole} />
         <div className="admin-page-content">
           {children}
         </div>

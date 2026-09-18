@@ -1,6 +1,6 @@
 # T-7: Personal isolado do Stripe e das rotas clínicas da BPR
 
-**Status:** pendente
+**Status:** concluído (QA aprovado `qa/report-t-7.md` + code review aplicado)
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -28,6 +28,14 @@ Dinheiro de aluno do personal nunca cai na conta Stripe da BPR. O personal e o a
 4. Portal do aluno (`lib/patient-sections.ts`): esconder "Plans & Membership" e Marketplace do aluno do personal.
 5. Conferir o ramo Bearer do middleware (mobile): o bloqueio personal também vale para `/api/patient/*` via Bearer (hoje o ramo retorna antes, `middleware.ts` ~262).
 
+## Decisões tomadas na implementação
+- **404, não 403:** o bloqueio segue a convenção do gate personal que já existia. A API responde 404 (a rota "não existe" para o estúdio) e a página redireciona.
+- **Assinatura:** só `/api/patient/membership/subscribe` e `/plans` são bloqueadas. `GET /subscription` (a própria assinatura, vazia) continua aberta, porque o agendamento e o detalhe da sessão a consultam e um 404 ali só geraria erro no console.
+- **App (Bearer):** o middleware lê o `clinicType` do payload do token **sem verificar a assinatura**. Isso basta para *restringir*: um token forjado ainda falha na verificação da própria rota.
+- **Menu do aluno:** `mod_plans` e `mod_marketplace` entram em `CLINICAL_PATIENT_KEYS` (`components/dashboard/patient-sidebar.tsx`), e não em `patient-sections`: esses itens vêm do `MODULE_REGISTRY`.
+- **Sessão do personal:** o POST do aluno força pagamento presencial; o POST do admin com `paymentMode:"online"` dá 400 para o personal. O detalhe da sessão esconde, para o personal, o card de pagamento ("Pay Online Instead") e o banner "Medical Screening Required" (achado F-2 do QA da T-4).
+- **Rotas clínicas extras bloqueadas:** `patients/<id>/report`, `patients/<id>/packages` e `patients/<id>/documents/generate` (o resto de Documents continua).
+
 ## Arquivos afetados
 - `lib/personal-blocked-routes.ts`
 - `middleware.ts` (ramo Bearer)
@@ -35,11 +43,11 @@ Dinheiro de aluno do personal nunca cai na conta Stripe da BPR. O personal e o a
 - `app/api/payments/create-checkout/route.ts`, `app/api/admin/appointments/route.ts` (recusa de pagamento online para personal)
 
 ## Critérios de aceite
-- [ ] Personal: `/admin/treatment-plans`, `/admin/memberships`, `/admin/service-pricing`, `/admin/marketplace`, `/admin/screening-preview` → redireciona.
-- [ ] Personal: as APIs correspondentes → 403.
-- [ ] Personal: menu Finance sem Pricing/Memberships/Marketplace.
-- [ ] Aluno do personal (cookie **e** Bearer): `/api/patient/treatment-plans/checkout`, `/api/patient/membership/subscribe`, `/api/patient/packages/checkout`, `/api/patient/protocol`, `/api/patient/rehab-plan` → bloqueado.
-- [ ] Aluno do personal: `/dashboard/membership` e `/dashboard/marketplace` redirecionam, e não aparecem no menu.
-- [ ] Sessão de personal com pagamento online → recusada com mensagem; presencial funciona.
-- [ ] Aba "Exercises" da ficha do aluno continua funcionando.
-- [ ] Clínica BPR: nada disso muda (treatment plans, memberships, pacotes, pagamento online, screening). Regressão com `qa.admina`/`qa.pacientea`.
+- [x] Personal: `/admin/treatment-plans`, `/admin/memberships`, `/admin/service-pricing`, `/admin/marketplace`, `/admin/screening-preview` → redireciona.
+- [x] Personal: as APIs correspondentes → 403.
+- [x] Personal: menu Finance sem Pricing/Memberships/Marketplace.
+- [x] Aluno do personal (cookie **e** Bearer): `/api/patient/treatment-plans/checkout`, `/api/patient/membership/subscribe`, `/api/patient/packages/checkout`, `/api/patient/protocol`, `/api/patient/rehab-plan` → bloqueado.
+- [x] Aluno do personal: `/dashboard/membership` e `/dashboard/marketplace` redirecionam, e não aparecem no menu.
+- [x] Sessão de personal com pagamento online → recusada com mensagem; presencial funciona.
+- [x] Aba "Exercises" da ficha do aluno continua funcionando.
+- [x] Clínica BPR: nada disso muda (treatment plans, memberships, pacotes, pagamento online, screening). Regressão com `qa.admina`/`qa.pacientea`.

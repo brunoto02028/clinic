@@ -114,9 +114,12 @@ async function handleEvent(event: Stripe.Event, clinicId: string) {
       const session = event.data.object as Stripe.Checkout.Session;
       const subId = session.metadata?.billingSubscriptionId;
       if (!subId) return;
-      // Only clear a still-INCOMPLETE row (don't touch one that later paid).
+      // Only clear a still-INCOMPLETE row (don't touch one that later paid),
+      // and only if this is still its current session: checkout reuses the row
+      // and expires the earlier session, whose "expired" event arrives after
+      // the new one was attached (activity 52, T-10).
       await prisma.billingSubscription.updateMany({
-        where: { id: subId, clinicId, status: "INCOMPLETE" },
+        where: { id: subId, clinicId, status: "INCOMPLETE", stripeCheckoutSessionId: session.id },
         data: { status: "CANCELLED" },
       });
       return;
@@ -124,10 +127,18 @@ async function handleEvent(event: Stripe.Event, clinicId: string) {
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const s = event.data.object as Stripe.Subscription;
-      const mapped = event.type === "customer.subscription.deleted" ? "CANCELLED" : SUB_STATUS_MAP[s.status] || "ACTIVE";
+      // An unknown status (incomplete, paused, …) is not a reason to call the
+      // subscription ACTIVE: leave the row as it is (activity 52, T-10).
+      const mapped = event.type === "customer.subscription.deleted" ? "CANCELLED" : SUB_STATUS_MAP[s.status];
+      if (!mapped) {
+        console.warn(`[stripe-connect] unmapped subscription status "${s.status}" for ${s.id} — left unchanged`);
+        return;
+      }
       const periodEnd = (s as any).current_period_end ? new Date((s as any).current_period_end * 1000) : undefined;
       await prisma.billingSubscription.updateMany({
-        where: { stripeSubscriptionId: s.id, clinicId },
+        // A cancelled subscription stays cancelled: a late or replayed event
+        // must not bring it back.
+        where: { stripeSubscriptionId: s.id, clinicId, status: { not: "CANCELLED" } },
         data: {
           status: mapped as BillingSubStatus,
           cancelAtPeriodEnd: !!s.cancel_at_period_end,
@@ -143,7 +154,7 @@ async function handleEvent(event: Stripe.Event, clinicId: string) {
       if (!subRef) return;
       const periodEnd = (inv.lines?.data?.[0] as any)?.period?.end;
       await prisma.billingSubscription.updateMany({
-        where: { stripeSubscriptionId: subRef, clinicId },
+        where: { stripeSubscriptionId: subRef, clinicId, status: { not: "CANCELLED" } },
         data: { status: "ACTIVE", ...(periodEnd ? { currentPeriodEnd: new Date(periodEnd * 1000) } : {}) },
       });
       return;
@@ -153,7 +164,7 @@ async function handleEvent(event: Stripe.Event, clinicId: string) {
       const subRef = (inv as any).subscription as string | undefined;
       if (!subRef) return;
       await prisma.billingSubscription.updateMany({
-        where: { stripeSubscriptionId: subRef, clinicId },
+        where: { stripeSubscriptionId: subRef, clinicId, status: { not: "CANCELLED" } },
         data: { status: "PAST_DUE" },
       });
       return;

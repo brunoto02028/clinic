@@ -1,16 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getClinicContext } from "@/lib/clinic-context";
+import { getSessionStaffActor } from "@/lib/tenant-access";
 import { stripe } from "@/lib/stripe";
 import { getCardFeePercent, applyCardFee } from "@/lib/card-fee";
 
 export const dynamic = 'force-dynamic';
 
+// Same rule as treatment plans (activity 52, T-6): a membership plan is only
+// reachable from its own tenant.
+// A named patient must belong to the plan's tenant — on edit as on create
+// (activity 52, T-6).
+async function patientInTenant(patientId: string, clinicId: string) {
+  return !!(await prisma.user.findFirst({ where: { id: patientId, role: "PATIENT", clinicId }, select: { id: true } }));
+}
+
+async function planInTenant(request: NextRequest, id: string) {
+  const actor = await getSessionStaffActor(request);
+  if (!actor || !actor.clinicId || !["SUPERADMIN", "ADMIN"].includes(actor.role)) return null;
+  const plan = await (prisma as any).membershipPlan.findFirst({
+    where: { id, clinicId: actor.clinicId },
+    select: { id: true },
+  });
+  return plan ? actor : null;
+}
+
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userRole } = await getClinicContext();
-    if (!userRole || !["SUPERADMIN", "ADMIN"].includes(userRole)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await planInTenant(request, params.id);
+    if (!actor) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const body = await request.json();
@@ -20,6 +39,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     let resolvedPatientId: string | null | undefined = undefined;
     if (patientScope !== undefined) {
       resolvedPatientId = patientScope === "specific" && patientId ? patientId : null;
+      if (resolvedPatientId && !(await patientInTenant(resolvedPatientId, actor.clinicId!))) {
+        return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+      }
     }
 
     const existing = await (prisma as any).membershipPlan.findUnique({
@@ -117,9 +139,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { userRole } = await getClinicContext();
-    if (!userRole || !["SUPERADMIN", "ADMIN"].includes(userRole)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!(await planInTenant(request, params.id))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const plan = await (prisma as any).membershipPlan.findUnique({

@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { getMobileUser } from "@/lib/mobile-auth-guard";
 import { getValidatedUserById } from "@/lib/auth-credentials";
+import { withAbsoluteLogo } from "@/lib/mobile-user";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 
 export function OPTIONS() {
@@ -21,5 +22,5 @@ export async function GET(request: NextRequest) {
     return corsJson({ error: "Account is no longer active" }, { status: 401 });
   }
 
-  return corsJson({ user });
+  return corsJson({ user: withAbsoluteLogo(user) });
 }

@@ -14,6 +14,7 @@ import { getActor, assertPatientAccess, accessErrorResponse } from "@/lib/tenant
 import { appointmentTenantWhere, findTherapist } from "@/lib/appointment-access";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { patientBookingPrice } from "@/lib/service-price";
+import { isPersonalTenant } from "@/lib/tenant-type";
 
 export async function GET(request: NextRequest) {
   try {
@@ -134,7 +135,6 @@ export async function POST(request: NextRequest) {
     if (paymentMethod !== undefined && paymentMethod !== "ONLINE" && paymentMethod !== "IN_PERSON") {
       return NextResponse.json({ error: "Invalid paymentMethod" }, { status: 400 });
     }
-    const resolvedPaymentMethod: "ONLINE" | "IN_PERSON" = paymentMethod === "IN_PERSON" ? "IN_PERSON" : "ONLINE";
 
     const actor = await getActor(request);
     if (!actor) {
@@ -144,6 +144,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "This account is not linked to a clinic" }, { status: 409 });
     }
     const isPatient = actor.role === "PATIENT";
+
+    // A personal studio's sessions are paid in person: online payment would
+    // charge BPR's Stripe account, not the trainer's (activity 52, T-7).
+    const tenant = await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true } });
+    const resolvedPaymentMethod: "ONLINE" | "IN_PERSON" =
+      isPersonalTenant(tenant?.type) || paymentMethod === "IN_PERSON" ? "IN_PERSON" : "ONLINE";
 
     // Patients book for themselves; staff name the patient, who must belong to
     // their tenant.

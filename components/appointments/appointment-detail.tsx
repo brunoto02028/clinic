@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useVocab } from "@/hooks/use-vocab";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -89,6 +90,9 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
   const { toast } = useToast();
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
+  // A personal studio's session: paid in person, and no clinical screening
+  // (activity 52, T-7).
+  const { isPersonal } = useVocab();
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -354,7 +358,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
       </div>
 
       {/* Screening Reminder — for patients with upcoming appointments who haven't completed screening */}
-      {!isTherapist && !screeningComplete && appointment?.status !== "CANCELLED" && appointment?.status !== "COMPLETED" && (
+      {!isTherapist && !isPersonal && !screeningComplete && appointment?.status !== "CANCELLED" && appointment?.status !== "COMPLETED" && (
         <Card className="border-red-500/30 bg-red-500/10">
           <CardContent className="p-4">
             <div className="flex items-start gap-4">
@@ -526,7 +530,8 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Payment Status */}
+          {/* Payment Status — a studio session is paid in person, never online */}
+          {!isPersonal && (
           <div>
             <Card>
               <CardHeader>
@@ -611,6 +616,7 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
               </CardContent>
             </Card>
           </div>
+          )}
 
           {/* Status Management (for therapists) */}
           {isTherapist && (

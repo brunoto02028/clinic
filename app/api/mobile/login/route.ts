@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { validateCredentials } from "@/lib/auth-credentials";
 import { signAccessToken, issueRefreshToken } from "@/lib/mobile-tokens";
+import { withAbsoluteLogo } from "@/lib/mobile-user";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 
 export function OPTIONS() {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
       // with access token only; refresh will fail gracefully on the client.
     }
 
-    return corsJson({ accessToken, refreshToken, user });
+    return corsJson({ accessToken, refreshToken, user: withAbsoluteLogo(user) });
   } catch (error: any) {
     console.error("[AUTH/mobile/login] error:", error?.message);
     return corsJson(

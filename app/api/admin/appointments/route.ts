@@ -6,6 +6,7 @@ import { notifyPatient } from "@/lib/notify-patient";
 import { stripe } from "@/lib/stripe";
 import { sendEmail } from "@/lib/email";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
+import { isPersonalTenant } from "@/lib/tenant-type";
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +65,15 @@ export async function POST(request: NextRequest) {
 
     if (!patientId || !dateTime) {
       return NextResponse.json({ error: "Patient and date/time are required" }, { status: 400 });
+    }
+
+    // Online payment charges BPR's Stripe account — never for a personal
+    // studio's session, which is paid in person (activity 52, T-7).
+    if (paymentMode === "online") {
+      const tenant = await prisma.clinic.findUnique({ where: { id: clinicId }, select: { type: true } });
+      if (isPersonalTenant(tenant?.type)) {
+        return NextResponse.json({ error: "Online payment isn't available for studio sessions — they're paid in person." }, { status: 400 });
+      }
     }
 
     // The patient must belong to the tenant booking them — otherwise staff of

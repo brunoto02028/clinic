@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { LogOut, Menu, X, UserCog } from "lucide-react";
 import { ADMIN_SECTIONS, visibleAdminSections, getActiveAdminNav, type AdminSection } from "@/lib/admin-sections";
 import { Logo } from "@/components/ui/logo";
@@ -44,6 +44,9 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   const [pendingPatients, setPendingPatients] = useState(0);
   const { locale } = useLocale();
   const { relabel, isPersonal } = useVocab();
+  const { data: session } = useSession();
+  // A studio with its own logo shows it instead of the BPR one (activity 52, T-3).
+  const studioLogo: string | null = isPersonal ? ((session?.user as any)?.clinicLogoUrl ?? null) : null;
 
   const activeNav = getActiveAdminNav(pathname);
   const isSuperAdmin = user.role === "SUPERADMIN";
@@ -139,9 +142,9 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
   // width via CSS regardless of hover — it has no hover on touch, so labels
   // must show there too, not just when the desktop rail is hover-expanded.
   const showLabels = expanded || mobileOpen;
-  const hasLogoImage = !!(logoUrl || darkLogoUrl);
+  const hasLogoImage = !!(studioLogo || logoUrl || darkLogoUrl);
 
-  const sections = visibleAdminSections(isPersonal);
+  const sections = visibleAdminSections(isPersonal, user.role);
   const mainSections = sections.filter((s) => s.key !== "settings");
   const settingsSection = sections.find((s) => s.key === "settings");
 
@@ -219,8 +222,8 @@ export default function AdminMiniSidebar({ user }: AdminMiniSidebarProps) {
             style={{ width: showLabels || !hasLogoImage ? "auto" : 36, transition: "width 0.2s ease" }}
           >
             <Logo
-              logoUrl={logoUrl}
-              darkLogoUrl={darkLogoUrl}
+              logoUrl={studioLogo ?? logoUrl}
+              darkLogoUrl={studioLogo ?? darkLogoUrl}
               size="sm"
               linkTo="/admin"
               variant="dark"

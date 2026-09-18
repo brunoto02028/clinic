@@ -1,12 +1,23 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { buildInvoiceHtml, InvoiceData } from "@/lib/invoice-html";
 import { getInvoiceBusinessInfo } from "@/lib/invoice-business-info";
 import { queueInvoiceForApproval } from "@/lib/invoice-pending";
+import { getSessionStaffActor } from "@/lib/tenant-access";
+
+// The invoice carries the patient's details and the clinic's bank details, so
+// it is only reachable from the appointment's own tenant (activity 52, T-6).
+async function staffOfAppointmentTenant(request: NextRequest, appointmentId: string) {
+  const actor = await getSessionStaffActor(request);
+  if (!actor || !actor.clinicId) return null;
+  const appt = await prisma.appointment.findFirst({
+    where: { id: appointmentId, clinicId: actor.clinicId },
+    select: { id: true },
+  });
+  return appt ? actor : null;
+}
 
 interface ExtraItem {
   description: string;
@@ -61,9 +72,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!(await staffOfAppointmentTenant(request, params.id))) {
+    return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
   }
 
   const amountParam = request.nextUrl.searchParams.get("amount");
@@ -88,9 +98,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes((session.user as any).role)) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  if (!(await staffOfAppointmentTenant(request, params.id))) {
+    return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
   }
 
   const body = await request.json().catch(() => ({}));

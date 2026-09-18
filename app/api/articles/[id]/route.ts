@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getSuperadminActor } from "@/lib/tenant-access";
 import { sendArticleNewsletter } from "@/lib/article-newsletter";
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,8 @@ export async function GET(
     if (!article.published) {
       const session = await getServerSession(authOptions);
       const role = (session?.user as { role?: string })?.role;
-      if (!role || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes(role)) {
+      // BPR's drafts — the platform owner's only (activity 52, T-2).
+      if (role !== "SUPERADMIN") {
         return NextResponse.json({ error: "Article not found" }, { status: 404 });
       }
     }
@@ -49,11 +51,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    const userRole = (session?.user as { role?: string })?.role;
-    if (!session || !userRole || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes(userRole)) {
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    // BPR's public blog — only the platform owner edits it (activity 52, T-2).
+    if (!(await getSuperadminActor(request))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -132,6 +132,7 @@ export async function PUT(
 
     // ── Newsletter: opt-in only. Staff must explicitly request notifySubscribers=true
     //    (e.g. via a "Notify subscribers" checkbox in the publish dialog). Never automatic. ──
+    // The newsletter list is the platform's, so only its owner may blast it.
     if (notifySubscribers === true) {
       sendArticleNewsletter(article).catch(err =>
         console.error('[newsletter] send error:', err)
@@ -153,11 +154,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    const userRole = (session?.user as { role?: string })?.role;
-    if (!session || !userRole || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes(userRole)) {
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    // BPR's public blog — only the platform owner edits it (activity 52, T-2).
+    if (!(await getSuperadminActor(request))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.article.delete({

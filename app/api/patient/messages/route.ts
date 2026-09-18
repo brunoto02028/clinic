@@ -90,14 +90,14 @@ export async function POST(req: NextRequest) {
     const appUrl = process.env.NEXTAUTH_URL || "https://bpr.clinic";
     const preview = content ? content.slice(0, 300) : (attachment ? `📎 ${attachment.fileName}` : "");
 
-    const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
+    const { getAdminNotificationEmail, escapeHtml } = await import("@/lib/admin-notify-email");
     await sendEmail({
       to: await getAdminNotificationEmail(patient?.clinicId),
       subject: `💬 Nova mensagem de ${patientName}`,
       html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2 style="color:#1a6b6b;">Nova mensagem no chat</h2>
-        <p style="color:#374151;"><strong>${patientName}</strong> enviou uma mensagem:</p>
-        <div style="background:#f9fafb;border-radius:8px;padding:12px 16px;color:#374151;font-size:14px;">${preview}</div>
+        <p style="color:#374151;"><strong>${escapeHtml(patientName)}</strong> enviou uma mensagem:</p>
+        <div style="background:#f9fafb;border-radius:8px;padding:12px 16px;color:#374151;font-size:14px;">${escapeHtml(preview)}</div>
         <div style="margin-top:20px;text-align:center;">
           <a href="${appUrl}/admin/patients/${userId}" style="background:#5dc9c0;color:white;padding:12px 28px;text-decoration:none;border-radius:6px;font-weight:bold;">Ver conversa →</a>
         </div>

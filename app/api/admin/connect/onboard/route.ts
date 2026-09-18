@@ -11,6 +11,10 @@ export async function POST(request: NextRequest) {
   try {
     const actor = await getActor(request);
     if (!actor) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Connecting the payout account is the studio owner's call (activity 52, T-10).
+    if (actor.role !== "ADMIN" && actor.role !== "SUPERADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const clinicId = await assertNutritionAccess(actor);
 
     const accountId = await getOrCreateConnectedAccount(clinicId);

@@ -8,6 +8,14 @@ import { getCardFeePercent, applyCardFee } from "@/lib/card-fee";
 
 export const dynamic = 'force-dynamic';
 
+// A named patient must belong to the tenant creating the plan (activity 52,
+// T-6): the id was taken as given, so staff of one tenant could attach a plan
+// to — and notify — another tenant's patient.
+async function patientInTenant(patientId: string, clinicId: string) {
+  return !!(await prisma.user.findFirst({ where: { id: patientId, role: "PATIENT", clinicId }, select: { id: true } }));
+}
+
+
 async function resolveClinicContext() {
   let ctx = await getClinicContext();
   if (!ctx.clinicId) ctx = await getClinicContextFromSession();
@@ -48,6 +56,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { name, description, price, interval, isFree, features, patientId, patientScope, sessionDiscount } = body;
+    const namedPatientId = patientScope === "specific" && patientId ? patientId : null;
+    if (namedPatientId && !(await patientInTenant(namedPatientId, clinicId))) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
 
     if (!name) return NextResponse.json({ error: "Plan name is required" }, { status: 400 });
     if (patientScope === "specific" && !patientId) {

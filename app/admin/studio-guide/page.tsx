@@ -23,9 +23,9 @@ export default function StudioGuidePage() {
     {
       icon: Palette,
       en: "Personalise your studio", pt: "Personalize seu estúdio",
-      whatEn: "Set your studio logo and brand colour in Settings.", whatPt: "Defina o logo e a cor da marca em Configurações.",
+      whatEn: "Set your studio name, logo and brand colour.", whatPt: "Defina o nome, o logo e a cor da marca do estúdio.",
       whyEn: "Your students see your brand on the login and in their portal — not ours.", whyPt: "Seus alunos veem a sua marca no login e no portal deles — não a nossa.",
-      href: "/admin/settings", ctaEn: "Open Settings", ctaPt: "Abrir Configurações",
+      href: "/admin/studio-branding", ctaEn: "Open branding", ctaPt: "Abrir marca",
     },
     {
       icon: UserPlus,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getSuperadminActor } from "@/lib/tenant-access";
 import { isDbUnreachableError, MOCK_ARTICLES, devFallbackResponse } from "@/lib/dev-fallback";
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ export async function GET(request: NextRequest) {
     // never leak here just because ?published=true was left off.
     const session = await getServerSession(authOptions);
     const listerRole = (session?.user as { role?: string })?.role;
-    const isStaff = !!listerRole && ["SUPERADMIN", "ADMIN", "THERAPIST"].includes(listerRole);
+    // Drafts are BPR's unpublished posts — only its owner sees them (activity 52, T-2).
+    const isStaff = listerRole === "SUPERADMIN";
 
     const articles = await prisma.article.findMany({
       where: isStaff && published !== "true" ? undefined : { published: true },
@@ -74,14 +76,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    const userRole = (session?.user as { role?: string })?.role;
-    if (!session || !userRole || !["SUPERADMIN", "ADMIN", "THERAPIST"].includes(userRole)) {
-      return NextResponse.json(
-        { error: "Unauthorised" },
-        { status: 401 }
-      );
+    // The public blog (/articles, the home page, the sitemap) is BPR's and has
+    // no per-tenant view, so only the platform owner writes it — any tenant's
+    // staff used to be able to publish there (activity 52, T-2).
+    const actor = await getSuperadminActor(request);
+    if (!actor) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     
     const body = await request.json();
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
         imageFocalX: typeof imageFocalX === "number" ? imageFocalX : 50,
         imageFocalY: typeof imageFocalY === "number" ? imageFocalY : 50,
         published: published || false,
-        authorId: (session.user as { id: string }).id,
+        authorId: actor.userId,
         authorName: authorName || null,
         ...(parsedCreatedAt && !isNaN(parsedCreatedAt.getTime()) ? { createdAt: parsedCreatedAt } : {}),
       },

@@ -18,7 +18,10 @@ import { useVocab } from "@/hooks/use-vocab";
 
 // Sections/modules that belong to the clinical side — hidden from a
 // personal-trainer studio's students (they get workouts, not clinical notes).
-const CLINICAL_PATIENT_KEYS = new Set(["health", "screening", "mod_screening"]);
+// Hidden from a personal-trainer studio's students: the clinic's clinical
+// modules, and the BPR plans/shop — both charge on BPR's Stripe account, never
+// the trainer's (activity 52, T-7).
+const CLINICAL_PATIENT_KEYS = new Set(["health", "screening", "mod_screening", "mod_plans", "mod_marketplace"]);
 
 const PIN_STORAGE_KEY = "patient-sidebar-pinned";
 
@@ -351,7 +354,8 @@ export default function PatientSidebar({
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="overflow-hidden" style={{ width: showLabels ? "auto" : 28, transition: "width 0.2s ease" }}>
+            {/* flex-shrink-0: collapsed, the pin button used to squeeze this to ~5px. */}
+            <div className="overflow-hidden flex-shrink-0" style={{ width: showLabels ? "auto" : 28, transition: "width 0.2s ease" }}>
               <Logo
                 logoUrl={studioLogo ?? logoUrl}
                 darkLogoUrl={studioLogo ? null : darkLogoUrl}

@@ -33,12 +33,13 @@
 | # | Tipo | Passos | Esperado |
 |---|---|---|---|
 | 2.1 | API | `qa.trainer`: PUT `/api/settings` com o corpo atual do GET | 403; `SiteSettings.updatedAt` inalterado |
-| 2.2 | API | `qa.trainer`: escrita em consent-texts, patient-portal-config (PUT), stripe-branding (POST), service-prices (POST global e DELETE), service-packages (POST), service-access (POST), articles (POST/PUT/DELETE) | 403 em todas; banco inalterado |
+| 2.2 | API | `qa.trainer`: escrita em consent-texts, patient-portal-config (PUT), stripe-branding (GET/POST), service-prices, service-packages, patient-packages, service-access | 403 em todas; banco inalterado |
+| 2.2b | API | `qa.trainer`: POST `/api/articles` (artigo do próprio estúdio); PUT/DELETE num artigo da BPR; PUT com `notifySubscribers:true` no próprio | 201 com `clinicId` = QA Studio PT; artigo da BPR → 404; newsletter não dispara (só SUPERADMIN) |
 | 2.3 | API | `qa.fisioa` (THERAPIST de clínica): PUT `/api/settings` | 403 |
 | 2.4 | API | `qa.superadmin`: PUT `/api/settings` com o mesmo corpo | 200 (regressão) |
 | 2.5 | API | anônimo: GET `/api/settings`; aluno: termos | 200 (leitura pública preservada) |
-| 2.6 | UI | `qa.trainer`: menu Settings; menu Students; menu Finance | Settings: sem General/Studios/AI/Security/Logs, com Branding e Users; Students: sem Portal; Finance: sem Pricing |
-| 2.7 | UI | `qa.trainer`: abre por URL `/admin/settings`, `/admin/clinics`, `/admin/ai-settings`, `/admin/security`, `/admin/system-logs`, `/admin/patient-portal`, `/admin/service-pricing` | redireciona para `/admin` |
+| 2.6 | UI | `qa.trainer`: menu Settings; menu Students; menu Finance | Settings: sem General/Studios/AI/Security/Logs, com Branding e Users; Students: sem Portal, com Journey; Finance: sem Pricing |
+| 2.7 | UI | `qa.trainer`: abre por URL `/admin/settings`, `/admin/clinics`, `/admin/ai-settings`, `/admin/security`, `/admin/system-logs`, `/admin/patient-portal`, `/admin/service-pricing`, `/admin/stripe-branding` | redireciona para `/admin`; `/admin/analytics` e `/admin/journey` continuam abrindo (são por tenant) |
 | 2.8 | UI | `qa.superadmin`: Settings | todas as abas; salvar o site funciona |
 | 2.9 | API | `qa.trainer`: GET service-prices, service-packages, patient-packages, service-access | 403 (hub de preços da BPR é só SUPERADMIN); `qa.superadmin` → 200 |
 
@@ -103,9 +104,9 @@ Sessão B = `records.appointmentB` das fixtures (aluno `qa.aluno`, £60, CONFIRM
 | # | Tipo | Passos | Esperado |
 |---|---|---|---|
 | 7.1 | UI | `qa.trainer`: `/admin/treatment-plans`, `/admin/memberships`, `/admin/service-pricing`, `/admin/marketplace`, `/admin/screening-preview` | redireciona |
-| 7.2 | API | `qa.trainer`: `/api/admin/treatment-plans`, `/api/admin/memberships`, `/api/admin/service-prices`, `/api/admin/rehab-plans/recent`, `/api/admin/body-assessments`, `/api/admin/journey/ai-coach` | 403 |
+| 7.2 | API | `qa.trainer`: `/api/admin/treatment-plans`, `/api/admin/memberships`, `/api/admin/marketplace/products`, `/api/admin/rehab-plans/recent`, `/api/admin/body-assessments`, `/api/admin/journey/ai-coach`, `/api/admin/patients/<aluno>/packages` e `/documents/generate` | 404 (gate personal); `service-prices` → 403 (T-2) |
 | 7.3 | UI | `qa.trainer`: menu Finance | sem Pricing/Memberships/Marketplace |
-| 7.4 | API | `qa.aluno` (cookie e Bearer): `/api/patient/treatment-plans/checkout`, `/api/patient/membership/subscribe`, `/api/patient/packages/checkout`, `/api/patient/protocol`, `/api/patient/rehab-plan` | bloqueado |
+| 7.4 | API | `qa.aluno` (cookie e Bearer): `/api/patient/treatment-plans/checkout`, `/api/patient/membership/subscribe`, `/api/patient/packages/checkout`, `/api/patient/protocol`, `/api/patient/rehab-plan`, `/api/payments/create-checkout` | 404; `GET /api/patient/membership/subscription` continua 200 |
 | 7.5 | UI | `qa.aluno`: `/dashboard/membership`, `/dashboard/marketplace` | redireciona; itens fora do menu |
 | 7.6 | API | `qa.aluno`: pagamento online da sessão (`create-checkout`) | recusado com mensagem "presencial" |
 | 7.7 | UI | `qa.trainer`: ficha do aluno → aba Exercises | continua funcionando |
@@ -139,7 +140,7 @@ Sessão B = `records.appointmentB` das fixtures (aluno `qa.aluno`, £60, CONFIRM
 | 10.2 | Unit/API | webhook Connect assinado: `subscription.updated` `active` para assinatura CANCELLED; status `paused` | continua CANCELLED; não vira ACTIVE |
 | 10.3 | Unit | cancelamento com a Stripe lançando erro | status inalterado + erro |
 | 10.4 | API | `qa.trainer`: POST `notifications/trigger`; sem `CRON_SECRET` no env | 403; recusa |
-| 10.5 | API | anônimo: POST `/api/version/update` | 401 |
+| 10.5 | — | ~~anônimo: POST `/api/version/update`~~ — fora do escopo da branch (revertido; alerta para a frente de plataforma) | — |
 | 10.6 | API | aluno manda mensagem `<img src=x onerror=alert(1)>` | HTML do e-mail ao staff com o texto escapado (e-mail capturado/logado, não enviado) |
 | 10.7 | API | `qa.aluno`: GET challenge com leaderboard; challenge ARCHIVED | sem `studentId` de outros; ARCHIVED → 404 |
 | 10.8 | API | `qa.trainer`: POST assessment com `performedAt: "abc"` | 400 |

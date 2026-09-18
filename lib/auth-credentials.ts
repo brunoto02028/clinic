@@ -2,6 +2,23 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { sysLog, logAudit, trackFailedLogin } from "@/lib/system-logger";
 
+// The tenant logo carried in the session: an absolute URL or an uploaded image
+// served by /api/image-serve (studio branding, activity 52 T-3) — never a
+// data: URL, which would bloat the session cookie.
+export function sessionLogoUrl(url: string | null | undefined): string | null {
+  return url && /^(https?:\/\/|\/api\/image-serve\/)/.test(url) ? url : null;
+}
+
+// The same logo, absolute — the native app can't resolve "/api/image-serve/…",
+// so mobile responses carry the full URL (activity 52, T-3).
+export function absoluteLogoUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (!url.startsWith("/")) return url;
+  const base = (process.env.NEXTAUTH_URL || "").replace(/\/$/, "");
+  return base ? `${base}${url}` : null;
+}
+
+
 /**
  * Shape returned on a successful credential validation.
  * Mirrors the object returned by the NextAuth CredentialsProvider so web and
@@ -139,7 +156,7 @@ export async function validateCredentials(
       clinicName: user.clinic?.name || null,
       clinicSlug: user.clinic?.slug || null,
       clinicType: user.clinic?.type || null,
-      clinicLogoUrl: user.clinic?.logoUrl && /^https?:\/\//.test(user.clinic.logoUrl) ? user.clinic.logoUrl : null,
+      clinicLogoUrl: sessionLogoUrl(user.clinic?.logoUrl),
       clinicPrimaryColor: user.clinic?.primaryColor || null,
       instagramImportEnabled: user.clinic?.instagramImportEnabled || false,
       permissions: {
@@ -207,7 +224,7 @@ export async function getValidatedUserById(
     clinicName: user.clinic?.name || null,
     clinicSlug: user.clinic?.slug || null,
     clinicType: user.clinic?.type || null,
-    clinicLogoUrl: user.clinic?.logoUrl && /^https?:\/\//.test(user.clinic.logoUrl) ? user.clinic.logoUrl : null,
+    clinicLogoUrl: sessionLogoUrl(user.clinic?.logoUrl),
     clinicPrimaryColor: user.clinic?.primaryColor || null,
     instagramImportEnabled: user.clinic?.instagramImportEnabled || false,
     permissions: {

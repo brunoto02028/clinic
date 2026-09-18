@@ -34,7 +34,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [032](032-ai-workout-builder/) | AI Workout Builder | ✅ |
 | [033](033-program-templates-calendar/) | Program Templates (multi-semana + atribuição em massa) | ✅ |
 | [038](038-fechamento-gaps-personal/) | Fechamento dos gaps da atividade 20 | ✅ |
-| [052](052-seguranca-rotas-legadas-personal/) | Segurança das rotas legadas antes do 1º personal externo | 📋 |
+| [052](052-seguranca-rotas-legadas-personal/) | Segurança das rotas legadas antes do 1º personal externo | ✅ concluída (deploy 18/09) |
 
 ## Plataforma (multi-tenant, segurança, design, custos)
 

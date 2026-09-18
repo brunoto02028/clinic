@@ -6,6 +6,7 @@ import { getEffectiveUser } from "@/lib/get-effective-user";
 import { getActor, canAccessRecord } from "@/lib/tenant-access";
 import { stripe } from "@/lib/stripe";
 import { notifyPatient } from "@/lib/notify-patient";
+import { isPersonalTenant } from "@/lib/tenant-type";
 
 const FREE_RESCHEDULES = 2;
 const RESCHEDULE_FEE_PERCENT = 0.25; // 25% of appointment price after free reschedules
@@ -60,7 +61,13 @@ export async function POST(
     }
 
     const currentCount = appointment.rescheduleCount || 0;
-    const isFree = currentCount < FREE_RESCHEDULES;
+    // A personal studio charges nothing through BPR's Stripe account — its
+    // sessions are paid in person — so there is no online reschedule fee
+    // (activity 52, T-7).
+    const tenantType = tenant
+      ? (await prisma.clinic.findUnique({ where: { id: tenant }, select: { type: true } }))?.type
+      : null;
+    const isFree = currentCount < FREE_RESCHEDULES || isPersonalTenant(tenantType);
     const rescheduleFee = isFree ? 0 : Math.round(appointment.price * RESCHEDULE_FEE_PERCENT * 100) / 100;
 
     // Admin/therapist can always reschedule for free

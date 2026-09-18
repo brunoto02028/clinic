@@ -70,7 +70,11 @@ export async function POST(request: NextRequest) {
       where: { id: planId },
     });
 
-    if (!plan || plan.status !== "ACTIVE") {
+    // Only a plan of the patient's own tenant that is offered to them — to
+    // everyone, or to them specifically (activity 52, T-6). A draft ("none")
+    // or someone else's plan was subscribable by id.
+    const offeredToMe = plan && (plan.patientScope === "all" || (plan.patientScope === "specific" && plan.patientId === userId));
+    if (!plan || plan.status !== "ACTIVE" || !clinicId || plan.clinicId !== clinicId || !offeredToMe) {
       return NextResponse.json({ error: "Plan not found or inactive" }, { status: 404 });
     }
 
@@ -106,26 +110,13 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Paid plan: create Stripe Checkout ──
+    // A paid plan whose Stripe price is missing used to be activated for free
+    // ("manual payment mode") — it must be paid, so refuse instead (activity 52, T-6).
     if (!plan.stripePriceId || !process.env.STRIPE_SECRET_KEY) {
-      // No Stripe configured — activate directly (manual payment assumed)
-      const subscription = await (prisma as any).patientSubscription.create({
-        data: {
-          clinicId: clinicId || plan.clinicId,
-          patientId: userId,
-          planId: plan.id,
-          status: "ACTIVE",
-          startDate: new Date(),
-        },
-      });
-
-      // Sync ServiceAccess records for the plan's features
-      await syncServiceAccessForPlan(userId, plan);
-
-      return NextResponse.json({
-        subscription,
-        planName: plan.name,
-        message: "Membership activated (manual payment mode)",
-      });
+      return NextResponse.json(
+        { error: "This plan can't be purchased online right now. Please contact the clinic." },
+        { status: 409 }
+      );
     }
 
     // Create Stripe Checkout Session for recurring subscription

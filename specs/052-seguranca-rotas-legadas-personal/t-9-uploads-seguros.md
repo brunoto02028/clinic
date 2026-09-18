@@ -1,6 +1,6 @@
 # T-9: Uploads — tipo/tamanho permitidos e SVG/HTML nunca inline
 
-**Status:** pendente
+**Status:** concluído (QA aprovado `qa/report-t-9.md` + code review aplicado)
 **Depende de:** T-1 (a parte "aluno" já cai no 403)
 
 ## Objetivo
@@ -30,7 +30,7 @@ Nenhum upload vira XSS no domínio da plataforma. Só entram tipos esperados, co
 - helper de validação de upload (novo ou existente em `lib/`)
 
 ## Critérios de aceite
-- [ ] Aluno → upload → 403 (T-1). Personal → upload de `x.svg`/`x.html`/`x.exe` → 400.
-- [ ] Personal → upload de `.jpg` válido → 200. Arquivo acima do limite → 413/400.
-- [ ] Um SVG já existente em `/api/uploads/...` é servido como anexo com CSP sandbox (não executa script ao abrir).
-- [ ] Imagens e vídeos existentes (Instagram, exercícios) continuam aparecendo (regressão).
+- [x] Aluno → upload → 403 (T-1). Personal → upload de `x.svg`/`x.html`/`x.exe` → 400.
+- [x] Personal → upload de `.jpg` válido → 200. Arquivo acima do limite → 413/400.
+- [x] Um SVG já existente em `/api/uploads/...` é servido como anexo com CSP sandbox (não executa script ao abrir).
+- [x] Imagens e vídeos existentes (Instagram, exercícios) continuam aparecendo (regressão).

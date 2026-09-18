@@ -62,6 +62,16 @@ async function resolve(clinicId?: string | null): Promise<string> {
       }
 
       if (clinic?.email) return clinic.email;
+
+      // A studio/clinic with no address of its own: its owner (the first
+      // active ADMIN) — never BPR's inbox, which was receiving a studio's
+      // students' messages (activity 52, T-10).
+      const owner = await prisma.user.findFirst({
+        where: { clinicId, role: "ADMIN", isActive: true },
+        orderBy: { createdAt: "asc" },
+        select: { email: true },
+      });
+      if (owner?.email) return owner.email;
     } else {
       const settings = await prisma.siteSettings.findFirst({ select: { notificationEmail: true, email: true } });
       if (settings?.notificationEmail) return settings.notificationEmail;

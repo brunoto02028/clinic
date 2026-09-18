@@ -55,12 +55,18 @@ export async function POST(request: NextRequest) {
     const sex = input.sex === "M" || input.sex === "F" ? input.sex : dbStudent?.sex ?? null;
     const derived = deriveAssessment({ ...input, bfMethod, sex }, ageFromDob(dbStudent?.dateOfBirth));
 
+    // An unparseable date used to reach Prisma as Invalid Date and 500 (activity 52, T-10).
+    const performedAtDate = input.performedAt ? new Date(input.performedAt) : null;
+    if (performedAtDate && isNaN(performedAtDate.getTime())) {
+      return NextResponse.json({ error: "performedAt must be a valid date" }, { status: 400 });
+    }
+
     const created = await prisma.studentAssessment.create({
       data: {
         clinicId,
         studentId: student.id,
         trainerId: actor.userId,
-        performedAt: input.performedAt ? new Date(input.performedAt) : new Date(),
+        performedAt: performedAtDate ?? new Date(),
         assessmentType: typeof input.assessmentType === "string" && input.assessmentType.trim() ? input.assessmentType : null,
         weightKg: input.weightKg ?? null,
         heightCm: input.heightCm ?? null,

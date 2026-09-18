@@ -64,6 +64,10 @@ export async function GET(
           "Cache-Control": "public, max-age=31536000, immutable",
           "Content-Length": String(buffer.length),
           "ETag": etag,
+          // An uploaded SVG is served from our origin: opened directly it must
+          // not run script (activity 52, T-9). Harmless for <img>.
+          "X-Content-Type-Options": "nosniff",
+          "Content-Security-Policy": "sandbox",
         },
       });
     }
@@ -92,6 +96,10 @@ export async function GET(
             'Content-Type': contentType,
             'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
             'Content-Length': String((body as Buffer).byteLength ?? (body as ArrayBuffer).byteLength),
+            // Proxied from a stored URL but served from our origin: whatever type
+            // the upstream claims, it must not run as a page (activity 52, T-9).
+            'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': 'sandbox',
           },
         });
       } catch {

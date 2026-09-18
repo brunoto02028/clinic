@@ -23,10 +23,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No items provided" }, { status: 400 });
     }
 
-    // Fetch products
+    // Fetch products — only from the patient's own tenant's shop (activity 52,
+    // T-6); another tenant's product ids were accepted as given.
+    if (!clinicId) {
+      return NextResponse.json({ error: "Some products are unavailable" }, { status: 400 });
+    }
     const productIds = items.map((i: any) => i.productId);
     const products = await (prisma as any).marketplaceProduct.findMany({
-      where: { id: { in: productIds }, isActive: true },
+      where: { id: { in: productIds }, isActive: true, clinicId },
     });
 
     if (products.length !== items.length) {

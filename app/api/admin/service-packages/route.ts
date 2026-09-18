@@ -1,17 +1,18 @@
+// BPR's platform-wide pricing hub: global service prices and packages created on
+// the platform Stripe account. A tenant's ADMIN must not touch them — a studio
+// charges through its own Connect account (activity 52, T-2).
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { getSuperadminActor } from '@/lib/tenant-access';
 import { stripe } from '@/lib/stripe';
 import { getCardFeePercent, applyCardFee } from '@/lib/card-fee';
 
 export const dynamic = 'force-dynamic';
 
 // GET — list all service packages
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(req: NextRequest) {
+  if (!(await getSuperadminActor(req))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const packages = await prisma.servicePackage.findMany({
@@ -26,9 +27,8 @@ export async function GET() {
 
 // POST — create or update a service package
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await getSuperadminActor(req))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await req.json();
@@ -152,9 +152,8 @@ export async function POST(req: NextRequest) {
 
 // DELETE — delete a package (archive on Stripe)
 export async function DELETE(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await getSuperadminActor(req))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { id } = await req.json();

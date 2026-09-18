@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getSuperadminActor } from "@/lib/tenant-access";
 import * as cheerio from "cheerio";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -14,13 +13,11 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userRole = (session.user as any).role;
-    if (!["ADMIN", "SUPERADMIN", "THERAPIST"].includes(userRole)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    // Imports write to BPR's blog and make the server fetch any URL — the
+    // platform owner's only (activity 52, T-2).
+    const superadmin = await getSuperadminActor(req);
+    if (!superadmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -224,7 +221,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create article
-    const userId = (session.user as any).id;
+    const userId = superadmin.userId;
     const article = await prisma.article.create({
       data: {
         title,

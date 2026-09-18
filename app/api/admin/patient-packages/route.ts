@@ -1,15 +1,16 @@
+// BPR's platform-wide pricing hub: global service prices and packages created on
+// the platform Stripe account. A tenant's ADMIN must not touch them — a studio
+// charges through its own Connect account (activity 52, T-2).
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
+import { getSuperadminActor } from '@/lib/tenant-access';
 
 export const dynamic = 'force-dynamic';
 
 // GET — list patient packages (optionally filtered by patientId)
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await getSuperadminActor(req))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
@@ -33,9 +34,9 @@ export async function GET(req: NextRequest) {
 
 // POST — assign a package to a patient (admin grants it)
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const superadmin = await getSuperadminActor(req);
+  if (!superadmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { patientId, packageId, paid, amountPaid } = await req.json();
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
       patientId,
       packageId,
       status: 'ACTIVE',
-      grantedById: (session.user as any).id,
+      grantedById: superadmin.userId,
       paid: paid === true,
       amountPaid: amountPaid ? parseFloat(amountPaid) : (paid ? pkg.price : null),
       currency: pkg.currency,
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
     if (existing) {
       await (prisma as any).serviceAccess.update({
         where: { id: existing.id },
-        data: { granted: true, grantedById: (session.user as any).id },
+        data: { granted: true, grantedById: superadmin.userId },
       });
     } else {
       await (prisma as any).serviceAccess.create({
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
           patientId,
           serviceType,
           granted: true,
-          grantedById: (session.user as any).id,
+          grantedById: superadmin.userId,
         },
       });
     }
@@ -94,9 +95,8 @@ export async function POST(req: NextRequest) {
 
 // DELETE — revoke a patient package
 export async function DELETE(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || !['ADMIN', 'SUPERADMIN'].includes((session.user as any).role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await getSuperadminActor(req))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { id } = await req.json();

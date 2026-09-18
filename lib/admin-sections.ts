@@ -22,6 +22,10 @@ export interface AdminTab {
   clinicalOnly?: boolean;
   /** Shown ONLY to a personal-trainer tenant (e.g. Challenges). */
   personalOnly?: boolean;
+  /** Platform-wide (BPR site, all tenants, platform AI/logs) — SUPERADMIN only. */
+  superadminOnly?: boolean;
+  /** The tenant owner's (ADMIN/SUPERADMIN) — hidden from a THERAPIST. */
+  ownerOnly?: boolean;
 }
 
 export interface AdminSection {
@@ -116,8 +120,18 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Portal",
         labelPt: "Portal",
         href: "/admin/patient-portal",
+        // One config for every tenant's patients (SiteSettings) — activity 52, T-2.
+        superadminOnly: true,
+        matchRoutes: ["/admin/patient-portal"],
+      },
+      {
+        // Journey, conditions, quizzes and achievements are per tenant — they
+        // used to hang off the Portal tab, which is now SUPERADMIN-only.
+        key: "journey",
+        label: "Journey",
+        labelPt: "Jornada",
+        href: "/admin/journey",
         matchRoutes: [
-          "/admin/patient-portal",
           "/admin/journey",
           "/admin/conditions",
           "/admin/quizzes",
@@ -254,6 +268,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Articles",
         labelPt: "Artigos",
         href: "/admin/articles",
+        superadminOnly: true,
         matchRoutes: ["/admin/articles", "/admin/marketing/articles"],
       },
       {
@@ -371,18 +386,25 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Overview",
         labelPt: "Resumo",
         href: "/admin/finance",
+        // The books are the owner's (activity 52, T-6) — not shown to a therapist.
+        ownerOnly: true,
       },
       {
         key: "pricing",
         label: "Pricing",
         labelPt: "Precos",
         href: "/admin/service-pricing",
+        // BPR's global prices/packages on the platform Stripe account (activity 52, T-2).
+        superadminOnly: true,
       },
       {
         key: "memberships",
         label: "Memberships",
         labelPt: "Memberships",
         href: "/admin/memberships",
+        // Both charge on BPR's own Stripe account, never the studio's Connect
+        // account — a studio bills through Billing instead (activity 52, T-7).
+        clinicalOnly: true,
       },
       {
         key: "marketplace",
@@ -390,6 +412,8 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Marketplace",
         href: "/admin/marketplace",
         matchRoutes: ["/admin/marketplace"],
+        clinicalOnly: true,
+        ownerOnly: true,
       },
     ],
     matchRoutes: [
@@ -413,6 +437,15 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Geral",
         href: "/admin/settings",
         matchRoutes: ["/admin/settings", "/admin/service-pages"],
+        superadminOnly: true,
+      },
+      {
+        // The tenant's own brand (activity 52, T-3) — the BPR site is "General".
+        key: "branding",
+        label: "Branding",
+        labelPt: "Marca",
+        href: "/admin/studio-branding",
+        ownerOnly: true,
       },
       {
         key: "users",
@@ -425,6 +458,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         label: "Clinics",
         labelPt: "Clinicas",
         href: "/admin/clinics",
+        superadminOnly: true,
       },
       {
         key: "ai",
@@ -432,6 +466,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "AI",
         href: "/admin/ai-settings",
         matchRoutes: ["/admin/ai-settings", "/admin/ai-coworker"],
+        superadminOnly: true,
       },
       {
         key: "security",
@@ -439,6 +474,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         labelPt: "Seguranca",
         href: "/admin/security",
         matchRoutes: ["/admin/security", "/admin/agent-keys"],
+        superadminOnly: true,
       },
       {
         key: "logs",
@@ -450,10 +486,12 @@ export const ADMIN_SECTIONS: AdminSection[] = [
           "/admin/voice-costs",
           "/admin/analytics",
         ],
+        superadminOnly: true,
       },
     ],
     matchRoutes: [
       "/admin/settings",
+      "/admin/studio-branding",
       "/admin/users",
       "/admin/clinics",
       "/admin/ai-settings",
@@ -482,6 +520,13 @@ function routeMatches(pathname: string, route: string): boolean {
   return pathname === routePath || pathname.startsWith(routePath + "/");
 }
 
+/** Role-based part of a tab's visibility (the tenant-type part is separate). */
+export function tabAllowedFor(tab: AdminTab, role?: string): boolean {
+  if (tab.superadminOnly && role !== "SUPERADMIN") return false;
+  if (tab.ownerOnly && role !== "SUPERADMIN" && role !== "ADMIN") return false;
+  return true;
+}
+
 /**
  * The sections/tabs a tenant sees. A personal-trainer studio drops the
  * clinicalOnly sections/tabs (SOAP notes, protocols, rehab agent); a clinic
@@ -489,9 +534,9 @@ function routeMatches(pathname: string, route: string): boolean {
  * left with no visible tabs is dropped too. Both branches must filter — a bare
  * `return ADMIN_SECTIONS` for a clinic would leak personalOnly sections.
  */
-export function visibleAdminSections(isPersonal: boolean): AdminSection[] {
+export function visibleAdminSections(isPersonal: boolean, role?: string): AdminSection[] {
   const hideSection = (s: AdminSection) => (isPersonal ? s.clinicalOnly : s.personalOnly);
-  const hideTab = (t: AdminTab) => (isPersonal ? t.clinicalOnly : t.personalOnly);
+  const hideTab = (t: AdminTab) => (isPersonal ? t.clinicalOnly : t.personalOnly) || !tabAllowedFor(t, role);
   return ADMIN_SECTIONS.filter((s) => !hideSection(s))
     .map((s) => ({ ...s, tabs: s.tabs.filter((t) => !hideTab(t)) }))
     .filter((s) => s.tabs.length > 0);

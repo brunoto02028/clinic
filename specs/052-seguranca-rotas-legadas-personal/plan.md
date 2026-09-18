@@ -33,15 +33,15 @@ Parte disso é explorável **hoje** em prod por qualquer paciente logado da BPR:
 | T-N | Nome | Achados | Status |
 |-----|------|---------|--------|
 | T-1 | Middleware: aluno/paciente fora de `/api/admin/*` (+ allowlist) | S5, S6, S10, lado aluno de S11/S12 | concluído |
-| T-2 | Configuração global da BPR só para SUPERADMIN (+ abas de plataforma escondidas) | S1, S2, S12, P2 | em andamento |
-| T-3 | Marca do estúdio editável pelo próprio personal | consequência de T-2 | em andamento |
+| T-2 | Configuração global da BPR só para SUPERADMIN (+ abas de plataforma escondidas) | S1, S2, S12, P2 | concluído |
+| T-3 | Marca do estúdio editável pelo próprio personal | consequência de T-2 | concluído |
 | T-4 | Agendamentos: tenant + dono no `[id]`, preço no servidor, `patientId` do tenant | S3, parte de S7/S8 | concluído |
-| T-5 | Tarefas em massa (`patient-tasks`) presas à clínica de quem chama | S4 | pendente |
-| T-6 | Financeiro legado: treatment-plans, memberships, invoices, marketplace, finance | S7, S8, S10, M1 | pendente |
-| T-7 | Personal isolado do Stripe e das rotas clínicas da BPR (bloqueio + menu) | S7, S9, P3, P10 | pendente |
-| T-8 | Catálogos e listas por id presos ao tenant | S9, M3 | pendente |
-| T-9 | Uploads: extensão/tamanho permitidos e SVG/HTML nunca inline | S11 | pendente |
-| T-10 | Itens médios: checkout duplicado, webhook Connect, trigger/version, escapes | M2, M4, M5, baixos | pendente |
+| T-5 | Tarefas em massa (`patient-tasks`) presas à clínica de quem chama | S4 | concluído |
+| T-6 | Financeiro legado: treatment-plans, memberships, invoices, marketplace, finance | S7, S8, S10, M1 | concluído (6.7 → alerta clínica) |
+| T-7 | Personal isolado do Stripe e das rotas clínicas da BPR (bloqueio + menu) | S7, S9, P3, P10 | concluído |
+| T-8 | Catálogos e listas por id presos ao tenant | S9, M3 | concluído (8.1 entre clínicas → alerta) |
+| T-9 | Uploads: extensão/tamanho permitidos e SVG/HTML nunca inline | S11 | concluído (A-1 clínica / A-2 infra → alertas) |
+| T-10 | Itens médios: checkout duplicado, webhook Connect, trigger/version, escapes | M2, M4, M5, baixos | concluído |
 
 Ordem sugerida: T-1 → T-4 (expostos hoje) → T-2 + T-3 (juntas) → T-5 → T-6 → T-7 → T-8 → T-9 → T-10.
 

@@ -1,6 +1,6 @@
 # T-3: Marca do estúdio editável pelo próprio personal
 
-**Status:** em andamento
+**Status:** concluído (QA aprovado na rodada 3 — `qa/report-t-2-t-3.md` — + code review aplicado)
 **Depende de:** nenhuma (vai para prod junto com a T-2)
 
 ## Objetivo
@@ -30,6 +30,11 @@ O personal (ADMIN do tenant) edita **a marca do próprio estúdio**: nome, logo 
 - **Painel `/admin`:** o atalho "Site Settings" vira "Marca do estúdio" para o personal, e "View Website" (site da BPR) some.
 - **Getting started / Studio guide:** apontam para a tela nova. O passo "Personalise" fica feito quando há logo ou cor diferente do default `#4F7361`.
 - **Papel:** só ADMIN e SUPERADMIN editam (THERAPIST → 403 na API e redirect na página).
+- **Ajustes do code review:**
+  - Logo por `/api/image-serve/<id>` só é aceito se a imagem foi enviada por alguém do mesmo tenant (ou pelo SUPERADMIN).
+  - O app mobile recebe o logo como URL **absoluta** (`absoluteLogoUrl`, `lib/mobile-user.ts`) em login/me/refresh.
+  - O formulário carrega uma vez só (trocar o idioma não descarta edições) e os campos de cor aceitam ficar vazios enquanto se digita.
+  - Um SUPERADMIN que edita outro tenant pelo seletor de clínica mantém a própria marca na sessão (comportamento esperado, documentado no callback `jwt`).
 
 ## Arquivos afetados
 - `app/api/admin/studio-branding/route.ts` (novo)
@@ -38,11 +43,11 @@ O personal (ADMIN do tenant) edita **a marca do próprio estúdio**: nome, logo 
 - possivelmente o callback de sessão (`lib/auth-options.ts`) para refletir a marca nova
 
 ## Critérios de aceite
-- [ ] Personal troca nome, logo e cor → `/studio/qa-studio-pt` e `/join/qa-studio-pt` mostram a marca nova.
-- [ ] Admin e portal do aluno também mostram a marca nova.
-- [ ] `PATCH` com `clinicId`/`slug`/`type` no corpo → campos ignorados (não mudam).
-- [ ] Personal de tenant A não consegue alterar o tenant B (não há parâmetro de tenant; teste com SUPERADMIN confirma que só o tenant ativo muda).
-- [ ] Cor inválida → 400 com mensagem clara.
-- [ ] Aluno → 403 (T-1).
-- [ ] `SiteSettings` da BPR inalterado.
-- [ ] Passo do getting-started marcado como feito depois de salvar.
+- [x] Personal troca nome, logo e cor → `/studio/qa-studio-pt` e `/join/qa-studio-pt` mostram a marca nova.
+- [x] Admin e portal do aluno também mostram a marca nova.
+- [x] `PATCH` com `clinicId`/`slug`/`type` no corpo → campos ignorados (não mudam).
+- [x] Personal de tenant A não consegue alterar o tenant B (não há parâmetro de tenant; teste com SUPERADMIN confirma que só o tenant ativo muda).
+- [x] Cor inválida → 400 com mensagem clara.
+- [x] Aluno → 403 (T-1).
+- [x] `SiteSettings` da BPR inalterado.
+- [x] Passo do getting-started marcado como feito depois de salvar.

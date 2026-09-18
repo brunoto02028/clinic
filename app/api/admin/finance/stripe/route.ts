@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getSuperadminActor } from "@/lib/tenant-access";
 import Stripe from "stripe";
 
 export const dynamic = 'force-dynamic';
 
 // POST — sync Stripe payments into FinancialEntry
 export async function POST(req: NextRequest) {
+  // Uses the platform's own Stripe key (balance, recent charges with customer
+  // e-mails) — the platform owner's only (activity 52, T-6).
+  if (!(await getSuperadminActor(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -169,6 +173,9 @@ export async function POST(req: NextRequest) {
 
 // GET — get Stripe balance and recent activity summary
 export async function GET(req: NextRequest) {
+  // Uses the platform's own Stripe key (balance, recent charges with customer
+  // e-mails) — the platform owner's only (activity 52, T-6).
+  if (!(await getSuperadminActor(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

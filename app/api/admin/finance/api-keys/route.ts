@@ -21,8 +21,10 @@ export async function GET(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = (session.user as any).id;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true, role: true } });
   if (!user?.clinicId) return NextResponse.json({ error: "No clinic" }, { status: 400 });
+  // The books are the owner's, not every staff member's (activity 52, T-6).
+  if (user.role !== "ADMIN" && user.role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const keys = await prisma.apiKey.findMany({
     where: { clinicId: user.clinicId },
@@ -48,8 +50,10 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = (session.user as any).id;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true, role: true } });
   if (!user?.clinicId) return NextResponse.json({ error: "No clinic" }, { status: 400 });
+  // The books are the owner's, not every staff member's (activity 52, T-6).
+  if (user.role !== "ADMIN" && user.role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const { name, permissions, expiresAt } = body;
@@ -89,8 +93,10 @@ export async function PATCH(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = (session.user as any).id;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true, role: true } });
   if (!user?.clinicId) return NextResponse.json({ error: "No clinic" }, { status: 400 });
+  // The books are the owner's, not every staff member's (activity 52, T-6).
+  if (user.role !== "ADMIN" && user.role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const { id, isActive, name, permissions } = body;
@@ -114,8 +120,10 @@ export async function DELETE(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = (session.user as any).id;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true, role: true } });
   if (!user?.clinicId) return NextResponse.json({ error: "No clinic" }, { status: 400 });
+  // The books are the owner's, not every staff member's (activity 52, T-6).
+  if (user.role !== "ADMIN" && user.role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = req.nextUrl;
   const id = url.searchParams.get("id");

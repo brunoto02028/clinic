@@ -2,22 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { tenantStaff, ownedByTenant } from "@/lib/tenant-owned";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/admin/journey/challenges — List all challenges
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
+    const actor = await tenantStaff(req, ["SUPERADMIN", "ADMIN"]);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const clinicId = (session.user as any).clinicId;
+    const clinicId = actor.clinicId;
 
     const challenges = await (prisma as any).weeklyChallenge.findMany({
-      where: clinicId ? { clinicId } : {},
+      where: { clinicId },
       orderBy: { startsAt: "desc" },
     });
 
@@ -32,11 +33,11 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
+    const actor = await tenantStaff(req, ["SUPERADMIN", "ADMIN"]);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const clinicId = (session.user as any).clinicId;
+    const clinicId = actor.clinicId;
     const { title, description, target, reward, rewardCredits, startsAt, endsAt } = await req.json();
 
     if (!title || !target || !reward || !startsAt || !endsAt) {
@@ -68,12 +69,13 @@ export async function POST(req: NextRequest) {
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
+    const actor = await tenantStaff(req, ["SUPERADMIN", "ADMIN"]);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { id, ...data } = await req.json();
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+    if (!(await ownedByTenant("weeklyChallenge", id, actor.clinicId))) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const updateData: any = {};
     if (data.title !== undefined) updateData.title = data.title;
@@ -96,12 +98,13 @@ export async function PATCH(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
+    const actor = await tenantStaff(req, ["SUPERADMIN", "ADMIN"]);
+    if (!actor) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+    if (!(await ownedByTenant("weeklyChallenge", id, actor.clinicId))) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     await (prisma as any).weeklyChallenge.delete({ where: { id } });
     return NextResponse.json({ success: true });

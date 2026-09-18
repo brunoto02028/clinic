@@ -59,12 +59,19 @@ export async function GET(
     const fileBuffer = await readFile(fullPath);
     const body = new Uint8Array(fileBuffer);
 
+    // Served from our own origin, so anything that can carry script (an SVG,
+    // or a type we don't know) must never run as a page here: it downloads,
+    // sandboxed (activity 52, T-9). Known media stay inline (the PDF viewer
+    // breaks under a sandbox), and nothing is type-sniffed.
+    const inline = ext in MIME_TYPES && ext !== ".svg";
     return new NextResponse(body, {
       status: 200,
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=2592000, immutable",
         "Content-Length": String(fileBuffer.length),
+        "X-Content-Type-Options": "nosniff",
+        ...(inline ? {} : { "Content-Disposition": "attachment", "Content-Security-Policy": "sandbox" }),
       },
     });
   } catch (error) {

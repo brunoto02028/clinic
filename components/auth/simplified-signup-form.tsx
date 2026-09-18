@@ -32,9 +32,11 @@ interface SimplifiedSignupFormProps {
   /** Personal-trainer studio: student/studio wording + branded sign-in link. */
   isPersonal?: boolean;
   primaryColor?: string | null;
+  /** The studio's own logo, shown above the form (activity 52, T-3). */
+  logoUrl?: string | null;
 }
 
-export default function SimplifiedSignupForm({ tenantSlug, tenantName, isPersonal, primaryColor }: SimplifiedSignupFormProps = {}) {
+export default function SimplifiedSignupForm({ tenantSlug, tenantName, isPersonal, primaryColor, logoUrl }: SimplifiedSignupFormProps = {}) {
   const router = useRouter();
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
@@ -179,6 +181,10 @@ export default function SimplifiedSignupForm({ tenantSlug, tenantName, isPersona
             </CardTitle>
           </div>
 
+          {isPersonal && logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt={tenantName || ""} className="mx-auto h-16 w-auto object-contain" />
+          )}
           {tenantName && (
             <p className="text-sm text-muted-foreground">
               {isPt ? "Você está entrando em " : "You're joining "}

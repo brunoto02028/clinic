@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getSessionStaffActor } from "@/lib/tenant-access";
 import { sendDispatchEmail } from "@/lib/order-emails";
 
 export const dynamic = "force-dynamic";
@@ -9,16 +8,16 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/admin/marketplace/orders — List all orders
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await getSessionStaffActor(req);
+    if (!actor || !actor.clinicId || actor.role === "THERAPIST") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const clinicId = (session.user as any).clinicId;
+    const clinicId = actor.clinicId;
 
     const orders = await (prisma as any).marketplaceOrder.findMany({
-      where: clinicId ? { clinicId } : {},
+      where: { clinicId },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true, email: true } },
         items: { include: { product: { select: { id: true, name: true, imageUrl: true, isAffiliate: true } } } },
@@ -50,12 +49,20 @@ export async function GET() {
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const actor = await getSessionStaffActor(req);
+    if (!actor || !actor.clinicId || actor.role === "THERAPIST") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const { id, ...body } = await req.json();
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+    // The order must be this tenant's — marking another tenant's order as paid
+    // was a click away (activity 52, T-6).
+    const owned = await (prisma as any).marketplaceOrder.findFirst({
+      where: { id, clinicId: actor.clinicId },
+      select: { id: true },
+    });
+    if (!owned) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
     const updateData: any = {};
     if (body.status !== undefined) {

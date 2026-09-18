@@ -15,7 +15,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     await assertStudentTrainingAccess(actor);
 
     const challenge = await prisma.challenge.findUnique({ where: { id: params.id } });
-    if (!challenge || challenge.clinicId !== actor.clinicId) throw new AccessError(404, "Not found");
+    // An archived challenge is gone for students (activity 52, T-10).
+    if (!challenge || challenge.clinicId !== actor.clinicId || challenge.status === "ARCHIVED") {
+      throw new AccessError(404, "Not found");
+    }
 
     const participants = await prisma.challengeParticipant.findMany({
       where: { challengeId: challenge.id },
@@ -33,7 +36,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       });
     }
 
-    return NextResponse.json({ challenge, leaderboard: board, mine });
+    // Other students appear by display name and position only — their user ids
+    // stay private (activity 52, T-10). Each row keeps an opaque key for lists.
+    const publicBoard = board.map((e, i) => ({ ...e, studentId: e.studentId === actor.userId ? e.studentId : `rank-${i + 1}` }));
+
+    return NextResponse.json({ challenge, leaderboard: publicBoard, mine });
   } catch (err) {
     if (err instanceof AccessError) return accessErrorResponse(err);
     console.error("[challenges/[id]] GET error:", (err as any)?.message);

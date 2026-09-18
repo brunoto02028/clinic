@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
+import { getSuperadminActor } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
@@ -106,9 +105,9 @@ export async function GET(req: NextRequest) {
  */
 export async function PUT(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !["SUPERADMIN", "ADMIN"].includes((session.user as any).role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Platform-wide terms every patient accepts — SUPERADMIN only (activity 52, T-2).
+    if (!(await getSuperadminActor(req))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const texts = await req.json();
