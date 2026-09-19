@@ -835,6 +835,28 @@ export default function PatientProfilePage() {
         <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-primary/40 text-primary hover:bg-primary/10" onClick={() => { setShowInvoiceDialog(true); setInvoiceItems([{ description: "", unitPrice: "" }]); }}>
           <Receipt className="h-3 w-3" /> Send Invoice
         </Button>
+        {/* Email language — controls which language automated emails (onboarding,
+            adherence reminders, weekly closing) go out in for this patient. */}
+        <div className="flex items-center gap-1 h-7 px-1 rounded-md border border-border">
+          <span className="text-[10px] text-muted-foreground pl-1">Emails:</span>
+          {(["en-GB", "pt-BR"] as const).map((loc) => {
+            const active = (p.preferredLocale || "en-GB").startsWith(loc.slice(0, 2));
+            return (
+              <button
+                key={loc}
+                type="button"
+                disabled={saving || active}
+                onClick={async () => {
+                  const r = await apiPatch({ preferredLocale: loc });
+                  if (r) { flash(`Patient emails now in ${loc === "pt-BR" ? "Portuguese" : "English"}.`); fetchData(); }
+                }}
+                className={`text-[10px] px-1.5 py-0.5 rounded ${active ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground hover:bg-muted"}`}
+              >
+                {loc === "pt-BR" ? "PT" : "EN"}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Send Invoice Dialog */}
