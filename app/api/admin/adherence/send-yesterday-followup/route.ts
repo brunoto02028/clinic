@@ -13,8 +13,11 @@ export const dynamic = "force-dynamic";
 // under its own action so it never collides with the "still time today"
 // reminder's dedupe.
 export async function POST(req: NextRequest) {
-  const { patientId } = await req.json().catch(() => ({}));
+  const { patientId, locale } = await req.json().catch(() => ({}));
   if (!patientId) return NextResponse.json({ error: "patientId is required" }, { status: 400 });
+  if (locale !== undefined && locale !== "en" && locale !== "pt") {
+    return NextResponse.json({ error: "locale must be 'en' or 'pt'" }, { status: 400 });
+  }
 
   const access = await staffPatientAccess(req, patientId);
   if (access.response) return access.response;
@@ -40,6 +43,7 @@ export async function POST(req: NextRequest) {
     patientId,
     plainMessage: "",
     yesterdayMissingTitles: missing,
+    forceLocale: locale,
   });
   await logAudit({
     userId: patientId,

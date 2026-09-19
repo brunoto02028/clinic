@@ -349,6 +349,16 @@ model Clinic {
   // gated by this — only the unattended cron is.
   dailyRemindersEnabled Boolean @default(false)
 
+  // Baseline module/permission grant every new PATIENT of this clinic starts
+  // with (act.62) — same key vocabulary as User.moduleOverrides
+  // (mod_.../perm_... -> true), but only ever grant entries here, never
+  // hidden/locked ones (a "default" adds a head start, it doesn't take
+  // access away). Snapshotted onto the new User's own moduleOverrides at
+  // creation time, not read live — changing this later never affects a
+  // patient who already signed up. Null/empty = no extra default (today's
+  // behaviour: only ALWAYS_VISIBLE_MODULES).
+  defaultPatientModuleOverrides Json?
+
   // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
   type TenantType @default(CLINIC)
 

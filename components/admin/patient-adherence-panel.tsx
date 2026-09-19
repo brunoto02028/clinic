@@ -39,6 +39,7 @@ function AdherenceSection({
   patientId,
   sendBody,
   onSent,
+  showLocaleToggle,
 }: {
   title: string;
   doneLabel: string;
@@ -59,10 +60,17 @@ function AdherenceSection({
    * so its parent needs telling or the section keeps showing "Not sent"
    * next to a button that already says "Sent" until the next full reload. */
   onSent?: (sentAt: string) => void;
+  /** Today/Yesterday/Onboarding get an inline EN/PT picker next to Send now
+   * (activity 62) — unlike weekly closing's two separate sections, one
+   * section here just overrides the language for this particular send. Null
+   * (the default) means "use the patient's own preferredLocale", same as
+   * before this existed. */
+  showLocaleToggle?: boolean;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [sentAt, setSentAt] = useState(status.reminderSentAt);
+  const [locale, setLocale] = useState<"en" | "pt" | null>(null);
 
   useEffect(() => setSentAt(status.reminderSentAt), [status.reminderSentAt]);
 
@@ -72,7 +80,7 @@ function AdherenceSection({
       const res = await fetch(sendUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sendBody || { patientId }),
+        body: JSON.stringify({ ...(sendBody || { patientId }), ...(locale ? { locale } : {}) }),
       });
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -103,7 +111,7 @@ function AdherenceSection({
           <ul className="text-xs text-muted-foreground space-y-0.5 pl-5 list-disc">
             {status.missing.map((m) => <li key={m.id}>{m.title}</li>)}
           </ul>
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2 pt-1 items-center">
             <Button size="sm" variant="outline" onClick={() => setPreviewOpen(true)}>
               <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
             </Button>
@@ -111,6 +119,21 @@ function AdherenceSection({
               {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : sent ? <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
               {sent && sentAt ? `Sent ${formatSentAt(sentAt)}` : "Send now"}
             </Button>
+            {showLocaleToggle && !sent && (
+              <div className="flex items-center gap-0.5 rounded-md border border-border px-1 py-0.5">
+                {(["en", "pt"] as const).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setLocale((prev) => (prev === l ? null : l))}
+                    title={l === "pt" ? "Force Portuguese for this send" : "Force English for this send"}
+                    className={`text-[10px] px-1.5 py-0.5 rounded ${locale === l ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground hover:bg-muted"}`}
+                  >
+                    {l.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -126,7 +149,7 @@ function AdherenceSection({
               before this route existed could otherwise stick around. */}
           {previewOpen && (
             <iframe
-              src={`${previewUrl}&_=${Date.now()}`}
+              src={`${previewUrl}${locale ? `&locale=${locale}` : ""}&_=${Date.now()}`}
               title={`${title} preview`}
               className="flex-1 w-full rounded-md border bg-white"
             />
@@ -200,6 +223,7 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
           previewUrl={`/api/admin/adherence/preview-patient-email?patientId=${patientId}`}
           sendUrl="/api/admin/adherence/send-reminder"
           patientId={patientId}
+          showLocaleToggle
         />
         <AdherenceSection
           title="Yesterday"
@@ -209,6 +233,7 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
           previewUrl={`/api/admin/adherence/preview-yesterday-email?patientId=${patientId}`}
           sendUrl="/api/admin/adherence/send-yesterday-followup"
           patientId={patientId}
+          showLocaleToggle
         />
         {onboardingReady && (
           <AdherenceSection
@@ -219,6 +244,7 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
             previewUrl={`/api/admin/adherence/preview-onboarding-email?patientId=${patientId}`}
             sendUrl="/api/admin/adherence/send-onboarding-reminder"
             patientId={patientId}
+            showLocaleToggle
           />
         )}
         {data.hasPlan && weeklyClosing && (

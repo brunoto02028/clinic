@@ -40,6 +40,12 @@ interface NotifyPatientParams {
   /** Onboarding reminder (profile/screening/consent still pending) — same
    *  "takes over the message" rule as yesterdayMissingTitles. */
   onboardingPending?: OnboardingPending;
+  /** Overrides the patient's own preferredLocale for this send only — the
+   *  admin explicitly chose a language (activity 62). Unlike plainMessagePt,
+   *  this reaches every branch below (onboardingPending/yesterdayMissingTitles/
+   *  useReminderTemplate all otherwise recompute their own language straight
+   *  from the patient's record, ignoring anything the caller passes). */
+  forceLocale?: "en" | "pt";
 }
 
 export async function notifyPatient({
@@ -53,6 +59,7 @@ export async function notifyPatient({
   todayMissingTitles,
   yesterdayMissingTitles,
   onboardingPending,
+  forceLocale,
 }: NotifyPatientParams): Promise<{ channel: string; success: boolean; error?: string }> {
   try {
     const user = await prisma.user.findUnique({
@@ -74,7 +81,11 @@ export async function notifyPatient({
     const phone: string | null = u.phone || null;
     const email: string = u.email;
     const firstName: string = u.firstName || "Patient";
-    const locale: string = u.preferredLocale || "en-GB";
+    // forceLocale wins over the patient's own preferredLocale when set — every
+    // downstream branch (plain-text msg below, and the e-mail builders further
+    // down) reads this single `locale` value, so overriding it here is the one
+    // place that needs to change for the override to reach all of them.
+    const locale: string = forceLocale ? (forceLocale === "pt" ? "pt-BR" : "en-GB") : (u.preferredLocale || "en-GB");
     const isPt = locale === "pt-BR" || locale.startsWith("pt");
     const msg = onboardingPending
       ? (isPt ? buildOnboardingReminderText(onboardingPending).pt : buildOnboardingReminderText(onboardingPending).en)

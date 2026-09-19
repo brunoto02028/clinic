@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { checkPatientLimit } from "@/lib/tenant-limits";
+import { getDefaultPatientModuleOverrides } from "@/lib/patient-defaults";
 
 // GET - list patients for admin (same as /api/patients but with clinic filter)
 export async function GET(request: NextRequest) {
@@ -152,6 +153,7 @@ export async function POST(request: NextRequest) {
     // Hash password (use default if not provided)
     const rawPassword = password || "Patient123!";
     const hashedPassword = await bcrypt.hash(rawPassword, 12);
+    const defaultOverrides = await getDefaultPatientModuleOverrides(actor.clinicId);
 
     const patient = await prisma.user.create({
       data: {
@@ -160,11 +162,12 @@ export async function POST(request: NextRequest) {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone || null,
-        
+
         role: "PATIENT",
         isActive: true,
         emailVerified: new Date(), // Mark as verified since admin created it
         clinicId: actor.clinicId,
+        ...(defaultOverrides ? { moduleOverrides: defaultOverrides } : {}),
       },
       select: {
         id: true,

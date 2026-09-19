@@ -11,6 +11,7 @@ import { resolveJoinTenant } from "@/lib/join-tenant";
 import { sendAdminAlert } from "@/lib/admin-alert-email";
 import { escapeHtml } from "@/lib/admin-notify-email";
 import { checkPatientLimit } from "@/lib/tenant-limits";
+import { getDefaultPatientModuleOverrides } from "@/lib/patient-defaults";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
     // Hashed only once the request has cleared every rejection path above —
     // bcrypt's cost factor makes this the most expensive step per request.
     const hashedPassword = await bcrypt.hash(password, 12);
+    const defaultOverrides = await getDefaultPatientModuleOverrides(tenant.clinicId);
 
     const user = await prisma.user.create({
       data: {
@@ -128,6 +130,7 @@ export async function POST(request: NextRequest) {
         clinicId: tenant.clinicId,
         // Account disabled until verified
         isActive: false,
+        ...(defaultOverrides ? { moduleOverrides: defaultOverrides } : {}),
       },
     });
 

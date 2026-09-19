@@ -7,6 +7,7 @@ import { sysLog, logAudit } from "@/lib/system-logger";
 import { validateCredentials, sessionLogoUrl } from "@/lib/auth-credentials";
 import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { resolveJoinTenant } from "@/lib/join-tenant";
+import { getDefaultPatientModuleOverrides } from "@/lib/patient-defaults";
 import { cookies } from "next/headers";
 import { resolveActorTenant } from "@/lib/actor-tenant";
 
@@ -110,6 +111,7 @@ export const authOptions: NextAuthOptions = {
             return "/login?error=NoTenant";
           }
 
+          const defaultOverrides = await getDefaultPatientModuleOverrides(tenant.clinicId);
           const newUser = await prisma.user.create({
             data: {
               email,
@@ -123,6 +125,7 @@ export const authOptions: NextAuthOptions = {
               // consentAcceptedAt intentionally NOT set — patient must explicitly
               // accept clinical data consent on /dashboard/consent (GDPR)
               clinicId: tenant.clinicId,
+              ...(defaultOverrides ? { moduleOverrides: defaultOverrides } : {}),
             },
           });
 

@@ -101,13 +101,13 @@ export default function PatientGuidePage() {
       border: "border-ba1-warn/20",
       title: isPt ? "Chegue \u00e0 Consulta Preparado" : "Arrive Prepared",
       desc: isPt
-        ? "Chegue 5 minutos antes da hora marcada. Traga roupa confort\u00e1vel e quaisquer exames ou relat\u00f3rios m\u00e9dicos relevantes."
-        : "Arrive 5 minutes before your appointment time. Bring comfortable clothing and any relevant scans or medical reports.",
+        ? "Chegue 5 minutos antes da hora marcada. Traga roupa confort\u00e1vel e quaisquer exames ou relat\u00f3rios m\u00e9dicos relevantes. Se a sua consulta for na sua casa, \u00e9 muito importante que seu hist\u00f3rico m\u00e9dico, exames, recomenda\u00e7\u00f5es m\u00e9dicas (se houver) e relat\u00f3rios j\u00e1 estejam adicionados no seu perfil com anteced\u00eancia \u2014 essa informa\u00e7\u00e3o ajuda bastante na sua avalia\u00e7\u00e3o."
+        : "Arrive 5 minutes before your appointment time. Bring comfortable clothing and any relevant scans or medical reports. If your session is a home visit, it's important that your medical history, any exam results, medical recommendations (if any) and reports are already added to your profile beforehand \u2014 this information helps a lot with your assessment.",
       action: "",
       href: "",
       details: isPt
-        ? ["Roupa confort\u00e1vel", "Chegar 5 min mais cedo", "Documentos m\u00e9dicos relevantes", "Lista de medica\u00e7\u00f5es atuais"]
-        : ["Comfortable clothing", "Arrive 5 min early", "Relevant medical documents", "List of current medications"],
+        ? ["Roupa confort\u00e1vel", "Chegar 5 min mais cedo", "Documentos m\u00e9dicos relevantes", "Lista de medica\u00e7\u00f5es atuais", "Hist\u00f3rico e exames j\u00e1 no perfil (essencial em consultas domiciliares)"]
+        : ["Comfortable clothing", "Arrive 5 min early", "Relevant medical documents", "List of current medications", "History and exams already in your profile (essential for home visits)"],
     },
   ];
 

@@ -11,6 +11,7 @@ import { sendEmail } from "@/lib/email";
 import { getAppName } from "@/lib/utils";
 import { logBookedEventForEmail } from "@/lib/lead-magnet";
 import { getDefaultClinicId } from "@/lib/default-tenant";
+import { getDefaultPatientModuleOverrides } from "@/lib/patient-defaults";
 
 export const dynamic = "force-dynamic";
 
@@ -142,6 +143,7 @@ async function handleBookAppointment(
     if (!patient) {
       const guestEmail = patientEmail || `voice_guest_${Date.now()}@bpr.clinic`;
       const defaultClinicId = await getDefaultClinicId();
+      const defaultOverrides = await getDefaultPatientModuleOverrides(defaultClinicId);
 
       patient = await prisma.user.create({
         data: {
@@ -152,6 +154,7 @@ async function handleBookAppointment(
           role: "PATIENT",
           clinicId: defaultClinicId,
           password: null,
+          ...(defaultOverrides ? { moduleOverrides: defaultOverrides } : {}),
         },
       });
     }

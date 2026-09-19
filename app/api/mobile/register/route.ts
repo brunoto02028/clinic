@@ -8,6 +8,7 @@ import { signAccessToken, issueRefreshToken } from "@/lib/mobile-tokens";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 import { resolveJoinTenant } from "@/lib/join-tenant";
 import { checkPatientLimit } from "@/lib/tenant-limits";
+import { getDefaultPatientModuleOverrides } from "@/lib/patient-defaults";
 import type { ValidatedUser } from "@/lib/auth-credentials";
 
 export function OPTIONS() {
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    const defaultOverrides = await getDefaultPatientModuleOverrides(tenant.clinicId);
 
     const user = await prisma.user.create({
       data: {
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
         role: UserRole.PATIENT,
         isActive: true,
         clinicId: tenant.clinicId,
+        ...(defaultOverrides ? { moduleOverrides: defaultOverrides } : {}),
       },
     });
 

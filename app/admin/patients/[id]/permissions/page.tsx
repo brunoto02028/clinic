@@ -467,6 +467,9 @@ export default function PatientPermissionsPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" /> {relabel("Patient Permissions")}
           </h1>
+          <Link href="/admin/patients/permissions-default" className="text-xs text-primary hover:underline mt-1 inline-block">
+            {relabel("Configure the default for new patients")} →
+          </Link>
         </div>
         {hasChanges && (
           <div className="flex gap-2">
