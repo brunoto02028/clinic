@@ -71,6 +71,25 @@ reprocessados contra a lógica corrigida:
   uma pegadinha latente se um relatório já aprovado com sugestão for regenerado e a nova rodada
   falhar o parse — ficaria com sugestão antiga + erro novo, silenciosamente misturados.
 
+## QA e code review
+
+QA (agente qa-tester): 7/7 cenários aprovados — flags cardiovascular/neurológico isolados param o
+pipeline corretamente, categorias já `urgent` antes desta mudança continuam parando (sem
+regressão), caminho feliz sem red flag continua gerando evidência/sugestão normalmente, falha de
+parse da IA (inclusive JSON válido mas vazio) grava erro visível, isolamento cross-tenant
+confirmado, nenhum caminho de envio automático ao paciente. Os dois relatórios reais reprocessados
+em produção (Mione De Almeida, Ana Livia Pessin Prata) batem com o esperado. `qa/report-t-1.md`.
+
+Code review: achou 2 lacunas reais da mesma família do bug original, ambas corrigidas antes do
+deploy final — `neurologicalSymptoms` tinha o mesmo problema do cardiovascular (`'high'` nunca para
+o pipeline sozinho); e resposta da IA que é JSON válido mas semanticamente vazia (`{}` ou
+truncamento) não acionava o registro de erro adicionado no fix original. Ver detalhes em
+`t-1-fix-gate-cardiovascular.md`.
+
+Deployado em produção em duas etapas: commit `111390b9` (fix original: cardiovascular + silêncio no
+parse) e commit `8fd30c34` (achados do code review: neurológico + JSON vazio). Ambos confirmados no
+ar (`curl` 200).
+
 ## Tarefas
 
 | Tarefa | Nome | Status |
