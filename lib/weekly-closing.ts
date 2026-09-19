@@ -1,4 +1,4 @@
-// "Weekly closing" — a manual, once-a-week touchpoint (activity 52) distinct
+// "Weekly closing" — a manual, once-a-week touchpoint (activity 60) distinct
 // from the daily reminders in daily-adherence-email.ts: it doesn't list
 // missing items, it just asks the patient to either mark what they already
 // did or explain in Messages what they couldn't do. Sent as a real

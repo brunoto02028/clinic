@@ -45,6 +45,7 @@ interface Clinic {
     city: string;
     createdAt: string;
     instagramImportEnabled: boolean;
+    dailyRemindersEnabled: boolean;
     subscription: { maxTherapists: number; maxPatients: number } | null;
     _count: {
         users: number;
@@ -225,6 +226,7 @@ export default function ClinicsPage() {
     // feature flags too, rather than each one growing its own dialog).
     const [settingsClinic, setSettingsClinic] = useState<Clinic | null>(null);
     const [settingsInstagramImport, setSettingsInstagramImport] = useState(false);
+    const [settingsDailyReminders, setSettingsDailyReminders] = useState(false);
     // Empty string = no limit (shown as a blank field, not a 0 the admin has to notice and clear).
     const [settingsMaxTherapists, setSettingsMaxTherapists] = useState("");
     const [settingsMaxPatients, setSettingsMaxPatients] = useState("");
@@ -233,6 +235,7 @@ export default function ClinicsPage() {
     const openSettings = (clinic: Clinic) => {
         setSettingsClinic(clinic);
         setSettingsInstagramImport(clinic.instagramImportEnabled);
+        setSettingsDailyReminders(clinic.dailyRemindersEnabled);
         setSettingsMaxTherapists(clinic.subscription?.maxTherapists ? String(clinic.subscription.maxTherapists) : "");
         setSettingsMaxPatients(clinic.subscription?.maxPatients ? String(clinic.subscription.maxPatients) : "");
     };
@@ -246,11 +249,11 @@ export default function ClinicsPage() {
             const res = await fetch(`/api/admin/clinics/${settingsClinic.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ instagramImportEnabled: settingsInstagramImport, maxTherapists, maxPatients }),
+                body: JSON.stringify({ instagramImportEnabled: settingsInstagramImport, dailyRemindersEnabled: settingsDailyReminders, maxTherapists, maxPatients }),
             });
             if (!res.ok) throw new Error("Failed to save");
             toast({ title: "Success", description: "Clinic settings saved", variant: "success" });
-            setClinics((prev) => prev.map((c) => c.id === settingsClinic.id ? { ...c, instagramImportEnabled: settingsInstagramImport, subscription: { maxTherapists, maxPatients } } : c));
+            setClinics((prev) => prev.map((c) => c.id === settingsClinic.id ? { ...c, instagramImportEnabled: settingsInstagramImport, dailyRemindersEnabled: settingsDailyReminders, subscription: { maxTherapists, maxPatients } } : c));
             setSettingsClinic(null);
         } catch {
             toast({ title: "Error", description: "Failed to save clinic settings", variant: "destructive" });
@@ -546,6 +549,23 @@ export default function ClinicsPage() {
                                 id="ig-import-toggle"
                                 checked={settingsInstagramImport}
                                 onCheckedChange={setSettingsInstagramImport}
+                            />
+                        </div>
+
+                        <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                            <div className="space-y-1">
+                                <Label htmlFor="daily-reminders-toggle">Automatic daily reminders</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Automatically messages every patient who hasn't marked today's exercises as
+                                    done, once a day. Off by default — review the reminder wording (Patient →
+                                    Adherence card → Preview) before turning this on. The manual "Send now"
+                                    button always works either way.
+                                </p>
+                            </div>
+                            <Switch
+                                id="daily-reminders-toggle"
+                                checked={settingsDailyReminders}
+                                onCheckedChange={setSettingsDailyReminders}
                             />
                         </div>
 

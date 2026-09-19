@@ -27,7 +27,12 @@ export async function POST(req: NextRequest) {
   // plan (decision 7) as something to tighten once this is running for real.
   const now = new Date();
 
-  const clinics = await prisma.clinic.findMany({ where: { isActive: true }, select: { id: true, name: true } });
+  // dailyRemindersEnabled (act.61) — off by default, so this cron can run
+  // every day without messaging anyone until a clinic's owner opts in.
+  const clinics = await prisma.clinic.findMany({
+    where: { isActive: true, dailyRemindersEnabled: true },
+    select: { id: true, name: true },
+  });
 
   const results: { clinicId: string; completed: number; missing: number; remindersSent: number }[] = [];
 

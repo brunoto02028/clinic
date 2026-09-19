@@ -1,4 +1,4 @@
-# QA spec — Atividade 52: Fechamento semanal
+# QA spec — Atividade 60: Fechamento semanal
 
 ## T-1: Texto do fechamento semanal (lib)
 

@@ -342,6 +342,13 @@ model Clinic {
   // their current behaviour) and leaves every PERSONAL_TRAINER at `false`.
   instagramImportEnabled Boolean @default(false)
 
+  // Gates the automatic daily "still time today" reminder cron (act.61) —
+  // off by default for every tenant so a new clinic (or this one, until its
+  // owner reviews the reminder copy) never messages a patient without an
+  // explicit opt-in. The manual per-patient "Send now" button is never
+  // gated by this — only the unattended cron is.
+  dailyRemindersEnabled Boolean @default(false)
+
   // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
   type TenantType @default(CLINIC)
 

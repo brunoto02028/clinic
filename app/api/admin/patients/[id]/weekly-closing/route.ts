@@ -15,7 +15,7 @@ import {
 export const dynamic = "force-dynamic";
 
 // GET — has this patient's weekly closing already gone out this week, per
-// language? Each language tracked independently (activity 52 — the admin can
+// language? Each language tracked independently (activity 60 — the admin can
 // send EN and, separately, PT the same week).
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const access = await staffPatientAccess(req, params.id);

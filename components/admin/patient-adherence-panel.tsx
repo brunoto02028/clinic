@@ -50,7 +50,7 @@ function AdherenceSection({
   /** Overrides the POST body sent to `sendUrl`. Defaults to `{ patientId }`
    * (what Today/Yesterday/Onboarding's clinic-wide routes expect) — the
    * weekly closing routes are patient-scoped in the URL and take `{ locale }`
-   * instead (activity 52). */
+   * instead (activity 60). */
   sendBody?: Record<string, any>;
   /** Called with the new timestamp right after a successful send. Today/
    * Yesterday/Onboarding don't need it (their `status.allDone` reflects
