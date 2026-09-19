@@ -195,7 +195,13 @@ function assessRedFlags(screening: MedicalScreeningForm): {
     flags.push({
       flag: 'Neurological Symptoms',
       evidence: 'Patient reported numbness, tingling, or weakness',
-      urgencyLevel: 'high',
+      // 'urgent', not 'high' — same reasoning as cardiovascularSymptoms
+      // above (code review, activity 065): red-flags.md treats progressive
+      // neurological deficit as a hard-stop category, and this field can't
+      // distinguish "progressive" from "stable/chronic" at intake, so it
+      // must not be treated as a mere precaution. Cauda equina specifically
+      // is already covered separately by bladderBowelDysfunction.
+      urgencyLevel: 'urgent',
       suggestedAction: 'Neurological examination required before treatment',
     });
   }

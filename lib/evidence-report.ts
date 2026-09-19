@@ -224,6 +224,15 @@ summarising the evidence for the physiotherapist. Do not diagnose or prescribe.`
     } catch (e: any) {
       parseError = `AI response was not valid JSON: ${e?.message || e}`;
     }
+    // Valid-but-empty JSON (e.g. `{}`, or a truncated response that happens
+    // to close its braces before filling any field) doesn't throw, so the
+    // check above alone still misses it — the report would look identical to
+    // a real success with nothing to review (code review finding, activity
+    // 065). evidence-report-tab.tsx only disables "mark review"/"approve"
+    // when `error` is truthy, so a clinician could approve a blank report.
+    if (!parseError && !parsed.narrative && !parsed.suggestions && !parsed.clinicCrossRef) {
+      parseError = "AI response was valid JSON but had no usable content (empty narrative/suggestions).";
+    }
 
     await prisma.clinicalEvidenceReport.update({
       where: { id: reportId },
