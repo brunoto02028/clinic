@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic";
 
 const STAFF = ["SUPERADMIN", "ADMIN", "THERAPIST"];
 
-// GET — latest evidence report for this patient (clinician-internal).
+// GET — latest evidence report for this patient (clinician-internal). With
+// `?history=true`, the full chronological history instead (activity 63,
+// T-1) — every report ever generated for this patient, most recent first,
+// so the clinician can see how the analysis evolved as triage/data came in.
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const tenantAccess = await staffPatientAccess(req, params.id);
   if (tenantAccess.response) return tenantAccess.response;
@@ -18,6 +21,19 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const role = (session?.user as any)?.role;
   if (!session?.user || !STAFF.includes(role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (req.nextUrl.searchParams.get("history") === "true") {
+    // Capped — a patient regenerating repeatedly shouldn't make this payload
+    // (each row carries full evidence/suggestions JSON) grow unbounded. 50 is
+    // far beyond any real regeneration count; the UI only ever expands one
+    // item at a time anyway.
+    const reports = await prisma.clinicalEvidenceReport.findMany({
+      where: { patientId: params.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return NextResponse.json({ reports });
   }
 
   const report = await prisma.clinicalEvidenceReport.findFirst({

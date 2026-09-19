@@ -27,6 +27,7 @@ import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
 import OnboardingWizard from "@/components/dashboard/onboarding-wizard";
+import WeeklyCheckinCard from "@/components/dashboard/weekly-checkin-card";
 
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard,
@@ -126,6 +127,9 @@ export default function PatientDashboard() {
       {/* Onboarding Checklist */}
       {!isPreview && <OnboardingWizard />}
 
+      {/* Weekly pain/function check-in — passive, no message sent */}
+      {!isPreview && <WeeklyCheckinCard />}
+
       {/* Screening CTA - only when not done */}
       {showScreening && !stats?.screeningComplete && (
         <Card className="border-primary/30 bg-primary/5">
@@ -136,7 +140,7 @@ export default function PatientDashboard() {
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-foreground">
-                  {locale === "pt-BR" ? "Complete sua Triagem Médica" : "Complete Your Medical Screening"}
+                  {locale === "pt-BR" ? "Complete sua Triagem de Avaliação" : "Complete Your Assessment Screening"}
                 </h3>
                 <p className="text-sm mt-1 text-muted-foreground">
                   {locale === "pt-BR"
