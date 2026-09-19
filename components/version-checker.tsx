@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { isAmbientRecordingActive } from "@/lib/ambient-recording-guard";
 
 interface VersionData {
   version: string;
@@ -21,6 +22,11 @@ export function VersionChecker() {
 
   const doReload = useCallback(() => {
     if (hasReloaded.current) return;
+    // A live ambient recording (activity 64) would be silently killed by a
+    // full reload — no MediaRecorder, no in-flight uploads, no finish()
+    // call, mid-consultation. Leave `updatePending` set so this is retried
+    // at the next safe moment (visibility/route change) once recording ends.
+    if (isAmbientRecordingActive()) return;
     hasReloaded.current = true;
     window.location.reload();
   }, []);

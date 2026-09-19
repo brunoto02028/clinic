@@ -419,6 +419,7 @@ model Clinic {
   aiDiagnoses             AIDiagnosis[]
   treatmentProtocols      TreatmentProtocol[]
   evidenceReports         ClinicalEvidenceReport[]
+  ambientRecordingSessions AmbientRecordingSession[]
   treatmentPackages       TreatmentPackage[]
   patientDocuments        PatientDocument[]
   voiceTranscriptions     VoiceTranscription[]
@@ -707,6 +708,8 @@ model User {
   exerciseCompletionLogs     ExerciseCompletionLog[] @relation("ExerciseCompletionLogs")
   evidenceReportsAsPatient   ClinicalEvidenceReport[] @relation("PatientEvidenceReports")
   evidenceReportsAsReviewer  ClinicalEvidenceReport[] @relation("ReviewerEvidenceReports")
+  ambientRecordingsAsTherapist AmbientRecordingSession[] @relation("AmbientRecordingTherapist")
+  ambientRecordingsAsPatient   AmbientRecordingSession[] @relation("AmbientRecordingPatient")
   documentsAsPatient         PatientDocument[]      @relation("PatientDocuments")
   documentsUploaded          PatientDocument[]      @relation("DocumentUploader")
   packagesAsPatient          TreatmentPackage[]     @relation("PatientPackages")
@@ -6006,6 +6009,55 @@ model ConsultationRecording {
   @@index([appointmentId])
   @@index([status])
   @@map("consultation_recordings")
+}
+
+// ============================================
+// AMBIENT RECORDING SESSIONS (activity 64 — long-form
+// consultation recording with speaker diarization)
+// ============================================
+
+enum AmbientRecordingStatus {
+  RECORDING
+  ENDED
+  MERGING
+  TRANSCRIBING
+  TRANSCRIBED
+  FAILED
+}
+
+model AmbientRecordingSession {
+  id          String @id @default(cuid())
+  clinicId    String
+  clinic      Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  therapistId String
+  therapist   User   @relation("AmbientRecordingTherapist", fields: [therapistId], references: [id], onDelete: Cascade)
+  patientId   String?
+  patient     User?  @relation("AmbientRecordingPatient", fields: [patientId], references: [id], onDelete: SetNull)
+
+  status   AmbientRecordingStatus @default(RECORDING)
+  language String                 @default("pt")
+
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  lastChunkAt DateTime? // updated on every chunk received while RECORDING
+  chunkCount  Int       @default(0)
+
+  mergedAudioR2Key String? @db.Text
+  durationSeconds  Int?
+
+  assemblyaiTranscriptId String?
+  transcript             String? @db.Text // pre-formatted "Terapeuta: ...\nPaciente: ..."
+
+  error    String? @db.Text
+  attempts Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, createdAt])
+  @@index([therapistId])
+  @@index([patientId])
+  @@index([status])
 }
 
 // ============================================

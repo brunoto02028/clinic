@@ -6,7 +6,7 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **064**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **065**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > Reorganizado em 18/09/2026. As pastas eram `1-…`, `10-…` sem zeros e existiam **duas** "1".
 > - `1-mobile-fundacao` (jun/2026, abre a série mobile 001–006) manteve o **001**.
@@ -81,6 +81,7 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [061](061-liga-lembrete-diario-por-clinica/) | Toggle por clínica pro lembrete diário automático | ✅ |
 | [062](062-guia-permissoes-padrao-idioma-lembretes/) | Guia da consulta domiciliar, permissões padrão e idioma dos lembretes | ✅ |
 | [063](063-historico-evidencia-checkin-semanal/) | Histórico de relatórios de evidência clínica + check-in semanal de dor/função (passivo) | ✅ |
+| [064](064-gravacao-robusta-consultas-diarizacao/) | Gravação robusta de consultas ao vivo (multi-hora) com distinção de voz (diarização, AssemblyAI) | ⏸ |
 
 ## App mobile
 

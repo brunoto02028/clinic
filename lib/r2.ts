@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { contentTypeFor } from "@/lib/content-types";
 import type { Readable } from "stream";
@@ -140,6 +141,18 @@ export async function deleteR2Url(url: string | null | undefined): Promise<boole
   if (!key) return false;
   await deleteFromR2(key);
   return true;
+}
+
+/** Reads an object back into memory. For the merge/playback paths (activity
+ *  64) — a consultation recording is small enough (tens of MB) that this is
+ *  simpler and safer than streaming, and it's never served to the public
+ *  (see `r2PublicUrl` doc comment — this bypasses that entirely). */
+export async function getFromR2(key: string): Promise<Buffer> {
+  const res = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
+  const stream = res.Body as Readable;
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  return Buffer.concat(chunks);
 }
 
 export async function listR2(prefix: string): Promise<string[]> {

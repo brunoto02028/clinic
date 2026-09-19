@@ -16,12 +16,41 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { setAmbientRecordingActive } from "@/lib/ambient-recording-guard";
 
 type ActiveTool = "scribe" | "evidence" | "intelligence";
+
+// Distinguishes "session creation failed" from "mic access failed" inside
+// startRecording's single catch block, so the error toast (and the
+// zombie-session cleanup) reflect what actually went wrong.
+class StartRecordingError extends Error {
+  stage: "session" | "mic";
+  constructor(stage: "session" | "mic", message: string) {
+    super(message);
+    this.stage = stage;
+  }
+}
 
 export default function ClinicalAIPage() {
   const { toast } = useToast();
   const [activeTool, setActiveTool] = useState<ActiveTool>("scribe");
+  // A live recording's MediaRecorder/timer/pending uploads live entirely
+  // inside AmbientScribe's own state — unmounting it (by switching tabs)
+  // orphans all of that with no way to stop or finish it. Block switching
+  // away while it's active, same reasoning as the beforeunload guard.
+  const [scribeRecording, setScribeRecording] = useState(false);
+
+  const guardedSetActiveTool = (tool: ActiveTool) => {
+    if (scribeRecording && tool !== "scribe") {
+      toast({
+        title: "Recording in progress",
+        description: "Stop the current recording before switching tools — leaving this tab would lose the session.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setActiveTool(tool);
+  };
 
   return (
     <div className="space-y-6">
@@ -41,7 +70,7 @@ export default function ClinicalAIPage() {
         <Button
           variant={activeTool === "scribe" ? "default" : "ghost"}
           size="sm"
-          onClick={() => setActiveTool("scribe")}
+          onClick={() => guardedSetActiveTool("scribe")}
           className="gap-2"
         >
           <Mic className="h-4 w-4" /> Ambient Scribe
@@ -49,7 +78,8 @@ export default function ClinicalAIPage() {
         <Button
           variant={activeTool === "evidence" ? "default" : "ghost"}
           size="sm"
-          onClick={() => setActiveTool("evidence")}
+          onClick={() => guardedSetActiveTool("evidence")}
+          disabled={scribeRecording}
           className="gap-2"
         >
           <Search className="h-4 w-4" /> Evidence Search
@@ -57,14 +87,15 @@ export default function ClinicalAIPage() {
         <Button
           variant={activeTool === "intelligence" ? "default" : "ghost"}
           size="sm"
-          onClick={() => setActiveTool("intelligence")}
+          onClick={() => guardedSetActiveTool("intelligence")}
+          disabled={scribeRecording}
           className="gap-2"
         >
           <Brain className="h-4 w-4" /> Patient Intelligence
         </Button>
       </div>
 
-      {activeTool === "scribe" && <AmbientScribe />}
+      {activeTool === "scribe" && <AmbientScribe onRecordingStateChange={setScribeRecording} />}
       {activeTool === "evidence" && <EvidenceSearch />}
       {activeTool === "intelligence" && <PatientIntelligence />}
     </div>
@@ -75,7 +106,7 @@ export default function ClinicalAIPage() {
 // AMBIENT CLINICAL SCRIBE
 // ═══════════════════════════════════════════════════
 
-function AmbientScribe() {
+function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (active: boolean) => void }) {
   const { toast } = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -92,38 +123,332 @@ function AmbientScribe() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<any>(null);
+  // Mirrors `recordingTime` for use inside closures set up once at recorder
+  // start (ondataavailable), which would otherwise only ever see time=0.
+  const recordingTimeRef = useRef(0);
+  // Live ambient-recording session (activity 64, T-2) — each MediaRecorder
+  // timeslice is uploaded to this session as it's generated, so the
+  // recording is durable on the server well before "Stop" is clicked.
+  const ambientSessionIdRef = useRef<string | null>(null);
+  const nextChunkIndexRef = useRef(0);
+  // T-3: how far the recording is actually confirmed-saved, shown next to
+  // the timer so there's never a silent gap between "recording" and "safe".
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  // Count, not a boolean a later successful chunk could silently clear —
+  // uploads run concurrently, so chunk 7 succeeding must never hide that
+  // chunk 5 permanently failed. Only reset at the start of a new recording.
+  const [failedChunkCount, setFailedChunkCount] = useState(0);
+  const [finalizing, setFinalizing] = useState(false);
+  // Every in-flight chunk upload, so "Stop" can wait for them instead of
+  // letting the last ~30s vanish if the tab navigates away right after.
+  const pendingUploadsRef = useRef<Set<Promise<void>>>(new Set());
+  // Chains uploads one at a time — under a degraded connection, each chunk
+  // already retries up to ~66s on its own; letting multiple chunks' retry
+  // loops run concurrently would only pile more requests onto an already
+  // struggling link. A new chunk's upload (retries included) only starts
+  // once the previous one has settled.
+  const uploadQueueRef = useRef<Promise<void>>(Promise.resolve());
+  // Distinguishes a deliberate Stop click from the recorder's track ending
+  // on its own — read once inside onstop, which is the single place that
+  // resolves isRecording/finalizing regardless of which one happened.
+  const userInitiatedStopRef = useRef(false);
+  // Re-entrancy guard for startRecording (ref for the synchronous check,
+  // state to actually disable the button — see startRecording's comment).
+  const startingRef = useRef(false);
+  const [starting, setStarting] = useState(false);
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const uploadChunk = async (sessionId: string, chunkIndex: number, blob: Blob, capturedAt: number) => {
+    const formData = new FormData();
+    formData.append("audio", blob, `chunk-${chunkIndex}.webm`);
+    formData.append("chunkIndex", String(chunkIndex));
+
+    const attempts = 3;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        const res = await fetch(`/api/admin/clinical-scribe/sessions/${sessionId}/chunk`, {
+          method: "POST",
+          body: formData,
+          // A stalled connection (not an immediate network error) would
+          // otherwise never resolve/reject, leaving this permanently in
+          // pendingUploadsRef and hanging "Stop" forever.
+          signal: AbortSignal.timeout(20000),
+        });
+        if (res.ok) {
+          // Chunks can resolve out of order under slow networks — only move
+          // the "saved up to" mark forward, never backward.
+          setLastSavedAt((prev) => (prev === null || capturedAt > prev ? capturedAt : prev));
+          return;
+        }
+      } catch {
+        // network error or timeout — fall through to retry
+      }
+      if (attempt < attempts) await sleep(2000 * attempt);
+    }
+    // All retries exhausted — surface this loudly. The recording itself
+    // keeps running (losing one 30s chunk isn't fatal), but the therapist
+    // needs to know, not find out after the consultation is over.
+    setFailedChunkCount((n) => n + 1);
+    toast({
+      title: "Recording chunk failed to save",
+      description: "The recording is still running, but part of it may not be backed up. Check your connection.",
+      variant: "destructive",
+    });
+  };
 
   const startRecording = async () => {
+    // Re-entrancy guard — the button is only `disabled` by `finalizing`, not
+    // during this function's own async gap (session-creation fetch +
+    // getUserMedia). A fast double-click in that gap would otherwise start
+    // two concurrent recordings sharing the same refs (session id, chunk
+    // index, upload queue), corrupting the merge.
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
+    let sessionCreated = false;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const sessionRes = await fetch("/api/admin/clinical-scribe/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: patientId || undefined, language }),
+      });
+      const sessionData = await sessionRes.json();
+      if (!sessionRes.ok) throw new StartRecordingError("session", sessionData.error || "Could not start recording session");
+      sessionCreated = true;
+      ambientSessionIdRef.current = sessionData.sessionId;
+      nextChunkIndexRef.current = 0;
+      // Defensive reset — a promise from a prior recording that somehow
+      // never settled must not poison this new one's finalization.
+      pendingUploadsRef.current = new Set();
+      uploadQueueRef.current = Promise.resolve();
+      userInitiatedStopRef.current = false;
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err: any) {
+        throw new StartRecordingError("mic", err.message);
+      }
       const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+        if (e.data.size === 0) return;
+        chunksRef.current.push(e.data);
+        const sessionId = ambientSessionIdRef.current;
+        if (sessionId) {
+          const chunkIndex = nextChunkIndexRef.current++;
+          const capturedAt = recordingTimeRef.current;
+          const upload = uploadQueueRef.current.then(() => uploadChunk(sessionId, chunkIndex, e.data, capturedAt));
+          uploadQueueRef.current = upload.catch(() => {});
+          pendingUploadsRef.current.add(upload);
+          upload.finally(() => pendingUploadsRef.current.delete(upload));
+        }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
+        // onstop fires whether the user clicked Stop OR the track ended on
+        // its own (mic disconnected, OS revoked permission, bluetooth
+        // headset dropped mid-consultation) — this must be the ONE place
+        // that resolves isRecording/finalizing, not stopRecording()'s click
+        // handler. Otherwise a spontaneous stop leaves isRecording stuck
+        // true forever (stopRecording() never ran), and if the user then
+        // clicks Stop anyway, calling .stop() on an already-inactive
+        // recorder fires no second onstop — finalizing (and everything
+        // gated on it: Start button, tab switching, the nav-link guard)
+        // would be stuck true permanently with no way out.
+        if (timerRef.current) clearInterval(timerRef.current);
+        setIsRecording(false);
+        setFinalizing(true);
+        const wasUserInitiated = userInitiatedStopRef.current;
+        userInitiatedStopRef.current = false;
+        if (!wasUserInitiated) {
+          toast({
+            title: "Recording stopped unexpectedly",
+            description: "The microphone stream ended on its own (device disconnected, permission revoked, or similar). Finalizing what was captured so far.",
+            variant: "destructive",
+          });
+        }
+
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setAudioBlob(blob);
         stream.getTracks().forEach((t) => t.stop());
+        // The final ondataavailable (with whatever was left in the buffer)
+        // fires before onstop, so its upload is already in this set — wait
+        // for every chunk to actually land before telling the server the
+        // session is done and safe to merge (activity 64, T-4).
+        await Promise.all(pendingUploadsRef.current);
+        const sessionId = ambientSessionIdRef.current;
+        if (sessionId) {
+          try {
+            // Generous — the server merges synchronously (Buffer.concat +
+            // R2 upload of the whole recording), which can genuinely take a
+            // while for a long consultation. Timing out here does NOT mean
+            // it failed — see the status check below.
+            await fetch(`/api/admin/clinical-scribe/sessions/${sessionId}/finish`, {
+              method: "POST",
+              signal: AbortSignal.timeout(120000),
+            });
+          } catch {
+            // The client gave up waiting, but the server-side merge isn't
+            // cancelled by that — check whether it actually went through
+            // before telling the therapist it failed.
+            let actuallyFailed = true;
+            try {
+              const statusRes = await fetch(`/api/admin/clinical-scribe/sessions/${sessionId}`);
+              const statusData = await statusRes.json();
+              // Explicit allow-list, not "anything but RECORDING/ENDED" — the
+              // server can also land on FAILED (merge error, or no chunks
+              // saved), which is a real failure that must still surface.
+              const progressed = ["MERGING", "TRANSCRIBING", "TRANSCRIBED"].includes(statusData.session?.status);
+              if (statusRes.ok && progressed) {
+                actuallyFailed = false;
+              }
+            } catch {
+              // status check itself failed — fall through, still report the error below
+            }
+            if (actuallyFailed) {
+              toast({
+                title: "Couldn't finalize the recording session",
+                description: "The audio chunks are safely saved — try finishing again, or check the session in the recordings list.",
+                variant: "destructive",
+              });
+            }
+          }
+        }
+        setFinalizing(false);
       };
 
-      mediaRecorder.start(1000);
+      // 30s timeslices — frequent enough that a crash loses very little,
+      // infrequent enough not to spend most of the recording on upload overhead.
+      mediaRecorder.start(30000);
       setIsRecording(true);
       setRecordingTime(0);
-      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+      recordingTimeRef.current = 0;
+      setLastSavedAt(null);
+      setFailedChunkCount(0);
+      timerRef.current = setInterval(() => {
+        recordingTimeRef.current += 1;
+        setRecordingTime(recordingTimeRef.current);
+      }, 1000);
     } catch (err: any) {
-      toast({ title: "Microphone access denied", description: err.message, variant: "destructive" });
+      const stage = err instanceof StartRecordingError ? err.stage : "session";
+      toast({
+        title: stage === "mic" ? "Microphone access denied" : "Couldn't start recording session",
+        description: err.message,
+        variant: "destructive",
+      });
+      // A session got created server-side but recording never actually
+      // started (mic permission denied/no device) — that row would
+      // otherwise sit at status=RECORDING, chunkCount=0 forever, since
+      // nothing else ever calls finish() for it. Reuse the existing finish
+      // endpoint — a 0-chunk session already resolves cleanly to FAILED.
+      if (sessionCreated && ambientSessionIdRef.current) {
+        const orphanedId = ambientSessionIdRef.current;
+        ambientSessionIdRef.current = null;
+        fetch(`/api/admin/clinical-scribe/sessions/${orphanedId}/finish`, { method: "POST" }).catch(() => {});
+      }
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
     }
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
-    if (timerRef.current) clearInterval(timerRef.current);
+    // Just requests the stop — onstop (above) is the single place that
+    // actually resolves isRecording/finalizing, for both this manual path
+    // and a spontaneous track-ended stop. Guarded so clicking Stop when the
+    // recorder is already inactive (e.g. it stopped on its own moments
+    // earlier) is a harmless no-op instead of a second .stop() call that
+    // fires no new onstop and would otherwise strand `finalizing` at true.
+    userInitiatedStopRef.current = true;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      // Optimistic — onstop fires asynchronously; setting this now just
+      // makes the button respond instantly instead of waiting a beat.
+      // Harmless to set "true" from two places, unlike "false" (only
+      // onstop ever does that).
+      setFinalizing(true);
+      mediaRecorderRef.current.stop();
+    }
   };
+
+  // Warn before leaving while anything about the recording is still in
+  // flight — recording itself, or the final chunks finalizing after Stop.
+  useEffect(() => {
+    if (!isRecording && !finalizing) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isRecording, finalizing]);
+
+  // Same "in flight" window, but for things a beforeunload dialog can't
+  // stop: VersionChecker's programmatic reload (components/version-checker.tsx)
+  // and switching away from this tab inside ClinicalAIPage (which would
+  // unmount this component and orphan the MediaRecorder with no way to
+  // finish it). Deliberately NO cleanup that touches mediaRecorderRef here —
+  // this effect's cleanup re-runs on every isRecording/finalizing change
+  // (React runs the previous effect's cleanup before every re-run, not just
+  // on unmount), so a cleanup reading the live mediaRecorderRef would fire
+  // right as recording starts (isRecording false→true is itself a deps
+  // change) and stop the just-created recorder before a single chunk is
+  // captured. Just sync the flag; the mount/unmount-only effect below owns
+  // actually stopping the recorder.
+  useEffect(() => {
+    const active = isRecording || finalizing;
+    setAmbientRecordingActive(active);
+    onRecordingStateChange?.(active);
+  }, [isRecording, finalizing, onRecordingStateChange]);
+
+  // Defense in depth, real-unmount-only (empty deps — cleanup runs exactly
+  // once, on unmount): the click-guard below should prevent this component
+  // from ever unmounting mid-recording, but if it somehow does anyway
+  // (browser back/forward, or a future nav path that guard doesn't cover),
+  // a genuinely orphaned MediaRecorder still capturing audio with no UI to
+  // stop it is worse than losing the in-progress session — stop it for
+  // real, and clear the flag so a stale "active" doesn't block reloads.
+  useEffect(() => {
+    return () => {
+      setAmbientRecordingActive(false);
+      onRecordingStateChange?.(false);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally
+    // empty: this must only run on real mount/unmount, not track
+    // onRecordingStateChange's identity (see the sibling effect above).
+  }, []);
+
+  // Blocks the realistic way a therapist would accidentally leave mid-
+  // recording: clicking any other nav link (admin sidebar, header, etc.).
+  // The 3-way tool switcher above is already guarded on its own onClick;
+  // this catches everything else that isn't inside the Ambient Scribe card
+  // itself. Known gap, accepted for v1: the browser's own Back/Forward
+  // button bypasses this (see plan.md Suposição 2 — no mid-recording
+  // recovery is attempted either way, chunks already uploaded stay safe in
+  // R2 regardless).
+  useEffect(() => {
+    if (!isRecording && !finalizing) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest("a[href]");
+      if (!anchor) return;
+      e.preventDefault();
+      e.stopPropagation();
+      toast({
+        title: "Recording in progress",
+        description: "Stop the current recording before navigating away — leaving this page would lose the session.",
+        variant: "destructive",
+      });
+    };
+    document.addEventListener("click", handler, true);
+    return () => document.removeEventListener("click", handler, true);
+  }, [isRecording, finalizing, toast]);
 
   const transcribeAudio = async () => {
     if (!audioBlob) return;
@@ -228,8 +553,9 @@ function AmbientScribe() {
           {/* Recording controls */}
           <div className="flex items-center gap-4">
             {!isRecording ? (
-              <Button onClick={startRecording} className="gap-2 bg-red-600 hover:bg-red-700">
-                <Mic className="h-4 w-4" /> Start Recording
+              <Button onClick={startRecording} disabled={finalizing || starting} className="gap-2 bg-red-600 hover:bg-red-700">
+                {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+                {starting ? "Starting…" : "Start Recording"}
               </Button>
             ) : (
               <Button onClick={stopRecording} variant="destructive" className="gap-2 animate-pulse">
@@ -237,7 +563,7 @@ function AmbientScribe() {
               </Button>
             )}
 
-            {audioBlob && !isRecording && (
+            {audioBlob && !isRecording && !finalizing && (
               <Button onClick={transcribeAudio} disabled={transcribing} variant="outline" className="gap-2">
                 {transcribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 {transcribing ? "Transcribing..." : "Transcribe"}
@@ -250,7 +576,33 @@ function AmbientScribe() {
                 <span className="text-sm font-medium text-red-600">Recording...</span>
               </div>
             )}
+
+            {finalizing && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                <span className="text-sm font-medium text-amber-600">Saving last chunk — don't close this tab…</span>
+              </div>
+            )}
           </div>
+
+          {/* T-3: real-time save confirmation — never leave the therapist
+              guessing whether the recording is actually backed up. Once a
+              chunk permanently fails, this stays red for the rest of the
+              recording even if later chunks succeed (a later save doesn't
+              undo an earlier loss). */}
+          {(isRecording || finalizing) && (
+            <div className={`flex items-center gap-2 text-xs rounded-lg px-3 py-2 ${
+              failedChunkCount > 0 ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+            }`}>
+              {failedChunkCount > 0 ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> : <CheckCircle className="h-3.5 w-3.5 shrink-0" />}
+              {failedChunkCount > 0
+                ? `${failedChunkCount} chunk${failedChunkCount > 1 ? "s" : ""} failed to save — part of the recording may be missing. Recording continues.`
+                : lastSavedAt !== null
+                ? `Safely saved up to ${formatTime(lastSavedAt)}`
+                : "Waiting for the first automatic save (every 30s)…"}
+            </div>
+          )}
         </CardContent>
       </Card>
 
