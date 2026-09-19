@@ -2,17 +2,17 @@
 // Checks: Screening → Outcome Measures
 
 import { NextRequest, NextResponse } from "next/server";
-import { getRequestSession } from "@/lib/dual-auth";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
-  const session = await getRequestSession(request);
-  if (!session?.user?.email) {
+  const effective = await getEffectiveUser();
+  if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { id: effective.userId },
     select: { id: true, clinicId: true },
   });
 
@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
   const steps = [
     {
       id: "screening",
-      label: "Medical Screening",
-      labelPt: "Triagem Médica",
+      label: "Assessment Screening",
+      labelPt: "Triagem de Avaliação",
       status: screening?.isSubmitted ? "completed" : screening ? "in_progress" : "pending",
       data: screening,
     },

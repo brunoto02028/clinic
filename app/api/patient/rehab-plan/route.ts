@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -8,12 +7,12 @@ export const dynamic = "force-dynamic";
 // GET /api/patient/rehab-plan
 // Returns the latest rehab plan that has been sent to the logged-in patient
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const effective = await getEffectiveUser();
+  if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const patientId = (session.user as any).id;
+  const patientId = effective.userId;
 
   const plan = await (prisma as any).rehabPlan.findFirst({
     where: {

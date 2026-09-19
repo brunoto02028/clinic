@@ -1,16 +1,15 @@
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth-options";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
 
 // GET — List patient's own recordings
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const effective = await getEffectiveUser();
+  if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = (session.user as any).id;
+  const userId = effective.userId;
 
   const recordings = await prisma.consultationRecording.findMany({
     where: { patientId: userId },
@@ -23,13 +22,21 @@ export async function GET(req: NextRequest) {
 
 // POST — Patient uploads a pre-consultation audio recording
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const effective = await getEffectiveUser();
+  if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Auto-transcribed and stored as the patient's own recording — a staff
+  // member impersonating them shouldn't be able to create one that reads as
+  // the patient's own words. Blocked during impersonation, like other
+  // patient-initiated writes (app/api/patient/profile, .../consent).
+  if (effective.isImpersonating) {
+    return NextResponse.json({ error: "Cannot upload a recording while impersonating" }, { status: 403 });
+  }
 
-  const userId = (session.user as any).id;
-  const clinicId = (session.user as any).clinicId;
+  const userId = effective.userId;
+  const patientUser = await prisma.user.findUnique({ where: { id: userId }, select: { clinicId: true } });
+  const clinicId = patientUser?.clinicId;
 
   const formData = await req.formData();
   const audioFile = formData.get("audio") as File | null;

@@ -6,7 +6,7 @@
 // checked in simply has no bar rather than a misleading 0%.
 
 import { NextRequest, NextResponse } from "next/server";
-import { getRequestSession } from "@/lib/dual-auth";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
 
 function rangeCutoffISO(range: string | null): string | null {
@@ -26,17 +26,16 @@ function weekStart(dateStr: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await getRequestSession(request);
-  if (!session?.user?.email) {
+  const effective = await getEffectiveUser();
+  if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true },
-  });
-
-  if (!user) {
+  // A still-valid session/token for a user row that no longer exists (e.g.
+  // deleted mid-session) should surface as 404, not silently return an empty
+  // series as if the patient simply had no check-ins yet.
+  const userExists = await prisma.user.findUnique({ where: { id: effective.userId }, select: { id: true } });
+  if (!userExists) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
@@ -44,7 +43,7 @@ export async function GET(request: NextRequest) {
   const cutoff = rangeCutoffISO(searchParams.get("range"));
 
   const checkins = await prisma.dailyCheckIn.findMany({
-    where: { patientId: user.id, ...(cutoff ? { checkinDate: { gte: cutoff } } : {}) },
+    where: { patientId: effective.userId, ...(cutoff ? { checkinDate: { gte: cutoff } } : {}) },
     orderBy: { checkinDate: "asc" },
     select: { checkinDate: true, exercisesDone: true },
   });

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +9,18 @@ export const dynamic = "force-dynamic";
 // Optional body { protocolId } confirms only that protocol's sessions.
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || (session.user as any).role !== "PATIENT") {
+    const effective = await getEffectiveUser();
+    if (!effective || effective.role !== "PATIENT") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const patientId = (session.user as any).id;
+    // This writes a ClinicMessage that reads to staff as "the patient
+    // confirmed" — indistinguishable from a genuine patient action. Blocked
+    // during impersonation like the other patient-initiated writes
+    // (app/api/patient/profile, app/api/patient/consent).
+    if (effective.isImpersonating) {
+      return NextResponse.json({ error: "Cannot confirm schedule while impersonating" }, { status: 403 });
+    }
+    const patientId = effective.userId;
 
     let protocolId: string | null = null;
     try {

@@ -9,7 +9,7 @@
 // accumulates over treatment. They have separate tables now.
 
 import { NextRequest, NextResponse } from "next/server";
-import { getRequestSession } from "@/lib/dual-auth";
+import { getEffectiveUser } from "@/lib/get-effective-user";
 import { prisma } from "@/lib/db";
 
 // How far back a `range` value reaches, in days. `all` (or anything else) = no cutoff.
@@ -22,17 +22,16 @@ function rangeCutoff(range: string | null): Date | null {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await getRequestSession(request);
-  if (!session?.user?.email) {
+  const effective = await getEffectiveUser();
+  if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true },
-  });
-
-  if (!user) {
+  // A still-valid session/token for a user row that no longer exists (e.g.
+  // deleted mid-session) should surface as 404, not silently return an empty
+  // series/measures as if the patient simply had no data yet.
+  const userExists = await prisma.user.findUnique({ where: { id: effective.userId }, select: { id: true } });
+  if (!userExists) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
@@ -43,7 +42,7 @@ export async function GET(request: NextRequest) {
   if (searchParams.get("history") === "true") {
     const cutoff = rangeCutoff(searchParams.get("range"));
     const rows = await (prisma as any).patientOutcomeMeasure.findMany({
-      where: { patientId: user.id, ...(cutoff ? { recordedAt: { gte: cutoff } } : {}) },
+      where: { patientId: effective.userId, ...(cutoff ? { recordedAt: { gte: cutoff } } : {}) },
       orderBy: { recordedAt: "asc" },
       select: {
         recordedAt: true,
@@ -57,7 +56,7 @@ export async function GET(request: NextRequest) {
   }
 
   const latest = await (prisma as any).patientOutcomeMeasure.findFirst({
-    where: { patientId: user.id },
+    where: { patientId: effective.userId },
     orderBy: { recordedAt: "desc" },
   });
 
@@ -79,7 +78,7 @@ export async function GET(request: NextRequest) {
   // gave one at intake, is a reasonable starting point for the form — but it
   // is read only, and nothing is written back to the screening.
   const screening = await prisma.medicalScreening.findUnique({
-    where: { userId: user.id },
+    where: { userId: effective.userId },
     select: { painLevel: true, painScore: true },
   });
 
@@ -100,13 +99,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getRequestSession(req);
-  if (!session?.user?.email) {
+  const effective = await getEffectiveUser();
+  if (!effective || effective.role !== "PATIENT") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // A self-reported clinical score (pain VAS, FAAM) entered while a staff
+  // member impersonates the patient would be indistinguishable from the
+  // patient's own report in their progress trend and evidence-report
+  // pipeline. Blocked during impersonation, like other patient-initiated
+  // writes (app/api/patient/profile, app/api/patient/consent).
+  if (effective.isImpersonating) {
+    return NextResponse.json({ error: "Cannot record outcome measures while impersonating" }, { status: 403 });
   }
 
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { id: effective.userId },
     select: { id: true, clinicId: true },
   });
 
