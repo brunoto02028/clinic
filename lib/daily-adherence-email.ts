@@ -5,8 +5,16 @@ export type AdherencePatientSummary = { name: string; missingItems: { title: str
 
 // Shared with the preview route so what's shown always matches what the
 // cron actually sends via notifyPatient().
-export const REMINDER_MESSAGE_EN = "You still have activities left in today's plan — a couple of minutes now keeps your progress on track.";
-export const REMINDER_MESSAGE_PT = "Ainda faltam atividades do seu plano de hoje — alguns minutos agora mantêm seu progresso em dia.";
+//
+// "Still left" reads as "not done" — a patient who did the exercise but
+// forgot to tap the checkbox gets a message that sounds like the clinic
+// thinks they did nothing. Every variant below (today/yesterday, plain and
+// HTML) explicitly separates "marked in the app" from "physically done" so
+// the ask is clear either way: mark it if it's done, say why if it isn't
+// (activity 60's weekly closing made the same fix; this brings the daily
+// reminders in line with it).
+export const REMINDER_MESSAGE_EN = "You still have activities left in today's plan — a couple of minutes now keeps your progress on track. Already done some? Just mark them in the app.";
+export const REMINDER_MESSAGE_PT = "Ainda faltam atividades do seu plano de hoje — alguns minutos agora mantêm seu progresso em dia. Já fez algumas? É só marcar no app.";
 
 // Same AuditLog action + dedupe window whether the reminder went out from
 // the 21h cron or a manual "Send now" click — a manual send today means the
@@ -66,8 +74,8 @@ function todayPlainMessage(missingTitles: string[], isPt: boolean): string {
   if (missingTitles.length === 0) return isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN;
   const list = missingTitles.join(" · ");
   return isPt
-    ? `Ainda faltam hoje: ${list}. Alguns minutos agora mantêm seu progresso em dia.`
-    : `Still left today: ${list}. A couple of minutes now keeps your progress on track.`;
+    ? `Ainda não marcado hoje: ${list}. Já fez algum desses? É só marcar no app — isso é o que mantém seu histórico certinho. Alguns minutos agora mantêm seu progresso em dia.`
+    : `Not marked yet today: ${list}. Already done any of these? Just mark them in the app — that's what keeps your records accurate. A couple of minutes now keeps your progress on track.`;
 }
 
 /** Plain-text version, for the WhatsApp/SMS/Telegram channels. */
@@ -91,10 +99,15 @@ export async function buildPatientReminderEmail(firstName: string, missingTitles
   const content = `
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
     ${missingTitles.length ? `
-      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ainda falta hoje:" : "Still left today:"}</p>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ainda não marcado hoje:" : "Not marked yet today:"}</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
         <tr><td style="background-color:#FBEEEC;border-left:3px solid #A85A4B;border-radius:8px;padding:14px 16px;">${itemsHtml}</td></tr>
       </table>
+      <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">
+        ${isPt
+          ? "Já fez algum desses? É só marcar no app — isso é o que mantém seu histórico certinho."
+          : "Already done any of these? Just mark them in the app — that's what keeps your records accurate."}
+      </p>
     ` : `
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN}</p>
     `}
@@ -117,8 +130,8 @@ export const YESTERDAY_ACTION = "YESTERDAY_FOLLOWUP_SENT";
 function yesterdayPlainMessage(missingTitles: string[], isPt: boolean): string {
   const list = missingTitles.join(isPt ? " · " : " · ");
   return isPt
-    ? `Ontem ficou pendente: ${list}. Se precisar de qualquer ajuda ou suporte, estamos aqui — é só entrar em contato. É importante acessar o seu portal e completar os exercícios. Qualquer dúvida, é só nos chamar.`
-    : `Yesterday these were left undone: ${list}. If you need any help or support, we're here for you — just reach out. It's important to log in to your portal and complete your exercises. If you have any questions, don't hesitate to contact us.`;
+    ? `Ontem ficou sem marcar: ${list}. Se você já fez e só esqueceu de marcar, entra no portal e confirma — isso é importante pro seu acompanhamento. Se algo realmente não deu pra fazer, nos conta o motivo em Mensagens — estamos aqui pra ajudar.`
+    : `Yesterday these weren't marked: ${list}. If you already did them and just forgot to check them off, log in and mark them — it matters for tracking your progress. If something genuinely wasn't possible, let us know why in Messages — we're here to help.`;
 }
 
 /** Plain-text version, for the WhatsApp/SMS/Telegram channels. */
@@ -141,14 +154,14 @@ export async function buildYesterdayFollowupEmail(
   const itemsHtml = missingTitles.map((t) => `<p style="margin:0 0 4px;color:#8A4438;font-size:13px;">&bull;&nbsp; ${escapeHtml(t)}</p>`).join("");
   const content = `
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
-    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ontem ficou pendente:" : "Yesterday these were left undone:"}</p>
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ontem ficou sem marcar:" : "Yesterday these weren't marked:"}</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
       <tr><td style="background-color:#FBEEEC;border-left:3px solid #A85A4B;border-radius:8px;padding:14px 16px;">${itemsHtml}</td></tr>
     </table>
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">
       ${isPt
-        ? "Se precisar de qualquer ajuda ou suporte, estamos aqui — é só entrar em contato. É importante acessar o seu portal e completar os exercícios."
-        : "If you need any help or support, we're here for you — just reach out. It's important to log in to your portal and complete your exercises."}
+        ? "Se você já fez e só esqueceu de marcar, entra no portal e confirma — isso é importante pro seu acompanhamento. Se algo realmente não deu pra fazer, nos conta o motivo em Mensagens — estamos aqui pra ajudar."
+        : "If you already did them and just forgot to check them off, log in and mark them — it matters for tracking your progress. If something genuinely wasn't possible, let us know why in Messages — we're here to help."}
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
       <a href="${BASE_URL}/dashboard/treatment" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
