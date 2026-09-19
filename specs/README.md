@@ -6,7 +6,7 @@ Cada atividade é uma pasta `NNN-nome-em-kebab/`: número com **3 dígitos**, pa
 - `t-N-*.md`: uma tarefa por arquivo;
 - `qa/qa-spec.md` e `qa/report-t-N.md`: cenários e relatórios de QA, com `qa/screenshots/`.
 
-**Nova atividade:** use o próximo número livre (hoje **060**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
+**Nova atividade:** use o próximo número livre (hoje **062**) com 3 dígitos. Nunca reaproveite número: 011 e 040 aparecem citados em documentos, mas não têm pasta.
 
 > Reorganizado em 18/09/2026. As pastas eram `1-…`, `10-…` sem zeros e existiam **duas** "1".
 > - `1-mobile-fundacao` (jun/2026, abre a série mobile 001–006) manteve o **001**.
@@ -77,6 +77,8 @@ Legenda: ✅ concluída · 🟡 parcial / aguardando algo · 📋 planejada · �
 | [049](049-relatorio-adesao-diaria/) | Relatório diário de adesão | 🟡 5/6; WhatsApp adiado |
 | [050](050-agendamento-livre-pagamento-presencial/) | Agendamento livre + pagamento presencial | ✅ |
 | [051](051-correcoes-auditoria-paciente-e-ux-idosos/) | Correções da auditoria do paciente + UX para idosos | ✅ |
+| [060](060-fechamento-semanal/) | Fechamento semanal (mensagem manual pedindo pra marcar/explicar) | ✅ |
+| [061](061-liga-lembrete-diario-por-clinica/) | Toggle por clínica pro lembrete diário automático | ✅ |
 
 ## App mobile
 
