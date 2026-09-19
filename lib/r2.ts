@@ -143,16 +143,38 @@ export async function deleteR2Url(url: string | null | undefined): Promise<boole
   return true;
 }
 
-/** Reads an object back into memory. For the merge/playback paths (activity
- *  64) — a consultation recording is small enough (tens of MB) that this is
- *  simpler and safer than streaming, and it's never served to the public
- *  (see `r2PublicUrl` doc comment — this bypasses that entirely). */
+/** Reads an object back into memory. For the merge path (activity 64) — a
+ *  consultation recording is small enough (tens of MB) that this is simpler
+ *  and safer than streaming, and it's never served to the public (see
+ *  `r2PublicUrl` doc comment — this bypasses that entirely). */
 export async function getFromR2(key: string): Promise<Buffer> {
   const res = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
   const stream = res.Body as Readable;
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   return Buffer.concat(chunks);
+}
+
+/** Streamed read, forwarding an optional byte-range straight to R2 (it
+ *  supports the same Range semantics as S3). For audio/video playback
+ *  (activity 64, T-6) — a consultation recording can be long enough that
+ *  buffering the whole thing in memory on every seek would be wasteful, and
+ *  without Range support the browser can't seek at all until the entire
+ *  file has downloaded. */
+export async function getR2ObjectStream(
+  key: string,
+  range?: string
+): Promise<{ body: Readable; contentLength?: number; contentRange?: string; contentType?: string }> {
+  const res = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: key, Range: range }));
+  return {
+    body: res.Body as Readable,
+    // Omitted (not defaulted to 0) when R2 doesn't report it — a browser
+    // that trusts Content-Length: 0 over an actual non-empty stream will
+    // truncate playback at byte zero.
+    contentLength: res.ContentLength != null ? Number(res.ContentLength) : undefined,
+    contentRange: res.ContentRange,
+    contentType: res.ContentType,
+  };
 }
 
 export async function listR2(prefix: string): Promise<string[]> {

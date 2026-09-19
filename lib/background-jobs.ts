@@ -15,12 +15,14 @@ import { publishSocialPost } from './social-publish';
 import { dispatchCampaignBatch } from './email-campaign-dispatch';
 import { publishDueArticles } from './article-publish';
 import { generateEvidenceReport } from './evidence-report';
+import { processAmbientTranscriptions } from './ambient-recording';
 
 const TOKEN_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
 const POST_PUBLISH_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes
 const EMAIL_CAMPAIGN_INTERVAL_MS = 60 * 1000; // every 1 minute
 const ARTICLE_PUBLISH_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes
 const EVIDENCE_REPORT_INTERVAL_MS = 2 * 60 * 1000; // every 2 minutes
+const AMBIENT_TRANSCRIPTION_INTERVAL_MS = 30 * 1000; // every 30 seconds
 
 async function refreshExpiringTokens() {
   try {
@@ -145,6 +147,30 @@ async function generatePendingEvidenceReports() {
   }
 }
 
+// Submits merged ambient-recording audio (activity 64, T-5) to AssemblyAI
+// and polls submitted ones for a finished transcript. 30s interval — much
+// shorter than the evidence-report job's 2min, since AssemblyAI processes
+// at roughly 10x realtime and a therapist waiting on a transcript right
+// after a consultation shouldn't wait minutes longer than necessary.
+// Reentrancy guard — this tick can outrun its own 30s interval (up to 3
+// AssemblyAI uploads + up to 10 status polls, sequentially, in one run),
+// and setInterval doesn't wait for the previous call to finish. Without
+// this, an overlapping second run could poll/update the same session twice
+// at once (code review finding, activity 64).
+let ambientTranscriptionsRunning = false;
+
+async function ambientTranscriptionsJob() {
+  if (ambientTranscriptionsRunning) return;
+  ambientTranscriptionsRunning = true;
+  try {
+    await processAmbientTranscriptions();
+  } catch (err: any) {
+    console.error('[background-jobs] Ambient transcription processing failed:', err.message);
+  } finally {
+    ambientTranscriptionsRunning = false;
+  }
+}
+
 // Guards against double-registration (e.g. dev-mode hot reload calling
 // register() more than once in the same process).
 declare global {
@@ -163,6 +189,7 @@ export function startBackgroundJobs() {
   setInterval(dispatchDueEmailCampaigns, EMAIL_CAMPAIGN_INTERVAL_MS);
   setInterval(publishDueArticlesJob, ARTICLE_PUBLISH_INTERVAL_MS);
   setInterval(generatePendingEvidenceReports, EVIDENCE_REPORT_INTERVAL_MS);
+  setInterval(ambientTranscriptionsJob, AMBIENT_TRANSCRIPTION_INTERVAL_MS);
 
   // Run once shortly after boot too, instead of waiting a full interval.
   setTimeout(refreshExpiringTokens, 30_000);
@@ -170,4 +197,5 @@ export function startBackgroundJobs() {
   setTimeout(dispatchDueEmailCampaigns, 45_000);
   setTimeout(publishDueArticlesJob, 60_000);
   setTimeout(generatePendingEvidenceReports, 25_000);
+  setTimeout(ambientTranscriptionsJob, 20_000);
 }

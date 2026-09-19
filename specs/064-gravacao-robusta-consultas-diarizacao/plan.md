@@ -138,7 +138,7 @@ resolve as duas.
 | T-2 | Upload incremental de chunk (rota + MediaRecorder com timeslice na UI) | concluído |
 | T-3 | Indicador "salvo até X:XX" + aviso beforeunload durante gravação | concluído |
 | T-4 | Finalização — rota "finish" + job de merge dos chunks no R2 | concluído |
-| T-5 | Integração AssemblyAI (submissão + job de polling em background) | pendente — depende de resposta às Suposições 1 e 6 |
-| T-6 | Exibição do transcript diarizado + geração de SOAP a partir dele | pendente |
-| T-7 | Histórico de sessões de gravação | pendente |
-| T-8 | Upload de áudio completo (gravação local/offline ou arquivo externo) | pendente |
+| T-5 | Integração AssemblyAI (submissão + job de polling em background) | concluído |
+| T-6 | Exibição do transcript diarizado + geração de SOAP a partir dele | concluído |
+| T-7 | Histórico de sessões de gravação | concluído |
+| T-8 | Upload de áudio completo (gravação local/offline ou arquivo externo) | concluído |

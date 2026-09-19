@@ -1,6 +1,6 @@
 # T-5: Integração AssemblyAI (submissão + polling)
 
-**Status:** pendente
+**Status:** concluído
 **Depende de:** T-4 ou T-8 (qualquer um dos dois caminhos que preenche `mergedAudioR2Key`)
 
 ## Objetivo
@@ -59,5 +59,43 @@ esta tarefa.**
       ou Speaker A/B, conforme a decisão tomada).
 - [ ] Erro da AssemblyAI (ex. áudio corrompido) vira `status: FAILED` com mensagem legível, nunca
       trava a sessão em `TRANSCRIBING` pra sempre.
-- [ ] Se `AI_STRICT_MODE` estiver ligado E a Suposição 1 tiver sido respondida como "deve gatear" —
+- [x] Se `AI_STRICT_MODE` estiver ligado E a Suposição 1 tiver sido respondida como "deve gatear" —
       confirmar que a submissão falha explicitamente em vez de silenciosamente prosseguir.
+
+## QA e code review
+
+Chave da AssemblyAI obtida com o Bruno (login dele, sessão principal navegou até a página de API
+Keys e cadastrou direto no `.env` local e no Coolify, sem nunca exibir o valor em texto).
+
+Confirmado pela sessão principal antes do QA formal, com chamadas reais: (1) `AI_STRICT_MODE=true`
+(valor local) bloqueia a submissão, sessão vai pra `FAILED` com mensagem clara; (2) com a trava
+desligada (override só no processo, sem tocar `.env`), uma sessão real chega em `TRANSCRIBED` com
+transcript formatado. Achado nessa investigação: `AI_STRICT_MODE` não está configurado em
+produção (efetivamente `false` lá) — divergência pré-existente do projeto, não desta atividade;
+Bruno decidiu deixar como está por enquanto (fora do escopo mexer na política geral de IA do
+projeto).
+
+QA (agente qa-tester): 6/8 cenários aprovados sem ressalva, 2 com ressalva de cobertura (diarização
+com 2+ speakers reais não observada — limitação do ambiente de teste sem microfone/voz PT-BR;
+acurácia de conteúdo em PT-BR não verificada, só a mecânica do `language_code`). `qa/report-t-5.md`.
+
+**Achado crítico do QA, corrigido e revalidado**: o guard de `attempts >= 5` só cobria a fase de
+SUBMISSÃO — uma falha persistente no polling (ex. `assemblyaiTranscriptId` inválido, chave
+revogada) deixava a sessão presa em `TRANSCRIBING` pra sempre. Corrigido: o guard agora cobre as
+duas fases, incrementando `attempts` só em falha real de fetch (nunca em "ainda processando").
+Revalidado pela sessão principal: sessão de teste com ID inexistente evoluiu attempts 0→5 e
+resolveu pra `FAILED` corretamente.
+
+Code review: 3 achados —
+1. Corrida rara num crash exato entre a AssemblyAI aceitar o job e o `assemblyaiTranscriptId`
+   commitar no banco — poderia gerar submissão duplicada (custo, não perda de dado). **Não
+   corrigido** — aceito como limitação documentada; corrigir de verdade exigiria idempotência do
+   lado da AssemblyAI ou um estado intermediário que teria sua própria janela de corrida, custo
+   desproporcional ao risco (raro, sem impacto de correção/dado, só custo duplicado ocasional).
+2. Ciclos do job podem se sobrepor (um tick demorado + `setInterval` não espera o anterior
+   terminar) e a fase de polling não tinha claim nenhum, incluindo o incremento de `attempts` sem
+   checar status. Corrigido: guard de reentrância no processo (`ambientTranscriptionsRunning`) +
+   incremento de `attempts` no polling agora condicional a `status: "TRANSCRIBING"`.
+3. O campo `error` era sobrescrito sem piedade em toda falha da AssemblyAI, destruindo o aviso de
+   chunk faltante que `mergeSessionChunks` grava lá de propósito. Corrigido: helper `combineError`
+   concatena em vez de substituir, em todos os pontos de escrita.

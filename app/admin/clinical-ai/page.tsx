@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   Mic, MicOff, Loader2, FileText, Search, Brain, Play, Square,
   Sparkles, ClipboardCopy, CheckCircle, AlertTriangle, BookOpen,
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { setAmbientRecordingActive } from "@/lib/ambient-recording-guard";
 
-type ActiveTool = "scribe" | "evidence" | "intelligence";
+type ActiveTool = "scribe" | "history" | "evidence" | "intelligence";
 
 // Distinguishes "session creation failed" from "mic access failed" inside
 // startRecording's single catch block, so the error toast (and the
@@ -76,6 +77,15 @@ export default function ClinicalAIPage() {
           <Mic className="h-4 w-4" /> Ambient Scribe
         </Button>
         <Button
+          variant={activeTool === "history" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => guardedSetActiveTool("history")}
+          disabled={scribeRecording}
+          className="gap-2"
+        >
+          <FileText className="h-4 w-4" /> History
+        </Button>
+        <Button
           variant={activeTool === "evidence" ? "default" : "ghost"}
           size="sm"
           onClick={() => guardedSetActiveTool("evidence")}
@@ -96,6 +106,7 @@ export default function ClinicalAIPage() {
       </div>
 
       {activeTool === "scribe" && <AmbientScribe onRecordingStateChange={setScribeRecording} />}
+      {activeTool === "history" && <AmbientScribeHistory />}
       {activeTool === "evidence" && <EvidenceSearch />}
       {activeTool === "intelligence" && <PatientIntelligence />}
     </div>
@@ -138,6 +149,10 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
   // uploads run concurrently, so chunk 7 succeeding must never hide that
   // chunk 5 permanently failed. Only reset at the start of a new recording.
   const [failedChunkCount, setFailedChunkCount] = useState(0);
+  // Points to the session-detail page (T-6) once a recording finishes, so
+  // there's an immediate way to reach the transcript/SOAP without waiting
+  // for the history list (T-7).
+  const [lastFinishedSessionId, setLastFinishedSessionId] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   // Every in-flight chunk upload, so "Stop" can wait for them instead of
   // letting the last ~30s vanish if the tab navigates away right after.
@@ -156,6 +171,16 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
   // state to actually disable the button — see startRecording's comment).
   const startingRef = useRef(false);
   const [starting, setStarting] = useState(false);
+  // T-8: "live" is the T-2/T-3 incremental-upload flow above. "local" is for
+  // a consultation with no internet at all (e.g. a home visit) — the whole
+  // recording stays in the browser (chunksRef only, nothing uploaded) until
+  // Stop, when the complete file is sent in one shot to the T-8 upload
+  // route. No incremental-save protection during the recording itself, but
+  // there was no connectivity to protect it with anyway (plan.md Decisão 8).
+  const [recordingMode, setRecordingMode] = useState<"live" | "local">("live");
+  const [uploadingLocal, setUploadingLocal] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -197,6 +222,42 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
     });
   };
 
+  // Shared by "Gravação local" (Stop, above) and "Enviar áudio gravado"
+  // (the file picker, below) — both already have a complete audio file in
+  // hand and just need it to enter the pipeline at the same point T-4's
+  // merge job would leave it (activity 64, T-8; plan.md Decisão 6). Returns
+  // the new session id on success, null on failure (toast already shown).
+  const uploadCompleteAudio = async (fileOrBlob: Blob, filename: string): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append("audio", fileOrBlob, filename);
+    if (patientId) formData.append("patientId", patientId);
+    formData.append("language", language);
+    try {
+      const res = await fetch("/api/admin/clinical-scribe/sessions/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      toast({ title: "Recording uploaded", description: "Processing has started — it'll appear as Transcribing shortly." });
+      return data.sessionId as string;
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      return null;
+    }
+  };
+
+  const uploadExistingFile = async (file: File) => {
+    setUploadingFile(true);
+    try {
+      const sessionId = await uploadCompleteAudio(file, file.name);
+      if (sessionId) setLastFinishedSessionId(sessionId);
+    } finally {
+      setUploadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const startRecording = async () => {
     // Re-entrancy guard — the button is only `disabled` by `finalizing`, not
     // during this function's own async gap (session-creation fetch +
@@ -207,22 +268,30 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
     startingRef.current = true;
     setStarting(true);
     let sessionCreated = false;
+    const mode = recordingMode;
     try {
-      const sessionRes = await fetch("/api/admin/clinical-scribe/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId: patientId || undefined, language }),
-      });
-      const sessionData = await sessionRes.json();
-      if (!sessionRes.ok) throw new StartRecordingError("session", sessionData.error || "Could not start recording session");
-      sessionCreated = true;
-      ambientSessionIdRef.current = sessionData.sessionId;
+      // Local mode never talks to the server until Stop — no session to
+      // create yet, since there's nothing to upload incrementally against.
+      if (mode === "live") {
+        const sessionRes = await fetch("/api/admin/clinical-scribe/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ patientId: patientId || undefined, language }),
+        });
+        const sessionData = await sessionRes.json();
+        if (!sessionRes.ok) throw new StartRecordingError("session", sessionData.error || "Could not start recording session");
+        sessionCreated = true;
+        ambientSessionIdRef.current = sessionData.sessionId;
+      } else {
+        ambientSessionIdRef.current = null;
+      }
       nextChunkIndexRef.current = 0;
       // Defensive reset — a promise from a prior recording that somehow
       // never settled must not poison this new one's finalization.
       pendingUploadsRef.current = new Set();
       uploadQueueRef.current = Promise.resolve();
       userInitiatedStopRef.current = false;
+      setLastFinishedSessionId(null);
 
       let stream: MediaStream;
       try {
@@ -238,7 +307,7 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
         if (e.data.size === 0) return;
         chunksRef.current.push(e.data);
         const sessionId = ambientSessionIdRef.current;
-        if (sessionId) {
+        if (mode === "live" && sessionId) {
           const chunkIndex = nextChunkIndexRef.current++;
           const capturedAt = recordingTimeRef.current;
           const upload = uploadQueueRef.current.then(() => uploadChunk(sessionId, chunkIndex, e.data, capturedAt));
@@ -275,6 +344,22 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setAudioBlob(blob);
         stream.getTracks().forEach((t) => t.stop());
+
+        if (mode === "local") {
+          // Nothing was uploaded during the recording — the whole file goes
+          // up now, in one shot, the same way an externally-recorded file
+          // does (see uploadExistingFile below).
+          setUploadingLocal(true);
+          try {
+            const sessionId = await uploadCompleteAudio(blob, "local-recording.webm");
+            if (sessionId) setLastFinishedSessionId(sessionId);
+          } finally {
+            setUploadingLocal(false);
+          }
+          setFinalizing(false);
+          return;
+        }
+
         // The final ondataavailable (with whatever was left in the buffer)
         // fires before onstop, so its upload is already in this set — wait
         // for every chunk to actually land before telling the server the
@@ -282,6 +367,7 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
         await Promise.all(pendingUploadsRef.current);
         const sessionId = ambientSessionIdRef.current;
         if (sessionId) {
+          setLastFinishedSessionId(sessionId);
           try {
             // Generous — the server merges synchronously (Buffer.concat +
             // R2 upload of the whole recording), which can genuinely take a
@@ -375,16 +461,21 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
   };
 
   // Warn before leaving while anything about the recording is still in
-  // flight — recording itself, or the final chunks finalizing after Stop.
+  // flight — recording itself, the final chunks finalizing after Stop, or a
+  // standalone file upload (T-8's "Upload audio file" button) in progress.
+  // `uploadingFile` was originally left out of this guard (code review
+  // finding, activity 64 T-8) — a large standalone upload could be silently
+  // abandoned by closing the tab, unlike the equivalent local-mode Stop
+  // upload, which already went through `finalizing`.
   useEffect(() => {
-    if (!isRecording && !finalizing) return;
+    if (!isRecording && !finalizing && !uploadingFile) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [isRecording, finalizing]);
+  }, [isRecording, finalizing, uploadingFile]);
 
   // Same "in flight" window, but for things a beforeunload dialog can't
   // stop: VersionChecker's programmatic reload (components/version-checker.tsx)
@@ -399,10 +490,10 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
   // captured. Just sync the flag; the mount/unmount-only effect below owns
   // actually stopping the recorder.
   useEffect(() => {
-    const active = isRecording || finalizing;
+    const active = isRecording || finalizing || uploadingFile;
     setAmbientRecordingActive(active);
     onRecordingStateChange?.(active);
-  }, [isRecording, finalizing, onRecordingStateChange]);
+  }, [isRecording, finalizing, uploadingFile, onRecordingStateChange]);
 
   // Defense in depth, real-unmount-only (empty deps — cleanup runs exactly
   // once, on unmount): the click-guard below should prevent this component
@@ -433,7 +524,7 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
   // recovery is attempted either way, chunks already uploaded stay safe in
   // R2 regardless).
   useEffect(() => {
-    if (!isRecording && !finalizing) return;
+    if (!isRecording && !finalizing && !uploadingFile) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const anchor = target.closest("a[href]");
@@ -441,14 +532,16 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
       e.preventDefault();
       e.stopPropagation();
       toast({
-        title: "Recording in progress",
-        description: "Stop the current recording before navigating away — leaving this page would lose the session.",
+        title: uploadingFile ? "Upload in progress" : "Recording in progress",
+        description: uploadingFile
+          ? "Wait for the upload to finish before navigating away — leaving this page would lose it."
+          : "Stop the current recording before navigating away — leaving this page would lose the session.",
         variant: "destructive",
       });
     };
     document.addEventListener("click", handler, true);
     return () => document.removeEventListener("click", handler, true);
-  }, [isRecording, finalizing, toast]);
+  }, [isRecording, finalizing, uploadingFile, toast]);
 
   const transcribeAudio = async () => {
     if (!audioBlob) return;
@@ -550,10 +643,41 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
             </div>
           </div>
 
+          {/* T-8: recording mode — "live" is the incremental-upload flow
+              above (T-2/T-3). "local" is for a site with no internet at all
+              (e.g. a home visit): nothing is uploaded until Stop, when the
+              whole file is sent at once. Locked once a recording starts so
+              a mode swap can't happen mid-recording. */}
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-800 dark:text-white">Recording mode</Label>
+            <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+              <Button
+                type="button"
+                variant={recordingMode === "live" ? "default" : "ghost"}
+                size="sm"
+                disabled={isRecording || finalizing}
+                onClick={() => setRecordingMode("live")}
+                className="gap-2 text-xs h-7"
+              >
+                Live recording
+              </Button>
+              <Button
+                type="button"
+                variant={recordingMode === "local" ? "default" : "ghost"}
+                size="sm"
+                disabled={isRecording || finalizing}
+                onClick={() => setRecordingMode("local")}
+                className="gap-2 text-xs h-7"
+              >
+                Local recording (no internet)
+              </Button>
+            </div>
+          </div>
+
           {/* Recording controls */}
           <div className="flex items-center gap-4">
             {!isRecording ? (
-              <Button onClick={startRecording} disabled={finalizing || starting} className="gap-2 bg-red-600 hover:bg-red-700">
+              <Button onClick={startRecording} disabled={finalizing || starting || uploadingFile} className="gap-2 bg-red-600 hover:bg-red-700">
                 {starting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
                 {starting ? "Starting…" : "Start Recording"}
               </Button>
@@ -577,20 +701,28 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
               </div>
             )}
 
-            {finalizing && (
+            {finalizing && !uploadingLocal && (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
                 <span className="text-sm font-medium text-amber-600">Saving last chunk — don't close this tab…</span>
               </div>
             )}
+
+            {uploadingLocal && (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                <span className="text-sm font-medium text-amber-600">Uploading the full recording — don't close this tab…</span>
+              </div>
+            )}
           </div>
 
-          {/* T-3: real-time save confirmation — never leave the therapist
-              guessing whether the recording is actually backed up. Once a
-              chunk permanently fails, this stays red for the rest of the
-              recording even if later chunks succeed (a later save doesn't
-              undo an earlier loss). */}
-          {(isRecording || finalizing) && (
+          {/* T-3: real-time save confirmation for live mode only — local
+              mode has nothing incremental to report on (see below instead).
+              Never leave the therapist guessing whether the recording is
+              actually backed up. Once a chunk permanently fails, this stays
+              red for the rest of the recording even if later chunks
+              succeed (a later save doesn't undo an earlier loss). */}
+          {recordingMode === "live" && (isRecording || finalizing) && (
             <div className={`flex items-center gap-2 text-xs rounded-lg px-3 py-2 ${
               failedChunkCount > 0 ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
                 : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
@@ -602,6 +734,58 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
                 ? `Safely saved up to ${formatTime(lastSavedAt)}`
                 : "Waiting for the first automatic save (every 30s)…"}
             </div>
+          )}
+
+          {/* T-8: local mode's equivalent of the indicator above — the
+              opposite message on purpose, so it's never mistaken for the
+              live-mode guarantee. */}
+          {recordingMode === "local" && isRecording && (
+            <div className="flex items-center gap-2 text-xs rounded-lg px-3 py-2 bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Recording locally — nothing has been uploaded yet. The full recording will upload when you stop.
+            </div>
+          )}
+
+          {/* T-8: upload an already-recorded file (phone voice memo used as
+              backup, or any other source) — independent of the recorder
+              above, goes through the same upload route as local mode's
+              Stop. */}
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-800 dark:text-white">Or upload an existing recording</Label>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.webm,.flac"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadExistingFile(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isRecording || finalizing || uploadingFile}
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2"
+              >
+                {uploadingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                {uploadingFile ? "Uploading…" : "Upload audio file"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Once finalized, jump straight to the session's transcript/SOAP
+              page (T-6) — the history list (T-7) is the other way to get
+              there later. */}
+          {!isRecording && !finalizing && lastFinishedSessionId && (
+            <Link href={`/admin/clinical-ai/sessions/${lastFinishedSessionId}`}>
+              <Button variant="outline" size="sm" className="gap-2">
+                View transcript & generate SOAP
+              </Button>
+            </Link>
           )}
         </CardContent>
       </Card>
@@ -760,6 +944,146 @@ function AmbientScribe({ onRecordingStateChange }: { onRecordingStateChange?: (a
             )}
           </CardContent>
         </Card>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// AMBIENT SCRIBE — SESSION HISTORY (activity 64, T-7)
+// ═══════════════════════════════════════════════════
+
+type HistorySession = {
+  id: string;
+  status: string;
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number | null;
+  createdAt: string;
+  therapist: { firstName: string; lastName: string };
+  patient: { id: string; firstName: string; lastName: string } | null;
+};
+
+const HISTORY_STATUS_STYLE: Record<string, string> = {
+  RECORDING: "bg-red-500/15 text-red-400 border-red-500/30",
+  ENDED: "bg-muted text-muted-foreground border-border",
+  MERGING: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  TRANSCRIBING: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  TRANSCRIBED: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  FAILED: "bg-red-500/15 text-red-400 border-red-500/30",
+};
+
+function formatDuration(seconds: number | null): string {
+  // `seconds === 0` (a genuinely instant recording) must not render the same
+  // as "not computed yet" (null) — those mean different things on the list.
+  if (seconds == null) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function AmbientScribeHistory() {
+  const [sessions, setSessions] = useState<HistorySession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // Synchronous re-entrancy guard — `loadingMore` state doesn't actually
+  // disable the button until after React's next render, so two clicks (or a
+  // held Enter key) landing in the same tick can both pass the `disabled`
+  // check and fire loadPage with the same cursor, duplicating a page.
+  const loadingMoreRef = useRef(false);
+
+  const loadPage = async (before?: string) => {
+    try {
+      const url = before
+        ? `/api/admin/clinical-scribe/sessions?before=${encodeURIComponent(before)}`
+        : "/api/admin/clinical-scribe/sessions";
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load sessions");
+      setSessions((prev) => (before ? [...prev, ...data.sessions] : data.sessions));
+      setNextCursor(data.nextCursor);
+      setError(null);
+    } catch (e: any) {
+      setError(e.message || "Failed to load sessions");
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    loadPage().finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Recording sessions</h2>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading sessions...
+        </div>
+      )}
+
+      {error && (
+        <Card><CardContent className="pt-4 text-sm text-red-500 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4" /> {error}
+        </CardContent></Card>
+      )}
+
+      {!loading && !error && sessions.length === 0 && (
+        <p className="text-sm text-muted-foreground">No recordings yet.</p>
+      )}
+
+      {sessions.length > 0 && (
+        <div className="space-y-2">
+          {sessions.map((s) => (
+            <Link key={s.id} href={`/admin/clinical-ai/sessions/${s.id}`}>
+              <Card className="hover:border-violet-400 transition-colors cursor-pointer">
+                <CardContent className="pt-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {s.patient ? `${s.patient.firstName} ${s.patient.lastName}` : (
+                          <span className="text-muted-foreground italic">Not associated</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(s.createdAt).toLocaleString()} · {formatDuration(s.durationSeconds)} ·{" "}
+                        {s.therapist.firstName} {s.therapist.lastName}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={HISTORY_STATUS_STYLE[s.status] || ""}>
+                    {s.status}
+                  </Badge>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {nextCursor && (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={loadingMore}
+          onClick={async () => {
+            if (loadingMoreRef.current) return;
+            loadingMoreRef.current = true;
+            setLoadingMore(true);
+            try {
+              await loadPage(nextCursor);
+            } finally {
+              loadingMoreRef.current = false;
+              setLoadingMore(false);
+            }
+          }}
+        >
+          {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load more"}
+        </Button>
       )}
     </div>
   );
