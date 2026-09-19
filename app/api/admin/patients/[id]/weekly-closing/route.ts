@@ -11,6 +11,7 @@ import {
   WEEKLY_CLOSING_ACTION_EN,
   WEEKLY_CLOSING_ACTION_PT,
 } from "@/lib/weekly-closing";
+import { getReminderTemplates } from "@/lib/reminder-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const patient = await prisma.user.findUnique({
     where: { id: params.id },
-    select: { firstName: true, lastName: true },
+    select: { firstName: true, lastName: true, clinicId: true },
   });
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
@@ -73,7 +74,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     select: { firstName: true, lastName: true },
   });
 
-  const text = buildWeeklyClosingText(patient.firstName || "", locale);
+  const templates = await getReminderTemplates(patient.clinicId);
+  const custom = locale === "pt" ? templates.weeklyClosing?.pt : templates.weeklyClosing?.en;
+  const text = buildWeeklyClosingText(patient.firstName || "", locale, custom);
   const title = locale === "pt" ? WEEKLY_CLOSING_TITLE_PT : WEEKLY_CLOSING_TITLE_EN;
   const action = locale === "pt" ? WEEKLY_CLOSING_ACTION_PT : WEEKLY_CLOSING_ACTION_EN;
 

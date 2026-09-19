@@ -1,7 +1,6 @@
 # T-5: Editor de templates de e-mail (opcional)
 
-**Status:** pendente confirmação — NÃO implementar sem o Bruno confirmar explicitamente que
-quer isso agora.
+**Status:** concluído
 
 **Depende de:** nenhuma (independente das outras tarefas)
 
@@ -29,10 +28,24 @@ edição com preview), não um ajuste pequeno.
    antes de cair no hardcoded.
 3. Tela de admin com um campo de texto por template/idioma + preview antes de salvar.
 
-## Arquivos afetados (estimativa, confirmar ao decidir implementar)
-- `prisma/schema.prisma`
-- `lib/daily-adherence-email.ts`, `lib/onboarding-reminder.ts`, `lib/weekly-closing.ts`
-- Nova tela de admin + rota de API
+## Arquivos afetados (final)
+- `prisma/schema.prisma` (`Clinic.reminderTemplatesJson`)
+- `lib/reminder-templates.ts` (novo — helper compartilhado, fallback e tokens)
+- `lib/daily-adherence-email.ts`, `lib/onboarding-reminder.ts`, `lib/weekly-closing.ts`,
+  `lib/notify-patient.ts`
+- `app/api/admin/adherence/preview-patient-email`, `preview-yesterday-email`,
+  `preview-onboarding-email`, `preview-weekly-closing-email` (routes)
+- `app/api/admin/patients/[id]/weekly-closing/route.ts`
+- `app/api/admin/reminder-templates/route.ts` (novo)
+- `app/admin/reminder-templates/page.tsx` (novo — movido de `/admin/settings/...` depois do
+  bug de rota achado no QA, ver seção "T-5" acima)
+- `lib/admin-sections.ts` (aba nova, corrige o destaque do nav)
+- `components/admin/patient-adherence-panel.tsx` (link "Edit reminder text")
 
 ## Critérios de aceite
-- [ ] (a definir quando confirmado)
+- [x] Admin edita o texto de qualquer um dos 4 tipos de lembrete, em EN e PT, separadamente.
+- [x] Campo vazio = usa o texto padrão hardcoded (nenhuma regressão pra quem não configura nada).
+- [x] Preview real (não só o client-side da tela de edição) reflete o texto customizado com os
+      tokens substituídos por dados reais da paciente.
+- [x] Isolado por clínica — configurar numa clínica não afeta outra.
+- [x] Acessível por qualquer ADMIN/THERAPIST de clínica (não só SUPERADMIN).

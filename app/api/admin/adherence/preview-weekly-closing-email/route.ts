@@ -4,6 +4,7 @@ import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { wrapInLayout } from "@/lib/email-templates";
 import { escapeHtml } from "@/lib/admin-notify-email";
 import { buildWeeklyClosingText } from "@/lib/weekly-closing";
+import { getReminderTemplates } from "@/lib/reminder-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,9 @@ export async function GET(req: NextRequest) {
   });
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
-  const text = buildWeeklyClosingText(patient.firstName || "", locale);
+  const templates = await getReminderTemplates(patient.clinicId);
+  const custom = locale === "pt" ? templates.weeklyClosing?.pt : templates.weeklyClosing?.en;
+  const text = buildWeeklyClosingText(patient.firstName || "", locale, custom);
   const paragraphs = escapeHtml(text)
     .split("\n\n")
     .map((p) => `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${p}</p>`)

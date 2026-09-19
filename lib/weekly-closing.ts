@@ -27,7 +27,11 @@ Se algum item realmente não foi possível fazer, me conta rapidinho por aqui (e
 
 Qualquer dúvida, estou à disposição!`;
 
-export function buildWeeklyClosingText(firstName: string, locale: "en" | "pt"): string {
+/** `customTemplate` is the clinic's admin-edited template (activity 62,
+ * T-5) for this language — empty/missing falls back to the hardcoded copy
+ * above. Only token supported here is `{name}`. */
+export function buildWeeklyClosingText(firstName: string, locale: "en" | "pt", customTemplate?: string | null): string {
+  if (customTemplate) return customTemplate.split("{name}").join(firstName);
   return locale === "pt" ? WEEKLY_CLOSING_BODY_PT(firstName) : WEEKLY_CLOSING_BODY_EN(firstName);
 }
 

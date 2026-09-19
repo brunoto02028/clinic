@@ -10,6 +10,7 @@
 // follow-up (morning tone, named misses, invites the patient to reach out).
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -211,8 +212,11 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Adherence</CardTitle>
+        <Link href="/admin/reminder-templates" className="text-xs text-primary hover:underline">
+          Edit reminder text
+        </Link>
       </CardHeader>
       <CardContent className="space-y-1">
         <AdherenceSection

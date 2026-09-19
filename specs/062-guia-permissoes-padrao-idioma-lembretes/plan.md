@@ -98,7 +98,7 @@ português, dificuldade de usar o sistema):
 | T-2 | Permissões padrão por clínica | concluído |
 | T-3 | `forceLocale` central em `notifyPatient` | concluído |
 | T-4 | Escolha de idioma na UI dos lembretes (depende de T-3) | concluído |
-| T-5 | Editor de templates de e-mail (opcional — só com confirmação) | pendente confirmação |
+| T-5 | Editor de templates de e-mail (opcional — só com confirmação) | concluído |
 
 ## QA e code review (T-1 a T-4)
 
@@ -125,3 +125,29 @@ Achados fora do escopo, registrados e não corrigidos (pré-existentes, não sã
 atividade): hydration warnings em `SectionTabs`/`Journey` na navegação admin; cache de chunk JS
 imutável no dev server escondendo mudanças até desabilitar cache manualmente (já documentado em
 memória).
+
+## T-5 — editor de templates de e-mail
+
+Confirmado pelo Bruno depois do plano inicial. Implementado: `Clinic.reminderTemplatesJson`
+(shape `{today,yesterday,onboarding,weeklyClosing} x {en,pt}`), helper `lib/reminder-templates.ts`
+(fallback pro texto hardcoded quando vazio, tokens `{items}`/`{name}`), plugado em
+`lib/daily-adherence-email.ts`, `lib/onboarding-reminder.ts`, `lib/weekly-closing.ts`,
+`lib/notify-patient.ts` e as rotas de preview/send correspondentes. Tela nova
+`/admin/reminder-templates` com prévia client-side (substituição de token com exemplo, nunca
+envia de verdade), rota `app/api/admin/reminder-templates` (GET/PATCH, escopada por clínica).
+
+**Bug crítico achado e corrigido no primeiro QA**: a tela nasceu em `/admin/settings/reminder-templates`
+— esse prefixo é tratado como exclusivo de SUPERADMIN (`lib/superadmin-routes.ts`), então
+qualquer ADMIN/THERAPIST de clínica era redirecionado silenciosamente, sem conseguir abrir a
+tela de jeito nenhum. Movida pra `/admin/reminder-templates` (fora de qualquer prefixo
+superadmin-only) e registrada em `lib/admin-sections.ts` (aba "Reminder Templates" dentro de
+Notifications, corrigindo também o destaque do nav — achado cosmético do reteste).
+
+QA (2 rodadas — a primeira achou o bug de rota, a segunda confirmou a correção): todos os
+cenários aprovados — edição + prévia + salvar + reflexo no preview real com itens reais da
+paciente, "reset to default" volta ao texto padrão, regressão sem customização, isolamento
+cross-tenant (dois tenants QA, configuração de um não vaza pro outro), guards de auth (401/403),
+entrada inválida (400), e os 4 tipos de lembrete com seus tokens corretos.
+
+Code review: sem achados de segurança — todo texto customizado passa por `escapeHtml()` antes de
+entrar no HTML do e-mail, tanto no caminho novo quanto no já existente.

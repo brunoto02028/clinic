@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { escapeHtml } from "@/lib/admin-notify-email";
 import { wrapInLayout } from "@/lib/email-templates";
+import { renderTemplate } from "@/lib/reminder-templates";
 
 // Onboarding pending items — profile, screening, consent — same three
 // checks the "Welcome to BPR!" checklist on the patient's own dashboard
@@ -48,16 +49,18 @@ function pendingLabels(p: OnboardingPending, isPt: boolean): string[] {
   return labels;
 }
 
-function plainMessage(p: OnboardingPending, isPt: boolean): string {
+function plainMessage(p: OnboardingPending, isPt: boolean, customTemplate?: string | null): string {
   const list = pendingLabels(p, isPt).join(" · ");
+  if (customTemplate) return renderTemplate(customTemplate, { items: list });
   return isPt
     ? `Ainda falta: ${list}. Leva só alguns minutos e é importante pra gente cuidar bem do seu tratamento.`
     : `Still pending: ${list}. It only takes a couple of minutes and helps us take good care of your treatment.`;
 }
 
-/** Plain-text version, for the WhatsApp/SMS/Telegram channels. */
-export function buildOnboardingReminderText(p: OnboardingPending) {
-  return { en: plainMessage(p, false), pt: plainMessage(p, true) };
+/** Plain-text version, for the WhatsApp/SMS/Telegram channels. `custom` is
+ * the clinic's admin-edited template (activity 62, T-5). */
+export function buildOnboardingReminderText(p: OnboardingPending, custom?: { en?: string; pt?: string }) {
+  return { en: plainMessage(p, false, custom?.en), pt: plainMessage(p, true, custom?.pt) };
 }
 
 /** Shared by the real send (notify-patient's e-mail fallback) and the admin preview. */
@@ -65,15 +68,17 @@ export async function buildOnboardingReminderEmail(
   firstName: string,
   p: OnboardingPending,
   locale: string,
-  clinicId: string | null
+  clinicId: string | null,
+  customTemplate?: string | null
 ) {
   const isPt = locale === "pt-BR" || locale.startsWith("pt");
   const cta = isPt ? "Completar Meu Cadastro →" : "Complete My Setup →";
   const itemsHtml = pendingLabels(p, isPt)
     .map((t) => `<p style="margin:0 0 4px;color:#8A4438;font-size:13px;">&bull;&nbsp; ${escapeHtml(t)}</p>`)
     .join("");
-  const content = `
-    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
+  const body = customTemplate
+    ? `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${escapeHtml(renderTemplate(customTemplate, { items: pendingLabels(p, isPt).join(", ") }))}</p>`
+    : `
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ainda falta:" : "Still pending:"}</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
       <tr><td style="background-color:#FBEEEC;border-left:3px solid #A85A4B;border-radius:8px;padding:14px 16px;">${itemsHtml}</td></tr>
@@ -82,10 +87,13 @@ export async function buildOnboardingReminderEmail(
       ${isPt
         ? "Leva só alguns minutos e é importante pra gente cuidar bem do seu tratamento."
         : "It only takes a couple of minutes and helps us take good care of your treatment."}
-    </p>
+    </p>`;
+  const content = `
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
+    ${body}
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
       <a href="${BASE_URL}/dashboard" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
     </td></tr></table>
   `;
-  return wrapInLayout(content, plainMessage(p, isPt).slice(0, 100), locale, clinicId);
+  return wrapInLayout(content, plainMessage(p, isPt, customTemplate).slice(0, 100), locale, clinicId);
 }

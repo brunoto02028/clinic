@@ -1,5 +1,6 @@
 import { wrapInLayout } from "@/lib/email-templates";
 import { escapeHtml } from "@/lib/admin-notify-email";
+import { renderTemplate } from "@/lib/reminder-templates";
 
 export type AdherencePatientSummary = { name: string; missingItems: { title: string }[] };
 
@@ -70,19 +71,22 @@ export async function buildDailyAdherenceEmail(
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://bpr.clinic";
 
-function todayPlainMessage(missingTitles: string[], isPt: boolean): string {
+function todayPlainMessage(missingTitles: string[], isPt: boolean, customTemplate?: string | null): string {
   if (missingTitles.length === 0) return isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN;
+  if (customTemplate) return renderTemplate(customTemplate, { items: missingTitles.join(" · ") });
   const list = missingTitles.join(" · ");
   return isPt
     ? `Ainda não marcado hoje: ${list}. Já fez algum desses? É só marcar no app — isso é o que mantém seu histórico certinho. Alguns minutos agora mantêm seu progresso em dia.`
     : `Not marked yet today: ${list}. Already done any of these? Just mark them in the app — that's what keeps your records accurate. A couple of minutes now keeps your progress on track.`;
 }
 
-/** Plain-text version, for the WhatsApp/SMS/Telegram channels. */
-export function buildTodayReminderText(missingTitles: string[]) {
+/** Plain-text version, for the WhatsApp/SMS/Telegram channels. `custom` is
+ * the clinic's admin-edited template (activity 62, T-5), per language —
+ * empty/missing falls back to the hardcoded copy above. */
+export function buildTodayReminderText(missingTitles: string[], custom?: { en?: string; pt?: string }) {
   return {
-    en: todayPlainMessage(missingTitles, false),
-    pt: todayPlainMessage(missingTitles, true),
+    en: todayPlainMessage(missingTitles, false, custom?.en),
+    pt: todayPlainMessage(missingTitles, true, custom?.pt),
   };
 }
 
@@ -92,13 +96,13 @@ export function buildTodayReminderText(missingTitles: string[]) {
 // activities left" with no detail — named misses, like the yesterday
 // follow-up below, so the patient sees exactly what's pending, not just that
 // something is.
-export async function buildPatientReminderEmail(firstName: string, missingTitles: string[], locale: string, clinicId: string | null) {
+export async function buildPatientReminderEmail(firstName: string, missingTitles: string[], locale: string, clinicId: string | null, customTemplate?: string | null) {
   const isPt = locale === "pt-BR" || locale.startsWith("pt");
   const cta = isPt ? "Ver Meus Exercícios →" : "View My Exercises →";
   const itemsHtml = missingTitles.map((t) => `<p style="margin:0 0 4px;color:#8A4438;font-size:13px;">&bull;&nbsp; ${escapeHtml(t)}</p>`).join("");
-  const content = `
-    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
-    ${missingTitles.length ? `
+  const body = customTemplate && missingTitles.length
+    ? `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${escapeHtml(renderTemplate(customTemplate, { items: missingTitles.join(", ") }))}</p>`
+    : missingTitles.length ? `
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ainda não marcado hoje:" : "Not marked yet today:"}</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
         <tr><td style="background-color:#FBEEEC;border-left:3px solid #A85A4B;border-radius:8px;padding:14px 16px;">${itemsHtml}</td></tr>
@@ -110,12 +114,15 @@ export async function buildPatientReminderEmail(firstName: string, missingTitles
       </p>
     ` : `
       <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${isPt ? REMINDER_MESSAGE_PT : REMINDER_MESSAGE_EN}</p>
-    `}
+    `;
+  const content = `
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
+    ${body}
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
       <a href="${BASE_URL}/dashboard/treatment" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
     </td></tr></table>
   `;
-  return wrapInLayout(content, todayPlainMessage(missingTitles, isPt).slice(0, 100), locale, clinicId);
+  return wrapInLayout(content, todayPlainMessage(missingTitles, isPt, customTemplate).slice(0, 100), locale, clinicId);
 }
 
 // ─── Yesterday follow-up — a second, morning touchpoint ────────────────
@@ -127,18 +134,20 @@ export async function buildPatientReminderEmail(firstName: string, missingTitles
 
 export const YESTERDAY_ACTION = "YESTERDAY_FOLLOWUP_SENT";
 
-function yesterdayPlainMessage(missingTitles: string[], isPt: boolean): string {
+function yesterdayPlainMessage(missingTitles: string[], isPt: boolean, customTemplate?: string | null): string {
+  if (customTemplate) return renderTemplate(customTemplate, { items: missingTitles.join(" · ") });
   const list = missingTitles.join(isPt ? " · " : " · ");
   return isPt
     ? `Ontem ficou sem marcar: ${list}. Se você já fez e só esqueceu de marcar, entra no portal e confirma — isso é importante pro seu acompanhamento. Se algo realmente não deu pra fazer, nos conta o motivo em Mensagens — estamos aqui pra ajudar.`
     : `Yesterday these weren't marked: ${list}. If you already did them and just forgot to check them off, log in and mark them — it matters for tracking your progress. If something genuinely wasn't possible, let us know why in Messages — we're here to help.`;
 }
 
-/** Plain-text version, for the WhatsApp/SMS/Telegram channels. */
-export function buildYesterdayFollowupText(missingTitles: string[]) {
+/** Plain-text version, for the WhatsApp/SMS/Telegram channels. `custom` is
+ * the clinic's admin-edited template (activity 62, T-5), per language. */
+export function buildYesterdayFollowupText(missingTitles: string[], custom?: { en?: string; pt?: string }) {
   return {
-    en: yesterdayPlainMessage(missingTitles, false),
-    pt: yesterdayPlainMessage(missingTitles, true),
+    en: yesterdayPlainMessage(missingTitles, false, custom?.en),
+    pt: yesterdayPlainMessage(missingTitles, true, custom?.pt),
   };
 }
 
@@ -147,13 +156,15 @@ export async function buildYesterdayFollowupEmail(
   firstName: string,
   missingTitles: string[],
   locale: string,
-  clinicId: string | null
+  clinicId: string | null,
+  customTemplate?: string | null
 ) {
   const isPt = locale === "pt-BR" || locale.startsWith("pt");
   const cta = isPt ? "Completar Meus Exercícios →" : "Complete My Exercises →";
   const itemsHtml = missingTitles.map((t) => `<p style="margin:0 0 4px;color:#8A4438;font-size:13px;">&bull;&nbsp; ${escapeHtml(t)}</p>`).join("");
-  const content = `
-    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
+  const body = customTemplate
+    ? `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 24px;">${escapeHtml(renderTemplate(customTemplate, { items: missingTitles.join(", ") }))}</p>`
+    : `
     <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 12px;">${isPt ? "Ontem ficou sem marcar:" : "Yesterday these weren't marked:"}</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
       <tr><td style="background-color:#FBEEEC;border-left:3px solid #A85A4B;border-radius:8px;padding:14px 16px;">${itemsHtml}</td></tr>
@@ -162,7 +173,10 @@ export async function buildYesterdayFollowupEmail(
       ${isPt
         ? "Se você já fez e só esqueceu de marcar, entra no portal e confirma — isso é importante pro seu acompanhamento. Se algo realmente não deu pra fazer, nos conta o motivo em Mensagens — estamos aqui pra ajudar."
         : "If you already did them and just forgot to check them off, log in and mark them — it matters for tracking your progress. If something genuinely wasn't possible, let us know why in Messages — we're here to help."}
-    </p>
+    </p>`;
+  const content = `
+    <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 16px;">${isPt ? "Olá" : "Hi"} ${escapeHtml(firstName)},</p>
+    ${body}
     <table role="presentation" cellpadding="0" cellspacing="0"><tr><td>
       <a href="${BASE_URL}/dashboard/treatment" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4F7361;color:#ffffff;padding:14px 36px;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px;">${cta}</a>
     </td></tr></table>

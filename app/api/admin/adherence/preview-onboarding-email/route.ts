@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { getOnboardingPending, buildOnboardingReminderEmail } from "@/lib/onboarding-reminder";
+import { getReminderTemplates } from "@/lib/reminder-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ export async function GET(req: NextRequest) {
 
   const pending = await getOnboardingPending(patientId);
   const effectiveLocale = locale ? (locale === "pt" ? "pt-BR" : "en-GB") : (patient.preferredLocale || "en-GB");
-  const html = await buildOnboardingReminderEmail(patient.firstName || "", pending, effectiveLocale, patient.clinicId);
+  const templates = await getReminderTemplates(patient.clinicId);
+  const custom = effectiveLocale === "pt-BR" ? templates.onboarding?.pt : templates.onboarding?.en;
+  const html = await buildOnboardingReminderEmail(patient.firstName || "", pending, effectiveLocale, patient.clinicId, custom);
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }

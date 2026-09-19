@@ -359,6 +359,13 @@ model Clinic {
   // behaviour: only ALWAYS_VISIBLE_MODULES).
   defaultPatientModuleOverrides Json?
 
+  // Admin-edited overrides for the reminder/onboarding/weekly-closing copy
+  // (act.62, T-5) — see lib/reminder-templates.ts for the shape
+  // ({today,yesterday,onboarding,weeklyClosing} x {en,pt}) and the token
+  // each one supports. Same fallback-to-hardcoded-default precedent as
+  // consentTextsJson/consentTextsJsonPt (act.51, Terms & Conditions).
+  reminderTemplatesJson Json?
+
   // Clinic by default; a personal-trainer studio gets its own vocabulary and modules.
   type TenantType @default(CLINIC)
 

@@ -13,25 +13,11 @@ import { prisma } from "@/lib/db";
  * The same rules previously lived, slightly differently, in three routes.
  */
 
-export const DOCUMENT_ALLOWED_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/plain",
-  "text/csv",
-];
-
-export const DOCUMENT_MAX_BYTES = 25 * 1024 * 1024;
-
-export function validatePatientFile(file: File): string | null {
-  if (!file.type.startsWith("image/") && !DOCUMENT_ALLOWED_TYPES.includes(file.type)) {
-    return "Invalid file type. Allowed: images, PDF, Word, TXT, CSV";
-  }
-  if (file.size > DOCUMENT_MAX_BYTES) {
-    return "File too large (max 25MB)";
-  }
-  return null;
-}
+export {
+  DOCUMENT_ALLOWED_TYPES,
+  DOCUMENT_MAX_BYTES,
+  validatePatientFile,
+} from "@/lib/patient-documents-shared";
 
 export interface StorePatientDocumentInput {
   file: File;

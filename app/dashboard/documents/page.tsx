@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { validatePatientFile, DOCUMENT_MAX_BYTES } from "@/lib/patient-documents-shared";
 
 const DOC_TYPES = [
   { value: "MEDICAL_REFERRAL", labelEn: "Medical Referral", labelPt: "Encaminhamento Médico" },
@@ -64,6 +65,13 @@ export default function PatientDocumentsPage() {
   const [error, setError] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  // Quick capture (top-bar "Take Photo") uploads the single shot right
+  // away. Started from inside the upload form instead, a capture is just
+  // another selected file — added to the same batch as picked files, camera
+  // stays open so a multi-page document can be scanned page by page, and
+  // nothing sends until "Send" is pressed.
+  const [cameraForForm, setCameraForForm] = useState(false);
+  const [capturedCount, setCapturedCount] = useState(0);
   const [previewDoc, setPreviewDoc] = useState<any>(null);
 
   const [uploadTitle, setUploadTitle] = useState("");
@@ -93,12 +101,19 @@ export default function PatientDocumentsPage() {
 
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
+  // Each file is its own request — one being too large or the wrong type
+  // must not lose the others. A file only leaves `selectedFiles` once it has
+  // actually been saved, so a failed batch can be retried without
+  // re-sending (and duplicating) whatever already went through.
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
     setUploading(true);
     setError("");
-    try {
-      for (const file of selectedFiles) {
+    const failed: { name: string; message: string }[] = [];
+    const stillPending: File[] = [];
+
+    for (const file of selectedFiles) {
+      try {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("title", uploadTitle || file.name);
@@ -109,18 +124,35 @@ export default function PatientDocumentsPage() {
         if (uploadDate) formData.append("documentDate", uploadDate);
 
         const res = await fetch("/api/patient/documents", { method: "POST", body: formData });
-        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          failed.push({ name: file.name, message: d.error || (isPt ? "Falha ao enviar" : "Upload failed") });
+          stillPending.push(file);
+        }
+      } catch {
+        failed.push({ name: file.name, message: isPt ? "Erro de conexão" : "Connection error" });
+        stillPending.push(file);
       }
+    }
+
+    setUploading(false);
+    fetchDocs(); // whatever succeeded shows up right away, even if others failed
+
+    if (failed.length === 0) {
       resetForm();
-      fetchDocs();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setUploading(false);
+    } else {
+      setSelectedFiles(stillPending); // only the ones that didn't make it — retry won't duplicate the rest
+      setError(
+        isPt
+          ? `${failed.length} de ${selectedFiles.length} arquivo(s) não enviado(s): ${failed.map(f => `${f.name} (${f.message})`).join("; ")}`
+          : `${failed.length} of ${selectedFiles.length} file(s) not sent: ${failed.map(f => `${f.name} (${f.message})`).join("; ")}`
+      );
     }
   };
 
-  const startCamera = async () => {
+  const startCamera = async (forForm = false) => {
+    setCameraForForm(forForm);
+    setCapturedCount(0);
     setShowCamera(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -144,8 +176,20 @@ export default function PatientDocumentsPage() {
 
     canvas.toBlob(async (blob) => {
       if (!blob) return;
+      const file = new File([blob], `scan-${Date.now()}.jpg`, { type: "image/jpeg" });
+
+      // From inside the upload form: add this page to the batch and keep
+      // the camera open for the next one — nothing uploads until Send.
+      if (cameraForForm) {
+        const invalid = validatePatientFile(file);
+        if (invalid) { setError(invalid); return; }
+        setSelectedFiles((prev) => [...prev, file]);
+        setCapturedCount((n) => n + 1);
+        return;
+      }
+
+      // Quick capture (top bar): single shot, uploads immediately.
       stopCamera();
-      const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
       setUploading(true);
       try {
         const formData = new FormData();
@@ -183,6 +227,7 @@ export default function PatientDocumentsPage() {
     setUploadDoctor("");
     setUploadDate("");
     setSelectedFiles([]);
+    setCapturedCount(0);
   };
 
   const formatSize = (bytes: number) => {
@@ -213,7 +258,7 @@ export default function PatientDocumentsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={startCamera} className="flex-1 sm:flex-none">
+          <Button variant="outline" size="sm" onClick={() => startCamera()} className="flex-1 sm:flex-none">
             <Camera className="h-4 w-4 mr-1.5" /> {T("documents.takePhoto")}
           </Button>
           <Button size="sm" onClick={() => setShowUpload(true)} className="flex-1 sm:flex-none">
@@ -237,15 +282,26 @@ export default function PatientDocumentsPage() {
               <video ref={videoRef} autoPlay playsInline className="w-full max-h-[50vh] object-contain" />
               <canvas ref={canvasRef} className="hidden" />
             </div>
+            {cameraForForm && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                {capturedCount === 0
+                  ? (isPt ? "Posicione o documento e capture — pode tirar várias páginas antes de concluir." : "Position the document and capture — you can scan several pages before finishing.")
+                  : (isPt ? `${capturedCount} página(s) capturada(s). Continue ou toque em Concluir.` : `${capturedCount} page(s) captured. Keep going or tap Done.`)}
+              </p>
+            )}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-center gap-2 mt-3">
-              <select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="h-10 sm:h-9 rounded-md border border-input bg-background px-3 text-sm">
-                {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{isPt ? t.labelPt : t.labelEn}</option>)}
-              </select>
+              {!cameraForForm && (
+                <select value={uploadType} onChange={(e) => setUploadType(e.target.value)} className="h-10 sm:h-9 rounded-md border border-input bg-background px-3 text-sm">
+                  {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{isPt ? t.labelPt : t.labelEn}</option>)}
+                </select>
+              )}
               <div className="flex gap-2">
                 <Button onClick={capturePhoto} disabled={uploading} className="flex-1">
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Camera className="h-4 w-4 mr-1.5" /> {T("documents.capture")}</>}
                 </Button>
-                <Button variant="outline" onClick={stopCamera} className="flex-1">{T("common.cancel")}</Button>
+                <Button variant="outline" onClick={stopCamera} className="flex-1">
+                  {cameraForForm && capturedCount > 0 ? (isPt ? "Concluir" : "Done") : T("common.cancel")}
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -285,7 +341,40 @@ export default function PatientDocumentsPage() {
             </div>
             <div className="space-y-2">
               <Label>{isPt ? "Arquivos (fotos, PDF, Word…)" : "Files (photos, PDF, Word…)"}</Label>
-              <Input type="file" accept="image/*,.pdf,.doc,.docx,.txt,.csv" multiple onChange={(e) => e.target.files && setSelectedFiles(Array.from(e.target.files))} />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx,.txt,.csv"
+                  multiple
+                  className="flex-1"
+                  onChange={(e) => {
+                  if (!e.target.files) return;
+                  const picked = Array.from(e.target.files);
+                  // Caught here, before anything is sent — a big scanned PDF
+                  // over a weak connection otherwise uploads in full only to
+                  // be rejected afterwards, which is slow and confusing.
+                  const tooLarge = picked.filter((f) => validatePatientFile(f));
+                  const ok = picked.filter((f) => !validatePatientFile(f));
+                  setSelectedFiles((prev) => [...prev, ...ok]);
+                  if (tooLarge.length > 0) {
+                    setError(
+                      isPt
+                        ? `${tooLarge.length} arquivo(s) não aceito(s) (máx. 25MB ou tipo não suportado): ${tooLarge.map(f => f.name).join(", ")}`
+                        : `${tooLarge.length} file(s) not accepted (max 25MB or unsupported type): ${tooLarge.map(f => f.name).join(", ")}`
+                    );
+                  }
+                  e.target.value = ""; // lets picking the exact same file again re-trigger onChange
+                  }}
+                />
+                <Button type="button" variant="outline" onClick={() => startCamera(true)} className="sm:w-auto">
+                  <Camera className="h-4 w-4 mr-1.5" /> {isPt ? "Tirar Foto / Escanear" : "Take Photo / Scan"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {isPt
+                  ? `Máx. ${DOCUMENT_MAX_BYTES / 1024 / 1024}MB por arquivo. Se o PDF for muito grande (ex.: digitalização em alta resolução), use "Tirar Foto / Escanear" — dá pra capturar várias páginas antes de enviar.`
+                  : `Max ${DOCUMENT_MAX_BYTES / 1024 / 1024}MB per file. If a PDF is too large (e.g. a high-resolution scan), use "Take Photo / Scan" — you can capture several pages before sending.`}
+              </p>
               {selectedFiles.length > 0 && (
                 <p className="text-xs text-muted-foreground">{selectedFiles.length} {isPt ? "arquivo(s)" : "file(s)"}: {selectedFiles.map(f => f.name).join(", ")}</p>
               )}

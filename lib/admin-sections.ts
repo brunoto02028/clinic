@@ -180,8 +180,18 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         href: "/admin/notifications",
         matchRoutes: ["/admin/notifications"],
       },
+      {
+        // Admin-editable copy for the automated reminders (activity 62, T-5) —
+        // listed here so the nav highlights correctly instead of falling
+        // back to whatever tab was active before navigating here.
+        key: "reminder-templates",
+        label: "Reminder Templates",
+        labelPt: "Textos de Lembretes",
+        href: "/admin/reminder-templates",
+        matchRoutes: ["/admin/reminder-templates"],
+      },
     ],
-    matchRoutes: ["/admin/notifications"],
+    matchRoutes: ["/admin/notifications", "/admin/reminder-templates"],
   },
   {
     key: "clinical",

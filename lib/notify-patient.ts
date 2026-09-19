@@ -12,6 +12,7 @@ import { sendWhatsAppMessage, isWhatsAppConfigured, isWhatsAppConfiguredAsync } 
 import { sendTelegramMessage, isTelegramConfigured } from "@/lib/telegram";
 import { sendEmail } from "@/lib/email";
 import { outboundAllowed, logSunk } from "@/lib/outbound-guard";
+import { getReminderTemplates } from "@/lib/reminder-templates";
 
 interface NotifyPatientParams {
   patientId: string;
@@ -87,12 +88,15 @@ export async function notifyPatient({
     // place that needs to change for the override to reach all of them.
     const locale: string = forceLocale ? (forceLocale === "pt" ? "pt-BR" : "en-GB") : (u.preferredLocale || "en-GB");
     const isPt = locale === "pt-BR" || locale.startsWith("pt");
+    // Clinic's admin-edited copy (activity 62, T-5) — empty/missing per type
+    // falls back to the hardcoded builders exactly as before this existed.
+    const templates = await getReminderTemplates(u.clinicId);
     const msg = onboardingPending
-      ? (isPt ? buildOnboardingReminderText(onboardingPending).pt : buildOnboardingReminderText(onboardingPending).en)
+      ? (isPt ? buildOnboardingReminderText(onboardingPending, templates.onboarding).pt : buildOnboardingReminderText(onboardingPending, templates.onboarding).en)
       : yesterdayMissingTitles
-      ? (isPt ? buildYesterdayFollowupText(yesterdayMissingTitles).pt : buildYesterdayFollowupText(yesterdayMissingTitles).en)
+      ? (isPt ? buildYesterdayFollowupText(yesterdayMissingTitles, templates.yesterday).pt : buildYesterdayFollowupText(yesterdayMissingTitles, templates.yesterday).en)
       : useReminderTemplate
-      ? (isPt ? buildTodayReminderText(todayMissingTitles || []).pt : buildTodayReminderText(todayMissingTitles || []).en)
+      ? (isPt ? buildTodayReminderText(todayMissingTitles || [], templates.today).pt : buildTodayReminderText(todayMissingTitles || [], templates.today).en)
       : (isPt && plainMessagePt) ? plainMessagePt : plainMessage;
 
     // ─── WhatsApp ───
@@ -185,11 +189,11 @@ export async function notifyPatient({
         const { getAdminNotificationEmail } = await import("@/lib/admin-notify-email");
         const adminBcc = await getAdminNotificationEmail(u.clinicId);
         const html = onboardingPending
-          ? await buildOnboardingReminderEmail(firstName, onboardingPending, locale, u.clinicId)
+          ? await buildOnboardingReminderEmail(firstName, onboardingPending, locale, u.clinicId, isPt ? templates.onboarding?.pt : templates.onboarding?.en)
           : yesterdayMissingTitles
-          ? await buildYesterdayFollowupEmail(firstName, yesterdayMissingTitles, locale, u.clinicId)
+          ? await buildYesterdayFollowupEmail(firstName, yesterdayMissingTitles, locale, u.clinicId, isPt ? templates.yesterday?.pt : templates.yesterday?.en)
           : useReminderTemplate
-          ? await buildPatientReminderEmail(firstName, todayMissingTitles || [], locale, u.clinicId)
+          ? await buildPatientReminderEmail(firstName, todayMissingTitles || [], locale, u.clinicId, isPt ? templates.today?.pt : templates.today?.en)
           : await wrapInLayout(
               `<p style="color:#374151;font-size:15px;line-height:1.7;margin:0;">${isPt ? "Olá" : "Hi"} ${firstName},<br><br>${msg}</p>`,
               msg.slice(0, 100),
