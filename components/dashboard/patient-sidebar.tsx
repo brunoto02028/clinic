@@ -266,9 +266,14 @@ export default function PatientSidebar({
 
   return (
     <>
-      {/* Mobile toggle */}
+      {/* Mobile toggle — offsetForBanner pushes this below the impersonation
+       * banner (fixed, z-[9999], ~40px tall) the same way the drawer itself
+       * already does below; a hardcoded top-3 here sat underneath that
+       * banner while impersonating, hidden and unclickable, on the very
+       * screen (onboarding checklist) a patient/staff-on-their-behalf most
+       * needs the menu from. */}
       <button
-        className="fixed top-3 left-3 z-50 lg:hidden p-2 rounded-lg bg-white/90 backdrop-blur border border-black/10 shadow-sm"
+        className={`fixed left-3 z-50 lg:hidden p-2 rounded-lg bg-white/90 backdrop-blur border border-black/10 shadow-sm ${offsetForBanner ? "top-[52px]" : "top-3"}`}
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label={isPt ? "Abrir menu" : "Toggle menu"}
       >
@@ -285,7 +290,7 @@ export default function PatientSidebar({
        * looks like. It now opens the items the badge is counting, and stays out
        * of the way entirely while consent is the only thing she can act on. */}
       {!consentRequired && (
-        <div className="fixed top-3 right-3 z-50 lg:hidden">
+        <div className={`fixed right-3 z-50 lg:hidden ${offsetForBanner ? "top-[52px]" : "top-3"}`}>
           <button
             type="button"
             onClick={() => setNotifOpen((o) => !o)}

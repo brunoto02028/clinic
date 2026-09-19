@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { authOptions } from "@/lib/auth-options";
+import { prisma } from "@/lib/db";
 import DashboardLayout from "@/components/dashboard/dashboard-layout";
 import ImpersonationBanner from "@/components/impersonation-banner";
 import type { Metadata } from "next";
@@ -47,9 +48,32 @@ export default async function DashboardRootLayout({
     redirect("/admin");
   }
 
+  // Seeds the client-side UI language from the patient's own preferredLocale
+  // (staff-set, e.g. app/admin/patients/[id]/page.tsx's EN/PT toggle) the
+  // very first time they land here — lib/i18n.ts's getLocale() otherwise
+  // always starts at "en-GB" until someone manually taps the sidebar's
+  // EN/PT switch, which a patient who doesn't read English may never find.
+  // Only when impersonating: the impersonated PATIENT's locale, not the
+  // staff member's own account. Never overwrites an existing choice — this
+  // only fires once, before that localStorage key exists at all.
+  const localeOwnerId = isImpersonating
+    ? cookieStore.get("impersonate-patient-id")?.value
+    : (session.user as any).id;
+  const localeOwner = localeOwnerId
+    ? await prisma.user.findUnique({ where: { id: localeOwnerId }, select: { preferredLocale: true } })
+    : null;
+  const seedLocale = localeOwner?.preferredLocale === "pt-BR" ? "pt-BR" : null;
+
   return (
     <>
       {isImpersonating && <ImpersonationBanner patientName={impersonatedName} />}
+      {seedLocale && (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(!localStorage.getItem("clinic-locale")){localStorage.setItem("clinic-locale","${seedLocale}");}}catch(e){}`,
+          }}
+        />
+      )}
       <div className={isImpersonating ? "pt-10" : ""}>
         <Suspense fallback={null}>
           <DashboardLayout>{children}</DashboardLayout>
