@@ -35,6 +35,8 @@ const AUDIT_LABELS: Record<string, { type: ActivityEvent["type"]; title: string 
   SOAP_NOTE_CREATED: { type: "OTHER", title: "SOAP note added" },
   PROTOCOL_ASSIGNED: { type: "OTHER", title: "Treatment protocol assigned" },
   EXERCISE_PRESCRIBED: { type: "OTHER", title: "Exercise prescribed" },
+  WEEKLY_CLOSING_SENT_EN: { type: "OTHER", title: "Weekly closing sent (EN)" },
+  WEEKLY_CLOSING_SENT_PT: { type: "OTHER", title: "Weekly closing sent (PT)" },
 };
 
 // Unifies five existing per-domain logs into one timeline — see

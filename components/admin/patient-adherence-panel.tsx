@@ -37,6 +37,8 @@ function AdherenceSection({
   previewUrl,
   sendUrl,
   patientId,
+  sendBody,
+  onSent,
 }: {
   title: string;
   doneLabel: string;
@@ -45,6 +47,18 @@ function AdherenceSection({
   previewUrl: string;
   sendUrl: string;
   patientId: string;
+  /** Overrides the POST body sent to `sendUrl`. Defaults to `{ patientId }`
+   * (what Today/Yesterday/Onboarding's clinic-wide routes expect) — the
+   * weekly closing routes are patient-scoped in the URL and take `{ locale }`
+   * instead (activity 52). */
+  sendBody?: Record<string, any>;
+  /** Called with the new timestamp right after a successful send. Today/
+   * Yesterday/Onboarding don't need it (their `status.allDone` reflects
+   * patient compliance, not whether a reminder went out, so it never
+   * changes on send) — Weekly closing's `allDone` IS "did I send it",
+   * so its parent needs telling or the section keeps showing "Not sent"
+   * next to a button that already says "Sent" until the next full reload. */
+  onSent?: (sentAt: string) => void;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [sending, setSending] = useState(false);
@@ -58,11 +72,15 @@ function AdherenceSection({
       const res = await fetch(sendUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId }),
+        body: JSON.stringify(sendBody || { patientId }),
       });
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
-        if (data.sent !== false) setSentAt(new Date().toISOString());
+        if (data.sent !== false) {
+          const now = new Date().toISOString();
+          setSentAt(now);
+          onSent?.(now);
+        }
       }
     } finally {
       setSending(false);
@@ -125,6 +143,8 @@ function AdherenceSection({
   );
 }
 
+type WeeklyClosingStatus = { en: { sentAt: string | null }; pt: { sentAt: string | null } };
+
 type OnboardingPending = {
   profileIncomplete: boolean;
   screeningMissing: boolean;
@@ -146,14 +166,20 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
   const [data, setData] = useState<AdherenceToday | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingPending | null>(null);
   const { isPersonal } = useVocab();
+  const [weeklyClosing, setWeeklyClosing] = useState<WeeklyClosingStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch(`/api/admin/patients/${patientId}/adherence-today`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/admin/patients/${patientId}/onboarding-pending`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/admin/patients/${patientId}/weekly-closing`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([adherence, onboardingData]) => { setData(adherence); setOnboarding(onboardingData); })
+      .then(([adherence, onboardingData, weeklyClosingData]) => {
+        setData(adherence);
+        setOnboarding(onboardingData);
+        setWeeklyClosing(weeklyClosingData);
+      })
       .finally(() => setLoading(false));
   }, [patientId]);
 
@@ -194,6 +220,32 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
             sendUrl="/api/admin/adherence/send-onboarding-reminder"
             patientId={patientId}
           />
+        )}
+        {data.hasPlan && weeklyClosing && (
+          <>
+            <AdherenceSection
+              title="Weekly closing (EN)"
+              doneLabel={weeklyClosing.en.sentAt ? `Sent this week (${formatSentAt(weeklyClosing.en.sentAt)}).` : "Sent this week."}
+              missingLabel={() => "Not sent this week"}
+              status={{ hasPlan: true, allDone: !!weeklyClosing.en.sentAt, missing: [], reminderSentAt: weeklyClosing.en.sentAt }}
+              previewUrl={`/api/admin/adherence/preview-weekly-closing-email?patientId=${patientId}&locale=en`}
+              sendUrl={`/api/admin/patients/${patientId}/weekly-closing`}
+              sendBody={{ locale: "en" }}
+              onSent={(sentAt) => setWeeklyClosing((prev) => (prev ? { ...prev, en: { sentAt } } : prev))}
+              patientId={patientId}
+            />
+            <AdherenceSection
+              title="Weekly closing (PT) — optional"
+              doneLabel={weeklyClosing.pt.sentAt ? `Sent this week (${formatSentAt(weeklyClosing.pt.sentAt)}).` : "Sent this week."}
+              missingLabel={() => "Not sent this week"}
+              status={{ hasPlan: true, allDone: !!weeklyClosing.pt.sentAt, missing: [], reminderSentAt: weeklyClosing.pt.sentAt }}
+              previewUrl={`/api/admin/adherence/preview-weekly-closing-email?patientId=${patientId}&locale=pt`}
+              sendUrl={`/api/admin/patients/${patientId}/weekly-closing`}
+              sendBody={{ locale: "pt" }}
+              onSent={(sentAt) => setWeeklyClosing((prev) => (prev ? { ...prev, pt: { sentAt } } : prev))}
+              patientId={patientId}
+            />
+          </>
         )}
       </CardContent>
     </Card>
