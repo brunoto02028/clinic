@@ -222,7 +222,15 @@ function assessRedFlags(screening: MedicalScreeningForm): {
     flags.push({
       flag: 'Cardiovascular Symptoms',
       evidence: 'Patient reported chest pain, shortness of breath, or irregular heartbeat',
-      urgencyLevel: 'high',
+      // 'urgent', not 'high' — this is the app's own version of the
+      // "dor torácica, falta de ar ou sinais sugestivos de causa não
+      // musculoesquelética" hard-stop category from the clinical-evidence-
+      // report skill's red-flags.md. Anything below 'urgent' only appends a
+      // footnote and lets the pipeline keep generating treatment
+      // suggestions (see the urgent_red_flags gate in evidence-report.ts) —
+      // a possible cardiac symptom must never be treated as a mere
+      // precaution alongside "keep going".
+      urgencyLevel: 'urgent',
       suggestedAction: 'Cardiac assessment required before exercise therapy',
     });
   }

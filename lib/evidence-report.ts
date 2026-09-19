@@ -213,11 +213,16 @@ summarising the evidence for the physiotherapist. Do not diagnose or prescribe.`
       model: "claude",
     });
 
+    // A parse failure here previously left `parsed = {}` with no error
+    // recorded — the report ended up DRAFT with `error: null`, indistinguishable
+    // from a real (if empty) success. A clinician reviewing the list would see
+    // "generated" with nothing to say why there's no narrative/suggestions.
     let parsed: any = {};
+    let parseError: string | null = null;
     try {
       parsed = parseAIJson(raw);
-    } catch {
-      parsed = {};
+    } catch (e: any) {
+      parseError = `AI response was not valid JSON: ${e?.message || e}`;
     }
 
     await prisma.clinicalEvidenceReport.update({
@@ -233,7 +238,7 @@ summarising the evidence for the physiotherapist. Do not diagnose or prescribe.`
         gaps: parsed.gaps ?? undefined,
         narrativeEn: parsed.narrative ?? null,
         aiModel: "claude",
-        error: null,
+        error: parseError,
       },
     });
   } catch (e: any) {
