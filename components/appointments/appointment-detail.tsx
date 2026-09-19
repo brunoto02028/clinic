@@ -366,9 +366,9 @@ export default function AppointmentDetail({ appointmentId }: AppointmentDetailPr
                 <Shield className="h-5 w-5 text-red-500" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-red-300">{isPt ? "Triagem Médica Necessária" : "Medical Screening Required"}</h3>
+                <h3 className="font-semibold text-red-300">{isPt ? "Triagem de Avaliação Necessária" : "Assessment Screening Required"}</h3>
                 <p className="text-sm text-red-400/80 mt-1">
-                  {isPt ? "Sua triagem médica deve ser concluída pelo menos 24 horas antes da consulta. Sem ela, sua consulta pode precisar ser reagendada." : "Your medical screening must be completed at least 24 hours before your appointment. Without it, your appointment may need to be rescheduled."}
+                  {isPt ? "Sua triagem de avaliação deve ser concluída pelo menos 24 horas antes da consulta. Sem ela, sua consulta pode precisar ser reagendada." : "Your assessment screening must be completed at least 24 hours before your appointment. Without it, your appointment may need to be rescheduled."}
                 </p>
                 <Link href="/dashboard/screening">
                   <Button size="sm" className="mt-3 gap-2">
