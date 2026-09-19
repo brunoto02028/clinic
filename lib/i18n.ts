@@ -843,7 +843,7 @@ const translations: Record<string, Record<Locale, string>> = {
   "documents.title": { "en-GB": "My Documents", "pt-BR": "Meus Documentos" },
   "documents.subtitle": { "en-GB": "Upload referral letters, reports, prescriptions, or take photos.", "pt-BR": "Envie cartas de encaminhamento, laudos, receitas ou tire fotos." },
   "documents.takePhoto": { "en-GB": "Take Photo", "pt-BR": "Tirar Foto" },
-  "documents.upload": { "en-GB": "Upload", "pt-BR": "Enviar" },
+  "documents.upload": { "en-GB": "Upload Document", "pt-BR": "Fazer Upload" },
   "documents.noDocuments": { "en-GB": "No documents yet", "pt-BR": "Nenhum documento ainda" },
   "documents.noDocumentsDesc": { "en-GB": "Upload documents or take photos of referral letters and prescriptions.", "pt-BR": "Envie documentos ou tire fotos de cartas de encaminhamento e receitas." },
   "documents.capture": { "en-GB": "Capture", "pt-BR": "Capturar" },
