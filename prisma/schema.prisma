@@ -1167,6 +1167,14 @@ model SOAPNote {
   therapistId   String
   therapist     User         @relation("TherapistNotes", fields: [therapistId], references: [id], onDelete: Cascade)
 
+  // The evidence report open/used while writing this note (activity 066
+  // T-4) — lets the note link back to the evidence it was informed by, one
+  // click. Set once at creation (whatever report was latest then); never
+  // reassigned automatically afterwards, so it stays a record of what the
+  // therapist actually had in front of them, not "whatever is latest now".
+  evidenceReportId String?
+  evidenceReport   ClinicalEvidenceReport? @relation(fields: [evidenceReportId], references: [id], onDelete: SetNull)
+
   // SOAP Format
   subjective String @db.Text // Patient's description
   objective  String @db.Text // Clinical findings
@@ -1185,6 +1193,7 @@ model SOAPNote {
   @@index([patientId])
   @@index([therapistId])
   @@index([appointmentId])
+  @@index([evidenceReportId])
 }
 
 // ============================================
@@ -3796,6 +3805,23 @@ model ClinicalEvidenceReport {
   completionTokens Int?
   error            String? @db.Text
   attempts         Int     @default(0)
+
+  // Set when a new clinically-relevant PatientDocument arrives while this
+  // report isn't approved yet (activity 066 T-1) — the patient often
+  // remembers/uploads exams days after the triage, in dribs and drabs.
+  // Deliberately NOT flipped straight to `status: GENERATING`: that would
+  // make the tab look like it lost its content to anyone reading it right
+  // when a document lands. The background job (T-2) picks this flag up on
+  // its own cadence and only then switches the status.
+  needsReprocessing Boolean @default(false)
+
+  // Free-text addition from the therapist (activity 066 T-4) — "completar o
+  // relatório junto com o sistema" during/after a consultation. Always
+  // rendered alongside the AI's own content, never merged into or replacing
+  // narrativeEn/narrativePt — the two must stay visually distinguishable.
+  clinicianNotes String? @db.Text
+
+  soapNotes SOAPNote[]
 
   approvedAt DateTime?
 

@@ -127,11 +127,16 @@ export function dedupeById(lists: LiteratureResult[][]): LiteratureResult[] {
 }
 
 /**
- * Build 2–4 English search queries covering different angles of a case.
- * Only clinical terms — never PII. `condition` is the clinical problem (from the
- * triage chief complaint / body region), `region` an optional anatomical hint.
+ * Build English search queries covering different angles of a case. Only
+ * clinical terms — never PII. `condition` is the clinical problem (from the
+ * triage chief complaint / body region), `region` an optional anatomical
+ * hint, `documentFindings` optional short clinical findings pulled from the
+ * patient's exams/imaging (activity 066 T-1) — each becomes its own search
+ * angle, so a real finding (e.g. "subchondral insufficiency fracture") ends
+ * up backing a real literature search instead of sitting in the report as
+ * unsupported text.
  */
-export function buildQueries(input: { condition: string; region?: string | null }): string[] {
+export function buildQueries(input: { condition: string; region?: string | null; documentFindings?: string[] }): string[] {
   const c = input.condition.trim().replace(/\s+/g, " ");
   if (!c) return [];
   const queries = [
@@ -142,6 +147,23 @@ export function buildQueries(input: { condition: string; region?: string | null 
   if (input.region && !c.toLowerCase().includes(input.region.toLowerCase())) {
     queries.push(`${input.region} ${c} treatment`);
   }
-  // de-dup identical strings, cap at 4
-  return [...new Set(queries)].slice(0, 4);
+  for (const finding of (input.documentFindings || []).slice(0, 2)) {
+    // A document finding is a 1-2 sentence AI summary, not a short search
+    // phrase — a flat character cut landed mid-word (QA finding, activity
+    // 066 T-1: "...associated bone m treatment"), hurting the Europe PMC
+    // match. Use just the first sentence, then fall back to a word-boundary
+    // cut if that alone is still long.
+    const firstSentence = finding.trim().replace(/\s+/g, " ").split(/(?<=[.!?])\s/)[0];
+    let f = firstSentence.replace(/[.!?]+$/, "");
+    if (f.length > 100) {
+      const cut = f.slice(0, 100);
+      const lastSpace = cut.lastIndexOf(" ");
+      f = lastSpace > 40 ? cut.slice(0, lastSpace) : cut;
+    }
+    if (f) queries.push(`${f} treatment`);
+  }
+  // de-dup identical strings, cap at 6 (up from 4 — document findings add
+  // real search angles, not noise, but this still bounds the Europe PMC
+  // calls per report)
+  return [...new Set(queries)].slice(0, 6);
 }

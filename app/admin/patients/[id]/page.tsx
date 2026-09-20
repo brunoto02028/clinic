@@ -172,6 +172,12 @@ export default function PatientProfilePage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteForm, setNoteForm] = useState<any>({});
   const [activeTab, setActiveTab] = useState("resumo");
+  // Which specific evidence-report version a SOAP note's "Evidence" button
+  // should land on (activity 066 T-4, code review finding) — without this,
+  // the Evidence tab always shows the latest report, silently different
+  // from the one a note actually referenced if a newer version was created
+  // since (e.g. a document arriving reopened the report, Decisão 0).
+  const [targetEvidenceReportId, setTargetEvidenceReportId] = useState<string | null>(null);
   // Safety net: a personal tenant must never land on a clinical tab (its trigger
   // and every entry point are hidden, but a stale/forced value would otherwise
   // mount clinical content). Force back to the summary if it ever happens.
@@ -1721,6 +1727,11 @@ export default function PatientProfilePage() {
                 <span>{new Date(n.createdAt).toLocaleString()}</span>
                 <div className="flex items-center gap-1">
                   {n.therapist && <span>by {n.therapist.firstName} {n.therapist.lastName}</span>}
+                  {n.evidenceReportId && (
+                    <Button variant="ghost" size="sm" className="h-5 px-1 text-[9px] gap-0.5" title="View the evidence report used for this note" onClick={() => { setTargetEvidenceReportId(n.evidenceReportId); setActiveTab("evidencia"); }}>
+                      <Link2 className="h-2.5 w-2.5" /> Evidence
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setNoteForm({ subjective: n.subjective || "", objective: n.objective || "", assessment: n.assessment || "", plan: n.plan || "" }); setEditingNoteId(n.id); }}><Pencil className="h-2.5 w-2.5" /></Button>
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-red-400 hover:text-red-500" onClick={() => deleteNote(n.id)}><Trash2 className="h-2.5 w-2.5" /></Button>
                 </div>
@@ -2176,7 +2187,7 @@ export default function PatientProfilePage() {
 
         {/* ── Tab: Evidência ── */}
         <TabsContent value="evidencia" className="mt-4">
-          <EvidenceReportTab patientId={patientId} />
+          <EvidenceReportTab patientId={patientId} targetReportId={targetEvidenceReportId} />
         </TabsContent>
 
         {/* ── Tab: Atividade ── */}

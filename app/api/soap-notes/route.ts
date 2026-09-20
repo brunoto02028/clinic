@@ -135,12 +135,27 @@ export async function POST(request: NextRequest) {
     // Resolve clinicId from the patient record so the note is tenant-scoped
     const patientRec = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
 
+    // Links this note to whatever evidence report was latest at creation
+    // time (activity 066 T-4) — a one-click way back to what the therapist
+    // had in front of them. This is a second, independently-mounted SOAP
+    // note creation path (used by /admin/clinical-notes and
+    // /dashboard/clinical-notes) alongside the one in
+    // app/api/admin/patients/[id]/route.ts's `add_clinical_note` — code
+    // review found this one had been missed, leaving notes created here
+    // with no "Evidence" link at all.
+    const latestReport = await prisma.clinicalEvidenceReport.findFirst({
+      where: { patientId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+
     const soapNote = await prisma.sOAPNote.create({
       data: {
         appointmentId: appointmentId || null,
         clinicId: patientRec?.clinicId || null,
         patientId,
         therapistId,
+        evidenceReportId: latestReport?.id ?? null,
         subjective,
         objective,
         assessment,

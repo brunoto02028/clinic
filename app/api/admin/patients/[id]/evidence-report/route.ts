@@ -44,8 +44,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ report });
 }
 
-// PATCH — therapist review actions (status transitions). No SENT_TO_PATIENT here:
-// this report is clinician-internal in this phase.
+// PATCH — therapist review actions (status transitions) and/or the
+// clinician's own free-text addition to a report (`clinicianNotes`,
+// activity 066 T-4 — "completar o relatório junto com o sistema"). No
+// SENT_TO_PATIENT here: this report is clinician-internal in this phase.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const tenantAccess = await staffPatientAccess(req, params.id);
   if (tenantAccess.response) return tenantAccess.response;
@@ -57,12 +59,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const body = await req.json();
-  const { reportId, status } = body as { reportId?: string; status?: string };
+  const { reportId, status, clinicianNotes } = body as { reportId?: string; status?: string; clinicianNotes?: string };
   if (!reportId) return NextResponse.json({ error: "reportId is required" }, { status: 400 });
+  if (status === undefined && clinicianNotes === undefined) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
 
   const allowed = ["DRAFT", "UNDER_REVIEW", "APPROVED", "ARCHIVED"];
-  if (!status || !allowed.includes(status)) {
+  if (status !== undefined && !allowed.includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+  if (clinicianNotes !== undefined && typeof clinicianNotes !== "string") {
+    return NextResponse.json({ error: "Invalid clinicianNotes" }, { status: 400 });
   }
 
   const report = await prisma.clinicalEvidenceReport.findFirst({
@@ -71,16 +79,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   });
   if (!report) return NextResponse.json({ error: "Report not found" }, { status: 404 });
 
-  const data: any = { status };
-  if (status === "APPROVED") {
-    data.approvedAt = new Date();
-    data.reviewedById = (session.user as any).id ?? null;
+  const data: any = {};
+  if (status !== undefined) {
+    data.status = status;
+    if (status === "APPROVED") {
+      data.approvedAt = new Date();
+      data.reviewedById = (session.user as any).id ?? null;
+    }
+    // error is intentionally left as-is here — it's not cleared on approval.
+    // Silently wiping it would erase the only visible record that a report
+    // was approved despite a real generation failure. The UI is responsible
+    // for not letting that happen (see evidence-report-tab.tsx), not this
+    // route papering over it after the fact.
   }
-  // error is intentionally left as-is here — it's not cleared on approval.
-  // Silently wiping it would erase the only visible record that a report
-  // was approved despite a real generation failure. The UI is responsible
-  // for not letting that happen (see evidence-report-tab.tsx), not this
-  // route papering over it after the fact.
+  // Never touches narrativeEn/narrativePt/suggestions/gaps — this is a
+  // separate field, always rendered alongside the AI's own content, never
+  // merged into or replacing it (plan.md Decisão 7).
+  if (clinicianNotes !== undefined) data.clinicianNotes = clinicianNotes;
 
   if (!(await recordOfPatient("clinicalEvidenceReport", reportId, params.id))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

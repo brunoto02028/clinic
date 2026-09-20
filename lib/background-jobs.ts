@@ -16,6 +16,7 @@ import { dispatchCampaignBatch } from './email-campaign-dispatch';
 import { publishDueArticles } from './article-publish';
 import { generateEvidenceReport } from './evidence-report';
 import { processAmbientTranscriptions } from './ambient-recording';
+import { reconcileMissingEvidenceReports } from './evidence-report';
 
 const TOKEN_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
 const POST_PUBLISH_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes
@@ -105,6 +106,35 @@ async function publishDueArticlesJob() {
 // exceeds a single generation, so a row is done (DRAFT) before the next tick.
 async function generatePendingEvidenceReports() {
   try {
+    // Auto-heal for the two ways a report can go missing entirely (activity
+    // 066 T-2): a triage submit whose enqueue silently failed, or none of
+    // that patient's reports ever getting past a status the reconciler
+    // itself would recreate for. Capped inside the function — a large
+    // backlog reconciles a few at a time, never blows one cycle's budget.
+    await reconcileMissingEvidenceReports();
+
+    // Promote reports flagged for reprocessing (activity 066 T-1) — a new
+    // clinically relevant document arrived while this report wasn't
+    // approved yet. `status: { not: 'GENERATING' }` avoids clobbering
+    // `attempts` on a row that's already mid-run this very tick.
+    // Capped at 10 per cycle — the actual AI spend was already bounded by
+    // the `take: 3` below regardless, but promoting an unbounded burst to
+    // `GENERATING` in one shot made every one of those patients' Evidence
+    // tabs start polling and show "generating" immediately, even though
+    // most hadn't actually started (could sit "queued" for hours on a big
+    // burst) — code review finding, activity 066 T-2.
+    const toPromote = await prisma.clinicalEvidenceReport.findMany({
+      where: { needsReprocessing: true, status: { not: 'GENERATING' } },
+      select: { id: true },
+      take: 10,
+    });
+    if (toPromote.length > 0) {
+      await prisma.clinicalEvidenceReport.updateMany({
+        where: { id: { in: toPromote.map((r) => r.id) } },
+        data: { needsReprocessing: false, status: 'GENERATING', attempts: 0 },
+      });
+    }
+
     // Give up on rows that crashed mid-run repeatedly, so they don't sit in
     // GENERATING forever (which would make the admin tab poll indefinitely).
     await prisma.clinicalEvidenceReport.updateMany({

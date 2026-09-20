@@ -14,6 +14,14 @@ import { callAIClinical, parseAIJson } from "@/lib/ai-provider";
 import { analyzeMedicalScreening } from "@/lib/clinical-analysis";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 import { searchLiterature, buildQueries, dedupeById, type LiteratureResult } from "@/lib/europe-pmc";
+import { extractText } from "@/lib/docling";
+
+// Document types worth feeding into the evidence report (activity 066 T-1) —
+// insurance paperwork and consent forms are never clinically relevant, no
+// matter how "OTHER" some outlier document might be classified.
+const CLINICALLY_RELEVANT_DOCUMENT_TYPES = [
+  "MEDICAL_REFERRAL", "MEDICAL_REPORT", "PRESCRIPTION", "IMAGING", "PREVIOUS_TREATMENT",
+] as const;
 
 const SYSTEM_PROMPT = `You are a clinical evidence librarian for a UK physiotherapy clinic.
 You do NOT diagnose, prescribe, or decide care — you organise published evidence to speed up
@@ -51,6 +59,160 @@ export async function relinkBrokenEvidenceReport(patientId: string, screeningId:
   }
 }
 
+/**
+ * Called whenever a clinically-relevant PatientDocument is stored (any
+ * upload path — patient portal, admin upload, AI Import), so the evidence
+ * report stays current as the patient trickles in exams over days instead
+ * of everything at once at triage time (activity 066 T-1, Decisão 0).
+ *
+ * No report yet → create one (same as the triage-submit enqueue). Latest
+ * report already reviewed (`APPROVED`/`SENT_TO_PATIENT`/`ARCHIVED`) → a new
+ * document never mutates something the clinician already signed off on; it
+ * opens the next version instead. Anything still in flight
+ * (`GENERATING`/`DRAFT`/`UNDER_REVIEW`) → just flag it — the background job
+ * (T-2) reprocesses it, and several documents landing in a burst collapse
+ * into a single reprocessing pass instead of one regeneration each.
+ *
+ * Never throws — a document upload must never fail because this side effect
+ * did.
+ */
+export async function notifyNewClinicalDocument(patientId: string, documentType: string): Promise<void> {
+  if (!(CLINICALLY_RELEVANT_DOCUMENT_TYPES as readonly string[]).includes(documentType)) return;
+
+  try {
+    const patient = await prisma.user.findUnique({ where: { id: patientId }, select: { clinicId: true } });
+    if (!patient?.clinicId) return;
+
+    const latest = await prisma.clinicalEvidenceReport.findFirst({
+      where: { patientId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, status: true, screeningId: true },
+    });
+
+    if (!latest || ["APPROVED", "SENT_TO_PATIENT", "ARCHIVED"].includes(latest.status)) {
+      const screeningId = latest?.screeningId ?? (
+        await prisma.medicalScreening.findFirst({
+          where: { userId: patientId, isSubmitted: true, consentGiven: true },
+          select: { id: true },
+        })
+      )?.id ?? null;
+      await prisma.clinicalEvidenceReport.create({
+        data: { clinicId: patient.clinicId, patientId, screeningId, status: "GENERATING" },
+      });
+      return;
+    }
+
+    await prisma.clinicalEvidenceReport.update({
+      where: { id: latest.id },
+      data: { needsReprocessing: true },
+    });
+  } catch (e) {
+    console.error("[evidence-report] notifyNewClinicalDocument failed (non-blocking):", e);
+  }
+}
+
+/**
+ * Turns a patient's clinically-relevant documents into short findings the
+ * report can cite and search literature for — extraction/summarisation is
+ * cached on the document itself (`extractedText`/`aiSummary`), so
+ * regenerating a report repeatedly never re-runs Docling or the summary
+ * call for a document already processed. A single document's failure
+ * (Docling down, corrupted file) is swallowed and just excludes that one
+ * document — never sinks the whole report (same resilience pattern as the
+ * literature search below).
+ */
+async function loadDocumentFindings(clinicId: string, patientId: string): Promise<string[]> {
+  const documents = await prisma.patientDocument.findMany({
+    where: { clinicId, patientId, documentType: { in: CLINICALLY_RELEVANT_DOCUMENT_TYPES as any } },
+    select: { id: true, fileData: true, fileType: true, fileName: true, extractedText: true, aiSummary: true, description: true },
+  });
+
+  const findings: string[] = [];
+  for (const doc of documents) {
+    try {
+      let summary = doc.aiSummary;
+      // `summary == null` (never computed), not `!summary` — the AI legitimately
+      // returning "" (its prompt explicitly allows "omit anything that is not
+      // a clinical finding") is itself a cached result. Treating "" as a cache
+      // miss re-ran the summarisation call on every single future generation
+      // for that document, forever (code review finding, activity 066 T-1).
+      if (summary == null) {
+        let text = doc.extractedText || doc.description || null;
+        if (!text && doc.fileData) {
+          const buffer = Buffer.from(doc.fileData, "base64");
+          const blob = new Blob([buffer], { type: doc.fileType || "application/octet-stream" });
+          const extracted = await extractText(blob, doc.fileName);
+          text = extracted?.text || extracted?.content || null;
+          if (text) {
+            await prisma.patientDocument.update({ where: { id: doc.id }, data: { extractedText: text } });
+          }
+        }
+        if (text) {
+          summary = (await callAIClinical(
+            `Summarise the key clinical finding(s) from this document in 1-2 concise sentences, for a physiotherapy evidence report. Focus on diagnoses, pathology, and anything relevant to musculoskeletal rehabilitation. Omit anything that is not a clinical finding.\n\n${text.slice(0, 8000)}`,
+            { temperature: 0, maxTokens: 300, model: "claude" },
+          )).trim();
+          await prisma.patientDocument.update({ where: { id: doc.id }, data: { aiSummary: summary } });
+        }
+      }
+      if (summary) findings.push(summary);
+    } catch (e) {
+      console.error(`[evidence-report] Failed to process document ${doc.id} for findings (non-blocking):`, e);
+    }
+  }
+  return findings;
+}
+
+/**
+ * Auto-heal for the enqueue-on-submit fire-and-forget in
+ * app/api/medical-screening/route.ts, which can fail silently (activity 066
+ * T-2 — 3 real patients were found with a submitted triage and no report at
+ * all, with no record of why). Finds submitted, consented screenings whose
+ * patient has never had a `ClinicalEvidenceReport` and creates one. Capped
+ * per call so a large backlog (a bug, a bulk import) can't spend a whole
+ * job cycle's AI budget reconciling instead of processing the normal queue.
+ *
+ * The orphan filter runs in the DB (`evidenceReportsAsPatient: { none: {} }`),
+ * not by loading a fixed page of screenings and filtering in memory — the
+ * earlier version capped at the first 500 submitted screenings system-wide
+ * before filtering, so past that count an orphan could go permanently
+ * unseen, and one high-volume clinic could crowd out others in the same
+ * fixed window (code review finding, activity 066 T-2). Never throws — a
+ * transient DB error here must not abort the rest of the job cycle's real
+ * processing (same discipline as `notifyNewClinicalDocument`).
+ */
+export async function reconcileMissingEvidenceReports(): Promise<void> {
+  try {
+    const orphaned = await prisma.medicalScreening.findMany({
+      where: { isSubmitted: true, consentGiven: true, user: { evidenceReportsAsPatient: { none: {} } } },
+      select: { id: true, userId: true },
+      take: 10,
+    });
+    if (orphaned.length === 0) return;
+
+    // One batched lookup instead of one findUnique per orphan in the loop
+    // below (code review finding, activity 066 T-2).
+    const patients = await prisma.user.findMany({
+      where: { id: { in: orphaned.map((s) => s.userId) } },
+      select: { id: true, clinicId: true },
+    });
+    const clinicIdByPatient = new Map(patients.map((p) => [p.id, p.clinicId]));
+
+    for (const s of orphaned) {
+      const clinicId = clinicIdByPatient.get(s.userId);
+      if (!clinicId) continue;
+      await prisma.clinicalEvidenceReport
+        .create({ data: { clinicId, patientId: s.userId, screeningId: s.id, status: "GENERATING" } })
+        // Two ticks racing on the same orphaned screening is a rare, harmless
+        // duplicate at worst (same accepted class of race as the enqueue this
+        // is healing) — never let one failure stop the rest of the batch.
+        .catch((e) => console.error(`[evidence-report] Reconcile create failed for ${s.userId}:`, e));
+    }
+  } catch (e) {
+    console.error("[evidence-report] reconcileMissingEvidenceReports failed (non-blocking):", e);
+  }
+}
+
 function pick(sel: LiteratureResult[]) {
   const sr = sel.filter((r) => r.evidenceRank === 5).slice(0, 3);
   const rct = sel.filter((r) => r.evidenceRank === 4).slice(0, 3);
@@ -76,7 +238,17 @@ async function loadClinicCatalog(clinicId: string) {
 }
 
 /** Generate (or regenerate) the report identified by reportId. Never throws — on
- *  failure it records `error` and moves the row to DRAFT so it is visible/retryable. */
+ *  failure it records `error` and moves the row to DRAFT so it is visible/retryable.
+ *
+ *  Deliberately never writes `needsReprocessing` — only the claim step in
+ *  `generatePendingEvidenceReports` (background-jobs.ts) clears it, atomically
+ *  with the status flip to GENERATING, right before calling this. If this
+ *  function cleared it too (e.g. unconditionally to `false` on success), a
+ *  document arriving mid-run — after `loadDocumentFindings` already ran, so
+ *  not actually reflected in this run's output — would have its
+ *  `needsReprocessing: true` (correctly set by `notifyNewClinicalDocument`
+ *  while status was still GENERATING) silently wiped by this function's own
+ *  final write, losing the signal that another pass is still needed. */
 export async function generateEvidenceReport(reportId: string): Promise<void> {
   const report = await prisma.clinicalEvidenceReport.findUnique({
     where: { id: reportId },
@@ -119,11 +291,12 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
     const analysis = analyzeMedicalScreening(s);
     const flags = analysis.redFlagAssessment;
 
-    // 2. Case snapshot (triage + latest outcome measures)
+    // 2. Case snapshot (triage + latest outcome measures + document findings)
     const latestOm = await prisma.patientOutcomeMeasure.findFirst({
       where: { patientId: report.patientId },
       orderBy: { recordedAt: "desc" },
     });
+    const documentFindings = await loadDocumentFindings(report.clinicId, report.patientId);
     const caseSummary = {
       chiefComplaint: s.chiefComplaint || null,
       location: s.painLocation || null,
@@ -137,6 +310,7 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
       ageBand: ageBand(report.patient?.dateOfBirth ?? null),
       urgency: analysis.urgencyLevel,
       clinicalPattern: analysis.triageClassification.likelyDomain,
+      documentFindings,
     };
 
     // 3. Urgent red-flag gate — halt before any search/suggestion
@@ -159,9 +333,9 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
       return;
     }
 
-    // 4. Literature search (condition only — no PII)
+    // 4. Literature search (condition + document findings — no PII)
     const condition = (s.chiefComplaint || s.painLocation || "musculoskeletal pain").toString().slice(0, 120);
-    const queries = buildQueries({ condition, region: s.painLocation });
+    const queries = buildQueries({ condition, region: s.painLocation, documentFindings });
     const lists: LiteratureResult[][] = [];
     for (const q of queries) {
       try {

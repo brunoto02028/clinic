@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { storePatientDocument } from "@/lib/patient-documents";
+import { notifyNewClinicalDocument } from "@/lib/evidence-report";
 import { callAIClinical } from "@/lib/ai-provider";
 import { extractText } from "@/lib/docling";
 import { patientPseudonym } from "@/lib/pseudonymize";
@@ -236,6 +237,7 @@ Rules:
     if (parsed.documents && Array.isArray(parsed.documents)) {
       for (const doc of parsed.documents) {
         if (doc.content) {
+          const docType = doc.documentType || "OTHER";
           await (prisma as any).patientDocument.create({
             data: {
               clinicId: patient.clinicId,
@@ -245,12 +247,16 @@ Rules:
               fileUrl: "",
               fileType: "text/plain",
               title: doc.title || "Clinical History",
-              documentType: doc.documentType || "OTHER",
+              documentType: docType,
               source: "ADMIN_UPLOAD",
               aiSummary: doc.content,
             },
           });
           documentsCreated++;
+          // Same trigger as every other upload path — these entries carry
+          // the AI's own clinical classification (e.g. IMAGING), unlike the
+          // raw file saved above (always OTHER) — activity 066 T-1.
+          await notifyNewClinicalDocument(patientId, docType);
         }
       }
     }
@@ -272,6 +278,7 @@ Rules:
         },
       });
       documentsCreated++;
+      await notifyNewClinicalDocument(patientId, "PREVIOUS_TREATMENT");
     }
 
     return NextResponse.json({

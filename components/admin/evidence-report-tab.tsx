@@ -12,9 +12,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Loader2, AlertTriangle, CheckCircle2, RefreshCw, TrendingUp, FlaskConical,
-  Stethoscope, ExternalLink, Languages, ChevronDown, ChevronUp,
+  Stethoscope, ExternalLink, Languages, ChevronDown, ChevronUp, Pencil, Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Logo } from "@/components/ui/logo";
 
 type Lang = "en" | "pt";
@@ -36,6 +37,9 @@ const T = {
     disclaimer: "Evidence gathering to speed the physiotherapist's decision. Not a diagnosis or prescription; review before any patient contact.",
     translate: "Translate to PT", translating: "Translating…", error: "Generation error",
     history: "Earlier reports", noComplaint: "(no chief complaint recorded)",
+    clinicianNotes: "Therapist notes", clinicianNotesEmpty: "No notes added yet.",
+    clinicianNotesPlaceholder: "Add your own observations here — this is never overwritten by the AI.",
+    saveNotes: "Save notes", editNotes: "Edit",
   },
   pt: {
     myProgress: "Relatório de Evidência", subtitle: "Auto-gerado da triagem — para revisão do fisioterapeuta. Não é diagnóstico nem prescrição.",
@@ -53,6 +57,9 @@ const T = {
     disclaimer: "Levantamento de evidência para acelerar a decisão do fisioterapeuta. Não é diagnóstico nem prescrição; revise antes de qualquer contato com o paciente.",
     translate: "Traduzir para PT", translating: "Traduzindo…", error: "Erro de geração",
     history: "Relatórios anteriores", noComplaint: "(sem queixa principal registrada)",
+    clinicianNotes: "Observações do fisioterapeuta", clinicianNotesEmpty: "Nenhuma observação ainda.",
+    clinicianNotesPlaceholder: "Acrescente suas próprias observações aqui — isso nunca é sobrescrito pela IA.",
+    saveNotes: "Salvar observações", editNotes: "Editar",
   },
 };
 
@@ -81,6 +88,8 @@ function ReportBody({
   patientId: string; report: any; lang: Lang; onChange: (updated: any) => void; onTranslated: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState(report.clinicianNotes || "");
   const t = T[lang];
 
   async function setStatus(status: string) {
@@ -91,6 +100,17 @@ function ReportBody({
         body: JSON.stringify({ reportId: report.id, status }),
       });
       if (res.ok) onChange((await res.json()).report);
+    } finally { setBusy(null); }
+  }
+
+  async function saveNotes() {
+    setBusy("notes");
+    try {
+      const res = await fetch(`/api/admin/patients/${patientId}/evidence-report`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: report.id, clinicianNotes: notesDraft }),
+      });
+      if (res.ok) { onChange((await res.json()).report); setEditingNotes(false); }
     } finally { setBusy(null); }
   }
 
@@ -105,14 +125,12 @@ function ReportBody({
     } finally { setBusy(null); }
   }
 
-  if (report.status === "GENERATING") {
-    return (
-      <div className="text-center py-10">
-        <Loader2 className="h-7 w-7 animate-spin text-bruno-turquoise mx-auto mb-3" />
-        <p className="text-muted-foreground text-sm">{t.generating}</p>
-      </div>
-    );
-  }
+  // Was an early `return` before a spinner-only view — that also hid the
+  // clinician-notes section while GENERATING, so a note created (and thus
+  // linked, activity 066 T-4) while a report was mid-run landed on a screen
+  // with nowhere to read/add a note until generation finished (code review
+  // finding). Now just a flag; the notes section always renders below.
+  const isGenerating = report.status === "GENERATING";
 
   const cs = report.caseSummary || {};
   const scores = cs.scores || {};
@@ -155,6 +173,14 @@ function ReportBody({
         </div>
       )}
 
+      {isGenerating && (
+        <div className="text-center py-6">
+          <Loader2 className="h-6 w-6 animate-spin text-bruno-turquoise mx-auto mb-2" />
+          <p className="text-muted-foreground text-sm">{t.generating}</p>
+        </div>
+      )}
+
+      {!isGenerating && (<>
       {/* Case summary */}
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t.caseSummary}</h3>
@@ -284,7 +310,48 @@ function ReportBody({
           )}
         </>
       )}
+      </>)}
 
+      {/* Therapist's own addition (activity 066 T-4) — always shown, even
+          while GENERATING or on a red-flag report (where adding a note like
+          "cleared by GP" is a real use case), visually distinct from
+          everything above so it's never mistaken for AI-generated content.
+          Never touches narrativeEn/narrativePt/suggestions/gaps. */}
+      <section className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+            <Pencil className="h-3.5 w-3.5" />{t.clinicianNotes}
+          </h3>
+          {!editingNotes && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setNotesDraft(report.clinicianNotes || ""); setEditingNotes(true); }}>
+              <Pencil className="h-3 w-3 mr-1" />{t.editNotes}
+            </Button>
+          )}
+        </div>
+        {editingNotes ? (
+          <div className="space-y-2">
+            <Textarea
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              placeholder={t.clinicianNotesPlaceholder}
+              rows={4}
+              className="text-sm bg-background"
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={saveNotes} disabled={busy === "notes"}>
+                {busy === "notes" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}{t.saveNotes}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingNotes(false)} disabled={busy === "notes"}>Cancel</Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-foreground/90 whitespace-pre-wrap">
+            {report.clinicianNotes || <span className="text-muted-foreground italic">{t.clinicianNotesEmpty}</span>}
+          </p>
+        )}
+      </section>
+
+      {!isGenerating && (<>
       {/* Disclaimer — always shown with the report, never editable/removable */}
       <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200/80 flex gap-2">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" /><span>{t.disclaimer}</span>
@@ -301,24 +368,38 @@ function ReportBody({
           </Button>
         )}
       </div>
+      </>)}
     </div>
   );
 }
 
 // One timeline entry — collapsed by default (except the most recent, which
-// starts expanded since that's what matters day to day).
+// starts expanded since that's what matters day to day, or one a caller
+// asked to land on — see `highlighted` below).
 function ReportCard({
-  patientId, report, lang, defaultExpanded, onChange, onTranslated,
+  patientId, report, lang, defaultExpanded, highlighted, onChange, onTranslated,
 }: {
-  patientId: string; report: any; lang: Lang; defaultExpanded: boolean; onChange: (updated: any) => void; onTranslated: () => void;
+  patientId: string; report: any; lang: Lang; defaultExpanded: boolean; highlighted?: boolean; onChange: (updated: any) => void; onTranslated: () => void;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const t = T[lang];
   const pill = statusPillFor(report.status, t);
   const cs = report.caseSummary || {};
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  // A SOAP note's "Evidence" link (activity 066 T-4) can point at an OLDER
+  // report — e.g. a newer version was created since (Decisão 0) by a
+  // document arriving after that note was written. Without this, the link
+  // always just opened this tab showing the latest report, silently
+  // different from the one the note actually referenced (code review
+  // finding). Scroll it into view once, on the render where it first
+  // becomes the target.
+  useEffect(() => {
+    if (highlighted) ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlighted]);
 
   return (
-    <div className="rounded-xl border border-border overflow-hidden">
+    <div ref={ref} className={`rounded-xl border overflow-hidden ${highlighted ? "border-bruno-turquoise ring-2 ring-bruno-turquoise/40" : "border-border"}`}>
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -340,7 +421,7 @@ function ReportCard({
   );
 }
 
-export function EvidenceReportTab({ patientId }: { patientId: string }) {
+export function EvidenceReportTab({ patientId, targetReportId }: { patientId: string; targetReportId?: string | null }) {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -431,13 +512,20 @@ export function EvidenceReportTab({ patientId }: { patientId: string }) {
         )}
 
         {latest && (
-          <div className="rounded-xl border border-bruno-turquoise/30 overflow-hidden">
+          <div className={`rounded-xl border overflow-hidden ${targetReportId === latest.id ? "border-bruno-turquoise ring-2 ring-bruno-turquoise/40" : "border-bruno-turquoise/30"}`}>
             <div className="px-4 py-3 bg-bruno-turquoise/5 flex items-center gap-3">
               <span className={`text-[11px] font-semibold px-2 py-1 rounded-full border ${statusPillFor(latest.status, t).cls}`}>{statusPillFor(latest.status, t).label}</span>
               <span className="text-xs text-muted-foreground">{formatDate(latest.createdAt, lang)}</span>
             </div>
             <div className="p-4">
-              <ReportBody patientId={patientId} report={latest} lang={lang} onChange={handleChange} onTranslated={() => setLang("pt")} />
+              {/* key={latest.id} — without it, clicking "Regenerate" swaps
+                  in a new report but this ReportBody instance stays mounted,
+                  carrying over its local editingNotes/notesDraft state; a
+                  save would then PATCH the NEW report's id with the OLD
+                  draft text (code review finding, activity 066 T-4). The key
+                  forces a fresh mount (fresh state) whenever the report's
+                  own identity changes. */}
+              <ReportBody key={latest.id} patientId={patientId} report={latest} lang={lang} onChange={handleChange} onTranslated={() => setLang("pt")} />
             </div>
           </div>
         )}
@@ -447,7 +535,9 @@ export function EvidenceReportTab({ patientId }: { patientId: string }) {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.history}</h3>
             <div className="space-y-2">
               {older.map((r) => (
-                <ReportCard key={r.id} patientId={patientId} report={r} lang={lang} defaultExpanded={false} onChange={handleChange} onTranslated={() => setLang("pt")} />
+                <ReportCard key={r.id} patientId={patientId} report={r} lang={lang}
+                  defaultExpanded={r.id === targetReportId} highlighted={r.id === targetReportId}
+                  onChange={handleChange} onTranslated={() => setLang("pt")} />
               ))}
             </div>
           </div>

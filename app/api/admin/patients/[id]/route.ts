@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess, recordOfPatient } from "@/lib/staff-patient-access";
 import { pickEditable } from "@/lib/tenant-field-guard";
-import { relinkBrokenEvidenceReport } from "@/lib/evidence-report";
+import { relinkBrokenEvidenceReport, notifyNewClinicalDocument } from "@/lib/evidence-report";
 import { logAudit } from "@/lib/system-logger";
 
 export const dynamic = "force-dynamic";
@@ -137,11 +137,20 @@ export async function PATCH(
     // If adding a manual clinical note / history
     if (body.action === "add_clinical_note") {
       const { subjective, objective, assessment, plan } = body;
+      // Links this note to whatever evidence report was latest at the time
+      // (activity 066 T-4) — a one-click way back to what the therapist had
+      // in front of them, not a live pointer to "whatever's latest now".
+      const latestReport = await prisma.clinicalEvidenceReport.findFirst({
+        where: { patientId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
       const note = await prisma.sOAPNote.create({
         data: {
           clinicId: effectiveClinicId,
           patientId,
           therapistId,
+          evidenceReportId: latestReport?.id ?? null,
           subjective: subjective || null,
           objective: objective || null,
           assessment: assessment || null,
@@ -168,6 +177,7 @@ export async function PATCH(
     // If adding a manual free-text document (typed history)
     if (body.action === "add_manual_document") {
       const { title, content, documentType } = body;
+      const docType = documentType || "OTHER";
       const doc = await (prisma as any).patientDocument.create({
         data: {
           clinicId: effectiveClinicId,
@@ -177,7 +187,7 @@ export async function PATCH(
           fileUrl: "",
           fileType: "text/plain",
           fileSize: content?.length || 0,
-          documentType: documentType || "OTHER",
+          documentType: docType,
           source: "ADMIN_UPLOAD",
           title: title || "Manual Clinical Note",
           description: content,
@@ -187,6 +197,11 @@ export async function PATCH(
           uploadedBy: { select: { firstName: true, lastName: true, role: true } },
         },
       });
+      // This path creates a PatientDocument directly instead of going
+      // through storePatientDocument (activity 066 T-1's single hook) —
+      // code review finding: it was the one upload path left not wired to
+      // the evidence-report reopening mechanism.
+      await notifyNewClinicalDocument(patientId, docType);
       return NextResponse.json({ success: true, document: doc });
     }
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { notifyNewClinicalDocument } from "@/lib/evidence-report";
 
 /**
  * One path for storing a patient file.
@@ -58,7 +59,7 @@ export async function storePatientDocument(input: StorePatientDocumentInput) {
   });
 
   const fileUrl = `/api/files/${doc.id}`;
-  return (prisma as any).patientDocument.update({
+  const updated = await (prisma as any).patientDocument.update({
     where: { id: doc.id },
     data: {
       fileUrl,
@@ -69,4 +70,14 @@ export async function storePatientDocument(input: StorePatientDocumentInput) {
       uploadedBy: { select: { firstName: true, lastName: true, role: true } },
     },
   });
+
+  // Every upload path (patient portal, admin, AI Import) goes through this
+  // one function — the single place to keep the evidence report current as
+  // exams trickle in over days (activity 066 T-1). Awaited (it's a couple of
+  // fast Prisma calls, no AI/extraction here — that's deferred to the
+  // background job) — `notifyNewClinicalDocument` itself never throws, so
+  // this can never fail the upload.
+  await notifyNewClinicalDocument(meta.patientId, updated.documentType);
+
+  return updated;
 }
