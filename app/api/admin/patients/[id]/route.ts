@@ -137,6 +137,17 @@ export async function PATCH(
     // If adding a manual clinical note / history
     if (body.action === "add_clinical_note") {
       const { subjective, objective, assessment, plan } = body;
+      // SOAPNote.subjective/objective/assessment/plan are NOT NULL in the
+      // schema, but this route wrote `field || null` for a blank one —
+      // Prisma rejected the whole create with an opaque "Argument `patient`
+      // is missing" error instead of a real validation message, and the
+      // note was silently never saved (found in online QA, activity 066 —
+      // pre-existing, exposed by that QA exercising this exact path for the
+      // evidenceReportId link below). Same validation as the sibling
+      // /api/soap-notes route already has.
+      if (!subjective || !objective || !assessment || !plan) {
+        return NextResponse.json({ error: "All SOAP note fields (S/O/A/P) are required" }, { status: 400 });
+      }
       // Links this note to whatever evidence report was latest at the time
       // (activity 066 T-4) — a one-click way back to what the therapist had
       // in front of them, not a live pointer to "whatever's latest now".
@@ -151,10 +162,10 @@ export async function PATCH(
           patientId,
           therapistId,
           evidenceReportId: latestReport?.id ?? null,
-          subjective: subjective || null,
-          objective: objective || null,
-          assessment: assessment || null,
-          plan: plan || null,
+          subjective,
+          objective,
+          assessment,
+          plan,
         },
         include: {
           therapist: { select: { firstName: true, lastName: true } },
