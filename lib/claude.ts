@@ -100,7 +100,16 @@ export async function claudeGenerate(
     }
 
     const data = await response.json()
-    return data.choices?.[0]?.message?.content || ''
+    // Temporary diagnostic (2026-09-20): a real patient's treatment-plan
+    // generation kept truncating well under the requested max_tokens —
+    // logging what OpenRouter actually served/why it stopped, to tell a
+    // real length cutoff (finish_reason: "length") apart from a silent
+    // model swap or some other early stop. Safe to remove once understood.
+    const choice = data.choices?.[0]
+    if (choice?.finish_reason && choice.finish_reason !== 'stop') {
+      console.error(`[claude] OpenRouter finish_reason="${choice.finish_reason}" model="${data.model}" requested max_tokens=${maxTokens} usage=${JSON.stringify(data.usage)}`)
+    }
+    return choice?.message?.content || ''
   }
 
   // ── Direct Anthropic path ──────────────────────────────────────────────────
