@@ -30,6 +30,7 @@ export async function GET(
     id: row.id,
     status: row.status,
     plan: row.planJson,
+    planPt: row.planJsonPt,
     error: row.error,
   });
 }

@@ -2277,6 +2277,10 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
   // ── Treatment Plan (Atlas) ──
   const [tpView, setTpView]             = useState<"idle" | "generating" | "viewing" | "chat">("idle");
   const [treatmentPlan, setTreatmentPlan] = useState<any>(null);
+  // Always generated alongside the English plan (lib/atlas-treatment-plan.ts) —
+  // this clinic requires both languages everywhere, never on-demand-only.
+  const [treatmentPlanPt, setTreatmentPlanPt] = useState<any>(null);
+  const [tpLang, setTpLang]             = useState<"en" | "pt">("pt");
   const [tpChatHistory, setTpChatHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [tpChatInput, setTpChatInput]   = useState("");
   const [tpChatLoading, setTpChatLoading] = useState(false);
@@ -2307,6 +2311,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
       if (!pr.ok) throw new Error(pd.error || "Failed to check plan status");
       if (pd.status === "ready") {
         setTreatmentPlan(pd.plan);
+        setTreatmentPlanPt(pd.planPt);
         setTpView("viewing");
         return;
       }
@@ -2339,6 +2344,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           });
         } else if (d.plan.status === "ready") {
           setTreatmentPlan(d.plan.planJson);
+          setTreatmentPlanPt(d.plan.planJsonPt);
           setTpView("viewing");
         } else if (d.plan.status === "failed") {
           setTpError(d.plan.error || "Failed to generate plan");
@@ -2355,6 +2361,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
   const handleGenerateTreatmentPlan = async () => {
     setTpView("generating");
     setTreatmentPlan(null);
+    setTreatmentPlanPt(null);
     setTpChatHistory([]);
     setTpSentOk(false);
     setTpError("");
@@ -2408,18 +2415,23 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
     if (!treatmentPlan) return;
     setTpSending(true);
     try {
+      // Sent to the patient in Portuguese labels — must use the actual
+      // Portuguese content (treatmentPlanPt), not the English source with
+      // Portuguese labels wrapped around it. Falls back to English only if
+      // translation genuinely failed for this plan.
+      const sharePlan = treatmentPlanPt || treatmentPlan;
       const planText = [
-        `**Plano de Tratamento — ${treatmentPlan.workingDiagnosis || "Personalizado"}**`,
-        treatmentPlan.clinicalRationale ? `\n${treatmentPlan.clinicalRationale}` : "",
-        treatmentPlan.goals?.shortTerm?.length ? `\n**Objetivos a curto prazo:**\n${treatmentPlan.goals.shortTerm.map((g: string) => `• ${g}`).join("\n")}` : "",
-        treatmentPlan.goals?.longTerm?.length ? `\n**Objetivos a longo prazo:**\n${treatmentPlan.goals.longTerm.map((g: string) => `• ${g}`).join("\n")}` : "",
-        treatmentPlan.phases?.length ? `\n**Fases do tratamento:**\n${treatmentPlan.phases.map((ph: any) => [
+        `**Plano de Tratamento — ${sharePlan.workingDiagnosis || "Personalizado"}**`,
+        sharePlan.clinicalRationale ? `\n${sharePlan.clinicalRationale}` : "",
+        sharePlan.goals?.shortTerm?.length ? `\n**Objetivos a curto prazo:**\n${sharePlan.goals.shortTerm.map((g: string) => `• ${g}`).join("\n")}` : "",
+        sharePlan.goals?.longTerm?.length ? `\n**Objetivos a longo prazo:**\n${sharePlan.goals.longTerm.map((g: string) => `• ${g}`).join("\n")}` : "",
+        sharePlan.phases?.length ? `\n**Fases do tratamento:**\n${sharePlan.phases.map((ph: any) => [
           `\n📌 ${ph.name} (${ph.weeks})`,
           `Objetivo: ${ph.objective}`,
           ph.inClinic?.length ? `Em clínica:\n${ph.inClinic.map((i: any) => `  • ${i.intervention}${i.parameters ? ` — ${i.parameters}` : ""}`).join("\n")}` : "",
           ph.hep?.length ? `Exercícios em casa:\n${ph.hep.map((h: any) => `  • ${h.exercise} — ${h.sets} (${h.frequency})`).join("\n")}` : "",
         ].filter(Boolean).join("\n")).join("\n")}` : "",
-        treatmentPlan.patientEducation?.length ? `\n**Educação para o Paciente:**\n${treatmentPlan.patientEducation.map((e: string) => `• ${e}`).join("\n")}` : "",
+        sharePlan.patientEducation?.length ? `\n**Educação para o Paciente:**\n${sharePlan.patientEducation.map((e: string) => `• ${e}`).join("\n")}` : "",
       ].filter(Boolean).join("\n");
 
       const r = await fetch(`/api/admin/patients/${patientId}/questions`, {
@@ -2708,12 +2720,22 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               <p className="text-[9px] text-muted-foreground leading-tight">Atlas generates a phased plan based on all the patient's data</p>
             </div>
           </div>
-          <Button size="sm" className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700 shrink-0"
-            onClick={handleGenerateTreatmentPlan}
-            disabled={tpView === "generating"}>
-            {tpView === "generating" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3 mr-1" />}
-            {tpView === "generating" ? "Generating..." : treatmentPlan ? "Regenerate" : "Generate Plan"}
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {treatmentPlan && (
+              <div className="flex items-center rounded-md border overflow-hidden text-[9px]">
+                <button type="button" onClick={() => setTpLang("en")}
+                  className={`px-1.5 py-1 ${tpLang === "en" ? "bg-emerald-600 text-white" : "text-muted-foreground hover:bg-muted/40"}`}>EN</button>
+                <button type="button" onClick={() => setTpLang("pt")}
+                  className={`px-1.5 py-1 ${tpLang === "pt" ? "bg-emerald-600 text-white" : "text-muted-foreground hover:bg-muted/40"}`}>PT</button>
+              </div>
+            )}
+            <Button size="sm" className="h-7 text-[10px] bg-emerald-600 hover:bg-emerald-700"
+              onClick={handleGenerateTreatmentPlan}
+              disabled={tpView === "generating"}>
+              {tpView === "generating" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3 mr-1" />}
+              {tpView === "generating" ? "Generating..." : treatmentPlan ? "Regenerate" : "Generate Plan"}
+            </Button>
+          </div>
         </div>
 
         {tpView === "generating" && (
@@ -2729,43 +2751,48 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
           </div>
         )}
 
-        {tpView !== "generating" && treatmentPlan && (
+        {tpView !== "generating" && treatmentPlan && (() => {
+          const displayPlan = tpLang === "pt" && treatmentPlanPt ? treatmentPlanPt : treatmentPlan;
+          return (
           <div className="p-3 space-y-3">
+            {tpLang === "pt" && !treatmentPlanPt && (
+              <p className="text-[9px] text-amber-400">Tradução em português indisponível para este plano — mostrando em inglês.</p>
+            )}
             {/* Diagnosis + rationale */}
             <div className="p-2.5 bg-muted/20 rounded-lg">
               <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-0.5">Working diagnosis</p>
-              <p className="text-xs font-medium">{treatmentPlan.workingDiagnosis}</p>
-              {treatmentPlan.clinicalRationale && <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{treatmentPlan.clinicalRationale}</p>}
+              <p className="text-xs font-medium">{displayPlan.workingDiagnosis}</p>
+              {displayPlan.clinicalRationale && <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{displayPlan.clinicalRationale}</p>}
             </div>
 
             {/* Red flags */}
-            {treatmentPlan.redFlags?.length > 0 && (
+            {displayPlan.redFlags?.length > 0 && (
               <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
                 <p className="text-[10px] font-semibold text-red-400 uppercase mb-1">⚠ Red Flags</p>
-                {treatmentPlan.redFlags.map((f: string, i: number) => <p key={i} className="text-[10px] text-red-300">• {f}</p>)}
+                {displayPlan.redFlags.map((f: string, i: number) => <p key={i} className="text-[10px] text-red-300">• {f}</p>)}
               </div>
             )}
 
             {/* Goals */}
-            {(treatmentPlan.goals?.shortTerm?.length || treatmentPlan.goals?.longTerm?.length) && (
+            {(displayPlan.goals?.shortTerm?.length || displayPlan.goals?.longTerm?.length) && (
               <div className="grid grid-cols-2 gap-2">
-                {treatmentPlan.goals?.shortTerm?.length > 0 && (
+                {displayPlan.goals?.shortTerm?.length > 0 && (
                   <div className="p-2 bg-muted/20 rounded-lg">
                     <p className="text-[9px] font-semibold uppercase text-amber-400 mb-1">Short Term</p>
-                    {treatmentPlan.goals.shortTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
+                    {displayPlan.goals.shortTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
                   </div>
                 )}
-                {treatmentPlan.goals?.longTerm?.length > 0 && (
+                {displayPlan.goals?.longTerm?.length > 0 && (
                   <div className="p-2 bg-muted/20 rounded-lg">
                     <p className="text-[9px] font-semibold uppercase text-emerald-400 mb-1">Long Term</p>
-                    {treatmentPlan.goals.longTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
+                    {displayPlan.goals.longTerm.map((g: string, i: number) => <p key={i} className="text-[10px]">• {g}</p>)}
                   </div>
                 )}
               </div>
             )}
 
             {/* Phases */}
-            {treatmentPlan.phases?.map((ph: any, pi: number) => (
+            {displayPlan.phases?.map((ph: any, pi: number) => (
               <div key={pi} className="border rounded-lg overflow-hidden">
                 <div className="px-3 py-1.5 bg-muted/30 flex items-center justify-between">
                   <p className="text-[10px] font-semibold">{ph.name} <span className="text-muted-foreground font-normal">({ph.weeks})</span></p>
@@ -2847,7 +2874,8 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* ── Chat Livre com Atlas ── */}

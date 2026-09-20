@@ -184,6 +184,36 @@ const PLAN_PROMPT_SUFFIX = `Return this exact JSON structure:
   "reviewMilestone": "string (when to reassess)"
 }`;
 
+/**
+ * Translates a generated plan's string content to Brazilian Portuguese,
+ * preserving the exact JSON shape (keys, numbers, arrays) so the frontend
+ * can render either language through the same component. Best-effort: on
+ * any failure (bad JSON back, provider error) returns null rather than
+ * throwing — a plan that's ready in English only is still useful, and the
+ * caller keeps the row in "ready" rather than failing the whole
+ * generation over a translation hiccup.
+ */
+async function translatePlanToPortuguese(plan: any): Promise<any | null> {
+  try {
+    const reply = await claudeGenerate(
+      [{
+        role: "user",
+        content: `Translate every string value in this JSON to Brazilian Portuguese (pt-BR — never European Portuguese). Keep the exact same JSON structure, keys, and any numbers/booleans unchanged — only translate string values (including array-of-string entries). Return ONLY the translated JSON, no markdown, no explanation.\n\n${JSON.stringify(plan)}`,
+      }],
+      { maxTokens: 9000, disableReasoning: true, temperature: 0.3 }
+    );
+    try {
+      return JSON.parse(reply.trim());
+    } catch {
+      const match = reply.match(/\{[\s\S]*\}/);
+      return match ? JSON.parse(match[0]) : null;
+    }
+  } catch (e: any) {
+    console.error("[atlas-treatment-plan] Portuguese translation failed (plan stays English-only):", e?.message);
+    return null;
+  }
+}
+
 // claudeGenerate (lib/claude.ts) throws the provider's raw error body
 // verbatim (`OpenRouter API error 402: {"error":{...,"user_id":"user_..."}}`)
 // — useful for debugging but not something to persist into a column an
@@ -219,7 +249,12 @@ export async function generateAtlasTreatmentPlan(planId: string): Promise<void> 
       return;
     }
 
-    const prompt = `Based on the complete patient profile below, generate a comprehensive, phased treatment plan. Return ONLY valid JSON — no markdown, no explanation outside the JSON.
+    // Always generated in English first — the deterministic source of
+    // truth — then translated to Brazilian Portuguese below (this clinic
+    // requires both languages everywhere, and translating one finished,
+    // clinically-correct plan is more reliable than asking the model to
+    // independently reason out two versions that could disagree).
+    const prompt = `Based on the complete patient profile below, generate a comprehensive, phased treatment plan. Respond in English regardless of the language the patient profile is written in. Return ONLY valid JSON — no markdown, no explanation outside the JSON.
 
 Patient profile:
 ${context}
@@ -266,9 +301,11 @@ ${PLAN_PROMPT_SUFFIX}`;
       return;
     }
 
+    const planPt = await translatePlanToPortuguese(plan);
+
     await prisma.atlasTreatmentPlan.update({
       where: { id: planId },
-      data: { status: "ready", planJson: plan, error: null },
+      data: { status: "ready", planJson: plan, planJsonPt: planPt, error: null },
     });
   } catch (e: any) {
     const { userMessage, fullMessage } = sanitizeError(e);

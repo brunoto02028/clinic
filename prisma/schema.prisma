@@ -6559,10 +6559,11 @@ model AtlasTreatmentPlan {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  status   String  @default("generating") // generating | ready | failed
-  planJson Json?
-  error    String? @db.Text
-  attempts Int     @default(0)
+  status     String  @default("generating") // generating | ready | failed
+  planJson   Json? // always English — generated first, source of truth
+  planJsonPt Json? // Brazilian Portuguese — translated from planJson in the same generation pass, never generated independently (this clinic requires both languages everywhere)
+  error      String? @db.Text
+  attempts   Int     @default(0)
 
   @@index([patientId])
   @@index([status])

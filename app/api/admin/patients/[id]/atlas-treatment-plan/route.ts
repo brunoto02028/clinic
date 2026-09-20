@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   });
 
   return NextResponse.json({
-    plan: row && { id: row.id, status: row.status, planJson: row.planJson, error: row.error },
+    plan: row && { id: row.id, status: row.status, planJson: row.planJson, planJsonPt: row.planJsonPt, error: row.error },
   });
 }
 
