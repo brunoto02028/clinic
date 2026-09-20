@@ -228,14 +228,18 @@ ${PLAN_PROMPT_SUFFIX}`;
 
     const reply = await claudeGenerate(
       [{ role: "user", content: prompt }],
-      { systemPrompt: ATLAS_SYSTEM, maxTokens: 9000 }
+      // reasoningMaxTokens caps the model's hidden extended-thinking spend —
+      // without it, a real patient's rich profile burned ~6000 of a
+      // 9000-token budget on reasoning alone, leaving too little room to
+      // finish the visible JSON (diagnosed via lib/claude.ts's
+      // finish_reason/usage logging). 12000 total, capped at 3000
+      // reasoning, leaves ~9000 for the actual completion.
+      { systemPrompt: ATLAS_SYSTEM, maxTokens: 12000, reasoningMaxTokens: 3000 }
     );
 
     // A patient with an extensive history (imaging findings, red flags,
     // long medication/surgical history) can push the response past the
-    // token budget, truncating mid-JSON — 6000 wasn't enough for at least
-    // one real patient with a rich profile, consistently truncating on
-    // every attempt rather than as a rare edge case. Bumped to 9000.
+    // token budget, truncating mid-JSON.
     let plan: any;
     try {
       // Try the whole reply first — the common case is a clean JSON object
@@ -250,11 +254,6 @@ ${PLAN_PROMPT_SUFFIX}`;
         plan = JSON.parse(match[0]);
       }
     } catch (parseErr: any) {
-      // Temporary diagnostic (activity live-support, 2026-09-20): a real
-      // patient with a rich profile kept truncating even at 9000 tokens —
-      // logging the raw reply's shape to tell truncation apart from some
-      // other JSON-formatting failure before blindly raising the budget
-      // again. Safe to remove once that's understood.
       console.error(
         `[atlas-treatment-plan] JSON parse failed for ${planId}: ${parseErr?.message}. reply length: ${reply.length} chars. tail: ${JSON.stringify(reply.slice(-300))}`
       );

@@ -58,6 +58,16 @@ export interface GenerateOptions {
   temperature?: number
   maxTokens?: number
   systemPrompt?: string
+  // Claude Sonnet 5 is a reasoning model — via OpenRouter, its (hidden)
+  // reasoning tokens are billed against maxTokens like any other
+  // completion token. A structured-JSON task with no reasoning budget cap
+  // was found spending 6000+ of a 9000-token budget on reasoning alone,
+  // truncating the actual JSON output well before it finished (activity:
+  // live support, 2026-09-20 — a real patient's rich profile made this
+  // consistent, not a rare edge case). Cap it explicitly for tasks like
+  // that. Passed through as OpenRouter's `reasoning.max_tokens`; only
+  // takes effect on the OpenRouter path.
+  reasoningMaxTokens?: number
 }
 
 /**
@@ -75,6 +85,7 @@ export async function claudeGenerate(
     temperature = 0.7,
     maxTokens = 4096,
     systemPrompt,
+    reasoningMaxTokens,
   } = options
 
   // ── OpenRouter path (OpenAI-compatible) ────────────────────────────────────
@@ -82,6 +93,9 @@ export async function claudeGenerate(
     const openRouterMessages: any[] = []
     if (systemPrompt) openRouterMessages.push({ role: 'system', content: systemPrompt })
     for (const m of messages) openRouterMessages.push(m)
+
+    const body: Record<string, unknown> = { model, messages: openRouterMessages, temperature, max_tokens: maxTokens }
+    if (reasoningMaxTokens != null) body.reasoning = { max_tokens: reasoningMaxTokens }
 
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
@@ -91,7 +105,7 @@ export async function claudeGenerate(
         'HTTP-Referer': 'https://bpr.clinic',
         'X-Title': 'BPR Clinic AI',
       },
-      body: JSON.stringify({ model, messages: openRouterMessages, temperature, max_tokens: maxTokens }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -100,11 +114,11 @@ export async function claudeGenerate(
     }
 
     const data = await response.json()
-    // Temporary diagnostic (2026-09-20): a real patient's treatment-plan
-    // generation kept truncating well under the requested max_tokens —
-    // logging what OpenRouter actually served/why it stopped, to tell a
-    // real length cutoff (finish_reason: "length") apart from a silent
-    // model swap or some other early stop. Safe to remove once understood.
+    // A non-"stop" finish (e.g. "length" — the reasoning-model budget ran
+    // out before the visible completion did, see reasoningMaxTokens above)
+    // means the caller silently got truncated/cut-off content with no
+    // indication why. Worth a server-side trace even when the caller has
+    // its own truncation handling (e.g. the JSON-parse retry below).
     const choice = data.choices?.[0]
     if (choice?.finish_reason && choice.finish_reason !== 'stop') {
       console.error(`[claude] OpenRouter finish_reason="${choice.finish_reason}" model="${data.model}" requested max_tokens=${maxTokens} usage=${JSON.stringify(data.usage)}`)
