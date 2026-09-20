@@ -471,7 +471,7 @@ function DataCard({ icon: Icon, label, available, detail, required }: {
       <CardContent className="pt-3 pb-2 px-3">
         <div className="flex items-center gap-2 mb-1">
           <Icon className={`h-4 w-4 ${available ? "text-green-700 dark:text-green-300" : "text-muted-foreground"}`} />
-          <span className="text-xs font-semibold">{label}</span>
+          <span className={`text-xs font-semibold ${available ? "text-green-900 dark:text-green-100" : ""}`}>{label}</span>
           {required && <Badge variant="outline" className="text-[9px] px-1 py-0">Required</Badge>}
         </div>
         <div className="flex items-center gap-1.5">
