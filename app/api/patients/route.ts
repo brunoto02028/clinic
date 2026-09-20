@@ -79,9 +79,7 @@ export async function GET(request: NextRequest) {
           select: { status: true },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     });
 
     const patientsWithCount = patients.map((p: any) => ({
