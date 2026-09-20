@@ -61,13 +61,19 @@ export interface GenerateOptions {
   // Claude Sonnet 5 is a reasoning model — via OpenRouter, its (hidden)
   // reasoning tokens are billed against maxTokens like any other
   // completion token. A structured-JSON task with no reasoning budget cap
-  // was found spending 6000+ of a 9000-token budget on reasoning alone,
-  // truncating the actual JSON output well before it finished (activity:
-  // live support, 2026-09-20 — a real patient's rich profile made this
-  // consistent, not a rare edge case). Cap it explicitly for tasks like
-  // that. Passed through as OpenRouter's `reasoning.max_tokens`; only
-  // takes effect on the OpenRouter path.
+  // was found spending 6000+ of a 9000-token (then 12000-token) budget on
+  // reasoning alone, truncating the actual JSON output well before it
+  // finished (activity: live support, 2026-09-20 — a real patient's rich
+  // profile made this consistent, not a rare edge case).
+  // reasoningMaxTokens (OpenRouter's `reasoning.max_tokens`) turned out NOT
+  // to be a hard cap in practice — a request for 3000 still used 6625.
+  // disableReasoning (`reasoning.enabled: false`) is the reliable one:
+  // for a task that's already fully schema/prompt-constrained, no hidden
+  // chain-of-thought is needed, and this guarantees the whole maxTokens
+  // budget goes to the visible completion. Only takes effect on the
+  // OpenRouter path.
   reasoningMaxTokens?: number
+  disableReasoning?: boolean
 }
 
 /**
@@ -86,6 +92,7 @@ export async function claudeGenerate(
     maxTokens = 4096,
     systemPrompt,
     reasoningMaxTokens,
+    disableReasoning,
   } = options
 
   // ── OpenRouter path (OpenAI-compatible) ────────────────────────────────────
@@ -95,7 +102,8 @@ export async function claudeGenerate(
     for (const m of messages) openRouterMessages.push(m)
 
     const body: Record<string, unknown> = { model, messages: openRouterMessages, temperature, max_tokens: maxTokens }
-    if (reasoningMaxTokens != null) body.reasoning = { max_tokens: reasoningMaxTokens }
+    if (disableReasoning) body.reasoning = { enabled: false }
+    else if (reasoningMaxTokens != null) body.reasoning = { max_tokens: reasoningMaxTokens }
 
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',

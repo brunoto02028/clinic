@@ -228,13 +228,15 @@ ${PLAN_PROMPT_SUFFIX}`;
 
     const reply = await claudeGenerate(
       [{ role: "user", content: prompt }],
-      // reasoningMaxTokens caps the model's hidden extended-thinking spend —
-      // without it, a real patient's rich profile burned ~6000 of a
-      // 9000-token budget on reasoning alone, leaving too little room to
-      // finish the visible JSON (diagnosed via lib/claude.ts's
-      // finish_reason/usage logging). 12000 total, capped at 3000
-      // reasoning, leaves ~9000 for the actual completion.
-      { systemPrompt: ATLAS_SYSTEM, maxTokens: 12000, reasoningMaxTokens: 3000 }
+      // disableReasoning: reasoningMaxTokens (OpenRouter's
+      // reasoning.max_tokens) turned out not to be a hard cap in practice —
+      // a request for 3000 still used 6625, still truncating the JSON at
+      // 12000 total (diagnosed via lib/claude.ts's finish_reason/usage
+      // logging). This task is already fully constrained by the schema and
+      // system prompt below, so no hidden chain-of-thought is needed —
+      // disabling it entirely guarantees the whole budget goes to the
+      // actual completion.
+      { systemPrompt: ATLAS_SYSTEM, maxTokens: 9000, disableReasoning: true }
     );
 
     // A patient with an extensive history (imaging findings, red flags,
