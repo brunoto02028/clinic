@@ -2284,6 +2284,74 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
   const [tpSentOk, setTpSentOk]         = useState(false);
   const tpChatEndRef = useRef<HTMLDivElement>(null);
 
+  // This tab unmounts on tab/patient switch (Radix Tabs, no forceMount) —
+  // guards the polling loop below so it stops fetching (not just stops
+  // updating state) once that happens, instead of quietly polling every 3s
+  // for up to 5 minutes from an abandoned closure (code review finding).
+  const tpMountedRef = useRef(true);
+  useEffect(() => {
+    tpMountedRef.current = true;
+    return () => { tpMountedRef.current = false; };
+  }, []);
+
+  // Polls an in-flight or finished plan until it reaches a terminal state.
+  const pollTreatmentPlan = async (planId: string) => {
+    const deadline = Date.now() + 5 * 60 * 1000; // background job gives up well before this
+    while (Date.now() < deadline) {
+      if (!tpMountedRef.current) return;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      if (!tpMountedRef.current) return;
+      const pr = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan/${planId}`);
+      const pd = await pr.json();
+      if (!tpMountedRef.current) return;
+      if (!pr.ok) throw new Error(pd.error || "Failed to check plan status");
+      if (pd.status === "ready") {
+        setTreatmentPlan(pd.plan);
+        setTpView("viewing");
+        return;
+      }
+      if (pd.status === "failed") throw new Error(pd.error || "Failed to generate plan");
+      // still "generating" — keep polling
+    }
+    throw new Error("Atlas is taking longer than expected. Try again in a moment.");
+  };
+
+  // Recovers state on mount instead of always assuming "idle" — without
+  // this, switching tabs/patients mid-generation (which unmounts this
+  // component) meant the admin came back to a fresh "Generate Plan"
+  // button with no way to see the first generation finish, and clicking
+  // it again fired a second, wasted 6000-token call while the first was
+  // possibly still running (code review finding). Same recovery pattern
+  // as the Evidence tab's GET (returns the latest report for the patient).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan`);
+        const d = await r.json();
+        if (cancelled || !r.ok || !d.plan) return;
+        if (d.plan.status === "generating") {
+          setTpView("generating");
+          pollTreatmentPlan(d.plan.id).catch((e: any) => {
+            if (!tpMountedRef.current) return;
+            setTpError(e.message || "Failed to generate plan");
+            setTpView("idle");
+          });
+        } else if (d.plan.status === "ready") {
+          setTreatmentPlan(d.plan.planJson);
+          setTpView("viewing");
+        } else if (d.plan.status === "failed") {
+          setTpError(d.plan.error || "Failed to generate plan");
+        }
+      } catch {
+        // best-effort recovery — a failed check just leaves the tab at its
+        // default "idle" state, same as before this existed
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId]);
+
   const handleGenerateTreatmentPlan = async () => {
     setTpView("generating");
     setTreatmentPlan(null);
@@ -2304,23 +2372,9 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
       // timeout when this waited on it directly, which killed the
       // connection and returned an HTML error page instead of JSON. Poll
       // for the result instead, same pattern as the evidence-report tab.
-      const planId = d.planId;
-      const deadline = Date.now() + 5 * 60 * 1000; // background job gives up well before this
-      while (Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-        const pr = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan/${planId}`);
-        const pd = await pr.json();
-        if (!pr.ok) throw new Error(pd.error || "Failed to check plan status");
-        if (pd.status === "ready") {
-          setTreatmentPlan(pd.plan);
-          setTpView("viewing");
-          return;
-        }
-        if (pd.status === "failed") throw new Error(pd.error || "Failed to generate plan");
-        // still "generating" — keep polling
-      }
-      throw new Error("Atlas is taking longer than expected. Try again in a moment.");
+      await pollTreatmentPlan(d.planId);
     } catch (e: any) {
+      if (!tpMountedRef.current) return;
       setTpError(e.message || "Failed to generate plan");
       setTpView("idle");
     }

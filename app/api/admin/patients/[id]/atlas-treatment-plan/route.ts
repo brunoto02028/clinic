@@ -11,6 +11,31 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
+// GET — the most recent plan for this patient, same convention as the
+// sibling evidence-report route. Lets the client recover state (code
+// review finding): the Rehab Agent tab unmounts on tab/patient switch
+// (Radix Tabs without forceMount), which used to silently drop an
+// in-flight "generating" poll and leave the admin with no way to see it
+// finish, or even know it existed, without this.
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const tenantAccess = await staffPatientAccess(req, params.id);
+  if (tenantAccess.response) return tenantAccess.response;
+
+  const session = await getServerSession(authOptions);
+  if (!session || !ALLOWED_ROLES.includes((session.user as any).role)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const row = await prisma.atlasTreatmentPlan.findFirst({
+    where: { patientId: params.id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json({
+    plan: row && { id: row.id, status: row.status, planJson: row.planJson, error: row.error },
+  });
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }

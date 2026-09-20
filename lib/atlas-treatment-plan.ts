@@ -182,6 +182,24 @@ const PLAN_PROMPT_SUFFIX = `Return this exact JSON structure:
   "reviewMilestone": "string (when to reassess)"
 }`;
 
+// claudeGenerate (lib/claude.ts) throws the provider's raw error body
+// verbatim (`OpenRouter API error 402: {"error":{...,"user_id":"user_..."}}`)
+// — useful for debugging but not something to persist into a column an
+// admin/therapist can read straight off the Rehab Agent tab (code review
+// finding: it leaked the OpenRouter account's internal user_id). Keeps the
+// provider + status code (still useful signal, e.g. "insufficient credits"
+// vs "invalid key") and points at the server log for the rest.
+function sanitizeError(e: any): { userMessage: string; fullMessage: string } {
+  const fullMessage = e?.message || String(e);
+  const providerMatch = fullMessage.match(/^(OpenRouter|Claude) API error (\d+):/);
+  return {
+    userMessage: providerMatch
+      ? `${providerMatch[1]} API error ${providerMatch[2]} — check server logs for details.`
+      : fullMessage,
+    fullMessage,
+  };
+}
+
 /** Generate the plan identified by planId. Never throws — on failure it
  *  records `error` and moves the row to `failed`, so the client's poll
  *  always gets a terminal state instead of hanging on "generating" forever. */
@@ -239,9 +257,11 @@ ${PLAN_PROMPT_SUFFIX}`;
       data: { status: "ready", planJson: plan, error: null },
     });
   } catch (e: any) {
+    const { userMessage, fullMessage } = sanitizeError(e);
+    console.error(`[atlas-treatment-plan] generation failed for ${planId}:`, fullMessage);
     await prisma.atlasTreatmentPlan.update({
       where: { id: planId },
-      data: { status: "failed", error: e?.message || "Atlas request failed" },
+      data: { status: "failed", error: userMessage },
     }).catch(() => {});
   }
 }
