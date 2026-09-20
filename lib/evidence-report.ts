@@ -142,14 +142,21 @@ async function loadDocumentFindings(clinicId: string, patientId: string): Promis
           const buffer = Buffer.from(doc.fileData, "base64");
           const blob = new Blob([buffer], { type: doc.fileType || "application/octet-stream" });
           const extracted = await extractText(blob, doc.fileName);
-          text = extracted?.text || extracted?.content || null;
+          text = extracted?.text || null;
           if (text) {
             await prisma.patientDocument.update({ where: { id: doc.id }, data: { extractedText: text } });
           }
         }
         if (text) {
+          // Always in English (activity 066 follow-up — live demo with real
+          // PT-BR patients found the literature search coming up empty
+          // because everything feeding it, including this, was in
+          // Portuguese) — this summary is stored and reused both as
+          // case-summary context and as a literature-search input, so it
+          // needs to be search-safe regardless of the source document's
+          // own language.
           summary = (await callAIClinical(
-            `Summarise the key clinical finding(s) from this document in 1-2 concise sentences, for a physiotherapy evidence report. Focus on diagnoses, pathology, and anything relevant to musculoskeletal rehabilitation. Omit anything that is not a clinical finding.\n\n${text.slice(0, 8000)}`,
+            `Summarise the key clinical finding(s) from this document in 1-2 concise sentences, for a physiotherapy evidence report. Focus on diagnoses, pathology, and anything relevant to musculoskeletal rehabilitation. Omit anything that is not a clinical finding. Respond in English regardless of the source document's language.\n\n${text.slice(0, 8000)}`,
             { temperature: 0, maxTokens: 300, model: "claude" },
           )).trim();
           await prisma.patientDocument.update({ where: { id: doc.id }, data: { aiSummary: summary } });
@@ -210,6 +217,30 @@ export async function reconcileMissingEvidenceReports(): Promise<void> {
     }
   } catch (e) {
     console.error("[evidence-report] reconcileMissingEvidenceReports failed (non-blocking):", e);
+  }
+}
+
+/**
+ * Europe PMC is indexed overwhelmingly in English, but BPR's triage is
+ * always filled in Portuguese — a live demo with real PT-BR patients
+ * (activity 066 follow-up) found `buildQueries` searching literally on
+ * "Dor no ombro direito" and getting back unrelated English-language
+ * articles (nursing, stroke rehab, cardiology — anything that happened to
+ * share a stray word), because nothing in the query was ever translated.
+ * Cheap, best-effort: falls back to the original text (a same-language
+ * search is still strictly better than no search) rather than failing the
+ * whole report generation over a translation hiccup.
+ */
+async function translateForSearch(text: string): Promise<string> {
+  try {
+    const translated = await callAIClinical(
+      `Translate this clinical phrase to English, using standard medical/physiotherapy terminology suitable as a PubMed/Europe PMC search term. Respond with ONLY the translated phrase — no quotes, no punctuation, no explanation.\n\n${text}`,
+      { temperature: 0, maxTokens: 60, model: "claude" },
+    );
+    const cleaned = translated.trim().replace(/^["'.]+|["'.]+$/g, "");
+    return cleaned || text;
+  } catch {
+    return text;
   }
 }
 
@@ -333,9 +364,24 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
       return;
     }
 
-    // 4. Literature search (condition + document findings — no PII)
-    const condition = (s.chiefComplaint || s.painLocation || "musculoskeletal pain").toString().slice(0, 120);
-    const queries = buildQueries({ condition, region: s.painLocation, documentFindings });
+    // 4. Literature search (condition + document findings — no PII).
+    // Translated to English first — see translateForSearch's comment;
+    // documentFindings are English by construction: both places that write
+    // `PatientDocument.aiSummary` (loadDocumentFindings above, and the AI
+    // Import route's extraction prompt) explicitly instruct the model to
+    // respond in English. This is prompt compliance, not a deterministic
+    // guardrail (unlike condition/region, which are always run through
+    // translateForSearch) — a model ignoring either instruction reopens the
+    // Portuguese-query bug for that one document. documentFindings isn't
+    // passed through translateForSearch itself because its summaries can run
+    // longer than a search phrase and would risk truncation under that
+    // function's short maxTokens budget. Also note: any aiSummary cached
+    // before this English requirement existed stays in its original
+    // language — this only guarantees English going forward.
+    const conditionRaw = (s.chiefComplaint || s.painLocation || "musculoskeletal pain").toString().slice(0, 120);
+    const condition = await translateForSearch(conditionRaw);
+    const region = s.painLocation ? await translateForSearch(s.painLocation.toString().slice(0, 60)) : null;
+    const queries = buildQueries({ condition, region, documentFindings });
     const lists: LiteratureResult[][] = [];
     for (const q of queries) {
       try {

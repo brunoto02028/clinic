@@ -137,7 +137,7 @@ export default function DocumentsPage() {
   const renderResult = () => {
     if (!result) return null;
 
-    const content = result?.data?.content || result?.data?.markdown || result?.data?.text || result?.data;
+    const content = result?.content || result?.text || result?.document?.md_content || result;
     const displayText = typeof content === "string" ? content : JSON.stringify(content, null, 2);
 
     return (
@@ -169,11 +169,8 @@ export default function DocumentsPage() {
               </Button>
             </div>
           </div>
-          {result?.data?.processing_time && (
-            <p className="text-xs text-muted-foreground">Processed in {result.data.processing_time}s</p>
-          )}
-          {result?.data?.pages && (
-            <p className="text-xs text-muted-foreground">{result.data.pages} pages processed</p>
+          {result?.processing_time != null && (
+            <p className="text-xs text-muted-foreground">Processed in {result.processing_time}s</p>
           )}
         </CardHeader>
         <CardContent>

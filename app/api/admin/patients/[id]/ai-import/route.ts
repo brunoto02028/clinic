@@ -58,8 +58,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         const extracted = await extractText(file, file.name);
         if (extracted?.text) {
           extractedTexts.push(`--- Document: ${file.name} ---\n${extracted.text}`);
-        } else if (extracted?.content) {
-          extractedTexts.push(`--- Document: ${file.name} ---\n${extracted.content}`);
         }
       } catch (doclingErr: any) {
         console.warn(`[ai-import] Docling extraction failed for ${file.name}: ${doclingErr.message}. Sending to AI directly.`);
@@ -106,7 +104,7 @@ Return a JSON object with these fields:
   "documents": [
     {
       "title": "document title",
-      "content": "summary of the document",
+      "content": "summary of the document, in English regardless of the source document's own language",
       "documentType": "MEDICAL_REFERRAL | MEDICAL_REPORT | PRESCRIPTION | IMAGING | PREVIOUS_TREATMENT | OTHER"
     }
   ]
@@ -117,6 +115,7 @@ Rules:
 - Create SOAP notes for each distinct clinical encounter or visit mentioned
 - If the text is a general history overview, create one comprehensive SOAP note
 - For documents section, create entries only for distinct documents/reports mentioned
+- "content" in the documents section feeds a clinical evidence-report's literature search (which only works in English) — always write it in English, even when the source document is in Portuguese or another language
 - Use null for fields where no information is available
 - Be thorough but accurate — do not invent data
 - Return ONLY valid JSON, no markdown fences`;
