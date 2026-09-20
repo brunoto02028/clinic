@@ -17,6 +17,7 @@ import { publishDueArticles } from './article-publish';
 import { generateEvidenceReport } from './evidence-report';
 import { processAmbientTranscriptions } from './ambient-recording';
 import { reconcileMissingEvidenceReports } from './evidence-report';
+import { generateAtlasTreatmentPlan } from './atlas-treatment-plan';
 
 const TOKEN_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
 const POST_PUBLISH_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes
@@ -24,6 +25,9 @@ const EMAIL_CAMPAIGN_INTERVAL_MS = 60 * 1000; // every 1 minute
 const ARTICLE_PUBLISH_INTERVAL_MS = 15 * 60 * 1000; // every 15 minutes
 const EVIDENCE_REPORT_INTERVAL_MS = 2 * 60 * 1000; // every 2 minutes
 const AMBIENT_TRANSCRIPTION_INTERVAL_MS = 30 * 1000; // every 30 seconds
+// Short interval — unlike the evidence-report batch job, this is a single
+// admin sitting on the Rehab Agent tab actively waiting on one click.
+const ATLAS_TREATMENT_PLAN_INTERVAL_MS = 15 * 1000; // every 15 seconds
 
 async function refreshExpiringTokens() {
   try {
@@ -177,6 +181,50 @@ async function generatePendingEvidenceReports() {
   }
 }
 
+// Fills Atlas treatment plans created as "generating" by the Rehab Agent
+// tab's "Generate Plan" button. Moved out of the request/response cycle
+// because a 6000-token Claude call routinely outran the reverse proxy's
+// timeout, which killed the connection and returned an HTML error page
+// instead of JSON. Same claim-by-attempts pattern as
+// generatePendingEvidenceReports below — a 15s interval comfortably beats
+// a single generation, so a row is normally done well before the next tick.
+async function generatePendingAtlasTreatmentPlans() {
+  try {
+    // Give up on rows that failed repeatedly, so they don't poll forever.
+    await prisma.atlasTreatmentPlan.updateMany({
+      where: { status: "generating", attempts: { gte: 3 } },
+      data: { status: "failed", error: "Generation gave up after repeated failures." },
+    });
+
+    const staleBefore = new Date(Date.now() - 3 * 60 * 1000);
+    const pending = await prisma.atlasTreatmentPlan.findMany({
+      where: {
+        status: "generating",
+        attempts: { lt: 3 },
+        OR: [{ attempts: 0 }, { updatedAt: { lt: staleBefore } }],
+      },
+      orderBy: { createdAt: "asc" },
+      take: 5,
+      select: { id: true, attempts: true },
+    });
+    if (pending.length === 0) return;
+
+    let done = 0;
+    for (const r of pending) {
+      const claim = await prisma.atlasTreatmentPlan.updateMany({
+        where: { id: r.id, status: "generating", attempts: r.attempts },
+        data: { attempts: { increment: 1 } },
+      });
+      if (claim.count !== 1) continue; // someone else claimed it
+      await generateAtlasTreatmentPlan(r.id);
+      done++;
+    }
+    if (done > 0) console.log(`[background-jobs] Atlas treatment plans: processed ${done}/${pending.length}`);
+  } catch (err: any) {
+    console.error('[background-jobs] Atlas treatment plan generation failed:', err.message);
+  }
+}
+
 // Submits merged ambient-recording audio (activity 64, T-5) to AssemblyAI
 // and polls submitted ones for a finished transcript. 30s interval — much
 // shorter than the evidence-report job's 2min, since AssemblyAI processes
@@ -220,6 +268,7 @@ export function startBackgroundJobs() {
   setInterval(publishDueArticlesJob, ARTICLE_PUBLISH_INTERVAL_MS);
   setInterval(generatePendingEvidenceReports, EVIDENCE_REPORT_INTERVAL_MS);
   setInterval(ambientTranscriptionsJob, AMBIENT_TRANSCRIPTION_INTERVAL_MS);
+  setInterval(generatePendingAtlasTreatmentPlans, ATLAS_TREATMENT_PLAN_INTERVAL_MS);
 
   // Run once shortly after boot too, instead of waiting a full interval.
   setTimeout(refreshExpiringTokens, 30_000);
@@ -228,4 +277,5 @@ export function startBackgroundJobs() {
   setTimeout(publishDueArticlesJob, 60_000);
   setTimeout(generatePendingEvidenceReports, 25_000);
   setTimeout(ambientTranscriptionsJob, 20_000);
+  setTimeout(generatePendingAtlasTreatmentPlans, 10_000);
 }

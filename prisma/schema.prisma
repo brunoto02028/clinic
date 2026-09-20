@@ -373,60 +373,60 @@ model Clinic {
   updatedAt DateTime @updatedAt
 
   // Relations
-  users                   User[]
-  appointments            Appointment[]
-  soapNotes               SOAPNote[]
-  outcomeMeasures         PatientOutcomeMeasure[]
-  medicalScreenings       MedicalScreening[]
-  articles                Article[]
-  conditionPages          ConditionPage[]
-  footScans               FootScan[]
-  orders                  Order[]
-  diagnosticFiles         DiagnosticFile[]
-  siteSettings            SiteSettings?
-  subscription            Subscription?
-  imageLibrary            ImageLibrary[]
-  therapistAvailabilities TherapistAvailability[]
-  therapistBlocks         TherapistBlock[]
-  payments                Payment[]
-  treatmentTypes          TreatmentType[]
-  treatmentPlans          TreatmentPlan[]
-  membershipPlans         MembershipPlan[]
-  moduleAccess            ClinicModuleAccess[]
-  workouts                Workout[]
-  workoutLogs             WorkoutLog[]
-  workoutTemplates        WorkoutTemplate[]
-  studentAssessments      StudentAssessment[]
-  assessmentPhotos        AssessmentPhoto[]
-  mealPlans               MealPlan[]
-  mealLogs                MealLog[]
-  billingPlans            BillingPlan[]
-  billingSubscriptions    BillingSubscription[]
-  challenges              Challenge[]
-  challengeParticipants   ChallengeParticipant[]
-  foods                   Food[]
-  socialAccounts          SocialAccount[]
-  socialPosts             SocialPost[]
-  socialCampaigns         SocialCampaign[]
-  socialTemplates         SocialTemplate[]
-  eduCategories           EducationCategory[]
-  eduContent              EducationContent[]
-  eduAssignments          EducationAssignment[]
-  bodyAssessments         BodyAssessment[]
-  exercises               Exercise[]
-  exerciseFolders         ExerciseFolder[]
-  exercisePrescriptions   ExercisePrescription[]
-  aiDiagnoses             AIDiagnosis[]
-  treatmentProtocols      TreatmentProtocol[]
-  evidenceReports         ClinicalEvidenceReport[]
+  users                    User[]
+  appointments             Appointment[]
+  soapNotes                SOAPNote[]
+  outcomeMeasures          PatientOutcomeMeasure[]
+  medicalScreenings        MedicalScreening[]
+  articles                 Article[]
+  conditionPages           ConditionPage[]
+  footScans                FootScan[]
+  orders                   Order[]
+  diagnosticFiles          DiagnosticFile[]
+  siteSettings             SiteSettings?
+  subscription             Subscription?
+  imageLibrary             ImageLibrary[]
+  therapistAvailabilities  TherapistAvailability[]
+  therapistBlocks          TherapistBlock[]
+  payments                 Payment[]
+  treatmentTypes           TreatmentType[]
+  treatmentPlans           TreatmentPlan[]
+  membershipPlans          MembershipPlan[]
+  moduleAccess             ClinicModuleAccess[]
+  workouts                 Workout[]
+  workoutLogs              WorkoutLog[]
+  workoutTemplates         WorkoutTemplate[]
+  studentAssessments       StudentAssessment[]
+  assessmentPhotos         AssessmentPhoto[]
+  mealPlans                MealPlan[]
+  mealLogs                 MealLog[]
+  billingPlans             BillingPlan[]
+  billingSubscriptions     BillingSubscription[]
+  challenges               Challenge[]
+  challengeParticipants    ChallengeParticipant[]
+  foods                    Food[]
+  socialAccounts           SocialAccount[]
+  socialPosts              SocialPost[]
+  socialCampaigns          SocialCampaign[]
+  socialTemplates          SocialTemplate[]
+  eduCategories            EducationCategory[]
+  eduContent               EducationContent[]
+  eduAssignments           EducationAssignment[]
+  bodyAssessments          BodyAssessment[]
+  exercises                Exercise[]
+  exerciseFolders          ExerciseFolder[]
+  exercisePrescriptions    ExercisePrescription[]
+  aiDiagnoses              AIDiagnosis[]
+  treatmentProtocols       TreatmentProtocol[]
+  evidenceReports          ClinicalEvidenceReport[]
   ambientRecordingSessions AmbientRecordingSession[]
-  treatmentPackages       TreatmentPackage[]
-  patientDocuments        PatientDocument[]
-  voiceTranscriptions     VoiceTranscription[]
-  servicePrices           ServicePrice[]
-  serviceAccess           ServiceAccess[]
-  servicePackages         ServicePackage[]
-  patientPackages         PatientPackage[]
+  treatmentPackages        TreatmentPackage[]
+  patientDocuments         PatientDocument[]
+  voiceTranscriptions      VoiceTranscription[]
+  servicePrices            ServicePrice[]
+  serviceAccess            ServiceAccess[]
+  servicePackages          ServicePackage[]
+  patientPackages          PatientPackage[]
 
   // BPR Journey
   patientProgress      PatientProgress[]
@@ -628,9 +628,9 @@ model User {
   /// answer this: the clinic owner and the developer are both SUPERADMIN, and
   /// only one of them treats patients. Defaults to false so a new staff
   /// account never appears on the booking screen by accident.
-  bookable                 Boolean   @default(false)
+  bookable Boolean @default(false)
 
-  outcomeMeasures          PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
+  outcomeMeasures PatientOutcomeMeasure[] @relation("PatientOutcomeMeasures")
 
   // Profile Image
   profileImageUrl  String?
@@ -667,72 +667,72 @@ model User {
   uploadedImages        ImageLibrary[]
 
   // New relations for SaaS features
-  footScans                  FootScan[]
-  ordersAsCustomer           Order[]                @relation("CustomerOrders")
-  ordersAsProcessor          Order[]                @relation("ProcessorOrders")
-  diagnosticFiles            DiagnosticFile[]
-  diagnosticFilesReviewed    DiagnosticFile[]       @relation("ReviewedFiles")
-  treatmentPlansAsPatient    TreatmentPlan[]        @relation("PatientPlans")
-  treatmentPlansAsTherapist  TreatmentPlan[]        @relation("TherapistPlans")
-  membershipsAsPatient       MembershipPlan[]       @relation("PatientMemberships")
-  socialPostsCreated         SocialPost[]           @relation("SocialPostCreator")
-  eduContentCreated          EducationContent[]     @relation("EduContentCreator")
-  eduAssignmentsGiven        EducationAssignment[]  @relation("EduAssigner")
-  eduAssignmentsReceived     EducationAssignment[]  @relation("EduPatient")
-  eduProgress                EducationProgress[]
-  bodyAssessmentsAsPatient   BodyAssessment[]       @relation("PatientBodyAssessments")
-  bodyAssessmentsAsTherapist BodyAssessment[]       @relation("TherapistBodyAssessments")
-  exercisesCreated           Exercise[]             @relation("ExercisesCreated")
-  prescribedExercises        ExercisePrescription[] @relation("PrescribedExercises")
-  receivedExercises          ExercisePrescription[] @relation("ReceivedExercises")
-  trainerWorkouts            Workout[]              @relation("TrainerWorkouts")
-  studentWorkouts            Workout[]              @relation("StudentWorkouts")
-  studentWorkoutLogs         WorkoutLog[]           @relation("StudentWorkoutLogs")
-  trainerWorkoutTemplates    WorkoutTemplate[]      @relation("TrainerWorkoutTemplates")
-  studentAssessments         StudentAssessment[]    @relation("StudentAssessments")
-  trainerAssessments         StudentAssessment[]    @relation("TrainerAssessments")
-  studentAssessmentPhotos    AssessmentPhoto[]      @relation("StudentAssessmentPhotos")
-  studentMealPlans           MealPlan[]             @relation("StudentMealPlans")
-  trainerMealPlans           MealPlan[]             @relation("TrainerMealPlans")
-  studentMealLogs            MealLog[]              @relation("StudentMealLogs")
-  trainerBillingPlans        BillingPlan[]          @relation("TrainerBillingPlans")
-  studentBillingSubscriptions BillingSubscription[] @relation("StudentBillingSubscriptions")
-  trainerBillingSubscriptions BillingSubscription[] @relation("TrainerBillingSubscriptions")
-  studentStripeCustomers     StudentStripeCustomer[] @relation("StudentStripeCustomers")
-  trainerChallenges          Challenge[]            @relation("TrainerChallenges")
-  studentChallengeParticipations ChallengeParticipant[] @relation("StudentChallengeParticipations")
-  diagnosesAsPatient         AIDiagnosis[]          @relation("PatientDiagnoses")
-  diagnosesAsTherapist       AIDiagnosis[]          @relation("TherapistDiagnoses")
-  protocolsAsPatient         TreatmentProtocol[]    @relation("PatientProtocols")
-  protocolsAsTherapist       TreatmentProtocol[]    @relation("TherapistProtocols")
-  exerciseCompletionLogs     ExerciseCompletionLog[] @relation("ExerciseCompletionLogs")
-  evidenceReportsAsPatient   ClinicalEvidenceReport[] @relation("PatientEvidenceReports")
-  evidenceReportsAsReviewer  ClinicalEvidenceReport[] @relation("ReviewerEvidenceReports")
-  ambientRecordingsAsTherapist AmbientRecordingSession[] @relation("AmbientRecordingTherapist")
-  ambientRecordingsAsPatient   AmbientRecordingSession[] @relation("AmbientRecordingPatient")
-  documentsAsPatient         PatientDocument[]      @relation("PatientDocuments")
-  documentsUploaded          PatientDocument[]      @relation("DocumentUploader")
-  packagesAsPatient          TreatmentPackage[]     @relation("PatientPackages")
-  voiceTranscriptions        VoiceTranscription[]   @relation("PatientTranscriptions")
-  emailMessages              EmailMessage[]         @relation("PatientEmails")
-  bloodPressureReadings      BloodPressureReading[] @relation("PatientBPReadings")
-  bpReminderEnabled          Boolean                @default(false)
-  serviceAccessRecords       ServiceAccess[]        @relation("PatientServiceAccess")
-  serviceAccessGranted       ServiceAccess[]        @relation("ServiceAccessGranter")
-  patientPackages            PatientPackage[]       @relation("PatientPackageRecipient")
-  grantedPackages            PatientPackage[]       @relation("PatientPackageGranter")
-  consentAcceptedAt          DateTime?
-  socialMediaConsentAt       DateTime?
-  preferredLocale            String                 @default("en-GB") // en-GB or pt-BR
-  communicationPreference    String                 @default("EMAIL") // EMAIL, SMS, WHATSAPP, TELEGRAM
-  telegramChatId             String? // Telegram chat_id for bot messages
-  consentLogs                ConsentLog[]           @relation("PatientConsentLogs")
-  screeningEditApprovals     MedicalScreening[]     @relation("ScreeningEditApprover")
-  cancellationRequests       CancellationRequest[]  @relation("PatientCancellations")
-  processedCancellations     CancellationRequest[]  @relation("AdminCancellations")
-  patientSubscriptions       PatientSubscription[]  @relation("PatientSubscriptions")
-  whatsappMessages           WhatsAppMessage[]      @relation("PatientWhatsApp")
-  dailyCheckIns              DailyCheckIn[]         @relation("PatientDailyCheckIns")
+  footScans                      FootScan[]
+  ordersAsCustomer               Order[]                   @relation("CustomerOrders")
+  ordersAsProcessor              Order[]                   @relation("ProcessorOrders")
+  diagnosticFiles                DiagnosticFile[]
+  diagnosticFilesReviewed        DiagnosticFile[]          @relation("ReviewedFiles")
+  treatmentPlansAsPatient        TreatmentPlan[]           @relation("PatientPlans")
+  treatmentPlansAsTherapist      TreatmentPlan[]           @relation("TherapistPlans")
+  membershipsAsPatient           MembershipPlan[]          @relation("PatientMemberships")
+  socialPostsCreated             SocialPost[]              @relation("SocialPostCreator")
+  eduContentCreated              EducationContent[]        @relation("EduContentCreator")
+  eduAssignmentsGiven            EducationAssignment[]     @relation("EduAssigner")
+  eduAssignmentsReceived         EducationAssignment[]     @relation("EduPatient")
+  eduProgress                    EducationProgress[]
+  bodyAssessmentsAsPatient       BodyAssessment[]          @relation("PatientBodyAssessments")
+  bodyAssessmentsAsTherapist     BodyAssessment[]          @relation("TherapistBodyAssessments")
+  exercisesCreated               Exercise[]                @relation("ExercisesCreated")
+  prescribedExercises            ExercisePrescription[]    @relation("PrescribedExercises")
+  receivedExercises              ExercisePrescription[]    @relation("ReceivedExercises")
+  trainerWorkouts                Workout[]                 @relation("TrainerWorkouts")
+  studentWorkouts                Workout[]                 @relation("StudentWorkouts")
+  studentWorkoutLogs             WorkoutLog[]              @relation("StudentWorkoutLogs")
+  trainerWorkoutTemplates        WorkoutTemplate[]         @relation("TrainerWorkoutTemplates")
+  studentAssessments             StudentAssessment[]       @relation("StudentAssessments")
+  trainerAssessments             StudentAssessment[]       @relation("TrainerAssessments")
+  studentAssessmentPhotos        AssessmentPhoto[]         @relation("StudentAssessmentPhotos")
+  studentMealPlans               MealPlan[]                @relation("StudentMealPlans")
+  trainerMealPlans               MealPlan[]                @relation("TrainerMealPlans")
+  studentMealLogs                MealLog[]                 @relation("StudentMealLogs")
+  trainerBillingPlans            BillingPlan[]             @relation("TrainerBillingPlans")
+  studentBillingSubscriptions    BillingSubscription[]     @relation("StudentBillingSubscriptions")
+  trainerBillingSubscriptions    BillingSubscription[]     @relation("TrainerBillingSubscriptions")
+  studentStripeCustomers         StudentStripeCustomer[]   @relation("StudentStripeCustomers")
+  trainerChallenges              Challenge[]               @relation("TrainerChallenges")
+  studentChallengeParticipations ChallengeParticipant[]    @relation("StudentChallengeParticipations")
+  diagnosesAsPatient             AIDiagnosis[]             @relation("PatientDiagnoses")
+  diagnosesAsTherapist           AIDiagnosis[]             @relation("TherapistDiagnoses")
+  protocolsAsPatient             TreatmentProtocol[]       @relation("PatientProtocols")
+  protocolsAsTherapist           TreatmentProtocol[]       @relation("TherapistProtocols")
+  exerciseCompletionLogs         ExerciseCompletionLog[]   @relation("ExerciseCompletionLogs")
+  evidenceReportsAsPatient       ClinicalEvidenceReport[]  @relation("PatientEvidenceReports")
+  evidenceReportsAsReviewer      ClinicalEvidenceReport[]  @relation("ReviewerEvidenceReports")
+  ambientRecordingsAsTherapist   AmbientRecordingSession[] @relation("AmbientRecordingTherapist")
+  ambientRecordingsAsPatient     AmbientRecordingSession[] @relation("AmbientRecordingPatient")
+  documentsAsPatient             PatientDocument[]         @relation("PatientDocuments")
+  documentsUploaded              PatientDocument[]         @relation("DocumentUploader")
+  packagesAsPatient              TreatmentPackage[]        @relation("PatientPackages")
+  voiceTranscriptions            VoiceTranscription[]      @relation("PatientTranscriptions")
+  emailMessages                  EmailMessage[]            @relation("PatientEmails")
+  bloodPressureReadings          BloodPressureReading[]    @relation("PatientBPReadings")
+  bpReminderEnabled              Boolean                   @default(false)
+  serviceAccessRecords           ServiceAccess[]           @relation("PatientServiceAccess")
+  serviceAccessGranted           ServiceAccess[]           @relation("ServiceAccessGranter")
+  patientPackages                PatientPackage[]          @relation("PatientPackageRecipient")
+  grantedPackages                PatientPackage[]          @relation("PatientPackageGranter")
+  consentAcceptedAt              DateTime?
+  socialMediaConsentAt           DateTime?
+  preferredLocale                String                    @default("en-GB") // en-GB or pt-BR
+  communicationPreference        String                    @default("EMAIL") // EMAIL, SMS, WHATSAPP, TELEGRAM
+  telegramChatId                 String? // Telegram chat_id for bot messages
+  consentLogs                    ConsentLog[]              @relation("PatientConsentLogs")
+  screeningEditApprovals         MedicalScreening[]        @relation("ScreeningEditApprover")
+  cancellationRequests           CancellationRequest[]     @relation("PatientCancellations")
+  processedCancellations         CancellationRequest[]     @relation("AdminCancellations")
+  patientSubscriptions           PatientSubscription[]     @relation("PatientSubscriptions")
+  whatsappMessages               WhatsAppMessage[]         @relation("PatientWhatsApp")
+  dailyCheckIns                  DailyCheckIn[]            @relation("PatientDailyCheckIns")
 
   // BPR Journey
   patientProgress      PatientProgress?      @relation("PatientProgress")
@@ -784,11 +784,13 @@ model User {
   studyProjects StudyProject[] @relation("StudyProjectOwner")
 
   // Clinical Rehabilitation Agent
-  rehabPlansAsPatient      RehabPlan[]        @relation("PatientRehabPlans")
-  rehabPlansCreated        RehabPlan[]        @relation("StaffRehabPlans")
-  atlasChatMessages        AtlasChatMessage[] @relation("AtlasChatMessages")
-  patientQuestionsReceived PatientQuestion[]  @relation("PatientQuestions")
-  patientQuestionsCreated  PatientQuestion[]  @relation("QuestionCreator")
+  rehabPlansAsPatient          RehabPlan[]          @relation("PatientRehabPlans")
+  rehabPlansCreated            RehabPlan[]          @relation("StaffRehabPlans")
+  atlasChatMessages            AtlasChatMessage[]   @relation("AtlasChatMessages")
+  atlasTreatmentPlansAsPatient AtlasTreatmentPlan[] @relation("PatientAtlasTreatmentPlans")
+  atlasTreatmentPlansCreated   AtlasTreatmentPlan[] @relation("StaffAtlasTreatmentPlans")
+  patientQuestionsReceived     PatientQuestion[]    @relation("PatientQuestions")
+  patientQuestionsCreated      PatientQuestion[]    @relation("QuestionCreator")
 
   // Clinic <-> Patient direct messaging
   clinicMessagesReceived ClinicMessage[]   @relation("PatientClinicMessages")
@@ -873,12 +875,12 @@ model PatientOutcomeMeasure {
   clinicId  String?
   clinic    Clinic? @relation(fields: [clinicId], references: [id], onDelete: SetNull)
 
-  vasScore          Int? // 0-10 visual analogue scale
-  faamAdl           Int?
-  faamSport         Int?
-  faamAdlPercent    Float?
-  faamSportPercent  Float?
-  overallFunction   Int?
+  vasScore         Int? // 0-10 visual analogue scale
+  faamAdl          Int?
+  faamSport        Int?
+  faamAdlPercent   Float?
+  faamSportPercent Float?
+  overallFunction  Int?
 
   recordedAt DateTime @default(now())
 
@@ -986,7 +988,7 @@ model MedicalScreening {
   /// fill it in from the portal. What differs is clinical weight: an answer
   /// given by the patient and one transcribed by the clinic are not the same
   /// evidence, and the record should not pretend otherwise.
-  filledBy         ScreeningSource @default(CLINIC)
+  filledBy ScreeningSource @default(CLINIC)
 
   // Lock after submission
   isSubmitted      Boolean   @default(false)
@@ -996,7 +998,7 @@ model MedicalScreening {
   editApprovedById String?
   editApprovedBy   User?     @relation("ScreeningEditApprover", fields: [editApprovedById], references: [id])
 
-  evidenceReports  ClinicalEvidenceReport[]
+  evidenceReports ClinicalEvidenceReport[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1033,13 +1035,13 @@ model TherapistAvailability {
 // ============================================
 
 model Appointment {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   clinicId    String
-  clinic      Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic      Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   patientId   String
-  patient     User    @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  patient     User   @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
   therapistId String
-  therapist   User    @relation("TherapistAppointments", fields: [therapistId], references: [id], onDelete: Cascade)
+  therapist   User   @relation("TherapistAppointments", fields: [therapistId], references: [id], onDelete: Cascade)
 
   dateTime        DateTime
   duration        Int               @default(60) // Duration in minutes
@@ -1230,41 +1232,41 @@ model Payment {
 // ============================================
 
 model Article {
-  id              String         @id @default(cuid())
-  clinicId        String?
-  clinic          Clinic?        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  title           String
-  slug            String         @unique
-  excerpt         String
-  content         String         @db.Text
+  id                String         @id @default(cuid())
+  clinicId          String?
+  clinic            Clinic?        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  title             String
+  slug              String         @unique
+  excerpt           String
+  content           String         @db.Text
   // Bilingual versions (English + Portuguese). The primary `title/excerpt/content`
   // above mirror the publishLanguage version for backward-compat (slug, SEO, newsletter, list cards).
-  titleEn         String?
-  excerptEn       String?
-  contentEn       String?        @db.Text
-  titlePt         String?
-  excerptPt       String?
-  contentPt       String?        @db.Text
-  publishLanguage String?        @default("en") // primary/default language shown publicly ("en" | "pt")
-  imageUrl        String?
+  titleEn           String?
+  excerptEn         String?
+  contentEn         String?        @db.Text
+  titlePt           String?
+  excerptPt         String?
+  contentPt         String?        @db.Text
+  publishLanguage   String?        @default("en") // primary/default language shown publicly ("en" | "pt")
+  imageUrl          String?
   // Focal point (% from top-left) used as CSS object-position wherever
   // imageUrl is shown inside a fixed-aspect crop, so a wide/off-centre
   // photo doesn't lose its important subject to a centred crop.
-  imageFocalX     Float          @default(50)
-  imageFocalY     Float          @default(50)
-  published       Boolean        @default(false)
-  scheduledAt     DateTime? // if set and published=false, the in-process scheduler (lib/background-jobs.ts) publishes it once this time has passed
-  authorId        String
-  author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorName      String? // Optional override for displayed author name
+  imageFocalX       Float          @default(50)
+  imageFocalY       Float          @default(50)
+  published         Boolean        @default(false)
+  scheduledAt       DateTime? // if set and published=false, the in-process scheduler (lib/background-jobs.ts) publishes it once this time has passed
+  authorId          String
+  author            User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorName        String? // Optional override for displayed author name
   // SEO fields (used by AI Article Generator)
   metaDescription   String?
   metaDescriptionPt String? // Portuguese SEO description — generateMetadata() picks between this and metaDescription based on the request's Accept-Language
   tags              String[]
-  keyword         String?
-  generatedBy     String? // e.g. "CLAUDE", "GEMINI", null for manual
-  language        String?        @default("en")
-  audioTracks     ArticleAudio[] // cached ElevenLabs "listen to article" narration, one per locale
+  keyword           String?
+  generatedBy       String? // e.g. "CLAUDE", "GEMINI", null for manual
+  language          String?        @default("en")
+  audioTracks       ArticleAudio[] // cached ElevenLabs "listen to article" narration, one per locale
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1465,7 +1467,7 @@ model SiteSettings {
   // Consent / Legal Texts
   consentTextsJson   String? @db.Text // JSON config for terms, privacy, liability texts
   consentTextsJsonPt String? @db.Text // Same shape, Portuguese translation
-  termsContentHtml String? @db.Text // Full HTML content for /terms page (editable from admin)
+  termsContentHtml   String? @db.Text // Full HTML content for /terms page (editable from admin)
 
   // SEO - Basic
   metaTitle       String?
@@ -2300,11 +2302,11 @@ model PasswordResetToken {
 }
 
 model EmailChangeToken {
-  id      String   @id @default(cuid())
-  userId  String
+  id       String   @id @default(cuid())
+  userId   String
   newEmail String
-  token   String   @unique
-  expires DateTime
+  token    String   @unique
+  expires  DateTime
 
   @@index([userId])
 }
@@ -2928,7 +2930,7 @@ model Exercise {
   workoutExercises         WorkoutExercise[]
   workoutTemplateExercises WorkoutTemplateExercise[]
   protocolItems            ProtocolItem[]
-  templateItems            ProtocolTemplateItem[] @relation("TemplateItemExercise")
+  templateItems            ProtocolTemplateItem[]    @relation("TemplateItemExercise")
 
   @@index([clinicId])
   @@index([bodyRegion])
@@ -3042,11 +3044,11 @@ model Workout {
   student   User   @relation("StudentWorkouts", fields: [studentId], references: [id], onDelete: Cascade)
 
   name       String
-  order      Int      @default(0)
+  order      Int     @default(0)
   daysOfWeek Int[] // 0=Sun … 6=Sat
   phase      String? // e.g. "Semana 1", "Fase de força"
-  notes      String?  @db.Text
-  isActive   Boolean  @default(true)
+  notes      String? @db.Text
+  isActive   Boolean @default(true)
 
   // Set when this workout was generated from a Program Template assignment
   // (activity 33). Both null = today's manual/recurring behavior, unchanged.
@@ -3261,10 +3263,10 @@ model StudentAssessment {
   assessmentType String?
 
   // Body composition
-  bfMethod    BodyFatMethod @default(MANUAL)
-  bodyFatPct  Float? // final %BF (entered, from BIA, or computed from skinfolds)
-  skinfolds   Json? // { chest, abdomen, thigh, triceps, suprailiac, subscapular, midaxillary } mm
-  bia         Json? // { bodyFatPct, muscleMassKg, bodyWaterPct, visceralFat }
+  bfMethod   BodyFatMethod @default(MANUAL)
+  bodyFatPct Float? // final %BF (entered, from BIA, or computed from skinfolds)
+  skinfolds  Json? // { chest, abdomen, thigh, triceps, suprailiac, subscapular, midaxillary } mm
+  bia        Json? // { bodyFatPct, muscleMassKg, bodyWaterPct, visceralFat }
 
   // Vitals (optional)
   restingHr Int?
@@ -3508,7 +3510,7 @@ model BillingPlan {
   trainer   User   @relation("TrainerBillingPlans", fields: [trainerId], references: [id])
 
   name        String
-  description String? @db.Text
+  description String?         @db.Text
   amountCents Int
   currency    String          @default("GBP")
   interval    BillingInterval @default(MONTHLY)
@@ -3902,8 +3904,8 @@ model TreatmentProtocol {
   updatedAt DateTime @updatedAt
 
   // Relations
-  items    ProtocolItem[]
-  packages TreatmentPackage[]
+  items         ProtocolItem[]
+  packages      TreatmentPackage[]
   /// Standalone prescriptions this protocol's assignment created (activity 46).
   prescriptions ExercisePrescription[]
 
@@ -4282,31 +4284,31 @@ model EmailTemplate {
 }
 
 model EmailMessage {
-  id           String         @id @default(cuid())
-  messageId    String?        @unique // SMTP/IMAP message ID
-  direction    EmailDirection
-  folder       EmailFolder    @default(INBOX)
-  fromAddress  String
-  fromName     String?
-  toAddress    String
-  toName       String?
-  ccAddress    String?
-  subject      String
-  textBody     String?        @db.Text
-  htmlBody     String?        @db.Text
-  isRead       Boolean        @default(false)
-  isStarred    Boolean        @default(false)
-  isSpam       Boolean        @default(false)
-  spamScore    Float?
-  templateSlug String? // Which template was used (for outbound)
-  attachmentsJson String? @db.Text // Frozen [{filename, contentBase64}] — set for PENDING_APPROVAL items so "Approve & Send" sends exactly what was previewed
-  patientId    String?
-  patient      User?          @relation("PatientEmails", fields: [patientId], references: [id], onDelete: SetNull)
-  clinicId     String?
-  sentAt       DateTime?
-  receivedAt   DateTime?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id              String         @id @default(cuid())
+  messageId       String?        @unique // SMTP/IMAP message ID
+  direction       EmailDirection
+  folder          EmailFolder    @default(INBOX)
+  fromAddress     String
+  fromName        String?
+  toAddress       String
+  toName          String?
+  ccAddress       String?
+  subject         String
+  textBody        String?        @db.Text
+  htmlBody        String?        @db.Text
+  isRead          Boolean        @default(false)
+  isStarred       Boolean        @default(false)
+  isSpam          Boolean        @default(false)
+  spamScore       Float?
+  templateSlug    String? // Which template was used (for outbound)
+  attachmentsJson String?        @db.Text // Frozen [{filename, contentBase64}] — set for PENDING_APPROVAL items so "Approve & Send" sends exactly what was previewed
+  patientId       String?
+  patient         User?          @relation("PatientEmails", fields: [patientId], references: [id], onDelete: SetNull)
+  clinicId        String?
+  sentAt          DateTime?
+  receivedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([folder])
   @@index([direction])
@@ -4563,12 +4565,12 @@ model EmailContact {
   notes          String?
 
   // ── Lead-magnet / double opt-in (P1.2) ──
-  cluster      String? // topic cluster of the magnet that captured them, e.g. "running", "knee", "neck"
-  consent      Boolean   @default(false) // explicit GDPR marketing consent checkbox at capture time
-  consentAt    DateTime?
-  confirmed    Boolean   @default(false) // double opt-in — true once they've clicked the confirmation email link
-  confirmedAt  DateTime?
-  confirmToken String?   @unique // single-use-ish token for the confirm link + gated PDF download link
+  cluster                   String? // topic cluster of the magnet that captured them, e.g. "running", "knee", "neck"
+  consent                   Boolean   @default(false) // explicit GDPR marketing consent checkbox at capture time
+  consentAt                 DateTime?
+  confirmed                 Boolean   @default(false) // double opt-in — true once they've clicked the confirmation email link
+  confirmedAt               DateTime?
+  confirmToken              String?   @unique // single-use-ish token for the confirm link + gated PDF download link
   chapterOnePdfDownloadedAt DateTime? // set the first time the Chapter One PDF link is used — the download route (/api/beyond-pain/download) rejects any further request once this is set, so a leaked/forwarded email link stops working after one download
 
   createdAt DateTime @default(now())
@@ -4630,17 +4632,17 @@ enum BookStatus {
 // Singleton config row (first record wins) driving the /beyond-pain launch
 // switch (§4) and editable copy — flip `status` without a code deploy.
 model BookConfig {
-  id       String     @id @default(cuid())
-  status   BookStatus @default(PRE_LAUNCH)
-  title    String     @default("Beyond Pain")
-  subtitle String     @default("The science and soul of healing — body, soul and spirit")
+  id         String     @id @default(cuid())
+  status     BookStatus @default(PRE_LAUNCH)
+  title      String     @default("Beyond Pain")
+  subtitle   String     @default("The science and soul of healing — body, soul and spirit")
   titlePt    String? // Portuguese title — falls back to `title` on the public page if unset
   subtitlePt String? // Portuguese subtitle — falls back to `subtitle` if unset
 
-  authorName  String? @default("Bruno")
-  authorBio   String? @db.Text
-  authorPhoto String?
-  coverImage  String? // book cover artwork shown in the hero (English)
+  authorName   String? @default("Bruno")
+  authorBio    String? @db.Text
+  authorPhoto  String?
+  coverImage   String? // book cover artwork shown in the hero (English)
   coverImagePt String? // Portuguese-language cover artwork — falls back to `coverImage` if unset
 
   // On-sale purchase links (§4) — only used once status = ON_SALE
@@ -4659,14 +4661,14 @@ model BookConfig {
 // §6). `isFree` chapters are gated behind email confirmation only (§2);
 // non-free chapters are reserved for the post-launch paid book.
 model BookChapter {
-  id        String   @id @default(cuid())
-  slug      String   @unique // e.g. "chapter-one"
-  order     Int      @default(0)
-  isFree    Boolean  @default(true)
-  published Boolean  @default(true)
+  id        String  @id @default(cuid())
+  slug      String  @unique // e.g. "chapter-one"
+  order     Int     @default(0)
+  isFree    Boolean @default(true)
+  published Boolean @default(true)
 
   titleEn   String
-  contentEn String @db.Text // rendered HTML
+  contentEn String  @db.Text // rendered HTML
   titlePt   String?
   contentPt String? @db.Text
 
@@ -6059,13 +6061,13 @@ enum AmbientRecordingStatus {
 }
 
 model AmbientRecordingSession {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   clinicId    String
-  clinic      Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic      Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   therapistId String
-  therapist   User   @relation("AmbientRecordingTherapist", fields: [therapistId], references: [id], onDelete: Cascade)
+  therapist   User    @relation("AmbientRecordingTherapist", fields: [therapistId], references: [id], onDelete: Cascade)
   patientId   String?
-  patient     User?  @relation("AmbientRecordingPatient", fields: [patientId], references: [id], onDelete: SetNull)
+  patient     User?   @relation("AmbientRecordingPatient", fields: [patientId], references: [id], onDelete: SetNull)
 
   status   AmbientRecordingStatus @default(RECORDING)
   language String                 @default("pt")
@@ -6536,6 +6538,35 @@ model RehabMessage {
 
   @@index([planId])
   @@map("rehab_messages")
+}
+
+// Atlas's "Generate Plan" card on the patient's Rehab Agent tab — a single
+// one-click plan built from everything already on file (screening, notes,
+// documents, protocols), distinct from the guided "New Assessment" wizard
+// above it (RehabPlan/RehabMessage). Its own model rather than reusing
+// RehabPlan so it never shows up mixed into that wizard's plan list, and so
+// generation can run as a background job (status: generating → ready/failed)
+// instead of blocking the request — a 6000-token Claude call routinely took
+// long enough to hit the proxy's timeout and return an HTML error page
+// instead of JSON.
+model AtlasTreatmentPlan {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     User     @relation("PatientAtlasTreatmentPlans", fields: [patientId], references: [id], onDelete: Cascade)
+  clinicId    String
+  createdById String
+  createdBy   User     @relation("StaffAtlasTreatmentPlans", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  status   String  @default("generating") // generating | ready | failed
+  planJson Json?
+  error    String? @db.Text
+  attempts Int     @default(0)
+
+  @@index([patientId])
+  @@index([status])
+  @@map("atlas_treatment_plans")
 }
 
 // Persistent free-form chat between Bruno and Atlas about a patient

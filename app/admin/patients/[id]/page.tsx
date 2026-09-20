@@ -2298,8 +2298,28 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
-      setTreatmentPlan(d.plan);
-      setTpView("viewing");
+
+      // Generation runs as a background job (lib/background-jobs.ts) — a
+      // 6000-token Claude call routinely outran the reverse proxy's
+      // timeout when this waited on it directly, which killed the
+      // connection and returned an HTML error page instead of JSON. Poll
+      // for the result instead, same pattern as the evidence-report tab.
+      const planId = d.planId;
+      const deadline = Date.now() + 5 * 60 * 1000; // background job gives up well before this
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        const pr = await fetch(`/api/admin/patients/${patientId}/atlas-treatment-plan/${planId}`);
+        const pd = await pr.json();
+        if (!pr.ok) throw new Error(pd.error || "Failed to check plan status");
+        if (pd.status === "ready") {
+          setTreatmentPlan(pd.plan);
+          setTpView("viewing");
+          return;
+        }
+        if (pd.status === "failed") throw new Error(pd.error || "Failed to generate plan");
+        // still "generating" — keep polling
+      }
+      throw new Error("Atlas is taking longer than expected. Try again in a moment.");
     } catch (e: any) {
       setTpError(e.message || "Failed to generate plan");
       setTpView("idle");
