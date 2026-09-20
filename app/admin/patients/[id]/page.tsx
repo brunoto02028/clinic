@@ -2362,6 +2362,7 @@ function RehabAgentTab({ patientId, patientData, sentQuestions, setSentQuestions
     setTpView("generating");
     setTreatmentPlan(null);
     setTreatmentPlanPt(null);
+    setTpLang("pt"); // fresh plan, back to this clinic's default working language
     setTpChatHistory([]);
     setTpSentOk(false);
     setTpError("");
