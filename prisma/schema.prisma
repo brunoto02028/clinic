@@ -3783,6 +3783,13 @@ model ClinicalEvidenceReport {
   narrativeEn String? @db.Text
   narrativePt String? @db.Text
 
+  // PT translations of the structured fields above (activity 065 T-2) — same
+  // shape as `suggestions`/`gaps`, filled on demand alongside narrativePt so
+  // switching the report to PT translates everything, not just the summary
+  // paragraph. Never overwrites the English originals.
+  suggestionsPt Json?
+  gapsPt        Json?
+
   // AI metadata + failure capture (attempts guards the poll job against loops)
   aiModel          String?
   promptTokens     Int?

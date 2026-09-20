@@ -9,7 +9,7 @@
 // (collapsed) instead of being replaced, so the clinician can see how the
 // analysis evolved.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Loader2, AlertTriangle, CheckCircle2, RefreshCw, TrendingUp, FlaskConical,
   Stethoscope, ExternalLink, Languages, ChevronDown, ChevronUp,
@@ -118,13 +118,34 @@ function ReportBody({
   const scores = cs.scores || {};
   const evidence: any[] = Array.isArray(report.evidence) ? report.evidence : [];
   const cross = report.clinicCrossRef || {};
-  const sug = report.suggestions || {};
-  const gaps: string[] = Array.isArray(report.gaps) ? report.gaps : [];
+  const sug = (lang === "pt" ? report.suggestionsPt : null) || report.suggestions || {};
+  const gapsEn: string[] = Array.isArray(report.gaps) ? report.gaps : [];
+  const gapsPt: string[] | null = Array.isArray(report.gapsPt) ? report.gapsPt : null;
+  const gaps: string[] = lang === "pt" ? (gapsPt || gapsEn) : gapsEn;
   const flags: any[] = Array.isArray(report.redFlagDetails) ? report.redFlagDetails : [];
   const narrative = lang === "pt" ? (report.narrativePt || report.narrativeEn) : report.narrativeEn;
   const sr = evidence.filter((e) => e.evidenceRank === 5);
   const rct = evidence.filter((e) => e.evidenceRank === 4);
   const other = evidence.filter((e) => e.evidenceRank <= 3);
+
+  // Switching to PT should translate everything at once (narrative +
+  // suggestions + gaps), not just the summary paragraph behind a separate
+  // manual click — a red-flag report has nothing to translate (its banner
+  // text is already fully localized via the T dictionary, no AI content).
+  const needsTranslation = lang === "pt" && !report.redFlag && report.status !== "GENERATING" && (
+    (!!report.narrativeEn && !report.narrativePt) ||
+    (((report.suggestions?.treatment?.length ?? 0) > 0 || (report.suggestions?.exercise?.length ?? 0) > 0) && !report.suggestionsPt) ||
+    ((report.gaps?.length ?? 0) > 0 && !report.gapsPt)
+  );
+  const autoTranslateRequested = useRef(false);
+  useEffect(() => {
+    if (needsTranslation && !autoTranslateRequested.current) {
+      autoTranslateRequested.current = true;
+      translate();
+    }
+    if (!needsTranslation) autoTranslateRequested.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang, needsTranslation]);
 
   return (
     <div className="space-y-6">
@@ -181,7 +202,7 @@ function ReportBody({
             <section>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.summary}</h3>
-                {lang === "pt" && !report.narrativePt && (
+                {needsTranslation && (
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={translate} disabled={busy === "translate"}>
                     {busy === "translate" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Languages className="h-3 w-3 mr-1" />}
                     {busy === "translate" ? t.translating : t.translate}

@@ -95,3 +95,4 @@ ar (`curl` 200).
 | Tarefa | Nome | Status |
 |---|---|---|
 | T-1 | Corrigir gate de red flag cardiovascular + silêncio no erro de parse | concluído |
+| T-2 | Tradução completa do relatório ao trocar pra PT (resumo + sugestões + lacunas) | concluído |
