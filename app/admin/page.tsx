@@ -227,7 +227,9 @@ export default function AdminDashboard() {
             {new Date().toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </Badge>
         </div>
-        <DailyAdherenceCard />
+        <div className="mb-4">
+          <DailyAdherenceCard />
+        </div>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <StatCard
             title={T("admin.todaySessions")}
@@ -280,7 +282,7 @@ export default function AdminDashboard() {
           {isPersonal ? <Dumbbell className="h-5 w-5 text-primary" /> : <Stethoscope className="h-5 w-5 text-primary" />}
           <h2 className="text-lg font-semibold">{T("admin.clinic")}</h2>
         </div>
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
           <StatCard
             title={T("admin.totalAppointments")}
             value={stats?.totalAppointments || 0}

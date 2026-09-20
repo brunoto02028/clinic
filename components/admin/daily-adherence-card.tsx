@@ -68,10 +68,10 @@ export default function DailyAdherenceCard() {
           <span className="flex items-center gap-1 text-ba1-bad"><AlertCircle className="h-4 w-4" /> {data.missing.length} missing</span>
         </div>
         {data.missing.length > 0 && (
-          <ul className="space-y-1">
+          <ul className="space-y-3">
             {data.missing.map((p) => (
-              <li key={p.patientId} className="text-sm flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 flex-1 basis-64">
+              <li key={p.patientId} className="text-sm flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0">
+                <div className="min-w-0 flex-1">
                   <Link href={`/admin/patients/${p.patientId}`} className="text-primary hover:underline">{p.name}</Link>
                   <span className="text-muted-foreground"> — {p.missingItems.map((i) => i.title).join(", ")}</span>
                   <a
@@ -86,7 +86,7 @@ export default function DailyAdherenceCard() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 text-xs shrink-0"
+                  className="h-7 text-xs shrink-0 self-start sm:self-center"
                   disabled={sending === p.patientId || sent.has(p.patientId)}
                   onClick={() => sendReminder(p.patientId)}
                 >
