@@ -157,7 +157,8 @@ export default function PrivacyPolicyPage() {
             <ul className="list-disc pl-5 space-y-1">
               <li>{isPt ? "Processadores de pagamento (Stripe) para transações seguras" : "Payment processors (Stripe) for secure transactions"}</li>
               <li>{isPt ? "Anthropic (Claude) — provedor de IA principal para análise clínica assistida e transcrição estruturada, sob Acordo de Processamento de Dados (DPA) com retenção zero de dados de treino" : "Anthropic (Claude) — our primary AI provider for AI-assisted clinical analysis and structured transcription, under a Data Processing Agreement (DPA) with zero data-retention for training"}</li>
-              <li>{isPt ? "Groq — transcrição de áudio (fala-para-texto) de consultas e gravações de pacientes" : "Groq — audio transcription (speech-to-text) for consultations and patient recordings"}</li>
+              <li>{isPt ? "Groq — transcrição de áudio (fala-para-texto) para preenchimento por voz e outras funções de transcrição rápida" : "Groq — audio transcription (speech-to-text) for voice-fill and other fast-transcription features"}</li>
+              <li>{isPt ? "AssemblyAI — transcrição de gravações de consultas (com o seu consentimento específico); o áudio original é excluído após a transcrição" : "AssemblyAI — transcription of consultation recordings (with your specific consent); the original audio is deleted after transcription"}</li>
               <li>{isPt ? "Google (Gemini) — provedor de IA de reserva para análise clínica e geração de imagens" : "Google (Gemini) — fallback AI provider for clinical analysis and image generation"}</li>
               <li>{isPt ? "Serviço de geolocalização de IP (ip-api.com) — apenas endereço IP, sem dados pessoais" : "IP geolocation service (ip-api.com) — only IP address, no personal data"}</li>
               <li>{isPt ? "Seu médico ou outros profissionais de saúde (com seu consentimento explícito)" : "Your GP or other healthcare providers (with your explicit consent)"}</li>
@@ -165,8 +166,8 @@ export default function PrivacyPolicyPage() {
             </ul>
             <p className="mt-3 text-xs italic">
               {isPt
-                ? "Os seus dados clínicos e de saúde são processados apenas por provedores de IA com salvaguardas adequadas de proteção de dados (Anthropic, Groq e Google). NÃO utilizamos provedores de IA sob jurisdições sem garantias de proteção de dados adequadas para qualquer dado clínico de paciente. Provedores adicionais podem ser usados exclusivamente para conteúdo de marketing não-clínico, nunca para dados de pacientes."
-                : "Your clinical and health data is processed only by AI providers with appropriate data-protection safeguards (Anthropic, Groq, and Google). We do NOT use AI providers under jurisdictions lacking adequate data-protection guarantees for any patient clinical data. Additional providers may be used solely for non-clinical marketing content, never for patient data."}
+                ? "Os seus dados clínicos e de saúde são processados apenas por provedores de IA com salvaguardas adequadas de proteção de dados (Anthropic, Groq, AssemblyAI e Google). NÃO utilizamos provedores de IA sob jurisdições sem garantias de proteção de dados adequadas para qualquer dado clínico de paciente. Provedores adicionais podem ser usados exclusivamente para conteúdo de marketing não-clínico, nunca para dados de pacientes."
+                : "Your clinical and health data is processed only by AI providers with appropriate data-protection safeguards (Anthropic, Groq, AssemblyAI, and Google). We do NOT use AI providers under jurisdictions lacking adequate data-protection guarantees for any patient clinical data. Additional providers may be used solely for non-clinical marketing content, never for patient data."}
             </p>
             <p className="mt-2 font-semibold text-foreground">{isPt ? "Nunca vendemos seus dados pessoais." : "We never sell your personal data."}</p>
           </Section>
@@ -234,8 +235,8 @@ export default function PrivacyPolicyPage() {
           {/* 11. International Transfers */}
           <Section icon={Globe} title={isPt ? "11. Transferências Internacionais" : "11. International Data Transfers"}>
             <p>{isPt
-              ? "Seus dados podem ser processados por provedores de serviço localizados fora do Reino Unido (ex: Anthropic, Groq e Google para análise de IA e transcrição; Stripe para pagamentos — todos baseados nos EUA). Quando isso ocorrer, garantimos que salvaguardas apropriadas estejam em vigor, incluindo Cláusulas Contratuais Padrão (SCCs), o Adendo Internacional de Transferência de Dados do UK (IDTA), Acordos de Processamento de Dados (DPAs) ou adequação reconhecida pelo UK."
-              : "Your data may be processed by service providers located outside the United Kingdom (e.g., Anthropic, Groq, and Google for AI analysis and transcription; Stripe for payments — all US-based). Where this occurs, we ensure appropriate safeguards are in place, including Standard Contractual Clauses (SCCs), the UK International Data Transfer Addendum (IDTA), Data Processing Agreements (DPAs), or UK adequacy recognition."}</p>
+              ? "Seus dados podem ser processados por provedores de serviço localizados fora do Reino Unido (ex: Anthropic, Groq, AssemblyAI e Google para análise de IA e transcrição; Stripe para pagamentos — todos baseados nos EUA). Quando isso ocorrer, garantimos que salvaguardas apropriadas estejam em vigor, incluindo Cláusulas Contratuais Padrão (SCCs), o Adendo Internacional de Transferência de Dados do UK (IDTA), Acordos de Processamento de Dados (DPAs) ou adequação reconhecida pelo UK."
+              : "Your data may be processed by service providers located outside the United Kingdom (e.g., Anthropic, Groq, AssemblyAI, and Google for AI analysis and transcription; Stripe for payments — all US-based). Where this occurs, we ensure appropriate safeguards are in place, including Standard Contractual Clauses (SCCs), the UK International Data Transfer Addendum (IDTA), Data Processing Agreements (DPAs), or UK adequacy recognition."}</p>
           </Section>
 
           {/* 12. Changes */}

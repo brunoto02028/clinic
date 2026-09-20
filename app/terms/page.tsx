@@ -83,6 +83,15 @@ export default function TermsPage() {
                   <div className="flex items-start gap-3">
                     <Badge variant="outline" className="mt-0.5 flex-shrink-0">3</Badge>
                     <div>
+                      <p className="font-semibold text-foreground">{isPt ? "Consultas Remotas e Híbridas" : "Remote & Hybrid Consultations"}</p>
+                      <p className="mt-1">{isPt
+                        ? "Quando clinicamente apropriado, parte ou todo o seu tratamento pode ser realizado remotamente (consulta por vídeo ou áudio), isoladamente ou combinado com sessões presenciais (\"cuidado híbrido\"). Ao reservar uma consulta remota ou híbrida, você entende que: (a) uma consulta remota não permite que o fisioterapeuta o examine, palpe ou trate manualmente, e algumas condições podem exigir avaliação presencial; (b) você é responsável por garantir um espaço privado e seguro, com conexão de internet estável, para a consulta; (c) as consultas por vídeo/áudio são realizadas através da nossa plataforma de videochamada, que processa os dados da chamada de acordo com seus próprios termos de privacidade; (d) o fisioterapeuta pode encerrar uma consulta remota e recomendar uma visita presencial caso a avaliação remota seja clinicamente insuficiente."
+                        : "Where clinically appropriate, some or all of your treatment may be delivered remotely (video or audio consultation), either on its own or combined with in-person sessions (\"hybrid care\"). By booking a remote or hybrid appointment, you understand that: (a) a remote consultation does not allow your physiotherapist to physically examine, palpate, or manually treat you, and some conditions may still require an in-person assessment; (b) you are responsible for ensuring a private, safe space with a stable internet connection for the consultation; (c) video/audio consultations are conducted through our video-calling platform, which processes call data under its own privacy terms; (d) your physiotherapist may end a remote consultation and recommend an in-person visit if remote assessment is clinically insufficient."}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">4</Badge>
+                    <div>
                       <p className="font-semibold text-foreground">{isPt ? "Aviso Médico" : "Medical Disclaimer"}</p>
                       <p className="mt-1">{isPt
                         ? "Análises, pontuações e recomendações geradas por IA fornecidas através da Plataforma são apenas para fins informativos e de suporte clínico. Não constituem diagnóstico médico. Todas as decisões clínicas são tomadas pelo seu fisioterapeuta qualificado. Em caso de emergência médica, ligue 999 ou vá ao pronto-socorro mais próximo."
@@ -90,7 +99,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">4</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">5</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Consentimento Informado para Tratamento" : "Informed Consent for Treatment"}</p>
                       <p className="mt-1">{isPt
@@ -99,7 +108,16 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">5</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">6</Badge>
+                    <div>
+                      <p className="font-semibold text-foreground">{isPt ? "Gravação de Consultas" : "Consultation Recording"}</p>
+                      <p className="mt-1">{isPt
+                        ? "Com o seu consentimento específico, o fisioterapeuta pode gravar em áudio toda ou parte de uma consulta. As gravações são usadas exclusivamente para apoiar um registro clínico detalhado e preciso após o seu atendimento — por exemplo, para capturar informações discutidas durante a sessão que serão adicionadas à sua ficha. As gravações são transcritas por um serviço de transcrição com IA (AssemblyAI); a transcrição é adicionada ao seu prontuário clínico e o áudio original é excluído assim que a transcrição é concluída (veja detalhes de retenção na nossa Política de Privacidade). Você pode recusar ser gravado em qualquer sessão específica sem que isso afete o seu atendimento, e pode pedir ao fisioterapeuta para parar de gravar a qualquer momento durante a sessão."
+                        : "With your specific consent, your physiotherapist may audio-record all or part of a consultation. Recordings are used solely to support an accurate, detailed clinical record after your appointment — for example, to capture information discussed during the session for your patient file. Recordings are transcribed by an AI transcription service (AssemblyAI); the transcript is added to your clinical record and the original audio is deleted once transcription is complete (see our Privacy Policy for retention details). You may decline to be recorded for any individual session without affecting your care, and you may ask your physiotherapist to stop recording at any point during a session."}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">7</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Precisão das Informações" : "Accuracy of Information"}</p>
                       <p className="mt-1">{isPt
@@ -118,7 +136,7 @@ export default function TermsPage() {
                 </div>
                 <div className="bg-muted/30 rounded-lg p-5 space-y-4 text-sm text-muted-foreground">
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">6</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">8</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Controlador de Dados" : "Data Controller"}</p>
                       <p className="mt-1">{isPt
@@ -127,7 +145,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">7</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">9</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Base Legal para Processamento" : "Lawful Basis for Processing"}</p>
                       <p className="mt-1">{isPt
@@ -136,16 +154,16 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">8</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">10</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Dados que Coletamos" : "Data We Collect"}</p>
                       <p className="mt-1">{isPt
-                        ? "Coletamos e processamos: dados de identificação pessoal (nome, e-mail, telefone); dados de triagem médica (histórico de saúde, medicações, alergias); dados de avaliação clínica (imagens corporais, escaneamentos dos pés, pontuações posturais); registros de tratamento (diagnósticos, protocolos, prescrições de exercícios); documentos médicos enviados; leituras de pressão arterial; registros de consultas; e informações de pagamento."
-                        : "We collect and process: personal identification data (name, email, phone); medical screening data (health history, medications, allergies, red flags); clinical assessment data (body images, foot scans, posture scores); treatment records (diagnoses, protocols, exercise prescriptions); uploaded medical documents; blood pressure readings; appointment records; and payment information."}</p>
+                        ? "Coletamos e processamos: dados de identificação pessoal (nome, e-mail, telefone); dados de triagem médica (histórico de saúde, medicações, alergias); dados de avaliação clínica (imagens corporais, escaneamentos dos pés, pontuações posturais); registros de tratamento (diagnósticos, protocolos, prescrições de exercícios); documentos médicos enviados; leituras de pressão arterial; registros de consultas; gravações de áudio de consultas (com consentimento) e suas transcrições; e informações de pagamento."
+                        : "We collect and process: personal identification data (name, email, phone); medical screening data (health history, medications, allergies, red flags); clinical assessment data (body images, foot scans, posture scores); treatment records (diagnoses, protocols, exercise prescriptions); uploaded medical documents; blood pressure readings; appointment records; consultation audio recordings (with consent) and their transcripts; and payment information."}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">9</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">11</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Uso de IA e Processamento Automatizado" : "Use of AI & Automated Processing"}</p>
                       <p className="mt-1">{isPt
@@ -154,7 +172,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">10</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">12</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Imagens Corporais e Privacidade" : "Body Images & Privacy"}</p>
                       <p className="mt-1">{isPt
@@ -163,16 +181,16 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">11</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">13</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Retenção de Dados" : "Data Retention"}</p>
                       <p className="mt-1">{isPt
-                        ? "Registros clínicos são mantidos por um mínimo de 8 anos a partir da data do último tratamento (ou até os 25 anos para crianças) de acordo com as diretrizes da Chartered Society of Physiotherapy (CSP) e o código de prática de gestão de registros do NHS. Você pode solicitar a exclusão de dados não clínicos a qualquer momento."
-                        : "Clinical records are retained for a minimum of 8 years from the date of last treatment (or until age 25 for children) in accordance with the Chartered Society of Physiotherapy (CSP) guidelines and NHS records management code of practice. You may request deletion of non-clinical data at any time."}</p>
+                        ? "Registros clínicos são mantidos por um mínimo de 8 anos a partir da data do último tratamento (ou até os 25 anos para crianças) de acordo com as diretrizes da Chartered Society of Physiotherapy (CSP) e o código de prática de gestão de registros do NHS. Gravações de áudio de consultas são transcritas e depois excluídas; a transcrição é mantida junto com o seu registro clínico. Você pode solicitar a exclusão de dados não clínicos a qualquer momento."
+                        : "Clinical records are retained for a minimum of 8 years from the date of last treatment (or until age 25 for children) in accordance with the Chartered Society of Physiotherapy (CSP) guidelines and NHS records management code of practice. Consultation audio recordings are transcribed and then deleted; the transcript is retained together with your clinical record. You may request deletion of non-clinical data at any time."}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">12</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">14</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Seus Direitos sob o UK GDPR" : "Your Rights Under UK GDPR"}</p>
                       <p className="mt-1">{isPt
@@ -181,7 +199,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">13</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">15</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Segurança dos Dados" : "Data Security"}</p>
                       <p className="mt-1">{isPt
@@ -190,11 +208,11 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">14</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">16</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Compartilhamento de Dados com Terceiros" : "Third-Party Data Sharing"}</p>
                       <p className="mt-1">{isPt
-                        ? "Podemos compartilhar seus dados com: (a) seu médico ou outros profissionais de saúde (com seu consentimento explícito); (b) processadores de pagamento (Stripe) para processamento de transações; (c) provedores de serviço de IA (Google) para análise clínica — anonimizados quando possível; (d) órgãos reguladores se exigido por lei. Não vendemos seus dados a terceiros."
+                        ? "Podemos compartilhar seus dados com: (a) seu médico ou outros profissionais de saúde (com seu consentimento explícito); (b) processadores de pagamento (Stripe) para processamento de transações; (c) provedores de serviço de IA (Google, AssemblyAI) para análise clínica e transcrição de consultas — anonimizados quando possível; (d) órgãos reguladores se exigido por lei. Não vendemos seus dados a terceiros."
                         : "We may share your data with: (a) your GP or other healthcare providers (with your explicit consent); (b) payment processors (Stripe) for transaction processing; (c) AI service providers (Google) for clinical analysis — anonymised where possible; (d) regulatory bodies if required by law. We do not sell your data to third parties."}</p>
                     </div>
                   </div>
@@ -209,7 +227,7 @@ export default function TermsPage() {
                 </div>
                 <div className="bg-muted/30 rounded-lg p-5 space-y-4 text-sm text-muted-foreground">
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">15</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">17</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Limitação de Responsabilidade" : "Limitation of Liability"}</p>
                       <p className="mt-1">{isPt
@@ -218,7 +236,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">16</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">18</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Pagamentos e Cancelamentos" : "Payments & Cancellations"}</p>
                       <p className="mt-1">{isPt
@@ -227,7 +245,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">17</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">19</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Legislação Aplicável" : "Governing Law"}</p>
                       <p className="mt-1">{isPt
@@ -236,7 +254,7 @@ export default function TermsPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">18</Badge>
+                    <Badge variant="outline" className="mt-0.5 flex-shrink-0">20</Badge>
                     <div>
                       <p className="font-semibold text-foreground">{isPt ? "Contato" : "Contact"}</p>
                       <p className="mt-1">{isPt
