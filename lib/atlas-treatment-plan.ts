@@ -226,11 +226,14 @@ ${PLAN_PROMPT_SUFFIX}`;
 
     const reply = await claudeGenerate(
       [{ role: "user", content: prompt }],
-      { systemPrompt: ATLAS_SYSTEM, maxTokens: 6000 }
+      { systemPrompt: ATLAS_SYSTEM, maxTokens: 9000 }
     );
 
-    // A patient with an extensive history can push the response past the
-    // token budget, truncating mid-JSON.
+    // A patient with an extensive history (imaging findings, red flags,
+    // long medication/surgical history) can push the response past the
+    // token budget, truncating mid-JSON — 6000 wasn't enough for at least
+    // one real patient with a rich profile, consistently truncating on
+    // every attempt rather than as a rare edge case. Bumped to 9000.
     let plan: any;
     try {
       // Try the whole reply first — the common case is a clean JSON object
