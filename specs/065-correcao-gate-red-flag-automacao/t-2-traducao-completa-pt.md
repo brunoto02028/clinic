@@ -58,4 +58,14 @@ isolamento cross-tenant incl. teste tipo IDOR). `qa/report-t-2.md`.
 commitar/subir esta correção antes de pedir o QA — produção continuou rodando o código antigo (só
 T-1) durante toda a implementação de T-2. O QA detectou isso testando contra produção primeiro,
 migrou pra ambiente local pra validar a lógica real, e sinalizou a pendência. Corrigido
-imediatamente após o relatório: commit, deploy, e checagem de regressão em produção.
+imediatamente após o relatório: commit (`db016ad1`), deploy confirmado `finished` em produção,
+`curl` 200 no smoke-check.
+
+Checagem de regressão fim-a-fim em produção via chamada direta à API (mesma técnica de sessão
+mintada usada o resto desta sessão) ficou bloqueada por um desafio do Cloudflare (`403`, "Just a
+moment...") que passou a interceptar requisições automatizadas sem navegador real — não é um
+problema do código desta correção, é um comportamento novo do WAF observado só nesta tentativa
+específica. A validação de 6/6 cenários programáticos já feita pelo QA (ambiente local, mesmo
+código) cobre a lógica com bastante confiança; falta só a confirmação visual de "clicar PT na tela
+de verdade em produção", que o Bruno já vinha fazendo manualmente (ver a conversa) e pode confirmar
+na próxima vez que abrir a aba Evidence de um paciente.
