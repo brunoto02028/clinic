@@ -467,20 +467,20 @@ function DataCard({ icon: Icon, label, available, detail, required }: {
   icon: any; label: string; available: boolean; detail: string; required?: boolean;
 }) {
   return (
-    <Card className={available ? "border-green-200 bg-green-50/50 dark:bg-green-950/20" : "border-dashed"}>
+    <Card className={available ? "border-green-200 dark:border-green-800 bg-green-100 dark:bg-green-500/20" : "border-dashed"}>
       <CardContent className="pt-3 pb-2 px-3">
         <div className="flex items-center gap-2 mb-1">
-          <Icon className={`h-4 w-4 ${available ? "text-green-600" : "text-muted-foreground"}`} />
+          <Icon className={`h-4 w-4 ${available ? "text-green-700 dark:text-green-300" : "text-muted-foreground"}`} />
           <span className="text-xs font-semibold">{label}</span>
           {required && <Badge variant="outline" className="text-[9px] px-1 py-0">Required</Badge>}
         </div>
         <div className="flex items-center gap-1.5">
           {available ? (
-            <CheckCircle2 className="h-3 w-3 text-green-600" />
+            <CheckCircle2 className="h-3 w-3 text-green-700 dark:text-green-300" />
           ) : (
             <AlertCircle className="h-3 w-3 text-muted-foreground" />
           )}
-          <span className={`text-xs ${available ? "text-green-700" : "text-muted-foreground"}`}>{detail}</span>
+          <span className={`text-xs ${available ? "text-green-700 dark:text-green-300" : "text-muted-foreground"}`}>{detail}</span>
         </div>
       </CardContent>
     </Card>
