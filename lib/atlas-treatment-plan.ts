@@ -249,7 +249,15 @@ ${PLAN_PROMPT_SUFFIX}`;
         if (!match) throw new Error("no JSON object in response");
         plan = JSON.parse(match[0]);
       }
-    } catch {
+    } catch (parseErr: any) {
+      // Temporary diagnostic (activity live-support, 2026-09-20): a real
+      // patient with a rich profile kept truncating even at 9000 tokens —
+      // logging the raw reply's shape to tell truncation apart from some
+      // other JSON-formatting failure before blindly raising the budget
+      // again. Safe to remove once that's understood.
+      console.error(
+        `[atlas-treatment-plan] JSON parse failed for ${planId}: ${parseErr?.message}. reply length: ${reply.length} chars. tail: ${JSON.stringify(reply.slice(-300))}`
+      );
       await prisma.atlasTreatmentPlan.update({
         where: { id: planId },
         data: { status: "failed", error: "Atlas didn't return a complete plan — the response may have been cut off. Try again." },
