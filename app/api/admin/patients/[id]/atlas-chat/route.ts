@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { claudeGenerate } from "@/lib/claude";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
+import { loadDocumentFindings } from "@/lib/evidence-report";
 
 export const dynamic = "force-dynamic";
 
@@ -45,99 +46,114 @@ export async function POST(
   const { message, history = [] } = await req.json();
   if (!message?.trim()) return NextResponse.json({ error: "No message" }, { status: 400 });
 
-  // Fetch patient clinical snapshot
-  const patient = await prisma.user.findUnique({
-    where: { id: params.id },
-    select: {
-      firstName: true, lastName: true, dateOfBirth: true,
-      medicalScreening: {
-        select: {
-          chiefComplaint: true, painScore: true, painLocation: true,
-          painAggravating: true, painRelieving: true,
-          currentMedications: true, occupation: true,
-          surgicalHistory: true, otherConditions: true,
+  // Everything below used to run unwrapped — any AI-provider error, timeout,
+  // or missing API key surfaced as an unhandled exception, which Next.js
+  // turns into an HTML error page instead of JSON, breaking the client's
+  // `await r.json()` with a confusing parse error instead of the real one.
+  try {
+    // Fetch patient clinical snapshot
+    const patient = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: {
+        firstName: true, lastName: true, dateOfBirth: true,
+        medicalScreening: {
+          select: {
+            chiefComplaint: true, painScore: true, painLocation: true,
+            painAggravating: true, painRelieving: true,
+            currentMedications: true, occupation: true,
+            surgicalHistory: true, otherConditions: true,
+          },
+        },
+        bodyAssessmentsAsPatient: {
+          orderBy: { createdAt: "desc" }, take: 1,
+          select: { aiSummary: true, aiRecommendations: true, overallScore: true },
+        },
+        rehabPlansAsPatient: {
+          orderBy: { createdAt: "desc" }, take: 3,
+          select: { chiefComplaint: true, bodyPart: true, severity: true, phase: true, status: true, createdAt: true },
         },
       },
-      bodyAssessmentsAsPatient: {
-        orderBy: { createdAt: "desc" }, take: 1,
-        select: { aiSummary: true, aiRecommendations: true, overallScore: true },
-      },
-      rehabPlansAsPatient: {
-        orderBy: { createdAt: "desc" }, take: 3,
-        select: { chiefComplaint: true, bodyPart: true, severity: true, phase: true, status: true, createdAt: true },
-      },
-    },
-  });
+    });
 
-  // Fetch answered question sets for context
-  const answeredQSets = await (prisma as any).patientQuestion.findMany({
-    where: { patientId: params.id, status: "answered" },
-    orderBy: { answeredAt: "desc" },
-    take: 3,
-  });
+    // Fetch answered question sets for context
+    const answeredQSets = await (prisma as any).patientQuestion.findMany({
+      where: { patientId: params.id, status: "answered" },
+      orderBy: { answeredAt: "desc" },
+      take: 3,
+    });
 
-  // Fetch recent clinic <-> patient messages
-  const clinicMessages = await (prisma as any).clinicMessage.findMany({
-    where: { patientId: params.id, kind: "message" },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    select: { senderRole: true, content: true, createdAt: true },
-  });
+    // Fetch recent clinic <-> patient messages
+    const clinicMessages = await (prisma as any).clinicMessage.findMany({
+      where: { patientId: params.id, kind: "message" },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { senderRole: true, content: true, createdAt: true },
+    });
 
-  // Fetch available protocol templates (names + conditions + equipment) — this clinic's only
-  const protocols = await (prisma as any).protocolTemplate.findMany({
-    where: { isActive: true, clinicId: tenantAccess.actor.clinicId },
-    select: { name: true, condition: true, bodyRegion: true, equipment: true, estimatedWeeks: true, sessionsPerWeek: true },
-    orderBy: { name: "asc" },
-    take: 20,
-  });
+    // Fetch available protocol templates (names + conditions + equipment) — this clinic's only
+    const protocols = await (prisma as any).protocolTemplate.findMany({
+      where: { isActive: true, clinicId: tenantAccess.actor.clinicId },
+      select: { name: true, condition: true, bodyRegion: true, equipment: true, estimatedWeeks: true, sessionsPerWeek: true },
+      orderBy: { name: "asc" },
+      take: 20,
+    });
 
-  if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    // Same extraction/summarisation pipeline as the evidence-report feature
+    // (activity 066) — uploaded exams/referrals/imaging reports, cached on
+    // the document itself so this never re-runs Docling on every message.
+    const documentFindings = tenantAccess.actor.clinicId
+      ? await loadDocumentFindings(tenantAccess.actor.clinicId, params.id)
+      : [];
 
-  const band = ageBand(patient.dateOfBirth);
-  const ms = patient.medicalScreening;
-  const ba = patient.bodyAssessmentsAsPatient[0];
+    if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
-  const patientBrief = [
-    `Patient: ${patientPseudonym(params.id)}${band ? ` (age band: ${band})` : ""}`,
-    ms?.occupation ? `Occupation: ${ms.occupation}` : "",
-    ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
-    ms?.painScore != null ? `Pain score: ${ms.painScore}/10` : "",
-    ms?.painLocation ? `Pain location: ${ms.painLocation}` : "",
-    ms?.painAggravating ? `Aggravating: ${ms.painAggravating}` : "",
-    ms?.painRelieving ? `Relieving: ${ms.painRelieving}` : "",
-    ms?.surgicalHistory ? `Surgical history: ${ms.surgicalHistory}` : "",
-    ms?.otherConditions ? `Other conditions: ${ms.otherConditions}` : "",
-    ms?.currentMedications ? `Medications: ${ms.currentMedications}` : "",
-    ba?.aiSummary ? `Postural assessment: ${ba.aiSummary}` : "",
-    ba?.aiRecommendations ? `Assessment recommendations: ${ba.aiRecommendations}` : "",
-    patient.rehabPlansAsPatient.length > 0
-      ? `Existing rehab plans: ${patient.rehabPlansAsPatient.map(p => `${p.bodyPart} (${p.status})`).join(", ")}`
-      : "",
-    answeredQSets.length > 0
-      ? `\nPre-consultation answers from patient:\n${answeredQSets.map((qs: any) => {
-          const qaText = (qs.questions as string[]).map((q: string, i: number) => {
-            const a = (qs.answers as any[])?.find((x: any) => x.index === i);
-            return `  Q: ${q}\n  A: ${a?.answer || "(no answer)"}`;
-          }).join("\n");
-          return `[${new Date(qs.answeredAt).toLocaleDateString("en-GB")}]\n${qaText}`;
-        }).join("\n\n")}`
-      : "",
-    clinicMessages.length > 0
-      ? `\nRecent clinic↔patient message thread (newest first):\n${[...clinicMessages].reverse().map((m: any) => {
-          const who = m.senderRole === "patient" ? "Patient" : "Clinic";
-          const date = new Date(m.createdAt).toLocaleDateString("en-GB");
-          return `  [${date}] ${who}: ${m.content}`;
-        }).join("\n")}`
-      : "",
-    protocols.length > 0
-      ? `\nAvailable treatment protocol templates in this clinic:\n${protocols.map((p: any) =>
-          `  • ${p.name}${p.condition ? ` (${p.condition})` : ""} — ${p.equipment?.join(", ") || ""}${p.estimatedWeeks ? ` — ~${p.estimatedWeeks} weeks` : ""}`
-        ).join("\n")}`
-      : "",
-  ].filter(Boolean).join("\n");
+    const band = ageBand(patient.dateOfBirth);
+    const ms = patient.medicalScreening;
+    const ba = patient.bodyAssessmentsAsPatient[0];
 
-  const systemPrompt = `You are Atlas — a senior physical rehabilitation specialist with over 30 years of clinical experience in musculoskeletal, neurological, and sports rehabilitation. You trained in Portugal, completed advanced certifications in manual therapy (IFOMPT), pain neuroscience, and exercise prescription. You have treated thousands of patients and mentored dozens of clinicians. You are Bruno's trusted clinical colleague — you speak directly, think critically, and always back your reasoning with evidence.
+    const patientBrief = [
+      `Patient: ${patientPseudonym(params.id)}${band ? ` (age band: ${band})` : ""}`,
+      ms?.occupation ? `Occupation: ${ms.occupation}` : "",
+      ms?.chiefComplaint ? `Chief complaint: ${ms.chiefComplaint}` : "",
+      ms?.painScore != null ? `Pain score: ${ms.painScore}/10` : "",
+      ms?.painLocation ? `Pain location: ${ms.painLocation}` : "",
+      ms?.painAggravating ? `Aggravating: ${ms.painAggravating}` : "",
+      ms?.painRelieving ? `Relieving: ${ms.painRelieving}` : "",
+      ms?.surgicalHistory ? `Surgical history: ${ms.surgicalHistory}` : "",
+      ms?.otherConditions ? `Other conditions: ${ms.otherConditions}` : "",
+      ms?.currentMedications ? `Medications: ${ms.currentMedications}` : "",
+      ba?.aiSummary ? `Postural assessment: ${ba.aiSummary}` : "",
+      ba?.aiRecommendations ? `Assessment recommendations: ${ba.aiRecommendations}` : "",
+      patient.rehabPlansAsPatient.length > 0
+        ? `Existing rehab plans: ${patient.rehabPlansAsPatient.map(p => `${p.bodyPart} (${p.status})`).join(", ")}`
+        : "",
+      documentFindings.length > 0
+        ? `\nFindings from uploaded exams/referrals/imaging reports:\n${documentFindings.map((f) => `  • ${f}`).join("\n")}`
+        : "",
+      answeredQSets.length > 0
+        ? `\nPre-consultation answers from patient:\n${answeredQSets.map((qs: any) => {
+            const qaText = (qs.questions as string[]).map((q: string, i: number) => {
+              const a = (qs.answers as any[])?.find((x: any) => x.index === i);
+              return `  Q: ${q}\n  A: ${a?.answer || "(no answer)"}`;
+            }).join("\n");
+            return `[${new Date(qs.answeredAt).toLocaleDateString("en-GB")}]\n${qaText}`;
+          }).join("\n\n")}`
+        : "",
+      clinicMessages.length > 0
+        ? `\nRecent clinic↔patient message thread (newest first):\n${[...clinicMessages].reverse().map((m: any) => {
+            const who = m.senderRole === "patient" ? "Patient" : "Clinic";
+            const date = new Date(m.createdAt).toLocaleDateString("en-GB");
+            return `  [${date}] ${who}: ${m.content}`;
+          }).join("\n")}`
+        : "",
+      protocols.length > 0
+        ? `\nAvailable treatment protocol templates in this clinic:\n${protocols.map((p: any) =>
+            `  • ${p.name}${p.condition ? ` (${p.condition})` : ""} — ${p.equipment?.join(", ") || ""}${p.estimatedWeeks ? ` — ~${p.estimatedWeeks} weeks` : ""}`
+          ).join("\n")}`
+        : "",
+    ].filter(Boolean).join("\n");
+
+    const systemPrompt = `You are Atlas — a senior physical rehabilitation specialist with over 30 years of clinical experience in musculoskeletal, neurological, and sports rehabilitation. You trained in Portugal, completed advanced certifications in manual therapy (IFOMPT), pain neuroscience, and exercise prescription. You have treated thousands of patients and mentored dozens of clinicians. You are Bruno's trusted clinical colleague — you speak directly, think critically, and always back your reasoning with evidence.
 
 TERMINOLOGY RULE: NEVER use the words "physiotherapy", "physiotherapist" or "fisioterapia". Always use "physical rehabilitation" / "reabilitação física" and "physical rehabilitation specialist" instead.
 
@@ -154,6 +170,7 @@ Your clinical principles:
 You have full visibility into this patient's data:
 - Clinical screening, pain scores, medications, surgical history
 - Body/postural assessment AI summary
+- Uploaded exams, referrals and imaging reports
 - Rehab plan history and message thread
 - All available protocol templates in the clinic (with equipment and timelines)
 
@@ -169,20 +186,24 @@ When recommending a treatment plan:
 Respond in the same language Bruno uses (English or Portuguese).
 IMPORTANT — when suggesting questions to send to the patient: write them in SECOND PERSON directly to the patient ("você" in Brazilian Portuguese, "you" in English). Never use third person ("o paciente", "ele", "ela"). Use warm, simple, non-clinical language. If writing in Portuguese, always use Brazilian Portuguese (pt-BR).`;
 
-  const messages = [
-    ...history.map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })),
-    { role: "user" as const, content: message },
-  ];
+    const messages = [
+      ...history.map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      { role: "user" as const, content: message },
+    ];
 
-  const reply = await claudeGenerate(messages, { systemPrompt, maxTokens: 3000 });
+    const reply = await claudeGenerate(messages, { systemPrompt, maxTokens: 3000 });
 
-  // Persist both turns to DB
-  await (prisma as any).atlasChatMessage.createMany({
-    data: [
-      { patientId: params.id, role: "user", content: message },
-      { patientId: params.id, role: "assistant", content: reply },
-    ],
-  });
+    // Persist both turns to DB
+    await (prisma as any).atlasChatMessage.createMany({
+      data: [
+        { patientId: params.id, role: "user", content: message },
+        { patientId: params.id, role: "assistant", content: reply },
+      ],
+    });
 
-  return NextResponse.json({ reply });
+    return NextResponse.json({ reply });
+  } catch (e: any) {
+    console.error("[atlas-chat] failed:", e);
+    return NextResponse.json({ error: e?.message || "Atlas request failed" }, { status: 500 });
+  }
 }

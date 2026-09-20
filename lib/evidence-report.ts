@@ -121,7 +121,7 @@ export async function notifyNewClinicalDocument(patientId: string, documentType:
  * document — never sinks the whole report (same resilience pattern as the
  * literature search below).
  */
-async function loadDocumentFindings(clinicId: string, patientId: string): Promise<string[]> {
+export async function loadDocumentFindings(clinicId: string, patientId: string): Promise<string[]> {
   const documents = await prisma.patientDocument.findMany({
     where: { clinicId, patientId, documentType: { in: CLINICALLY_RELEVANT_DOCUMENT_TYPES as any } },
     select: { id: true, fileData: true, fileType: true, fileName: true, extractedText: true, aiSummary: true, description: true },

@@ -6,6 +6,7 @@ import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { claudeGenerate } from "@/lib/claude";
 import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
+import { loadDocumentFindings } from "@/lib/evidence-report";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "THERAPIST"];
 
 // Build a complete clinical snapshot of the patient
 async function buildPatientContext(patientId: string, clinicId: string) {
-  const [patient, equipment, protocols] = await Promise.all([
+  const [patient, equipment, protocols, documentFindings] = await Promise.all([
     prisma.user.findUnique({
       where: { id: patientId },
       select: {
@@ -59,6 +60,10 @@ async function buildPatientContext(patientId: string, clinicId: string) {
       orderBy: { name: "asc" }, take: 20,
       select: { name: true, condition: true, bodyRegion: true, equipment: true, estimatedWeeks: true, sessionsPerWeek: true },
     }),
+    // Same extraction/summarisation pipeline as the evidence-report feature
+    // (activity 066) — uploaded exams/referrals/imaging reports, cached on
+    // the document itself so this never re-runs Docling on every plan.
+    loadDocumentFindings(clinicId, patientId),
   ]);
 
   if (!patient) return null;
@@ -98,6 +103,11 @@ async function buildPatientContext(patientId: string, clinicId: string) {
 
   if (patient.rehabPlansAsPatient.length > 0) {
     lines.push(`\nExisting rehab plans: ${patient.rehabPlansAsPatient.map((p: any) => `${p.bodyPart} (${p.phase}/${p.status})`).join(", ")}`);
+  }
+
+  if (documentFindings.length > 0) {
+    lines.push(`\nFindings from uploaded exams/referrals/imaging reports:`);
+    documentFindings.forEach((f: string) => lines.push(`  • ${f}`));
   }
 
   if (equipment.length > 0) {
@@ -148,12 +158,19 @@ export async function POST(
   if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
   const { action, message, history = [], planData } = await req.json();
 
-  // ── action: "generate" → produce a full structured plan ──
-  if (action === "generate" || !action) {
-    const context = await buildPatientContext(params.id, clinicId);
-    if (!context) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+  // Everything below used to run unwrapped — any AI-provider error, timeout,
+  // or missing API key surfaced as an unhandled exception, which Next.js
+  // turns into an HTML error page instead of JSON. The client's
+  // `await r.json()` then threw its own confusing "Unexpected token '<'...
+  // is not valid JSON" instead of the real error. Always answer in JSON,
+  // whatever went wrong.
+  try {
+    // ── action: "generate" → produce a full structured plan ──
+    if (action === "generate" || !action) {
+      const context = await buildPatientContext(params.id, clinicId);
+      if (!context) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 
-    const prompt = `Based on the complete patient profile below, generate a comprehensive, phased treatment plan. Return ONLY valid JSON — no markdown, no explanation outside the JSON.
+      const prompt = `Based on the complete patient profile below, generate a comprehensive, phased treatment plan. Return ONLY valid JSON — no markdown, no explanation outside the JSON.
 
 Patient profile:
 ${context}
@@ -198,60 +215,64 @@ Return this exact JSON structure:
   "reviewMilestone": "string (when to reassess)"
 }`;
 
-    const reply = await claudeGenerate(
-      [{ role: "user", content: prompt }],
-      { systemPrompt: ATLAS_SYSTEM, maxTokens: 6000 }
-    );
-
-    // A patient with an extensive history can push the response past the
-    // token budget, truncating mid-JSON. Used to swallow that as
-    // `{ notes: reply }` and still return 200 — the UI has no other field to
-    // show, so it just looked like an empty card, and `notes` itself was a
-    // dangling JSON fragment rather than readable text. Surfacing this as a
-    // real error lets the existing `if (!r.ok) throw new Error(d.error)` on
-    // the client actually fire instead of masking the failure as success.
-    let plan: any;
-    try {
-      // Try the whole reply first — the common case is a clean JSON object
-      // with nothing around it. Only fall back to the greedy brace-match
-      // (which can span into unrelated trailing text containing its own
-      // braces, e.g. an example the model added) if that fails.
-      try {
-        plan = JSON.parse(reply.trim());
-      } catch {
-        const match = reply.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error("no JSON object in response");
-        plan = JSON.parse(match[0]);
-      }
-    } catch {
-      return NextResponse.json(
-        { error: "Atlas didn't return a complete plan — the response may have been cut off. Try again." },
-        { status: 502 }
+      const reply = await claudeGenerate(
+        [{ role: "user", content: prompt }],
+        { systemPrompt: ATLAS_SYSTEM, maxTokens: 6000 }
       );
+
+      // A patient with an extensive history can push the response past the
+      // token budget, truncating mid-JSON. Used to swallow that as
+      // `{ notes: reply }` and still return 200 — the UI has no other field to
+      // show, so it just looked like an empty card, and `notes` itself was a
+      // dangling JSON fragment rather than readable text. Surfacing this as a
+      // real error lets the existing `if (!r.ok) throw new Error(d.error)` on
+      // the client actually fire instead of masking the failure as success.
+      let plan: any;
+      try {
+        // Try the whole reply first — the common case is a clean JSON object
+        // with nothing around it. Only fall back to the greedy brace-match
+        // (which can span into unrelated trailing text containing its own
+        // braces, e.g. an example the model added) if that fails.
+        try {
+          plan = JSON.parse(reply.trim());
+        } catch {
+          const match = reply.match(/\{[\s\S]*\}/);
+          if (!match) throw new Error("no JSON object in response");
+          plan = JSON.parse(match[0]);
+        }
+      } catch {
+        return NextResponse.json(
+          { error: "Atlas didn't return a complete plan — the response may have been cut off. Try again." },
+          { status: 502 }
+        );
+      }
+
+      return NextResponse.json({ plan });
     }
 
-    return NextResponse.json({ plan });
+    // ── action: "chat" → conversational refinement ──
+    if (action === "chat") {
+      if (!message?.trim()) return NextResponse.json({ error: "message required" }, { status: 400 });
+
+      const context = await buildPatientContext(params.id, clinicId);
+      const planContext = planData
+        ? `\n\nCurrent draft plan being discussed:\n${JSON.stringify(planData, null, 2)}`
+        : "";
+
+      const systemWithContext = `${ATLAS_SYSTEM}\n\nPatient context:\n${context || "No data yet."}${planContext}`;
+
+      const messages = [
+        ...history.map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })),
+        { role: "user" as const, content: message },
+      ];
+
+      const reply = await claudeGenerate(messages, { systemPrompt: systemWithContext, maxTokens: 3000 });
+      return NextResponse.json({ reply });
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  } catch (e: any) {
+    console.error("[atlas-treatment-plan] failed:", e);
+    return NextResponse.json({ error: e?.message || "Atlas request failed" }, { status: 500 });
   }
-
-  // ── action: "chat" → conversational refinement ──
-  if (action === "chat") {
-    if (!message?.trim()) return NextResponse.json({ error: "message required" }, { status: 400 });
-
-    const context = await buildPatientContext(params.id, clinicId);
-    const planContext = planData
-      ? `\n\nCurrent draft plan being discussed:\n${JSON.stringify(planData, null, 2)}`
-      : "";
-
-    const systemWithContext = `${ATLAS_SYSTEM}\n\nPatient context:\n${context || "No data yet."}${planContext}`;
-
-    const messages = [
-      ...history.map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content })),
-      { role: "user" as const, content: message },
-    ];
-
-    const reply = await claudeGenerate(messages, { systemPrompt: systemWithContext, maxTokens: 3000 });
-    return NextResponse.json({ reply });
-  }
-
-  return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 }
