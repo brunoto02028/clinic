@@ -789,6 +789,8 @@ model User {
   atlasChatMessages            AtlasChatMessage[]   @relation("AtlasChatMessages")
   atlasTreatmentPlansAsPatient AtlasTreatmentPlan[] @relation("PatientAtlasTreatmentPlans")
   atlasTreatmentPlansCreated   AtlasTreatmentPlan[] @relation("StaffAtlasTreatmentPlans")
+  limbMeasurementsAsPatient    PatientLimbMeasurement[] @relation("PatientLimbMeasurements")
+  limbMeasurementsRecorded     PatientLimbMeasurement[] @relation("StaffLimbMeasurements")
   patientQuestionsReceived     PatientQuestion[]    @relation("PatientQuestions")
   patientQuestionsCreated      PatientQuestion[]    @relation("QuestionCreator")
 
@@ -6568,6 +6570,52 @@ model AtlasTreatmentPlan {
   @@index([patientId])
   @@index([status])
   @@map("atlas_treatment_plans")
+}
+
+// Post-operative limb measurements (activity 67): thigh circumferences on both
+// sides at two fixed sites (vastus medialis / mid-thigh) + knee ROM of the
+// operated leg. Clinic-internal — never shown to the patient. protocolId /
+// protocolWeek are resolved by the server from the patient's active protocol so
+// the evolution is saved together with the weekly protocol. No Clinic relation
+// and no protocol relation on purpose: the record must survive a protocol being
+// replaced or deleted (same shape as AtlasTreatmentPlan).
+model PatientLimbMeasurement {
+  id           String   @id @default(cuid())
+  clinicId     String
+  patientId    String
+  patient      User     @relation("PatientLimbMeasurements", fields: [patientId], references: [id], onDelete: Cascade)
+  recordedById String?
+  recordedBy   User?    @relation("StaffLimbMeasurements", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  measuredAt   DateTime @default(now())
+  operatedSide String // LEFT | RIGHT (snapshot at the time of the measurement)
+
+  protocolId   String?
+  protocolWeek Int? // floor((measuredAt - protocol.startDate) / 7d) + 1
+
+  // Distance above the patellar base where each girth was taken (cm), so the
+  // measurement is reproducible session to session.
+  vmoDistanceCm      Float?
+  midThighDistanceCm Float?
+  vmoLeftCm          Float?
+  vmoRightCm         Float?
+  midThighLeftCm     Float?
+  midThighRightCm    Float?
+
+  // Knee range of motion of the operated leg (degrees). Extension is negative
+  // when the knee cannot reach full extension (deficit), positive for hyperextension.
+  romMode      String? // ACTIVE | PASSIVE
+  flexionDeg   Int?
+  extensionDeg Int?
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId, measuredAt])
+  @@index([clinicId])
+  @@map("patient_limb_measurements")
 }
 
 // Persistent free-form chat between Bruno and Atlas about a patient
