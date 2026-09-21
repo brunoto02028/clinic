@@ -29,7 +29,7 @@ Bruno precisa registrar, ao longo do pós-operatório, (a) a circunferência das
 5. Rótulos da aba seguem o `useLocale` (EN/PT); texto clínico de uso interno, nunca enviado à paciente.
 
 ## Resultado
-QA local aprovado (reports t-1..t-3, incluindo 2 retestes) e code review independente feito (sem bloqueantes; corrigidos: protocolo ativo só `SENT_TO_PATIENT`, PATCH sem re-vincular protocolo, semana por dia de calendário, validação estrita, mensagem para texto não numérico, arredondamento simétrico). **QA online (prod) pendente — a rodar após o deploy.**
+QA local aprovado (reports t-1..t-3, incluindo 2 retestes) e code review independente feito (sem bloqueantes; corrigidos: protocolo ativo só `SENT_TO_PATIENT`, PATCH sem re-vincular protocolo, semana por dia de calendário, validação estrita, mensagem para texto não numérico, arredondamento simétrico). **QA online (prod) aprovado após o deploy do commit b0859f30 — ver qa/report-online.md.**
 
 ## Pendências / decisões
 - API de medidas acessível a staff de estúdio personal por chamada direta (só a aba é escondida) — igual às demais rotas clínicas; bloquear por tipo de tenant é decisão de produto.
