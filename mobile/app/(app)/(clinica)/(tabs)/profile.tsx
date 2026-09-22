@@ -18,7 +18,9 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   { title: "My progress", icon: "trending-up-outline", href: "/(app)/(clinica)/assessment-progress" },
   { title: "Outcome measures", icon: "stats-chart-outline", href: "/(app)/(clinica)/outcome-measures" },
   { title: "Education", icon: "school-outline", href: "/(app)/(clinica)/education" },
-  { title: "Quizzes", icon: "help-circle-outline", href: "/(app)/(clinica)/quizzes" },
+  // Quizzes is deliberately absent: the list screen exists but its cards have
+  // no onPress and there is no detail screen, so the entry led to a list where
+  // nothing opens. It returns with the quiz screen (T-4 family).
   { title: "Wearables", icon: "watch-outline", href: "/(app)/(clinica)/wearables" },
   { title: "How it works", icon: "book-outline", href: "/(app)/(clinica)/guide" },
   { title: "Terms & consent", icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent" },

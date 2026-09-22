@@ -50,9 +50,19 @@ export async function PATCH(req: NextRequest) {
       if (body[field] !== undefined) data[field] = body[field];
     }
 
-    // Convert dateOfBirth string to DateTime
+    // Convert dateOfBirth string to DateTime. An unparseable string used to
+    // become an Invalid Date, which Prisma then threw on — surfacing as a 500
+    // and, in the mobile app, as a Save that silently did nothing and took the
+    // rest of the payload down with it. Bad input is the caller's error.
     if (data.dateOfBirth && typeof data.dateOfBirth === 'string') {
-      data.dateOfBirth = new Date(data.dateOfBirth);
+      const parsed = new Date(data.dateOfBirth);
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid dateOfBirth. Expected an ISO date (YYYY-MM-DD)." },
+          { status: 400 }
+        );
+      }
+      data.dateOfBirth = parsed;
     } else if (data.dateOfBirth === null) {
       data.dateOfBirth = null;
     }

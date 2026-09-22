@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointment } from "@/api/appointments";
 import { useTheme } from "@/theme/useTheme";
+import { statusStyle } from "@/lib/appointment-status";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -22,13 +23,6 @@ export default function AppointmentDetail() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const STATUS_MAP: Record<string, { bg: string; text: string; label: string; icon: string }> = {
-    SCHEDULED: { bg: t.colors.workSoft, text: t.colors.work, label: "Agendado", icon: "time-outline" },
-    CONFIRMED: { bg: t.colors.okSoft, text: t.colors.ok, label: "Confirmado", icon: "checkmark-circle-outline" },
-    COMPLETED: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Concluído", icon: "checkbox-outline" },
-    CANCELLED: { bg: t.colors.badSoft, text: t.colors.bad, label: "Cancelado", icon: "close-circle-outline" },
-    NO_SHOW: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Faltou", icon: "alert-circle-outline" },
-  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["appointment", id],
@@ -91,7 +85,7 @@ export default function AppointmentDetail() {
 
           {/* Status badge */}
           {(() => {
-            const s = STATUS_MAP[data.status] ?? STATUS_MAP.SCHEDULED;
+            const s = statusStyle(t, data.status);
             return (
               <View style={{
                 flexDirection: "row",

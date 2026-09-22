@@ -2,7 +2,7 @@ import { FlatList, View, Pressable, Alert } from "react-native";
 import { Stack } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Spinner } from "@/components/ui";
+import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchProtocols, updateProtocolItem } from "@/api/protocol";
 import { useTheme } from "@/theme/useTheme";
 
@@ -17,7 +17,7 @@ const PHASE_LABEL: Record<string, string> = {
 export default function TreatmentProtocol() {
   const t = useTheme();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["protocols"], queryFn: fetchProtocols });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["protocols"], queryFn: fetchProtocols });
 
   const completeMut = useMutation({
     mutationFn: (itemId: string) => updateProtocolItem(itemId, { completed: true }),
@@ -36,7 +36,20 @@ export default function TreatmentProtocol() {
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>Protocolo prescrito pelo terapeuta</Text>
         </View>
 
-        {isLoading ? <Spinner center /> : protocols.length === 0 ? (
+        {isLoading ? <Spinner center /> : isError ? (
+          /* "Nenhum protocolo · seu terapeuta criará um plano" was shown to
+             patients who already had one, whenever the request failed. */
+          <Card>
+            <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
+              <Ionicons name="cloud-offline-outline" size={40} color={t.colors.textMuted} />
+              <Text variant="subtitle" color={t.colors.textSecondary}>Não foi possível carregar</Text>
+              <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
+                Isto não quer dizer que você não tenha um plano — a consulta falhou.
+              </Text>
+              <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
+            </View>
+          </Card>
+        ) : protocols.length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="list-outline" size={48} color={t.colors.textMuted} />

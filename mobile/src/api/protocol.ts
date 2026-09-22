@@ -39,12 +39,11 @@ export interface Protocol {
 }
 
 export async function fetchProtocols(): Promise<Protocol[]> {
-  try {
-    const res = await apiFetch<{ protocols: Protocol[] }>("/api/patient/protocol");
-    return res.protocols ?? [];
-  } catch {
-    return [];
-  }
+  // No catch: an empty list means the therapist has not sent a plan, and the
+  // screen says exactly that. Swallowing a failure into [] told a patient who
+  // has a protocol that their therapist would create one after the assessment.
+  const res = await apiFetch<{ protocols: Protocol[] }>("/api/patient/protocol");
+  return res.protocols ?? [];
 }
 
 export async function updateProtocolItem(itemId: string, data: { completed?: boolean; notes?: string }) {

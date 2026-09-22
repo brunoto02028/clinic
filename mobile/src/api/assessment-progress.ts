@@ -17,9 +17,7 @@ export interface AssessmentProgress {
 }
 
 export async function fetchAssessmentProgress(): Promise<AssessmentProgress | null> {
-  try {
-    return await apiFetch<AssessmentProgress>("/api/patient/assessment-progress");
-  } catch {
-    return null;
-  }
+  // No catch — same reason as clinical-notes.ts and outcome-measures.ts: a
+  // failed request must not arrive at the screen looking like "no progress".
+  return apiFetch<AssessmentProgress>("/api/patient/assessment-progress");
 }

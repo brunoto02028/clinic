@@ -26,7 +26,12 @@ export async function GET(req: NextRequest) {
         duration: true,
         treatmentType: true,
         status: true,
-        notes: true,
+        // `notes` is deliberately not selected. The column is written both by
+        // the patient at booking and by staff through /api/admin/appointments,
+        // and the web's patient view never renders it — so sending it here
+        // handed the app whatever the therapist had typed. Taking it out of
+        // the payload, not just off the screen, means the next screen to read
+        // this object cannot leak it again.
         protocolId: true,
       },
     });

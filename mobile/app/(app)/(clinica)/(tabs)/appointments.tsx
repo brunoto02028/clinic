@@ -6,21 +6,8 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointments } from "@/api/appointments";
 import { formatDateTime } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
+import { statusStyle } from "@/lib/appointment-status";
 
-function getStatusColors(t: ReturnType<typeof useTheme>): Record<string, { bg: string; text: string; label: string }> {
-  return {
-    // AppointmentStatus has no SCHEDULED member — it is PENDING,
-    // PENDING_PATIENT, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW. This map was
-    // missing PENDING and fell back to the invented "SCHEDULED" entry, so an
-    // unconfirmed appointment told the patient it was booked.
-    PENDING: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Pendente" },
-    PENDING_PATIENT: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Aguardando você" },
-    CONFIRMED: { bg: t.colors.okSoft, text: t.colors.ok, label: "Confirmado" },
-    COMPLETED: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Concluído" },
-    CANCELLED: { bg: t.colors.badSoft, text: t.colors.bad, label: "Cancelado" },
-    NO_SHOW: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Faltou" },
-  };
-}
 
 export default function Appointments() {
   const t = useTheme();
@@ -69,8 +56,7 @@ export default function Appointments() {
           contentContainerStyle={{ gap: 12 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const statusMap = getStatusColors(t);
-            const status = statusMap[item.status] ?? statusMap.PENDING;
+            const status = statusStyle(t, item.status);
             return (
               <Pressable
                 testID={`appt-${item.id}`}

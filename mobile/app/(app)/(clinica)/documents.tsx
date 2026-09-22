@@ -34,7 +34,20 @@ export default function Documents() {
   const { data, isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
   const [uploading, setUploading] = useState(false);
 
-  const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
+  // Same values as the web's DOC_TYPES (app/dashboard/documents/page.tsx). The
+// card was printing the enum key with underscores swapped for spaces, so a
+// Portuguese screen read "MEDICAL REFERRAL".
+const DOC_TYPE_LABEL: Record<string, string> = {
+  MEDICAL_REFERRAL: "Encaminhamento Médico",
+  MEDICAL_REPORT: "Laudo Médico",
+  PRESCRIPTION: "Prescrição",
+  IMAGING: "Exames de Imagem",
+  INSURANCE: "Seguro",
+  PREVIOUS_TREATMENT: "Tratamento Anterior",
+  OTHER: "Outro",
+};
+
+const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
     MEDICAL_REFERRAL: { icon: "document-text-outline", color: t.colors.work, bg: t.colors.workSoft },
     REPORT: { icon: "clipboard-outline", color: t.colors.ok, bg: t.colors.okSoft },
     PRESCRIPTION: { icon: "medical-outline", color: t.colors.ok, bg: t.colors.okSoft },
@@ -144,7 +157,7 @@ export default function Documents() {
                       <View style={{ flex: 1 }}>
                         <Text variant="label" style={{ fontWeight: "600" }}>{item.title || item.fileName}</Text>
                         <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                          {(item.documentType ?? "OTHER").replace(/_/g, " ")}{item.documentDate ? ` · ${formatDate(item.documentDate)}` : ""}
+                          {DOC_TYPE_LABEL[item.documentType ?? "OTHER"] ?? "Outro"}{item.documentDate ? ` · ${formatDate(item.documentDate)}` : ""}
                         </Text>
                       </View>
                       <Ionicons name="open-outline" size={16} color={t.colors.textMuted} />

@@ -1,5 +1,6 @@
 import { View, Pressable, Linking, Alert } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
@@ -40,6 +41,30 @@ export default function Wearables() {
         <Text variant="caption" color={t.colors.textSecondary}>
           Conecte seu wearable para sincronizar dados de sono, atividade e recuperação automaticamente.
         </Text>
+
+        {/* `wearable-data` had no entry point anywhere in the app — it was the
+            one screen the navigation pass missed, reachable only by typed URL.
+            Shown once something is connected, since it has nothing to plot
+            otherwise. */}
+        {connectedProviders.size > 0 && (
+          <Pressable
+            onPress={() => router.push("/(app)/(clinica)/wearable-data")}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: t.colors.border,
+              backgroundColor: pressed ? t.colors.surfaceMuted : "transparent",
+            })}
+          >
+            <Text variant="label">Ver meus dados</Text>
+            <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
+          </Pressable>
+        )}
 
         {isLoading ? (
           <Spinner center />

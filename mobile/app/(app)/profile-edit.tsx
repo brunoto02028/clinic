@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Pressable } from "react-native";
+import { View, Pressable, Alert } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -49,7 +49,22 @@ export default function ProfileEdit() {
       qc.invalidateQueries({ queryKey: ["profile"] });
       router.back();
     },
+    // Without this the screen simply stayed put on failure. A patient typed
+    // their date of birth in the format the placeholder asked for, hit Save,
+    // and nothing happened — no error, no navigation — while the language
+    // choice made in the same Save went down with it.
+    onError: (e) => Alert.alert("Erro", (e as Error).message || "Não foi possível salvar."),
   });
+
+  /** The field asks for DD/MM/YYYY; the API parses with `new Date`, which reads
+   *  that as an Invalid Date. Convert here rather than ask the patient to type
+   *  ISO. */
+  const toIsoDate = (v: string): string | undefined => {
+    const trimmed = v.trim();
+    if (!trimmed) return undefined;
+    const br = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return br ? `${br[3]}-${br[2]}-${br[1]}` : trimmed;
+  };
 
   const handleSave = () => {
     mutation.mutate({
@@ -58,7 +73,7 @@ export default function ProfileEdit() {
       // changes vanished without a word. The name is staff-managed; the
       // fields below are read-only until that changes.
       phone,
-      dateOfBirth: dateOfBirth || undefined,
+      dateOfBirth: toIsoDate(dateOfBirth),
       preferredLocale,
     });
   };
@@ -98,24 +113,9 @@ export default function ProfileEdit() {
           <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: t.colors.surfaceMuted, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="person" size={40} color={t.colors.textMuted} />
           </View>
-          <Pressable
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: "50%",
-              marginRight: -52,
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              backgroundColor: t.colors.primary,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 2,
-              borderColor: t.colors.background,
-            }}
-          >
-            <Ionicons name="camera" size={14} color={t.colors.primaryFg} />
-          </Pressable>
+          {/* A camera badge sat here with no onPress: it gave touch feedback
+              and did nothing. Same pattern removed from the home screen's
+              "Directions". It comes back when there is an upload to run. */}
         </View>
 
         {/* Form */}

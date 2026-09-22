@@ -7,7 +7,6 @@ export interface Appointment {
   status: string;
   duration: number;
   price: number;
-  notes: string | null;
   therapist: { firstName: string; lastName: string } | null;
 }
 

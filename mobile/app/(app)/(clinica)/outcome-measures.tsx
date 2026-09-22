@@ -10,7 +10,7 @@ import { useTheme } from "@/theme/useTheme";
 export default function OutcomeMeasuresScreen() {
   const t = useTheme();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["outcome-measures"], queryFn: fetchOutcomeMeasures });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["outcome-measures"], queryFn: fetchOutcomeMeasures });
 
   const [vasScore, setVasScore] = useState(0);
   const [overallFunction, setOverallFunction] = useState(50);
@@ -44,6 +44,27 @@ export default function OutcomeMeasuresScreen() {
   });
 
   if (isLoading) return <Screen><Spinner center /></Screen>;
+
+  // Refuse to render the form when the load failed. Showing zeros and a live
+  // Save button was how a patient's FAAM got erased: the screen looked like a
+  // blank questionnaire, and saving it posted blanks over real scores.
+  if (isError) {
+    return (
+      <Screen testID="outcome-measures-screen">
+        <Stack.Screen options={{ headerShown: true, title: "Outcome Measures", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 }}>
+          <Ionicons name="cloud-offline-outline" size={32} color={t.colors.textMuted} />
+          <Text variant="body" style={{ textAlign: "center" }}>
+            Não foi possível carregar suas medidas.
+          </Text>
+          <Text variant="caption" color={t.colors.textSecondary} style={{ textAlign: "center" }}>
+            Não é possível salvar sem carregar antes — salvar agora apagaria o que já está registrado.
+          </Text>
+          <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen scroll testID="outcome-measures-screen">
