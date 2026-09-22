@@ -1,4 +1,4 @@
-# QA — Atividade 069: App do paciente da clínica
+# QA — Atividade 070: App do paciente da clínica
 
 Tipos: **API** (curl contra `/api/mobile/**` e `/api/patient/**`) e **UI** (app no Expo Go / emulador, via Playwright MCP quando aplicável ao web equivalente).
 

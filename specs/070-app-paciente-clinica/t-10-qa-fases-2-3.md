@@ -18,8 +18,8 @@ O critério de paridade é **dado**, não pixel: a tela do app mostra a mesma in
 6. Gerar `qa/report-t-10.md` e limpar os dados de teste.
 
 ## Arquivos afetados
-- `specs/069-app-paciente-clinica/qa/report-t-10.md` (novo)
-- `specs/069-app-paciente-clinica/qa/screenshots/`
+- `specs/070-app-paciente-clinica/qa/report-t-10.md` (novo)
+- `specs/070-app-paciente-clinica/qa/screenshots/`
 
 ## Critérios de aceite
 - [ ] Toda tela portada tem cenário executado e evidência

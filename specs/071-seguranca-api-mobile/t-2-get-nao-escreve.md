@@ -9,7 +9,7 @@ Tirar o efeito colateral de escrita de uma requisição de leitura.
 ## Contexto
 Em `app/api/mobile/work/business-profile/route.ts`, o GET faz `findUnique` e, quando não acha, chama `prisma.businessProfile.create()`. **Um GET cria linha no banco.**
 
-Qualquer usuário autenticado que toque o endpoint ganha um `BusinessProfile` — inclusive paciente de clínica, que não tem relação com o módulo BA. Foi assim que o QA da atividade 069 criou uma linha sem querer, só sondando o endpoint.
+Qualquer usuário autenticado que toque o endpoint ganha um `BusinessProfile` — inclusive paciente de clínica, que não tem relação com o módulo BA. Foi assim que o QA da atividade 070 criou uma linha sem querer, só sondando o endpoint.
 
 O PUT logo abaixo já faz `upsert`, então a criação sob demanda no GET é redundante.
 

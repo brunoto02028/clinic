@@ -1,4 +1,4 @@
-# Atividade 069 — App do paciente da clínica (BPR)
+# Atividade 070 — App do paciente da clínica (BPR)
 
 **Status geral:** plano proposto — aguardando aprovação do Bruno.
 

@@ -19,8 +19,8 @@ Sem código de feature nesta tarefa — só relatório.
 5. Escrever `qa/report-t-1.md` com a tabela final e a lista de porte recomendada por fase.
 
 ## Arquivos afetados
-- `specs/069-app-paciente-clinica/qa/report-t-1.md` (novo)
-- `specs/069-app-paciente-clinica/plan.md` (atualizar a lista de fases com o resultado)
+- `specs/070-app-paciente-clinica/qa/report-t-1.md` (novo)
+- `specs/070-app-paciente-clinica/plan.md` (atualizar a lista de fases com o resultado)
 
 ## Critérios de aceite
 - [ ] As 42 páginas classificadas, nenhuma sem audiência definida

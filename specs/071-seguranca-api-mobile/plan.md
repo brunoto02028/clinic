@@ -1,9 +1,9 @@
-# Atividade 070 — Segurança da API mobile
+# Atividade 071 — Segurança da API mobile
 
 **Status geral:** plano proposto — aguardando aprovação do Bruno.
 
 ## Origem
-Achados do QA da atividade 069 (T-2), fora do escopo daquela tarefa. Verificados um a um antes de virarem spec — não é repasse de relatório de agente.
+Achados do QA da atividade 070 (T-2), fora do escopo daquela tarefa. Verificados um a um antes de virarem spec — não é repasse de relatório de agente.
 
 ## Objetivo
 Fechar três buracos na superfície `/api/mobile/**`: catálogo de exames aberto na internet com preço de custo, escrita durante um GET, e autenticação que não relê o usuário.

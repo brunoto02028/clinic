@@ -17,8 +17,8 @@ Fase 1 é a parte de segurança/visibilidade da atividade. Vale tanto a verifica
 5. Gerar `qa/report-t-10.md` com evidências e limpar os dados de teste.
 
 ## Arquivos afetados
-- `specs/069-app-paciente-clinica/qa/report-t-9.md` (novo)
-- `specs/069-app-paciente-clinica/qa/screenshots/`
+- `specs/070-app-paciente-clinica/qa/report-t-9.md` (novo)
+- `specs/070-app-paciente-clinica/qa/screenshots/`
 
 ## Critérios de aceite
 - [ ] Os quatro perfis testados, com evidência de cada

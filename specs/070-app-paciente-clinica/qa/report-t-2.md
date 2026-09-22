@@ -9,7 +9,7 @@
 | Rodada | Veredito | Motivo |
 |---|---|---|
 | 1ª | ❌ REPROVADA | F1 (`clinica` sumia ao conceder qualquer módulo) e F2 (sem guard de rota: BA/Lab abriam por deep link) |
-| 2ª | ✅ APROVADA | F1, F2 e F4 corrigidos e comprovados; F3 encaminhado à atividade 070 |
+| 2ª | ✅ APROVADA | F1, F2 e F4 corrigidos e comprovados; F3 encaminhado à atividade 071 |
 
 ## Resumo
 
@@ -140,7 +140,7 @@ Erros pré-existentes do `mobile/` (`Card variant`, `SegmentedControl`, `members
 | F1 | ✅ corrigido | `clinica` sumia ao conceder qualquer módulo |
 | F2 | ✅ corrigido | Sem guard de rota — BA/Lab abriam por deep link |
 | F4 | ✅ corrigido | Erro do endpoint caía em seletor vazio sem saída |
-| F3 | 🔀 encaminhado | Endpoints de dado de Lab/BA sem gating → atividade **070** |
+| F3 | 🔀 encaminhado | Endpoints de dado de Lab/BA sem gating → atividade **071** |
 | F5 | 🟡 aberto | Dois `as any` no `router.replace` — limitação de typed routes do expo-router |
 | F6 | ⚪ fora do escopo | `403 /api/exercises` sobe como erro de console; tela degrada bem |
 | F7 | 🟡 tratado | `mod_clinica: false` isolado é ignorado pelo fallback — comentário do código corrigido para dizer a regra real |
@@ -198,7 +198,7 @@ Sete achados. Seis viraram correcao; um e decisao operacional do Bruno.
 | 6 | baixa | A tela do aluno de estudio era beco sem saida: `module-select` e a unica rota alcancavel com lista vazia, entao ele nunca conseguiria sair da conta — nem para outra pessoa usar o aparelho | ✅ botao "Sign out" |
 | 7 | baixa | **Sequenciamento de deploy** — ver abaixo | ⏳ decisao do Bruno |
 
-O review tambem registrou, corretamente, que o `ModuleGuard` e **guarda de navegacao, nao fronteira de autorizacao**: os endpoints de dado de Lab e BA seguem respondendo a qualquer autenticado (atividade 070). O docstring do componente foi reescrito para dizer isso.
+O review tambem registrou, corretamente, que o `ModuleGuard` e **guarda de navegacao, nao fronteira de autorizacao**: os endpoints de dado de Lab e BA seguem respondendo a qualquer autenticado (atividade 071). O docstring do componente foi reescrito para dizer isso.
 
 ### Achado 7 — janela entre o deploy da API e o build EAS
 

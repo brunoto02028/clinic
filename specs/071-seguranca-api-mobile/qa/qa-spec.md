@@ -1,4 +1,4 @@
-# QA — Atividade 070: Segurança da API mobile
+# QA — Atividade 071: Segurança da API mobile
 
 Tipos: **API** (curl) e **UI** (app no Expo). Rodar local e, após deploy, em produção.
 
