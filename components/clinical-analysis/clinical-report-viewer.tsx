@@ -158,7 +158,26 @@ export function ClinicalReportViewer({ patientId, patientName }: ClinicalReportV
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {clinicalData.redFlagAssessment.flags.length === 0 ? (
+              {/* "No red flags detected. Standard care pathway appropriate." is a
+                  care recommendation, so it may only be said of a complete
+                  screen. It used to be shown whenever the flag list was empty,
+                  and an unanswered screen produces an empty list — so a
+                  patient nobody had screened got a green light for standard
+                  care. `unanswered` is absent on analyses stored before the
+                  red flags became tri-state; those read as they always did. */}
+              {clinicalData.redFlagAssessment.status === "incomplete" ? (
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">
+                      Red-flag screening incomplete — {(clinicalData.redFlagAssessment.unanswered ?? []).length} question(s) not answered.
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      No care pathway can be recommended until these are asked. An unanswered red flag is unknown, not absent.
+                    </p>
+                  </div>
+                </div>
+              ) : clinicalData.redFlagAssessment.flags.length === 0 ? (
                 <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   <p className="text-sm font-medium text-green-700">

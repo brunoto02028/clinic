@@ -12,6 +12,7 @@
 import { prisma } from "@/lib/db";
 import { callAIClinical, parseAIJson } from "@/lib/ai-provider";
 import { analyzeMedicalScreening } from "@/lib/clinical-analysis";
+import { getEnabledRedFlagKeys } from "@/lib/red-flags-config";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 import { searchLiterature, buildQueries, dedupeById, type LiteratureResult } from "@/lib/europe-pmc";
 import { extractText } from "@/lib/docling";
@@ -319,7 +320,7 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
     }
 
     // 1. Safety analysis (reuses the existing engine)
-    const analysis = analyzeMedicalScreening(s);
+    const analysis = analyzeMedicalScreening(s, { enabledRedFlags: await getEnabledRedFlagKeys() });
     const flags = analysis.redFlagAssessment;
 
     // 2. Case snapshot (triage + latest outcome measures + document findings)
@@ -356,6 +357,34 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
           caseSummary: caseSummary as any,
           narrativeEn:
             "Urgent red flags detected on triage. Evidence gathering was halted; this case requires priority human assessment before any treatment suggestion.",
+          evidence: [],
+          clinicCrossRef: undefined,
+          suggestions: undefined,
+        },
+      });
+      return;
+    }
+
+    // 3b. Incomplete red-flag screen — halt too, for the same reason.
+    //
+    // A red flag that was never answered is not a red flag that was denied.
+    // Before the twelve columns became nullable, an unanswered screen read as
+    // twelve denials, came out of the analysis as "none_detected", sailed past
+    // the urgent gate above, and got treatment suggestions generated for a
+    // patient whose red flags had never been screened. An unscreened case is
+    // not safe to suggest exercise for; it needs the questions asked first.
+    if (flags.status === "incomplete") {
+      await prisma.clinicalEvidenceReport.update({
+        where: { id: reportId },
+        data: {
+          status: "DRAFT",
+          error: null,
+          redFlag: true,
+          redFlagDetails: { unanswered: flags.unanswered } as any,
+          caseSummary: caseSummary as any,
+          narrativeEn:
+            `Red-flag screening is incomplete: ${flags.unanswered.length} of 12 questions were not answered. ` +
+            "Evidence gathering was halted; complete the red-flag screen with the patient before any treatment suggestion.",
           evidence: [],
           clinicCrossRef: undefined,
           suggestions: undefined,

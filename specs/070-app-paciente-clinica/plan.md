@@ -93,7 +93,7 @@ A T-11 derrubou a premissa do plano original. Ele assumia "portar 17 telas que f
 | T-9 | QA da Fase 1 em producao (pos-deploy) | pendente |
 | T-10 | QA das Fases 2 e 3 | pendente |
 | T-11 | Logo da BPR no app | concluido (QA aprovado com ressalvas; 3 defeitos corrigidos) |
-| T-12 | Seguranca clinica: triagem e consentimento | implementado (aguardando QA) |
+| T-12 | Seguranca clinica: triagem e consentimento | reimplementado (schema tri-estado) — aguardando re-QA |
 | T-13 | Navegacao: dar entrada as telas orfas | implementado (aguardando QA) |
 | T-14 | Dados falsos e endpoints quebrados | implementado (aguardando QA) |
 | T-15 | Agendamento: fuso horario e dados de outro tenant | implementado (aguardando QA) |

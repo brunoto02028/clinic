@@ -901,18 +901,25 @@ model MedicalScreening {
   user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Red Flag Questions
-  unexplainedWeightLoss   Boolean @default(false)
-  nightPain               Boolean @default(false)
-  traumaHistory           Boolean @default(false)
-  neurologicalSymptoms    Boolean @default(false)
-  bladderBowelDysfunction Boolean @default(false)
-  recentInfection         Boolean @default(false)
-  cancerHistory           Boolean @default(false)
-  steroidUse              Boolean @default(false)
-  osteoporosisRisk        Boolean @default(false)
-  cardiovascularSymptoms  Boolean @default(false)
-  severeHeadache          Boolean @default(false)
-  dizzinessBalanceIssues  Boolean @default(false)
+  // Red flags are tri-state: true = yes, false = no, null = NOT ASKED.
+  // They were `Boolean @default(false)`, which could not store "not asked",
+  // so every unanswered question was recorded as a denial. A patient's
+  // first autosave wrote twelve "No" answers to questions nobody had put
+  // to them, the wizard then showed those as already answered, and the
+  // admin rendered each as a green check. null must never be read as
+  // "no" — see lib/red-flags.ts. (activity 070, T-12)
+  unexplainedWeightLoss   Boolean?
+  nightPain               Boolean?
+  traumaHistory           Boolean?
+  neurologicalSymptoms    Boolean?
+  bladderBowelDysfunction Boolean?
+  recentInfection         Boolean?
+  cancerHistory           Boolean?
+  steroidUse              Boolean?
+  osteoporosisRisk        Boolean?
+  cardiovascularSymptoms  Boolean?
+  severeHeadache          Boolean?
+  dizzinessBalanceIssues  Boolean?
   redFlagDetails          Json?
 
   // Chief Complaint & Pain

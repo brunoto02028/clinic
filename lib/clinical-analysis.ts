@@ -6,6 +6,7 @@
  * patient red flags and medical history.
  */
 
+import { unansweredRedFlags, type RedFlagKey } from "./red-flags";
 import { MedicalScreeningForm } from './types';
 
 // Modality definitions
@@ -60,8 +61,13 @@ export interface ClinicalAnalysis {
   clinicalSummary: string;
   triageClassification: TriageClassification;
   redFlagAssessment: {
-    status: 'none_detected' | 'possible_red_flags' | 'urgent_red_flags';
+    // 'incomplete' = at least one red flag was never answered. It is not a
+    // clear result and must not be treated as one: with nothing asked, the
+    // screen cannot "detect none". See lib/red-flags.ts.
+    status: 'none_detected' | 'possible_red_flags' | 'urgent_red_flags' | 'incomplete';
     flags: RedFlagItem[];
+    /** Red flags with no yes/no answer. Empty when the screen is complete. */
+    unanswered: RedFlagKey[];
   };
   modalityGating: Record<Modality, ModalityAssessment>;
   targetedFollowUpQuestions: Array<{
@@ -79,7 +85,14 @@ export interface ClinicalAnalysis {
 /**
  * Main analysis function
  */
-export function analyzeMedicalScreening(screening: MedicalScreeningForm): ClinicalAnalysis {
+export function analyzeMedicalScreening(
+  screening: MedicalScreeningForm,
+  opts: {
+    /** The red flags the clinic's config asks — see lib/red-flags-config.ts.
+     *  Omitted, all twelve are required. */
+    enabledRedFlags?: readonly RedFlagKey[];
+  } = {}
+): ClinicalAnalysis {
   // Calculate risk score
   const riskScore = calculateRiskScore(screening);
   
@@ -87,7 +100,7 @@ export function analyzeMedicalScreening(screening: MedicalScreeningForm): Clinic
   const urgencyLevel = determineUrgencyLevel(screening, riskScore);
   
   // Identify red flags
-  const redFlagAssessment = assessRedFlags(screening);
+  const redFlagAssessment = assessRedFlags(screening, opts.enabledRedFlags);
   
   // Perform triage classification
   const triageClassification = classifyTriage(screening, riskScore);
@@ -167,9 +180,13 @@ function determineUrgencyLevel(screening: MedicalScreeningForm, riskScore: numbe
 /**
  * Assess red flags
  */
-function assessRedFlags(screening: MedicalScreeningForm): {
-  status: 'none_detected' | 'possible_red_flags' | 'urgent_red_flags';
+function assessRedFlags(
+  screening: MedicalScreeningForm,
+  enabledRedFlags?: readonly RedFlagKey[]
+): {
+  status: 'none_detected' | 'possible_red_flags' | 'urgent_red_flags' | 'incomplete';
   flags: RedFlagItem[];
+  unanswered: RedFlagKey[];
 } {
   const flags: RedFlagItem[] = [];
   
@@ -295,11 +312,21 @@ function assessRedFlags(screening: MedicalScreeningForm): {
     });
   }
   
-  const status = flags.length === 0 ? 'none_detected' : 
-                 flags.some(f => f.urgencyLevel === 'urgent') ? 'urgent_red_flags' :
-                 'possible_red_flags';
-  
-  return { status, flags };
+  // Precedence: urgent > incomplete > possible > none.
+  //
+  // Urgent wins because a "yes" to a dangerous flag is actionable whatever the
+  // rest says. Incomplete outranks possible because an unanswered question may
+  // be hiding an urgent one. And "none_detected" is only honest when every
+  // question was actually asked — before, twelve unasked flags read as twelve
+  // denials and came out here as a clean result.
+  const unanswered = unansweredRedFlags(screening, enabledRedFlags);
+  const status =
+    flags.some(f => f.urgencyLevel === 'urgent') ? 'urgent_red_flags' :
+    unanswered.length > 0 ? 'incomplete' :
+    flags.length > 0 ? 'possible_red_flags' :
+    'none_detected';
+
+  return { status, flags, unanswered };
 }
 
 /**

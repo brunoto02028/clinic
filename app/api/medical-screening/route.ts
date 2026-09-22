@@ -6,6 +6,8 @@ import { authOptions } from "@/lib/auth-options";
 import { getRequestSession } from "@/lib/dual-auth";
 import { prisma } from "@/lib/db";
 import { analyzeMedicalScreening } from "@/lib/clinical-analysis";
+import { getEnabledRedFlagKeys } from "@/lib/red-flags-config";
+import { unansweredRedFlags } from "@/lib/red-flags";
 import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
@@ -150,6 +152,27 @@ export async function POST(request: NextRequest) {
       where: { userId },
     });
 
+    // Every red flag the clinic asks must be answered before a full
+    // submission — enforced here, not only in the forms. The consent check
+    // above already works this way. Both forms block it client-side too, but
+    // a client-side guarantee is a suggestion: the mobile app shipped with
+    // all twelve pre-selected as "No", which passed its own "all answered"
+    // check. Judged on the merged result, since the UPDATE keeps what the
+    // payload leaves out.
+    if (!isAutosave) {
+      const merged = { ...(existingScreening ?? {}), ...presentScreeningFields(body) };
+      const missing = unansweredRedFlags(merged, await getEnabledRedFlagKeys());
+      if (missing.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Every red-flag question must be answered before submitting the screening",
+            unansweredRedFlags: missing,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (existingScreening) {
       // For autosave: only update if not locked (don't notify, don't change lock state)
       if (isAutosave && existingScreening.isLocked) {
@@ -241,57 +264,13 @@ export async function POST(request: NextRequest) {
     const screening = await prisma.medicalScreening.create({
       data: {
         userId,
-        unexplainedWeightLoss: body?.unexplainedWeightLoss ?? false,
-        nightPain: body?.nightPain ?? false,
-        traumaHistory: body?.traumaHistory ?? false,
-        neurologicalSymptoms: body?.neurologicalSymptoms ?? false,
-        bladderBowelDysfunction: body?.bladderBowelDysfunction ?? false,
-        recentInfection: body?.recentInfection ?? false,
-        cancerHistory: body?.cancerHistory ?? false,
-        steroidUse: body?.steroidUse ?? false,
-        osteoporosisRisk: body?.osteoporosisRisk ?? false,
-        cardiovascularSymptoms: body?.cardiovascularSymptoms ?? false,
-        severeHeadache: body?.severeHeadache ?? false,
-        dizzinessBalanceIssues: body?.dizzinessBalanceIssues ?? false,
-        redFlagDetails: safeRedFlagDetails,
-        chiefComplaint: body?.chiefComplaint ?? null,
-        painLocation: body?.painLocation ?? null,
-        painDuration: body?.painDuration ?? null,
-        painScore: isNaN(painScoreNum as number) ? null : painScoreNum,
-        painType: body?.painType ?? null,
-        painAggravating: body?.painAggravating ?? null,
-        painRelieving: body?.painRelieving ?? null,
-        painPattern: body?.painPattern ?? null,
-        functionalLimitations: body?.functionalLimitations ?? null,
-        sleepAffected: body?.sleepAffected ?? false,
-        workAffected: body?.workAffected ?? false,
-        mobilityAffected: body?.mobilityAffected ?? false,
-        occupation: body?.occupation ?? null,
-        dominantSide: body?.dominantSide ?? null,
-        dominantFootSide: body?.dominantFootSide ?? null,
-        activityLevel: body?.activityLevel ?? null,
-        hobbiesSports: body?.hobbiesSports ?? null,
-        smoker: body?.smoker ?? false,
-        alcoholUse: body?.alcoholUse ?? null,
-        height: body?.height ?? null,
-        weight: body?.weight ?? null,
-        previousPhysio: body?.previousPhysio ?? false,
-        previousPhysioDetails: body?.previousPhysioDetails ?? null,
-        previousInjections: body?.previousInjections ?? false,
-        previousInjectionsDetails: body?.previousInjectionsDetails ?? null,
-        currentlyUnderCare: body?.currentlyUnderCare ?? false,
-        currentlyUnderCareDetails: body?.currentlyUnderCareDetails ?? null,
-        treatmentGoals: body?.treatmentGoals ?? null,
-        returnToSport: body?.returnToSport ?? false,
-        returnToWork: body?.returnToWork ?? false,
-        currentMedications: body?.currentMedications ?? null,
-        allergies: body?.allergies ?? null,
-        surgicalHistory: body?.surgicalHistory ?? null,
-        otherConditions: body?.otherConditions ?? null,
-        gpDetails: body?.gpDetails ?? null,
-        emergencyContact: body?.emergencyContact ?? null,
-        emergencyContactPhone: body?.emergencyContactPhone ?? null,
-        consentGiven: body?.consentGiven ?? false,
+        // Same rule as the UPDATE above: write only what the payload carries.
+        // This branch still had `?? false` on every field, so a new patient's
+        // very first autosave — on step one, long before the red-flag step —
+        // recorded twelve "No" answers. Absent now means null: not asked.
+        ...presentScreeningFields(body),
+        ...(safeRedFlagDetails !== null ? { redFlagDetails: safeRedFlagDetails } : {}),
+        ...(isNaN(painScoreNum as number) ? {} : { painScore: painScoreNum }),
         filledBy: "PATIENT",
         isSubmitted: !isAutosave,
         isLocked: !isAutosave,
@@ -318,7 +297,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze screening for red flags
-    const analysis = analyzeMedicalScreening(body);
+    const analysis = analyzeMedicalScreening(body, { enabledRedFlags: await getEnabledRedFlagKeys() });
 
     // Auto-generate an evidence report for the therapist to review (activity 15).
     // Fire-and-forget: create a GENERATING row; a background job fills it. Never

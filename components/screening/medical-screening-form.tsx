@@ -31,18 +31,19 @@ import ProfessionalReviewBanner from "@/components/dashboard/professional-review
 
 interface ScreeningData {
   // Red flags
-  unexplainedWeightLoss: boolean;
-  nightPain: boolean;
-  traumaHistory: boolean;
-  neurologicalSymptoms: boolean;
-  bladderBowelDysfunction: boolean;
-  recentInfection: boolean;
-  cancerHistory: boolean;
-  steroidUse: boolean;
-  osteoporosisRisk: boolean;
-  cardiovascularSymptoms: boolean;
-  severeHeadache: boolean;
-  dizzinessBalanceIssues: boolean;
+  // Red flags are tri-state: null = not answered yet, never "no". See lib/red-flags.ts.
+  unexplainedWeightLoss: boolean | null;
+  nightPain: boolean | null;
+  traumaHistory: boolean | null;
+  neurologicalSymptoms: boolean | null;
+  bladderBowelDysfunction: boolean | null;
+  recentInfection: boolean | null;
+  cancerHistory: boolean | null;
+  steroidUse: boolean | null;
+  osteoporosisRisk: boolean | null;
+  cardiovascularSymptoms: boolean | null;
+  severeHeadache: boolean | null;
+  dizzinessBalanceIssues: boolean | null;
   // Red flag details (when answered Yes)
   redFlagDetails: Record<string, string>;
   // Chief Complaint & Pain
@@ -107,19 +108,22 @@ const RED_FLAG_QUESTIONS = [
   { key: "dizzinessBalanceIssues", question: "Do you experience dizziness, vertigo, or balance problems?", questionPt: "Você sente tontura, vertigem ou problemas de equilíbrio?" },
 ];
 
+// Red flags start unanswered. They used to start as `false`, and since the
+// form autosaves the whole object, a patient's first keystroke on page one
+// recorded twelve "No" answers to questions still pages away.
 const initialData: ScreeningData = {
-  unexplainedWeightLoss: false,
-  nightPain: false,
-  traumaHistory: false,
-  neurologicalSymptoms: false,
-  bladderBowelDysfunction: false,
-  recentInfection: false,
-  cancerHistory: false,
-  steroidUse: false,
-  osteoporosisRisk: false,
-  cardiovascularSymptoms: false,
-  severeHeadache: false,
-  dizzinessBalanceIssues: false,
+  unexplainedWeightLoss: null,
+  nightPain: null,
+  traumaHistory: null,
+  neurologicalSymptoms: null,
+  bladderBowelDysfunction: null,
+  recentInfection: null,
+  cancerHistory: null,
+  steroidUse: null,
+  osteoporosisRisk: null,
+  cardiovascularSymptoms: null,
+  severeHeadache: null,
+  dizzinessBalanceIssues: null,
   redFlagDetails: {},
   chiefComplaint: "",
   painLocation: "",
@@ -283,6 +287,11 @@ export default function AssessmentScreeningForm() {
   }, []);
 
   const activeRedFlags = cfg?.redFlagQuestions?.filter(q => q.enabled) || RED_FLAG_QUESTIONS.map(q => ({ ...q, en: q.question, pt: q.questionPt, enabled: true }));
+  // Active red flags still without a yes/no. Blocks submission, as the server
+  // does too — a red flag left unanswered must never go in as a "No".
+  const unansweredRedFlagCount = sectionEnabled("red_flags")
+    ? activeRedFlags.filter(q => typeof formData[q.key as keyof ScreeningData] !== "boolean").length
+    : 0;
   const consentLabel = cfg?.consentText ? (isPt ? cfg.consentText.pt : cfg.consentText.en) : T("screening.consentText");
   const prevTxLabel = (key: string, fallbackEn: string, fallbackPt: string) => {
     const q = cfg?.previousTreatmentQuestions?.find(q => q.key === key);
@@ -300,18 +309,18 @@ export default function AssessmentScreeningForm() {
         const s = data.screening;
         clearDraft();
         setFormData({
-          unexplainedWeightLoss: s.unexplainedWeightLoss ?? false,
-          nightPain: s.nightPain ?? false,
-          traumaHistory: s.traumaHistory ?? false,
-          neurologicalSymptoms: s.neurologicalSymptoms ?? false,
-          bladderBowelDysfunction: s.bladderBowelDysfunction ?? false,
-          recentInfection: s.recentInfection ?? false,
-          cancerHistory: s.cancerHistory ?? false,
-          steroidUse: s.steroidUse ?? false,
-          osteoporosisRisk: s.osteoporosisRisk ?? false,
-          cardiovascularSymptoms: s.cardiovascularSymptoms ?? false,
-          severeHeadache: s.severeHeadache ?? false,
-          dizzinessBalanceIssues: s.dizzinessBalanceIssues ?? false,
+          unexplainedWeightLoss: s.unexplainedWeightLoss ?? null,
+          nightPain: s.nightPain ?? null,
+          traumaHistory: s.traumaHistory ?? null,
+          neurologicalSymptoms: s.neurologicalSymptoms ?? null,
+          bladderBowelDysfunction: s.bladderBowelDysfunction ?? null,
+          recentInfection: s.recentInfection ?? null,
+          cancerHistory: s.cancerHistory ?? null,
+          steroidUse: s.steroidUse ?? null,
+          osteoporosisRisk: s.osteoporosisRisk ?? null,
+          cardiovascularSymptoms: s.cardiovascularSymptoms ?? null,
+          severeHeadache: s.severeHeadache ?? null,
+          dizzinessBalanceIssues: s.dizzinessBalanceIssues ?? null,
           redFlagDetails: s.redFlagDetails ?? {},
           chiefComplaint: s.chiefComplaint ?? "",
           painLocation: s.painLocation ?? "",
@@ -636,7 +645,7 @@ export default function AssessmentScreeningForm() {
                         triggerAutoSave();
                       }}
                       className={`min-h-[44px] px-4 flex items-center justify-center rounded-md text-xs font-medium border transition-colors ${
-                        !isYes && formData[q.key as keyof ScreeningData] !== undefined
+                        formData[q.key as keyof ScreeningData] === false
                           ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
                           : "border-border text-muted-foreground hover:border-emerald-500/50"
                       }`}
@@ -1222,7 +1231,7 @@ export default function AssessmentScreeningForm() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button type="submit" size="lg" className="gap-2 flex-1 sm:flex-none" disabled={!formData.consentGiven || saving}>
+            <Button type="submit" size="lg" className="gap-2 flex-1 sm:flex-none" disabled={!formData.consentGiven || unansweredRedFlagCount > 0 || saving}>
               {saving ? (
                 <><Loader2 className="h-4 w-4 animate-spin" />{T("screening.saving")}</>
               ) : (

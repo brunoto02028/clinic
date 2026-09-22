@@ -76,18 +76,19 @@ export interface SOAPNoteWithRelations {
 }
 
 export interface MedicalScreeningForm {
-  unexplainedWeightLoss: boolean;
-  nightPain: boolean;
-  traumaHistory: boolean;
-  neurologicalSymptoms: boolean;
-  bladderBowelDysfunction: boolean;
-  recentInfection: boolean;
-  cancerHistory: boolean;
-  steroidUse: boolean;
-  osteoporosisRisk: boolean;
-  cardiovascularSymptoms: boolean;
-  severeHeadache: boolean;
-  dizzinessBalanceIssues: boolean;
+  // Red flags are tri-state — null means NOT ASKED, never "no". See lib/red-flags.ts.
+  unexplainedWeightLoss: boolean | null;
+  nightPain: boolean | null;
+  traumaHistory: boolean | null;
+  neurologicalSymptoms: boolean | null;
+  bladderBowelDysfunction: boolean | null;
+  recentInfection: boolean | null;
+  cancerHistory: boolean | null;
+  steroidUse: boolean | null;
+  osteoporosisRisk: boolean | null;
+  cardiovascularSymptoms: boolean | null;
+  severeHeadache: boolean | null;
+  dizzinessBalanceIssues: boolean | null;
   currentMedications: string;
   allergies: string;
   surgicalHistory: string;

@@ -83,10 +83,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const systemPrompt = `You are a clinical data extraction AI for a physical rehabilitation clinic.
 Given the clinical text and document contents, extract structured patient data.
 
+For each red flag, answer true or false ONLY when the text explicitly states it. If the text does not mention it, answer null. Never infer "no" from silence: a red flag the document says nothing about is unknown, not absent.
+
 Return a JSON object with these fields:
 {
   "screening": {
-    "redFlags": { "unexplainedWeightLoss": false, "nightPain": false, "traumaHistory": false, "neurologicalSymptoms": false, "bladderBowelDysfunction": false, "recentInfection": false, "cancerHistory": false, "steroidUse": false, "osteoporosisRisk": false, "cardiovascularSymptoms": false, "severeHeadache": false, "dizzinessBalanceIssues": false },
+    "redFlags": { "unexplainedWeightLoss": null, "nightPain": null, "traumaHistory": null, "neurologicalSymptoms": null, "bladderBowelDysfunction": null, "recentInfection": null, "cancerHistory": null, "steroidUse": null, "osteoporosisRisk": null, "cardiovascularSymptoms": null, "severeHeadache": null, "dizzinessBalanceIssues": null },
     "currentMedications": "string or null",
     "allergies": "string or null",
     "surgicalHistory": "string or null",
@@ -154,10 +156,26 @@ Rules:
         consentGiven: true,
       };
 
-      // Red flags
+      const existing = await (prisma as any).medicalScreening.findUnique({ where: { userId: patientId } });
+
+      // Red flags: fill gaps, never overwrite, never invent.
+      //
+      // This used to be `screeningData[key] = !!parsed.screening.redFlags[key]`
+      // for all twelve, against a prompt template that defaulted every one to
+      // false. Together that meant: anything the document did not mention was
+      // recorded as a denial, and on an existing screening the import
+      // overwrote the patient's own answers — a patient who said "yes" to
+      // night pain became "no" because an uploaded letter did not mention it.
+      //
+      // Now only a real boolean from the model is used, and only where the
+      // screening has no answer yet. The patient's own answer outranks a
+      // document extraction. Silence stays null: unknown, not absent.
       if (parsed.screening.redFlags) {
         for (const key of RED_FLAG_KEYS) {
-          screeningData[key] = !!parsed.screening.redFlags[key];
+          const extracted = parsed.screening.redFlags[key];
+          if (typeof extracted !== "boolean") continue;
+          if (existing && typeof existing[key] === "boolean") continue;
+          screeningData[key] = extracted;
         }
       }
 
@@ -168,7 +186,6 @@ Rules:
         }
       }
 
-      const existing = await (prisma as any).medicalScreening.findUnique({ where: { userId: patientId } });
       if (existing) {
         await (prisma as any).medicalScreening.update({ where: { userId: patientId }, data: screeningData });
       } else {

@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 import { analyzeMedicalScreening, ClinicalAnalysis } from '@/lib/clinical-analysis';
+import { getEnabledRedFlagKeys } from '@/lib/red-flags-config';
 import { MedicalScreeningForm } from '@/lib/types';
 
 /**
@@ -102,7 +103,9 @@ export async function GET(request: NextRequest) {
     };
     
     // Perform clinical analysis
-    const analysis: ClinicalAnalysis = analyzeMedicalScreening(screeningData);
+    const analysis: ClinicalAnalysis = analyzeMedicalScreening(screeningData, {
+      enabledRedFlags: await getEnabledRedFlagKeys(),
+    });
     
     return NextResponse.json({
       success: true,
