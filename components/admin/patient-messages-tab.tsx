@@ -6,6 +6,7 @@ import { Loader2, Send, Trash2, Megaphone, MessageSquare, BellRing, Paperclip, F
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useVocab } from "@/hooks/use-vocab";
 
@@ -33,6 +34,10 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
   const [kind, setKind] = useState<"message" | "notice">("message");
   const [sending, setSending] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  // Nothing reaches the patient without this being seen first (activity 68 —
+  // Bruno: "eu quero ver o preview sempre antes"). Enter and "Send to patient"
+  // both only open it; the dialog's own button is the one thing that calls send().
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,12 +108,19 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
       setDraftTitle("");
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      setConfirmOpen(false);
       toast({ title: "Message sent", description: relabel("The patient has been notified.") });
     } catch {
       toast({ title: "Failed to send", variant: "destructive" });
     } finally {
       setSending(false);
     }
+  };
+
+  // Both Enter and the button land here — they only ever open the preview.
+  const requestSend = () => {
+    if (!draft.trim() && !file) return;
+    setConfirmOpen(true);
   };
 
   const remove = async (messageId: string) => {
@@ -229,7 +241,7 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); requestSend(); }
           }}
           className="text-sm min-h-[90px]"
         />
@@ -252,7 +264,7 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => fileInputRef.current?.click()}>
             <Paperclip className="h-3.5 w-3.5" /> Attach file
           </Button>
-          <Button onClick={send} disabled={sending || (!draft.trim() && !file)} className="gap-2">
+          <Button onClick={requestSend} disabled={sending || (!draft.trim() && !file)} className="gap-2">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {relabel("Send to patient")}
           </Button>
@@ -261,6 +273,32 @@ export default function PatientMessagesTab({ patientId }: { patientId: string })
           {relabel("The patient is notified (email/WhatsApp as per preference) and sees the message in the portal's \"Questions\" area. Everything is logged.")}
         </p>
       </div>
+
+      {/* Preview before send — nothing reaches the patient without this being shown first */}
+      <Dialog open={confirmOpen} onOpenChange={(o) => { if (!sending) setConfirmOpen(o); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{relabel(kind === "notice" ? "Preview notice" : "Preview message")}</DialogTitle>
+            <DialogDescription>{relabel("This is exactly what the patient will see and be notified about.")}</DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm space-y-2">
+            {kind === "notice" && draftTitle && <p className="font-bold">{draftTitle}</p>}
+            <p className="whitespace-pre-wrap leading-relaxed">{draft}</p>
+            {file && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                <Paperclip className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{file.name}</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={sending}>{relabel("Back to edit")}</Button>
+            <Button onClick={send} disabled={sending} className="gap-2">
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {relabel("Send to patient")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

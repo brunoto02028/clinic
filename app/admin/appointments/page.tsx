@@ -53,6 +53,7 @@ import {
   BanIcon,
   X,
   Receipt,
+  Mail,
 } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
@@ -105,6 +106,8 @@ export default function AdminAppointmentsPage() {
     price: 0,
     notes: "",
     paymentMode: "in_person" as "online" | "in_person",
+    // Off by default: nothing reaches the patient without a previewed e-mail (activity 68)
+    sendConfirmation: false,
   });
   const [aiNotesLoading, setAiNotesLoading] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -282,14 +285,21 @@ export default function AdminAppointmentsPage() {
           price: Number(createForm.price),
           notes: createForm.notes || null,
           paymentMode: createForm.paymentMode,
+          sendConfirmation: createForm.paymentMode === "online" ? true : createForm.sendConfirmation,
         }),
       });
       if (res.ok) {
         const data = await res.json();
         const checkoutMsg = data.checkoutUrl ? (isPt ? ` Link de pagamento gerado.` : ` Payment link generated.`) : '';
-        toast({ title: relabel(isPt ? "Consulta criada" : "Appointment created"), description: relabel(isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email.") + checkoutMsg });
+        const emailed = createForm.paymentMode === "online" || createForm.sendConfirmation;
+        toast({
+          title: relabel(isPt ? "Consulta criada" : "Appointment created"),
+          description: relabel(emailed
+            ? (isPt ? "O paciente receberá um email de confirmação." : "The patient will receive a confirmation email.")
+            : (isPt ? "Nenhum email foi enviado. Use \"Confirmar por email\" na consulta para ver a prévia e enviar." : "No email was sent. Use \"Email confirmation\" on the appointment to preview and send it.")) + checkoutMsg,
+        });
         setShowCreateDialog(false);
-        setCreateForm({ patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "", duration: 60, treatmentType: "", price: 0, notes: "", paymentMode: "in_person" });
+        setCreateForm({ patientId: "", dateTime: "", appointmentDate: "", appointmentTime: "", duration: 60, treatmentType: "", price: 0, notes: "", paymentMode: "in_person", sendConfirmation: false });
         fetchAppointments();
       } else {
         const data = await res.json();
@@ -784,6 +794,14 @@ export default function AdminAppointmentsPage() {
                           <span className="hidden sm:inline">Complete</span>
                         </Button>
                       )}
+                      {!isPersonal && appointment.status !== "CANCELLED" && (
+                        <Button size="sm" variant="outline" className="h-8 text-xs px-2" asChild>
+                          <a href={`/admin/patients/${appointment.patient.id}?email=${appointment.id}`}>
+                            <Mail className="h-3.5 w-3.5 sm:mr-1" />
+                            <span className="hidden sm:inline">{isPt ? "Confirmar por email" : "Email confirmation"}</span>
+                          </a>
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -1022,6 +1040,24 @@ export default function AdminAppointmentsPage() {
                 </p>
               )}
             </div>
+            {/* Confirmation e-mail: off unless asked (the previewed composer is the normal way) */}
+            <label className="flex items-start gap-2 text-xs rounded-lg border border-border px-3 py-2">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={createForm.paymentMode === "online" ? true : createForm.sendConfirmation}
+                disabled={createForm.paymentMode === "online"}
+                onChange={(e) => setCreateForm(f => ({ ...f, sendConfirmation: e.target.checked }))}
+              />
+              <span>
+                <span className="font-medium">{isPt ? "Enviar e-mail de confirmação agora (sem prévia)" : "Send the confirmation email now (no preview)"}</span>
+                <span className="block text-muted-foreground">
+                  {createForm.paymentMode === "online"
+                    ? (isPt ? "Necessário no pagamento online: o e-mail leva o link de pagamento." : "Required for online payment: the email carries the payment link.")
+                    : (isPt ? "Deixe desmarcado para escrever e ver a prévia depois, em \"Confirmar por email\"." : "Leave unchecked to write and preview it afterwards with \"Email confirmation\".")}
+                </span>
+              </span>
+            </label>
             {/* AI Notes Section */}
             <div className="space-y-3 border border-violet-500/20 rounded-lg p-3 bg-violet-500/5">
               <div className="flex items-center gap-2">

@@ -17,6 +17,7 @@ import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
 import AssignProtocolDialog from "@/components/admin/assign-protocol-dialog";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import { LimbMeasurementsTab, LimbMeasurementsShortcut } from "@/components/admin/limb-measurements-tab";
+import { PatientEmailPanel } from "@/components/admin/patient-email-panel";
 import { PatientActivityTab } from "@/components/admin/patient-activity-tab";
 import PatientAdherencePanel from "@/components/admin/patient-adherence-panel";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
@@ -179,6 +180,13 @@ export default function PatientProfilePage() {
   // from the one a note actually referenced if a newer version was created
   // since (e.g. a document arriving reopened the report, Decisão 0).
   const [targetEvidenceReportId, setTargetEvidenceReportId] = useState<string | null>(null);
+  // Arriving from an appointment's "confirmation email" shortcut (?email=<appointmentId>,
+  // activity 68): land on the Messages tab with the composer prefilled.
+  const [emailAppointmentId, setEmailAppointmentId] = useState<string | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("email");
+    if (id) { setEmailAppointmentId(id); setActiveTab("mensagens"); }
+  }, []);
   // Safety net: a personal tenant must never land on a clinical tab (its trigger
   // and every entry point are hidden, but a stale/forced value would otherwise
   // mount clinical content). Force back to the summary if it ever happens.
@@ -1936,6 +1944,7 @@ export default function PatientProfilePage() {
 
         {/* ── Tab: Mensagens ── */}
         <TabsContent value="mensagens" className="mt-4">
+          {!isPersonal && <PatientEmailPanel patientId={patientId} openAppointmentId={emailAppointmentId} />}
           <PatientMessagesTab patientId={patientId} />
         </TabsContent>
 

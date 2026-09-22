@@ -60,8 +60,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       patientId, dateTime, duration, treatmentType, notes, price,
-      mode, videoRoomId, videoRoomUrl, treatmentPlanId, paymentMode,
+      mode, videoRoomId, videoRoomUrl, treatmentPlanId, paymentMode, sendConfirmation,
     } = body;
+    // Patient-facing e-mails (confirmation, screening reminder) go out at creation
+    // unless the caller says `sendConfirmation: false` (activity 68: the admin form
+    // creates silently and the therapist sends a previewed confirmation from the
+    // "Email to patient" composer). Online payment always sends, because the
+    // confirmation e-mail is what carries the payment link.
+    const emailPatientNow = paymentMode === "online" || sendConfirmation !== false;
 
     if (!patientId || !dateTime) {
       return NextResponse.json({ error: "Patient and date/time are required" }, { status: 400 });
@@ -171,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send APPOINTMENT_CONFIRMATION email to patient
-    try {
+    if (emailPatientNow) try {
       const appUrl = process.env.NEXTAUTH_URL || '';
       const apptDate = new Date(dateTime);
       const dateStr = apptDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -210,7 +216,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if patient needs to complete screening and notify them
-    try {
+    if (emailPatientNow) try {
       const screening = await prisma.medicalScreening.findUnique({
         where: { userId: patientId },
       });
