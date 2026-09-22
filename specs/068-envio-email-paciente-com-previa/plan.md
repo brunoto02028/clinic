@@ -41,6 +41,6 @@ Nada é enviado automaticamente; nada sai sem Bruno ver a prévia; texto com "Te
 - Pendente de verificação (fora do escopo): e-mails automáticos de consulta formatam a hora sem fuso no servidor (`toLocaleTimeString('en-GB')`) e não há `TZ` no Dockerfile/compose — provável hora adiantada em 1 h no horário de verão.
 
 ## Resultado
-QA local aprovado (20/20 cenários, ver qa/report-t-1.md, report-t-2.md, report-t-3.md) e code review independente feito duas vezes (implementação inicial + correções pós-QA: CRLF no assunto), sem bloqueantes nas duas rodadas. **QA online (prod) pendente — a rodar após o deploy.**
+QA local aprovado (20/20 cenários, ver qa/report-t-1.md, report-t-2.md, report-t-3.md) e code review independente feito duas vezes (implementação inicial + correções pós-QA: CRLF no assunto), sem bloqueantes nas duas rodadas. **QA online (prod) aprovado — commit 933efd74, ver qa/report-online.md.**
 
 Correção adicional feita após o QA (pedido do Bruno, 22/09): a caixa "Write your message to the patient…" (aba Messages, mensagem avulsa fora do composer de e-mail) também passou a exigir prévia — Enter e o botão só abrem um diálogo com o texto exato; só o botão do diálogo envia.
