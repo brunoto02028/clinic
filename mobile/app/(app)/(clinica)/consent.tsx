@@ -1,6 +1,7 @@
-import { useState } from "react";
 import { View, Pressable, ScrollView } from "react-native";
 import { Stack } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { fetchScreening } from "@/api/screening";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
@@ -28,8 +29,9 @@ const SECTIONS = [
 ];
 
 export default function Consent() {
+  const { data: screening } = useQuery({ queryKey: ["screening"], queryFn: fetchScreening });
+  const accepted = screening?.consentGiven === true;
   const t = useTheme();
-  const [accepted, setAccepted] = useState(true);
 
   return (
     <Screen scroll testID="consent-screen">
@@ -45,23 +47,29 @@ export default function Consent() {
       <View style={{ gap: 20 }}>
         <View>
           <Text variant="title">Termos de Uso & Consentimento</Text>
-          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
-            Você aceitou os termos em 04/06/2026
-          </Text>
         </View>
 
-        {/* Accepted badge */}
-        <Card variant="highlight">
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <Ionicons name="checkmark-circle" size={22} color={t.colors.ok} />
-            <View>
+        {/* O estado de aceite vem da triagem, onde `consentGiven` de fato mora.
+            Antes daqui saía a frase "Você aceitou os termos em 04/06/2026" —
+            uma data literal, exibida a qualquer paciente — e um selo de "Termos
+            aceitos" que renderizava sempre, aceito ou não. */}
+        {accepted ? (
+          <Card>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Ionicons name="checkmark-circle" size={22} color={t.colors.ok} />
               <Text variant="label" color={t.colors.ok} style={{ fontWeight: "600" }}>Termos aceitos</Text>
-              <Text variant="caption" color={t.colors.textSecondary}>
-                Você pode atualizar abaixo se algo mudou.
+            </View>
+          </Card>
+        ) : (
+          <Card>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+              <Ionicons name="information-circle-outline" size={22} color={t.colors.textSecondary} />
+              <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1 }}>
+                Você ainda não aceitou os termos. O aceite é feito na última etapa da sua avaliação.
               </Text>
             </View>
-          </View>
-        </Card>
+          </Card>
+        )}
 
         {/* Terms sections */}
         {SECTIONS.map((section) => (

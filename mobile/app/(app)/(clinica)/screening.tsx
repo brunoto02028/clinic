@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { fetchScreening, saveScreening, type ScreeningData } from "@/api/screening";
+import { fetchScreeningConfig } from "@/api/screening-config";
 
 const STEPS = [
   { key: "profile", label: "Perfil", icon: "person-outline" as const },
@@ -15,7 +16,42 @@ const STEPS = [
   { key: "treatment", label: "Tratamento anterior", icon: "medical-outline" as const },
   { key: "goals", label: "Objetivos", icon: "flag-outline" as const },
   { key: "health", label: "Histórico de saúde", icon: "clipboard-outline" as const },
+  { key: "redflags", label: "Sinais de alerta", icon: "warning-outline" as const },
+  { key: "consent", label: "Consentimento", icon: "shield-checkmark-outline" as const },
 ];
+
+/** Sim/Não para as perguntas de segurança. Sem valor pré-selecionado: "não
+ *  respondido" não pode parecer "Não". */
+function YesNo({ value, onChange }: { value?: boolean; onChange: (v: boolean) => void }) {
+  const t = useTheme();
+  return (
+    <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+      {[
+        { v: true, label: "Sim" },
+        { v: false, label: "Não" },
+      ].map(o => {
+        const active = value === o.v;
+        return (
+          <Pressable
+            key={o.label}
+            onPress={() => onChange(o.v)}
+            style={{
+              flex: 1,
+              paddingVertical: 10,
+              borderRadius: 10,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: active ? t.colors.accent : t.colors.border,
+              backgroundColor: active ? t.colors.accent : "transparent",
+            }}
+          >
+            <Text variant="label" color={active ? "#fff" : t.colors.text}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
 function ChipSelect({ options, selected, onSelect }: {
   options: { value: string; label: string }[];
@@ -63,12 +99,24 @@ export default function Screening() {
 
   const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
 
+  const { data: config, isError: configError } = useQuery({
+    queryKey: ["screening-config"],
+    queryFn: fetchScreeningConfig,
+  });
+
+  const redFlags = (config?.redFlagQuestions ?? []).filter(q => q.enabled !== false);
+  const consentText = config?.consentText?.pt ?? null;
+  const unanswered = redFlags.filter(q => typeof form[q.key] !== "boolean").length;
+
   const autosave = useMutation({
     mutationFn: () => saveScreening(form, true),
   });
 
   const submit = useMutation({
-    mutationFn: () => saveScreening({ ...form, consentGiven: true }, false),
+    // `consentGiven` sai do formulário, não daqui. Ele era fixado em `true`
+    // para passar pelo gate da rota, o que registrava um consentimento que o
+    // paciente nunca deu.
+    mutationFn: () => saveScreening(form, false),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["screening"] });
       router.back();
@@ -141,7 +189,14 @@ export default function Screening() {
               <View style={{ flex: 1 }}><Input label="Altura (cm)" value={form.height ?? ""} onChangeText={v => set("height", v)} keyboardType="number-pad" placeholder="175" /></View>
               <View style={{ flex: 1 }}><Input label="Peso (kg)" value={form.weight ?? ""} onChangeText={v => set("weight", v)} keyboardType="number-pad" placeholder="70" /></View>
             </View>
-            <ChipSelect options={[{ value: "no", label: "Não fumante" }, { value: "yes", label: "Fumante" }, { value: "ex", label: "Ex-fumante" }]} selected={form.smoker ?? null} onSelect={v => set("smoker", v)} />
+            {/* A coluna é Boolean: o chip mandava "no"/"yes"/"ex" e o save estourava.
+                "Ex-fumante" saiu porque o registro não consegue distingui-lo de
+                "não fumante" — inventar um terceiro estado aqui seria mentira. */}
+            <ChipSelect
+              options={[{ value: "no", label: "Não fumante" }, { value: "yes", label: "Fumante" }]}
+              selected={form.smoker === true ? "yes" : form.smoker === false ? "no" : null}
+              onSelect={v => set("smoker", v === "yes")}
+            />
           </Card>
         )}
 
@@ -206,6 +261,71 @@ export default function Screening() {
           </Card>
         )}
 
+        {/* Step 7: Red flags — as perguntas de segurança, vindas do config da clínica */}
+        {step === 7 && (
+          <Card>
+            <Text variant="label" style={{ fontWeight: "600", marginBottom: 4 }}>Sinais de alerta</Text>
+            <Text variant="caption" color={t.colors.textSecondary} style={{ marginBottom: 16 }}>
+              Responda com honestidade. Estas perguntas existem para a sua segurança durante o tratamento.
+            </Text>
+
+            {configError || redFlags.length === 0 ? (
+              <Text variant="caption" color={t.colors.danger}>
+                Não foi possível carregar as perguntas de segurança. Tente novamente mais tarde — a
+                avaliação não pode ser enviada sem elas.
+              </Text>
+            ) : (
+              redFlags.map(q => (
+                <View key={q.key} style={{ marginBottom: 18 }}>
+                  <Text variant="body">{q.pt}</Text>
+                  <YesNo value={form[q.key] as boolean | undefined} onChange={v => set(q.key, v)} />
+                </View>
+              ))
+            )}
+          </Card>
+        )}
+
+        {/* Step 8: Consentimento */}
+        {step === 8 && (
+          <Card>
+            <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>Consentimento</Text>
+
+            {consentText ? (
+              <>
+                <Pressable
+                  onPress={() => set("consentGiven", !form.consentGiven)}
+                  style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}
+                >
+                  <View
+                    style={{
+                      width: 24, height: 24, borderRadius: 6, marginTop: 2,
+                      borderWidth: 1.5,
+                      borderColor: form.consentGiven ? t.colors.accent : t.colors.border,
+                      backgroundColor: form.consentGiven ? t.colors.accent : "transparent",
+                      alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    {form.consentGiven ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+                  </View>
+                  <Text variant="body" style={{ flex: 1 }}>{consentText}</Text>
+                </Pressable>
+
+                {unanswered > 0 && (
+                  <Text variant="caption" color={t.colors.danger} style={{ marginTop: 16 }}>
+                    Faltam {unanswered} {unanswered === 1 ? "pergunta" : "perguntas"} de segurança.
+                    Volte à etapa anterior antes de enviar.
+                  </Text>
+                )}
+              </>
+            ) : (
+              <Text variant="caption" color={t.colors.danger}>
+                Não foi possível carregar o termo de consentimento. A avaliação não pode ser enviada
+                sem ele.
+              </Text>
+            )}
+          </Card>
+        )}
+
         {/* Navigation */}
         <View style={{ flexDirection: "row", gap: 12 }}>
           {step > 0 && (
@@ -219,6 +339,10 @@ export default function Screening() {
             <Button
               variant="health"
               title={step < STEPS.length - 1 ? "Próximo" : "Enviar avaliação"}
+              // Espelha a web, que desabilita o envio sem consentimento. Aqui
+              // vale também para as perguntas de segurança: enviar sem elas
+              // gravaria "Não" em nome do paciente.
+              disabled={step === STEPS.length - 1 && (!form.consentGiven || unanswered > 0)}
               onPress={() => {
                 if (step < STEPS.length - 1) { autosave.mutate(); setStep(s => s + 1); }
                 else submit.mutate();

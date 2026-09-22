@@ -62,6 +62,18 @@ Já no app: home, appointments (+detalhe, +book), clinical-notes, consent, docum
 
 ⚠️ `app/dashboard` atende **paciente de clínica E aluno de estúdio** (ver ativ. 055/058/059, que esconderam Jornada e Comunidade do aluno). Por isso a T-1 é inventário antes de qualquer porte — parte dessas páginas pode ser do aluno, e o paciente da BPR não deve vê-las.
 
+## Ordem de execucao (revisada 22/09/2026)
+A T-11 derrubou a premissa do plano original. Ele assumia "portar 17 telas que faltam sobre uma base de 21 que funcionam". **A base nao funciona:** 9 das 15 telas ditas cobertas nao tem ponto de entrada, e varias das que abrem mostram dado inventado. Portar mais tela sobre isso e construir em cima de fundacao ruim.
+
+**Consertar antes de portar:**
+
+1. **T-12** — seguranca clinica. Nao espera fase nenhuma: o app grava consentimento e respostas de red flag que o paciente nunca deu.
+2. **T-13** — navegacao. Maior ganho por esforco da atividade: as telas ja existem, falta acesso.
+3. **T-14** — dados falsos e endpoints quebrados.
+4. **T-15** — agendamento (fuso e tenant).
+5. **T-16** — telas parciais e idioma.
+6. **So entao T-4 a T-8** — o porte das 17 ausentes.
+
 ## Fases
 - **Fase 1 — o app vira o app do paciente (T-1 a T-3):** inventário, gating, identidade BPR.
 - **Fase 2 — porte do essencial (T-4 a T-6):** plano/jornada, registros de saúde, perguntas e quizzes.
@@ -81,6 +93,11 @@ Já no app: home, appointments (+detalhe, +book), clinical-notes, consent, docum
 | T-9 | QA da Fase 1 em producao (pos-deploy) | pendente |
 | T-10 | QA das Fases 2 e 3 | pendente |
 | T-11 | Logo da BPR no app | concluido (QA aprovado com ressalvas; 3 defeitos corrigidos) |
+| T-12 | Seguranca clinica: triagem e consentimento | pendente |
+| T-13 | Navegacao: dar entrada as telas orfas | pendente |
+| T-14 | Dados falsos e endpoints quebrados | pendente |
+| T-15 | Agendamento: fuso horario e dados de outro tenant | pendente |
+| T-16 | Telas parciais e idioma | pendente |
 
 ## Decisao sobre `exercises` (22/09/2026)
 A atividade 043 aposentou a pagina separada de exercicios na web — `mod_exercises` aponta para `/dashboard/treatment`. O app ficou atras, com aba propria. **O app segue a web:** a aba continua (acesso em um toque e bom no mobile), mas passa a abrir o plano de tratamento unificado. Manter duas telas recriaria a duplicacao que a 043 removeu de proposito. Vira tarefa propria nas fases de porte.

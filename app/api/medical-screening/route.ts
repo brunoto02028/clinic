@@ -13,6 +13,51 @@ import { getEffectiveUser } from "@/lib/get-effective-user";
 import { relinkBrokenEvidenceReport } from "@/lib/evidence-report";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
 
+// A partial payload must not erase what it does not mention.
+//
+// Every field below used to be written as `body?.x ?? false` / `?? null`, which
+// turned any partial save into a wipe. The mobile app autosaves its whole form
+// on each step, and its form does not collect the twelve red-flag questions,
+// the pain pattern, alcohol use, GP details or the emergency contact — so an
+// app autosave erased whatever the patient had entered on the web, and recorded
+// twelve "No" answers to safety questions nobody had asked them. A therapist
+// reading that record would conclude the patient denied night pain, bladder
+// dysfunction and a cancer history.
+//
+// Types are checked rather than coerced: the app was sending `smoker` as a
+// string into a Boolean column, which threw. Ignoring it beats a 500, and the
+// client was fixed to send a boolean.
+const SCREENING_BOOLEANS = [
+  "unexplainedWeightLoss", "nightPain", "traumaHistory", "neurologicalSymptoms",
+  "bladderBowelDysfunction", "recentInfection", "cancerHistory", "steroidUse",
+  "osteoporosisRisk", "cardiovascularSymptoms", "severeHeadache", "dizzinessBalanceIssues",
+  "sleepAffected", "workAffected", "mobilityAffected", "smoker",
+  "previousPhysio", "previousInjections", "currentlyUnderCare",
+  "returnToSport", "returnToWork", "consentGiven",
+] as const;
+
+const SCREENING_STRINGS = [
+  "chiefComplaint", "painLocation", "painDuration", "painType", "painAggravating",
+  "painRelieving", "painPattern", "functionalLimitations", "occupation",
+  "dominantSide", "dominantFootSide", "activityLevel", "hobbiesSports", "alcoholUse",
+  "height", "weight", "previousPhysioDetails", "previousInjectionsDetails",
+  "currentlyUnderCareDetails", "treatmentGoals", "currentMedications", "allergies",
+  "surgicalHistory", "otherConditions", "gpDetails", "emergencyContact",
+  "emergencyContactPhone",
+] as const;
+
+function presentScreeningFields(body: any): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of SCREENING_BOOLEANS) {
+    if (typeof body?.[k] === "boolean") out[k] = body[k];
+  }
+  for (const k of SCREENING_STRINGS) {
+    const v = body?.[k];
+    if (typeof v === "string" || v === null) out[k] = v;
+  }
+  return out;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const effectiveUser = await getEffectiveUser();
@@ -114,57 +159,9 @@ export async function POST(request: NextRequest) {
       const screening = await prisma.medicalScreening.update({
         where: { userId },
         data: {
-          unexplainedWeightLoss: body?.unexplainedWeightLoss ?? false,
-          nightPain: body?.nightPain ?? false,
-          traumaHistory: body?.traumaHistory ?? false,
-          neurologicalSymptoms: body?.neurologicalSymptoms ?? false,
-          bladderBowelDysfunction: body?.bladderBowelDysfunction ?? false,
-          recentInfection: body?.recentInfection ?? false,
-          cancerHistory: body?.cancerHistory ?? false,
-          steroidUse: body?.steroidUse ?? false,
-          osteoporosisRisk: body?.osteoporosisRisk ?? false,
-          cardiovascularSymptoms: body?.cardiovascularSymptoms ?? false,
-          severeHeadache: body?.severeHeadache ?? false,
-          dizzinessBalanceIssues: body?.dizzinessBalanceIssues ?? false,
-          redFlagDetails: safeRedFlagDetails,
-          chiefComplaint: body?.chiefComplaint ?? null,
-          painLocation: body?.painLocation ?? null,
-          painDuration: body?.painDuration ?? null,
-          painScore: isNaN(painScoreNum as number) ? null : painScoreNum,
-          painType: body?.painType ?? null,
-          painAggravating: body?.painAggravating ?? null,
-          painRelieving: body?.painRelieving ?? null,
-          painPattern: body?.painPattern ?? null,
-          functionalLimitations: body?.functionalLimitations ?? null,
-          sleepAffected: body?.sleepAffected ?? false,
-          workAffected: body?.workAffected ?? false,
-          mobilityAffected: body?.mobilityAffected ?? false,
-          occupation: body?.occupation ?? null,
-          dominantSide: body?.dominantSide ?? null,
-          dominantFootSide: body?.dominantFootSide ?? null,
-          activityLevel: body?.activityLevel ?? null,
-          hobbiesSports: body?.hobbiesSports ?? null,
-          smoker: body?.smoker ?? false,
-          alcoholUse: body?.alcoholUse ?? null,
-          height: body?.height ?? null,
-          weight: body?.weight ?? null,
-          previousPhysio: body?.previousPhysio ?? false,
-          previousPhysioDetails: body?.previousPhysioDetails ?? null,
-          previousInjections: body?.previousInjections ?? false,
-          previousInjectionsDetails: body?.previousInjectionsDetails ?? null,
-          currentlyUnderCare: body?.currentlyUnderCare ?? false,
-          currentlyUnderCareDetails: body?.currentlyUnderCareDetails ?? null,
-          treatmentGoals: body?.treatmentGoals ?? null,
-          returnToSport: body?.returnToSport ?? false,
-          returnToWork: body?.returnToWork ?? false,
-          currentMedications: body?.currentMedications ?? null,
-          allergies: body?.allergies ?? null,
-          surgicalHistory: body?.surgicalHistory ?? null,
-          otherConditions: body?.otherConditions ?? null,
-          gpDetails: body?.gpDetails ?? null,
-          emergencyContact: body?.emergencyContact ?? null,
-          emergencyContactPhone: body?.emergencyContactPhone ?? null,
-          consentGiven: body?.consentGiven ?? false,
+          ...presentScreeningFields(body),
+          ...(safeRedFlagDetails !== null ? { redFlagDetails: safeRedFlagDetails } : {}),
+          ...(isNaN(painScoreNum as number) ? {} : { painScore: painScoreNum }),
           // The patient is answering it themselves — that is what makes this
           // their own account of their history rather than a transcription.
           filledBy: "PATIENT",
