@@ -28,5 +28,8 @@ Bruno quer medir a pressão arterial de pacientes (principalmente idosos) antes 
 ## Code review
 Aprovado, sem bloqueante. Um ponto corrigido: as duas rotas refaziam a checagem de sessão com `getServerSession` em vez de reaproveitar o `actor` já resolvido por `staffPatientAccess` — isso derrubava (401) qualquer chamada autenticada por bearer token (app mobile) mesmo sendo staff válido da clínica certa. Corrigido para usar `tenantAccess.actor` diretamente (mesmo padrão da atividade 067); a checagem de papel (ADMIN/SUPERADMIN/THERAPIST) já era feita dentro de `staffPatientAccess` via `isStaff()`, então a checagem manual duplicada também foi removida. `tsc`/`eslint` limpos após a correção.
 
-## Pendente
-- Aprovação do Bruno para commit e deploy (implementado, mas não commitado).
+## Deploy
+Commitado (`207f7e6d`) e publicado. Um esquecimento de `git add` (mesmo erro já cometido na 068) quebrou o primeiro deploy — corrigido em `47a8df33`, desta vez verificado com `npm run build` local antes do push. No ar desde 2026-09-22T08:03:45Z.
+
+## QA online
+Aprovado, sem bugs — ver `qa/report-online.md`.
