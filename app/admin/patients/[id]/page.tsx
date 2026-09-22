@@ -17,6 +17,7 @@ import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
 import AssignProtocolDialog from "@/components/admin/assign-protocol-dialog";
 import { EvidenceReportTab } from "@/components/admin/evidence-report-tab";
 import { LimbMeasurementsTab, LimbMeasurementsShortcut } from "@/components/admin/limb-measurements-tab";
+import { BloodPressureTab } from "@/components/admin/blood-pressure-tab";
 import { PatientEmailPanel } from "@/components/admin/patient-email-panel";
 import { PatientActivityTab } from "@/components/admin/patient-activity-tab";
 import PatientAdherencePanel from "@/components/admin/patient-adherence-panel";
@@ -191,7 +192,7 @@ export default function PatientProfilePage() {
   // and every entry point are hidden, but a stale/forced value would otherwise
   // mount clinical content). Force back to the summary if it ever happens.
   useEffect(() => {
-    const CLINICAL_TABS = ["screening", "avaliacoes", "notas", "medidas", "protocolo", "rehab", "evidencia", "exercicios"];
+    const CLINICAL_TABS = ["screening", "avaliacoes", "notas", "medidas", "pressao", "protocolo", "rehab", "evidencia", "exercicios"];
     if (isPersonal && CLINICAL_TABS.includes(activeTab)) setActiveTab("resumo");
   }, [isPersonal, activeTab]);
   const [showNewNote, setShowNewNote] = useState(false);
@@ -1020,6 +1021,9 @@ export default function PatientProfilePage() {
                 )}
                 {!isPersonal && (
                   <TabsTrigger value="medidas" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Measurements</TabsTrigger>
+                )}
+                {!isPersonal && (
+                  <TabsTrigger value="pressao" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Blood Pressure</TabsTrigger>
                 )}
                 <TabsTrigger value="docs" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary">Documents</TabsTrigger>
                 <TabsTrigger value="mensagens" className="text-xs data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400 flex items-center gap-1">
@@ -2205,6 +2209,13 @@ export default function PatientProfilePage() {
         {!isPersonal && (
           <TabsContent value="medidas" className="mt-4">
             <LimbMeasurementsTab patientId={patientId} />
+          </TabsContent>
+        )}
+
+        {/* ── Tab: Pressão arterial (activity 69) ── */}
+        {!isPersonal && (
+          <TabsContent value="pressao" className="mt-4">
+            <BloodPressureTab patientId={patientId} />
           </TabsContent>
         )}
 

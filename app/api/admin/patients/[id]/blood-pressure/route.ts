@@ -1,10 +1,28 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
+import { isPersonalTenant } from "@/lib/tenant-type";
+import { parseBPBody } from "@/lib/blood-pressure";
+
+// staffPatientAccess already resolves the actor (session cookie or mobile
+// bearer token) and checks it's staff of the patient's own tenant — reusing
+// its actor here instead of a second getServerSession() call, which only
+// ever recognised a cookie session and 401'd every mobile-token caller.
+async function requireStaff(request: NextRequest, patientId: string) {
+  const tenantAccess = await staffPatientAccess(request, patientId);
+  if (tenantAccess.response) return { response: tenantAccess.response } as const;
+  const { actor } = tenantAccess;
+
+  if (!actor.clinicId) return { response: NextResponse.json({ error: "Patient not found" }, { status: 404 }) } as const;
+  const clinic = await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true } });
+  if (isPersonalTenant(clinic?.type)) {
+    return { response: NextResponse.json({ error: "Not available for studio accounts" }, { status: 403 }) } as const;
+  }
+
+  return { userId: actor.userId, clinicId: actor.clinicId } as const;
+}
 
 // GET — admin view of a patient's BP readings
 export async function GET(
@@ -12,28 +30,18 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantAccess = await staffPatientAccess(request, params.id);
-    if (tenantAccess.response) return tenantAccess.response;
+    const guard = await requireStaff(request, params.id);
+    if (guard.response) return guard.response;
 
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-    }
-
-    const userRole = (session.user as any).role;
-    if (userRole !== "ADMIN" && userRole !== "SUPERADMIN" && userRole !== "THERAPIST") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { id } = params;
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get("days") || "90");
     const since = new Date();
     since.setDate(since.getDate() - days);
 
-    const readings = await (prisma as any).bloodPressureReading.findMany({
-      where: { patientId: id, measuredAt: { gte: since } },
+    const readings = await prisma.bloodPressureReading.findMany({
+      where: { patientId: params.id, measuredAt: { gte: since } },
       orderBy: { measuredAt: "desc" },
+      include: { recordedBy: { select: { firstName: true, lastName: true } } },
     });
 
     // Calculate stats
@@ -61,5 +69,38 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching patient BP readings:", error);
     return NextResponse.json({ error: "Failed to fetch readings" }, { status: 500 });
+  }
+}
+
+// POST — a clinician logs a reading for this patient (e.g. right before a
+// session). Never notifies the patient automatically — unlike the patient's
+// own self-entry route, which e-mails a BP_HIGH_ALERT on a high reading, this
+// one only returns the classification for the UI to show the therapist.
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const guard = await requireStaff(request, params.id);
+    if (guard.response) return guard.response;
+
+    const parsed = parseBPBody(await request.json().catch(() => null), false);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+    const reading = await prisma.bloodPressureReading.create({
+      data: {
+        patientId: params.id,
+        clinicId: guard.clinicId,
+        recordedById: guard.userId,
+        systolic: parsed.data.systolic!,
+        diastolic: parsed.data.diastolic!,
+        heartRate: parsed.data.heartRate ?? null,
+        notes: parsed.data.notes ?? null,
+        measuredAt: parsed.data.measuredAt ?? new Date(),
+        method: "MANUAL",
+      },
+      include: { recordedBy: { select: { firstName: true, lastName: true } } },
+    });
+    return NextResponse.json({ reading }, { status: 201 });
+  } catch (error) {
+    console.error("[admin blood-pressure] POST error:", error);
+    return NextResponse.json({ error: "Failed to save reading" }, { status: 500 });
   }
 }

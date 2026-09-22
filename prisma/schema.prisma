@@ -716,6 +716,7 @@ model User {
   voiceTranscriptions            VoiceTranscription[]      @relation("PatientTranscriptions")
   emailMessages                  EmailMessage[]            @relation("PatientEmails")
   bloodPressureReadings          BloodPressureReading[]    @relation("PatientBPReadings")
+  bloodPressureReadingsRecorded  BloodPressureReading[]    @relation("StaffBPReadings")
   bpReminderEnabled              Boolean                   @default(false)
   serviceAccessRecords           ServiceAccess[]           @relation("PatientServiceAccess")
   serviceAccessGranted           ServiceAccess[]           @relation("ServiceAccessGranter")
@@ -4391,6 +4392,13 @@ model BloodPressureReading {
   patientId String
   patient   User    @relation("PatientBPReadings", fields: [patientId], references: [id], onDelete: Cascade)
   clinicId  String?
+
+  // Set only when a clinician logs the reading from the patient record
+  // (activity 69) — null means the patient measured it themselves (app/
+  // camera PPG). The patient's own dashboard shows both kinds mixed
+  // together, same as before this field existed.
+  recordedById String?
+  recordedBy   User?   @relation("StaffBPReadings", fields: [recordedById], references: [id], onDelete: SetNull)
 
   systolic   Int // mmHg
   diastolic  Int // mmHg
