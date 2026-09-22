@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { bookAppointment, fetchAvailability, fetchSchedule } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
+import { useAuth } from "@/store/auth";
+import { zonedTimeToUtc } from "@/lib/clinic-timezone";
 
 const TYPES = [
   "Initial Assessment", "Follow-up", "Physiotherapy", "Sports Therapy",
@@ -29,6 +31,7 @@ function generateDates(closedDays: number[]): { label: string; value: string; da
 }
 
 export default function BookAppointment() {
+  const clinicName = useAuth((s) => s.user?.clinicName ?? null);
   const t = useTheme();
   const qc = useQueryClient();
   const [type, setType] = useState<string | null>(null);
@@ -52,7 +55,10 @@ export default function BookAppointment() {
     mutationFn: () => {
       if (!type || !selectedDate || !selectedTime) throw new Error("Preencha todos os campos.");
       return bookAppointment({
-        dateTime: `${selectedDate}T${selectedTime}:00.000Z`,
+        // The slot is clinic wall-clock time, not UTC. Appending "Z" made a
+        // 09:00 booking arrive as 09:00Z, which the diary shows as 10:00 for
+        // the seven months the UK is on BST.
+        dateTime: zonedTimeToUtc(selectedDate, selectedTime).toISOString(),
         treatmentType: type,
         notes: notes || undefined,
       });
@@ -70,7 +76,11 @@ export default function BookAppointment() {
         params: {
           serviceName: type ?? "",
           dateTime: formattedDateTime,
-          location: "Ipswich clinic",
+          // The patient's own clinic, from their session — this was the string
+          // "Ipswich clinic", shown to every tenant. The address is still not
+          // available to the app; the confirmation omits it rather than
+          // inventing one.
+          location: clinicName ?? "",
         },
       });
     },

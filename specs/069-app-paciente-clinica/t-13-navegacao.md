@@ -1,6 +1,6 @@
 # T-13: Navegação — dar entrada às telas órfãs
 
-**Status:** pendente
+**Status:** implementado (aguardando QA)
 **Depende de:** nenhuma
 
 ## Objetivo

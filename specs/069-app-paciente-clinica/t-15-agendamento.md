@@ -1,6 +1,6 @@
 # T-15: Agendamento — fuso horário e dados de outro tenant
 
-**Status:** pendente
+**Status:** implementado (aguardando QA)
 **Depende de:** nenhuma
 
 ## Objetivo

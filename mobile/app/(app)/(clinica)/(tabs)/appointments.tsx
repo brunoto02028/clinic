@@ -9,7 +9,12 @@ import { useTheme } from "@/theme/useTheme";
 
 function getStatusColors(t: ReturnType<typeof useTheme>): Record<string, { bg: string; text: string; label: string }> {
   return {
-    SCHEDULED: { bg: t.colors.workSoft, text: t.colors.work, label: "Agendado" },
+    // AppointmentStatus has no SCHEDULED member — it is PENDING,
+    // PENDING_PATIENT, CONFIRMED, COMPLETED, CANCELLED, NO_SHOW. This map was
+    // missing PENDING and fell back to the invented "SCHEDULED" entry, so an
+    // unconfirmed appointment told the patient it was booked.
+    PENDING: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Pendente" },
+    PENDING_PATIENT: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Aguardando você" },
     CONFIRMED: { bg: t.colors.okSoft, text: t.colors.ok, label: "Confirmado" },
     COMPLETED: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Concluído" },
     CANCELLED: { bg: t.colors.badSoft, text: t.colors.bad, label: "Cancelado" },
@@ -65,7 +70,7 @@ export default function Appointments() {
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const statusMap = getStatusColors(t);
-            const status = statusMap[item.status] ?? statusMap.SCHEDULED;
+            const status = statusMap[item.status] ?? statusMap.PENDING;
             return (
               <Pressable
                 testID={`appt-${item.id}`}

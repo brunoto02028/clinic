@@ -8,11 +8,13 @@ import { useTheme } from "@/theme/useTheme";
 // Defaults (used when no route params are provided)
 // ---------------------------------------------------------------------------
 
+// No address, clinic name or therapist is defaulted here any more. This block
+// used to fall back to "Ipswich clinic", "12 Crown Street, Ipswich IP1 3HA" and
+// a date in July — presented as fact to a patient of any tenant, who would then
+// travel to another clinic's address. In a multi-tenant product a placeholder
+// that looks like real data is worse than a blank.
 const DEFAULTS = {
-  serviceName: "Biomechanical assessment",
-  dateTime: "Thu 24 July · 14:30",
-  location: "Ipswich clinic",
-  address: "12 Crown Street, Ipswich IP1 3HA",
+  serviceName: "Appointment",
 };
 
 // ---------------------------------------------------------------------------
@@ -29,9 +31,9 @@ export default function BookingConfirmed() {
   }>();
 
   const serviceName = params.serviceName || DEFAULTS.serviceName;
-  const dateTime = params.dateTime || DEFAULTS.dateTime;
-  const location = params.location || DEFAULTS.location;
-  const address = params.address || DEFAULTS.address;
+  const dateTime = params.dateTime || null;
+  const location = params.location || null;
+  const address = params.address || null;
 
   return (
     <Screen testID="booking-confirmed-screen" style={styles.center}>
@@ -68,7 +70,7 @@ export default function BookingConfirmed() {
             variant="body"
             style={{ fontFamily: "Inter_700Bold" }}
           >
-            {dateTime} · {location}
+            {[dateTime, location].filter(Boolean).join(" · ")}
           </Text>
           {"\n"}
           {address}
@@ -96,7 +98,7 @@ export default function BookingConfirmed() {
                 color={t.colors.textMuted}
                 style={{ marginTop: 1 }}
               >
-                Bruno will review it before you arrive
+                Your therapist will review it before you arrive
               </Text>
             </View>
             <Pill label="Sent" variant="ok" />
@@ -132,13 +134,8 @@ export default function BookingConfirmed() {
         </Card>
 
         {/* Actions */}
-        <Button
-          title="Add to calendar"
-          variant="ghost"
-          size="sm"
-          onPress={() => {}}
-          style={{ marginTop: 8 }}
-        />
+        {/* "Add to calendar" sat here with an empty onPress. Removed rather
+            than left as a button that silently does nothing. */}
 
         <Button
           title="Back to Health"

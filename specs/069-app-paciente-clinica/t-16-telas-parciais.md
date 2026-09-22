@@ -1,6 +1,6 @@
 # T-16: Telas parciais e idioma
 
-**Status:** pendente
+**Status:** implementado, exceto a estrategia de idioma (aguarda decisao do Bruno)
 **Depende de:** T-13 (não adianta corrigir tela que ninguém alcança)
 
 ## Objetivo

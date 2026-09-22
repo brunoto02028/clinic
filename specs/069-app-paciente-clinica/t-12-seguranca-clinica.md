@@ -1,6 +1,6 @@
 # T-12: Segurança clínica — triagem e consentimento
 
-**Status:** pendente
+**Status:** implementado (aguardando QA)
 **Depende de:** nenhuma — **executar antes de tudo**
 
 ## Objetivo

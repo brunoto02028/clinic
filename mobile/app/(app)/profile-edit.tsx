@@ -7,9 +7,12 @@ import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { fetchProfile, updateProfile } from "@/api/profile";
 
+// The system's Locale type is "en-GB" | "pt-BR" (lib/i18n.ts), and the web's
+// switch writes exactly those. This wrote "en" / "pt", which nothing reads —
+// so a patient who chose Portuguese kept receiving English email.
 const LOCALES = [
-  { value: "en", label: "English" },
-  { value: "pt", label: "Portuguese" },
+  { value: "en-GB", label: "English" },
+  { value: "pt-BR", label: "Português" },
 ];
 
 export default function ProfileEdit() {
@@ -26,7 +29,7 @@ export default function ProfileEdit() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [preferredLocale, setPreferredLocale] = useState("en");
+  const [preferredLocale, setPreferredLocale] = useState("en-GB");
 
   useEffect(() => {
     if (!profile) return;
@@ -35,7 +38,9 @@ export default function ProfileEdit() {
     setEmail(profile.email ?? "");
     setPhone(profile.phone ?? "");
     setDateOfBirth(profile.dateOfBirth ?? "");
-    setPreferredLocale(profile.preferredLocale ?? "en");
+    // Tolerates the short codes written before this was fixed.
+    const stored = profile.preferredLocale ?? "en-GB";
+    setPreferredLocale(stored.startsWith("pt") ? "pt-BR" : "en-GB");
   }, [profile]);
 
   const mutation = useMutation({
@@ -48,8 +53,10 @@ export default function ProfileEdit() {
 
   const handleSave = () => {
     mutation.mutate({
-      firstName,
-      lastName,
+      // firstName/lastName are deliberately not sent: the endpoint's
+      // allowedFields excludes them, so these were editable inputs whose
+      // changes vanished without a word. The name is staff-managed; the
+      // fields below are read-only until that changes.
       phone,
       dateOfBirth: dateOfBirth || undefined,
       preferredLocale,
@@ -113,8 +120,11 @@ export default function ProfileEdit() {
 
         {/* Form */}
         <Card>
-          <Input label="First Name" value={firstName} onChangeText={setFirstName} placeholder="First name" />
-          <Input label="Last Name" value={lastName} onChangeText={setLastName} placeholder="Last name" />
+          <Input label="First Name" value={firstName} editable={false} />
+          <Input label="Last Name" value={lastName} editable={false} />
+          <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: -8, marginBottom: 8 }}>
+            Para alterar seu nome, fale com a clínica.
+          </Text>
           <Input label="Email" value={email} onChangeText={setEmail} placeholder="Email" editable={false} />
           <Input label="Phone" value={phone} onChangeText={setPhone} placeholder="Phone number" keyboardType="phone-pad" />
           <Input label="Date of Birth" value={dateOfBirth} onChangeText={setDateOfBirth} placeholder="DD/MM/YYYY" />

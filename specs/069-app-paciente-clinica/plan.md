@@ -93,11 +93,11 @@ A T-11 derrubou a premissa do plano original. Ele assumia "portar 17 telas que f
 | T-9 | QA da Fase 1 em producao (pos-deploy) | pendente |
 | T-10 | QA das Fases 2 e 3 | pendente |
 | T-11 | Logo da BPR no app | concluido (QA aprovado com ressalvas; 3 defeitos corrigidos) |
-| T-12 | Seguranca clinica: triagem e consentimento | pendente |
-| T-13 | Navegacao: dar entrada as telas orfas | pendente |
-| T-14 | Dados falsos e endpoints quebrados | pendente |
-| T-15 | Agendamento: fuso horario e dados de outro tenant | pendente |
-| T-16 | Telas parciais e idioma | pendente |
+| T-12 | Seguranca clinica: triagem e consentimento | implementado (aguardando QA) |
+| T-13 | Navegacao: dar entrada as telas orfas | implementado (aguardando QA) |
+| T-14 | Dados falsos e endpoints quebrados | implementado (aguardando QA) |
+| T-15 | Agendamento: fuso horario e dados de outro tenant | implementado (aguardando QA) |
+| T-16 | Telas parciais e idioma | implementado, exceto idioma (aguarda decisao) |
 
 ## Decisao sobre `exercises` (22/09/2026)
 A atividade 043 aposentou a pagina separada de exercicios na web — `mod_exercises` aponta para `/dashboard/treatment`. O app ficou atras, com aba propria. **O app segue a web:** a aba continua (acesso em um toque e bom no mobile), mas passa a abrir o plano de tratamento unificado. Manter duas telas recriaria a duplicacao que a 043 removeu de proposito. Vira tarefa propria nas fases de porte.

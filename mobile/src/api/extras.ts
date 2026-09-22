@@ -60,8 +60,19 @@ export function cancelSubscription(): Promise<{ message: string }> {
 // ─── Quizzes ───
 export interface Quiz {
   id: string;
-  title?: string;
+  /** The model has `titleEn`/`titlePt`; there is no `title` column. The screen
+   *  read `item.title`, which was always undefined, so every card fell back to
+   *  the literal "Quiz" — a list of identical rows. */
+  titleEn?: string;
+  titlePt?: string;
   [key: string]: any;
+}
+
+/** The quiz title in the patient's language, falling back across the pair. */
+export function quizTitle(q: Quiz, locale = "pt"): string {
+  const pt = q.titlePt?.trim();
+  const en = q.titleEn?.trim();
+  return (locale.startsWith("pt") ? pt || en : en || pt) || "Quiz";
 }
 export async function fetchQuizzes(): Promise<Quiz[]> {
   const res = await apiFetch<{ quizzes: Quiz[] }>("/api/patient/quizzes");

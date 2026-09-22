@@ -109,15 +109,11 @@ export default function AppointmentDetail() {
             );
           })()}
 
-          {/* Details section */}
-          {data.notes ? (
-            <Card>
-              <Text variant="label" style={{ fontWeight: "600", marginBottom: 4 }}>Detalhes</Text>
-              <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
-                {data.notes}
-              </Text>
-            </Card>
-          ) : null}
+          {/* `appointment.notes` is not rendered here, and the web's patient
+              view does not render it either. The column is written by both
+              sides — the patient's own note at booking (/api/appointments) and
+              the therapist's (/api/admin/appointments) — so showing it to the
+              patient hands them whatever staff typed into the same field. */}
 
           {/* Date & Time info */}
           <Card>

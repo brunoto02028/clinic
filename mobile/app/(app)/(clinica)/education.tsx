@@ -80,6 +80,21 @@ export default function Education() {
                         </Text>
                       ) : null}
                       <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
+                        {/* The endpoint has always returned a progress map; the
+                            client discarded it, so this badge never appeared and
+                            finishing a piece changed nothing on screen. */}
+                        {data?.progress?.[item.id]?.completedAt ? (
+                          <View style={{
+                            backgroundColor: t.colors.okSoft,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                          }}>
+                            <Text variant="caption" color={t.colors.ok} style={{ fontSize: 10, fontWeight: "600" }}>
+                              Concluído
+                            </Text>
+                          </View>
+                        ) : null}
                         {item.category?.name ? (
                           <View style={{
                             backgroundColor: t.colors.healthSoft,

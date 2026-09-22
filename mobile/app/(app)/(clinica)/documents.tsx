@@ -133,7 +133,7 @@ export default function Documents() {
             contentContainerStyle={{ gap: 10 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => {
-              const typeInfo = TYPE_ICONS[item.fileType] ?? TYPE_ICONS.OTHER;
+              const typeInfo = TYPE_ICONS[item.documentType ?? "OTHER"] ?? TYPE_ICONS.OTHER;
               return (
                 <Pressable onPress={() => Linking.openURL(item.fileUrl).catch(() => {})}>
                   <Card>
@@ -144,7 +144,7 @@ export default function Documents() {
                       <View style={{ flex: 1 }}>
                         <Text variant="label" style={{ fontWeight: "600" }}>{item.title || item.fileName}</Text>
                         <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                          {item.fileType?.replace(/_/g, " ")}{item.documentDate ? ` · ${formatDate(item.documentDate)}` : ""}
+                          {(item.documentType ?? "OTHER").replace(/_/g, " ")}{item.documentDate ? ` · ${formatDate(item.documentDate)}` : ""}
                         </Text>
                       </View>
                       <Ionicons name="open-outline" size={16} color={t.colors.textMuted} />

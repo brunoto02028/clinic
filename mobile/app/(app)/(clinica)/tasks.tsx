@@ -11,11 +11,13 @@ export default function Tasks() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
 
-  const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
-    urgent: { bg: t.colors.badSoft, text: t.colors.bad },
-    high: { bg: t.colors.warnSoft, text: t.colors.warn },
-    normal: { bg: t.colors.workSoft, text: t.colors.work },
-    low: { bg: t.colors.surfaceMuted, text: t.colors.textMuted },
+  // The badge printed `item.priority` straight through, so the patient read
+  // "high" in English on an otherwise Portuguese screen.
+  const PRIORITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+    urgent: { bg: t.colors.badSoft, text: t.colors.bad, label: "Urgente" },
+    high: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Alta" },
+    normal: { bg: t.colors.workSoft, text: t.colors.work, label: "Normal" },
+    low: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Baixa" },
   };
 
   const completeMut = useMutation({
@@ -85,7 +87,7 @@ export default function Tasks() {
                       </View>
                       {!isDone && (
                         <View style={{ backgroundColor: prio.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                          <Text variant="caption" color={prio.text} style={{ fontWeight: "600", fontSize: 10 }}>{item.priority}</Text>
+                          <Text variant="caption" color={prio.text} style={{ fontWeight: "600", fontSize: 10 }}>{prio.label}</Text>
                         </View>
                       )}
                     </View>

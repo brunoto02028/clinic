@@ -1,6 +1,6 @@
 # T-14: Dados falsos e endpoints quebrados
 
-**Status:** pendente
+**Status:** implementado (aguardando QA)
 **Depende de:** nenhuma
 
 ## Objetivo

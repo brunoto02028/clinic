@@ -2,7 +2,7 @@ import { FlatList } from "react-native";
 import { Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
-import { fetchQuizzes } from "@/api/extras";
+import { fetchQuizzes, quizTitle } from "@/api/extras";
 
 export default function Quizzes() {
   const { data, isLoading, isError } = useQuery({
@@ -26,7 +26,7 @@ export default function Quizzes() {
           contentContainerStyle={{ gap: 10 }}
           renderItem={({ item }) => (
             <Card>
-              <Text variant="subtitle">{item.title || "Quiz"}</Text>
+              <Text variant="subtitle">{quizTitle(item)}</Text>
             </Card>
           )}
         />
