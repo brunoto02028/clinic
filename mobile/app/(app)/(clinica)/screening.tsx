@@ -94,7 +94,12 @@ export default function Screening() {
   });
 
   useEffect(() => {
-    if (existing) setForm(existing);
+    // `null` is a real answer — this patient has no screening yet — and must
+    // reset the form. `if (existing)` skipped it, so a form already holding
+    // someone's answers kept them: with another account's screening in the
+    // cache, the first autosave wrote that person's health data here.
+    // `undefined` is "still loading" and leaves the form alone.
+    if (existing !== undefined) setForm(existing ?? {});
   }, [existing]);
 
   const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));

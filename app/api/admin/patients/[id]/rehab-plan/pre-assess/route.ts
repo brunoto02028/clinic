@@ -1,3 +1,5 @@
+import { unansweredRedFlags } from "@/lib/red-flags";
+import { getEnabledRedFlagKeys } from "@/lib/red-flags-config";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
@@ -152,6 +154,7 @@ export async function POST(
 
       if (s) {
         const redFlags: string[] = [];
+        const notAskedRedFlags = unansweredRedFlags(s as any, await getEnabledRedFlagKeys());
         if (s.unexplainedWeightLoss) redFlags.push("unexplained weight loss");
         if (s.nightPain) redFlags.push("night pain");
         if (s.neurologicalSymptoms) redFlags.push("neurological symptoms");
@@ -174,6 +177,11 @@ export async function POST(
           s.otherConditions ? `Other conditions: ${s.otherConditions}` : "",
           s.treatmentGoals ? `Patient goals: ${s.treatmentGoals}` : "",
           redFlags.length > 0 ? `⚠️ RED FLAGS PRESENT: ${redFlags.join(", ")}` : "",
+          // Silence here reads as "screened and clear" to the model. An unanswered
+          // red flag is unknown, not absent — say so, or a plan gets built on it.
+          notAskedRedFlags.length > 0
+            ? `Red flags NOT ASKED (unknown, not absent - do not assume negative): ${notAskedRedFlags.join(", ")}`
+            : "",
           `Screening date: ${new Date(s.createdAt).toLocaleDateString("en-GB")}`,
           "",
         );
