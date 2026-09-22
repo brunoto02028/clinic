@@ -23,10 +23,18 @@ export default function OutcomeMeasuresScreen() {
   }, [data]);
 
   const mutation = useMutation({
+    // The app collects the pain score and overall function; it does not carry
+    // the FAAM questionnaires (13 ADL + 6 Sport questions on the web). It used
+    // to post empty objects and null percentages for them — and because the
+    // endpoint appends a row that the GET then reads back as the latest,
+    // saving a pain score from the app erased the patient's FAAM outright.
+    // Carry the stored values through until the questionnaires are ported.
     mutationFn: () => saveOutcomeMeasures({
       vasScore, overallFunction,
-      faamAdl: {}, faamSport: {},
-      faamAdlPercent: null, faamSportPercent: null,
+      faamAdl: data?.faamAdl ?? {},
+      faamSport: data?.faamSport ?? {},
+      faamAdlPercent: data?.faamAdlPercent ?? null,
+      faamSportPercent: data?.faamSportPercent ?? null,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["outcome-measures"] });

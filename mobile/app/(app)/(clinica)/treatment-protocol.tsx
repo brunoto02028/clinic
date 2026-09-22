@@ -6,6 +6,14 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchProtocols, updateProtocolItem } from "@/api/protocol";
 import { useTheme } from "@/theme/useTheme";
 
+// Same wording the web uses (app/dashboard/treatment/page.tsx). The screen
+// printed the enum key straight through, so the patient read "Fase SHORT_TERM".
+const PHASE_LABEL: Record<string, string> = {
+  SHORT_TERM: "Curto Prazo (Agudo)",
+  MEDIUM_TERM: "Médio Prazo (Reabilitação)",
+  LONG_TERM: "Longo Prazo (Manutenção)",
+};
+
 export default function TreatmentProtocol() {
   const t = useTheme();
   const qc = useQueryClient();
@@ -71,7 +79,7 @@ export default function TreatmentProtocol() {
                           </Text>
                           {item.exercise && (
                             <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                              {item.exercise.defaultSets}x{item.exercise.defaultReps} · {item.exercise.name}
+                              {item.sets ?? item.exercise.defaultSets}x{item.reps ?? item.exercise.defaultReps} · {item.exercise.name}
                             </Text>
                           )}
                           {item.completedCount > 0 && (
@@ -80,7 +88,7 @@ export default function TreatmentProtocol() {
                             </Text>
                           )}
                         </View>
-                        <Text variant="caption" color={t.colors.textMuted}>Fase {item.phase}</Text>
+                        <Text variant="caption" color={t.colors.textMuted}>{PHASE_LABEL[item.phase] ?? "Fase"}</Text>
                       </View>
                     </Card>
                   </Pressable>

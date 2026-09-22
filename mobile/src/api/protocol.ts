@@ -1,8 +1,16 @@
 import { apiFetch } from "./client";
 
+/** Matches the ProtocolPhase enum; it was typed as `number` and printed raw. */
+export type ProtocolPhase = "SHORT_TERM" | "MEDIUM_TERM" | "LONG_TERM";
+
 export interface ProtocolItem {
   id: string;
-  phase: number;
+  phase: ProtocolPhase;
+  /** The therapist's prescription. Falls back to the exercise library only
+   *  when the item carries none — the screen used to read the library values
+   *  always, so a 4x15 prescription was shown to the patient as 3x10. */
+  sets: number | null;
+  reps: number | null;
   sortOrder: number;
   title: string;
   itemType: string;

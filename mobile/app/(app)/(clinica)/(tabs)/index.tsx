@@ -16,6 +16,7 @@ import {
 import { useTheme } from "@/theme/useTheme";
 import { fetchAppointments, nextUpcoming } from "@/api/appointments";
 import { fetchPrescriptions } from "@/api/exercises";
+import { fetchProtocols } from "@/api/protocol";
 
 function formatSessionDate(iso: string): string {
   const d = new Date(iso);
@@ -39,10 +40,18 @@ export default function Health() {
     queryKey: ["prescriptions"],
     queryFn: fetchPrescriptions,
   });
+  const protocols = useQuery({
+    queryKey: ["protocols"],
+    queryFn: fetchProtocols,
+  });
 
   const next = appts.data ? nextUpcoming(appts.data) : null;
   const exerciseCount = exercises.data?.length ?? 0;
-  const estimatedMinutes = exerciseCount * 5;
+  // The patient's own diagnosis, or nothing. This card used to read
+  // "YOUR PLAN · Shoulder" and "Day 12 of 42" as literals in the JSX — a knee
+  // patient on their third of eight sessions read it as their own chart. There
+  // is no day-of-plan figure in the API, so none is shown.
+  const planLabel = protocols.data?.[0]?.diagnosis?.summary ?? null;
 
   if (appts.isLoading && exercises.isLoading) {
     return (
@@ -112,27 +121,10 @@ export default function Health() {
                 </Text>
               </Pressable>
 
-              <Pressable
-                onPress={() => {}}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingVertical: 12,
-                  borderRadius: t.radius.md,
-                  backgroundColor: pressed
-                    ? "rgba(255,255,255,0.88)"
-                    : "#FFFFFF",
-                })}
-              >
-                <Text
-                  variant="label"
-                  color={t.colors.health}
-                  style={{ fontFamily: "Sora_700Bold", fontSize: 13 }}
-                >
-                  Directions
-                </Text>
-              </Pressable>
+              {/* "Directions" lived here with `onPress={() => {}}`. A button
+                  that does nothing is worse than no button: the patient taps it
+                  before the session and concludes the app is broken. It comes
+                  back when there is an address to open a map with. */}
             </View>
           </View>
         ) : (
@@ -183,14 +175,14 @@ export default function Health() {
               color={t.colors.textMuted}
               style={{ textTransform: "uppercase" }}
             >
-              YOUR PLAN · Shoulder
+              {planLabel ? `YOUR PLAN · ${planLabel}` : "YOUR PLAN"}
             </Text>
-            <Pill label="Day 12 of 42" variant="health" />
           </View>
 
+          {/* The "~N min" beside this was exerciseCount × 5 — a number with no
+              source, shown as if the therapist had set it. */}
           <Text variant="heading">
             {exerciseCount} exercise{exerciseCount !== 1 ? "s" : ""} today
-            {" "}· ~{estimatedMinutes} min
           </Text>
 
           <TriBar work health />
@@ -230,10 +222,15 @@ export default function Health() {
             }
             onPress={() => router.push("/appointments")}
           />
+          {/* This said "Message the clinic · Send a message to your therapist"
+              and opened /clinical-notes — the therapist's SOAP notes, read
+              only, with no way to send anything. The patient-therapist channel
+              is `questions` on the web and is not in the app yet (T-4); until
+              it is, this points at what it actually opens. */}
           <ListItem
-            icon={<Avatar label="💬" pillar="health" size={36} />}
-            title="Message the clinic"
-            subtitle="Send a message to your therapist"
+            icon={<Avatar label="📋" pillar="health" size={36} />}
+            title="My records"
+            subtitle="Notes from your sessions"
             right={
               <Ionicons
                 name="chevron-forward"

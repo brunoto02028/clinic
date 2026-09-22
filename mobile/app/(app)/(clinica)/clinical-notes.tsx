@@ -3,14 +3,14 @@ import { FlatList, View } from "react-native";
 import { Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Input, Spinner } from "@/components/ui";
+import { Screen, Text, Card, Input, Spinner, Button } from "@/components/ui";
 import { fetchClinicalNotes } from "@/api/clinical-notes";
 import { useTheme } from "@/theme/useTheme";
 
 export default function ClinicalNotes() {
   const t = useTheme();
   const [search, setSearch] = useState("");
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["clinical-notes"],
     queryFn: fetchClinicalNotes,
   });
@@ -32,6 +32,22 @@ export default function ClinicalNotes() {
         <Input placeholder="Buscar por data ou tratamento..." value={search} onChangeText={setSearch} />
         {isLoading ? (
           <Spinner center />
+        ) : isError ? (
+          /* An empty state here used to cover a failed request — the client
+             caught everything and returned []. A patient with notes was told
+             they had none. Failure has to look like failure. */
+          <Card>
+            <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
+              <Ionicons name="cloud-offline-outline" size={32} color={t.colors.textMuted} />
+              <Text variant="body" style={{ textAlign: "center" }}>
+                Não foi possível carregar suas notas.
+              </Text>
+              <Text variant="caption" color={t.colors.textSecondary} style={{ textAlign: "center" }}>
+                Isto não quer dizer que você não tenha notas — a consulta falhou.
+              </Text>
+              <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
+            </View>
+          </Card>
         ) : filtered.length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>

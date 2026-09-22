@@ -8,8 +8,20 @@ import { useModule } from "@/store/module";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 
-/** Shared profile tab used by every module (lab, clinica, ba). */
-export function ModuleProfile() {
+export interface ProfileSection {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  href: string;
+}
+
+/**
+ * Shared profile tab used by every module (lab, clinica, ba).
+ *
+ * `sections` is how a module adds its own entries without this component
+ * learning about them — the clinic needs somewhere to reach screens that have
+ * no tab of their own, and lab and BA users must not see them.
+ */
+export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}) {
   const t = useTheme();
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
@@ -62,6 +74,20 @@ export function ModuleProfile() {
             </View>
           </View>
         </Card>
+
+        {sections && sections.length > 0 && (
+          <Card>
+            {sections.map((s, i) => (
+              <ListItem
+                key={s.href}
+                title={s.title}
+                icon={<Ionicons name={s.icon} size={18} color={t.colors.text} />}
+                onPress={() => router.push(s.href as any)}
+                last={i === sections.length - 1}
+              />
+            ))}
+          </Card>
+        )}
 
         <Card>
           <ListItem
