@@ -797,6 +797,8 @@ model User {
   // Clinic <-> Patient direct messaging
   clinicMessagesReceived ClinicMessage[]   @relation("PatientClinicMessages")
   clinicMessagesSent     ClinicMessage[]   @relation("SentClinicMessages")
+  outboundEmailsAsPatient PatientOutboundEmail[] @relation("PatientOutboundEmails")
+  outboundEmailsSent      PatientOutboundEmail[] @relation("StaffOutboundEmails")
   broadcastsSent         ClinicBroadcast[] @relation("SentBroadcasts")
 
   // Protocol templates
@@ -6593,14 +6595,15 @@ model PatientLimbMeasurement {
   protocolId   String?
   protocolWeek Int? // floor((measuredAt - protocol.startDate) / 7d) + 1
 
-  // Distance above the patellar base where each girth was taken (cm), so the
-  // measurement is reproducible session to session.
-  vmoDistanceCm      Float?
-  midThighDistanceCm Float?
-  vmoLeftCm          Float?
-  vmoRightCm         Float?
-  midThighLeftCm     Float?
-  midThighRightCm    Float?
+  // Thigh circumference (cm) at three fixed distances above the patellar base —
+  // the clinic's standard post-op protocol — so the measurement is reproducible
+  // session to session without a free-text distance field.
+  thigh5LeftCm   Float?
+  thigh5RightCm  Float?
+  thigh10LeftCm  Float?
+  thigh10RightCm Float?
+  thigh15LeftCm  Float?
+  thigh15RightCm Float?
 
   // Knee range of motion of the operated leg (degrees). Extension is negative
   // when the knee cannot reach full extension (deficit), positive for hyperextension.
@@ -6629,6 +6632,34 @@ model AtlasChatMessage {
 
   @@index([patientId])
   @@map("atlas_chat_messages")
+}
+
+// E-mails written by staff and sent to a patient from the "Email to patient"
+// composer (activity 68). Only ever created by an explicit staff click, after
+// the exact e-mail was previewed; the row keeps what was actually sent.
+model PatientOutboundEmail {
+  id          String   @id @default(cuid())
+  clinicId    String
+  patientId   String
+  patient     User     @relation("PatientOutboundEmails", fields: [patientId], references: [id], onDelete: Cascade)
+  sentById    String?
+  sentBy      User?    @relation("StaffOutboundEmails", fields: [sentById], references: [id], onDelete: SetNull)
+  appointmentId String? // set when written from an appointment's "send confirmation" shortcut
+
+  locale      String // pt-BR | en-GB — language the e-mail was rendered in (first one when "both")
+  bothLanguages Boolean @default(false)
+  subject     String
+  bodyText    String   @db.Text
+  html        String   @db.Text
+  contentHash String
+  status      String // sent | failed
+  providerError String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([patientId, createdAt])
+  @@index([clinicId])
+  @@map("patient_outbound_emails")
 }
 
 // Direct free-form messaging between clinic staff and a patient (thread per patient)

@@ -34,3 +34,10 @@ QA local aprovado (reports t-1..t-3, incluindo 2 retestes) e code review indepen
 ## Pendências / decisões
 - API de medidas acessível a staff de estúdio personal por chamada direta (só a aba é escondida) — igual às demais rotas clínicas; bloquear por tipo de tenant é decisão de produto.
 - Lançar as medidas reais da Ana (1º dia e hoje) após Bruno confirmar os valores (19 cm/22 cm parecem pequenos para circunferência de coxa) e o lado operado.
+
+## Correção pós-deploy (22/09/2026)
+Bruno pediu 3 pontos de medida fixos (5, 10 e 15 cm acima da patela) em vez de 2 sítios (VMO/meio de coxa) com distância livre. Como nenhuma medida real havia sido lançada ainda (nem a da Ana), a troca de schema foi direta, sem migração de dados.
+
+**Mudanças:** `prisma/schema.prisma` (`thigh5/10/15 Left/RightCm` no lugar de `vmo*`/`midThigh*`), `lib/limb-measurements.ts` (validação genérica por `POINTS = [5,10,15]`), `components/admin/limb-measurements-tab.tsx` (formulário com 3 seções fixas, sem campo de distância; tabela e gráficos por ponto). API (`route.ts`/`[measurementId]/route.ts`) não mudou — já era genérica.
+
+**Verificação:** 10 testes de lógica (validação + cálculo de Δ, incl. arredondamento simétrico) + conferência visual no navegador (Playwright): salvar 1ª e 2ª medida, Δ correto nos 3 pontos, gráficos com 2 pontos, edição pré-preenchida, tradução PT. Dados de teste apagados.

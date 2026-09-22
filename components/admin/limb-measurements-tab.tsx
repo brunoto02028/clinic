@@ -1,7 +1,8 @@
 "use client";
 
 // Post-operative limb measurements (activity 67): thigh circumference on both
-// sides at two fixed sites + knee ROM of the operated leg, logged over time and
+// sides at three fixed distances above the patella (the clinic's standard
+// protocol — 5, 10, 15 cm) + knee ROM of the operated leg, logged over time and
 // stamped by the server with the protocol week. Clinician-internal — never
 // shown to the patient.
 
@@ -13,17 +14,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { TrendChart, type TrendPoint } from "@/components/dashboard/trend-chart";
 import { useLocale } from "@/hooks/use-locale";
 
+// Keep in sync with lib/limb-measurements.ts POINTS.
+export const POINTS = [5, 10, 15] as const;
+export type Point = (typeof POINTS)[number];
+
 export type LimbMeasurement = {
   id: string;
   measuredAt: string;
   operatedSide: "LEFT" | "RIGHT";
   protocolWeek: number | null;
-  vmoDistanceCm: number | null;
-  midThighDistanceCm: number | null;
-  vmoLeftCm: number | null;
-  vmoRightCm: number | null;
-  midThighLeftCm: number | null;
-  midThighRightCm: number | null;
+  thigh5LeftCm: number | null;
+  thigh5RightCm: number | null;
+  thigh10LeftCm: number | null;
+  thigh10RightCm: number | null;
+  thigh15LeftCm: number | null;
+  thigh15RightCm: number | null;
   romMode: "ACTIVE" | "PASSIVE" | null;
   flexionDeg: number | null;
   extensionDeg: number | null;
@@ -33,54 +38,51 @@ export type LimbMeasurement = {
 const T = {
   en: {
     title: "Post-op measurements",
-    subtitle: "Thigh circumference (both sides) and knee range of motion of the operated leg. Saved with the protocol week. Clinician-internal.",
+    subtitle: "Thigh circumference (both sides, at 5/10/15 cm above the patella) and knee range of motion of the operated leg. Saved with the protocol week. Clinician-internal.",
     newEntry: "New measurement", editEntry: "Edit measurement", date: "Date", operated: "Operated leg",
-    left: "Left", right: "Right", vmo: "Vastus medialis (VMO)", midThigh: "Mid-thigh (rectus femoris)",
-    dist: "Distance above patella (cm)", girthL: "Left (cm)", girthR: "Right (cm)",
+    left: "Left", right: "Right", aboveKnee: "cm above patella", girthL: "Left (cm)", girthR: "Right (cm)",
     rom: "Knee range of motion — operated leg", mode: "Type", active: "Active", passive: "Passive",
     flexion: "Flexion (°)", extension: "Extension (°)", extHint: "Negative = cannot fully extend (deficit)",
     notes: "Notes", save: "Save", saving: "Saving…", cancel: "Cancel", saved: "Measurement saved.",
     history: "History", empty: "No measurements yet.", week: "Wk", diff: "Δ operated − other",
     confirmDelete: "Delete this measurement?", chooseSide: "Choose the operated leg.",
-    gapVmo: "VMO — operated vs other", gapMid: "Mid-thigh — operated vs other", flexChart: "Flexion", extChart: "Extension",
+    flexChart: "Flexion", extChart: "Extension",
     latest: "Latest", noProtocol: "no protocol week", loadError: "Could not load measurements.",
     numbersOnly: "Use numbers only (e.g. 38.5).", networkError: "Network error — nothing was changed. Try again.",
   },
   pt: {
     title: "Medidas do pós-operatório",
-    subtitle: "Circunferência das duas coxas e ADM do joelho da perna operada. Salvo com a semana do protocolo. Uso interno da clínica.",
+    subtitle: "Circunferência das duas coxas (5/10/15 cm acima da patela) e ADM do joelho da perna operada. Salvo com a semana do protocolo. Uso interno da clínica.",
     newEntry: "Nova medida", editEntry: "Editar medida", date: "Data", operated: "Perna operada",
-    left: "Esquerda", right: "Direita", vmo: "Vasto medial (VMO)", midThigh: "Meio de coxa (reto femoral)",
-    dist: "Distância acima da patela (cm)", girthL: "Esquerda (cm)", girthR: "Direita (cm)",
+    left: "Esquerda", right: "Direita", aboveKnee: "cm acima da patela", girthL: "Esquerda (cm)", girthR: "Direita (cm)",
     rom: "ADM do joelho — perna operada", mode: "Tipo", active: "Ativa", passive: "Passiva",
     flexion: "Flexão (°)", extension: "Extensão (°)", extHint: "Negativo = não estende totalmente (déficit)",
     notes: "Observações", save: "Salvar", saving: "Salvando…", cancel: "Cancelar", saved: "Medida salva.",
     history: "Histórico", empty: "Ainda sem medidas.", week: "Sem", diff: "Δ operada − outra",
     confirmDelete: "Excluir esta medida?", chooseSide: "Escolha a perna operada.",
-    gapVmo: "VMO — operada vs outra", gapMid: "Meio de coxa — operada vs outra", flexChart: "Flexão", extChart: "Extensão",
+    flexChart: "Flexão", extChart: "Extensão",
     latest: "Última", noProtocol: "sem semana de protocolo", loadError: "Não foi possível carregar as medidas.",
     numbersOnly: "Use apenas números (ex.: 38,5).", networkError: "Erro de rede — nada foi alterado. Tente de novo.",
   },
 } as const;
 
+type PointFieldKey = `thigh${Point}${"Left" | "Right"}Cm`;
+const fieldKey = (p: Point, side: "Left" | "Right"): PointFieldKey => `thigh${p}${side}Cm`;
+
 type FormState = {
   date: string; operatedSide: "" | "LEFT" | "RIGHT";
-  vmoDistanceCm: string; vmoLeftCm: string; vmoRightCm: string;
-  midThighDistanceCm: string; midThighLeftCm: string; midThighRightCm: string;
   romMode: "" | "ACTIVE" | "PASSIVE"; flexionDeg: string; extensionDeg: string; notes: string;
-};
+} & Record<PointFieldKey, string>;
 
 const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const emptyForm = (side: FormState["operatedSide"] = ""): FormState => ({
-  date: todayStr(), operatedSide: side,
-  vmoDistanceCm: "", vmoLeftCm: "", vmoRightCm: "",
-  midThighDistanceCm: "", midThighLeftCm: "", midThighRightCm: "",
-  romMode: "ACTIVE", flexionDeg: "", extensionDeg: "", notes: "",
-});
+const emptyForm = (side: FormState["operatedSide"] = ""): FormState => {
+  const girths = Object.fromEntries(POINTS.flatMap((p) => [[fieldKey(p, "Left"), ""], [fieldKey(p, "Right"), ""]])) as Record<PointFieldKey, string>;
+  return { date: todayStr(), operatedSide: side, romMode: "ACTIVE", flexionDeg: "", extensionDeg: "", notes: "", ...girths };
+};
 
 const s = (v: number | null | undefined) => (v == null ? "" : String(v));
 const dateOf = (iso: string) => {
@@ -88,10 +90,10 @@ const dateOf = (iso: string) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-// Operated minus non-operated, rounded to 0.1 cm; null when either side is missing.
-export function thighGap(m: LimbMeasurement, site: "vmo" | "mid"): number | null {
-  const left = site === "vmo" ? m.vmoLeftCm : m.midThighLeftCm;
-  const right = site === "vmo" ? m.vmoRightCm : m.midThighRightCm;
+// Operated minus non-operated at a given point, rounded to 0.1 cm; null when either side is missing.
+export function thighGap(m: LimbMeasurement, point: Point): number | null {
+  const left = m[fieldKey(point, "Left")];
+  const right = m[fieldKey(point, "Right")];
   if (left == null || right == null) return null;
   const gap = m.operatedSide === "LEFT" ? left - right : right - left;
   // Symmetric rounding: Math.round alone turns -1.75 into -1.7.
@@ -150,11 +152,11 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
   const startEdit = (m: LimbMeasurement) => {
     setEditingId(m.id);
     setMsg(null);
+    const girths = Object.fromEntries(POINTS.flatMap((p) => [[fieldKey(p, "Left"), s(m[fieldKey(p, "Left")])], [fieldKey(p, "Right"), s(m[fieldKey(p, "Right")])]])) as Record<PointFieldKey, string>;
     setForm({
       date: dateOf(m.measuredAt), operatedSide: m.operatedSide,
-      vmoDistanceCm: s(m.vmoDistanceCm), vmoLeftCm: s(m.vmoLeftCm), vmoRightCm: s(m.vmoRightCm),
-      midThighDistanceCm: s(m.midThighDistanceCm), midThighLeftCm: s(m.midThighLeftCm), midThighRightCm: s(m.midThighRightCm),
       romMode: m.romMode ?? "ACTIVE", flexionDeg: s(m.flexionDeg), extensionDeg: s(m.extensionDeg), notes: m.notes ?? "",
+      ...girths,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -165,14 +167,15 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
     if (!form.operatedSide) { setMsg({ kind: "err", text: t.chooseSide }); return; }
     // Blank fields are sent as null on edit so a cleared box really clears the value.
     const numOrNull = (v: string) => (v.trim() === "" ? null : Number(v.trim().replace(",", ".")));
+    const girthKeys = POINTS.flatMap((p) => [fieldKey(p, "Left"), fieldKey(p, "Right")]);
     // "38cm" would become NaN → null and be dropped silently; refuse instead.
-    const numericFields = [form.vmoDistanceCm, form.vmoLeftCm, form.vmoRightCm, form.midThighDistanceCm, form.midThighLeftCm, form.midThighRightCm, form.flexionDeg, form.extensionDeg];
+    const numericFields = [...girthKeys.map((k) => form[k]), form.flexionDeg, form.extensionDeg];
     if (numericFields.some((v) => v.trim() !== "" && !Number.isFinite(numOrNull(v)))) { setMsg({ kind: "err", text: t.numbersOnly }); return; }
+    const girthBody = Object.fromEntries(girthKeys.map((k) => [k, numOrNull(form[k])]));
     const body = {
       operatedSide: form.operatedSide,
       measuredAt: `${form.date}T12:00:00`,
-      vmoDistanceCm: numOrNull(form.vmoDistanceCm), vmoLeftCm: numOrNull(form.vmoLeftCm), vmoRightCm: numOrNull(form.vmoRightCm),
-      midThighDistanceCm: numOrNull(form.midThighDistanceCm), midThighLeftCm: numOrNull(form.midThighLeftCm), midThighRightCm: numOrNull(form.midThighRightCm),
+      ...girthBody,
       romMode: form.romMode || null, flexionDeg: numOrNull(form.flexionDeg), extensionDeg: numOrNull(form.extensionDeg),
       notes: form.notes.trim() || null,
     };
@@ -209,8 +212,7 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
   const series = useMemo(() => {
     const pts = (fn: (m: LimbMeasurement) => number | null): TrendPoint[] => chrono.map((m) => ({ date: m.measuredAt, value: fn(m) }));
     return {
-      vmo: pts((m) => thighGap(m, "vmo")),
-      mid: pts((m) => thighGap(m, "mid")),
+      gaps: POINTS.map((p) => pts((m) => thighGap(m, p))),
       flex: pts((m) => m.flexionDeg),
       ext: pts((m) => m.extensionDeg),
     };
@@ -222,6 +224,7 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
 
   const inputCls = "h-8 text-sm";
   const labelCls = "text-[11px] text-muted-foreground mb-0.5 block";
+  const gapColor = "#4F7361";
 
   return (
     <div className="space-y-4">
@@ -253,19 +256,15 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
           </div>
         </div>
 
-        {([["vmo", t.vmo], ["midThigh", t.midThigh]] as const).map(([site, label]) => {
-          const k = (suffix: "DistanceCm" | "LeftCm" | "RightCm") => `${site}${suffix}` as keyof FormState;
-          return (
-            <div key={site}>
-              <div className="text-xs font-medium mb-1">{label}</div>
-              <div className="grid grid-cols-3 gap-3 sm:max-w-md">
-                <div><label className={labelCls}>{t.dist}</label><Input inputMode="decimal" className={inputCls} value={form[k("DistanceCm")]} onChange={set(k("DistanceCm"))} /></div>
-                <div><label className={labelCls}>{t.girthL}</label><Input inputMode="decimal" className={inputCls} value={form[k("LeftCm")]} onChange={set(k("LeftCm"))} /></div>
-                <div><label className={labelCls}>{t.girthR}</label><Input inputMode="decimal" className={inputCls} value={form[k("RightCm")]} onChange={set(k("RightCm"))} /></div>
-              </div>
+        {POINTS.map((p) => (
+          <div key={p}>
+            <div className="text-xs font-medium mb-1">{p} {t.aboveKnee}</div>
+            <div className="grid grid-cols-2 gap-3 sm:max-w-xs">
+              <div><label className={labelCls}>{t.girthL}</label><Input inputMode="decimal" className={inputCls} value={form[fieldKey(p, "Left")]} onChange={set(fieldKey(p, "Left"))} /></div>
+              <div><label className={labelCls}>{t.girthR}</label><Input inputMode="decimal" className={inputCls} value={form[fieldKey(p, "Right")]} onChange={set(fieldKey(p, "Right"))} /></div>
             </div>
-          );
-        })}
+          </div>
+        ))}
 
         <div>
           <div className="text-xs font-medium mb-1">{t.rom}</div>
@@ -305,9 +304,10 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
         <p className="text-xs text-muted-foreground">{t.empty}</p>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <TrendChart points={series.vmo} label={t.gapVmo} unit=" cm" {...range(series.vmo, 0, 0, 1)} higherIsBetter color="#4F7361" isPt={isPt} />
-            <TrendChart points={series.mid} label={t.gapMid} unit=" cm" {...range(series.mid, 0, 0, 1)} higherIsBetter color="#4F7361" isPt={isPt} />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {POINTS.map((p, i) => (
+              <TrendChart key={p} points={series.gaps[i]} label={`${p}cm — ${isPt ? "operada vs outra" : "operated vs other"}`} unit=" cm" {...range(series.gaps[i], 0, 0, 1)} higherIsBetter color={gapColor} isPt={isPt} />
+            ))}
             <TrendChart points={series.flex} label={t.flexChart} unit="°" {...range(series.flex, 0, 140, 5)} higherIsBetter color="#2563eb" isPt={isPt} />
             <TrendChart points={series.ext} label={t.extChart} unit="°" {...range(series.ext, -5, 0, 3)} higherIsBetter color="#d97706" isPt={isPt} />
           </div>
@@ -321,10 +321,7 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
                     <th className="p-2 text-left">{t.date}</th>
                     <th className="p-2 text-left">{t.week}</th>
                     <th className="p-2 text-left">{t.operated}</th>
-                    <th className="p-2 text-left">VMO L / R</th>
-                    <th className="p-2 text-left">{t.diff}</th>
-                    <th className="p-2 text-left">{isPt ? "Meio coxa" : "Mid-thigh"} L / R</th>
-                    <th className="p-2 text-left">{t.diff}</th>
+                    {POINTS.map((p) => <th key={p} className="p-2 text-left">{p} cm (L / R, Δ)</th>)}
                     <th className="p-2 text-left">Flex / Ext</th>
                     <th className="p-2" />
                   </tr>
@@ -332,22 +329,24 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
                 <tbody>
                   {items.map((m) => {
                     const op = m.operatedSide;
-                    const cell = (l: number | null, r: number | null) => (
-                      <span>
-                        <span className={op === "LEFT" ? "font-semibold" : ""}>{l ?? "—"}</span>
-                        {" / "}
-                        <span className={op === "RIGHT" ? "font-semibold" : ""}>{r ?? "—"}</span>
-                      </span>
-                    );
+                    const pointCell = (p: Point) => {
+                      const l = m[fieldKey(p, "Left")];
+                      const r = m[fieldKey(p, "Right")];
+                      return (
+                        <span>
+                          <span className={op === "LEFT" ? "font-semibold" : ""}>{l ?? "—"}</span>
+                          {" / "}
+                          <span className={op === "RIGHT" ? "font-semibold" : ""}>{r ?? "—"}</span>
+                          <span className="text-muted-foreground"> ({fmtGap(thighGap(m, p))})</span>
+                        </span>
+                      );
+                    };
                     return (
                       <tr key={m.id} className="border-t align-top">
                         <td className="p-2 whitespace-nowrap">{new Date(m.measuredAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB")}</td>
                         <td className="p-2">{m.protocolWeek ?? "—"}</td>
                         <td className="p-2">{op === "LEFT" ? t.left : t.right}</td>
-                        <td className="p-2 whitespace-nowrap">{cell(m.vmoLeftCm, m.vmoRightCm)}{m.vmoDistanceCm != null && <span className="text-muted-foreground"> @{m.vmoDistanceCm}</span>}</td>
-                        <td className="p-2 font-medium">{fmtGap(thighGap(m, "vmo"))}</td>
-                        <td className="p-2 whitespace-nowrap">{cell(m.midThighLeftCm, m.midThighRightCm)}{m.midThighDistanceCm != null && <span className="text-muted-foreground"> @{m.midThighDistanceCm}</span>}</td>
-                        <td className="p-2 font-medium">{fmtGap(thighGap(m, "mid"))}</td>
+                        {POINTS.map((p) => <td key={p} className="p-2 whitespace-nowrap">{pointCell(p)}</td>)}
                         <td className="p-2 whitespace-nowrap">
                           {m.flexionDeg != null ? `${m.flexionDeg}°` : "—"} / {m.extensionDeg != null ? `${m.extensionDeg}°` : "—"}
                           {m.romMode && (m.flexionDeg != null || m.extensionDeg != null) && <span className="text-muted-foreground"> ({m.romMode === "ACTIVE" ? t.active : t.passive})</span>}
@@ -363,7 +362,7 @@ export function LimbMeasurementsTab({ patientId }: { patientId: string }) {
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">{isPt ? "Negrito = perna operada. @N = distância acima da patela (cm)." : "Bold = operated leg. @N = distance above patella (cm)."}</p>
+            <p className="text-[10px] text-muted-foreground mt-1">{isPt ? "Negrito = perna operada. Δ = operada − outra." : "Bold = operated leg. Δ = operated − other."}</p>
           </div>
         </>
       )}
@@ -379,8 +378,6 @@ export function LimbMeasurementsShortcut({ patientId, onOpen }: { patientId: str
   const { items } = useMeasurements(patientId);
   if (items === null) return null;
   const m = items[0];
-  const vmo = m ? thighGap(m, "vmo") : null;
-  const mid = m ? thighGap(m, "mid") : null;
   return (
     <button
       type="button"
@@ -392,7 +389,8 @@ export function LimbMeasurementsShortcut({ patientId, onOpen }: { patientId: str
       {m ? (
         <p className="text-xs text-muted-foreground mt-1">
           {t.latest}: {new Date(m.measuredAt).toLocaleDateString(isPt ? "pt-BR" : "en-GB")} · {m.protocolWeek != null ? `${t.week} ${m.protocolWeek}` : t.noProtocol}
-          {" · "}VMO Δ {fmtGap(vmo)} cm · {isPt ? "Meio coxa" : "Mid-thigh"} Δ {fmtGap(mid)} cm · {m.flexionDeg != null ? `${m.flexionDeg}°` : "—"} / {m.extensionDeg != null ? `${m.extensionDeg}°` : "—"}
+          {POINTS.map((p) => ` · ${p}cm Δ ${fmtGap(thighGap(m, p))} cm`).join("")}
+          {` · ${m.flexionDeg != null ? `${m.flexionDeg}°` : "—"} / ${m.extensionDeg != null ? `${m.extensionDeg}°` : "—"}`}
         </p>
       ) : (
         <p className="text-xs text-muted-foreground mt-1">{t.empty}</p>

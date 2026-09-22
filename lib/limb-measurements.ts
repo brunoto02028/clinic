@@ -8,18 +8,21 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const SIDES = ["LEFT", "RIGHT"] as const;
 export const ROM_MODES = ["ACTIVE", "PASSIVE"] as const;
 
-const GIRTH_FIELDS = ["vmoLeftCm", "vmoRightCm", "midThighLeftCm", "midThighRightCm"] as const;
-const DISTANCE_FIELDS = ["vmoDistanceCm", "midThighDistanceCm"] as const;
+// Three fixed distances above the patellar base — the clinic's standard
+// protocol — each with a left and right girth. Adding a fourth point later is
+// just another pair here plus a POINTS entry; nothing else needs to change.
+export const POINTS = [5, 10, 15] as const;
+const GIRTH_FIELDS = POINTS.flatMap((d) => [`thigh${d}LeftCm`, `thigh${d}RightCm`]) as string[];
 
 export type MeasurementInput = {
   operatedSide?: string;
   measuredAt?: Date;
-  vmoDistanceCm?: number | null;
-  midThighDistanceCm?: number | null;
-  vmoLeftCm?: number | null;
-  vmoRightCm?: number | null;
-  midThighLeftCm?: number | null;
-  midThighRightCm?: number | null;
+  thigh5LeftCm?: number | null;
+  thigh5RightCm?: number | null;
+  thigh10LeftCm?: number | null;
+  thigh10RightCm?: number | null;
+  thigh15LeftCm?: number | null;
+  thigh15RightCm?: number | null;
   romMode?: string | null;
   flexionDeg?: number | null;
   extensionDeg?: number | null;
@@ -61,12 +64,7 @@ export function parseMeasurementBody(body: any, partial: boolean): Parsed {
   for (const k of GIRTH_FIELDS) {
     const r = num(body, k, 10, 120);
     if (r.err) return { ok: false, error: r.err };
-    if (r.v !== undefined) data[k] = r.v;
-  }
-  for (const k of DISTANCE_FIELDS) {
-    const r = num(body, k, 0, 60);
-    if (r.err) return { ok: false, error: r.err };
-    if (r.v !== undefined) data[k] = r.v;
+    if (r.v !== undefined) (data as any)[k] = r.v;
   }
   const flex = num(body, "flexionDeg", 0, 180, true);
   if (flex.err) return { ok: false, error: flex.err };
