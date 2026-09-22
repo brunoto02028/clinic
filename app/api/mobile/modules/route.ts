@@ -115,8 +115,9 @@ export async function GET(request: NextRequest) {
     // every patient `[lab]` and taken the clinical area away. BPR's own
     // clinics have no ClinicModuleAccess rows, so switching the lab on would
     // have done that to all of them at once. An explicit override removes it.
+    const clinicaDenied = overrideGrants(overrides["mod_clinica"]) === false;
     const keys = new Set(available.map((m) => m.key));
-    if (overrideGrants(overrides["mod_clinica"]) !== false) {
+    if (!clinicaDenied) {
       keys.add("clinica");
     }
     const result = MODULE_DEFS.filter((m) => keys.has(m.key));
@@ -125,7 +126,12 @@ export async function GET(request: NextRequest) {
     // BA and Lab to any clinic patient whose access was never configured —
     // every BPR patient, since those rows do not exist. A patient gets the
     // clinic. Training is still appended when the clinic has it on, as before.
-    return corsJson(withTraining(result.length > 0 ? result : [CLINICA_DEF]));
+    //
+    // An explicit denial is honoured all the way down: a patient with
+    // `mod_clinica` locked or hidden and nothing else gets an empty list, not
+    // the clinic back through this fallback. The app shows that as "no areas
+    // available", with a way to sign out.
+    return corsJson(withTraining(result.length > 0 || clinicaDenied ? result : [CLINICA_DEF]));
   } catch (error: any) {
     console.error("[mobile/modules] error:", error?.message);
     return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });

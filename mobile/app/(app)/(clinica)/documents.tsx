@@ -40,6 +40,8 @@ export default function Documents() {
 const DOC_TYPE_LABEL: Record<string, string> = {
   MEDICAL_REFERRAL: "Encaminhamento Médico",
   MEDICAL_REPORT: "Laudo Médico",
+  // Present in the DocumentType enum; without it a signed consent form read "Outro".
+  CONSENT_FORM: "Termo de Consentimento",
   PRESCRIPTION: "Prescrição",
   IMAGING: "Exames de Imagem",
   INSURANCE: "Seguro",
@@ -49,7 +51,10 @@ const DOC_TYPE_LABEL: Record<string, string> = {
 
 const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
     MEDICAL_REFERRAL: { icon: "document-text-outline", color: t.colors.work, bg: t.colors.workSoft },
-    REPORT: { icon: "clipboard-outline", color: t.colors.ok, bg: t.colors.okSoft },
+    // Keyed to the enum. This was `REPORT`, which no document has, so every
+    // medical report fell through to the generic icon.
+    MEDICAL_REPORT: { icon: "clipboard-outline", color: t.colors.ok, bg: t.colors.okSoft },
+    CONSENT_FORM: { icon: "create-outline", color: t.colors.work, bg: t.colors.workSoft },
     PRESCRIPTION: { icon: "medical-outline", color: t.colors.ok, bg: t.colors.okSoft },
     IMAGING: { icon: "scan-outline", color: t.colors.warn, bg: t.colors.warnSoft },
     INSURANCE: { icon: "shield-checkmark-outline", color: t.colors.community, bg: t.colors.communitySoft },

@@ -111,7 +111,26 @@ export default function Screening() {
 
   const redFlags = (config?.redFlagQuestions ?? []).filter(q => q.enabled !== false);
   const consentText = config?.consentText?.pt ?? null;
-  const unanswered = redFlags.filter(q => typeof form[q.key] !== "boolean").length;
+  // A red flag counts as answered only once the patient taps it in this
+  // session. The stored value cannot be trusted for that: the columns are
+  // `Boolean @default(false)` and the screening API writes `?? false` for
+  // anything a save leaves out, so a draft reopened after its first autosave
+  // came back with all twelve "No" pre-selected — the warning vanished and the
+  // screening could be submitted as twelve denials nobody gave. The loaded
+  // value is still kept in `form` and sent back on autosave, so a real answer
+  // saved on the web is never overwritten; it just has to be confirmed.
+  // App-only by design: the web behaves as it always has.
+  const [confirmedFlags, setConfirmedFlags] = useState<Set<string>>(() => new Set());
+  const confirmFlag = (key: string, value: boolean) => {
+    set(key, value);
+    setConfirmedFlags(prev => new Set(prev).add(key));
+  };
+  const unanswered = redFlags.filter(q => !confirmedFlags.has(q.key)).length;
+
+  // #2 — Without the config there are no questions and no consent text, and
+  // `unanswered` would read 0. Submission must not be possible then: the
+  // screen already says it cannot be sent without them.
+  const configMissing = configError || redFlags.length === 0 || !consentText;
 
   const autosave = useMutation({
     mutationFn: () => saveScreening(form, true),
@@ -301,7 +320,10 @@ export default function Screening() {
               redFlags.map(q => (
                 <View key={q.key} style={{ marginBottom: 18 }}>
                   <Text variant="body">{q.pt}</Text>
-                  <YesNo value={form[q.key] as boolean | undefined} onChange={v => set(q.key, v)} />
+                  <YesNo
+                    value={confirmedFlags.has(q.key) ? (form[q.key] as boolean) : undefined}
+                    onChange={v => confirmFlag(q.key, v)}
+                  />
                 </View>
               ))
             )}
@@ -365,7 +387,7 @@ export default function Screening() {
               // Espelha a web, que desabilita o envio sem consentimento. Aqui
               // vale também para as perguntas de segurança: enviar sem elas
               // gravaria "Não" em nome do paciente.
-              disabled={step === STEPS.length - 1 && (!form.consentGiven || unanswered > 0)}
+              disabled={step === STEPS.length - 1 && (configMissing || !form.consentGiven || unanswered > 0)}
               onPress={() => {
                 if (step < STEPS.length - 1) { autosave.mutate(); setStep(s => s + 1); }
                 else submit.mutate();

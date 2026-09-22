@@ -27,8 +27,11 @@ export async function GET(_req: NextRequest) {
     }
 
     const userId = effectiveUser.userId;
+    // Same gate the web uses for these same notes: /api/soap-notes checks
+    // mod_records. Gating on mod_clinical_notes here would let a patient whose
+    // clinic hid their records see them in the app and not on the web.
     if (effectiveUser.role === "PATIENT") {
-      await assertModuleAccess(userId, "mod_clinical_notes");
+      await assertModuleAccess(userId, "mod_records");
     }
 
     const me = await prisma.user.findUnique({
@@ -38,7 +41,15 @@ export async function GET(_req: NextRequest) {
 
     const notes = me?.clinicId
       ? await prisma.sOAPNote.findMany({
-          where: { patientId: userId, clinicId: me.clinicId },
+          // The web filters on patientId alone, so it shows older notes
+          // written before SOAPNote.clinicId existed (null). Requiring an exact
+          // clinicId hid those here. Legacy nulls are included; a note stamped
+          // with ANOTHER clinic stays excluded — stricter than the web, which
+          // would show a stray other-tenant note, and deliberately so.
+          where: {
+            patientId: userId,
+            OR: [{ clinicId: me.clinicId }, { clinicId: null }],
+          },
           orderBy: { createdAt: "desc" },
           select: {
             id: true,

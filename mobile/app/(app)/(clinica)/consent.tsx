@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchScreening } from "@/api/screening";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Button } from "@/components/ui";
+import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 
 const SECTIONS = [
@@ -29,7 +29,7 @@ const SECTIONS = [
 ];
 
 export default function Consent() {
-  const { data: screening } = useQuery({ queryKey: ["screening"], queryFn: fetchScreening });
+  const { data: screening, isLoading, isError, refetch } = useQuery({ queryKey: ["screening"], queryFn: fetchScreening });
   const accepted = screening?.consentGiven === true;
   const t = useTheme();
 
@@ -53,7 +53,19 @@ export default function Consent() {
             Antes daqui saía a frase "Você aceitou os termos em 04/06/2026" —
             uma data literal, exibida a qualquer paciente — e um selo de "Termos
             aceitos" que renderizava sempre, aceito ou não. */}
-        {accepted ? (
+        {/* Loading and failure are their own states. Falling through to the
+            "not accepted" branch told a patient who had accepted that they
+            had not, whenever the request was slow or failed. */}
+        {isLoading ? (
+          <Spinner center />
+        ) : isError ? (
+          <Card>
+            <View style={{ alignItems: "center", gap: 12, paddingVertical: 12 }}>
+              <Text variant="body" style={{ textAlign: "center" }}>Não foi possível verificar o seu aceite.</Text>
+              <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
+            </View>
+          </Card>
+        ) : accepted ? (
           <Card>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Ionicons name="checkmark-circle" size={22} color={t.colors.ok} />

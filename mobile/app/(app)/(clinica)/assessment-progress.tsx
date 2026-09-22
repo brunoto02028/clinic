@@ -2,7 +2,7 @@ import { View, Pressable } from "react-native";
 import { Stack, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Card, Spinner } from "@/components/ui";
+import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchAssessmentProgress } from "@/api/assessment-progress";
 import { useTheme } from "@/theme/useTheme";
 
@@ -20,7 +20,7 @@ const STEP_PATHS: Record<string, string> = {
 
 export default function AssessmentProgressScreen() {
   const t = useTheme();
-  const { data, isLoading } = useQuery({ queryKey: ["assessment-progress"], queryFn: fetchAssessmentProgress });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["assessment-progress"], queryFn: fetchAssessmentProgress });
 
   const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
     completed: { bg: t.colors.okSoft, text: t.colors.ok, label: "Concluido" },
@@ -39,7 +39,18 @@ export default function AssessmentProgressScreen() {
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>Acompanhe cada etapa do processo</Text>
         </View>
 
-        {isLoading ? <Spinner center /> : !data ? (
+        {isLoading ? <Spinner center /> : isError ? (
+          /* The client stopped swallowing failures, but this branch never
+             looked at isError — so a failed request still fell into the
+             "no progress yet" state below. */
+          <Card>
+            <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
+              <Ionicons name="cloud-offline-outline" size={32} color={t.colors.textMuted} />
+              <Text variant="body" style={{ textAlign: "center" }}>Não foi possível carregar seu progresso.</Text>
+              <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
+            </View>
+          </Card>
+        ) : !data ? (
           <Card><Text muted>Nao foi possivel carregar.</Text></Card>
         ) : (
           <>
