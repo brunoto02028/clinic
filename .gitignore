@@ -50,3 +50,6 @@ graphify-out/
 
 # generated per-environment (activity 14 skill catalog)
 Skills/clinical-evidence-report/clinic-resources.json
+
+# Scaffolding temporario dos agentes de QA (scripts, logs, payloads)
+.qa-tmp/
