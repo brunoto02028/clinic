@@ -27,11 +27,18 @@ const ART = {
   bone: require("../../../assets/logo.png"),
 };
 
+/** The artwork's own ratio; width is derived from it rather than declared. */
+const RATIO = 581 / 674;
+
 export function Logo({ tone = "ink", height = 72, style }: LogoProps) {
   return (
     <Image
       source={ART[tone]}
-      style={[{ height, aspectRatio: 581 / 674 }, style]}
+      // Width is computed, not left to `aspectRatio`: react-native-web does not
+      // constrain width from it, so the image took its intrinsic 581px at every
+      // height — enough to push a horizontal scrollbar onto the welcome screen
+      // and shove the logo off-centre on the auth screens.
+      style={[{ height, width: Math.round(height * RATIO) }, style]}
       resizeMode="contain"
       accessibilityRole="image"
       accessibilityLabel="BPR"

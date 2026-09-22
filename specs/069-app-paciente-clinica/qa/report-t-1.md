@@ -1,5 +1,26 @@
 # T-1 — Inventário das 42 páginas do dashboard web
 
+> ## ⚠️ CORREÇÃO (22/09/2026)
+>
+> **A contagem de "15 já cobertas no app" deste relatório está errada.** Ela mediu
+> **existência de arquivo de rota**, não cobertura. A verificação tela a tela da
+> T-11 (`qa/report-t-11.md`) mostrou que:
+>
+> - **9 das 15 não têm ponto de entrada nenhum** — só abrem por URL digitada. Do
+>   ponto de vista do paciente, não existem.
+> - Entre as que abrem, várias mostram dado falso: a home tem `"Shoulder"` e
+>   `"Day 12 of 42"` literais no JSX, `clinical-notes` consome um endpoint que
+>   retorna 404, `consent` é inteiramente mock.
+>
+> **Cobertura real: 6 telas** (home, appointments, appointments/[id],
+> appointments/book, exercises, profile) — e quatro delas com regressões.
+>
+> A classificação de **audiência** (paciente × aluno × staff) deste relatório
+> **continua válida** — veio de `lib/module-registry.ts`, `lib/patient-sections.ts`
+> e do `CLINICAL_PATIENT_KEYS`, e foi confirmada. O que não se sustenta é a
+> coluna de cobertura e, com ela, a recomendação de fases.
+
+
 **Data:** 22/09/2026 · **Base:** `main` em `32878da6` · **Tipo:** discovery, sem código de feature
 
 ## Método

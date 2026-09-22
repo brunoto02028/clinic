@@ -2,7 +2,7 @@ import { View, Pressable } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { Text, Spinner } from "@/components/ui";
+import { Text, Spinner, Logo } from "@/components/ui";
 import { fetchModules, type AppModule } from "@/api/modules";
 import { useModule } from "@/store/module";
 import { useAuth } from "@/store/auth";
@@ -176,6 +176,7 @@ export default function ModuleSelect() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 60 }}>
+        <Logo tone="bone" height={44} style={{ marginBottom: 28 }} />
         <Text
           style={{
             fontFamily: "Sora_700Bold",
