@@ -12,7 +12,6 @@
 import { prisma } from "@/lib/db";
 import { callAIClinical, parseAIJson } from "@/lib/ai-provider";
 import { analyzeMedicalScreening } from "@/lib/clinical-analysis";
-import { getEnabledRedFlagKeys } from "@/lib/red-flags-config";
 import { patientPseudonym, ageBand } from "@/lib/pseudonymize";
 import { searchLiterature, buildQueries, dedupeById, type LiteratureResult } from "@/lib/europe-pmc";
 import { extractText } from "@/lib/docling";
@@ -50,18 +49,9 @@ export async function relinkBrokenEvidenceReport(patientId: string, screeningId:
   const existingReport = await prisma.clinicalEvidenceReport.findFirst({
     where: { patientId, status: { in: ["GENERATING", "DRAFT", "UNDER_REVIEW", "APPROVED"] } },
     orderBy: { createdAt: "desc" },
-    select: { id: true, status: true, screeningId: true, caseSummary: true },
+    select: { id: true, status: true, screeningId: true },
   });
-  if (!existingReport || existingReport.status !== "DRAFT") return;
-
-  // Two kinds of DRAFT are waiting on the screening, and both resume here:
-  //  - one that never had a screening linked;
-  //  - one halted because its red-flag screen was incomplete. It already has
-  //    a screeningId, so the first rule alone never picked it up — the report
-  //    stayed stuck even after staff or the patient answered the questions.
-  const haltedIncomplete =
-    (existingReport.caseSummary as any)?.redFlagScreen?.status === "incomplete";
-  if (!existingReport.screeningId || haltedIncomplete) {
+  if (existingReport && existingReport.status === "DRAFT" && !existingReport.screeningId) {
     await prisma.clinicalEvidenceReport.update({
       where: { id: existingReport.id },
       data: { screeningId, status: "GENERATING", error: null, attempts: 0 },
@@ -329,8 +319,7 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
     }
 
     // 1. Safety analysis (reuses the existing engine)
-    const enabledRedFlags = await getEnabledRedFlagKeys();
-    const analysis = analyzeMedicalScreening(s, { enabledRedFlags });
+    const analysis = analyzeMedicalScreening(s);
     const flags = analysis.redFlagAssessment;
 
     // 2. Case snapshot (triage + latest outcome measures + document findings)
@@ -367,52 +356,6 @@ export async function generateEvidenceReport(reportId: string): Promise<void> {
           caseSummary: caseSummary as any,
           narrativeEn:
             "Urgent red flags detected on triage. Evidence gathering was halted; this case requires priority human assessment before any treatment suggestion.",
-          evidence: [],
-          clinicCrossRef: undefined,
-          suggestions: undefined,
-        },
-      });
-      return;
-    }
-
-    // 3b. Incomplete red-flag screen — halt too, for the same reason.
-    //
-    // A red flag that was never answered is not a red flag that was denied.
-    // Before the twelve columns became nullable, an unanswered screen read as
-    // twelve denials, came out of the analysis as "none_detected", sailed past
-    // the urgent gate above, and got treatment suggestions generated for a
-    // patient whose red flags had never been screened. An unscreened case is
-    // not safe to suggest exercise for; it needs the questions asked first.
-    if (flags.status === "incomplete") {
-      await prisma.clinicalEvidenceReport.update({
-        where: { id: reportId },
-        data: {
-          status: "DRAFT",
-          error: null,
-          // Not a red flag. `redFlag: true` drives the report tab's red
-          // "priority human assessment" banner, which is for urgent findings;
-          // an unanswered question is a gap, and saying "urgent" about it both
-          // cries wolf and hides what the patient actually reported.
-          redFlag: false,
-          // The patient's real "yes" answers, kept. This field is read as an
-          // array of flags; an object here made the tab drop every one of them.
-          redFlagDetails: flags.flags as any,
-          caseSummary: {
-            ...(caseSummary as any),
-            // The marker relinkBrokenEvidenceReport looks for to resume this
-            // report once the questions are answered. Without it a report
-            // halted here stayed a DRAFT for good — see that function.
-            redFlagScreen: {
-              status: "incomplete",
-              unanswered: flags.unanswered,
-              asked: enabledRedFlags.length,
-            },
-          } as any,
-          // The count is of the questions this clinic asks, not a fixed 12:
-          // a clinic can switch some off.
-          narrativeEn:
-            `Red-flag screening is incomplete: ${flags.unanswered.length} of ${enabledRedFlags.length} questions were not answered. ` +
-            "Evidence gathering was halted; complete the red-flag screen with the patient before any treatment suggestion.",
           evidence: [],
           clinicCrossRef: undefined,
           suggestions: undefined,

@@ -1,6 +1,5 @@
 "use client";
 
-import { redFlagAnswer } from "@/lib/red-flags";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -71,18 +70,18 @@ interface Patient {
   phone: string | null;
   createdAt: string;
   medicalScreening: {
-    unexplainedWeightLoss: boolean | null;
-    nightPain: boolean | null;
-    traumaHistory: boolean | null;
-    neurologicalSymptoms: boolean | null;
-    bladderBowelDysfunction: boolean | null;
-    recentInfection: boolean | null;
-    cancerHistory: boolean | null;
-    steroidUse: boolean | null;
-    osteoporosisRisk: boolean | null;
-    cardiovascularSymptoms: boolean | null;
-    severeHeadache: boolean | null;
-    dizzinessBalanceIssues: boolean | null;
+    unexplainedWeightLoss: boolean;
+    nightPain: boolean;
+    traumaHistory: boolean;
+    neurologicalSymptoms: boolean;
+    bladderBowelDysfunction: boolean;
+    recentInfection: boolean;
+    cancerHistory: boolean;
+    steroidUse: boolean;
+    osteoporosisRisk: boolean;
+    cardiovascularSymptoms: boolean;
+    severeHeadache: boolean;
+    dizzinessBalanceIssues: boolean;
     currentMedications: string | null;
     allergies: string | null;
     surgicalHistory: string | null;
@@ -642,32 +641,17 @@ export default function PatientDetail({ patientId }: PatientDetailProps) {
                       className="flex items-center justify-between p-3 bg-slate-50 rounded-md border"
                     >
                       <span className="text-sm font-medium">{item.label}</span>
-                      {/* Three states — see lib/red-flags.ts. This badge printed
-                          "No" with a check for anything falsy, so an unanswered
-                          question read as a denied red flag here too: the same
-                          defect the admin screening panel had. */}
-                      {(() => {
-                        const answer = redFlagAnswer(
-                          patient.medicalScreening?.[item.key as keyof typeof patient.medicalScreening] as boolean | null | undefined
-                        );
-                        if (answer === "yes") return (
-                          <Badge variant="destructive" className="gap-1">
-                            <X className="h-3 w-3" />
-                            Yes
-                          </Badge>
-                        );
-                        if (answer === "no") return (
-                          <Badge variant="secondary" className="gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            No
-                          </Badge>
-                        );
-                        return (
-                          <Badge variant="outline" className="gap-1 text-muted-foreground">
-                            Not answered
-                          </Badge>
-                        );
-                      })()}
+                      {patient.medicalScreening?.[item.key as keyof typeof patient.medicalScreening] ? (
+                        <Badge variant="destructive" className="gap-1">
+                          <X className="h-3 w-3" />
+                          Yes
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          No
+                        </Badge>
+                      )}
                     </div>
                   ))}
                 </div>

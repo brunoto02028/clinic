@@ -6,59 +6,12 @@ import { authOptions } from "@/lib/auth-options";
 import { getRequestSession } from "@/lib/dual-auth";
 import { prisma } from "@/lib/db";
 import { analyzeMedicalScreening } from "@/lib/clinical-analysis";
-import { getEnabledRedFlagKeys } from "@/lib/red-flags-config";
-import { unansweredRedFlags } from "@/lib/red-flags";
 import { sendEmail } from "@/lib/email";
 import { sendTemplatedEmail } from "@/lib/email-templates";
 import { notifyPatient } from "@/lib/notify-patient";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { relinkBrokenEvidenceReport } from "@/lib/evidence-report";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
-
-// A partial payload must not erase what it does not mention.
-//
-// Every field below used to be written as `body?.x ?? false` / `?? null`, which
-// turned any partial save into a wipe. The mobile app autosaves its whole form
-// on each step, and its form does not collect the twelve red-flag questions,
-// the pain pattern, alcohol use, GP details or the emergency contact — so an
-// app autosave erased whatever the patient had entered on the web, and recorded
-// twelve "No" answers to safety questions nobody had asked them. A therapist
-// reading that record would conclude the patient denied night pain, bladder
-// dysfunction and a cancer history.
-//
-// Types are checked rather than coerced: the app was sending `smoker` as a
-// string into a Boolean column, which threw. Ignoring it beats a 500, and the
-// client was fixed to send a boolean.
-const SCREENING_BOOLEANS = [
-  "unexplainedWeightLoss", "nightPain", "traumaHistory", "neurologicalSymptoms",
-  "bladderBowelDysfunction", "recentInfection", "cancerHistory", "steroidUse",
-  "osteoporosisRisk", "cardiovascularSymptoms", "severeHeadache", "dizzinessBalanceIssues",
-  "sleepAffected", "workAffected", "mobilityAffected", "smoker",
-  "previousPhysio", "previousInjections", "currentlyUnderCare",
-  "returnToSport", "returnToWork", "consentGiven",
-] as const;
-
-const SCREENING_STRINGS = [
-  "chiefComplaint", "painLocation", "painDuration", "painType", "painAggravating",
-  "painRelieving", "painPattern", "functionalLimitations", "occupation",
-  "dominantSide", "dominantFootSide", "activityLevel", "hobbiesSports", "alcoholUse",
-  "height", "weight", "previousPhysioDetails", "previousInjectionsDetails",
-  "currentlyUnderCareDetails", "treatmentGoals", "currentMedications", "allergies",
-  "surgicalHistory", "otherConditions", "gpDetails", "emergencyContact",
-  "emergencyContactPhone",
-] as const;
-
-function presentScreeningFields(body: any): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const k of SCREENING_BOOLEANS) {
-    if (typeof body?.[k] === "boolean") out[k] = body[k];
-  }
-  for (const k of SCREENING_STRINGS) {
-    const v = body?.[k];
-    if (typeof v === "string" || v === null) out[k] = v;
-  }
-  return out;
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -152,27 +105,6 @@ export async function POST(request: NextRequest) {
       where: { userId },
     });
 
-    // Every red flag the clinic asks must be answered before a full
-    // submission — enforced here, not only in the forms. The consent check
-    // above already works this way. Both forms block it client-side too, but
-    // a client-side guarantee is a suggestion: the mobile app shipped with
-    // all twelve pre-selected as "No", which passed its own "all answered"
-    // check. Judged on the merged result, since the UPDATE keeps what the
-    // payload leaves out.
-    if (!isAutosave) {
-      const merged = { ...(existingScreening ?? {}), ...presentScreeningFields(body) };
-      const missing = unansweredRedFlags(merged, await getEnabledRedFlagKeys());
-      if (missing.length > 0) {
-        return NextResponse.json(
-          {
-            error: "Every red-flag question must be answered before submitting the screening",
-            unansweredRedFlags: missing,
-          },
-          { status: 400 }
-        );
-      }
-    }
-
     if (existingScreening) {
       // For autosave: only update if not locked (don't notify, don't change lock state)
       if (isAutosave && existingScreening.isLocked) {
@@ -182,9 +114,57 @@ export async function POST(request: NextRequest) {
       const screening = await prisma.medicalScreening.update({
         where: { userId },
         data: {
-          ...presentScreeningFields(body),
-          ...(safeRedFlagDetails !== null ? { redFlagDetails: safeRedFlagDetails } : {}),
-          ...(isNaN(painScoreNum as number) ? {} : { painScore: painScoreNum }),
+          unexplainedWeightLoss: body?.unexplainedWeightLoss ?? false,
+          nightPain: body?.nightPain ?? false,
+          traumaHistory: body?.traumaHistory ?? false,
+          neurologicalSymptoms: body?.neurologicalSymptoms ?? false,
+          bladderBowelDysfunction: body?.bladderBowelDysfunction ?? false,
+          recentInfection: body?.recentInfection ?? false,
+          cancerHistory: body?.cancerHistory ?? false,
+          steroidUse: body?.steroidUse ?? false,
+          osteoporosisRisk: body?.osteoporosisRisk ?? false,
+          cardiovascularSymptoms: body?.cardiovascularSymptoms ?? false,
+          severeHeadache: body?.severeHeadache ?? false,
+          dizzinessBalanceIssues: body?.dizzinessBalanceIssues ?? false,
+          redFlagDetails: safeRedFlagDetails,
+          chiefComplaint: body?.chiefComplaint ?? null,
+          painLocation: body?.painLocation ?? null,
+          painDuration: body?.painDuration ?? null,
+          painScore: isNaN(painScoreNum as number) ? null : painScoreNum,
+          painType: body?.painType ?? null,
+          painAggravating: body?.painAggravating ?? null,
+          painRelieving: body?.painRelieving ?? null,
+          painPattern: body?.painPattern ?? null,
+          functionalLimitations: body?.functionalLimitations ?? null,
+          sleepAffected: body?.sleepAffected ?? false,
+          workAffected: body?.workAffected ?? false,
+          mobilityAffected: body?.mobilityAffected ?? false,
+          occupation: body?.occupation ?? null,
+          dominantSide: body?.dominantSide ?? null,
+          dominantFootSide: body?.dominantFootSide ?? null,
+          activityLevel: body?.activityLevel ?? null,
+          hobbiesSports: body?.hobbiesSports ?? null,
+          smoker: body?.smoker ?? false,
+          alcoholUse: body?.alcoholUse ?? null,
+          height: body?.height ?? null,
+          weight: body?.weight ?? null,
+          previousPhysio: body?.previousPhysio ?? false,
+          previousPhysioDetails: body?.previousPhysioDetails ?? null,
+          previousInjections: body?.previousInjections ?? false,
+          previousInjectionsDetails: body?.previousInjectionsDetails ?? null,
+          currentlyUnderCare: body?.currentlyUnderCare ?? false,
+          currentlyUnderCareDetails: body?.currentlyUnderCareDetails ?? null,
+          treatmentGoals: body?.treatmentGoals ?? null,
+          returnToSport: body?.returnToSport ?? false,
+          returnToWork: body?.returnToWork ?? false,
+          currentMedications: body?.currentMedications ?? null,
+          allergies: body?.allergies ?? null,
+          surgicalHistory: body?.surgicalHistory ?? null,
+          otherConditions: body?.otherConditions ?? null,
+          gpDetails: body?.gpDetails ?? null,
+          emergencyContact: body?.emergencyContact ?? null,
+          emergencyContactPhone: body?.emergencyContactPhone ?? null,
+          consentGiven: body?.consentGiven ?? false,
           // The patient is answering it themselves — that is what makes this
           // their own account of their history rather than a transcription.
           filledBy: "PATIENT",
@@ -264,13 +244,57 @@ export async function POST(request: NextRequest) {
     const screening = await prisma.medicalScreening.create({
       data: {
         userId,
-        // Same rule as the UPDATE above: write only what the payload carries.
-        // This branch still had `?? false` on every field, so a new patient's
-        // very first autosave — on step one, long before the red-flag step —
-        // recorded twelve "No" answers. Absent now means null: not asked.
-        ...presentScreeningFields(body),
-        ...(safeRedFlagDetails !== null ? { redFlagDetails: safeRedFlagDetails } : {}),
-        ...(isNaN(painScoreNum as number) ? {} : { painScore: painScoreNum }),
+        unexplainedWeightLoss: body?.unexplainedWeightLoss ?? false,
+        nightPain: body?.nightPain ?? false,
+        traumaHistory: body?.traumaHistory ?? false,
+        neurologicalSymptoms: body?.neurologicalSymptoms ?? false,
+        bladderBowelDysfunction: body?.bladderBowelDysfunction ?? false,
+        recentInfection: body?.recentInfection ?? false,
+        cancerHistory: body?.cancerHistory ?? false,
+        steroidUse: body?.steroidUse ?? false,
+        osteoporosisRisk: body?.osteoporosisRisk ?? false,
+        cardiovascularSymptoms: body?.cardiovascularSymptoms ?? false,
+        severeHeadache: body?.severeHeadache ?? false,
+        dizzinessBalanceIssues: body?.dizzinessBalanceIssues ?? false,
+        redFlagDetails: safeRedFlagDetails,
+        chiefComplaint: body?.chiefComplaint ?? null,
+        painLocation: body?.painLocation ?? null,
+        painDuration: body?.painDuration ?? null,
+        painScore: isNaN(painScoreNum as number) ? null : painScoreNum,
+        painType: body?.painType ?? null,
+        painAggravating: body?.painAggravating ?? null,
+        painRelieving: body?.painRelieving ?? null,
+        painPattern: body?.painPattern ?? null,
+        functionalLimitations: body?.functionalLimitations ?? null,
+        sleepAffected: body?.sleepAffected ?? false,
+        workAffected: body?.workAffected ?? false,
+        mobilityAffected: body?.mobilityAffected ?? false,
+        occupation: body?.occupation ?? null,
+        dominantSide: body?.dominantSide ?? null,
+        dominantFootSide: body?.dominantFootSide ?? null,
+        activityLevel: body?.activityLevel ?? null,
+        hobbiesSports: body?.hobbiesSports ?? null,
+        smoker: body?.smoker ?? false,
+        alcoholUse: body?.alcoholUse ?? null,
+        height: body?.height ?? null,
+        weight: body?.weight ?? null,
+        previousPhysio: body?.previousPhysio ?? false,
+        previousPhysioDetails: body?.previousPhysioDetails ?? null,
+        previousInjections: body?.previousInjections ?? false,
+        previousInjectionsDetails: body?.previousInjectionsDetails ?? null,
+        currentlyUnderCare: body?.currentlyUnderCare ?? false,
+        currentlyUnderCareDetails: body?.currentlyUnderCareDetails ?? null,
+        treatmentGoals: body?.treatmentGoals ?? null,
+        returnToSport: body?.returnToSport ?? false,
+        returnToWork: body?.returnToWork ?? false,
+        currentMedications: body?.currentMedications ?? null,
+        allergies: body?.allergies ?? null,
+        surgicalHistory: body?.surgicalHistory ?? null,
+        otherConditions: body?.otherConditions ?? null,
+        gpDetails: body?.gpDetails ?? null,
+        emergencyContact: body?.emergencyContact ?? null,
+        emergencyContactPhone: body?.emergencyContactPhone ?? null,
+        consentGiven: body?.consentGiven ?? false,
         filledBy: "PATIENT",
         isSubmitted: !isAutosave,
         isLocked: !isAutosave,
@@ -297,7 +321,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze screening for red flags
-    const analysis = analyzeMedicalScreening(body, { enabledRedFlags: await getEnabledRedFlagKeys() });
+    const analysis = analyzeMedicalScreening(body);
 
     // Auto-generate an evidence report for the therapist to review (activity 15).
     // Fire-and-forget: create a GENERATING row; a background job fills it. Never

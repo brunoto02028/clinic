@@ -1,7 +1,8 @@
 import { apiFetch } from "./client";
 
 export interface AppModule {
-  key: "lab" | "clinica" | "ba";
+  // `nutricao` was missing though the endpoint returns it for studios.
+  key: "lab" | "clinica" | "ba" | "treino" | "avaliacoes" | "nutricao";
   name: string;
   icon: string;
   description: string;

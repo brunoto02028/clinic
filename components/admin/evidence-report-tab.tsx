@@ -31,9 +31,6 @@ const T = {
     safety: "Safety check", noFlags: "No urgent red flags.", redFlagTitle: "Red flags — priority human assessment",
     redFlagBody: "Evidence gathering was halted. This case requires priority human assessment before any treatment suggestion.",
     precautions: "Precautionary flags", summary: "Evidence summary", evidence: "Selected evidence",
-    incompleteTitle: "Red-flag screening incomplete",
-    incompleteBody: (n: number, of: number) => `${n} of ${of} red-flag questions were not answered. Evidence gathering was halted — ask them before any treatment suggestion.`,
-    reported: "Reported by the patient",
     resources: "Clinic resources", available: "Available now", offCatalog: "Mentioned in literature, off catalogue",
     suggestions: "Suggestions", treatment: "Treatment / modalities", exercise: "Exercise",
     source: "Source", inClinic: "In clinic?", gaps: "Gaps & notes",
@@ -54,9 +51,6 @@ const T = {
     safety: "Checagem de segurança", noFlags: "Sem red flags urgentes.", redFlagTitle: "Red flags — avaliação humana prioritária",
     redFlagBody: "O levantamento de evidência foi interrompido. Este caso precisa de avaliação humana prioritária antes de qualquer sugestão de conduta.",
     precautions: "Flags de precaução", summary: "Resumo da evidência", evidence: "Evidência selecionada",
-    incompleteTitle: "Triagem de red flags incompleta",
-    incompleteBody: (n: number, of: number) => `${n} de ${of} perguntas de red flag ficaram sem resposta. O levantamento de evidência foi interrompido — pergunte antes de qualquer sugestão de conduta.`,
-    reported: "Relatadas pelo paciente",
     resources: "Recursos da clínica", available: "Disponível agora", offCatalog: "Mencionado na literatura, fora do catálogo",
     suggestions: "Sugestões", treatment: "Tratamento / modalidades", exercise: "Exercício",
     source: "Fonte", inClinic: "Na clínica?", gaps: "Lacunas e observações",
@@ -147,10 +141,6 @@ function ReportBody({
   const gapsPt: string[] | null = Array.isArray(report.gapsPt) ? report.gapsPt : null;
   const gaps: string[] = lang === "pt" ? (gapsPt || gapsEn) : gapsEn;
   const flags: any[] = Array.isArray(report.redFlagDetails) ? report.redFlagDetails : [];
-  // Set by lib/evidence-report.ts when it halts on an incomplete red-flag screen.
-  const redFlagScreen = (report.caseSummary as any)?.redFlagScreen as
-    | { status: "incomplete"; unanswered?: string[]; asked?: number }
-    | undefined;
   const narrative = lang === "pt" ? (report.narrativePt || report.narrativeEn) : report.narrativeEn;
   const sr = evidence.filter((e) => e.evidenceRank === 5);
   const rct = evidence.filter((e) => e.evidenceRank === 4);
@@ -217,22 +207,7 @@ function ReportBody({
       {/* Safety */}
       <section>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t.safety}</h3>
-        {/* Three states, not two. An incomplete screen is neither urgent nor
-            clear: it used to be saved as a red flag (urgent banner, empty
-            list), and making it a plain non-red-flag would have dropped it
-            into the green "no urgent red flags" box below — a clean bill of
-            health for questions nobody asked. */}
-        {redFlagScreen?.status === "incomplete" ? (
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-            <p className="flex items-center gap-2 font-semibold text-amber-300 text-sm"><AlertTriangle className="h-4 w-4" />{t.incompleteTitle}</p>
-            <p className="text-sm text-amber-200/90 mt-1">
-              {t.incompleteBody((redFlagScreen.unanswered ?? []).length, redFlagScreen.asked ?? (redFlagScreen.unanswered ?? []).length)}
-            </p>
-            {flags.length > 0 && (
-              <p className="text-sm text-amber-200/80 mt-2">{t.reported}: {flags.map((f) => f.flag).join(", ")}</p>
-            )}
-          </div>
-        ) : report.redFlag ? (
+        {report.redFlag ? (
           <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3">
             <p className="flex items-center gap-2 font-semibold text-red-300 text-sm"><AlertTriangle className="h-4 w-4" />{t.redFlagTitle}</p>
             <p className="text-sm text-red-200/90 mt-1">{t.redFlagBody}</p>

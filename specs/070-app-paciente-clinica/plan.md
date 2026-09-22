@@ -79,11 +79,27 @@ A T-11 derrubou a premissa do plano original. Ele assumia "portar 17 telas que f
 - **Fase 2 — porte do essencial (T-4 a T-6):** plano/jornada, registros de saúde, perguntas e quizzes.
 - **Fase 3 — porte do restante (T-7 a T-9):** financeiro/assinatura, engajamento, extras.
 
+## Regra de escopo (Bruno, 22/09/2026) — vale acima de qualquer tarefa
+
+> **Não alterar a versão web nem o produto do personal/aluno. Nada que está no ar pode quebrar — nem para pacientes, nem para o admin da clínica.** O objetivo é o app mostrar ao paciente o mesmo que a web mostra; a web é a referência, não o alvo.
+
+Aplicado em retrospecto: a reimplementação da T-12 (schema tri-estado, formulário web, telas do admin, lógica clínica, prompts de IA) e a remoção dos módulos do aluno foram **revertidas**. Fora de `mobile/`, só três arquivos diferem do `main`, todos rotas que **só o app usa** e que não mudam o comportamento do site (aprovadas pelo Bruno):
+
+| Arquivo | Por que o app precisa |
+|---|---|
+| `app/api/patient/clinical-notes/route.ts` | rota nova; sem ela as notas do paciente dão 404 no app. A web usa `/api/soap-notes` |
+| `app/api/appointments/route.ts` | aceita o login do app (`getActor`); sem isso o app **não agenda**. Cookie da web segue aceito |
+| `app/api/mobile/modules/route.ts` | rota exclusiva do app; paciente da clínica deixa de ver BA/Lab. **O ramo do personal é byte a byte igual ao `main`** |
+
+`prisma/schema.prisma` é idêntico ao `main`: **nenhuma migração** no deploy.
+
+**Consequência aceita:** na triagem, o app se comporta como a web — inclusive no defeito de gravar red flag não perguntada como "Não" (colunas `Boolean @default(false)`). Corrigir isso é decisão sobre a **web**, fora desta atividade. O trabalho feito e revertido está no histórico — commits `d95490f5` (schema tri-estado) e `21fa8926` (correções do review) e pode ser reaproveitado se essa decisão vier.
+
 ## Tarefas
 | T-N | Nome | Status |
 |-----|------|--------|
 | T-1 | Inventário das 42 páginas: paciente × aluno × staff | concluido — **coluna de cobertura corrigida pela T-11** |
-| T-2 | Gating + remoção dos módulos do aluno | concluido (QA aprovado + review aplicado) |
+| T-2 | Gating do paciente (módulos do aluno **restaurados** por escopo) | concluído; revisto em 22/09 — aguarda re-QA |
 | T-3 | Renomear o app para BPR | concluido (QA aprovado) |
 | T-4 | Fase 2A — canal com o terapeuta e prontuario | pendente |
 | T-5 | Fase 2B — Jornada BPR | pendente |
@@ -93,7 +109,7 @@ A T-11 derrubou a premissa do plano original. Ele assumia "portar 17 telas que f
 | T-9 | QA da Fase 1 em producao (pos-deploy) | pendente |
 | T-10 | QA das Fases 2 e 3 | pendente |
 | T-11 | Logo da BPR no app | concluido (QA aprovado com ressalvas; 3 defeitos corrigidos) |
-| T-12 | Seguranca clinica: triagem e consentimento | reimplementado (schema tri-estado) — aguardando re-QA |
+| T-12 | Seguranca clinica: triagem e consentimento | parte do app mantida; schema/web revertidos por escopo — aguarda re-QA |
 | T-13 | Navegacao: dar entrada as telas orfas | implementado (aguardando QA) |
 | T-14 | Dados falsos e endpoints quebrados | implementado (aguardando QA) |
 | T-15 | Agendamento: fuso horario e dados de outro tenant | implementado (aguardando QA) |

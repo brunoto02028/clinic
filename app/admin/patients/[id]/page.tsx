@@ -5,13 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, User, FileText, Footprints, Activity, Stethoscope, Brain, Heart, FileUp,
-  RefreshCw, AlertCircle, CheckCircle2, CircleDashed, X, Loader2, Mic, MicOff, Languages, Plus, Save,
+  RefreshCw, AlertCircle, CheckCircle2, X, Loader2, Mic, MicOff, Languages, Plus, Save,
   ChevronDown, ChevronRight, Calendar, Mail, Phone, Eye, Pencil, Trash2, HeartPulse, Shield,
   Link2, Copy, Check, Sparkles, Upload, Lock, EyeOff, ExternalLink, Flame, Bot, Send,
   BookOpen, TriangleAlert, ClipboardList, ChevronUp, MessageCircle, MessageSquare, ClipboardCheck,
   Dumbbell, Apple, CreditCard, Receipt,
 } from "lucide-react";
-import { redFlagAnswer } from "@/lib/red-flags";
 import PatientMessagesTab from "@/components/admin/patient-messages-tab";
 import PatientExercisesTab from "@/components/admin/patient-exercises-tab";
 import ProtocolItemsByWeek from "@/components/admin/protocol-items-by-week";
@@ -158,31 +157,6 @@ function screeningBadge(screening: any): string {
   if (!screening) return "Not filled";
   if (!screening.isSubmitted) return "In progress";
   return screening.filledBy === "PATIENT" ? "Answered by patient" : "Filled by clinic";
-}
-
-// Red flags are tri-state (lib/red-flags.ts). Both chips below used to paint
-// anything falsy green: a question the patient was never asked showed as a
-// green check, i.e. as a denied red flag — the therapist read "no night pain,
-// no bladder dysfunction, no cancer history" off a screen nobody had filled in.
-function redFlagChipClass(value: unknown, editing: boolean): string {
-  const a = redFlagAnswer(value as boolean | null | undefined);
-  if (a === "yes") return editing ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : "bg-red-500/10 text-red-400";
-  if (a === "no") return "bg-emerald-500/10 text-emerald-400";
-  return "bg-muted text-muted-foreground";
-}
-
-function RedFlagIcon({ value }: { value: unknown }) {
-  const a = redFlagAnswer(value as boolean | null | undefined);
-  if (a === "yes") return <AlertCircle className="h-2.5 w-2.5" />;
-  if (a === "no") return <CheckCircle2 className="h-2.5 w-2.5" />;
-  return <CircleDashed className="h-2.5 w-2.5" />;
-}
-
-/** not answered → yes → no → not answered. The old `!value` turned "not
- *  answered" straight into "yes" on the first click. */
-function nextRedFlagValue(value: unknown): boolean | null {
-  const a = redFlagAnswer(value as boolean | null | undefined);
-  return a === "unanswered" ? true : a === "yes" ? false : null;
 }
 
 export default function PatientProfilePage() {
@@ -1296,12 +1270,12 @@ export default function PatientProfilePage() {
         >
           {editingScreening && data.screening ? (
             <div className="space-y-3">
-              <h4 className="text-[10px] font-semibold text-muted-foreground uppercase">Red Flag Questions (click: not answered → yes → no)</h4>
+              <h4 className="text-[10px] font-semibold text-muted-foreground uppercase">Red Flag Questions (click to toggle)</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                 {RED_FLAGS.map((f) => (
-                  <button key={f.key} type="button" onClick={() => setScreeningForm({ ...screeningForm, [f.key]: nextRedFlagValue(screeningForm[f.key]) })}
-                    className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded cursor-pointer transition-colors ${redFlagChipClass(screeningForm[f.key], true)}`}>
-                    <RedFlagIcon value={screeningForm[f.key]} /> {f.label}
+                  <button key={f.key} type="button" onClick={() => setScreeningForm({ ...screeningForm, [f.key]: !screeningForm[f.key] })}
+                    className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded cursor-pointer transition-colors ${screeningForm[f.key] ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : "bg-emerald-500/10 text-emerald-400"}`}>
+                    {screeningForm[f.key] ? <AlertCircle className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />} {f.label}
                   </button>
                 ))}
               </div>
@@ -1319,9 +1293,8 @@ export default function PatientProfilePage() {
             <div className="space-y-2">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                 {RED_FLAGS.map((f) => (
-                  <div key={f.key} className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${redFlagChipClass(data.screening[f.key], false)}`}>
-                    <RedFlagIcon value={data.screening[f.key]} /> {f.label}
-                    {redFlagAnswer(data.screening[f.key]) === "unanswered" && <span className="opacity-70">(not answered)</span>}
+                  <div key={f.key} className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${data.screening[f.key] ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+                    {data.screening[f.key] ? <AlertCircle className="h-2.5 w-2.5" /> : <CheckCircle2 className="h-2.5 w-2.5" />} {f.label}
                   </div>
                 ))}
               </div>

@@ -40,35 +40,6 @@ interface AnalysisResponse {
   analysis: ClinicalAnalysis;
 }
 
-function RedFlagList({ flags }: { flags: ClinicalAnalysis["redFlagAssessment"]["flags"] }) {
-  return (
-    <div className="space-y-3">
-      {flags.map((flag, index) => (
-        <div key={index}>
-          <div className="flex items-start gap-3">
-            <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-              flag.urgencyLevel === 'urgent' ? 'text-red-600' :
-              flag.urgencyLevel === 'high' ? 'text-orange-600' :
-              'text-yellow-600'
-            }`} />
-            <div className="flex-1">
-              <p className="font-semibold text-sm">{flag.flag}</p>
-              <p className="text-sm text-muted-foreground mt-1">{flag.evidence}</p>
-              <div className="mt-2 pt-2 border-t">
-                <p className="text-xs font-medium text-muted-foreground">Suggested Action:</p>
-                <p className="text-sm font-medium mt-1">{flag.suggestedAction}</p>
-              </div>
-            </div>
-            <Badge variant={flag.urgencyLevel === 'urgent' ? 'destructive' : 'secondary'}>
-              {flag.urgencyLevel}
-            </Badge>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function ClinicalReportViewer({ patientId, patientName }: ClinicalReportViewerProps) {
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -187,36 +158,7 @@ export function ClinicalReportViewer({ patientId, patientName }: ClinicalReportV
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* "No red flags detected. Standard care pathway appropriate." is a
-                  care recommendation, so it may only be said of a complete
-                  screen. It used to be shown whenever the flag list was empty,
-                  and an unanswered screen produces an empty list — so a
-                  patient nobody had screened got a green light for standard
-                  care. `unanswered` is absent on analyses stored before the
-                  red flags became tri-state; those read as they always did. */}
-              {clinicalData.redFlagAssessment.status === "incomplete" ? (
-                <>
-                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800">
-                      Red-flag screening incomplete — {(clinicalData.redFlagAssessment.unanswered ?? []).length} question(s) not answered.
-                    </p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      No care pathway can be recommended until these are asked. An unanswered red flag is unknown, not absent.
-                    </p>
-                  </div>
-                </div>
-                {/* An incomplete screen can still hold real "yes" answers — the
-                    possible + incomplete case the precedence produces. They
-                    were hidden behind the amber notice; they are findings. */}
-                {clinicalData.redFlagAssessment.flags.length > 0 && (
-                  <div className="mt-3">
-                    <RedFlagList flags={clinicalData.redFlagAssessment.flags} />
-                  </div>
-                )}
-                </>
-              ) : clinicalData.redFlagAssessment.flags.length === 0 ? (
+              {clinicalData.redFlagAssessment.flags.length === 0 ? (
                 <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   <p className="text-sm font-medium text-green-700">
@@ -224,7 +166,30 @@ export function ClinicalReportViewer({ patientId, patientName }: ClinicalReportV
                   </p>
                 </div>
               ) : (
-                <RedFlagList flags={clinicalData.redFlagAssessment.flags} />
+                <div className="space-y-3">
+                  {clinicalData.redFlagAssessment.flags.map((flag, index) => (
+                    <div>
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                          flag.urgencyLevel === 'urgent' ? 'text-red-600' :
+                          flag.urgencyLevel === 'high' ? 'text-orange-600' :
+                          'text-yellow-600'
+                        }`} />
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm">{flag.flag}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{flag.evidence}</p>
+                          <div className="mt-2 pt-2 border-t">
+                            <p className="text-xs font-medium text-muted-foreground">Suggested Action:</p>
+                            <p className="text-sm font-medium mt-1">{flag.suggestedAction}</p>
+                          </div>
+                        </div>
+                        <Badge variant={flag.urgencyLevel === 'urgent' ? 'destructive' : 'secondary'}>
+                          {flag.urgencyLevel}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

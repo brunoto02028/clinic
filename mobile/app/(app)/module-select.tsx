@@ -14,12 +14,19 @@ const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   "flask-outline": "flask-outline",
   "medkit-outline": "medkit-outline",
   "briefcase-outline": "briefcase-outline",
+  "barbell-outline": "barbell-outline",
+  "body-outline": "body-outline",
+  "nutrition-outline": "nutrition-outline",
 };
 
 const ROUTE_MAP: Record<AppModule["key"], string> = {
   lab: "/(app)/(lab)/(tabs)",
   clinica: "/(app)/(clinica)/(tabs)",
   ba: "/(app)/(ba)/(tabs)",
+  // The studio's modules — the personal-trainer product, untouched here.
+  treino: "/(app)/(treino)",
+  avaliacoes: "/(app)/(avaliacoes)",
+  nutricao: "/(app)/(nutricao)",
 };
 
 export default function ModuleSelect() {
@@ -33,10 +40,11 @@ export default function ModuleSelect() {
     queryFn: fetchModules,
   });
 
-  // The app binary and the API deploy independently. An older API (or a
-  // rollback of it) still answers with `treino`/`avaliacoes`/`nutricao`, whose
-  // route groups this build removed — ROUTE_MAP lookup would be undefined and
-  // router.replace would throw, unprompted, inside the auto-select effect.
+  // The app binary and the API deploy independently, so the server can answer
+  // with a key this build has no route for (a module added later, or an older
+  // build against a newer API). An unknown key would make the ROUTE_MAP lookup
+  // undefined and router.replace throw — unprompted, inside the auto-select
+  // effect. Unknown keys are dropped instead.
   const modules = rawModules?.filter((m) => m.key in ROUTE_MAP);
 
   useEffect(() => {
@@ -47,9 +55,8 @@ export default function ModuleSelect() {
     }
   }, [modules]);
 
-  // A studio student reaches this app with no modules at all: their training,
-  // assessments and nutrition screens were removed here (activity 069) and
-  // the studio gets its own app. Say so instead of showing an empty chooser.
+  // An account with no areas at all — rare, but a blank chooser with zero
+  // cards and no way out was the old behaviour. Say so and offer sign-out.
   const noModules = !!modules && modules.length === 0;
 
   const onSelect = (mod: AppModule) => {
@@ -125,7 +132,7 @@ export default function ModuleSelect() {
               marginTop: 20,
             }}
           >
-            Your studio is getting its own app
+            No areas available yet
           </Text>
           <Text
             style={{
@@ -137,8 +144,8 @@ export default function ModuleSelect() {
               lineHeight: 20,
             }}
           >
-            Your workouts, assessments and meal plans moved out of this app. Use
-            the web for now — your trainer will tell you when the new app is ready.
+            Your account has no areas enabled in this app yet. Please contact
+            your clinic.
           </Text>
 
           {/* Without this the screen is a dead end: module-select is the only

@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { corsJson, corsPreflight } from "@/lib/mobile-cors";
 import { prisma } from "@/lib/db";
 import { getMobileActor } from "@/lib/mobile-actor";
+import { isTrainingEnabled } from "@/lib/workout-access";
 import { isPersonalTenant } from "@/lib/tenant-type";
 
 export function OPTIONS() {
@@ -18,18 +19,19 @@ const MODULE_DEFS = [
   { key: "ba", name: "BA", icon: "briefcase-outline", description: "Business & community" },
 ] as const;
 
-// Training/Assessments/Nutrition are gone from this endpoint on purpose: the
-// mobile app is the BPR patient app now (activity 069) and its (treino),
-// (avaliacoes) and (nutricao) route groups were removed. Keeping them here
-// would hand the app module keys whose routes no longer exist, so a studio
-// student would be navigated into nothing. The studio gets its own app.
+// The strength-training module — shown only when the tenant has TRAINING on
+// (default-on for a personal-trainer studio). Appended separately from
+// MODULE_DEFS so it never rides the "admins see everything" path for a clinic.
+const TREINO_DEF = { key: "treino", name: "Training", icon: "barbell-outline", description: "Workouts & logging" };
+const AVALIACOES_DEF = { key: "avaliacoes", name: "Assessments", icon: "body-outline", description: "Measurements & progress" };
+const NUTRICAO_DEF = { key: "nutricao", name: "Nutrition", icon: "nutrition-outline", description: "Meal plans & logging" };
 
 // Maps our mobile module keys to the ClinicModule enum values that gate them.
-// moduleOverrides is tri-state across this codebase, not a boolean:
-// lib/patient-access.ts reads true|"unlocked" as granted, false|"locked" as
-// denied and "hidden" as hidden. Reading it as a boolean turned "locked" and
-// "hidden" into grants, since both are truthy strings. Returns undefined when
-// there is no override for the key, so the caller falls through to the plan.
+// moduleOverrides is tri-state across this codebase, not a boolean: the web
+// (lib/patient-access.ts) reads true|"unlocked" as granted, false|"locked" as
+// denied and "hidden" as hidden. Read as a boolean, "locked" and "hidden" —
+// both truthy strings — granted the module here, so the app showed patients
+// areas the web hides from them. Returns undefined when there is no override.
 function overrideGrants(value: unknown): boolean | undefined {
   if (value === true || value === "unlocked") return true;
   if (value === false || value === "locked" || value === "hidden") return false;
@@ -57,6 +59,11 @@ export async function GET(request: NextRequest) {
       select: { moduleOverrides: true, fullAccessOverride: true },
     });
 
+    // Training is default-on for a personal-trainer tenant (or explicitly enabled).
+    const trainingOn = actor.clinicId ? await isTrainingEnabled(actor.clinicId) : false;
+    const withTraining = <T,>(mods: T[]): (T | typeof TREINO_DEF | typeof AVALIACOES_DEF | typeof NUTRICAO_DEF)[] =>
+      trainingOn ? [...mods, TREINO_DEF, AVALIACOES_DEF, NUTRICAO_DEF] : mods;
+
     // A personal-trainer studio has no clinic modules on mobile: everyone in it
     // (students and the trainer) gets only Training + Assessments — never
     // Lab/Clinic/BA — mirroring the web separation. Checked before the
@@ -65,21 +72,21 @@ export async function GET(request: NextRequest) {
       ? await prisma.clinic.findUnique({ where: { id: actor.clinicId }, select: { type: true } })
       : null;
     if (isPersonalTenant(clinic?.type)) {
-      return corsJson([]);
+      return corsJson(trainingOn ? [TREINO_DEF, AVALIACOES_DEF, NUTRICAO_DEF] : []);
     }
 
-    // Every staff role sees everything. THERAPIST belongs here: tenant-access's
-    // STAFF_ROLES includes it and the mobile login does not filter by role, so
-    // therapists do sign in here. Leaving it out of this branch would have sent
-    // a therapist down the patient path and — now that the "show everything"
-    // fallback is gone — handed them the clinic alone.
+    // Admins and full-access users see everything (plus Training when on).
+    // THERAPIST is staff too (tenant-access STAFF_ROLES) and signs in here.
+    // Today therapists get every module through the "show everything"
+    // fallback below; that fallback is what this change narrows for patients,
+    // so therapists are named here to keep exactly what they have now.
     if (
       user?.fullAccessOverride ||
       actor.role === "SUPERADMIN" ||
       actor.role === "ADMIN" ||
       actor.role === "THERAPIST"
     ) {
-      return corsJson([...MODULE_DEFS]);
+      return corsJson(withTraining([...MODULE_DEFS]));
     }
 
     const overrides = (user?.moduleOverrides as Record<string, boolean> | null) || {};
@@ -102,29 +109,23 @@ export async function GET(request: NextRequest) {
       return requiredModules.some((m) => clinicModules.includes(m));
     });
 
-    // The clinic itself is not something a patient can lose by gaining something
-    // else. Filtering alone made that possible: ClinicModuleAccess gates `lab`
-    // on DIAGNOSTICS and `ba` on ORDERS, but nothing grants `clinica`, so the
-    // moment a clinic enabled DIAGNOSTICS every one of its patients got `[lab]`
-    // and lost the clinical area. BPR's own clinics have no ClinicModuleAccess
-    // rows at all, so switching the lab on would have done exactly that to
-    // every patient at once. An explicit mod_clinica:false still removes it —
-    // but only alongside another grant, since the empty-result fallback below
-    // puts the clinic back rather than hand a patient an app with nothing in
-    // it. Denying a clinic patient their own clinic is not a real case; this
-    // note exists so the next reader does not trust the override blindly.
+    // The clinic itself is not something a patient loses by gaining something
+    // else. ClinicModuleAccess gates `lab` on DIAGNOSTICS and `ba` on ORDERS,
+    // but nothing grants `clinica` — so enabling DIAGNOSTICS would have given
+    // every patient `[lab]` and taken the clinical area away. BPR's own
+    // clinics have no ClinicModuleAccess rows, so switching the lab on would
+    // have done that to all of them at once. An explicit override removes it.
     const keys = new Set(available.map((m) => m.key));
     if (overrideGrants(overrides["mod_clinica"]) !== false) {
       keys.add("clinica");
     }
-
-    // Rebuilt from MODULE_DEFS so the order stays stable regardless of insert.
     const result = MODULE_DEFS.filter((m) => keys.has(m.key));
 
-    // Fail closed, not open. This used to return every module "for new users",
-    // which handed BA and Lab to any patient whose access was never configured
-    // — the common case. Every staff role returned above.
-    return corsJson(result.length > 0 ? result : [CLINICA_DEF]);
+    // Fail closed. This returned every module "for new users", which handed
+    // BA and Lab to any clinic patient whose access was never configured —
+    // every BPR patient, since those rows do not exist. A patient gets the
+    // clinic. Training is still appended when the clinic has it on, as before.
+    return corsJson(withTraining(result.length > 0 ? result : [CLINICA_DEF]));
   } catch (error: any) {
     console.error("[mobile/modules] error:", error?.message);
     return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });

@@ -96,3 +96,21 @@ O `screening-config` tem `enabled` por pergunta e por seção. Por isso "complet
 - [x] Envio com red flag ativa em aberto recusado **no servidor**
 - [ ] Re-QA
 - [ ] Levantamento de dados já afetados em produção — **inviável**: a origem não é rastreável
+
+
+---
+
+## Reversão por escopo (22/09/2026)
+
+Bruno: *"não quero que você altere nada da versão web"*, *"na parte do personal e aluno não falei para mexer"* e *"não posso perder as coisas que já estão no ar"*.
+
+A opção A mexia na web por natureza — formulário do paciente, admin, schema, lógica clínica compartilhada. **Tudo isso foi revertido.** Fica só o que é do app:
+
+- etapas de **red flags** e **consentimento** no wizard do app, com o texto do `screening-config` da clínica — é o app replicando o que a web já pergunta;
+- fim do `consentGiven: true` fixo; o consentimento sai do checkbox;
+- `smoker` enviado como booleano;
+- `consent.tsx` lendo o estado real;
+- `fetchScreening` sem engolir erro, e wizard que não abre quando o load falha;
+- cache do React Query limpo em toda troca de identidade (`mobile/src/lib/query-client.ts`) — o achado do code review de dados de saúde gravados na conta de outra pessoa, que é 100% do app.
+
+Contra o backend original, o app agora se comporta **igual à web** na triagem. O defeito de schema (não perguntado = "Não") é compartilhado e fica para uma decisão sobre a web.

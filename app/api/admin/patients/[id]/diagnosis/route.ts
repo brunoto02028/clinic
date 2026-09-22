@@ -1,5 +1,3 @@
-import { unansweredRedFlags } from "@/lib/red-flags";
-import { getEnabledRedFlagKeys } from "@/lib/red-flags-config";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
@@ -197,14 +195,7 @@ export async function POST(
       if (screening.severeHeadache) redFlags.push("Severe headache");
       if (screening.dizzinessBalanceIssues) redFlags.push("Dizziness/balance issues");
 
-      // "None" asserts absence, and the model takes it as fact. With nothing
-      // asked, that told the diagnosis AI the patient had been screened and was
-      // clear. The prompt now separates what was reported from what is unknown.
-      const unanswered = unansweredRedFlags(screening as any, await getEnabledRedFlagKeys());
-      patientContext += `Red flags reported: ${redFlags.length > 0 ? redFlags.join(", ") : "none reported"}\n`;
-      if (unanswered.length > 0) {
-        patientContext += `Red flags NOT ASKED (unknown, not absent - do not assume these are negative): ${unanswered.join(", ")}\n`;
-      }
+      patientContext += `Red flags: ${redFlags.length > 0 ? redFlags.join(", ") : "None"}\n`;
       if (screening.currentMedications) patientContext += `Medications: ${screening.currentMedications}\n`;
       if (screening.allergies) patientContext += `Allergies: ${screening.allergies}\n`;
       if (screening.surgicalHistory) patientContext += `Surgical history: ${screening.surgicalHistory}\n`;

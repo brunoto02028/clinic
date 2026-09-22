@@ -21,7 +21,11 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   // Quizzes is deliberately absent: the list screen exists but its cards have
   // no onPress and there is no detail screen, so the entry led to a list where
   // nothing opens. It returns with the quiz screen (T-4 family).
-  { title: "Wearables", icon: "watch-outline", href: "/(app)/(clinica)/wearables" },
+  // Wearables is absent for the same reason as Quizzes: the screen exists but
+  // /api/wearables is not on the middleware's mobile prefix list, so its
+  // requests are redirected to the web login and it can never show a
+  // connection. Enabling it is one line in middleware.ts — a backend change,
+  // held back so this activity does not touch the web.
   { title: "How it works", icon: "book-outline", href: "/(app)/(clinica)/guide" },
   { title: "Terms & consent", icon: "shield-checkmark-outline", href: "/(app)/(clinica)/consent" },
 ];
