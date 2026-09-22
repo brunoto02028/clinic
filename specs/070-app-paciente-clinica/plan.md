@@ -91,6 +91,8 @@ Aplicado em retrospecto: a reimplementação da T-12 (schema tri-estado, formul�
 | `app/api/appointments/route.ts` | aceita o login do app (`getActor`); sem isso o app **não agenda**. Cookie da web segue aceito |
 | `app/api/mobile/modules/route.ts` | rota exclusiva do app; paciente da clínica deixa de ver BA/Lab. **O ramo do personal é byte a byte igual ao `main`** |
 
+Além delas, o `.gitignore` difere do `main` só por acrescentar `.qa-tmp/` (scaffolding dos agentes de QA) — não é código.
+
 `prisma/schema.prisma` é idêntico ao `main`: **nenhuma migração** no deploy.
 
 **Consequência aceita:** na triagem, o app se comporta como a web — inclusive no defeito de gravar red flag não perguntada como "Não" (colunas `Boolean @default(false)`). Corrigir isso é decisão sobre a **web**, fora desta atividade. O trabalho feito e revertido está no histórico — commits `d95490f5` (schema tri-estado) e `21fa8926` (correções do review) e pode ser reaproveitado se essa decisão vier.
@@ -99,7 +101,7 @@ Aplicado em retrospecto: a reimplementação da T-12 (schema tri-estado, formul�
 | T-N | Nome | Status |
 |-----|------|--------|
 | T-1 | Inventário das 42 páginas: paciente × aluno × staff | concluido — **coluna de cobertura corrigida pela T-11** |
-| T-2 | Gating do paciente (módulos do aluno **restaurados** por escopo) | concluído; revisto em 22/09 — aguarda re-QA |
+| T-2 | Gating do paciente (módulos do aluno **restaurados** por escopo) | concluido (QA final + QA do review + code review) |
 | T-3 | Renomear o app para BPR | concluido (QA aprovado) |
 | T-4 | Fase 2A — canal com o terapeuta e prontuario | pendente |
 | T-5 | Fase 2B — Jornada BPR | pendente |
@@ -109,11 +111,11 @@ Aplicado em retrospecto: a reimplementação da T-12 (schema tri-estado, formul�
 | T-9 | QA da Fase 1 em producao (pos-deploy) | pendente |
 | T-10 | QA das Fases 2 e 3 | pendente |
 | T-11 | Logo da BPR no app | concluido (QA aprovado com ressalvas; 3 defeitos corrigidos) |
-| T-12 | Seguranca clinica: triagem e consentimento | parte do app mantida; schema/web revertidos por escopo — aguarda re-QA |
-| T-13 | Navegacao: dar entrada as telas orfas | implementado (aguardando QA) |
-| T-14 | Dados falsos e endpoints quebrados | implementado (aguardando QA) |
-| T-15 | Agendamento: fuso horario e dados de outro tenant | implementado (aguardando QA) |
-| T-16 | Telas parciais e idioma | implementado, exceto idioma (aguarda decisao) |
+| T-12 | Seguranca clinica: triagem e consentimento | concluido (QA final + QA do review + code review) |
+| T-13 | Navegacao: dar entrada as telas orfas | concluido (QA final + QA do review + code review) |
+| T-14 | Dados falsos e endpoints quebrados | concluido (QA final + QA do review + code review) |
+| T-15 | Agendamento: fuso horario e dados de outro tenant | concluido (QA final + QA do review + code review) |
+| T-16 | Telas parciais e idioma | concluido, exceto estrategia de idioma (aguarda decisao) |
 
 ## Decisao sobre `exercises` (22/09/2026)
 A atividade 043 aposentou a pagina separada de exercicios na web — `mod_exercises` aponta para `/dashboard/treatment`. O app ficou atras, com aba propria. **O app segue a web:** a aba continua (acesso em um toque e bom no mobile), mas passa a abrir o plano de tratamento unificado. Manter duas telas recriaria a duplicacao que a 043 removeu de proposito. Vira tarefa propria nas fases de porte.
