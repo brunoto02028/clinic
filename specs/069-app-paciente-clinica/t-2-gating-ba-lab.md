@@ -1,6 +1,6 @@
 # T-2: Gating do paciente + remoção dos módulos do aluno
 
-**Status:** pendente
+**Status:** concluido (QA aprovado 2a rodada + code review aplicado)
 **Depende de:** nenhuma
 
 ## Objetivo

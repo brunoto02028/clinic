@@ -14,29 +14,30 @@ const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   "flask-outline": "flask-outline",
   "medkit-outline": "medkit-outline",
   "briefcase-outline": "briefcase-outline",
-  "barbell-outline": "barbell-outline",
-  "body-outline": "body-outline",
-  "nutrition-outline": "nutrition-outline",
 };
 
-const ROUTE_MAP: Record<string, string> = {
+const ROUTE_MAP: Record<AppModule["key"], string> = {
   lab: "/(app)/(lab)/(tabs)",
   clinica: "/(app)/(clinica)/(tabs)",
   ba: "/(app)/(ba)/(tabs)",
-  treino: "/(app)/(treino)",
-  avaliacoes: "/(app)/(avaliacoes)",
-  nutricao: "/(app)/(nutricao)",
 };
 
 export default function ModuleSelect() {
   const t = useTheme();
   const setActiveModule = useModule((s) => s.setActiveModule);
   const user = useAuth((s) => s.user);
+  const logout = useAuth((s) => s.logout);
 
-  const { data: modules, isLoading } = useQuery({
+  const { data: rawModules, isLoading, isError, refetch } = useQuery({
     queryKey: ["modules"],
     queryFn: fetchModules,
   });
+
+  // The app binary and the API deploy independently. An older API (or a
+  // rollback of it) still answers with `treino`/`avaliacoes`/`nutricao`, whose
+  // route groups this build removed — ROUTE_MAP lookup would be undefined and
+  // router.replace would throw, unprompted, inside the auto-select effect.
+  const modules = rawModules?.filter((m) => m.key in ROUTE_MAP);
 
   useEffect(() => {
     if (modules && modules.length === 1) {
@@ -46,10 +47,123 @@ export default function ModuleSelect() {
     }
   }, [modules]);
 
+  // A studio student reaches this app with no modules at all: their training,
+  // assessments and nutrition screens were removed here (activity 069) and
+  // the studio gets its own app. Say so instead of showing an empty chooser.
+  const noModules = !!modules && modules.length === 0;
+
   const onSelect = (mod: AppModule) => {
     setActiveModule(mod.key);
     router.replace(ROUTE_MAP[mod.key] as any);
   };
+
+  // A failed lookup is not an empty entitlement list: without this the screen
+  // fell through to a chooser with zero cards and no way forward. Only when
+  // there is nothing cached, though — TanStack keeps `data` through a failed
+  // refetch, and blocking on that would strand a user who has a perfectly
+  // good answer in hand.
+  if (isError && !modules) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
+        <View style={{ flex: 1, paddingHorizontal: 28, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="cloud-offline-outline" size={40} color="#8A8F9A" />
+          <Text
+            style={{
+              fontFamily: "Sora_600SemiBold",
+              fontSize: 18,
+              color: "#FFFFFF",
+              textAlign: "center",
+              marginTop: 20,
+            }}
+          >
+            We could not load your areas
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Inter_400Regular",
+              fontSize: 13,
+              color: "#8A8F9A",
+              textAlign: "center",
+              marginTop: 10,
+              lineHeight: 20,
+            }}
+          >
+            Check your connection and try again.
+          </Text>
+          <Pressable
+            onPress={() => refetch()}
+            style={({ pressed }) => ({
+              marginTop: 24,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 12,
+              backgroundColor: pressed ? "#2A2E38" : "#262A33",
+              borderWidth: 1,
+              borderColor: "#33373F",
+            })}
+          >
+            <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: "#FFFFFF" }}>
+              Try again
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (noModules) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#20242D" }}>
+        <View style={{ flex: 1, paddingHorizontal: 28, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="phone-portrait-outline" size={40} color="#8A8F9A" />
+          <Text
+            style={{
+              fontFamily: "Sora_600SemiBold",
+              fontSize: 18,
+              color: "#FFFFFF",
+              textAlign: "center",
+              marginTop: 20,
+            }}
+          >
+            Your studio is getting its own app
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Inter_400Regular",
+              fontSize: 13,
+              color: "#8A8F9A",
+              textAlign: "center",
+              marginTop: 10,
+              lineHeight: 20,
+            }}
+          >
+            Your workouts, assessments and meal plans moved out of this app. Use
+            the web for now — your trainer will tell you when the new app is ready.
+          </Text>
+
+          {/* Without this the screen is a dead end: module-select is the only
+              route a user with no modules can reach, so they could never sign
+              out — not even to let someone else use the phone. */}
+          <Pressable
+            onPress={() => logout()}
+            style={({ pressed }) => ({
+              marginTop: 28,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 12,
+              backgroundColor: pressed ? "#2A2E38" : "#262A33",
+              borderWidth: 1,
+              borderColor: "#33373F",
+            })}
+          >
+            <Text style={{ fontFamily: "Sora_600SemiBold", fontSize: 14, color: "#FFFFFF" }}>
+              Sign out
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (isLoading || (modules && modules.length === 1)) {
     return (

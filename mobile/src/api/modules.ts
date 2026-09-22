@@ -1,7 +1,7 @@
 import { apiFetch } from "./client";
 
 export interface AppModule {
-  key: "lab" | "clinica" | "ba" | "treino" | "avaliacoes";
+  key: "lab" | "clinica" | "ba";
   name: string;
   icon: string;
   description: string;

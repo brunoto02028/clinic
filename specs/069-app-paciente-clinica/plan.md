@@ -71,7 +71,7 @@ Já no app: home, appointments (+detalhe, +book), clinical-notes, consent, docum
 | T-N | Nome | Status |
 |-----|------|--------|
 | T-1 | Inventário das 42 páginas: paciente × aluno × staff | concluido (ver qa/report-t-1.md) |
-| T-2 | Gating + remoção dos módulos do aluno | pendente |
+| T-2 | Gating + remoção dos módulos do aluno | concluido (QA aprovado + review aplicado) |
 | T-3 | Renomear o app para BPR | pendente |
 | T-4 | Porte: plano e jornada | pendente |
 | T-5 | Porte: registros de saúde | pendente |
