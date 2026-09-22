@@ -1,7 +1,7 @@
-# T-11: QA das Fases 2 e 3
+# T-10: QA das Fases 2 e 3
 
 **Status:** pendente
-**Depende de:** T-4, T-5, T-6, T-7, T-8, T-9
+**Depende de:** T-4 a T-8
 
 ## Objetivo
 Verificar cada tela portada contra a versão web equivalente, para o mesmo paciente.
@@ -15,10 +15,10 @@ O critério de paridade é **dado**, não pixel: a tela do app mostra a mesma in
 3. Verificar isolamento: nenhuma tela devolve dado de outro paciente, de aluno de estúdio ou de outro tenant.
 4. Verificar estados de carregando, vazio e erro (sem rede, token expirado).
 5. Verificar PT e EN onde a web é bilíngue.
-6. Gerar `qa/report-t-11.md` e limpar os dados de teste.
+6. Gerar `qa/report-t-10.md` e limpar os dados de teste.
 
 ## Arquivos afetados
-- `specs/069-app-paciente-clinica/qa/report-t-11.md` (novo)
+- `specs/069-app-paciente-clinica/qa/report-t-10.md` (novo)
 - `specs/069-app-paciente-clinica/qa/screenshots/`
 
 ## Critérios de aceite

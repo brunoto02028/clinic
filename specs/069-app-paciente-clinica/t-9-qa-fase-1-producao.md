@@ -1,7 +1,7 @@
-# T-10: QA da Fase 1
+# T-9: QA da Fase 1 em producao
 
 **Status:** pendente
-**Depende de:** T-2, T-3
+**Depende de:** T-2, T-3, e o deploy
 
 ## Objetivo
 Provar que o paciente de clínica não alcança BA/Lab por nenhum caminho e que a identidade do app ficou consistente.
@@ -17,7 +17,7 @@ Fase 1 é a parte de segurança/visibilidade da atividade. Vale tanto a verifica
 5. Gerar `qa/report-t-10.md` com evidências e limpar os dados de teste.
 
 ## Arquivos afetados
-- `specs/069-app-paciente-clinica/qa/report-t-10.md` (novo)
+- `specs/069-app-paciente-clinica/qa/report-t-9.md` (novo)
 - `specs/069-app-paciente-clinica/qa/screenshots/`
 
 ## Critérios de aceite

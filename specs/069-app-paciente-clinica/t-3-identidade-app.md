@@ -1,6 +1,6 @@
 # T-3: Renomear o app para BPR
 
-**Status:** pendente
+**Status:** concluido (QA aprovado, ver qa/report-t-3.md)
 **Depende de:** nenhuma
 
 ## Objetivo

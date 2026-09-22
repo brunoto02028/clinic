@@ -7,6 +7,7 @@ export { Spinner } from "./Spinner";
 export { Pill } from "./Pill";
 export { Avatar } from "./Avatar";
 export { TriBar } from "./TriBar";
+export { Logo } from "./Logo";
 export { Chip } from "./Chip";
 export { ListItem } from "./ListItem";
 export { SegmentedControl } from "./SegmentedControl";

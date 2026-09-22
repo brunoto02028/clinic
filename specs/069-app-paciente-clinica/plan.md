@@ -72,15 +72,15 @@ Já no app: home, appointments (+detalhe, +book), clinical-notes, consent, docum
 |-----|------|--------|
 | T-1 | Inventário das 42 páginas: paciente × aluno × staff | concluido (ver qa/report-t-1.md) |
 | T-2 | Gating + remoção dos módulos do aluno | concluido (QA aprovado + review aplicado) |
-| T-3 | Renomear o app para BPR | pendente |
-| T-4 | Porte: plano e jornada | pendente |
-| T-5 | Porte: registros de saúde | pendente |
-| T-6 | Porte: perguntas e quizzes | pendente |
-| T-7 | Porte: financeiro e assinatura | pendente |
-| T-8 | Porte: engajamento | pendente |
-| T-9 | Porte: extras | pendente |
-| T-10 | QA da Fase 1 | pendente |
-| T-11 | QA das Fases 2 e 3 | pendente |
+| T-3 | Renomear o app para BPR | concluido (QA aprovado) |
+| T-4 | Fase 2A — canal com o terapeuta e prontuario | pendente |
+| T-5 | Fase 2B — Jornada BPR | pendente |
+| T-6 | Fase 3A — plano e assinatura | pendente |
+| T-7 | Fase 3B — acompanhamento e ferramentas | pendente |
+| T-8 | Unificar exercicios no plano de tratamento (divergencia ativ. 043) | pendente |
+| T-9 | QA da Fase 1 em producao (pos-deploy) | pendente |
+| T-10 | QA das Fases 2 e 3 | pendente |
+| T-11 | Logo da BPR no app | concluido (aguardando QA) |
 
 ## Decisao sobre `exercises` (22/09/2026)
 A atividade 043 aposentou a pagina separada de exercicios na web — `mod_exercises` aponta para `/dashboard/treatment`. O app ficou atras, com aba propria. **O app segue a web:** a aba continua (acesso em um toque e bom no mobile), mas passa a abrir o plano de tratamento unificado. Manter duas telas recriaria a duplicacao que a 043 removeu de proposito. Vira tarefa propria nas fases de porte.

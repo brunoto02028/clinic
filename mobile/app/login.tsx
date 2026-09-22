@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View, KeyboardAvoidingView, Platform, Pressable } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Screen, Text, Input, Button } from "@/components/ui";
+import { Screen, Text, Input, Button, Logo } from "@/components/ui";
 import { useAuth } from "@/store/auth";
 import { AuthError } from "@/api/auth";
 import { useTheme } from "@/theme/useTheme";
@@ -37,6 +37,8 @@ export default function Login() {
         style={{ flex: 1 }}
       >
         <View style={{ flex: 1, justifyContent: "center", gap: 32 }}>
+          <Logo tone="ink" height={56} style={{ marginBottom: 4 }} />
+
           {/* Header */}
           <View style={{ gap: 6 }}>
             <Text variant="hero">Welcome back</Text>
