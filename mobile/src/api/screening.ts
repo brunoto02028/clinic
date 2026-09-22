@@ -33,12 +33,12 @@ export interface ScreeningData {
 }
 
 export async function fetchScreening(): Promise<ScreeningData | null> {
-  try {
-    const res = await apiFetch<{ screening: ScreeningData }>("/api/medical-screening");
-    return res.screening ?? null;
-  } catch {
-    return null;
-  }
+  // No catch — the last of five clients that swallowed failures into "empty".
+  // Here it was the most dangerous: a failed load returned null, the wizard
+  // opened blank, and its autosave then wrote that blank form over whatever
+  // the patient had already entered.
+  const res = await apiFetch<{ screening: ScreeningData }>("/api/medical-screening");
+  return res.screening ?? null;
 }
 
 export async function saveScreening(data: Partial<ScreeningData>, autosave = false): Promise<ScreeningData> {

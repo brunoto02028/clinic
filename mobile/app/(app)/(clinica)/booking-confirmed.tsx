@@ -1,4 +1,6 @@
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { fetchScreening } from "@/api/screening";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button, Pill } from "@/components/ui";
@@ -23,6 +25,7 @@ const DEFAULTS = {
 
 export default function BookingConfirmed() {
   const t = useTheme();
+  const { data: screening } = useQuery({ queryKey: ["screening"], queryFn: fetchScreening });
   const params = useLocalSearchParams<{
     serviceName?: string;
     dateTime?: string;
@@ -76,34 +79,44 @@ export default function BookingConfirmed() {
           {address}
         </Text>
 
-        {/* Triage card */}
-        <Card style={{ marginTop: 24, width: "100%" }}>
-          <View style={styles.cardRow}>
-            <View
-              style={[
-                styles.smallIcon,
-                { backgroundColor: t.colors.healthSoft },
-              ]}
-            >
-              <Ionicons
-                name="clipboard"
-                size={18}
-                color={t.colors.health}
-              />
+        {/* The triage card now reflects the patient's real screening. It used
+            to say "Your triage is done · Sent" to everyone — including patients
+            with no screening at all — which is the same invented-data problem
+            the rest of this screen had. A patient who has not done it is told
+            so, with the way to do it; screening is required before the visit. */}
+        {screening?.isSubmitted ? (
+          <Card style={{ marginTop: 24, width: "100%" }}>
+            <View style={styles.cardRow}>
+              <View style={[styles.smallIcon, { backgroundColor: t.colors.healthSoft }]}>
+                <Ionicons name="clipboard" size={18} color={t.colors.health} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="label">Sua avaliação foi enviada</Text>
+                <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 1 }}>
+                  Seu terapeuta vai revisar antes da consulta
+                </Text>
+              </View>
+              <Pill label="Enviada" variant="ok" />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text variant="label">Your triage is done</Text>
-              <Text
-                variant="caption"
-                color={t.colors.textMuted}
-                style={{ marginTop: 1 }}
-              >
-                Your therapist will review it before you arrive
-              </Text>
-            </View>
-            <Pill label="Sent" variant="ok" />
-          </View>
-        </Card>
+          </Card>
+        ) : screening !== undefined ? (
+          <Pressable onPress={() => router.push("/(app)/(clinica)/screening")} style={{ width: "100%" }}>
+            <Card style={{ marginTop: 24, width: "100%" }}>
+              <View style={styles.cardRow}>
+                <View style={[styles.smallIcon, { backgroundColor: t.colors.warnSoft }]}>
+                  <Ionicons name="clipboard-outline" size={18} color={t.colors.warn} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="label">Falta a sua avaliação</Text>
+                  <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 1 }}>
+                    Preencha antes da consulta
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
+              </View>
+            </Card>
+          </Pressable>
+        ) : null}
 
         {/* What to bring card */}
         <Card style={{ width: "100%" }}>

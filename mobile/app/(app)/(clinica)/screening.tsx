@@ -88,7 +88,7 @@ export default function Screening() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<ScreeningData>({});
 
-  const { data: existing, isLoading } = useQuery({
+  const { data: existing, isLoading, isError: loadError, refetch } = useQuery({
     queryKey: ["screening"],
     queryFn: fetchScreening,
   });
@@ -126,6 +126,24 @@ export default function Screening() {
   const progress = ((step + 1) / STEPS.length) * 100;
 
   if (isLoading) return <Screen><Spinner center /></Screen>;
+
+  // Never open the wizard on a failed load. It autosaves the whole form on
+  // every step, so a blank wizard shown in place of the patient's saved
+  // answers would write that blank over them one step later.
+  if (loadError) {
+    return (
+      <Screen>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 }}>
+          <Ionicons name="cloud-offline-outline" size={32} color={t.colors.textMuted} />
+          <Text variant="body" style={{ textAlign: "center" }}>Não foi possível carregar sua avaliação.</Text>
+          <Text variant="caption" color={t.colors.textSecondary} style={{ textAlign: "center" }}>
+            Abrir agora poderia apagar o que você já respondeu.
+          </Text>
+          <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen scroll testID="screening-screen">
