@@ -6,18 +6,13 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointments } from "@/api/appointments";
 import { formatDateTime } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
+import { statusStyle } from "@/lib/appointment-status";
 
-function getStatusColors(t: ReturnType<typeof useTheme>): Record<string, { bg: string; text: string; label: string }> {
-  return {
-    SCHEDULED: { bg: t.colors.workSoft, text: t.colors.work, label: "Agendado" },
-    CONFIRMED: { bg: t.colors.okSoft, text: t.colors.ok, label: "Confirmado" },
-    COMPLETED: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Concluído" },
-    CANCELLED: { bg: t.colors.badSoft, text: t.colors.bad, label: "Cancelado" },
-    NO_SHOW: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Faltou" },
-  };
-}
 
-export default function Appointments() {
+function AppointmentsScreen() {
+  const lang = useLang();
   const t = useTheme();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["appointments"],
@@ -31,13 +26,13 @@ export default function Appointments() {
   return (
     <Screen testID="appointments-screen">
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <Text variant="title">Agenda</Text>
+        <Text variant="title">{tr(lang, { en: "Appointments", pt: "Consultas" })}</Text>
         <Pressable
           onPress={() => router.push("/book-appointment")}
           style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: t.colors.healthSoft, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: t.colors.health }}
         >
           <Ionicons name="add" size={16} color={t.colors.health} />
-          <Text variant="caption" color={t.colors.health} style={{ fontWeight: "600" }}>Agendar</Text>
+          <Text variant="caption" color={t.colors.health} style={{ fontWeight: "600" }}>{tr(lang, { en: "Book", pt: "Agendar" })}</Text>
         </Pressable>
       </View>
 
@@ -47,13 +42,13 @@ export default function Appointments() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-            <Text color={t.colors.danger}>Não foi possível carregar a agenda.</Text>
+            <Text color={t.colors.danger}>{tr(lang, { en: "We could not load your appointments.", pt: "Não foi possível carregar a agenda." })}</Text>
           </View>
         </Card>
       ) : sorted.length === 0 ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Ionicons name="calendar-outline" size={48} color={t.colors.textMuted} />
-          <Text muted testID="appointments-empty">Você não tem agendamentos.</Text>
+          <Text muted testID="appointments-empty">{tr(lang, { en: "You have no appointments.", pt: "Você não tem agendamentos." })}</Text>
         </View>
       ) : (
         <FlatList
@@ -64,8 +59,7 @@ export default function Appointments() {
           contentContainerStyle={{ gap: 12 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const statusMap = getStatusColors(t);
-            const status = statusMap[item.status] ?? statusMap.SCHEDULED;
+            const status = statusStyle(t, item.status, lang);
             return (
               <Pressable
                 testID={`appt-${item.id}`}
@@ -86,7 +80,7 @@ export default function Appointments() {
                     <View style={{ flex: 1 }}>
                       <Text variant="label" style={{ fontWeight: "600" }}>{item.treatmentType}</Text>
                       <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                        {formatDateTime(item.dateTime)}
+                        {formatDateTime(item.dateTime, lang)}
                       </Text>
                     </View>
                     <View style={{
@@ -115,5 +109,17 @@ export default function Appointments() {
         />
       )}
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_appointments` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function Appointments() {
+  return (
+    <PlanGate module="mod_appointments">
+      <AppointmentsScreen />
+    </PlanGate>
   );
 }

@@ -15,11 +15,11 @@ export interface Notification {
 }
 
 export async function fetchNotifications(): Promise<{ notifications: Notification[]; unreadCount: number }> {
-  try {
-    return await apiFetch<{ notifications: Notification[]; unreadCount: number }>("/api/patient/notifications");
-  } catch {
-    return { notifications: [], unreadCount: 0 };
-  }
+  // No catch. Swallowing the failure into an empty list made the query
+  // incapable of erroring, so a patient whose notifications failed to load
+  // read "All caught up — nothing pending". That is a statement about their
+  // care, not a loading state, and it was false.
+  return apiFetch<{ notifications: Notification[]; unreadCount: number }>("/api/patient/notifications");
 }
 
 export async function fetchAICoachTip(): Promise<{ tip: string; title: string } | null> {

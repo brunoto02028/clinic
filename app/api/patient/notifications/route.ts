@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getEffectiveUser } from "@/lib/get-effective-user";
 import { patientPrescriptionWhere } from "@/lib/protocol-exercise-gating";
 import { getExpectedToday } from "@/lib/patient-daily-adherence";
+import { computePatientAccess, PATIENT_ACCESS_SELECT } from "@/lib/patient-access";
 
 export async function GET(request: NextRequest) {
   try {
@@ -184,7 +185,10 @@ export async function GET(request: NextRequest) {
           title: n === 1 ? "New exercise to start" : `${n} new exercises to start`,
           titlePt: n === 1 ? "Novo exercício para começar" : `${n} novos exercícios para começar`,
           message: "Your therapist prescribed these for you — each one has a video.",
-          messagePt: "O seu fisioterapeuta prescreveu estes para si — cada um tem vídeo.",
+          // Was "O seu fisioterapeuta prescreveu estes para si" — European
+          // Portuguese, and "fisioterapeuta" where the product says
+          // "terapeuta" to patients.
+          messagePt: "Seu terapeuta prescreveu estes para você — cada um tem vídeo.",
           link: "/dashboard/treatment",
           icon: "Dumbbell",
           color: "emerald",
@@ -216,6 +220,37 @@ export async function GET(request: NextRequest) {
         });
       }
     } catch {}
+
+    // Drop anything the patient's plan does not include. The list was built
+    // from the data regardless of access, so a patient whose exercises module
+    // was switched off still read "4 new exercises to start" — while the home
+    // screen, which does check, said "Not included in your plan". One of the
+    // two had to be wrong; it was this one.
+    const MODULE_FOR_TYPE: Record<string, string> = {
+      exercise: "mod_exercises",
+      adherence: "mod_exercises",
+      appointment: "mod_appointments",
+      screening: "mod_screening",
+      task: "mod_tasks",
+    };
+    try {
+      const me = await (prisma as any).user.findUnique({
+        where: { id: userId },
+        select: PATIENT_ACCESS_SELECT,
+      });
+      if (me) {
+        const access = computePatientAccess({ ...me, role: effective.role });
+        const granted = new Set(access.modules);
+        for (let i = notifications.length - 1; i >= 0; i--) {
+          const key = MODULE_FOR_TYPE[notifications[i].type];
+          if (key && !granted.has(key)) notifications.splice(i, 1);
+        }
+      }
+    } catch (e) {
+      // Access is a filter, not the source: if it cannot be read, show the
+      // notifications rather than silently emptying the list.
+      console.error("[patient/notifications] access filter failed:", e);
+    }
 
     // Sort: urgent first, then by date
     notifications.sort((a, b) => {

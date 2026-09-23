@@ -9,14 +9,29 @@ export interface EduContent {
   [key: string]: any;
 }
 
+export interface EduProgress {
+  contentId: string;
+  completedAt?: string | null;
+  progressPercent?: number | null;
+  [key: string]: any;
+}
+
 export interface EducationData {
   assignments: { id: string; content: EduContent }[];
   published: EduContent[];
+  /** Keyed by contentId. The endpoint has always returned this; the client
+   *  dropped it, so the "completed" badge could never appear and finishing a
+   *  piece changed nothing on screen. */
+  progress: Record<string, EduProgress>;
 }
 
 export async function fetchEducation(): Promise<EducationData> {
   const res = await apiFetch<EducationData>("/api/education");
-  return { assignments: res.assignments ?? [], published: res.published ?? [] };
+  return {
+    assignments: res.assignments ?? [],
+    published: res.published ?? [],
+    progress: res.progress ?? {},
+  };
 }
 
 /** Flattened, de-duplicated list: assigned content first, then published. */

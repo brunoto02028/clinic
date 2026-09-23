@@ -125,10 +125,10 @@ export async function POST(request: NextRequest) {
       || request.nextUrl.searchParams.get("platform") === "mobile";
 
     const successUrl = isMobile
-      ? "bprrehab://membership?status=success"
+      ? "bprclinic://membership?status=success"
       : `${BASE_URL}/dashboard/membership?success=true&session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = isMobile
-      ? "bprrehab://membership?status=cancelled"
+      ? "bprclinic://membership?status=cancelled"
       : `${BASE_URL}/dashboard/membership?cancelled=true`;
 
     const checkoutSession = await stripe.checkout.sessions.create({

@@ -8,6 +8,7 @@ import {
   CheckCircle, XCircle, AlertTriangle, ToggleLeft, ToggleRight,
   RefreshCw, Copy, Eye, EyeOff, User, Calendar, Mail, Phone,
   FileText, Heart, Settings, ChevronDown, ChevronUp, Save, Zap,
+  Smartphone,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,10 @@ interface ModuleItem {
   category: string;
   href: string;
   alwaysVisible: boolean;
+  /** On for everyone until revoked here — see `defaultGranted` in the registry. */
+  defaultGranted: boolean;
+  /** Governed here, but only the app has a screen for it. */
+  appOnly: boolean;
   grantedByPlan: boolean;
   adminOverride: boolean | null;
   effectiveAccess: boolean;
@@ -318,8 +323,12 @@ export default function PatientPermissionsPage() {
   };
 
   const renderModuleRow = (m: ModuleItem) => {
-    const state = m.alwaysVisible ? "unlocked" : getModuleState(m.key, m.grantedByPlan);
-    const effective = m.alwaysVisible || fullAccess ? true : getEffectiveAccess(m.key, m.grantedByPlan);
+    // A default-granted module has no plan behind it but is on all the same,
+    // so the plan default it falls back to is "yes" — otherwise the row would
+    // read "Blocked" beside a module the patient is plainly using.
+    const baseGrant = m.grantedByPlan || m.defaultGranted;
+    const state = m.alwaysVisible ? "unlocked" : getModuleState(m.key, baseGrant);
+    const effective = m.alwaysVisible || fullAccess ? true : getEffectiveAccess(m.key, baseGrant);
     const isOverridden = state !== "plan";
 
     const STATE_STYLES = {
@@ -355,9 +364,18 @@ export default function PatientPermissionsPage() {
               <span className="text-[10px] text-emerald-600 flex items-center gap-0.5">
                 <CheckCircle className="h-2.5 w-2.5" /> Included in plan
               </span>
+            ) : m.defaultGranted ? (
+              <span className="text-[10px] text-emerald-600 flex items-center gap-0.5">
+                <CheckCircle className="h-2.5 w-2.5" /> On by default
+              </span>
             ) : (
               <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                 <XCircle className="h-2.5 w-2.5" /> Not included in plan
+              </span>
+            )}
+            {m.appOnly && (
+              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                <Smartphone className="h-2.5 w-2.5" /> App only
               </span>
             )}
             <span className="text-[10px] text-muted-foreground/50">·</span>

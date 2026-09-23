@@ -12,6 +12,11 @@ export interface PrescribedExercise {
     name: string;
     description: string | null;
     instructions: string | null;
+    // The route has returned these all along; the client simply never declared
+    // them, so every patient read English whatever their record said.
+    namePt: string | null;
+    descriptionPt: string | null;
+    instructionsPt: string | null;
     bodyRegion: string;
     difficulty: string;
     videoUrl: string | null;

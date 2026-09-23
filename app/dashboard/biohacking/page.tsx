@@ -1,17 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
-import { Brain, Zap, Moon, Activity, Heart, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Flame, Wind, Dna, Watch } from "lucide-react";
+import Link from "next/link";
+import { Brain, Zap, Moon, Activity, Heart, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Flame, Wind, Dna, Watch, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/hooks/use-locale";
-import { OW_PROVIDERS } from "@/lib/open-wearables";
-import { ConnectDeviceCard } from "@/components/wearables/connect-device-card";
-import { SleepSummary } from "@/components/wearables/sleep-summary";
-import { RecoveryCard } from "@/components/wearables/recovery-card";
-import { ActivityCard } from "@/components/wearables/activity-card";
 
 const CATEGORY_ICONS: Record<string, any> = {
   SLEEP: Moon, NUTRITION: Flame, EXERCISE: Activity, LIGHT: Zap,
@@ -63,54 +58,16 @@ function MiniBar({ value, max = 10, color = "emerald" }: { value: number | null;
   );
 }
 
-interface WearableConnection {
-  id: string;
-  provider: string;
-  status: string;
-  lastSyncedAt: string | null;
-  createdAt: string;
-}
-
-interface WearableDataPoint {
-  id: string;
-  dataDate: string;
-  dataType: string;
-  provider: string;
-  sleepDuration?: number | null;
-  sleepEfficiency?: number | null;
-  deepMinutes?: number | null;
-  remMinutes?: number | null;
-  lightMinutes?: number | null;
-  awakeMinutes?: number | null;
-  hrv?: number | null;
-  restingHr?: number | null;
-  spo2?: number | null;
-  bodyTemperature?: number | null;
-  steps?: number | null;
-  activeCalories?: number | null;
-  totalCalories?: number | null;
-  activeMinutes?: number | null;
-}
-
 export default function BiohackingDashboardPage() {
   const { locale } = useLocale();
   const isPt = locale === "pt-BR";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const searchParams = useSearchParams();
   const [today, setToday] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [protocol, setProtocol] = useState<any>(null);
   const [protocolOpen, setProtocolOpen] = useState(true);
-
-  // Wearable state (Open Wearables)
-  const [connections, setConnections] = useState<WearableConnection[]>([]);
-  const [wearableData, setWearableData] = useState<WearableDataPoint[]>([]);
-  const [wearableMsg, setWearableMsg] = useState<string | null>(
-    searchParams?.get("connected") === "1" ? (isPt ? "Wearable conectado! Os dados vão sincronizar em breve." : "Wearable connected! Data will sync shortly.") :
-    searchParams?.get("connected") === "0" ? (isPt ? "Falha ao conectar o wearable. Tente novamente." : "Wearable connection failed. Please try again.") : null
-  );
 
   // Check-in form state
   const [painLevel, setPainLevel]       = useState<number>(3);
@@ -124,16 +81,12 @@ export default function BiohackingDashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [ciRes, prRes, connRes, dataRes] = await Promise.all([
+    const [ciRes, prRes] = await Promise.all([
       fetch("/api/patient/daily-checkin"),
       fetch("/api/biohacking/my-protocol"),
-      fetch("/api/wearables/connections"),
-      fetch("/api/wearables/data?days=7"),
     ]);
     const ciData = await ciRes.json();
     const prData = await prRes.json();
-    const connData = connRes.ok ? await connRes.json() : null;
-    const dataData = dataRes.ok ? await dataRes.json() : null;
 
     if (ciData.today) {
       const t = ciData.today;
@@ -150,36 +103,10 @@ export default function BiohackingDashboardPage() {
     }
     setHistory(ciData.history || []);
     setProtocol(prData.assignment || null);
-    setConnections(connData?.connections || []);
-    setWearableData(dataData?.data || []);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const handleConnect = (providerKey: string) => {
-    window.location.href = "/api/wearables/connect/" + providerKey;
-  };
-
-  const handleDisconnect = async (providerKey: string) => {
-    await fetch("/api/wearables/disconnect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: providerKey }),
-    });
-    load();
-  };
-
-  const handleSync = async (providerKey: string) => {
-    try {
-      await fetch("/api/wearables/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: providerKey }),
-      });
-    } catch {}
-    load();
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -202,14 +129,6 @@ export default function BiohackingDashboardPage() {
     return d.toLocaleDateString(isPt ? "pt-BR" : "en-GB", { weekday: "short", day: "numeric" });
   };
 
-  // Latest data point per type (SLEEP, BODY = recovery, ACTIVITY)
-  const latestByType = (dataType: string) =>
-    wearableData.find(d => d.dataType === dataType) || null;
-
-  const latestSleep = latestByType("SLEEP");
-  const latestRecovery = latestByType("BODY");
-  const latestActivity = latestByType("ACTIVITY");
-
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-4 animate-pulse">
@@ -231,53 +150,18 @@ export default function BiohackingDashboardPage() {
         </div>
       </div>
 
-      {/* Wearable Devices */}
-      <Card className="border-ba1-health/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Watch className="h-4 w-4 text-ba1-health" />
-            {isPt ? "Dispositivos Wearable" : "Wearable Devices"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {wearableMsg && (
-            <div className={`text-sm p-3 rounded-lg ${
-              searchParams?.get("connected") === "1" ? "bg-ba1-ok/10 text-ba1-ok border border-ba1-ok/20" : "bg-ba1-bad/10 text-ba1-bad border border-ba1-bad/20"
-            }`}>{wearableMsg}</div>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {OW_PROVIDERS.map(provider => {
-              const conn = connections.find(c => c.provider === provider.key.toUpperCase());
-              return (
-                <ConnectDeviceCard
-                  key={provider.key}
-                  provider={provider}
-                  connected={!!conn}
-                  lastSync={conn?.lastSyncedAt || undefined}
-                  onConnect={() => handleConnect(provider.key)}
-                  onDisconnect={() => handleDisconnect(provider.key)}
-                  onSync={() => handleSync(provider.key)}
-                />
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Today's Metrics */}
-      {(latestSleep || latestRecovery || latestActivity) && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Activity className="h-4 w-4 text-ba1-ok" />
-            {isPt ? "Métricas de Hoje" : "Today's Metrics"}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <SleepSummary data={latestSleep} />
-            <RecoveryCard data={latestRecovery} />
-            <ActivityCard data={latestActivity} />
-          </div>
-        </div>
-      )}
+      {/* Devices left this page for /dashboard/devices, which `mod_devices`
+          governs; the check-in stays here under `mod_journey`. */}
+      <Link
+        href="/dashboard/devices"
+        className="flex items-center justify-between gap-3 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
+      >
+        <span className="text-sm text-foreground flex items-center gap-2">
+          <Watch className="h-4 w-4 text-ba1-health" />
+          {isPt ? "Dispositivos e dados do wearable" : "Devices and wearable data"}
+        </span>
+        <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+      </Link>
 
       {/* Daily Check-In */}
       <Card className="border-ba1-ok/20">

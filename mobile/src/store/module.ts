@@ -1,6 +1,11 @@
 import { create } from "zustand";
 
-type ModuleKey = "lab" | "clinica" | "ba";
+import type { AppModule } from "@/api/modules";
+
+// Derived from the API type rather than restated: this was a hand-written
+// "lab" | "clinica" | "ba" while the endpoint also returns the studio's
+// treino / avaliacoes / nutricao, so selecting one did not type-check.
+type ModuleKey = AppModule["key"];
 
 interface ModuleState {
   activeModule: ModuleKey | null;

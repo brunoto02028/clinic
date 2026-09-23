@@ -43,7 +43,12 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 // Patient-facing API prefixes reachable by the mobile app (bearer-authenticated).
-const MOBILE_API_PREFIXES = ['/api/appointments', '/api/availability', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config'];
+// `/api/public` is here for the app's booking screen, which needs the clinic's
+// opening hours before it can offer a slot. Without it the preflight came back
+// with no access-control headers at all and the patient could not book —
+// while /api/patient answered fine, which is what made it look like a bug in
+// the screen rather than in the allowlist.
+const MOBILE_API_PREFIXES = ['/api/appointments', '/api/availability', '/api/exercises', '/api/patient', '/api/education', '/api/foot-scans', '/api/mobile', '/api/medical-screening', '/api/screening-config', '/api/public', '/api/wearables'];
 // CORS for the Expo Web / PWA browser target. Native apps don't enforce CORS;
 // bearer (not cookie) auth means "*" doesn't expose any ambient session.
 const MOBILE_CORS_ORIGIN = process.env.MOBILE_CORS_ORIGIN || '*';
@@ -146,6 +151,11 @@ const publicRoutes = [
   '/api/analytics/vitals', // web-vitals beacon fires on public pages too
   '/api/vcard', // the /start page's "save contact" download — no session by definition
   '/api/public', // public read-only endpoints (clinic schedule, etc.)
+  // The wearable provider redirects the patient's browser here after OAuth,
+  // with no session of ours — behind the gate it was bounced to /login and the
+  // connection could never complete. It is safe to expose because the route
+  // trusts nothing in the query but a state this server signed.
+  '/api/wearables/callback',
   '/api/vapi/web-token', // the voice widget sits on the public landing page and the
                          // route is written to work without a session; without this
                          // every anonymous visit spent two requests being bounced
@@ -275,6 +285,18 @@ export async function middleware(request: NextRequest) {
 
   // Allow public routes
   if (matchesRoute(pathname, publicRoutes)) {
+    // A route can be both public and mobile-facing — /api/public/schedule is
+    // read by the app's booking screen. This return used to fire first and hand
+    // back a response with no CORS header at all, so the preflight (handled far
+    // above) passed and the GET the browser actually cares about was blocked.
+    // The visible symptom was not an error: the schedule came back empty, no
+    // day was marked closed, and the screen offered Sunday at a clinic that
+    // shuts on Sunday.
+    if (isMobileApiPath(pathname)) {
+      const res = NextResponse.next();
+      res.headers.set('Access-Control-Allow-Origin', MOBILE_CORS_ORIGIN);
+      return res;
+    }
     return NextResponse.next();
   }
 

@@ -5,22 +5,35 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { bookAppointment, fetchAvailability, fetchSchedule } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
+import { useAuth } from "@/store/auth";
+import { zonedTimeToUtc } from "@/lib/clinic-timezone";
 
 const TYPES = [
   "Initial Assessment", "Follow-up", "Physiotherapy", "Sports Therapy",
   "Biomechanical Assessment", "Foot Scan", "Review",
 ];
 
-function generateDates(closedDays: number[]): { label: string; value: string; day: string; date: number }[] {
+function generateDates(closedDays: number[], lang: Lang): { label: string; value: string; day: string; date: number }[] {
   const dates = [];
-  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  // Weekday initials in the patient's language, not a hardcoded Portuguese
+  // list — the app is read in English by most of these patients.
+  const dayNames = lang === "pt"
+    ? ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   for (let i = 1; i <= 14; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     if (closedDays.includes(d.getDay())) continue;
     dates.push({
-      label: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
-      value: d.toISOString().split("T")[0],
+      label: d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" }),
+      // Local parts, not `toISOString()`: the chip is labelled from `getDate()`
+      // in the phone's own timezone, and the value was being taken from UTC.
+      // In BST a patient opening this between midnight and 01:00 got a value
+      // one day BEFORE the chip they tapped; west of UTC it lands one day
+      // after. The booking then went to the wrong day.
+      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
       day: dayNames[d.getDay()],
       date: d.getDate(),
     });
@@ -28,7 +41,9 @@ function generateDates(closedDays: number[]): { label: string; value: string; da
   return dates;
 }
 
-export default function BookAppointment() {
+function BookAppointmentScreen() {
+  const lang = useLang();
+  const clinicName = useAuth((s) => s.user?.clinicName ?? null);
   const t = useTheme();
   const qc = useQueryClient();
   const [type, setType] = useState<string | null>(null);
@@ -37,8 +52,14 @@ export default function BookAppointment() {
   const [notes, setNotes] = useState("");
 
   const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
+  // Which days the clinic opens is not something to guess at. When the schedule
+  // fails to load, or comes back with no open day at all, `closedDays` was `[]`
+  // and this screen offered all fourteen — Sunday included, at a clinic that
+  // shuts on Sunday. The patient picked one, waited, and got "No times
+  // available". The web says so up front instead, and now so does this.
+  const scheduleKnown = schedule.isSuccess && (schedule.data?.length ?? 0) > 0;
   const closedDays = (schedule.data ?? []).filter(d => d.closed).map(d => d.dayOfWeek);
-  const dates = generateDates(closedDays);
+  const dates = scheduleKnown ? generateDates(closedDays, lang) : [];
 
   const availability = useQuery({
     queryKey: ["availability", selectedDate],
@@ -50,9 +71,12 @@ export default function BookAppointment() {
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!type || !selectedDate || !selectedTime) throw new Error("Preencha todos os campos.");
+      if (!type || !selectedDate || !selectedTime) throw new Error(tr(lang, { en: "Please fill in every field.", pt: "Preencha todos os campos." }));
       return bookAppointment({
-        dateTime: `${selectedDate}T${selectedTime}:00.000Z`,
+        // The slot is clinic wall-clock time, not UTC. Appending "Z" made a
+        // 09:00 booking arrive as 09:00Z, which the diary shows as 10:00 for
+        // the seven months the UK is on BST.
+        dateTime: zonedTimeToUtc(selectedDate, selectedTime).toISOString(),
         treatmentType: type,
         notes: notes || undefined,
       });
@@ -60,9 +84,10 @@ export default function BookAppointment() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       const dateObj = new Date(`${selectedDate}T12:00:00`);
-      const weekday = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+      const locale = lang === "pt" ? "pt-BR" : "en-GB";
+      const weekday = dateObj.toLocaleDateString(locale, { weekday: "short" });
       const day = dateObj.getDate();
-      const month = dateObj.toLocaleDateString("en-US", { month: "long" });
+      const month = dateObj.toLocaleDateString(locale, { month: "long" });
       const formattedDateTime = `${weekday} ${day} ${month} · ${selectedTime}`;
 
       router.replace({
@@ -70,24 +95,28 @@ export default function BookAppointment() {
         params: {
           serviceName: type ?? "",
           dateTime: formattedDateTime,
-          location: "Ipswich clinic",
+          // The patient's own clinic, from their session — this was the string
+          // "Ipswich clinic", shown to every tenant. The address is still not
+          // available to the app; the confirmation omits it rather than
+          // inventing one.
+          location: clinicName ?? "",
         },
       });
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message || "Não foi possível agendar."),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message || tr(lang, { en: "We could not book that.", pt: "Não foi possível agendar." })),
   });
 
   return (
     <Screen scroll testID="book-appointment-screen">
       <Stack.Screen
-        options={{ headerShown: true, title: "Agendar", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
+        options={{ headerShown: true, title: tr(lang, { en: "Book", pt: "Agendar" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
       />
       <View style={{ gap: 20 }}>
-        <Text variant="title">Agendar Consulta</Text>
+        <Text variant="title">{tr(lang, { en: "Book an appointment", pt: "Agendar Consulta" })}</Text>
 
         {/* Type */}
         <Card>
-          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>Tipo de consulta</Text>
+          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Appointment type", pt: "Tipo de consulta" })}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {TYPES.map(t2 => (
               <Pressable key={t2} onPress={() => setType(t2)}
@@ -100,7 +129,17 @@ export default function BookAppointment() {
 
         {/* Date */}
         <Card>
-          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>Data</Text>
+          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Date", pt: "Data" })}</Text>
+          {schedule.isLoading ? (
+            <Spinner />
+          ) : dates.length === 0 ? (
+            <Text variant="caption" color={t.colors.textMuted}>
+              {tr(lang, {
+                en: "No available dates at the moment. Please contact the clinic.",
+                pt: "Nenhuma data disponível no momento. Fale com a clínica.",
+              })}
+            </Text>
+          ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {dates.map(d => (
               <Pressable key={d.value} onPress={() => { setSelectedDate(d.value); setSelectedTime(null); }}
@@ -110,17 +149,18 @@ export default function BookAppointment() {
               </Pressable>
             ))}
           </ScrollView>
+          )}
         </Card>
 
         {/* Time */}
         <Card>
-          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>Horário</Text>
+          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Time", pt: "Horário" })}</Text>
           {!selectedDate ? (
-            <Text variant="caption" color={t.colors.textMuted}>Selecione uma data primeiro.</Text>
+            <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Pick a date first.", pt: "Selecione uma data primeiro." })}</Text>
           ) : availability.isLoading ? (
             <Spinner />
           ) : slots.length === 0 ? (
-            <Text variant="caption" color={t.colors.textMuted}>Sem horários disponíveis nesta data.</Text>
+            <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "No times available on this date.", pt: "Sem horários disponíveis nesta data." })}</Text>
           ) : (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {slots.map(time => (
@@ -135,14 +175,16 @@ export default function BookAppointment() {
 
         {/* Notes */}
         <View style={{ gap: 4 }}>
-          <Text variant="label">Observações (opcional)</Text>
-          <TextInput value={notes} onChangeText={setNotes} placeholder="Alguma informação adicional..." placeholderTextColor={t.colors.textMuted} multiline style={{ padding: 12, borderRadius: 12, backgroundColor: t.colors.surfaceMuted, borderWidth: 1, borderColor: t.colors.borderSubtle, color: t.colors.text, fontSize: 14, minHeight: 60, textAlignVertical: "top" }} />
+          <Text variant="label">{tr(lang, { en: "Notes (optional)", pt: "Observações (opcional)" })}</Text>
+          <TextInput value={notes} onChangeText={setNotes} placeholder={tr(lang, { en: "Anything else we should know…", pt: "Alguma informação adicional..." })} placeholderTextColor={t.colors.textMuted} multiline style={{ padding: 12, borderRadius: 12, backgroundColor: t.colors.surfaceMuted, borderWidth: 1, borderColor: t.colors.borderSubtle, color: t.colors.text, fontSize: 14, minHeight: 60, textAlignVertical: "top" }} />
         </View>
 
         {/* Submit */}
         <Button
           variant="health"
-          title={mutation.isPending ? "Agendando..." : "Confirmar Agendamento"}
+          title={mutation.isPending
+            ? tr(lang, { en: "Booking...", pt: "Agendando..." })
+            : tr(lang, { en: "Confirm booking", pt: "Confirmar agendamento" })}
           onPress={() => mutation.mutate()}
           disabled={!type || !selectedDate || !selectedTime}
           loading={mutation.isPending}
@@ -150,5 +192,17 @@ export default function BookAppointment() {
         />
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_appointments` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function BookAppointment() {
+  return (
+    <PlanGate module="mod_appointments">
+      <BookAppointmentScreen />
+    </PlanGate>
   );
 }

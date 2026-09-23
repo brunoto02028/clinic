@@ -51,5 +51,5 @@ graphify-out/
 # generated per-environment (activity 14 skill catalog)
 Skills/clinical-evidence-report/clinic-resources.json
 
-# QA scratch (activity 072) — proofs, logs and schema snapshots, never shipped
+# QA scratch — proofs, logs, payloads and schema snapshots, never shipped
 .qa-tmp/

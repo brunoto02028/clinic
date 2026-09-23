@@ -5,26 +5,33 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchTasks, completeTask } from "@/api/tasks";
 import { useTheme } from "@/theme/useTheme";
+import { PlanGate } from "@/components/PlanGate";
+import { useLang, pick, t as tr } from "@/lib/i18n";
+import { LoadFailure } from "@/components/LoadFailure";
+import { formatDate } from "@/lib/format";
 
-export default function Tasks() {
+function TasksScreen() {
+  const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
 
-  const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
-    urgent: { bg: t.colors.badSoft, text: t.colors.bad },
-    high: { bg: t.colors.warnSoft, text: t.colors.warn },
-    normal: { bg: t.colors.workSoft, text: t.colors.work },
-    low: { bg: t.colors.surfaceMuted, text: t.colors.textMuted },
+  // The badge printed `item.priority` straight through, so the patient read
+  // "high" in English on an otherwise Portuguese screen.
+  const PRIORITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+    urgent: { bg: t.colors.badSoft, text: t.colors.bad, label: tr(lang, { en: "Urgent", pt: "Urgente" }) },
+    high: { bg: t.colors.warnSoft, text: t.colors.warn, label: tr(lang, { en: "High", pt: "Alta" }) },
+    normal: { bg: t.colors.workSoft, text: t.colors.work, label: tr(lang, { en: "Normal", pt: "Normal" }) },
+    low: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: tr(lang, { en: "Low", pt: "Baixa" }) },
   };
 
   const completeMut = useMutation({
     mutationFn: (taskId: string) => completeTask(taskId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
-      Alert.alert("Tarefa concluida!");
+      Alert.alert(tr(lang, { en: "Task completed", pt: "Tarefa concluída!" }));
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
   const tasks = data ?? [];
@@ -33,23 +40,26 @@ export default function Tasks() {
 
   return (
     <Screen testID="tasks-screen">
-      <Stack.Screen options={{ headerShown: true, title: "Tarefas", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Tasks", pt: "Tarefas" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 16, flex: 1 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text variant="title">Tarefas</Text>
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center" }}>
           {pending.length > 0 && (
             <View style={{ backgroundColor: t.colors.warnSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-              <Text variant="caption" color={t.colors.warn} style={{ fontWeight: "700" }}>{pending.length} pendente{pending.length !== 1 ? "s" : ""}</Text>
+              <Text variant="caption" color={t.colors.warn} style={{ fontWeight: "700" }}>{pending.length} {tr(lang, { en: "pending", pt: pending.length === 1 ? "pendente" : "pendentes" })}</Text>
             </View>
           )}
         </View>
 
-        {isLoading ? <Spinner center /> : tasks.length === 0 ? (
+        {isLoading ? <Spinner center /> : isError ? (
+          /* "No tasks" and "we could not reach the server" are not the same
+             sentence to someone with three things their clinic asked for. */
+          <LoadFailure error={error} onRetry={() => refetch()} />
+        ) : tasks.length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="checkbox-outline" size={48} color={t.colors.textMuted} />
-              <Text variant="subtitle" color={t.colors.textSecondary}>Nenhuma tarefa</Text>
-              <Text variant="caption" color={t.colors.textMuted}>Tarefas atribuidas pela clinica aparecerao aqui.</Text>
+              <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No tasks", pt: "Nenhuma tarefa" })}</Text>
+              <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Tasks your clinic assigns will appear here.", pt: "Tarefas atribuídas pela clínica aparecerão aqui." })}</Text>
             </View>
           </Card>
         ) : (
@@ -75,17 +85,22 @@ export default function Tasks() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text variant="label" style={{ fontWeight: "600", textDecorationLine: isDone ? "line-through" : "none", color: isDone ? t.colors.textMuted : t.colors.text }}>
-                          {item.titlePt || item.title}
+                          {pick(lang, item.title, item.titlePt)}
                         </Text>
-                        {(item.descriptionPt || item.description) ? (
+                        {pick(lang, item.description, item.descriptionPt) ? (
                           <Text variant="caption" color={t.colors.textSecondary} numberOfLines={1} style={{ marginTop: 2 }}>
-                            {item.descriptionPt || item.description}
+                            {pick(lang, item.description, item.descriptionPt)}
+                          </Text>
+                        ) : null}
+                        {item.dueDate ? (
+                          <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
+                            {tr(lang, { en: "Due", pt: "Prazo" })}: {formatDate(item.dueDate, lang)}
                           </Text>
                         ) : null}
                       </View>
                       {!isDone && (
                         <View style={{ backgroundColor: prio.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                          <Text variant="caption" color={prio.text} style={{ fontWeight: "600", fontSize: 10 }}>{item.priority}</Text>
+                          <Text variant="caption" color={prio.text} style={{ fontWeight: "600", fontSize: 10 }}>{prio.label}</Text>
                         </View>
                       )}
                     </View>
@@ -97,5 +112,17 @@ export default function Tasks() {
         )}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_tasks` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function Tasks() {
+  return (
+    <PlanGate module="mod_tasks">
+      <TasksScreen />
+    </PlanGate>
   );
 }

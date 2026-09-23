@@ -5,30 +5,35 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointment } from "@/api/appointments";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
+import { statusStyle } from "@/lib/appointment-status";
 
-function formatDate(iso: string) {
+/** The date in the patient's language. The weekday and month names were two
+ *  hardcoded Portuguese arrays, so an en-GB patient read "Qua, 24 Set 2026" on
+ *  their own appointment. */
+function formatDate(iso: string, lang: Lang) {
   const d = new Date(iso);
-  const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function formatTime(iso: string) {
+/** The clock in the patient's language — a module helper cannot read a hook. */
+function formatTime(iso: string, lang: Lang) {
   const d = new Date(iso);
-  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(lang === "pt" ? "pt-BR" : "en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function AppointmentDetail() {
+function AppointmentDetailScreen() {
+  const lang = useLang();
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const STATUS_MAP: Record<string, { bg: string; text: string; label: string; icon: string }> = {
-    SCHEDULED: { bg: t.colors.workSoft, text: t.colors.work, label: "Agendado", icon: "time-outline" },
-    CONFIRMED: { bg: t.colors.okSoft, text: t.colors.ok, label: "Confirmado", icon: "checkmark-circle-outline" },
-    COMPLETED: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Concluído", icon: "checkbox-outline" },
-    CANCELLED: { bg: t.colors.badSoft, text: t.colors.bad, label: "Cancelado", icon: "close-circle-outline" },
-    NO_SHOW: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Faltou", icon: "alert-circle-outline" },
-  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["appointment", id],
@@ -41,7 +46,7 @@ export default function AppointmentDetail() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "Agendamento",
+          title: tr(lang, { en: "Appointment", pt: "Consulta" }),
           headerStyle: { backgroundColor: t.colors.background },
           headerTintColor: t.colors.text,
           headerShadowVisible: false,
@@ -53,7 +58,7 @@ export default function AppointmentDetail() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-            <Text color={t.colors.danger}>Não foi possível carregar.</Text>
+            <Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}</Text>
           </View>
         </Card>
       ) : (
@@ -75,7 +80,7 @@ export default function AppointmentDetail() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="subtitle">
-                  {data.therapist ? `${data.therapist.firstName} ${data.therapist.lastName}` : "Terapeuta"}
+                  {data.therapist ? `${data.therapist.firstName} ${data.therapist.lastName}` : tr(lang, { en: "Therapist", pt: "Terapeuta" })}
                 </Text>
                 <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
                   {data.treatmentType}
@@ -91,7 +96,7 @@ export default function AppointmentDetail() {
 
           {/* Status badge */}
           {(() => {
-            const s = STATUS_MAP[data.status] ?? STATUS_MAP.SCHEDULED;
+            const s = statusStyle(t, data.status, lang);
             return (
               <View style={{
                 flexDirection: "row",
@@ -109,15 +114,11 @@ export default function AppointmentDetail() {
             );
           })()}
 
-          {/* Details section */}
-          {data.notes ? (
-            <Card>
-              <Text variant="label" style={{ fontWeight: "600", marginBottom: 4 }}>Detalhes</Text>
-              <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
-                {data.notes}
-              </Text>
-            </Card>
-          ) : null}
+          {/* `appointment.notes` is not rendered here, and the web's patient
+              view does not render it either. The column is written by both
+              sides — the patient's own note at booking (/api/appointments) and
+              the therapist's (/api/admin/appointments) — so showing it to the
+              patient hands them whatever staff typed into the same field. */}
 
           {/* Date & Time info */}
           <Card>
@@ -134,8 +135,8 @@ export default function AppointmentDetail() {
                   <Ionicons name="calendar-outline" size={20} color={t.colors.ok} />
                 </View>
                 <View>
-                  <Text variant="caption" color={t.colors.textMuted}>Data</Text>
-                  <Text variant="label" style={{ fontWeight: "600" }}>{formatDate(data.dateTime)}</Text>
+                  <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Date", pt: "Data" })}</Text>
+                  <Text variant="label" style={{ fontWeight: "600" }}>{formatDate(data.dateTime, lang)}</Text>
                 </View>
               </View>
 
@@ -153,8 +154,8 @@ export default function AppointmentDetail() {
                   <Ionicons name="time-outline" size={20} color={t.colors.work} />
                 </View>
                 <View>
-                  <Text variant="caption" color={t.colors.textMuted}>Horário</Text>
-                  <Text variant="label" style={{ fontWeight: "600" }}>{formatTime(data.dateTime)}</Text>
+                  <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Time", pt: "Horário" })}</Text>
+                  <Text variant="label" style={{ fontWeight: "600" }}>{formatTime(data.dateTime, lang)}</Text>
                 </View>
               </View>
 
@@ -172,8 +173,8 @@ export default function AppointmentDetail() {
                   <Ionicons name="hourglass-outline" size={20} color={t.colors.warn} />
                 </View>
                 <View>
-                  <Text variant="caption" color={t.colors.textMuted}>Duração</Text>
-                  <Text variant="label" style={{ fontWeight: "600" }}>{data.duration} minutos</Text>
+                  <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Duration", pt: "Duração" })}</Text>
+                  <Text variant="label" style={{ fontWeight: "600" }}>{data.duration} {tr(lang, { en: "minutes", pt: "minutos" })}</Text>
                 </View>
               </View>
             </View>
@@ -181,5 +182,17 @@ export default function AppointmentDetail() {
         </View>
       )}
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_appointments` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function AppointmentDetail() {
+  return (
+    <PlanGate module="mod_appointments">
+      <AppointmentDetailScreen />
+    </PlanGate>
   );
 }

@@ -58,4 +58,21 @@ export const OW_PROVIDERS = [
   { key: "fitbit", name: "Fitbit", icon: "📱" },
   { key: "polar", name: "Polar", icon: "❄️" },
   { key: "strava", name: "Strava", icon: "🚴" },
+  { key: "withings", name: "Withings", icon: "🩺" },
 ] as const;
+
+/**
+ * The provider's authorisation URL, fetched with the patient's token.
+ *
+ * `Linking.openURL(API_URL + "/api/wearables/connect/" + key)` was the old
+ * route in: a plain browser open, with no Authorization header, against an
+ * endpoint that wanted a cookie session. It landed on the web login every
+ * time. The URL is asked for here, authenticated, and only then opened.
+ */
+export async function fetchConnectUrl(provider: string): Promise<string> {
+  const res = await apiFetch<{ url: string }>(
+    `/api/wearables/connect/${encodeURIComponent(provider)}?format=json`
+  );
+  if (!res?.url) throw new Error("No authorisation URL returned");
+  return res.url;
+}

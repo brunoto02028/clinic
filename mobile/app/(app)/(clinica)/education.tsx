@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchEducation, educationList } from "@/api/education";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
 
 const TYPE_ICONS: Record<string, { icon: string; colorKey: "work" | "bad" | "health" | "community" }> = {
   ARTICLE: { icon: "document-text-outline", colorKey: "work" },
@@ -13,7 +15,8 @@ const TYPE_ICONS: Record<string, { icon: string; colorKey: "work" | "bad" | "hea
   INFOGRAPHIC: { icon: "image-outline", colorKey: "community" },
 };
 
-export default function Education() {
+function EducationScreen() {
+  const lang = useLang();
   const t = useTheme();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["education"],
@@ -27,7 +30,7 @@ export default function Education() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "Educação",
+          title: tr(lang, { en: "Education", pt: "Educação" }),
           headerStyle: { backgroundColor: t.colors.background },
           headerTintColor: t.colors.text,
           headerShadowVisible: false,
@@ -39,13 +42,13 @@ export default function Education() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-            <Text color={t.colors.danger}>Não foi possível carregar.</Text>
+            <Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}</Text>
           </View>
         </Card>
       ) : list.length === 0 ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Ionicons name="book-outline" size={48} color={t.colors.textMuted} />
-          <Text muted testID="education-empty">Nenhum conteúdo disponível.</Text>
+          <Text muted testID="education-empty">{tr(lang, { en: "No content available.", pt: "Nenhum conteúdo disponível." })}</Text>
         </View>
       ) : (
         <FlatList
@@ -80,6 +83,21 @@ export default function Education() {
                         </Text>
                       ) : null}
                       <View style={{ flexDirection: "row", gap: 6, marginTop: 4 }}>
+                        {/* The endpoint has always returned a progress map; the
+                            client discarded it, so this badge never appeared and
+                            finishing a piece changed nothing on screen. */}
+                        {data?.progress?.[item.id]?.completedAt ? (
+                          <View style={{
+                            backgroundColor: t.colors.okSoft,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                          }}>
+                            <Text variant="caption" color={t.colors.ok} style={{ fontSize: 10, fontWeight: "600" }}>
+                              {tr(lang, { en: "Done", pt: "Concluído" })}
+                            </Text>
+                          </View>
+                        ) : null}
                         {item.category?.name ? (
                           <View style={{
                             backgroundColor: t.colors.healthSoft,
@@ -113,5 +131,17 @@ export default function Education() {
         />
       )}
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_education` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function Education() {
+  return (
+    <PlanGate module="mod_education">
+      <EducationScreen />
+    </PlanGate>
   );
 }

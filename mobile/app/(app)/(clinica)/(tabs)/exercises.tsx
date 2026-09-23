@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchPrescriptions } from "@/api/exercises";
 import { useTheme } from "@/theme/useTheme";
+import { PlanGate } from "@/components/PlanGate";
+import { useLang, pick, t as tr } from "@/lib/i18n";
 
 const REGION_ICONS: Record<string, string> = {
   LOWER_BODY: "footsteps-outline",
@@ -13,7 +15,8 @@ const REGION_ICONS: Record<string, string> = {
   FULL_BODY: "accessibility-outline",
 };
 
-export default function Exercises() {
+function ExercisesScreen() {
+  const lang = useLang();
   const t = useTheme();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["prescriptions"],
@@ -23,7 +26,7 @@ export default function Exercises() {
   return (
     <Screen testID="exercises-screen">
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <Text variant="title">Exercícios</Text>
+        <Text variant="title">{tr(lang, { en: "Exercises", pt: "Exercícios" })}</Text>
         {(data ?? []).length > 0 && (
           <View style={{
             backgroundColor: t.colors.healthSoft,
@@ -34,7 +37,7 @@ export default function Exercises() {
             borderColor: t.colors.health,
           }}>
             <Text variant="caption" color={t.colors.textSecondary}>
-              {data!.length} exercício{data!.length !== 1 ? "s" : ""}
+              {data!.length} {tr(lang, { en: data!.length === 1 ? "exercise" : "exercises", pt: data!.length === 1 ? "exercício" : "exercícios" })}
             </Text>
           </View>
         )}
@@ -46,13 +49,13 @@ export default function Exercises() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-            <Text color={t.colors.danger}>Não foi possível carregar os exercícios.</Text>
+            <Text color={t.colors.danger}>{tr(lang, { en: "We could not load your exercises.", pt: "Não foi possível carregar os exercícios." })}</Text>
           </View>
         </Card>
       ) : (data ?? []).length === 0 ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Ionicons name="barbell-outline" size={48} color={t.colors.textMuted} />
-          <Text muted testID="exercises-empty">Nenhum exercício prescrito.</Text>
+          <Text muted testID="exercises-empty">{tr(lang, { en: "No exercises prescribed.", pt: "Nenhum exercício prescrito." })}</Text>
         </View>
       ) : (
         <FlatList
@@ -82,7 +85,7 @@ export default function Exercises() {
                       <Ionicons name={iconName as any} size={22} color={t.colors.health} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text variant="label" style={{ fontWeight: "600" }}>{item.exercise.name}</Text>
+                      <Text variant="label" style={{ fontWeight: "600" }}>{pick(lang, item.exercise.name, item.exercise.namePt)}</Text>
                       <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
                         {item.sets && item.reps ? (
                           <View style={{
@@ -119,5 +122,17 @@ export default function Exercises() {
         />
       )}
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_exercises` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function Exercises() {
+  return (
+    <PlanGate module="mod_exercises">
+      <ExercisesScreen />
+    </PlanGate>
   );
 }

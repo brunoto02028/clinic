@@ -10,12 +10,13 @@ export interface OutcomeMeasures {
 }
 
 export async function fetchOutcomeMeasures(): Promise<OutcomeMeasures | null> {
-  try {
-    const res = await apiFetch<{ measures: OutcomeMeasures | null }>("/api/patient/outcome-measures");
-    return res.measures ?? null;
-  } catch {
-    return null;
-  }
+  // No catch. Returning null on failure was not merely misleading here, it
+  // destroyed data: the screen opened at VAS 0 / 50% with no warning, and the
+  // save then posted empty FAAM objects over the patient's real scores. A
+  // null must mean "this patient has no measures yet", never "the request
+  // failed" — the caller has to be able to tell those apart before writing.
+  const res = await apiFetch<{ measures: OutcomeMeasures | null }>("/api/patient/outcome-measures");
+  return res.measures ?? null;
 }
 
 export async function saveOutcomeMeasures(data: OutcomeMeasures): Promise<OutcomeMeasures> {

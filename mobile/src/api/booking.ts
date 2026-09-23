@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { useAuth } from "@/store/auth";
 
 export interface BookingRequest {
   dateTime: string;
@@ -35,6 +36,12 @@ export interface ScheduleDay {
 }
 
 export async function fetchSchedule(): Promise<ScheduleDay[]> {
-  const res = await apiFetch<{ schedule: ScheduleDay[] }>("/api/public/schedule");
+  // Scoped to the patient's own clinic. Without the slug the endpoint falls
+  // back to the default tenant, so a patient of any other clinic was offered
+  // the wrong opening hours — and the app is multi-tenant.
+  const slug = useAuth.getState().user?.clinicSlug;
+  const res = await apiFetch<{ schedule: ScheduleDay[] }>(
+    `/api/public/schedule${slug ? `?clinic=${encodeURIComponent(slug)}` : ""}`
+  );
   return res.schedule ?? [];
 }
