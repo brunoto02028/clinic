@@ -47,8 +47,14 @@ function BookAppointmentScreen() {
   const [notes, setNotes] = useState("");
 
   const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
+  // Which days the clinic opens is not something to guess at. When the schedule
+  // fails to load, or comes back with no open day at all, `closedDays` was `[]`
+  // and this screen offered all fourteen — Sunday included, at a clinic that
+  // shuts on Sunday. The patient picked one, waited, and got "No times
+  // available". The web says so up front instead, and now so does this.
+  const scheduleKnown = schedule.isSuccess && (schedule.data?.length ?? 0) > 0;
   const closedDays = (schedule.data ?? []).filter(d => d.closed).map(d => d.dayOfWeek);
-  const dates = generateDates(closedDays, lang);
+  const dates = scheduleKnown ? generateDates(closedDays, lang) : [];
 
   const availability = useQuery({
     queryKey: ["availability", selectedDate],
@@ -60,7 +66,7 @@ function BookAppointmentScreen() {
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!type || !selectedDate || !selectedTime) throw new Error("Preencha todos os campos.");
+      if (!type || !selectedDate || !selectedTime) throw new Error(tr(lang, { en: "Please fill in every field.", pt: "Preencha todos os campos." }));
       return bookAppointment({
         // The slot is clinic wall-clock time, not UTC. Appending "Z" made a
         // 09:00 booking arrive as 09:00Z, which the diary shows as 10:00 for
@@ -73,9 +79,10 @@ function BookAppointmentScreen() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       const dateObj = new Date(`${selectedDate}T12:00:00`);
-      const weekday = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+      const locale = lang === "pt" ? "pt-BR" : "en-GB";
+      const weekday = dateObj.toLocaleDateString(locale, { weekday: "short" });
       const day = dateObj.getDate();
-      const month = dateObj.toLocaleDateString("en-US", { month: "long" });
+      const month = dateObj.toLocaleDateString(locale, { month: "long" });
       const formattedDateTime = `${weekday} ${day} ${month} · ${selectedTime}`;
 
       router.replace({
@@ -91,13 +98,13 @@ function BookAppointmentScreen() {
         },
       });
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message || tr(lang, { en: "We could not book that.", pt: "Não foi possível agendar." })),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message || tr(lang, { en: "We could not book that.", pt: "Não foi possível agendar." })),
   });
 
   return (
     <Screen scroll testID="book-appointment-screen">
       <Stack.Screen
-        options={{ headerShown: true, title: "Agendar", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
+        options={{ headerShown: true, title: tr(lang, { en: "Book", pt: "Agendar" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
       />
       <View style={{ gap: 20 }}>
         <Text variant="title">{tr(lang, { en: "Book an appointment", pt: "Agendar Consulta" })}</Text>
@@ -118,6 +125,16 @@ function BookAppointmentScreen() {
         {/* Date */}
         <Card>
           <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Date", pt: "Data" })}</Text>
+          {schedule.isLoading ? (
+            <Spinner />
+          ) : dates.length === 0 ? (
+            <Text variant="caption" color={t.colors.textMuted}>
+              {tr(lang, {
+                en: "No available dates at the moment. Please contact the clinic.",
+                pt: "Nenhuma data disponível no momento. Fale com a clínica.",
+              })}
+            </Text>
+          ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {dates.map(d => (
               <Pressable key={d.value} onPress={() => { setSelectedDate(d.value); setSelectedTime(null); }}
@@ -127,6 +144,7 @@ function BookAppointmentScreen() {
               </Pressable>
             ))}
           </ScrollView>
+          )}
         </Card>
 
         {/* Time */}
@@ -159,7 +177,9 @@ function BookAppointmentScreen() {
         {/* Submit */}
         <Button
           variant="health"
-          title={mutation.isPending ? "Agendando..." : "Confirmar Agendamento"}
+          title={mutation.isPending
+            ? tr(lang, { en: "Booking...", pt: "Agendando..." })
+            : tr(lang, { en: "Confirm booking", pt: "Confirmar agendamento" })}
           onPress={() => mutation.mutate()}
           disabled={!type || !selectedDate || !selectedTime}
           loading={mutation.isPending}

@@ -46,6 +46,7 @@ export function PlanGate({
   // No answer at all is not a refusal: without it the app would lock every
   // screen the first time the network blinked.
   if (!data) return <>{children}</>;
+
   if (data.modules.includes(module)) return <>{children}</>;
 
   return (
@@ -56,7 +57,7 @@ export function PlanGate({
           <Text variant="subtitle" style={{ textAlign: "center" }}>
             {t(lang, {
               en: "Not included in your plan",
-              pt: "Nao incluido no seu plano",
+              pt: "Não incluído no seu plano",
             })}
           </Text>
           <Text
@@ -66,7 +67,7 @@ export function PlanGate({
           >
             {t(lang, {
               en: "Your clinic can add this to your plan. Ask them if you think this is wrong.",
-              pt: "Sua clinica pode incluir isto no seu plano. Fale com eles se achar que esta errado.",
+              pt: "Sua clínica pode incluir isto no seu plano. Fale com eles se achar que está errado.",
             })}
           </Text>
         </View>

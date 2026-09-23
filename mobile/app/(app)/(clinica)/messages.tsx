@@ -13,7 +13,6 @@ import { LoadFailure } from "@/components/LoadFailure";
 const UI = {
   en: {
     header: "Messages",
-    title: "Messages",
     subtitle: "Your conversation with the clinic",
     empty: "No messages yet.",
     emptyHint: "Write below and your therapist will see it.",
@@ -27,7 +26,6 @@ const UI = {
   },
   pt: {
     header: "Mensagens",
-    title: "Mensagens",
     subtitle: "Sua conversa com a clínica",
     empty: "Nenhuma mensagem ainda.",
     emptyHint: "Escreva abaixo que seu terapeuta vai ver.",
@@ -103,8 +101,9 @@ export default function Messages() {
       >
         <View style={{ flex: 1, gap: 12 }}>
           <View>
-            <Text variant="title" color={t.colors.secondary}>{ui.title}</Text>
-            <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
+            {/* `ui.title` repeated `ui.header` word for word — the screen read
+                "Messages Messages". The header keeps the name. */}
+            <Text variant="caption" color={t.colors.textSecondary}>
               {ui.subtitle}
             </Text>
           </View>

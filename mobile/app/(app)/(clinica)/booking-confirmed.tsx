@@ -5,6 +5,7 @@ import { Stack, router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button, Pill } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Defaults (used when no route params are provided)
@@ -25,6 +26,7 @@ const DEFAULTS = {
 
 export default function BookingConfirmed() {
   const t = useTheme();
+  const lang = useLang();
   const { data: screening } = useQuery({ queryKey: ["screening"], queryFn: fetchScreening });
   const params = useLocalSearchParams<{
     serviceName?: string;
@@ -58,7 +60,7 @@ export default function BookingConfirmed() {
           variant="hero"
           style={{ textAlign: "center", marginTop: 16 }}
         >
-          You're booked
+          {tr(lang, { en: "You're booked", pt: "Consulta agendada" })}
         </Text>
 
         {/* Details */}
@@ -91,12 +93,17 @@ export default function BookingConfirmed() {
                 <Ionicons name="clipboard" size={18} color={t.colors.health} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text variant="label">Sua avaliação foi enviada</Text>
+                <Text variant="label">
+                  {tr(lang, { en: "Your assessment has been sent", pt: "Sua avaliação foi enviada" })}
+                </Text>
                 <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 1 }}>
-                  Seu terapeuta vai revisar antes da consulta
+                  {tr(lang, {
+                    en: "Your therapist will review it before the appointment",
+                    pt: "Seu terapeuta vai revisar antes da consulta",
+                  })}
                 </Text>
               </View>
-              <Pill label="Enviada" variant="ok" />
+              <Pill label={tr(lang, { en: "Sent", pt: "Enviada" })} variant="ok" />
             </View>
           </Card>
         ) : screening !== undefined ? (
@@ -107,9 +114,11 @@ export default function BookingConfirmed() {
                   <Ionicons name="clipboard-outline" size={18} color={t.colors.warn} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text variant="label">Falta a sua avaliação</Text>
+                  <Text variant="label">
+                    {tr(lang, { en: "Your assessment is still missing", pt: "Falta a sua avaliação" })}
+                  </Text>
                   <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 1 }}>
-                    Preencha antes da consulta
+                    {tr(lang, { en: "Please complete it before the appointment", pt: "Preencha antes da consulta" })}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
@@ -134,13 +143,16 @@ export default function BookingConfirmed() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text variant="label">What to bring</Text>
+              <Text variant="label">{tr(lang, { en: "What to bring", pt: "O que levar" })}</Text>
               <Text
                 variant="caption"
                 color={t.colors.textMuted}
                 style={{ marginTop: 1 }}
               >
-                Comfortable clothes · shorts if it's a lower-limb issue
+                {tr(lang, {
+                  en: "Comfortable clothes · shorts if it's a lower-limb issue",
+                  pt: "Roupas confortáveis · shorts se a queixa for de membro inferior",
+                })}
               </Text>
             </View>
           </View>
@@ -151,7 +163,7 @@ export default function BookingConfirmed() {
             than left as a button that silently does nothing. */}
 
         <Button
-          title="Back to Health"
+          title={tr(lang, { en: "Back to Health", pt: "Voltar para Saúde" })}
           variant="health"
           onPress={() => router.replace("/(app)/(clinica)/(tabs)")}
           style={{ marginTop: 8, width: "100%" }}

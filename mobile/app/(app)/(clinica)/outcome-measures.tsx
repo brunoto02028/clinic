@@ -6,9 +6,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button, Spinner } from "@/components/ui";
 import { fetchOutcomeMeasures, saveOutcomeMeasures } from "@/api/outcome-measures";
 import { useTheme } from "@/theme/useTheme";
+import { PlanGate } from "@/components/PlanGate";
+import { useLang, t as tr } from "@/lib/i18n";
 
-export default function OutcomeMeasuresScreen() {
+function OutcomeMeasuresScreen() {
   const t = useTheme();
+  const lang = useLang();
   const qc = useQueryClient();
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["outcome-measures"], queryFn: fetchOutcomeMeasures });
 
@@ -38,9 +41,12 @@ export default function OutcomeMeasuresScreen() {
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["outcome-measures"] });
-      Alert.alert("Salvo!", "Suas medidas foram registradas.");
+      Alert.alert(
+        tr(lang, { en: "Saved", pt: "Salvo!" }),
+        tr(lang, { en: "Your measures have been recorded.", pt: "Suas medidas foram registradas." }),
+      );
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
   if (isLoading) return <Screen><Spinner center /></Screen>;
@@ -51,16 +57,22 @@ export default function OutcomeMeasuresScreen() {
   if (isError) {
     return (
       <Screen testID="outcome-measures-screen">
-        <Stack.Screen options={{ headerShown: true, title: "Outcome Measures", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+        <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Outcome measures", pt: "Medidas de evolução" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 }}>
           <Ionicons name="cloud-offline-outline" size={32} color={t.colors.textMuted} />
           <Text variant="body" style={{ textAlign: "center" }}>
-            Não foi possível carregar suas medidas.
+            {tr(lang, {
+              en: "We could not load your measures.",
+              pt: "Não foi possível carregar suas medidas.",
+            })}
           </Text>
           <Text variant="caption" color={t.colors.textSecondary} style={{ textAlign: "center" }}>
-            Não é possível salvar sem carregar antes — salvar agora apagaria o que já está registrado.
+            {tr(lang, {
+              en: "Saving is not possible before loading — it would overwrite what is already recorded.",
+              pt: "Não é possível salvar sem carregar antes — salvar agora apagaria o que já está registrado.",
+            })}
           </Text>
-          <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
+          <Button title={tr(lang, { en: "Try again", pt: "Tentar de novo" })} variant="health" size="sm" onPress={() => refetch()} />
         </View>
       </Screen>
     );
@@ -68,21 +80,28 @@ export default function OutcomeMeasuresScreen() {
 
   return (
     <Screen scroll testID="outcome-measures-screen">
-      <Stack.Screen options={{ headerShown: true, title: "Outcome Measures", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Outcome measures", pt: "Medidas de evolução" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 20 }}>
         <View>
-          <Text variant="title">Outcome Measures</Text>
-          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>Avalie sua dor e funcionalidade</Text>
+          <Text variant="body" color={t.colors.textSecondary}>
+            {tr(lang, {
+              en: "Rate your pain and functional ability",
+              pt: "Avalie sua dor e funcionalidade",
+            })}
+          </Text>
         </View>
 
         {/* VAS Score */}
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <Ionicons name="pulse-outline" size={18} color={t.colors.bad} />
-            <Text variant="label" style={{ fontWeight: "600" }}>Escala de Dor (VAS)</Text>
+            <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Visual Analogue Scale (VAS)", pt: "Escala de Dor (VAS)" })}</Text>
           </View>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginBottom: 8 }}>
-            0 = Sem dor, 10 = Pior dor imaginavel
+            {tr(lang, {
+              en: "0 = No pain, 10 = Worst pain imaginable",
+              pt: "0 = Sem dor, 10 = Pior dor imaginável",
+            })}
           </Text>
           <View style={{ alignItems: "center", marginBottom: 8 }}>
             <Text variant="title" color={vasScore > 6 ? t.colors.bad : vasScore > 3 ? t.colors.warn : t.colors.ok} style={{ fontSize: 36 }}>
@@ -117,10 +136,13 @@ export default function OutcomeMeasuresScreen() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <Ionicons name="accessibility-outline" size={18} color={t.colors.ok} />
-            <Text variant="label" style={{ fontWeight: "600" }}>Funcionalidade geral</Text>
+            <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Overall function", pt: "Funcionalidade geral" })}</Text>
           </View>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginBottom: 8 }}>
-            0% = Incapacidade total, 100% = Funcao normal completa
+            {tr(lang, {
+              en: "0% = Total disability, 100% = Full normal function",
+              pt: "0% = Incapacidade total, 100% = Função normal completa",
+            })}
           </Text>
           <View style={{ alignItems: "center", marginBottom: 8 }}>
             <Text variant="title" color={t.colors.ok} style={{ fontSize: 36 }}>{overallFunction}%</Text>
@@ -145,8 +167,21 @@ export default function OutcomeMeasuresScreen() {
           </View>
         </Card>
 
-        <Button title="Salvar medidas" onPress={() => mutation.mutate()} loading={mutation.isPending} />
+        <Button title={tr(lang, { en: "Save measures", pt: "Salvar medidas" })} onPress={() => mutation.mutate()} loading={mutation.isPending} />
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_records` — the web reaches these scores through My Records and
+ * refuses them with the plan closed. The app not only showed them, it let the
+ * patient write a new row.
+ */
+export default function OutcomeMeasures() {
+  return (
+    <PlanGate module="mod_records">
+      <OutcomeMeasuresScreen />
+    </PlanGate>
   );
 }

@@ -38,21 +38,21 @@ function DocumentsScreen() {
   const [uploading, setUploading] = useState(false);
 
   // Same values as the web's DOC_TYPES (app/dashboard/documents/page.tsx). The
-// card was printing the enum key with underscores swapped for spaces, so a
-// Portuguese screen read "MEDICAL REFERRAL".
-const DOC_TYPE_LABEL: Record<string, string> = {
-  MEDICAL_REFERRAL: tr(lang, { en: "Medical referral", pt: "Encaminhamento Médico" }),
-  MEDICAL_REPORT: tr(lang, { en: "Medical report", pt: "Laudo Médico" }),
-  // Present in the DocumentType enum; without it a signed consent form read "Outro".
-  CONSENT_FORM: "Termo de Consentimento",
-  PRESCRIPTION: tr(lang, { en: "Prescription", pt: "Prescrição" }),
-  IMAGING: "Exames de Imagem",
-  INSURANCE: "Seguro",
-  PREVIOUS_TREATMENT: "Tratamento Anterior",
-  OTHER: "Outro",
-};
+  // card was printing the enum key with underscores swapped for spaces, so a
+  // Portuguese screen read "MEDICAL REFERRAL".
+  const DOC_TYPE_LABEL: Record<string, string> = {
+    MEDICAL_REFERRAL: tr(lang, { en: "Medical referral", pt: "Encaminhamento Médico" }),
+    MEDICAL_REPORT: tr(lang, { en: "Medical report", pt: "Laudo Médico" }),
+    // Present in the DocumentType enum; without it a signed consent form read "Outro".
+    CONSENT_FORM: tr(lang, { en: "Consent form", pt: "Termo de Consentimento" }),
+    PRESCRIPTION: tr(lang, { en: "Prescription", pt: "Prescrição" }),
+    IMAGING: tr(lang, { en: "Imaging", pt: "Exames de Imagem" }),
+    INSURANCE: tr(lang, { en: "Insurance", pt: "Seguro" }),
+    PREVIOUS_TREATMENT: tr(lang, { en: "Previous treatment", pt: "Tratamento Anterior" }),
+    OTHER: tr(lang, { en: "Other", pt: "Outro" }),
+  };
 
-const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
+  const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
     MEDICAL_REFERRAL: { icon: "document-text-outline", color: t.colors.work, bg: t.colors.workSoft },
     // Keyed to the enum. This was `REPORT`, which no document has, so every
     // medical report fell through to the generic icon.
@@ -103,7 +103,6 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
       <View style={{ gap: 16, flex: 1 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <View>
-            <Text variant="title">{tr(lang, { en: "Documents", pt: "Documentos" })}</Text>
             <Text variant="caption" color={t.colors.textSecondary}>{tr(lang, { en: "Reports, tests and prescriptions", pt: "Laudos, exames e receitas" })}</Text>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -136,7 +135,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
         {isLoading ? (
           <Spinner center />
         ) : isError ? (
-          <Card><Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Nao foi possivel carregar." })}</Text></Card>
+          <Card><Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}</Text></Card>
         ) : (data ?? []).length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
@@ -165,7 +164,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
                       <View style={{ flex: 1 }}>
                         <Text variant="label" style={{ fontWeight: "600" }}>{item.title || item.fileName}</Text>
                         <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                          {DOC_TYPE_LABEL[item.documentType ?? "OTHER"] ?? "Outro"}{item.documentDate ? ` · ${formatDate(item.documentDate)}` : ""}
+                          {DOC_TYPE_LABEL[item.documentType ?? "OTHER"] ?? tr(lang, { en: "Other", pt: "Outro" })}{item.documentDate ? ` · ${formatDate(item.documentDate, lang)}` : ""}
                         </Text>
                       </View>
                       <Ionicons name="open-outline" size={16} color={t.colors.textMuted} />

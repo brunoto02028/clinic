@@ -39,10 +39,9 @@ function TreatmentProtocolScreen() {
 
   return (
     <Screen testID="protocol-screen">
-      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Treatment plan", pt: "Protocolo" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Treatment plan", pt: "Plano de tratamento" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 16, flex: 1 }}>
         <View>
-          <Text variant="title">{tr(lang, { en: "Treatment plan", pt: "Plano de Tratamento" })}</Text>
           <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>{tr(lang, { en: "Prescribed by your therapist", pt: "Protocolo prescrito pelo terapeuta" })}</Text>
         </View>
 

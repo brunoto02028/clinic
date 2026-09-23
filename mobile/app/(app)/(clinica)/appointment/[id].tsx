@@ -89,7 +89,7 @@ function AppointmentDetailScreen() {
 
           {/* Status badge */}
           {(() => {
-            const s = statusStyle(t, data.status);
+            const s = statusStyle(t, data.status, lang);
             return (
               <View style={{
                 flexDirection: "row",

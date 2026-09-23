@@ -60,11 +60,11 @@ function ExerciseDetailScreen() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-            <Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Nao foi possivel carregar." })}</Text>
+            <Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}</Text>
           </View>
         </Card>
       ) : !rx ? (
-        <Text muted>{tr(lang, { en: "Exercise not found.", pt: "Exercicio nao encontrado." })}</Text>
+        <Text muted>{tr(lang, { en: "Exercise not found.", pt: "Exercício não encontrado." })}</Text>
       ) : (
         <View style={{ gap: 16 }}>
           {/* Header */}
@@ -117,7 +117,7 @@ function ExerciseDetailScreen() {
                 borderColor: t.colors.borderSubtle,
               }}>
                 <Text variant="title" color={t.colors.secondary} style={{ fontSize: 24 }}>{rx.sets}</Text>
-                <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Sets", pt: "Series" })}</Text>
+                <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Sets", pt: "Séries" })}</Text>
               </View>
             ) : null}
             {rx.reps ? (
@@ -131,7 +131,7 @@ function ExerciseDetailScreen() {
                 borderColor: t.colors.borderSubtle,
               }}>
                 <Text variant="title" color={t.colors.secondary} style={{ fontSize: 24 }}>{rx.reps}</Text>
-                <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Reps", pt: "Repeticoes" })}</Text>
+                <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Reps", pt: "Repetições" })}</Text>
               </View>
             ) : null}
             {rx.holdSeconds ? (

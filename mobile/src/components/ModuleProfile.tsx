@@ -7,9 +7,12 @@ import { useAuth } from "@/store/auth";
 import { useModule } from "@/store/module";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
 
 export interface ProfileSection {
-  title: string;
+  /** English canonical, Portuguese alongside — this menu was English-only, so
+   *  a pt-BR patient read fourteen English entries under a Portuguese home. */
+  title: { en: string; pt: string };
   icon: keyof typeof Ionicons.glyphMap;
   href: string;
 }
@@ -23,6 +26,7 @@ export interface ProfileSection {
  */
 export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}) {
   const t = useTheme();
+  const lang = useLang();
   const user = useAuth((s) => s.user);
   const logout = useAuth((s) => s.logout);
   const clearModule = useModule((s) => s.clearModule);
@@ -82,7 +86,7 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
             {sections.map((s, i) => (
               <ListItem
                 key={s.href}
-                title={s.title}
+                title={tr(lang, s.title)}
                 icon={<Ionicons name={s.icon} size={18} color={t.colors.text} />}
                 onPress={() => router.push(s.href as any)}
                 last={i === sections.length - 1}
@@ -93,26 +97,26 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
 
         <Card>
           <ListItem
-            title="Edit profile"
+            title={tr(lang, { en: "Edit profile", pt: "Editar perfil" })}
             icon={<Ionicons name="person-outline" size={18} color={t.colors.text} />}
             onPress={() => router.push("/profile-edit")}
           />
           <ListItem
-            title="Notifications"
+            title={tr(lang, { en: "Notifications", pt: "Notificações" })}
             icon={<Ionicons name="notifications-outline" size={18} color={t.colors.text} />}
             onPress={() => router.push("/notifications")}
           />
           <ListItem
-            title="Change password"
+            title={tr(lang, { en: "Change password", pt: "Alterar senha" })}
             icon={<Ionicons name="lock-closed-outline" size={18} color={t.colors.text} />}
             onPress={() => router.push("/change-password")}
             last
           />
         </Card>
 
-        <Button title="Switch module" variant="ghost" onPress={handleSwitchModule} size="md" />
+        <Button title={tr(lang, { en: "Switch module", pt: "Trocar de módulo" })} variant="ghost" onPress={handleSwitchModule} size="md" />
 
-        <Button title="Sign out" variant="ghost" onPress={handleLogout} size="md" />
+        <Button title={tr(lang, { en: "Sign out", pt: "Sair" })} variant="ghost" onPress={handleLogout} size="md" />
       </View>
     </Screen>
   );

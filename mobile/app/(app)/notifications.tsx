@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchNotifications } from "@/api/notifications";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr, pick } from "@/lib/i18n";
 
 function getIconMap(t: ReturnType<typeof useTheme>): Record<string, { icon: string; color: string }> {
   return {
@@ -18,6 +19,7 @@ function getIconMap(t: ReturnType<typeof useTheme>): Record<string, { icon: stri
 
 export default function Notifications() {
   const t = useTheme();
+  const lang = useLang();
   const ICON_MAP = getIconMap(t);
   const { data, isLoading } = useQuery({
     queryKey: ["notifications"],
@@ -30,11 +32,10 @@ export default function Notifications() {
   return (
     <Screen scroll testID="notifications-screen">
       <Stack.Screen
-        options={{ headerShown: true, title: "Notificações", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
+        options={{ headerShown: true, title: tr(lang, { en: "Notifications", pt: "Notificações" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
       />
       <View style={{ gap: 16 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text variant="title">Notificações</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
           {unread > 0 && (
             <View style={{ backgroundColor: t.colors.badSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
               <Text variant="caption" color={t.colors.bad} style={{ fontWeight: "700", fontSize: 11 }}>{unread}</Text>
@@ -48,8 +49,12 @@ export default function Notifications() {
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="notifications-off-outline" size={48} color={t.colors.textMuted} />
-              <Text variant="subtitle" color={t.colors.textSecondary}>Tudo em dia!</Text>
-              <Text variant="caption" color={t.colors.textMuted}>Nenhuma notificação pendente.</Text>
+              <Text variant="subtitle" color={t.colors.textSecondary}>
+                {tr(lang, { en: "All caught up", pt: "Tudo em dia!" })}
+              </Text>
+              <Text variant="caption" color={t.colors.textMuted}>
+                {tr(lang, { en: "Nothing pending.", pt: "Nenhuma notificação pendente." })}
+              </Text>
             </View>
           </Card>
         ) : (
@@ -77,10 +82,10 @@ export default function Notifications() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="label" style={{ fontWeight: "600" }}>
-                      {notif.titlePt || notif.title}
+                      {pick(lang, notif.title, notif.titlePt)}
                     </Text>
                     <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2, lineHeight: 18 }}>
-                      {notif.messagePt || notif.message}
+                      {pick(lang, notif.message, notif.messagePt)}
                     </Text>
                   </View>
                   {notif.isUrgent && <Ionicons name="alert-circle" size={16} color={t.colors.bad} />}

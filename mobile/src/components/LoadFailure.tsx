@@ -33,8 +33,8 @@ export function LoadFailure({ error, onRetry }: { error: unknown; onRetry?: () =
         <Text variant="body" style={{ textAlign: "center" }}>
           {locked
             ? planMessage(error) ??
-              t(lang, { en: "This is not included in your plan.", pt: "Isto nao esta incluido no seu plano." })
-            : t(lang, { en: "We could not load this.", pt: "Nao foi possivel carregar." })}
+              t(lang, { en: "This is not included in your plan.", pt: "Isto não está incluído no seu plano." })
+            : t(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}
         </Text>
         <Text
           variant="caption"
@@ -44,11 +44,11 @@ export function LoadFailure({ error, onRetry }: { error: unknown; onRetry?: () =
           {locked
             ? t(lang, {
                 en: "Ask your clinic if you think this is wrong.",
-                pt: "Fale com sua clinica se achar que isto esta errado.",
+                pt: "Fale com sua clínica se achar que isto está errado.",
               })
             : t(lang, {
                 en: "This does not mean it is empty — the request failed.",
-                pt: "Isto nao quer dizer que esta vazio — a consulta falhou.",
+                pt: "Isto não quer dizer que está vazio — a consulta falhou.",
               })}
         </Text>
         {/* No retry on a locked screen: pressing it again cannot change a plan. */}

@@ -7,6 +7,7 @@ import { fetchTasks, completeTask } from "@/api/tasks";
 import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
 import { useLang, pick, t as tr } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 function TasksScreen() {
   const lang = useLang();
@@ -17,19 +18,19 @@ function TasksScreen() {
   // The badge printed `item.priority` straight through, so the patient read
   // "high" in English on an otherwise Portuguese screen.
   const PRIORITY_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-    urgent: { bg: t.colors.badSoft, text: t.colors.bad, label: "Urgente" },
-    high: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Alta" },
-    normal: { bg: t.colors.workSoft, text: t.colors.work, label: "Normal" },
-    low: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Baixa" },
+    urgent: { bg: t.colors.badSoft, text: t.colors.bad, label: tr(lang, { en: "Urgent", pt: "Urgente" }) },
+    high: { bg: t.colors.warnSoft, text: t.colors.warn, label: tr(lang, { en: "High", pt: "Alta" }) },
+    normal: { bg: t.colors.workSoft, text: t.colors.work, label: tr(lang, { en: "Normal", pt: "Normal" }) },
+    low: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: tr(lang, { en: "Low", pt: "Baixa" }) },
   };
 
   const completeMut = useMutation({
     mutationFn: (taskId: string) => completeTask(taskId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
-      Alert.alert("Tarefa concluida!");
+      Alert.alert(tr(lang, { en: "Task completed", pt: "Tarefa concluída!" }));
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
   const tasks = data ?? [];
@@ -40,11 +41,10 @@ function TasksScreen() {
     <Screen testID="tasks-screen">
       <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Tasks", pt: "Tarefas" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 16, flex: 1 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text variant="title">{tr(lang, { en: "Tasks", pt: "Tarefas" })}</Text>
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", alignItems: "center" }}>
           {pending.length > 0 && (
             <View style={{ backgroundColor: t.colors.warnSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-              <Text variant="caption" color={t.colors.warn} style={{ fontWeight: "700" }}>{pending.length} {tr(lang, { en: pending.length === 1 ? "pending" : "pending", pt: pending.length === 1 ? "pendente" : "pendentes" })}</Text>
+              <Text variant="caption" color={t.colors.warn} style={{ fontWeight: "700" }}>{pending.length} {tr(lang, { en: "pending", pt: pending.length === 1 ? "pendente" : "pendentes" })}</Text>
             </View>
           )}
         </View>
@@ -54,7 +54,7 @@ function TasksScreen() {
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="checkbox-outline" size={48} color={t.colors.textMuted} />
               <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No tasks", pt: "Nenhuma tarefa" })}</Text>
-              <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Tasks your clinic assigns will appear here.", pt: "Tarefas atribuidas pela clinica aparecerao aqui." })}</Text>
+              <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Tasks your clinic assigns will appear here.", pt: "Tarefas atribuídas pela clínica aparecerão aqui." })}</Text>
             </View>
           </Card>
         ) : (
@@ -85,6 +85,11 @@ function TasksScreen() {
                         {pick(lang, item.description, item.descriptionPt) ? (
                           <Text variant="caption" color={t.colors.textSecondary} numberOfLines={1} style={{ marginTop: 2 }}>
                             {pick(lang, item.description, item.descriptionPt)}
+                          </Text>
+                        ) : null}
+                        {item.dueDate ? (
+                          <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 2 }}>
+                            {tr(lang, { en: "Due", pt: "Prazo" })}: {formatDate(item.dueDate, lang)}
                           </Text>
                         ) : null}
                       </View>

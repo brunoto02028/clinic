@@ -4,45 +4,63 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
+import { useLang, t as tr } from "@/lib/i18n";
 
 function GuideScreen() {
   const t = useTheme();
+  const lang = useLang();
 
   const STEPS = [
     {
       number: "1",
-      title: "Complete seu perfil",
-      desc: "Adicione telefone, endereço e contato de emergência.",
+      title: tr(lang, { en: "Complete your profile", pt: "Complete seu perfil" }),
+      desc: tr(lang, {
+        en: "Add your phone, address and emergency contact.",
+        pt: "Adicione telefone, endereço e contato de emergência.",
+      }),
       icon: "person-outline" as const,
       color: t.colors.health,
       soft: t.colors.healthSoft,
-      path: "/profile",
-      cta: "Ir ao Perfil",
+      // Not "/profile": three files resolve to it — the profile tab of the
+      // clinic, the BA and the lab module — and the router picked the BA one,
+      // so this step opened another product's menu. Same ambiguity that froze
+      // sign-out on "/".
+      path: "/(app)/(clinica)/(tabs)/profile",
+      cta: tr(lang, { en: "Go to profile", pt: "Ir ao Perfil" }),
     },
     {
       number: "2",
-      title: "Avaliação Médica",
-      desc: "Responda o questionário de 9 etapas sobre sua saúde.",
+      title: tr(lang, { en: "Medical assessment", pt: "Avaliação Médica" }),
+      desc: tr(lang, {
+        en: "Answer the 9-step questionnaire about your health.",
+        pt: "Responda o questionário de 9 etapas sobre sua saúde.",
+      }),
       icon: "clipboard-outline" as const,
       color: t.colors.work,
       soft: t.colors.workSoft,
-      path: "/screening",
-      cta: "Fazer Avaliação",
+      path: "/(app)/(clinica)/screening",
+      cta: tr(lang, { en: "Start assessment", pt: "Fazer Avaliação" }),
     },
     {
       number: "3",
-      title: "Agende sua consulta",
-      desc: "Escolha um horário com seu terapeuta.",
+      title: tr(lang, { en: "Book your appointment", pt: "Agende sua consulta" }),
+      desc: tr(lang, {
+        en: "Pick a time with your therapist.",
+        pt: "Escolha um horário com seu terapeuta.",
+      }),
       icon: "calendar-outline" as const,
       color: t.colors.warn,
       soft: t.colors.warnSoft,
-      path: "/appointments",
-      cta: "Ver Agenda",
+      path: "/(app)/(clinica)/(tabs)/appointments",
+      cta: tr(lang, { en: "View appointments", pt: "Ver Agenda" }),
     },
     {
       number: "4",
-      title: "Chegue preparado",
-      desc: "Chegue 5 min antes. Traga roupas confortáveis e documentos relevantes.",
+      title: tr(lang, { en: "Arrive prepared", pt: "Chegue preparado" }),
+      desc: tr(lang, {
+        en: "Arrive 5 minutes early. Bring comfortable clothes and any relevant documents.",
+        pt: "Chegue 5 min antes. Traga roupas confortáveis e documentos relevantes.",
+      }),
       icon: "checkmark-circle-outline" as const,
       color: t.colors.ok,
       soft: t.colors.okSoft,
@@ -52,12 +70,12 @@ function GuideScreen() {
   ];
 
   const FEATURES = [
-    { icon: "fitness-outline" as const, label: "Exercícios personalizados", color: t.colors.health },
-    { icon: "clipboard-outline" as const, label: "Notas clínicas", color: t.colors.work },
-    { icon: "footsteps-outline" as const, label: "Scans 3D dos pés", color: t.colors.community },
-    { icon: "document-text-outline" as const, label: "Documentos & laudos", color: t.colors.warn },
-    { icon: "school-outline" as const, label: "Conteúdo educativo", color: t.colors.ok },
-    { icon: "chatbubble-outline" as const, label: "Comunicação direta", color: t.colors.bad },
+    { icon: "fitness-outline" as const, label: tr(lang, { en: "Personalised exercises", pt: "Exercícios personalizados" }), color: t.colors.health },
+    { icon: "clipboard-outline" as const, label: tr(lang, { en: "Clinical notes", pt: "Notas clínicas" }), color: t.colors.work },
+    { icon: "footsteps-outline" as const, label: tr(lang, { en: "3D foot scans", pt: "Scans 3D dos pés" }), color: t.colors.community },
+    { icon: "document-text-outline" as const, label: tr(lang, { en: "Documents & reports", pt: "Documentos & laudos" }), color: t.colors.warn },
+    { icon: "school-outline" as const, label: tr(lang, { en: "Educational content", pt: "Conteúdo educativo" }), color: t.colors.ok },
+    { icon: "chatbubble-outline" as const, label: tr(lang, { en: "Direct messaging", pt: "Comunicação direta" }), color: t.colors.bad },
   ];
 
   return (
@@ -65,7 +83,7 @@ function GuideScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: "Guia",
+          title: tr(lang, { en: "How it works", pt: "Como funciona" }),
           headerStyle: { backgroundColor: t.colors.background },
           headerTintColor: t.colors.text,
           headerShadowVisible: false,
@@ -82,16 +100,23 @@ function GuideScreen() {
           }}>
             <Ionicons name="compass-outline" size={32} color={t.colors.health} />
           </View>
-          <Text variant="title" style={{ textAlign: "center" }}>Bem-vindo ao BPR</Text>
+          <Text variant="title" style={{ textAlign: "center" }}>
+            {tr(lang, { en: "Welcome to BPR", pt: "Bem-vindo ao BPR" })}
+          </Text>
           <Text variant="body" color={t.colors.textSecondary} style={{ textAlign: "center", lineHeight: 22 }}>
-            Este guia explica como funciona o portal,{"\n"}o que completar antes da consulta{"\n"}e como aproveitar ao máximo.
+            {tr(lang, {
+              en: "This guide explains how the portal works, what to complete before your appointment, and how to get the most out of it.",
+              pt: "Este guia explica como funciona o portal, o que completar antes da consulta e como aproveitar ao máximo.",
+            })}
           </Text>
         </View>
 
         {/* Steps */}
         <View style={{ gap: 12 }}>
-          <Text variant="subtitle">Passos para sua consulta</Text>
-          {STEPS.map((s, i) => (
+          <Text variant="subtitle">
+            {tr(lang, { en: "Steps before your appointment", pt: "Passos para sua consulta" })}
+          </Text>
+          {STEPS.map((s) => (
             <Card key={s.number}>
               <View style={{ flexDirection: "row", gap: 12 }}>
                 <View style={{
@@ -125,9 +150,24 @@ function GuideScreen() {
           ))}
         </View>
 
+        {/* The one rule the web states and the app used to leave out. */}
+        <Card accent="health">
+          <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+            <Ionicons name="time-outline" size={18} color={t.colors.warn} />
+            <Text variant="caption" color={t.colors.textSecondary} style={{ flex: 1, lineHeight: 18 }}>
+              {tr(lang, {
+                en: "Need to cancel or reschedule? Please let the clinic know at least 24 hours in advance.",
+                pt: "Precisa cancelar ou remarcar? Avise a clínica com pelo menos 24 horas de antecedência.",
+              })}
+            </Text>
+          </View>
+        </Card>
+
         {/* Features */}
         <View style={{ gap: 12 }}>
-          <Text variant="subtitle">O que você pode fazer</Text>
+          <Text variant="subtitle">
+            {tr(lang, { en: "What you can do here", pt: "O que você pode fazer" })}
+          </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
             {FEATURES.map((f) => (
               <View
@@ -150,8 +190,15 @@ function GuideScreen() {
 
         {/* CTA */}
         <View style={{ gap: 4, alignItems: "center" }}>
-          <Button variant="health" title="Começar agora" onPress={() => router.push("/screening")} size="lg" />
-          <Text variant="caption" color={t.colors.textSecondary}>Complete seu perfil e avaliação</Text>
+          <Button
+            variant="health"
+            title={tr(lang, { en: "Start now", pt: "Começar agora" })}
+            onPress={() => router.push("/(app)/(clinica)/screening")}
+            size="lg"
+          />
+          <Text variant="caption" color={t.colors.textSecondary}>
+            {tr(lang, { en: "Complete your profile and assessment", pt: "Complete seu perfil e avaliação" })}
+          </Text>
         </View>
       </View>
     </Screen>

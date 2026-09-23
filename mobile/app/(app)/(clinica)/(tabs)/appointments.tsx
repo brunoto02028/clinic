@@ -26,7 +26,7 @@ function AppointmentsScreen() {
   return (
     <Screen testID="appointments-screen">
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <Text variant="title">{tr(lang, { en: "Appointments", pt: "Agenda" })}</Text>
+        <Text variant="title">{tr(lang, { en: "Appointments", pt: "Consultas" })}</Text>
         <Pressable
           onPress={() => router.push("/book-appointment")}
           style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: t.colors.healthSoft, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: t.colors.health }}
@@ -59,7 +59,7 @@ function AppointmentsScreen() {
           contentContainerStyle={{ gap: 12 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const status = statusStyle(t, item.status);
+            const status = statusStyle(t, item.status, lang);
             return (
               <Pressable
                 testID={`appt-${item.id}`}

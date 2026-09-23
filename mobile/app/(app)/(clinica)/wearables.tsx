@@ -6,9 +6,12 @@ import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { fetchConnections, disconnectProvider, syncProvider, OW_PROVIDERS } from "@/api/wearables";
 import { API_URL } from "@/api/config";
+import { useLang, t as tr } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 export default function Wearables() {
   const t = useTheme();
+  const lang = useLang();
   const qc = useQueryClient();
   const { data: connections, isLoading } = useQuery({
     queryKey: ["wearable-connections"],
@@ -18,13 +21,19 @@ export default function Wearables() {
   const disconnectMut = useMutation({
     mutationFn: disconnectProvider,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["wearable-connections"] }),
-    onError: (e) => Alert.alert("Erro", (e as Error).message),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
   const syncMut = useMutation({
     mutationFn: syncProvider,
-    onSuccess: () => Alert.alert("Sincronização", "Sincronização iniciada. Os dados serão atualizados em breve."),
-    onError: (e) => Alert.alert("Erro", (e as Error).message),
+    onSuccess: () => Alert.alert(
+      tr(lang, { en: "Sync", pt: "Sincronização" }),
+      tr(lang, {
+        en: "Sync started. Your data will be updated shortly.",
+        pt: "Sincronização iniciada. Os dados serão atualizados em breve.",
+      }),
+    ),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
   const connectedProviders = new Set((connections || []).map((c) => c.provider.toLowerCase()));
@@ -35,11 +44,13 @@ export default function Wearables() {
 
   return (
     <Screen scroll testID="wearables-screen">
-      <Stack.Screen options={{ headerShown: true, title: "Dispositivos", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Devices", pt: "Dispositivos" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 20 }}>
-        <Text variant="title">Dispositivos</Text>
         <Text variant="caption" color={t.colors.textSecondary}>
-          Conecte seu wearable para sincronizar dados de sono, atividade e recuperação automaticamente.
+          {tr(lang, {
+            en: "Connect your wearable to sync sleep, activity and recovery data automatically.",
+            pt: "Conecte seu wearable para sincronizar dados de sono, atividade e recuperação automaticamente.",
+          })}
         </Text>
 
         {/* `wearable-data` had no entry point anywhere in the app — it was the
@@ -61,7 +72,7 @@ export default function Wearables() {
               backgroundColor: pressed ? t.colors.surfaceMuted : "transparent",
             })}
           >
-            <Text variant="label">Ver meus dados</Text>
+            <Text variant="label">{tr(lang, { en: "View my data", pt: "Ver meus dados" })}</Text>
             <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
           </Pressable>
         )}
@@ -96,7 +107,7 @@ export default function Wearables() {
                       </Text>
                       {isConnected && conn?.lastSyncedAt && (
                         <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                          Último sync: {new Date(conn.lastSyncedAt).toLocaleDateString()}
+                          {tr(lang, { en: "Last sync", pt: "Último sync" })}: {formatDate(conn.lastSyncedAt, lang)}
                         </Text>
                       )}
                     </View>
@@ -116,19 +127,23 @@ export default function Wearables() {
                         }}
                       >
                         <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>
-                          {syncMut.isPending ? "..." : "Sync"}
+                          {syncMut.isPending ? "..." : tr(lang, { en: "Sync", pt: "Sincronizar" })}
                         </Text>
                       </Pressable>
                       <Pressable
                         onPress={() =>
-                          Alert.alert("Desconectar", `Desconectar ${p.name}?`, [
-                            { text: "Cancelar", style: "cancel" },
-                            {
-                              text: "Desconectar",
-                              style: "destructive",
-                              onPress: () => disconnectMut.mutate(p.key),
-                            },
-                          ])
+                          Alert.alert(
+                            tr(lang, { en: "Disconnect", pt: "Desconectar" }),
+                            tr(lang, { en: `Disconnect ${p.name}?`, pt: `Desconectar ${p.name}?` }),
+                            [
+                              { text: tr(lang, { en: "Cancel", pt: "Cancelar" }), style: "cancel" },
+                              {
+                                text: tr(lang, { en: "Disconnect", pt: "Desconectar" }),
+                                style: "destructive",
+                                onPress: () => disconnectMut.mutate(p.key),
+                              },
+                            ],
+                          )
                         }
                         style={{
                           paddingHorizontal: 12,
@@ -138,7 +153,7 @@ export default function Wearables() {
                           borderColor: t.colors.bad,
                         }}
                       >
-                        <Text style={{ fontSize: 12, color: t.colors.bad }}>Remover</Text>
+                        <Text style={{ fontSize: 12, color: t.colors.bad }}>{tr(lang, { en: "Remove", pt: "Remover" })}</Text>
                       </Pressable>
                     </View>
                   ) : (
@@ -151,7 +166,7 @@ export default function Wearables() {
                         backgroundColor: t.colors.primary,
                       }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Conectar</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>{tr(lang, { en: "Connect", pt: "Conectar" })}</Text>
                     </Pressable>
                   )}
                 </View>

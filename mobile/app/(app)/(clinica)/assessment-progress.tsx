@@ -6,7 +6,8 @@ import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchAssessmentProgress } from "@/api/assessment-progress";
 import { useTheme } from "@/theme/useTheme";
 import { LoadFailure } from "@/components/LoadFailure";
-import { useLang, pick } from "@/lib/i18n";
+import { useLang, pick, t as tr } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
 
 const STEP_ICONS: Record<string, string> = {
   screening: "clipboard-outline",
@@ -20,26 +21,27 @@ const STEP_PATHS: Record<string, string> = {
   results: "/",
 };
 
-export default function AssessmentProgressScreen() {
+function AssessmentProgressScreen() {
   const lang = useLang();
   const t = useTheme();
   const { data, isLoading, isError, refetch, error } = useQuery({ queryKey: ["assessment-progress"], queryFn: fetchAssessmentProgress });
 
   const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-    completed: { bg: t.colors.okSoft, text: t.colors.ok, label: "Concluido" },
-    in_progress: { bg: t.colors.workSoft, text: t.colors.work, label: "Em andamento" },
-    processing: { bg: t.colors.warnSoft, text: t.colors.warn, label: "Processando" },
-    partial: { bg: t.colors.communitySoft, text: t.colors.community, label: "Parcial" },
-    pending: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: "Pendente" },
+    completed: { bg: t.colors.okSoft, text: t.colors.ok, label: tr(lang, { en: "Done", pt: "Concluído" }) },
+    in_progress: { bg: t.colors.workSoft, text: t.colors.work, label: tr(lang, { en: "In progress", pt: "Em andamento" }) },
+    processing: { bg: t.colors.warnSoft, text: t.colors.warn, label: tr(lang, { en: "Processing", pt: "Processando" }) },
+    partial: { bg: t.colors.communitySoft, text: t.colors.community, label: tr(lang, { en: "Partial", pt: "Parcial" }) },
+    pending: { bg: t.colors.surfaceMuted, text: t.colors.textMuted, label: tr(lang, { en: "Pending", pt: "Pendente" }) },
   };
 
   return (
     <Screen scroll testID="assessment-progress-screen">
-      <Stack.Screen options={{ headerShown: true, title: "Progresso", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "My progress", pt: "Meu progresso" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 20 }}>
         <View>
-          <Text variant="title">Progresso da Avaliacao</Text>
-          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>Acompanhe cada etapa do processo</Text>
+          <Text variant="body" color={t.colors.textSecondary}>
+            {tr(lang, { en: "Follow each step of the process", pt: "Acompanhe cada etapa do processo" })}
+          </Text>
         </View>
 
         {isLoading ? <Spinner center /> : isError ? (
@@ -48,20 +50,22 @@ export default function AssessmentProgressScreen() {
              "no progress yet" state below. */
           <LoadFailure error={error} onRetry={() => refetch()} />
         ) : !data ? (
-          <Card><Text muted>Nao foi possivel carregar.</Text></Card>
+          <Card><Text muted>{tr(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}</Text></Card>
         ) : (
           <>
             {/* Progress bar */}
             <Card variant="highlight">
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-                <Text variant="label" style={{ fontWeight: "600" }}>Progresso geral</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Overall progress", pt: "Progresso geral" })}</Text>
                 <Text variant="label" color={t.colors.ok} style={{ fontWeight: "700" }}>{data.progressPercent}%</Text>
               </View>
               <View style={{ height: 8, backgroundColor: t.colors.surfaceMuted, borderRadius: 4 }}>
                 <View style={{ height: 8, width: `${data.progressPercent}%`, backgroundColor: t.colors.ok, borderRadius: 4 }} />
               </View>
               <Text variant="caption" color={t.colors.textMuted} style={{ marginTop: 6 }}>
-                {data.completedCount} de {data.totalSteps} etapas concluidas
+                {lang === "pt"
+                  ? `${data.completedCount} de ${data.totalSteps} etapas concluídas`
+                  : `${data.completedCount} of ${data.totalSteps} steps completed`}
               </Text>
             </Card>
 
@@ -89,7 +93,7 @@ export default function AssessmentProgressScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text variant="label" style={{ fontWeight: "600" }}>{pick(lang, step.label, step.labelPt)}</Text>
-                        {isNext && <Text variant="caption" color={t.colors.ok} style={{ marginTop: 2 }}>Proximo passo</Text>}
+                        {isNext && <Text variant="caption" color={t.colors.ok} style={{ marginTop: 2 }}>{tr(lang, { en: "Next step", pt: "Próximo passo" })}</Text>}
                       </View>
                       <View style={{ backgroundColor: status.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
                         <Text variant="caption" color={status.text} style={{ fontWeight: "600", fontSize: 10 }}>{status.label}</Text>
@@ -107,5 +111,19 @@ export default function AssessmentProgressScreen() {
         )}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_screening` — every step it tracks is the assessment's
+ * (screening, outcome measures, results), and the screening screen itself is
+ * already behind that key. Without this the progress of a locked assessment
+ * was still on show.
+ */
+export default function AssessmentProgress() {
+  return (
+    <PlanGate module="mod_screening">
+      <AssessmentProgressScreen />
+    </PlanGate>
   );
 }

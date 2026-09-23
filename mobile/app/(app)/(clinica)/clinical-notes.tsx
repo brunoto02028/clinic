@@ -30,10 +30,12 @@ function ClinicalNotesScreen() {
       />
       <View style={{ gap: 16, flex: 1 }}>
         <View>
-          <Text variant="title" color={t.colors.secondary}>{tr(lang, { en: "Clinical notes", pt: "Notas Clínicas" })}</Text>
-          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>{tr(lang, { en: "Your therapist's notes from each session", pt: "Documentação SOAP das suas consultas" })}</Text>
+          {/* "Documentação SOAP" was the Portuguese half of this line — internal
+              jargon the English half deliberately avoids. Both say the same
+              thing now. */}
+          <Text variant="caption" color={t.colors.textSecondary}>{tr(lang, { en: "Your therapist's notes from each session", pt: "As notas do seu terapeuta a cada sessão" })}</Text>
         </View>
-        <Input placeholder="Buscar por data ou tratamento..." value={search} onChangeText={setSearch} />
+        <Input placeholder={tr(lang, { en: "Search by date or treatment...", pt: "Buscar por data ou tratamento..." })} value={search} onChangeText={setSearch} />
         {isLoading ? (
           <Spinner center />
         ) : isError ? (

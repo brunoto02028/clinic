@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
-import { useLang, t as tr } from "@/lib/i18n";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
 import { fetchCheckIns, submitCheckIn } from "@/api/daily-checkin";
 
 const MOODS = [
@@ -16,7 +17,10 @@ const MOODS = [
   { v: 5, emoji: "😄" },
 ];
 
-const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const DAY_LABELS: Record<Lang, string[]> = {
+  en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  pt: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"],
+};
 
 function SliderRow({ label, value, onChange, color }: { label: string; value: number; onChange: (v: number) => void; color?: string }) {
   const t = useTheme();
@@ -41,13 +45,14 @@ function SliderRow({ label, value, onChange, color }: { label: string; value: nu
 
 function HistoryDots({ history }: { history: Array<{ checkinDate: string; exercisesDone: boolean }> }) {
   const t = useTheme();
+  const lang = useLang();
   const last7 = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().split("T")[0];
     const entry = history.find(h => h.checkinDate === dateStr);
-    last7.push({ date: dateStr, day: DAY_LABELS[d.getDay()], entry });
+    last7.push({ date: dateStr, day: DAY_LABELS[lang][d.getDay()], entry });
   }
 
   return (
@@ -74,7 +79,7 @@ function HistoryDots({ history }: { history: Array<{ checkinDate: string; exerci
   );
 }
 
-export default function DailyCheckIn() {
+function DailyCheckInScreen() {
   const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
@@ -106,11 +111,13 @@ export default function DailyCheckIn() {
       qc.invalidateQueries({ queryKey: ["daily-checkin"] });
       qc.invalidateQueries({ queryKey: ["patient-progress"] });
       const streakMsg = res.streak
-        ? `\nStreak: ${res.streak.current} dia${res.streak.current !== 1 ? "s" : ""}${res.streak.isNewRecord ? " - Novo recorde!" : ""}`
+        ? lang === "pt"
+          ? `\nSequência: ${res.streak.current} dia${res.streak.current !== 1 ? "s" : ""}${res.streak.isNewRecord ? " — novo recorde!" : ""}`
+          : `\nStreak: ${res.streak.current} day${res.streak.current !== 1 ? "s" : ""}${res.streak.isNewRecord ? " — new record!" : ""}`
         : "";
-      Alert.alert("Salvo!", `+${res.xpAwarded ?? 15} XP${streakMsg}`);
+      Alert.alert(tr(lang, { en: "Saved", pt: "Salvo!" }), `+${res.xpAwarded ?? 15} XP${streakMsg}`);
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message),
+    onError: (e) => Alert.alert(tr(lang, { en: "Error", pt: "Erro" }), (e as Error).message),
   });
 
   const handleSave = () => {
@@ -146,7 +153,7 @@ export default function DailyCheckIn() {
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
                   <Text variant="label" color={t.colors.warn} style={{ fontWeight: "700" }}>{progress.xp} XP</Text>
-                  <Text variant="caption" color={t.colors.textMuted}>Nível {progress.level}</Text>
+                  <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Level", pt: "Nível" })} {progress.level}</Text>
                 </View>
               </View>
             </Card>
@@ -154,10 +161,10 @@ export default function DailyCheckIn() {
 
           <Text variant="title">{tr(lang, { en: "How are you today?", pt: "Como você está hoje?" })}</Text>
 
-          <SliderRow label="Dor" value={pain} onChange={setPain} color={t.colors.bad} />
-          <SliderRow label="Energia" value={energy} onChange={setEnergy} color={t.colors.warn} />
-          <SliderRow label="Qualidade do Sono" value={sleep} onChange={setSleep} color={t.colors.work} />
-          <SliderRow label="Estresse" value={stress} onChange={setStress} color={t.colors.community} />
+          <SliderRow label={tr(lang, { en: "Pain", pt: "Dor" })} value={pain} onChange={setPain} color={t.colors.bad} />
+          <SliderRow label={tr(lang, { en: "Energy", pt: "Energia" })} value={energy} onChange={setEnergy} color={t.colors.warn} />
+          <SliderRow label={tr(lang, { en: "Sleep quality", pt: "Qualidade do sono" })} value={sleep} onChange={setSleep} color={t.colors.work} />
+          <SliderRow label={tr(lang, { en: "Stress", pt: "Estresse" })} value={stress} onChange={setStress} color={t.colors.community} />
 
           <View style={{ gap: 4 }}>
             <Text variant="label">{tr(lang, { en: "Mood", pt: "Humor" })}</Text>
@@ -188,7 +195,11 @@ export default function DailyCheckIn() {
           <Pressable onPress={handleSave} disabled={mutation.isPending}
             style={{ padding: 16, borderRadius: t.radius.lg, backgroundColor: t.colors.primary, alignItems: "center", opacity: mutation.isPending ? 0.6 : 1 }}>
             <Text style={{ color: t.colors.primaryFg, fontWeight: "700", fontSize: 16 }}>
-              {mutation.isPending ? "Salvando..." : data?.today ? "Atualizar" : "Salvar"}
+              {mutation.isPending
+                ? tr(lang, { en: "Saving...", pt: "Salvando..." })
+                : data?.today
+                  ? tr(lang, { en: "Update", pt: "Atualizar" })
+                  : tr(lang, { en: "Save", pt: "Salvar" })}
             </Text>
           </Pressable>
 
@@ -213,5 +224,17 @@ export default function DailyCheckIn() {
         </View>
       )}
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_journey` — the check-in is the Journey's pain log. With the
+ * plan closed the app not only showed the form, it accepted a save.
+ */
+export default function DailyCheckIn() {
+  return (
+    <PlanGate module="mod_journey">
+      <DailyCheckInScreen />
+    </PlanGate>
   );
 }

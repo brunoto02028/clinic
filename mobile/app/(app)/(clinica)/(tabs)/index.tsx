@@ -14,19 +14,20 @@ import {
   Spinner,
 } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
-import { useLang, t as tr } from "@/lib/i18n";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { isPlanError } from "@/lib/plan";
 import { fetchAppointments, nextUpcoming } from "@/api/appointments";
 import { fetchPrescriptions } from "@/api/exercises";
 import { fetchProtocols } from "@/api/protocol";
 import { fetchMessages, unreadFromStaff } from "@/api/messages";
 
-function formatSessionDate(iso: string): string {
+function formatSessionDate(iso: string, lang: Lang): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
-  const weekday = d.toLocaleDateString("en-US", { weekday: "short" });
+  const locale = lang === "pt" ? "pt-BR" : "en-GB";
+  const weekday = d.toLocaleDateString(locale, { weekday: "short" });
   const day = d.getDate();
-  const month = d.toLocaleDateString("en-US", { month: "short" });
+  const month = d.toLocaleDateString(locale, { month: "short" });
   const hours = d.getHours().toString().padStart(2, "0");
   const minutes = d.getMinutes().toString().padStart(2, "0");
   return `${weekday} ${day} ${month} · ${hours}:${minutes}`;
@@ -79,7 +80,7 @@ export default function Health() {
     <Screen scroll testID="health-screen">
       <View style={{ gap: 20 }}>
         {/* ── Header ── */}
-        <Text variant="title">Health</Text>
+        <Text variant="title">{tr(lang, { en: "Health", pt: "Saúde" })}</Text>
 
         {/* ── Next session card ── */}
         {next ? (
@@ -96,19 +97,19 @@ export default function Health() {
               color="#CBDCD2"
               style={{ textTransform: "uppercase" }}
             >
-              NEXT SESSION
+              {tr(lang, { en: "NEXT SESSION", pt: "PRÓXIMA SESSÃO" })}
             </Text>
             <Text
               variant="subtitle"
               color="#FFFFFF"
               style={{ fontFamily: "Sora_700Bold" }}
             >
-              {formatSessionDate(next.dateTime)}
+              {formatSessionDate(next.dateTime, lang)}
             </Text>
             <Text variant="body" color="rgba(255,255,255,0.85)">
               {next.treatmentType}
               {next.therapist
-                ? ` · with ${next.therapist.firstName}`
+                ? ` · ${tr(lang, { en: "with", pt: "com" })} ${next.therapist.firstName}`
                 : ""}
             </Text>
 
@@ -131,7 +132,7 @@ export default function Health() {
                   color="#FFFFFF"
                   style={{ fontFamily: "Sora_700Bold", fontSize: 13 }}
                 >
-                  Reschedule
+                  {tr(lang, { en: "Reschedule", pt: "Remarcar" })}
                 </Text>
               </Pressable>
 
@@ -157,17 +158,20 @@ export default function Health() {
               color={t.colors.health}
             />
             <Text variant="heading" color={t.colors.health}>
-              No upcoming sessions
+              {tr(lang, { en: "No upcoming sessions", pt: "Nenhuma sessão agendada" })}
             </Text>
             <Text
               variant="body"
               color={t.colors.textSecondary}
               style={{ textAlign: "center" }}
             >
-              Book your next rehab session to stay on track.
+              {tr(lang, {
+                en: "Book your next session to stay on track.",
+                pt: "Agende sua próxima sessão para manter o ritmo.",
+              })}
             </Text>
             <Button
-              title="Book a session"
+              title={tr(lang, { en: "Book a session", pt: "Agendar sessão" })}
               variant="health"
               size="sm"
               onPress={() => router.push("/appointments")}
@@ -189,7 +193,9 @@ export default function Health() {
               color={t.colors.textMuted}
               style={{ textTransform: "uppercase" }}
             >
-              {planLabel ? `YOUR PLAN · ${planLabel}` : "YOUR PLAN"}
+              {planLabel
+                ? `${tr(lang, { en: "YOUR PLAN", pt: "SEU PLANO" })} · ${planLabel}`
+                : tr(lang, { en: "YOUR PLAN", pt: "SEU PLANO" })}
             </Text>
           </View>
 
@@ -199,26 +205,32 @@ export default function Health() {
             {exercisesUnavailable
               ? tr(lang, {
                   en: isPlanError(exercises.error) ? "Not included in your plan" : "We could not load today's exercises",
-                  pt: isPlanError(exercises.error) ? "Nao incluido no seu plano" : "Nao foi possivel carregar os exercicios de hoje",
+                  pt: isPlanError(exercises.error) ? "Não incluído no seu plano" : "Não foi possível carregar os exercícios de hoje",
                 })
-              : `${exerciseCount} ${exerciseCount === 1 ? tr(lang, { en: "exercise", pt: "exercicio" }) : tr(lang, { en: "exercises", pt: "exercicios" })} ${tr(lang, { en: "today", pt: "hoje" })}`}
+              : `${exerciseCount} ${exerciseCount === 1 ? tr(lang, { en: "exercise", pt: "exercício" }) : tr(lang, { en: "exercises", pt: "exercícios" })} ${tr(lang, { en: "today", pt: "hoje" })}`}
           </Text>
 
-          <TriBar work health />
-
-          <Button
-            title="Start today's exercises"
-            variant="health"
-            onPress={() => router.push("/exercises")}
-          />
+          {/* Both of these used to render under "Not included in your plan":
+              a progress bar with two of three segments filled against nothing,
+              and a full-width call to action that opened a locked screen. */}
+          {!exercisesUnavailable && (
+            <>
+              <TriBar work health />
+              <Button
+                title={tr(lang, { en: "Start today's exercises", pt: "Começar os exercícios de hoje" })}
+                variant="health"
+                onPress={() => router.push("/exercises")}
+              />
+            </>
+          )}
         </Card>
 
         {/* ── Quick links ── */}
         <Card>
           <ListItem
             icon={<Avatar label="📈" pillar="health" size={36} />}
-            title="Pain trend"
-            subtitle="Track your progress over time"
+            title={tr(lang, { en: "Pain trend", pt: "Evolução da dor" })}
+            subtitle={tr(lang, { en: "Track your progress over time", pt: "Acompanhe seu progresso ao longo do tempo" })}
             right={
               <Ionicons
                 name="chevron-forward"
@@ -230,8 +242,8 @@ export default function Health() {
           />
           <ListItem
             icon={<Avatar label="🗓" pillar="health" size={36} />}
-            title="Book a new session"
-            subtitle="Schedule your next appointment"
+            title={tr(lang, { en: "Book a new session", pt: "Agendar nova sessão" })}
+            subtitle={tr(lang, { en: "Schedule your next appointment", pt: "Marque sua próxima consulta" })}
             right={
               <Ionicons
                 name="chevron-forward"
@@ -243,8 +255,8 @@ export default function Health() {
           />
           <ListItem
             icon={<Avatar label="📋" pillar="health" size={36} />}
-            title="My records"
-            subtitle="Notes from your sessions"
+            title={tr(lang, { en: "My records", pt: "Meu prontuário" })}
+            subtitle={tr(lang, { en: "Notes from your sessions", pt: "Notas das suas sessões" })}
             right={
               <Ionicons
                 name="chevron-forward"
@@ -260,8 +272,8 @@ export default function Health() {
               clinic has sent and the patient has not read. */}
           <ListItem
             icon={<Avatar label="💬" pillar="health" size={36} />}
-            title="Message the clinic"
-            subtitle="Send a message to your therapist"
+            title={tr(lang, { en: "Message the clinic", pt: "Falar com a clínica" })}
+            subtitle={tr(lang, { en: "Send a message to your therapist", pt: "Envie uma mensagem ao seu terapeuta" })}
             right={
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 {unreadMessages > 0 && (
