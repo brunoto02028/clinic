@@ -1,6 +1,6 @@
 # T-2: `Alert` + central de alertas do terapeuta
 
-**Status:** pendente
+**Status:** concluído — QA aprovado (`qa/report-t-2.md`, `qa/report-t-2-recheck.md`)
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -44,9 +44,9 @@ nenhum — é um primeiro produtor natural, mas fica para T-3.
 
 ## Critérios de aceite
 
-- [ ] `prisma migrate diff` do schema novo **não contém `DROP`**
-- [ ] Terapeuta da clínica A não vê alerta da clínica B (teste com duas clínicas)
-- [ ] Paciente autenticado recebe 403 em `/api/alerts`
-- [ ] Ack e resolve gravam ator e horário, e aparecem na tela
-- [ ] Dois `createAlert()` com a mesma regra, paciente e janela criam **um** alerta
-- [ ] Nenhuma mensagem sai para o paciente nesta tarefa
+- [x] `prisma migrate diff` do schema novo **não contém `DROP`**
+- [x] Terapeuta da clínica A não vê alerta da clínica B (teste com duas clínicas)
+- [x] Paciente autenticado recebe 403 em `/api/alerts`
+- [x] Ack e resolve gravam ator e horário, e aparecem na tela
+- [x] Dois `createAlert()` com a mesma regra, paciente e janela criam **um** alerta
+- [x] Nenhuma mensagem sai para o paciente nesta tarefa

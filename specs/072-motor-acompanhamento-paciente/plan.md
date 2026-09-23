@@ -28,7 +28,7 @@ O documento foi escrito como se o sistema não existisse. Não é o caso.
 | `AutomationRule` (regras em banco) | **Falta** — hoje cada automação é código separado |
 | `ScheduledJob` / `AutomationRun` unificados | **Falta** |
 | `MessageLog` por canal, com fallback | **Falta** |
-| `Alert` + central de alertas | **Falta inteiramente** |
+| `Alert` + central de alertas | **Feito na T-2** |
 
 ## Decisões
 
@@ -95,7 +95,7 @@ paciente usa **Terapeuta / therapist**.
 | Tarefa | Nome | Status |
 |---|---|---|
 | T-1 | Mapa documento × sistema (sem código) | **concluído** |
-| T-2 | `Alert` + central de alertas do terapeuta | em andamento (QA rodando) |
+| T-2 | `Alert` + central de alertas do terapeuta | **concluído** |
 | T-3 | `AutomationRule`: regras em banco, uma automação migrada | pendente |
 | T-4 | Fila de aprovação unificada (`OutboundMessage`) | pendente |
 | T-5 | `AutomationRun`: idempotência e log unificados | pendente |

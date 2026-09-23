@@ -34,8 +34,22 @@ const RANK: Record<AlertPriority, number> = {
   [AlertPriority.URGENT]: 3,
 };
 
-export function alertDedupeKey(ruleCode: string, patientId: string, window: string): string {
-  return `${ruleCode}:${patientId}:${window}`;
+/**
+ * The clinic comes first and is part of the key, not decoration.
+ *
+ * Without it, a call made on behalf of one clinic with another clinic's
+ * patient id lands on that other clinic's row — and since an escalation
+ * *writes*, it would rewrite a tenant's alert and wipe the resolution someone
+ * there had already recorded. A "for each clinic, for each patient" loop is
+ * exactly where that pairing gets mismatched.
+ */
+export function alertDedupeKey(
+  clinicId: string,
+  ruleCode: string,
+  patientId: string,
+  window: string
+): string {
+  return `${clinicId}:${ruleCode}:${patientId}:${window}`;
 }
 
 /**
@@ -54,7 +68,7 @@ export function alertDedupeKey(ruleCode: string, patientId: string, window: stri
 export async function createAlert(
   input: CreateAlertInput
 ): Promise<{ created: boolean; escalated?: boolean; alertId: string }> {
-  const dedupeKey = alertDedupeKey(input.ruleCode, input.patientId, input.window);
+  const dedupeKey = alertDedupeKey(input.clinicId, input.ruleCode, input.patientId, input.window);
 
   const priority = input.priority ?? AlertPriority.MEDIUM;
 
@@ -88,8 +102,10 @@ export async function createAlert(
   // already acknowledged the milder one. A repeat at the same or lower
   // priority changes nothing.
   if (RANK[priority] > RANK[alert.priority]) {
-    await prisma.alert.update({
-      where: { id: alert.id },
+    // Scoped by clinic even though the key already carries it: this is the one
+    // write on the deduplication path, and belt and braces is cheap here.
+    const escalated = await prisma.alert.updateMany({
+      where: { id: alert.id, clinicId: input.clinicId },
       data: {
         priority,
         title: input.title,
@@ -101,7 +117,7 @@ export async function createAlert(
         resolvedAt: null,
       },
     });
-    return { created: false, escalated: true, alertId: alert.id };
+    if (escalated.count === 1) return { created: false, escalated: true, alertId: alert.id };
   }
 
   return { created: false, alertId: alert.id };

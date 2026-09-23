@@ -54,6 +54,8 @@ const UI = {
     resolvedBy: "Resolved by",
     viewPatient: "Open patient",
     why: "Why it fired",
+    stale: "Someone else already handled this one. The list has been refreshed.",
+    actionFailed: "That did not go through. The list has been refreshed.",
   },
   "pt-BR": {
     title: "Alertas",
@@ -73,6 +75,8 @@ const UI = {
     resolvedBy: "Resolvido por",
     viewPatient: "Abrir paciente",
     why: "Por que disparou",
+    stale: "Outra pessoa já tratou deste. A lista foi atualizada.",
+    actionFailed: "Não deu certo. A lista foi atualizada.",
   },
 } as const;
 
@@ -93,6 +97,7 @@ export default function AlertsCentre() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Status | "ALL">("OPEN");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,13 +122,21 @@ export default function AlertsCentre() {
 
   const act = async (id: string, action: "acknowledge" | "resolve") => {
     setBusyId(id);
+    setActionError(null);
     try {
       const res = await fetch(`/api/alerts/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      if (res.ok) await load();
+      if (!res.ok) {
+        // A colleague may have resolved it while this list sat open. Say so and
+        // reload either way: a click that does nothing, on a row that stays put,
+        // is indistinguishable from a click that did not register — so the
+        // therapist clicks again.
+        setActionError(res.status === 409 ? ui.stale : ui.actionFailed);
+      }
+      await load();
     } finally {
       setBusyId(null);
     }
@@ -142,7 +155,7 @@ export default function AlertsCentre() {
       <div className="flex items-start gap-3">
         <Bell className="h-6 w-6 text-slate-700 mt-0.5" />
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{ui.title}</h1>
+          <h2 className="text-2xl font-semibold text-slate-900">{ui.title}</h2>
           <p className="text-sm text-slate-500 mt-1">{ui.subtitle}</p>
         </div>
       </div>
@@ -159,6 +172,12 @@ export default function AlertsCentre() {
           </Button>
         ))}
       </div>
+
+      {actionError && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+          {actionError}
+        </p>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-16">
