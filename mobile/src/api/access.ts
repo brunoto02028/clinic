@@ -22,8 +22,17 @@ export interface PatientAccess {
 
 export async function fetchAccess(): Promise<PatientAccess> {
   const res = await apiFetch<PatientAccess>("/api/patient/access");
+  // A malformed answer is not "this patient has no modules". `modules: []` was
+  // the fallback, and PlanGate reads an empty list as a definite refusal — so a
+  // backend restart, a timeout or an HTML error page locked eleven screens on a
+  // patient with full access and told them their plan did not include their own
+  // record. Throwing instead lets the query fail, and PlanGate keeps the last
+  // answer it had.
+  if (!Array.isArray(res?.modules)) {
+    throw new Error("Malformed access response");
+  }
   return {
-    modules: Array.isArray(res?.modules) ? res.modules : [],
+    modules: res.modules,
     hiddenModules: Array.isArray(res?.hiddenModules) ? res.hiddenModules : [],
     permissions: Array.isArray(res?.permissions) ? res.permissions : [],
     fullAccessOverride: res?.fullAccessOverride,
