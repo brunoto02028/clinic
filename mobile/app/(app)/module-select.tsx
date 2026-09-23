@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Spinner, Logo } from "@/components/ui";
 import { fetchModules, type AppModule } from "@/api/modules";
-import { SHOW_LAB } from "@/lib/feature-flags";
+import { SHOW_LAB, CLINIC_ONLY } from "@/lib/feature-flags";
 import { useModule } from "@/store/module";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/theme/useTheme";
@@ -66,13 +66,22 @@ export default function ModuleSelect() {
       ? [...(routable ?? []), LAB_DEF]
       : routable;
 
+  // Straight past the chooser when there is nothing to choose: either the
+  // account has one area, or this build is the clinic app and the account is a
+  // clinic patient. Anyone else still picks — for a studio's student or a
+  // lab-only account the chooser is the only way in.
+  const skipTo =
+    modules && modules.length === 1
+      ? modules[0].key
+      : CLINIC_ONLY && isClinicPatient
+        ? ("clinica" as const)
+        : null;
+
   useEffect(() => {
-    if (modules && modules.length === 1) {
-      const m = modules[0];
-      setActiveModule(m.key);
-      router.replace(ROUTE_MAP[m.key] as any);
-    }
-  }, [modules]);
+    if (!skipTo) return;
+    setActiveModule(skipTo);
+    router.replace(ROUTE_MAP[skipTo] as any);
+  }, [skipTo]);
 
   // An account with no areas at all — rare, but a blank chooser with zero
   // cards and no way out was the old behaviour. Say so and offer sign-out.
@@ -191,7 +200,7 @@ export default function ModuleSelect() {
     );
   }
 
-  if (isLoading || (modules && modules.length === 1)) {
+  if (isLoading || skipTo) {
     return (
       <View style={{ flex: 1, backgroundColor: "#20242D", alignItems: "center", justifyContent: "center" }}>
         <Spinner />

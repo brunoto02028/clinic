@@ -8,6 +8,7 @@ import { useModule } from "@/store/module";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr } from "@/lib/i18n";
+import { CLINIC_ONLY } from "@/lib/feature-flags";
 
 export interface ProfileSection {
   /** English canonical, Portuguese alongside — this menu was English-only, so
@@ -114,7 +115,11 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
           />
         </Card>
 
-        <Button title={tr(lang, { en: "Switch module", pt: "Trocar de módulo" })} variant="ghost" onPress={handleSwitchModule} size="md" />
+        {/* Nothing to switch to in a clinic-only build, and the chooser it
+            opens is the screen that build exists to skip. */}
+        {!CLINIC_ONLY && (
+          <Button title={tr(lang, { en: "Switch module", pt: "Trocar de módulo" })} variant="ghost" onPress={handleSwitchModule} size="md" />
+        )}
 
         <Button title={tr(lang, { en: "Sign out", pt: "Sair" })} variant="ghost" onPress={handleLogout} size="md" />
       </View>

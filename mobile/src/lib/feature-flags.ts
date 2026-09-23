@@ -26,3 +26,23 @@
  * chooser and the route guard both check.
  */
 export const SHOW_LAB = process.env.EXPO_PUBLIC_SHOW_LAB !== "false";
+
+/**
+ * Whether this build goes straight into the clinic.
+ *
+ * The chooser exists because one account can hold several areas — the clinic,
+ * the laboratory, BA. But this binary is *the BPR clinic app*: a patient signs
+ * in to see their sessions, and the first thing they met was a question they
+ * had no reason to answer, with two doors that are not what they came for.
+ *
+ * With this on, a patient the server already recognises as a clinic patient
+ * goes straight to the clinic and never sees the chooser; "Switch module"
+ * leaves the profile with it. Anyone *without* `clinica` — a studio's student,
+ * a lab-only account — still gets the chooser, because for them it is the only
+ * way in.
+ *
+ * Default is **on**. The chooser comes back with:
+ *
+ *     EXPO_PUBLIC_CLINIC_ONLY=false eas build --profile production --platform ios
+ */
+export const CLINIC_ONLY = process.env.EXPO_PUBLIC_CLINIC_ONLY !== "false";
