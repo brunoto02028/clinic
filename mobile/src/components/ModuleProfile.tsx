@@ -47,7 +47,9 @@ export function ModuleProfile({ sections }: { sections?: ProfileSection[] } = {}
   const handleLogout = async () => {
     clearModule();
     await logout();
-    router.replace("/");
+    // Sign-in, not `/`: the root path is ambiguous (see app/(app)/_layout.tsx)
+    // and sending the signed-out user there froze the app.
+    router.replace("/login");
   };
 
   if (isLoading) {

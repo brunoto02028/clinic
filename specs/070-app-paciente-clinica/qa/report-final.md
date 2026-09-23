@@ -53,7 +53,7 @@ As ressalvas **não são regressão desta branch**.
 
 ## Ressalvas — nenhuma introduzida por esta branch, nenhuma bloqueia
 
-**F1 — pré-existente, já no ar: o app congela ao sair da conta no Expo Web.** Perfil → Sign out: `/api/mobile/logout` responde 200, depois a página entra em loop de render ("Maximum update depth exceeded") e para. **Confirmado idêntico no `main`**: o `mobile/` do `main` exportado e rodado na :8082 deu 476 erros e a mesma página congelada. Hipótese: a rota `/` é ambígua — `app/index.tsx` e os `index` de `(clinica)/(tabs)`, `(lab)/(tabs)`, `(ba)/(tabs)` e `(treino)` resolvem todos para `/`. **Conferir num aparelho antes do build para a loja.**
+**F1 — ~~pré-existente, já no ar~~ CORRIGIDO em 23/09, ver [report-f1-signout.md](report-f1-signout.md): o app congelava ao sair da conta.** Perfil → Sign out: `/api/mobile/logout` responde 200, depois a página entra em loop de render ("Maximum update depth exceeded") e para. **Confirmado idêntico no `main`**: o `mobile/` do `main` exportado e rodado na :8082 deu 476 erros e a mesma página congelada. Hipótese: a rota `/` é ambígua — `app/index.tsx` e os `index` de `(clinica)/(tabs)`, `(lab)/(tabs)`, `(ba)/(tabs)` e `(treino)` resolvem todos para `/`. Hipótese confirmada e corrigida: os dois pontos que mandavam para `/` agora mandam para `/login`.
 
 **F2 — igual à web, consequência aceita:** red flag não perguntada vira "Não"; o rascunho reaberto vem com as 12 "Não" pré-selecionadas e o envio liberado.
 
