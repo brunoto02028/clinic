@@ -40,7 +40,8 @@ nenhum — é um primeiro produtor natural, mas fica para T-3.
 - `prisma/schema.prisma` (só adição)
 - `lib/alerts.ts` (novo)
 - `app/api/alerts/route.ts`, `app/api/alerts/[id]/route.ts` (novos)
-- `app/dashboard/alerts/page.tsx` + componente de lista (novos)
+- `app/admin/alerts/page.tsx` + `components/alerts/alerts-centre.tsx` (novos)
+- `lib/admin-sections.ts` (aba no menu), `app/admin/page.tsx` (contador)
 
 ## Critérios de aceite
 
