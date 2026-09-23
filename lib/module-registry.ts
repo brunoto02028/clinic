@@ -30,6 +30,7 @@ import {
   ShoppingCart,
   Mic,
   Bell,
+  Watch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,6 +48,18 @@ export interface ModuleDefinition {
   category: "core" | "clinical" | "wellness" | "content" | "admin_only";
   alwaysVisible?: boolean; // true = always shown in sidebar (dashboard, profile, plans, consent)
   defaultEnabled?: boolean; // true = enabled by default when creating a new plan
+  /**
+   * Granted unless an admin takes it away — and still toggleable, unlike
+   * `alwaysVisible`, which the permissions screen pins to "unlocked".
+   *
+   * This exists for surfaces that shipped before anything governed them.
+   * No existing plan lists them in `features[]`, so gating them on a plan
+   * would take Messages away from every patient who has one — the switch is
+   * meant to be new, not the refusal.
+   */
+  defaultGranted?: boolean;
+  /** Governs the app only: the web has no page of its own for it. */
+  appOnly?: boolean;
 }
 
 export const MODULE_REGISTRY: ModuleDefinition[] = [
@@ -291,6 +304,41 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     category: "content",
     defaultEnabled: false,
   },
+
+  // ── Governed here, shown only in the app ──
+  // Both of these were reachable in the app with nothing able to switch them
+  // off: the registry had no entry, so the permissions screen had no row and
+  // the app had no key to gate on. They carry no `href` because the web has no
+  // page for either — Messages lives in the sidebar panel, and devices share
+  // /dashboard/biohacking with the daily check-in, which `mod_journey` already
+  // governs. An empty href keeps them out of the web menu (the sidebar filters
+  // on `m.href`) while the admin can still turn them on and off.
+  {
+    key: "mod_messages",
+    label: "Messages",
+    labelPt: "Mensagens",
+    description: "Message the clinic and read its replies",
+    descriptionPt: "Conversar com a clínica e ler as respostas",
+    icon: MessageSquare,
+    href: "",
+    category: "clinical",
+    defaultGranted: true,
+    defaultEnabled: true,
+    appOnly: true,
+  },
+  {
+    key: "mod_devices",
+    label: "Devices",
+    labelPt: "Dispositivos",
+    description: "Connect a wearable and see its sleep, activity and recovery data",
+    descriptionPt: "Conectar um wearable e ver dados de sono, atividade e recuperação",
+    icon: Watch,
+    href: "",
+    category: "wellness",
+    defaultGranted: true,
+    defaultEnabled: false,
+    appOnly: true,
+  },
 ];
 
 // ─── Permission Definitions ────────────────────────────────
@@ -446,6 +494,8 @@ export const ALWAYS_VISIBLE_MODULES = MODULE_REGISTRY.filter((m) => m.alwaysVisi
 
 /** Gated modules that require plan access */
 export const GATED_MODULES = MODULE_REGISTRY.filter((m) => !m.alwaysVisible);
+/** Granted to everyone until an admin says otherwise. */
+export const DEFAULT_GRANTED_MODULES = MODULE_REGISTRY.filter((m) => m.defaultGranted);
 
 /** Map module key → dashboard href */
 export const MODULE_HREF_MAP: Record<string, string> = Object.fromEntries(

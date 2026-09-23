@@ -8,6 +8,7 @@ import { fetchMessages, sendMessage, markMessagesRead, type ClinicMessage } from
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
 import { LoadFailure } from "@/components/LoadFailure";
+import { PlanGate } from "@/components/PlanGate";
 
 /** Screen copy, English canonical. */
 const UI = {
@@ -50,7 +51,7 @@ function formatWhen(iso: string, lang: "en" | "pt"): string {
   });
 }
 
-export default function Messages() {
+function MessagesScreen() {
   const t = useTheme();
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
@@ -209,5 +210,18 @@ export default function Messages() {
         </View>
       </KeyboardAvoidingView>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_messages`. Nothing in the registry governed this screen, so
+ * a clinic that wanted to switch messaging off for a patient had no switch to
+ * throw, and the app showed five clinical messages regardless.
+ */
+export default function Messages() {
+  return (
+    <PlanGate module="mod_messages">
+      <MessagesScreen />
+    </PlanGate>
   );
 }

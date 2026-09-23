@@ -7,8 +7,9 @@ import { useTheme } from "@/theme/useTheme";
 import { fetchConnections, disconnectProvider, syncProvider, fetchConnectUrl, OW_PROVIDERS } from "@/api/wearables";
 import { useLang, t as tr } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
+import { PlanGate } from "@/components/PlanGate";
 
-export default function Wearables() {
+function WearablesScreen() {
   const t = useTheme();
   const lang = useLang();
   const qc = useQueryClient();
@@ -185,5 +186,17 @@ export default function Wearables() {
         )}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_devices`, the key that also governs the data screen. Devices
+ * had no entry in the registry at all until now.
+ */
+export default function Wearables() {
+  return (
+    <PlanGate module="mod_devices">
+      <WearablesScreen />
+    </PlanGate>
   );
 }

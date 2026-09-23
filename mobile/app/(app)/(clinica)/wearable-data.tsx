@@ -5,6 +5,7 @@ import { Screen, Text, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { fetchWearableData } from "@/api/wearables";
 import { useLang, t as tr } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
 
 function MetricCard({ title, metrics }: { title: string; metrics: { label: string; value: string; color?: string }[] }) {
   const t = useTheme();
@@ -42,7 +43,7 @@ function MetricCard({ title, metrics }: { title: string; metrics: { label: strin
   );
 }
 
-export default function WearableData() {
+function WearableDataScreen() {
   const t = useTheme();
   const lang = useLang();
   const { data, isLoading } = useQuery({
@@ -120,5 +121,17 @@ export default function WearableData() {
         )}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Same key as the Devices screen it is reached from: switching devices off
+ * must take the readings with it, not leave them on a typed URL.
+ */
+export default function WearableData() {
+  return (
+    <PlanGate module="mod_devices">
+      <WearableDataScreen />
+    </PlanGate>
   );
 }
