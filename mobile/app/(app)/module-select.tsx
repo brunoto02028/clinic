@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Spinner, Logo } from "@/components/ui";
 import { fetchModules, type AppModule } from "@/api/modules";
+import { SHOW_LAB } from "@/lib/feature-flags";
 import { useModule } from "@/store/module";
 import { useAuth } from "@/store/auth";
 import { useTheme } from "@/theme/useTheme";
@@ -17,6 +18,14 @@ const ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   "barbell-outline": "barbell-outline",
   "body-outline": "body-outline",
   "nutrition-outline": "nutrition-outline",
+};
+
+/** Same shape the server sends, so the card renders identically. */
+const LAB_DEF: AppModule = {
+  key: "lab",
+  name: "Laboratory",
+  icon: "flask-outline",
+  description: "Lab tests & results",
 };
 
 const ROUTE_MAP: Record<AppModule["key"], string> = {
@@ -45,7 +54,17 @@ export default function ModuleSelect() {
   // build against a newer API). An unknown key would make the ROUTE_MAP lookup
   // undefined and router.replace throw — unprompted, inside the auto-select
   // effect. Unknown keys are dropped instead.
-  const modules = rawModules?.filter((m) => m.key in ROUTE_MAP);
+  const routable = rawModules?.filter((m) => m.key in ROUTE_MAP);
+
+  // The lab ships finished in every build and is offered unless this build
+  // turned it off (see lib/feature-flags.ts). Only ever added for someone the
+  // server already treats as a clinic patient — a studio's students have no
+  // `clinica` in their list and are a different product entirely.
+  const isClinicPatient = !!routable?.some((m) => m.key === "clinica");
+  const modules =
+    SHOW_LAB && isClinicPatient && !routable?.some((m) => m.key === "lab")
+      ? [...(routable ?? []), LAB_DEF]
+      : routable;
 
   useEffect(() => {
     if (modules && modules.length === 1) {

@@ -82,9 +82,17 @@ Agrupado por valor para o paciente. **Nenhuma exige backend novo**: todas consom
 
 ## Lab
 
-O módulo do laboratório **está no app inteiro** — catálogo, detalhe do exame, forma de coleta, checkout, pedidos e resultados — e hoje fica **oculto para o paciente**.
+O módulo do laboratório **está no app inteiro** e todas as telas funcionam: catálogo, detalhe do exame, forma de coleta, checkout, pedidos e resultados. O catálogo abre o detalhe, o detalhe leva à coleta e ao checkout, e a lista de pedidos abre o resultado.
 
-Ele é liberado por **dado, não por nova versão do app**: basta habilitar `DIAGNOSTICS` em `ClinicModuleAccess` da clínica. O QA provou isso: com a flag ligada, o Lab aparece e abre **sem novo build**; desligada, some e o acesso direto é bloqueado. É exatamente o que você quer para quando a API do laboratório estiver conectada.
+**Decisão de 23/09:** o Lab fica **aberto por padrão**, para dar para testar agora. Quem decide se ele vai ao paciente é o **build**:
+
+```
+EXPO_PUBLIC_SHOW_LAB=false eas build --profile production --platform ios
+```
+
+Com o flag desligado, quem manda é o servidor, como antes: o Lab aparece só para clínica com `DIAGNOSTICS` habilitado em `ClinicModuleAccess` — o interruptor de dado, que **não precisa de build nenhum**. Foi provado pelo QA: com a flag ligada o Lab aparece e abre sem rebuild; desligada, some e o acesso direto é bloqueado.
+
+O flag **só acrescenta** o Lab para quem o servidor já reconhece como paciente de clínica. Aluno de estúdio é outro produto e nunca vê: a lista de módulos dele não tem `clinica`, que é a condição checada no seletor e no guard.
 
 Quando esse dia chegar, vale uma revisão de UX: hoje o Lab é um módulo irmão, com barra de abas e até um perfil próprio. Se ele vira parte da experiência do paciente, o natural é entrar **dentro** da área clínica, não como um segundo app ao lado.
 
