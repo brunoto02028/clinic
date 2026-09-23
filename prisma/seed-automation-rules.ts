@@ -30,12 +30,11 @@ const RULES = [
     // notifyPatient builds the message from those. A copy here would be a
     // field that looks like a lever and is wired to nothing, which is exactly
     // what QA caught in messageEn; `useReminderTemplate` was the last of them.
-    actionData: {
-      // Written to the AuditLog when the message is actually delivered — the
-      // two screens that ask "was today's reminder sent?" read this action,
-      // and queued is not sent.
-      auditAction: "DAILY_ADHERENCE_REMINDER_SENT",
-    },
+    // Empty on purpose. The wording lives with activity 62's reminder
+    // templates, and the AuditLog action is the route's own constant, written
+    // onto the queued row — nothing reads it from here. A field in the table
+    // that no code reads is the shape QA caught three times in this activity.
+    actionData: {},
     channels: ["EMAIL"],
     active: true,
   },

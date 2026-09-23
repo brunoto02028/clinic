@@ -191,9 +191,14 @@ export async function POST(req: NextRequest) {
       // One clinic's bad rule must not stop the engine for every other clinic.
       // QA took the whole run down with a single mistyped priority, and which
       // clinics got skipped depended on the order rows came back in.
-      const message = String((error as Error)?.message ?? error);
-      console.error(`[daily-adherence] clinic ${clinic.id} failed:`, message);
-      failures.push({ clinicId: clinic.id, error: message });
+      // Prisma's message carries the whole failing payload — patient ids and
+      // the titles of their exercises — and this goes to the response and to
+      // the production log. The first line names what broke; the rest stays in
+      // the stack, which the server keeps and the response does not.
+      const full = error instanceof Error ? error.message : String(error);
+      const summary = full.split(/\r?\n/).find((l) => l.trim().length > 0)?.trim().slice(0, 160) ?? "unknown error";
+      console.error(`[daily-adherence] clinic ${clinic.id} failed: ${summary}`, error);
+      failures.push({ clinicId: clinic.id, error: summary });
     }
   }
 
