@@ -174,6 +174,16 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     icon: BellRing,
     tabs: [
       {
+        // What the automation engine raised for the therapist (activity 072).
+        // Internal: nothing here was sent to a patient.
+        key: "alerts",
+        label: "Alerts",
+        labelPt: "Alertas",
+        href: "/admin/alerts",
+        matchRoutes: ["/admin/alerts"],
+        clinicalOnly: true,
+      },
+      {
         key: "broadcast",
         label: "Broadcast",
         labelPt: "Avisos Gerais",
@@ -191,7 +201,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         matchRoutes: ["/admin/reminder-templates"],
       },
     ],
-    matchRoutes: ["/admin/notifications", "/admin/reminder-templates"],
+    matchRoutes: ["/admin/alerts", "/admin/notifications", "/admin/reminder-templates"],
   },
   {
     key: "clinical",

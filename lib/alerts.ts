@@ -1,4 +1,4 @@
-import { Prisma, AlertPriority } from "@prisma/client";
+import { Prisma, AlertPriority, AlertStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 /**
@@ -26,6 +26,14 @@ export interface CreateAlertInput {
   details?: Prisma.InputJsonValue;
 }
 
+/** Declaration order of the enum, so "worse than" is a comparison, not a guess. */
+const RANK: Record<AlertPriority, number> = {
+  [AlertPriority.LOW]: 0,
+  [AlertPriority.MEDIUM]: 1,
+  [AlertPriority.HIGH]: 2,
+  [AlertPriority.URGENT]: 3,
+};
+
 export function alertDedupeKey(ruleCode: string, patientId: string, window: string): string {
   return `${ruleCode}:${patientId}:${window}`;
 }
@@ -45,8 +53,10 @@ export function alertDedupeKey(ruleCode: string, patientId: string, window: stri
  */
 export async function createAlert(
   input: CreateAlertInput
-): Promise<{ created: boolean; alertId: string }> {
+): Promise<{ created: boolean; escalated?: boolean; alertId: string }> {
   const dedupeKey = alertDedupeKey(input.ruleCode, input.patientId, input.window);
+
+  const priority = input.priority ?? AlertPriority.MEDIUM;
 
   const { count } = await prisma.alert.createMany({
     data: [
@@ -55,7 +65,7 @@ export async function createAlert(
         patientId: input.patientId,
         ruleCode: input.ruleCode,
         title: input.title,
-        priority: input.priority ?? AlertPriority.MEDIUM,
+        priority,
         details: input.details,
         dedupeKey,
       },
@@ -65,8 +75,34 @@ export async function createAlert(
 
   const alert = await prisma.alert.findUniqueOrThrow({
     where: { dedupeKey },
-    select: { id: true },
+    select: { id: true, priority: true, status: true },
   });
 
-  return { created: count === 1, alertId: alert.id };
+  if (count === 1) return { created: true, alertId: alert.id };
+
+  // Deduplicating must not mean ignoring. If the same rule fires again in the
+  // same window and things got worse — adherence from 40% to 5%, pain still
+  // climbing — keeping the first alert's LOW and its stale figures would hide
+  // exactly the case worth seeing. So an escalation rewrites the alert and
+  // reopens it: a worse situation deserves a fresh look, even from someone who
+  // already acknowledged the milder one. A repeat at the same or lower
+  // priority changes nothing.
+  if (RANK[priority] > RANK[alert.priority]) {
+    await prisma.alert.update({
+      where: { id: alert.id },
+      data: {
+        priority,
+        title: input.title,
+        details: input.details,
+        status: AlertStatus.OPEN,
+        ackById: null,
+        ackAt: null,
+        resolvedById: null,
+        resolvedAt: null,
+      },
+    });
+    return { created: false, escalated: true, alertId: alert.id };
+  }
+
+  return { created: false, alertId: alert.id };
 }

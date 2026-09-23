@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Loader2,
   User,
-  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,17 +41,10 @@ export default function TherapistDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  // Open alerts from the automation engine (activity 072). Its own request, so
-  // a failure here leaves the rest of the dashboard standing.
-  const [openAlerts, setOpenAlerts] = useState(0);
 
   useEffect(() => {
     setMounted(true);
     fetchStats();
-    fetch("/api/alerts?status=OPEN")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setOpenAlerts(d?.openCount ?? 0))
-      .catch(() => {});
   }, []);
 
   const fetchStats = async () => {
@@ -163,31 +155,6 @@ export default function TherapistDashboard() {
           </Card>
         </div>
       </div>
-
-      {/* What the automation noticed. Only shows when there is something —
-          a permanent "0 alerts" tile teaches people to stop looking. */}
-      {openAlerts > 0 && (
-        <Link href="/dashboard/alerts">
-          <Card className="border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 transition-colors">
-            <CardContent className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
-                  <Bell className="h-5 w-5 text-amber-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">
-                    {openAlerts} {openAlerts === 1 ? "open alert" : "open alerts"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Raised by the automation. Nothing was sent to the patient.
-                  </p>
-                </div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        </Link>
-      )}
 
       {/* Two Column Layout */}
       <div className="grid lg:grid-cols-2 gap-6">

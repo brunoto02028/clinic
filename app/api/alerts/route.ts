@@ -4,24 +4,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AlertPriority, AlertStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { getActor, isStaff } from "@/lib/tenant-access";
+import { getSessionStaffActor } from "@/lib/tenant-access";
 
 export const dynamic = "force-dynamic";
 
+/** `undefined` when absent, `null` when present but not a member of the enum. */
 function parseEnum<T extends Record<string, string>>(
   value: string | null,
   members: T
-): T[keyof T] | undefined {
+): T[keyof T] | undefined | null {
   if (!value) return undefined;
-  return Object.values(members).includes(value) ? (value as T[keyof T]) : undefined;
+  return Object.values(members).includes(value) ? (value as T[keyof T]) : null;
 }
 
 export async function GET(request: NextRequest) {
-  const actor = await getActor(request);
+  // The signed-in staff member themself, not "View as Patient": this is a
+  // staff route outside /api/admin, where the middleware swaps the identity
+  // headers for the impersonated patient's and getActor would answer as that
+  // patient — locking the admin out of their own list.
+  const actor = await getSessionStaffActor(request);
   if (!actor) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
-  if (!isStaff(actor)) {
     return NextResponse.json({ error: "Staff only" }, { status: 403 });
   }
   // No resolved tenant means no access, never "every clinic".
@@ -32,6 +34,11 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const status = parseEnum(params.get("status"), AlertStatus);
   const priority = parseEnum(params.get("priority"), AlertPriority);
+  // A filter we cannot honour must not be dropped in silence — "I filtered by
+  // resolved and got the open ones" is worse than an error.
+  if (status === null || priority === null) {
+    return NextResponse.json({ error: "Unknown status or priority" }, { status: 400 });
+  }
 
   const alerts = await prisma.alert.findMany({
     where: {
