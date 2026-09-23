@@ -11,8 +11,13 @@ export async function queueInvoiceForApproval(opts: {
   patientEmail: string;
   patientId?: string | null;
   clinicId?: string | null;
+  /** Activity 072 — when set, links the resulting EmailMessage back to the
+   * structured PatientInvoice it carries, and saves the PDF onto that
+   * record too (not just this e-mail's attachment) so it stays downloadable
+   * even if this EmailMessage is later purged. */
+  patientInvoiceId?: string | null;
 }): Promise<{ pendingId: string; invoiceNumber: string }> {
-  const { invoice, patientEmail, patientId, clinicId } = opts;
+  const { invoice, patientEmail, patientId, clinicId, patientInvoiceId } = opts;
   // A real PDF, not the HTML file this used to attach — Gmail (and most mail
   // clients) never render an HTML attachment inline for security reasons, so
   // every invoice sent this way showed the patient raw markup instead of the
@@ -39,6 +44,13 @@ export async function queueInvoiceForApproval(opts: {
     },
   ]);
 
+  if (patientInvoiceId) {
+    await prisma.patientInvoice.update({
+      where: { id: patientInvoiceId },
+      data: { pdfBase64: pdf.toString("base64") },
+    });
+  }
+
   const pending = await (prisma as any).emailMessage.create({
     data: {
       direction: "OUTBOUND",
@@ -53,6 +65,7 @@ export async function queueInvoiceForApproval(opts: {
       isRead: true,
       patientId: patientId || null,
       clinicId: clinicId || null,
+      patientInvoiceId: patientInvoiceId || null,
     },
   });
 

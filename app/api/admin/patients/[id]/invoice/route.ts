@@ -6,6 +6,8 @@ import { InvoiceData, InvoiceItem } from "@/lib/invoice-html";
 import { getInvoiceBusinessInfo } from "@/lib/invoice-business-info";
 import { queueInvoiceForApproval } from "@/lib/invoice-pending";
 import { staffPatientAccess } from "@/lib/staff-patient-access";
+import { createPatientInvoice } from "@/lib/create-patient-invoice";
+import { getSessionStaffActor } from "@/lib/tenant-access";
 
 // Standalone invoice generator — not tied to any appointment (activity 40).
 // The admin types the line items directly (e.g. a monthly package agreed
@@ -46,12 +48,21 @@ export async function POST(
   }
 
   const business = await getInvoiceBusinessInfo(patient.clinicId);
-  const today = new Date();
-  const invoiceNumber = `BPR-${today.toISOString().slice(0, 10).replace(/-/g, "")}-${patient.id.slice(-6).toUpperCase()}`;
+  const actor = await getSessionStaffActor(request);
+
+  // Activity 072 — creates the structured, sequentially-numbered record
+  // first; the InvoiceData below (used only to render the PDF/e-mail) is
+  // built from what that record actually got, not a locally-formatted guess.
+  const patientInvoice = await createPatientInvoice({
+    clinicId: patient.clinicId,
+    patientId: patient.id,
+    items,
+    createdById: actor?.userId || null,
+  });
 
   const invoice: InvoiceData = {
-    invoiceNumber,
-    issueDate: today,
+    invoiceNumber: patientInvoice.invoiceNumber,
+    issueDate: patientInvoice.issueDate,
     business,
     clientName: `${patient.firstName} ${patient.lastName}`,
     clientEmail: patient.email,
@@ -65,7 +76,8 @@ export async function POST(
     patientEmail: patient.email,
     patientId: patient.id,
     clinicId: patient.clinicId,
+    patientInvoiceId: patientInvoice.id,
   });
 
-  return NextResponse.json({ success: true, ...queued });
+  return NextResponse.json({ success: true, ...queued, patientInvoiceId: patientInvoice.id });
 }

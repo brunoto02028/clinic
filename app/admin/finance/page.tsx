@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
+import FinanceInvoicesSection from "@/components/admin/finance-invoices-section";
 
 // ─── Types ───
 interface FinancialEntry {
@@ -58,7 +59,7 @@ interface CategoryBreakdown {
   amount: number;
 }
 
-type Tab = "dashboard" | "stripe" | "income" | "expenses" | "categories" | "apikeys" | "company";
+type Tab = "dashboard" | "stripe" | "invoices" | "income" | "expenses" | "categories" | "apikeys" | "company";
 
 interface FinancialCategory {
   id: string;
@@ -639,6 +640,7 @@ export default function FinancePage() {
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "dashboard", label: T("finance.dashboard"), icon: BarChart3 },
     { key: "stripe", label: T("finance.stripe"), icon: CreditCard },
+    { key: "invoices", label: "Invoices", icon: Receipt },
     { key: "income", label: T("finance.income"), icon: ArrowUpRight },
     { key: "expenses", label: T("finance.expenses"), icon: ArrowDownRight },
     { key: "categories", label: T("finance.categories"), icon: Tag },
@@ -704,6 +706,7 @@ export default function FinancePage() {
       {/* Tab Content */}
       {tab === "dashboard" && <DashboardTab summary={summary} incomeByCategory={incomeByCategory} expenseByCategory={expenseByCategory} entries={entries} loading={loading} formatCurrency={formatCurrency} formatDate={formatDate} T={T} />}
       {tab === "stripe" && <StripeTab stripeData={stripeData} stripeLoading={stripeLoading} stripeSyncing={stripeSyncing} syncStripe={syncStripe} formatCurrency={formatCurrency} T={T} />}
+      {tab === "invoices" && <FinanceInvoicesSection />}
       {(tab === "income" || tab === "expenses") && (
         <EntriesTab
           entries={entries} loading={loading} total={total}

@@ -287,6 +287,18 @@ export async function POST(req: NextRequest) {
         where: { id },
         data: { messageId: (sendResult.data as any)?.id || null },
       });
+
+      // Activity 072 — reflect the send on the structured invoice, but only
+      // while it's still DRAFT: a resend of an already-PAID or VOID invoice
+      // (PDF was wrong, sending again) must never regress its real status
+      // back to SENT.
+      if (pending.patientInvoiceId) {
+        await (prisma as any).patientInvoice.updateMany({
+          where: { id: pending.patientInvoiceId, status: 'DRAFT' },
+          data: { status: 'SENT' },
+        });
+      }
+
       return NextResponse.json({ success: true, message: sent });
     }
 
