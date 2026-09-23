@@ -1,6 +1,6 @@
 # T-6: Painel de regras
 
-**Status:** em QA — correções do QA aplicadas
+**Status:** concluído — QA aprovado (`qa/report-t-6.md`, `qa/report-t-6-recheck.md`, `qa/report-t-6-recheck-2.md`)
 **Depende de:** T-3, T-4
 
 ## Objetivo
@@ -35,11 +35,11 @@ já fez isso para um caso — o toggle do lembrete diário por clínica, no dial
 
 ## Critérios de aceite
 
-- [ ] Mudar um limite pela tela muda o comportamento da regra **sem deploy**
-- [ ] Desligar uma regra numa clínica não afeta as outras
-- [ ] Toda alteração aparece no `AuditLog` com valor antes e depois
-- [ ] A prévia mostra inglês e português, inglês primeiro
-- [ ] Usuário sem permissão administrativa recebe 403 na API e não vê a tela
-- [ ] Não é possível salvar uma `condition` inválida (validação com Zod, mensagem clara)
-- [ ] Placeholder inexistente em `titleEn` é recusado na tela — os fatos disponíveis são
+- [x] Mudar um limite pela tela muda o comportamento da regra **sem deploy**
+- [x] Desligar uma regra numa clínica não afeta as outras
+- [x] Toda alteração aparece no `AuditLog` com valor antes e depois
+- [x] A prévia mostra inglês e português, inglês primeiro
+- [x] Usuário sem permissão administrativa recebe 403 na API e não vê a tela
+- [x] Não é possível salvar uma `condition` inválida (validação com Zod, mensagem clara)
+- [x] Placeholder inexistente em `titleEn` é recusado na tela — os fatos disponíveis são
       conhecidos, e `{naoExiste}` hoje chega cru ao título que o terapeuta lê (QA da T-3, R3)

@@ -1,6 +1,6 @@
 # T-7: Trocar o `SEND_MESSAGE` do `daily-adherence` por enfileirar
 
-**Status:** em QA — correções do QA aplicadas
+**Status:** concluído — QA aprovado (`qa/report-t-7.md`, `qa/report-t-7-recheck.md`)
 **Depende de:** T-4 aprovada no QA
 
 ## Objetivo
@@ -52,8 +52,8 @@ Decidir na implementação, não antes.
 
 ## Critérios de aceite
 
-- [ ] Com o lembrete ligado numa clínica de teste, o cron **não envia**: cria linha na fila
-- [ ] O e-mail entregue depois da aprovação tem o **mesmo `sha256`** do que sai hoje
-- [ ] "Lembrete enviado hoje" continua verdadeiro nas duas telas que leem `REMINDER_ACTION`
-- [ ] Rodar o cron duas vezes no mesmo dia cria **uma** linha na fila
-- [ ] Nenhum texto novo contém "Rehab"
+- [x] Com o lembrete ligado numa clínica de teste, o cron **não envia**: cria linha na fila
+- [x] O e-mail entregue depois da aprovação tem o **mesmo `sha256`** do que sai hoje
+- [x] "Lembrete enviado hoje" continua verdadeiro nas duas telas que leem `REMINDER_ACTION`
+- [x] Rodar o cron duas vezes no mesmo dia cria **uma** linha na fila
+- [x] Nenhum texto novo contém "Rehab"
