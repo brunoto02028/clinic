@@ -105,9 +105,12 @@ paciente usa **Terapeuta / therapist**.
 | T-4 | Fila de aprovação unificada (`OutboundMessage`) | em andamento |
 | T-5 | `AutomationRun`: idempotência e log unificados | pendente |
 | T-6 | Painel de regras (ligar/desligar, limites, templates EN/PT) | pendente |
+| T-7 | Trocar o `SEND_MESSAGE` do `daily-adherence` por enfileirar | pendente |
 
 Ordem obrigatória: T-1 antes de tudo (é o que protege o que já existe). T-2 é independente.
-T-4 depende de T-3. T-5 depende de T-3. T-6 depende de T-3 e T-4.
+T-4 depende de T-3. T-5 depende de T-3. T-6 depende de T-3 e T-4. **T-7 depende da T-4 ter passado
+no QA** — ela troca um caminho que está em produção, e não se troca isso confiando numa fila que
+ainda não foi provada.
 
 ## Critério de aceite da fase (adaptado do §12)
 

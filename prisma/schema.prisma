@@ -473,8 +473,9 @@ model Clinic {
   clinicEquipment ClinicEquipment[]
 
   // Automation engine (activity 072)
-  alerts          Alert[]
-  automationRules AutomationRule[]
+  alerts           Alert[]
+  automationRules  AutomationRule[]
+  outboundMessages OutboundMessage[]
 
   @@index([slug])
   @@index([isActive])
@@ -830,9 +831,11 @@ model User {
   entitlements Entitlement[] @relation("UserEntitlements")
 
   // Automation engine (activity 072)
-  alerts             Alert[] @relation("PatientAlerts")
-  alertsAcknowledged Alert[] @relation("AlertsAcknowledged")
-  alertsResolved     Alert[] @relation("AlertsResolved")
+  alerts                 Alert[]           @relation("PatientAlerts")
+  alertsAcknowledged     Alert[]           @relation("AlertsAcknowledged")
+  alertsResolved         Alert[]           @relation("AlertsResolved")
+  queuedMessages         OutboundMessage[] @relation("PatientQueuedMessages")
+  approvedQueuedMessages OutboundMessage[] @relation("ApprovedQueuedMessages")
 
   @@index([clinicId])
   @@index([email])
@@ -7269,4 +7272,64 @@ model AutomationRule {
   @@index([code])
   @@index([clinicId])
   @@map("automation_rules")
+}
+
+enum OutboundStatus {
+  AWAITING_APPROVAL
+  APPROVED
+  SENT
+  FAILED
+  DISCARDED
+}
+
+/// A message an automation wants to send, waiting for a human (activity 072, T-4).
+///
+/// The engine never sends. It writes the message here and stops; approving is
+/// the only path to delivery. When the clinic decides to let a rule send by
+/// itself, that becomes a flag on the rule — the queue and the guards stay.
+model OutboundMessage {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("PatientQueuedMessages", fields: [patientId], references: [id], onDelete: Cascade)
+
+  /// Which rule asked for it, so the queue can say why this exists.
+  ruleCode String
+  /// EMAIL | PUSH. WhatsApp waits for Meta-approved templates (spec §11).
+  channel  String
+
+  /// Both languages, always. English is canonical; the renderer picks the
+  /// order from the patient's own preferredLocale.
+  subjectEn String
+  subjectPt String
+  bodyEn    String @db.Text
+  bodyPt    String @db.Text
+
+  status     OutboundStatus @default(AWAITING_APPROVAL)
+  /// Why an approved message has not gone out yet: quiet hours, daily cap,
+  /// no consent. Held, never silently dropped.
+  holdReason String?
+
+  approvedById String?
+  approvedBy   User?     @relation("ApprovedQueuedMessages", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+
+  sentAt        DateTime?
+  providerError String?   @db.Text
+  /// Hash of what the approver was shown, from renderPatientEmail — the same
+  /// guard activity 68 uses, so nothing can change between preview and send.
+  approvedHash  String?
+
+  /// clinic:rule:patient:window — one message per rule per window.
+  idempotencyKey String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, status])
+  @@index([patientId])
+  @@map("outbound_messages")
 }

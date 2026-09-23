@@ -174,6 +174,16 @@ export const ADMIN_SECTIONS: AdminSection[] = [
     icon: BellRing,
     tabs: [
       {
+        // Messages an automation wrote, waiting for a human (activity 072).
+        // Nothing leaves the building from here without a click.
+        key: "outbox",
+        label: "Waiting for you",
+        labelPt: "Esperando voce",
+        href: "/admin/outbox",
+        matchRoutes: ["/admin/outbox"],
+        clinicalOnly: true,
+      },
+      {
         // What the automation engine raised for the therapist (activity 072).
         // Internal: nothing here was sent to a patient.
         key: "alerts",
@@ -201,7 +211,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
         matchRoutes: ["/admin/reminder-templates"],
       },
     ],
-    matchRoutes: ["/admin/alerts", "/admin/notifications", "/admin/reminder-templates"],
+    matchRoutes: ["/admin/alerts", "/admin/outbox", "/admin/notifications", "/admin/reminder-templates"],
   },
   {
     key: "clinical",
