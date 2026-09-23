@@ -445,3 +445,27 @@ Quatro bloqueadores, em ordem:
 - **Screenshots:** `specs/070-app-paciente-clinica/qa/screenshots/` — `NN-slug-web.png` / `NN-slug-app.png` (passada 1, gate fechado) e `NN-slug-web-unlocked.png` / `NN-slug-app-unlocked.png` (passada 2, gate aberto).
 - **Scripts e capturas brutas** (texto visível, console e rede por tela): `.qa-tmp/run-web.js`, `.qa-tmp/run-app.js`, `.qa-tmp/run-pass2.js`, `.qa-tmp/db-facts.js` e os `*-result.json` correspondentes.
 - **Estado do banco:** `fullAccessOverride` foi alternado apenas para a paciente fictícia Maria e devolvido ao valor em que a sessão principal o deixou (`true`). Nenhum outro dado foi criado ou alterado.
+
+---
+
+## Verificação em build de produção (23/09/2026, depois do relatório)
+
+Dois dos quatro bloqueadores dependiam de saber se o comportamento era do servidor de dev ou do
+produto. `npm run build` + `next start -p 4100`, mesmo banco, mesma paciente, gate **aberto**:
+
+| Bloqueador | Dev | Produção | Conclusão |
+|---|---|---|---|
+| 4 — notas clínicas 404 | 404 consistente | **200, 3×, com as 4 notas** | Artefato do dev (colisão de chunk). **Não é bug de produto.** |
+| 3 — CORS do agendamento | preflight sem header | **preflight 204 sem nenhum header de CORS** | **Bug real, confirmado.** |
+
+Comparação que isola o bug 3:
+
+```
+OPTIONS /api/public/schedule      -> 204, nenhum header access-control-*
+OPTIONS /api/patient/appointments -> 204 + allow-origin: * + allow-methods + allow-headers
+```
+
+`/api/public` não está em `MOBILE_API_PREFIXES` no `middleware.ts`; `/api/patient` está. Enquanto
+isso, o app não consegue agendar — e agendar é o fluxo que mais importa nesta entrega.
+
+Restam **três** bloqueadores: idioma invertido, divergência de gate e CORS do agendamento.
