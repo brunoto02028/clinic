@@ -1,6 +1,6 @@
 # T-5: `AutomationRun` — idempotência e log unificados
 
-**Status:** pendente
+**Status:** em QA — correções do QA aplicadas
 **Depende de:** T-3
 
 ## Objetivo

@@ -1,6 +1,6 @@
 # T-6: Painel de regras
 
-**Status:** pendente
+**Status:** em QA — correções do QA aplicadas
 **Depende de:** T-3, T-4
 
 ## Objetivo

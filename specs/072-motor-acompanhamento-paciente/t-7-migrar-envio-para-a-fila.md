@@ -1,6 +1,6 @@
 # T-7: Trocar o `SEND_MESSAGE` do `daily-adherence` por enfileirar
 
-**Status:** pendente
+**Status:** em QA — correções do QA aplicadas
 **Depende de:** T-4 aprovada no QA
 
 ## Objetivo
