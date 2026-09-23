@@ -31,6 +31,21 @@ export async function POST(req: NextRequest) {
   });
   if (already) return NextResponse.json({ sent: false, reason: "already_sent_today" });
 
+  // The other half of the same problem: an automated reminder may be sitting
+  // in the approval queue for today. The panel would show "not sent" — no
+  // audit line exists until delivery — and this button would send a second
+  // one. Activity 072, T-7.
+  const queued = await prisma.outboundMessage.findFirst({
+    where: {
+      patientId,
+      ruleCode: "ADHERENCE_DAILY_REMINDER",
+      status: { in: ["AWAITING_APPROVAL", "APPROVED"] },
+      createdAt: { gte: dayStart },
+    },
+    select: { id: true },
+  });
+  if (queued) return NextResponse.json({ sent: false, reason: "already_queued_today" });
+
   const patient = await prisma.user.findUnique({ where: { id: patientId }, select: { firstName: true, lastName: true } });
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });
 

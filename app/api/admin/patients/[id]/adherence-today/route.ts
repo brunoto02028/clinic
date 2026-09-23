@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const dayStart = new Date(now);
   dayStart.setHours(0, 0, 0, 0);
 
-  const [today, prevDay, todaySent, yesterdaySent] = await Promise.all([
+  const [today, prevDay, todaySent, yesterdaySent, queuedToday] = await Promise.all([
     getExpectedToday(params.id, now),
     getExpectedToday(params.id, yesterday),
     // "Already sent" has to use the same dedupe window the send routes do
@@ -35,6 +35,19 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     }),
+    // A reminder waiting for approval is neither "sent" nor "nothing happened"
+    // (activity 072, T-7). Saying "not sent" here is what let someone press
+    // Send now and give the patient two.
+    prisma.outboundMessage.findFirst({
+      where: {
+        patientId: params.id,
+        ruleCode: "ADHERENCE_DAILY_REMINDER",
+        status: { in: ["AWAITING_APPROVAL", "APPROVED"] },
+        createdAt: { gte: dayStart },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true, status: true },
+    }),
   ]);
   const missingToday = today.expected.filter((e) => !today.completed.some((c) => c.id === e.id));
   const missingYesterday = prevDay.expected.filter((e) => !prevDay.completed.some((c) => c.id === e.id));
@@ -44,6 +57,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     allDone: today.allDone,
     missing: missingToday,
     reminderSentAt: todaySent?.createdAt.toISOString() || null,
+    /** Queued by an automation and waiting for someone to approve it. */
+    reminderQueuedAt: queuedToday?.createdAt.toISOString() || null,
     yesterday: {
       hasPlan: prevDay.expected.length > 0,
       allDone: prevDay.allDone,

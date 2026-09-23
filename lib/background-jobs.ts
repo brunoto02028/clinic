@@ -28,6 +28,7 @@ const AMBIENT_TRANSCRIPTION_INTERVAL_MS = 30 * 1000; // every 30 seconds
 // Short interval — unlike the evidence-report batch job, this is a single
 // admin sitting on the Rehab Agent tab actively waiting on one click.
 const ATLAS_TREATMENT_PLAN_INTERVAL_MS = 15 * 1000; // every 15 seconds
+const OUTBOX_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes (activity 072, T-4)
 
 async function refreshExpiringTokens() {
   try {
@@ -256,6 +257,24 @@ declare global {
   var __bprBackgroundJobsStarted: boolean | undefined;
 }
 
+/**
+ * Finishes what a person already approved (activity 072, T-4).
+ *
+ * This is not the engine deciding to write to anyone: every row it touches was
+ * read and approved by a member of staff, and then held back by a guard —
+ * quiet hours, the daily cap. Without this pass, "it goes out when they end"
+ * would be a promise the queue could not keep.
+ */
+async function deliverApprovedOutbox() {
+  try {
+    const { deliverApprovedMessages } = await import('./automation/outbox');
+    const sent = await deliverApprovedMessages();
+    if (sent > 0) console.log(`[background-jobs] outbox: delivered ${sent} approved message(s)`);
+  } catch (error) {
+    console.error('[background-jobs] outbox error:', error);
+  }
+}
+
 export function startBackgroundJobs() {
   if (global.__bprBackgroundJobsStarted) return;
   global.__bprBackgroundJobsStarted = true;
@@ -269,6 +288,7 @@ export function startBackgroundJobs() {
   setInterval(generatePendingEvidenceReports, EVIDENCE_REPORT_INTERVAL_MS);
   setInterval(ambientTranscriptionsJob, AMBIENT_TRANSCRIPTION_INTERVAL_MS);
   setInterval(generatePendingAtlasTreatmentPlans, ATLAS_TREATMENT_PLAN_INTERVAL_MS);
+  setInterval(deliverApprovedOutbox, OUTBOX_INTERVAL_MS);
 
   // Run once shortly after boot too, instead of waiting a full interval.
   setTimeout(refreshExpiringTokens, 30_000);
