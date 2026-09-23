@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
 import { OW_PROVIDERS, owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
 import { signWearableState } from '@/lib/wearable-state';
+import { withingsAuthorizeUrl, withingsConfigured, WITHINGS_SCOPE } from '@/lib/withings';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
@@ -43,14 +44,36 @@ export async function GET(
       : NextResponse.redirect(`${BASE_URL}/dashboard/devices?connected=0&error=unknown_provider`);
   }
 
+  const isDirect = provider.toLowerCase() === 'withings';
+
+  // Each path has its own credentials, and neither can be started without
+  // them. Saying which is missing beats a button that does nothing.
+  if (isDirect ? !withingsConfigured() : !process.env.OPEN_WEARABLES_API_KEY) {
+    const message = 'Device connections are not configured for this clinic yet.';
+    return asJson
+      ? NextResponse.json({ error: message }, { status: 503 })
+      : NextResponse.redirect(`${BASE_URL}/dashboard/devices?connected=0&error=unavailable`);
+  }
+
   try {
     let connection = await (prisma as any).wearableConnection.findFirst({
       where: { userId, provider: provider.toUpperCase() },
     });
 
+    if (!connection) {
+      connection = await (prisma as any).wearableConnection.create({
+        data: {
+          userId,
+          provider: provider.toUpperCase(),
+          status: 'DISCONNECTED',
+          scopes: isDirect ? WITHINGS_SCOPE : null,
+        },
+      });
+    }
+
     let owUserId = connection?.owUserId;
 
-    if (!owUserId) {
+    if (!isDirect && !owUserId) {
       const me = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
       const owUser = await owCreateUser(me?.email || `${userId}@bpr.clinic`, userId);
       owUserId = owUser.id;
@@ -64,8 +87,16 @@ export async function GET(
     }
 
     const state = signWearableState(userId, asJson ? 'app' : 'web', provider);
-    const redirectUri = `${BASE_URL}/api/wearables/callback?provider=${provider}&state=${encodeURIComponent(state)}`;
-    const { authorization_url } = await owGetAuthUrl(provider, owUserId, redirectUri);
+    // Withings signs the redirect URI into the authorisation request and
+    // checks it again at the token exchange, so it must not carry the state —
+    // that travels in `state`, which they echo back untouched.
+    const redirectUri = isDirect
+      ? `${BASE_URL}/api/wearables/callback`
+      : `${BASE_URL}/api/wearables/callback?provider=${provider}&state=${encodeURIComponent(state)}`;
+
+    const authorization_url = isDirect
+      ? withingsAuthorizeUrl(state, redirectUri)
+      : (await owGetAuthUrl(provider, owUserId, redirectUri)).authorization_url;
 
     return asJson
       ? NextResponse.json({ url: authorization_url })

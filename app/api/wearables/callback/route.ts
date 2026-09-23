@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyWearableState } from '@/lib/wearable-state';
+import { withingsExchangeCode, saveWithingsTokens } from '@/lib/withings';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 /** Where the app asked to be sent back to — the scheme in mobile/app.json. */
@@ -25,11 +26,8 @@ function back(source: 'web' | 'app', query: string) {
  */
 export async function GET(request: NextRequest) {
   const error = request.nextUrl.searchParams.get('error');
+  const code = request.nextUrl.searchParams.get('code');
   const claim = verifyWearableState(request.nextUrl.searchParams.get('state'));
-  // The provider comes from the signed state, never from the query: the query
-  // was what decided which device got marked as connected, and the state did
-  // not bind it.
-  const provider = claim?.provider || '';
 
   if (!claim) {
     // No valid state: nothing is written, and the patient is told rather than
@@ -37,23 +35,49 @@ export async function GET(request: NextRequest) {
     return back('web', 'connected=0&error=invalid_state');
   }
 
+  // The provider comes from the signed state, never from the query: the query
+  // was what decided which device got marked as connected, and the state did
+  // not bind it.
+  const provider = claim.provider;
+  // Withings we speak to ourselves, so the code has to be exchanged here. The
+  // aggregator has already finished its own dance by the time it sends the
+  // patient back.
+  const isDirect = provider === 'withings';
+
   if (error) {
     return back(claim.source, `connected=0&error=${encodeURIComponent(error)}`);
   }
 
-  await (prisma as any).wearableConnection.upsert({
-    where: { userId_provider: { userId: claim.userId, provider: provider.toUpperCase() } },
-    create: {
-      userId: claim.userId,
-      provider: provider.toUpperCase(),
-      status: 'CONNECTED',
-      lastSyncedAt: new Date(),
-    },
-    update: {
-      status: 'CONNECTED',
-      lastSyncedAt: new Date(),
-    },
-  });
+  if (isDirect && !code) {
+    return back(claim.source, 'connected=0&error=missing_code');
+  }
+
+  try {
+    const connection = await (prisma as any).wearableConnection.upsert({
+      where: { userId_provider: { userId: claim.userId, provider: provider.toUpperCase() } },
+      create: {
+        userId: claim.userId,
+        provider: provider.toUpperCase(),
+        // A direct provider counts as connected only once its tokens are in
+        // hand, immediately below. A row saying CONNECTED with no usable token
+        // is a lie that surfaces weeks later as "why is there no data?".
+        status: isDirect ? 'DISCONNECTED' : 'CONNECTED',
+        lastSyncedAt: isDirect ? null : new Date(),
+      },
+      update: isDirect ? {} : { status: 'CONNECTED', lastSyncedAt: new Date() },
+    });
+
+    if (isDirect) {
+      const tokens = await withingsExchangeCode(
+        code as string,
+        `${BASE_URL}/api/wearables/callback`
+      );
+      await saveWithingsTokens(connection.id, tokens);
+    }
+  } catch (e: any) {
+    console.error('[wearables/callback] exchange failed:', e?.message);
+    return back(claim.source, 'connected=0&error=exchange_failed');
+  }
 
   return back(claim.source, `connected=1&provider=${encodeURIComponent(provider)}`);
 }

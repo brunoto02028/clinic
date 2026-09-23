@@ -58,6 +58,7 @@ export const OW_PROVIDERS = [
   { key: "fitbit", name: "Fitbit", icon: "📱" },
   { key: "polar", name: "Polar", icon: "❄️" },
   { key: "strava", name: "Strava", icon: "🚴" },
+  { key: "withings", name: "Withings", icon: "🩺" },
 ] as const;
 
 /**

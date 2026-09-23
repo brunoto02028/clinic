@@ -6444,10 +6444,19 @@ model WearableConnection {
 
   terraUserId  String?   @unique // Terra's internal user_id for this patient
   owUserId     String? // Open Wearables user_id for this patient
-  provider     String // GARMIN | APPLE | FITBIT | OURA | WHOOP | SAMSUNG | GOOGLE | POLAR
+  provider     String // GARMIN | APPLE | FITBIT | OURA | WHOOP | SAMSUNG | GOOGLE | POLAR | WITHINGS
   status       String    @default("CONNECTED") // CONNECTED | DISCONNECTED | ERROR
   scopes       String?   @db.Text // JSON array of authorised scopes
   lastSyncedAt DateTime?
+
+  // Direct OAuth2 providers (Withings) hold their own tokens here rather than
+  // delegating to an aggregator. Encrypted at rest: these grant read access to
+  // a patient's health record at the provider, and a database dump should not
+  // hand that over. See lib/crypto-at-rest.ts.
+  providerUserId String? // the provider's own id for this patient
+  accessToken    String?   @db.Text
+  refreshToken   String?   @db.Text
+  tokenExpiresAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
