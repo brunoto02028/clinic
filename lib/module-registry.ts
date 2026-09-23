@@ -305,14 +305,14 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     defaultEnabled: false,
   },
 
-  // ── Governed here, shown only in the app ──
-  // Both of these were reachable in the app with nothing able to switch them
-  // off: the registry had no entry, so the permissions screen had no row and
-  // the app had no key to gate on. They carry no `href` because the web has no
-  // page for either — Messages lives in the sidebar panel, and devices share
-  // /dashboard/biohacking with the daily check-in, which `mod_journey` already
-  // governs. An empty href keeps them out of the web menu (the sidebar filters
-  // on `m.href`) while the admin can still turn them on and off.
+  // ── Added when nothing governed them ──
+  // Both were reachable in the app with no way to switch them off: the registry
+  // had no entry, so the permissions screen had no row and the app had no key
+  // to gate on. Messages still carries no `href`, because on the web it lives
+  // in the sidebar panel rather than a page of its own; an empty href keeps it
+  // out of the menu, which filters on that, while the admin can still toggle
+  // it. Devices has an address now — /dashboard/biohacking was split so the
+  // check-in (`mod_journey`) and the devices stopped sharing one page.
   {
     key: "mod_messages",
     label: "Messages",
@@ -333,11 +333,10 @@ export const MODULE_REGISTRY: ModuleDefinition[] = [
     description: "Connect a wearable and see its sleep, activity and recovery data",
     descriptionPt: "Conectar um wearable e ver dados de sono, atividade e recuperação",
     icon: Watch,
-    href: "",
+    href: "/dashboard/devices",
     category: "wellness",
     defaultGranted: true,
     defaultEnabled: false,
-    appOnly: true,
   },
 ];
 

@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyWearableState } from '@/lib/open-wearables';
+import { verifyWearableState } from '@/lib/wearable-state';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 /** Where the app asked to be sent back to — the scheme in mobile/app.json. */
@@ -10,7 +10,7 @@ const APP_RETURN = 'bprclinic://wearables';
 
 function back(source: 'web' | 'app', query: string) {
   return NextResponse.redirect(
-    source === 'app' ? `${APP_RETURN}?${query}` : `${BASE_URL}/dashboard/biohacking?${query}`
+    source === 'app' ? `${APP_RETURN}?${query}` : `${BASE_URL}/dashboard/devices?${query}`
   );
 }
 

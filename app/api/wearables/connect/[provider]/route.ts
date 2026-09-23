@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
-import { owCreateUser, owGetAuthUrl, signWearableState } from '@/lib/open-wearables';
+import { owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
+import { signWearableState } from '@/lib/wearable-state';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
 
@@ -71,6 +72,6 @@ export async function GET(
       : 'Device connections are not configured for this clinic yet.';
     return asJson
       ? NextResponse.json({ error: message }, { status: 503 })
-      : NextResponse.redirect(`${BASE_URL}/dashboard/biohacking?connected=0&error=unavailable`);
+      : NextResponse.redirect(`${BASE_URL}/dashboard/devices?connected=0&error=unavailable`);
   }
 }
