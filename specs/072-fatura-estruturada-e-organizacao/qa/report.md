@@ -147,9 +147,90 @@ segue intacto.
 pré-existentes só em `mobile/`, `prisma/seed-marketplace.ts` e
 `scripts/migrate-to-multitenant.ts`, nada relacionado a esta atividade).
 
+## Rodada 4 — ONLINE (produção, https://bpr.clinic), acréscimo da rodada 3, aprovado sem achados
+
+Mesmo escopo da rodada 3 (preview inline + approve/discard, "Send for
+approval"/"Resend", fix do PDF desatualizado, fix da race condition de
+duplo clique), agora contra produção, após deploy do commit `b5e54d66`
+("feat: resend + inline preview/approve for invoices, fix stale-PDF bug").
+
+**Contexto de segurança:** uma rodada online anterior desta mesma atividade
+já tinha causado um incidente real (2 faturas de pacientes reais marcadas
+`PAID` sem intenção por um script Playwright que travou sem fechar o
+browser). Esta rodada seguiu regras adicionais: nenhuma ação de estado em
+qualquer fatura fora de fixtures `qa072c-*`; todo script Playwright com
+`try/finally` garantindo `browser.close()`, sem `process.exit()`; toda ação
+de escrita na UI precedida por uma assertão explícita de que o número da
+fatura aberta no diálogo é exatamente o do fixture (aborta em vez de
+clicar, se não bater); verificação SELECT antes/depois das 3 faturas reais.
+
+| # | Cenário | Tipo | Resultado |
+|---|---------|------|-----------|
+| 1 | Gerar fatura avulsa fixture → DRAFT + e-mail PENDING_APPROVAL já enfileirado | API | ✅ |
+| 2 | Abrir fatura na UI → seção "Pending approval" com preview do PDF (iframe correto) | UI (Playwright) | ✅ |
+| 3 | Editar itens (£80→£150) → e-mail antigo pra TRASH, PDF baixado reflete o novo valor, seção "Pending approval" some | API | ✅ |
+| 4 | "Send for approval" após edição → novo e-mail pendente com valor editado, localizável por busca | API | ✅ |
+| 5 | "Approve & send" → status vira SENT sem reload manual, e-mail com `messageId` preenchido | UI (Playwright) + API | ✅ |
+| 6 | "Resend" numa fatura já SENT → novo e-mail pendente, MESMO `invoiceNumber` | UI (Playwright) + API | ✅ |
+| 7 | "Discard" numa fatura com e-mail pendente → volta a mostrar "Send for approval"/"Resend", histórico mostra "Discarded" | UI (Playwright) + API | ✅ |
+| 8 | 2 cliques rápidos em sequência em "Resend" (via `Promise.all`, fixture SENT) → exatamente 1 e-mail pendente, não 2 | API | ✅ |
+| 9 | Isolamento de tenant no `/queue` — staff de outra clínica fixture recebe 404, sem efeito colateral | API | ✅ |
+| Bônus | `POST /queue` numa fatura `VOID` → 400, bloqueado | API | ✅ |
+
+### Evidências
+- API: `scripts/qa/qa072c-api-tests.cjs` (script completo, com asserts
+  específicos por cenário) — output completo com todos os 10 cenários PASS,
+  incluindo grep dos bytes crus do PDF confirmando o novo valor (£150.00) e
+  ausência do valor antigo isolado.
+- UI: `scripts/qa/qa072c-online-playwright.cjs` — 6 passos, todos PASS,
+  0 erros de console. Screenshots em
+  `specs/072-fatura-estruturada-e-organizacao/qa/screenshots/`:
+  `t072c-online-01-search-fixture.png` (busca isola só o fixture),
+  `t072c-online-02-pending-approval-section.png` (preview + Approve&send/Discard),
+  `t072c-online-03-approved-sent.png` (SENT sem reload manual),
+  `t072c-online-04-resent-pending-again.png` (Resend recria pendência),
+  `t072c-online-05-discarded.png` (Discard reverte, histórico mostra "Discarded").
+- Fatura fixture usada na UI: `BPR-2026-000003` (paciente
+  `qa072c-online-patient-…@example.invalid`, clínica real BPR) — nunca a
+  mesma fatura das checagens de API.
+
+### Verificação de segurança (regra 3) — before/after das 3 faturas reais
+`scripts/qa/qa072c-real-invoices-snapshot.cjs before` (início) e `... after`
+(fim), `diff` entre os dois JSONs: **idêntico, zero diferença** — inclusive
+`updatedAt` byte-a-byte igual, confirmando nenhuma escrita tocou essas linhas.
+
+| invoiceNumber | status | paidAt | paidMethod | total | updatedAt (antes = depois) |
+|---|---|---|---|---|---|
+| BPR-20260915-LB3SXH (Bruno Admin) | SENT | null | null | £700 | 2026-09-23T11:10:58.479Z |
+| BPR-20260914-ODMEAS (Ana Livia Pessin Prata) | SENT | null | null | £700 | 2026-09-23T11:37:17.649Z |
+| BPR-20260922-EHYELX (Mione De Almeida) | SENT | null | null | £100 | 2026-09-23T11:37:17.960Z |
+
+Nenhum processo Chromium órfão do Playwright ficou rodando após o script
+(`wmic process where "name='chrome.exe'"` sem entradas em `ms-playwright`
+ao final).
+
+### Limpeza
+`scripts/qa/qa072c-cleanup.cjs`: apagados 8 `EmailMessage` + 3
+`PatientInvoice` (cascade dos itens) + 1 paciente fixture + 1 admin fixture
++ 1 clínica fixture (clínica B, usada só pro teste de isolamento de
+tenant). Verificação pós-limpeza: 0 usuários/clínicas/faturas/e-mails
+residuais com o prefixo `qa072c-*`, e as 3 faturas reais seguem presentes e
+intactas (ver tabela acima).
+
+### `tsc --noEmit`
+Limpo nos arquivos do escopo (`lib/patient-invoice-pdf.ts`,
+`app/api/admin/invoices/[id]/queue/route.ts`,
+`app/api/admin/invoices/[id]/route.ts`,
+`components/admin/finance-invoices-section.tsx`) na árvore local no commit
+`b5e54d66` (o mesmo que está em produção).
+
 ## Resultado final
 
 ✅ **Aprovado.** T-1 a T-5 prontas para code review final (já feito, GO) e
-deploy. Acréscimo (rodada 3) também aprovado — bug crítico de PDF/e-mail
-desatualizado confirmado fechado ponta a ponta, preview/reenvio/liberdade
-total funcionando em API e UI, sem achados bloqueantes.
+deploy. Acréscimo (rodada 3, local) também aprovado. **Rodada 4 (online,
+produção, commit `b5e54d66`) confirma o mesmo comportamento em ambiente
+real**: preview inline, "Send for approval"/"Resend", fix do PDF
+desatualizado e fix da race condition de duplo clique todos funcionando
+como esperado, isolamento de tenant intacto, nenhum efeito colateral nas 3
+faturas reais da clínica (verificado por SELECT antes/depois), sem achados
+bloqueantes.
