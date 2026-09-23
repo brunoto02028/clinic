@@ -6,6 +6,7 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchNotifications } from "@/api/notifications";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, pick } from "@/lib/i18n";
+import { LoadFailure } from "@/components/LoadFailure";
 import { appRouteFor } from "@/lib/app-route";
 
 function getIconMap(t: ReturnType<typeof useTheme>): Record<string, { icon: string; color: string }> {
@@ -22,7 +23,7 @@ export default function Notifications() {
   const t = useTheme();
   const lang = useLang();
   const ICON_MAP = getIconMap(t);
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["notifications"],
     queryFn: fetchNotifications,
   });
@@ -46,6 +47,9 @@ export default function Notifications() {
 
         {isLoading ? (
           <Spinner center />
+        ) : isError ? (
+          /* A failed request is not "nothing pending". */
+          <LoadFailure error={error} onRetry={() => refetch()} />
         ) : notifications.length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>

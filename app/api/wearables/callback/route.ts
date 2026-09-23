@@ -24,9 +24,12 @@ function back(source: 'web' | 'app', query: string) {
  * signed, expiring state that only this server can mint.
  */
 export async function GET(request: NextRequest) {
-  const provider = request.nextUrl.searchParams.get('provider') || '';
   const error = request.nextUrl.searchParams.get('error');
   const claim = verifyWearableState(request.nextUrl.searchParams.get('state'));
+  // The provider comes from the signed state, never from the query: the query
+  // was what decided which device got marked as connected, and the state did
+  // not bind it.
+  const provider = claim?.provider || '';
 
   if (!claim) {
     // No valid state: nothing is written, and the patient is told rather than
@@ -36,10 +39,6 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return back(claim.source, `connected=0&error=${encodeURIComponent(error)}`);
-  }
-
-  if (!provider) {
-    return back(claim.source, 'connected=0&error=missing_provider');
   }
 
   await (prisma as any).wearableConnection.upsert({

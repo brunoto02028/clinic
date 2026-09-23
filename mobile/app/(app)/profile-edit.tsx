@@ -39,7 +39,11 @@ export default function ProfileEdit() {
     setLastName(profile.lastName ?? "");
     setEmail(profile.email ?? "");
     setPhone(profile.phone ?? "");
-    setDateOfBirth(profile.dateOfBirth ?? "");
+    // The API sends "1990-05-12T00:00:00.000Z" into a field whose placeholder
+    // says DD/MM/YYYY. The web splits on "T"; this showed the raw timestamp.
+    const dob = profile.dateOfBirth ? String(profile.dateOfBirth).split("T")[0] : "";
+    const iso = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    setDateOfBirth(iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : dob);
     // Tolerates the short codes written before this was fixed.
     const stored = profile.preferredLocale ?? "en-GB";
     setPreferredLocale(stored.startsWith("pt") ? "pt-BR" : "en-GB");

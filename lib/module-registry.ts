@@ -502,8 +502,12 @@ export const MODULE_HREF_MAP: Record<string, string> = Object.fromEntries(
 );
 
 /** Map dashboard href → module key (for enforcement lookups) */
+// Modules with no page of their own (Messages) would otherwise contribute an
+// empty-string key, and a prefix check of `href.startsWith("" + "/")` matches
+// every dashboard route — which silently made `canAccessHref` return true for
+// everything and killed the sub-route gate.
 export const HREF_MODULE_MAP: Record<string, string> = Object.fromEntries(
-  MODULE_REGISTRY.map((m) => [m.href, m.key])
+  MODULE_REGISTRY.filter((m) => m.href).map((m) => [m.href, m.key])
 );
 
 /** Default features for a basic free membership */

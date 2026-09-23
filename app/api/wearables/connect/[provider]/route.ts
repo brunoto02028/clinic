@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getEffectiveUser } from '@/lib/get-effective-user';
-import { owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
+import { OW_PROVIDERS, owCreateUser, owGetAuthUrl } from '@/lib/open-wearables';
 import { signWearableState } from '@/lib/wearable-state';
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
@@ -35,6 +35,14 @@ export async function GET(
   const userId = effectiveUser.userId;
   const asJson = request.nextUrl.searchParams.get('format') === 'json';
 
+  // Anything could be put in the path and it was passed through to the
+  // aggregator and, later, stored as a connection's provider.
+  if (!OW_PROVIDERS.some((p) => p.key === provider.toLowerCase())) {
+    return asJson
+      ? NextResponse.json({ error: 'Unknown provider' }, { status: 400 })
+      : NextResponse.redirect(`${BASE_URL}/dashboard/devices?connected=0&error=unknown_provider`);
+  }
+
   try {
     let connection = await (prisma as any).wearableConnection.findFirst({
       where: { userId, provider: provider.toUpperCase() },
@@ -55,7 +63,7 @@ export async function GET(
       }
     }
 
-    const state = signWearableState(userId, asJson ? 'app' : 'web');
+    const state = signWearableState(userId, asJson ? 'app' : 'web', provider);
     const redirectUri = `${BASE_URL}/api/wearables/callback?provider=${provider}&state=${encodeURIComponent(state)}`;
     const { authorization_url } = await owGetAuthUrl(provider, owUserId, redirectUri);
 

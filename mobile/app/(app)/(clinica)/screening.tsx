@@ -108,7 +108,7 @@ function ScreeningScreen() {
 
   const set = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
 
-  const { data: config, isError: configError } = useQuery({
+  const { data: config, isError: configError, isPending: configPending } = useQuery({
     queryKey: ["screening-config"],
     queryFn: fetchScreeningConfig,
   });
@@ -138,7 +138,10 @@ function ScreeningScreen() {
   // #2 — Without the config there are no questions and no consent text, and
   // `unanswered` would read 0. Submission must not be possible then: the
   // screen already says it cannot be sent without them.
-  const configMissing = configError || redFlags.length === 0 || !consentText;
+  // `configPending` is not `configError`. Without it the wizard told a
+  // patient the safety questions had failed to load while the request was
+  // still in flight — the same loading/failure confusion fixed elsewhere.
+  const configMissing = configPending || configError || redFlags.length === 0 || !consentText;
 
   const autosave = useMutation({
     mutationFn: () => saveScreening(form, true),
@@ -329,7 +332,9 @@ function ScreeningScreen() {
               {tr(lang, { en: "Please answer honestly. These questions exist for your safety during treatment.", pt: "Responda com honestidade. Estas perguntas existem para a sua segurança durante o tratamento." })}
             </Text>
 
-            {configError || redFlags.length === 0 ? (
+            {configPending ? (
+              <Spinner />
+            ) : configError || redFlags.length === 0 ? (
               <Text variant="caption" color={t.colors.danger}>
                 {tr(lang, {
                   en: "We could not load the safety questions. Please try again later — the assessment cannot be submitted without them.",
@@ -355,7 +360,9 @@ function ScreeningScreen() {
           <Card>
             <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>{tr(lang, { en: "Consent", pt: "Consentimento" })}</Text>
 
-            {consentText ? (
+            {configPending ? (
+              <Spinner />
+            ) : consentText ? (
               <>
                 <Pressable
                   onPress={() => set("consentGiven", !form.consentGiven)}

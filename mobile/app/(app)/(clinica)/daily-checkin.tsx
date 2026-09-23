@@ -7,6 +7,7 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { useLang, t as tr, type Lang } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
+import { LoadFailure } from "@/components/LoadFailure";
 import { fetchCheckIns, submitCheckIn } from "@/api/daily-checkin";
 
 const MOODS = [
@@ -50,7 +51,10 @@ function HistoryDots({ history }: { history: Array<{ checkinDate: string; exerci
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split("T")[0];
+    // Local parts, not UTC: the weekday label comes from `getDay()` in the
+    // phone's timezone, so a UTC date string would mark the wrong dot near
+    // midnight — the day shown and the day matched must be the same day.
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const entry = history.find(h => h.checkinDate === dateStr);
     last7.push({ date: dateStr, day: DAY_LABELS[lang][d.getDay()], entry });
   }
@@ -83,7 +87,7 @@ function DailyCheckInScreen() {
   const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["daily-checkin"], queryFn: fetchCheckIns });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ["daily-checkin"], queryFn: fetchCheckIns });
 
   const [pain, setPain] = useState(3);
   const [mood, setMood] = useState(3);
@@ -135,6 +139,10 @@ function DailyCheckInScreen() {
       <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Daily check-in", pt: "Check-in Diário" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       {isLoading ? (
         <Spinner center />
+      ) : isError ? (
+        /* Opening the form on a failed load would show yesterday's answers as
+           blanks and save them over the real ones. */
+        <LoadFailure error={error} onRetry={() => refetch()} />
       ) : (
         <View style={{ gap: 20 }}>
 

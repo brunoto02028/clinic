@@ -28,7 +28,12 @@ function generateDates(closedDays: number[], lang: Lang): { label: string; value
     if (closedDays.includes(d.getDay())) continue;
     dates.push({
       label: d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" }),
-      value: d.toISOString().split("T")[0],
+      // Local parts, not `toISOString()`: the chip is labelled from `getDate()`
+      // in the phone's own timezone, and the value was being taken from UTC.
+      // In BST a patient opening this between midnight and 01:00 got a value
+      // one day BEFORE the chip they tapped; west of UTC it lands one day
+      // after. The booking then went to the wrong day.
+      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
       day: dayNames[d.getDay()],
       date: d.getDate(),
     });

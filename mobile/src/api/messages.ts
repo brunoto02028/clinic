@@ -24,11 +24,16 @@ export interface ClinicMessage {
   sender: { firstName: string; lastName: string; role: string } | null;
 }
 
-/** Oldest first, as the endpoint returns them — a conversation, not a feed. */
-export async function fetchMessages(poll = false): Promise<ClinicMessage[]> {
-  // `poll=1` tells the server to skip its scheduled-broadcast sweep, which it
-  // must not run on every refresh of an open thread.
-  const res = await apiFetch<ClinicMessage[]>(`/api/patient/messages${poll ? "?poll=1" : ""}`);
+/**
+ * Oldest first, as the endpoint returns them — a conversation, not a feed.
+ *
+ * This took a `poll` flag that suppressed the server's scheduled-broadcast
+ * sweep, and neither caller ever passed it; there is no `refetchInterval` on
+ * this query either, so nothing polls. The parameter is gone rather than left
+ * as a promise the code does not keep.
+ */
+export async function fetchMessages(): Promise<ClinicMessage[]> {
+  const res = await apiFetch<ClinicMessage[]>("/api/patient/messages");
   return Array.isArray(res) ? res : [];
 }
 

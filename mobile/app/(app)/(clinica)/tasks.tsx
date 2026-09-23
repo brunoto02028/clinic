@@ -7,13 +7,14 @@ import { fetchTasks, completeTask } from "@/api/tasks";
 import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
 import { useLang, pick, t as tr } from "@/lib/i18n";
+import { LoadFailure } from "@/components/LoadFailure";
 import { formatDate } from "@/lib/format";
 
 function TasksScreen() {
   const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
+  const { data, isLoading, isError, error, refetch } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
 
   // The badge printed `item.priority` straight through, so the patient read
   // "high" in English on an otherwise Portuguese screen.
@@ -49,7 +50,11 @@ function TasksScreen() {
           )}
         </View>
 
-        {isLoading ? <Spinner center /> : tasks.length === 0 ? (
+        {isLoading ? <Spinner center /> : isError ? (
+          /* "No tasks" and "we could not reach the server" are not the same
+             sentence to someone with three things their clinic asked for. */
+          <LoadFailure error={error} onRetry={() => refetch()} />
+        ) : tasks.length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="checkbox-outline" size={48} color={t.colors.textMuted} />

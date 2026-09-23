@@ -1,19 +1,30 @@
 import { View, Pressable, Linking, Alert } from "react-native";
-import { Stack, router } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Screen, Text, Spinner } from "@/components/ui";
+import { Screen, Text, Spinner, Card } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
 import { fetchConnections, disconnectProvider, syncProvider, fetchConnectUrl, OW_PROVIDERS } from "@/api/wearables";
 import { useLang, t as tr } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { PlanGate } from "@/components/PlanGate";
+import { LoadFailure } from "@/components/LoadFailure";
 
 function WearablesScreen() {
   const t = useTheme();
   const lang = useLang();
+  // The provider sends the patient back to bprclinic://wearables?connected=…
+  // and nothing read it: authorising and refusing looked identical — the same
+  // list, no word either way. The web has always said which happened.
+  const { connected, error: oauthError } = useLocalSearchParams<{ connected?: string; error?: string }>();
+  const returnMsg =
+    connected === "1"
+      ? tr(lang, { en: "Device connected. Data will sync shortly.", pt: "Dispositivo conectado. Os dados vão sincronizar em breve." })
+      : connected === "0"
+        ? tr(lang, { en: "We could not connect that device.", pt: "Não foi possível conectar esse dispositivo." })
+        : null;
   const qc = useQueryClient();
-  const { data: connections, isLoading } = useQuery({
+  const { data: connections, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["wearable-connections"],
     queryFn: fetchConnections,
   });
@@ -55,6 +66,13 @@ function WearablesScreen() {
     <Screen scroll testID="wearables-screen">
       <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Devices", pt: "Dispositivos" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 20 }}>
+        {returnMsg && (
+          <Card accent={connected === "1" ? "health" : "work"}>
+            <Text variant="caption" color={connected === "1" ? t.colors.ok : t.colors.bad}>
+              {returnMsg}{oauthError ? ` (${oauthError})` : ""}
+            </Text>
+          </Card>
+        )}
         <Text variant="caption" color={t.colors.textSecondary}>
           {tr(lang, {
             en: "Connect your wearable to sync sleep, activity and recovery data automatically.",
@@ -88,6 +106,11 @@ function WearablesScreen() {
 
         {isLoading ? (
           <Spinner center />
+        ) : isError ? (
+          /* A failed read showed every provider as disconnected with a live
+             "Connect" button — an invitation to re-authorise a device that is
+             already linked. */
+          <LoadFailure error={error} onRetry={() => refetch()} />
         ) : (
           <View style={{ gap: 12 }}>
             {OW_PROVIDERS.map((p) => {

@@ -61,7 +61,7 @@ function MessagesScreen() {
   const lang: "en" | "pt" = profile?.preferredLocale?.startsWith("pt") ? "pt" : "en";
   const ui = UI[lang];
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error: messagesError, refetch } = useQuery({
     queryKey: ["messages"],
     queryFn: () => fetchMessages(),
   });
@@ -113,8 +113,11 @@ function MessagesScreen() {
             <Spinner center />
           ) : isError ? (
             /* An empty thread and a failed request must not look alike — the
-               mistake this app made everywhere else. */
-            <LoadFailure error={error} onRetry={() => refetch()} />
+               mistake this app made everywhere else. `error` used to be read
+               here from the *profile* query, which is normally null, so
+               LoadFailure could never recognise a plan refusal on this screen;
+               the thread's own error is what this branch is about. */
+            <LoadFailure error={messagesError} onRetry={() => refetch()} />
           ) : (
             <ScrollView
               ref={scrollRef}

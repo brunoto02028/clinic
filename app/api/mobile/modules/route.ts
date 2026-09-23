@@ -131,7 +131,11 @@ export async function GET(request: NextRequest) {
     // `mod_clinica` locked or hidden and nothing else gets an empty list, not
     // the clinic back through this fallback. The app shows that as "no areas
     // available", with a way to sign out.
-    return corsJson(withTraining(result.length > 0 || clinicaDenied ? result : [CLINICA_DEF]));
+    // The `result.length > 0 || clinicaDenied ? result : [CLINICA_DEF]` fallback
+    // here was unreachable: when clinica is not denied it is added to `keys`
+    // above, so `result` is never empty; when it is denied the condition is
+    // already true. An empty list is the honest answer for a denied account.
+    return corsJson(withTraining(result));
   } catch (error: any) {
     console.error("[mobile/modules] error:", error?.message);
     return corsJson({ error: "Service temporarily unavailable" }, { status: 500 });

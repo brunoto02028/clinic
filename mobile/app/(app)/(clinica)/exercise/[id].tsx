@@ -8,11 +8,13 @@ import { useTheme } from "@/theme/useTheme";
 import { PlanGate } from "@/components/PlanGate";
 import { useLang, pick, t as tr } from "@/lib/i18n";
 
-const REGION_MAP: Record<string, { label: string; icon: string }> = {
-  LOWER_BODY: { label: "Membros Inferiores", icon: "footsteps-outline" },
-  UPPER_BODY: { label: "Membros Superiores", icon: "body-outline" },
-  CORE: { label: "Core / Tronco", icon: "fitness-outline" },
-  FULL_BODY: { label: "Corpo Inteiro", icon: "accessibility-outline" },
+// The badge beside the exercise name. These were Portuguese-only, so an en-GB
+// patient read "Membros Inferiores" on a screen that was otherwise English.
+const REGION_MAP: Record<string, { label: { en: string; pt: string }; icon: string }> = {
+  LOWER_BODY: { label: { en: "Lower body", pt: "Membros inferiores" }, icon: "footsteps-outline" },
+  UPPER_BODY: { label: { en: "Upper body", pt: "Membros superiores" }, icon: "body-outline" },
+  CORE: { label: { en: "Core / trunk", pt: "Core / tronco" }, icon: "fitness-outline" },
+  FULL_BODY: { label: { en: "Full body", pt: "Corpo inteiro" }, icon: "accessibility-outline" },
 };
 
 function ExerciseDetailScreen() {
@@ -90,7 +92,7 @@ function ExerciseDetailScreen() {
                     borderRadius: 14,
                   }}>
                     <Ionicons name={region.icon as any} size={14} color={t.colors.secondary} />
-                    <Text variant="caption" color={t.colors.secondary}>{region.label}</Text>
+                    <Text variant="caption" color={t.colors.secondary}>{tr(lang, region.label)}</Text>
                   </View>
                 ) : null;
               })()}
@@ -213,7 +215,7 @@ function ExerciseDetailScreen() {
                 <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Description", pt: "Descrição" })}</Text>
               </View>
               <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
-                {rx.exercise.description}
+                {pick(lang, rx.exercise.description, rx.exercise.descriptionPt)}
               </Text>
             </Card>
           ) : null}

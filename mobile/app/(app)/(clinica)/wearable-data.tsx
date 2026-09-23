@@ -6,6 +6,7 @@ import { useTheme } from "@/theme/useTheme";
 import { fetchWearableData } from "@/api/wearables";
 import { useLang, t as tr } from "@/lib/i18n";
 import { PlanGate } from "@/components/PlanGate";
+import { LoadFailure } from "@/components/LoadFailure";
 
 function MetricCard({ title, metrics }: { title: string; metrics: { label: string; value: string; color?: string }[] }) {
   const t = useTheme();
@@ -46,7 +47,7 @@ function MetricCard({ title, metrics }: { title: string; metrics: { label: strin
 function WearableDataScreen() {
   const t = useTheme();
   const lang = useLang();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["wearable-data"],
     queryFn: () => fetchWearableData(7),
   });
@@ -68,6 +69,8 @@ function WearableDataScreen() {
 
         {isLoading ? (
           <Spinner center />
+        ) : isError ? (
+          <LoadFailure error={error} onRetry={() => refetch()} />
         ) : !data || data.length === 0 ? (
           <View style={{ padding: 40, alignItems: "center", gap: 12 }}>
             <Text variant="caption" color={t.colors.textSecondary} style={{ textAlign: "center" }}>

@@ -70,7 +70,10 @@ function DocumentsScreen() {
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert(tr(lang, { en: "Permission needed", pt: "Permissão necessária" }), "Permita o acesso para continuar.");
+      Alert.alert(
+        tr(lang, { en: "Permission needed", pt: "Permissão necessária" }),
+        tr(lang, { en: "Allow access to continue.", pt: "Permita o acesso para continuar." }),
+      );
       return;
     }
 
@@ -89,7 +92,10 @@ function DocumentsScreen() {
       await uploadDocument(asset.uri, fileName, mimeType);
       qc.invalidateQueries({ queryKey: ["documents"] });
     } catch (e) {
-      Alert.alert("Erro", tr(lang, { en: "We could not upload that.", pt: "Não foi possível fazer o upload." }));
+      Alert.alert(
+        tr(lang, { en: "Error", pt: "Erro" }),
+        tr(lang, { en: "We could not upload that.", pt: "Não foi possível fazer o upload." }),
+      );
     } finally {
       setUploading(false);
     }
