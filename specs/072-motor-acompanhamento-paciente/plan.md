@@ -106,7 +106,7 @@ paciente usa **Terapeuta / therapist**.
 | T-2 | `Alert` + central de alertas do terapeuta | **concluído** |
 | T-3 | `AutomationRule`: regras em banco, uma automação migrada | **concluído** |
 | T-4 | Fila de aprovação unificada (`OutboundMessage`) | **concluído** |
-| T-5 | `AutomationRun`: idempotência e log unificados | em QA (reverificação) |
+| T-5 | `AutomationRun`: idempotência e log unificados | **concluído** |
 | T-6 | Painel de regras (ligar/desligar, limites, templates EN/PT) | em QA (reverificação) |
 | T-7 | Trocar o `SEND_MESSAGE` do `daily-adherence` por enfileirar | em QA |
 

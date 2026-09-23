@@ -1,6 +1,6 @@
 # T-5: `AutomationRun` — idempotência e log unificados
 
-**Status:** em QA — correções do QA aplicadas
+**Status:** concluído — QA aprovado (`qa/report-t-5.md`, `qa/report-t-5-recheck.md`)
 **Depende de:** T-3
 
 ## Objetivo
@@ -32,8 +32,8 @@ a proteção, e uma que esquecer manda duas vezes.
 
 ## Critérios de aceite
 
-- [ ] `prisma migrate diff` **não contém `DROP`**
-- [ ] Rodar a mesma regra duas vezes na mesma janela produz **um** efeito, provado por teste
-- [ ] Duas execuções concorrentes (corrida) produzem um efeito só — teste com `Promise.all`
-- [ ] Janela diferente produz efeito novo
-- [ ] O histórico aparece na ficha do paciente e diz qual dado fez a regra disparar
+- [x] `prisma migrate diff` **não contém `DROP`**
+- [x] Rodar a mesma regra duas vezes na mesma janela produz **um** efeito, provado por teste
+- [x] Duas execuções concorrentes (corrida) produzem um efeito só — teste com `Promise.all`
+- [x] Janela diferente produz efeito novo
+- [x] O histórico aparece na ficha do paciente e diz qual dado fez a regra disparar
