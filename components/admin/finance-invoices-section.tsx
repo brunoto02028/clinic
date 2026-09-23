@@ -195,6 +195,7 @@ function InvoiceDetailDialog({ id, onClose, onChanged }: { id: string; onClose: 
   const [editing, setEditing] = useState(false);
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("CASH");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -244,7 +245,7 @@ function InvoiceDetailDialog({ id, onClose, onChanged }: { id: string; onClose: 
       const res = await fetch(`/api/admin/invoices/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markPaid: true }),
+        body: JSON.stringify({ markPaid: true, paymentMethod }),
       });
       const data = await res.json();
       if (res.ok) { toast({ title: "Marked as paid" }); await load(); onChanged(); }
@@ -467,9 +468,21 @@ function InvoiceDetailDialog({ id, onClose, onChanged }: { id: string; onClose: 
                   </Button>
                 )}
                 {(invoice.status === "SENT" || invoice.status === "OVERDUE") && invoice.paidMethod !== "stripe" && (
-                  <Button size="sm" className="gap-1.5" onClick={markPaid} disabled={saving}>
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Mark as paid
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                      <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CASH">Cash</SelectItem>
+                        <SelectItem value="BANK_TRANSFER">Bank transfer</SelectItem>
+                        <SelectItem value="CARD">Card</SelectItem>
+                        <SelectItem value="CHEQUE">Cheque</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" className="gap-1.5" onClick={markPaid} disabled={saving}>
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Mark as paid
+                    </Button>
+                  </div>
                 )}
                 {invoice.status !== "VOID" && invoice.status !== "PAID" && (
                   <Button size="sm" variant="outline" className="text-ba1-bad gap-1.5" onClick={markVoid} disabled={saving}>

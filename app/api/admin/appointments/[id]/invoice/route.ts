@@ -39,7 +39,7 @@ async function buildInvoiceForAppointment(
     where: { id: appointmentId },
     include: {
       patient: { select: { id: true, firstName: true, lastName: true, email: true } },
-      payment: { select: { status: true, amount: true, updatedAt: true } },
+      payment: { select: { status: true, amount: true, updatedAt: true, stripePaymentId: true } },
     },
   });
   if (!appointment) return null;
@@ -76,7 +76,7 @@ async function buildInvoiceForAppointment(
     // than what was really charged. Caught in code review.
     stripePayment:
       !overrideAmount && !extraItems?.length && appointment.payment?.status === "SUCCEEDED" && appointment.payment.amount === amount
-        ? { amount: appointment.payment.amount, paidAt: appointment.payment.updatedAt }
+        ? { amount: appointment.payment.amount, paidAt: appointment.payment.updatedAt, stripePaymentIntentId: appointment.payment.stripePaymentId }
         : null,
   };
 }
@@ -141,6 +141,23 @@ export async function POST(
   }
   if (!result.patientEmail) {
     return NextResponse.json({ error: "Patient has no email on file" }, { status: 400 });
+  }
+
+  // A second invoice for the same appointment used to just create a
+  // duplicate (pre-existing, harmless-looking) — now that a Stripe-paid
+  // one also writes a FinancialEntry keyed by the Payment's
+  // stripePaymentIntentId (@unique), the second attempt collided on that
+  // constraint and surfaced as a raw 500 instead of an explanation. Guard
+  // explicitly instead (code review, activity 073).
+  const existingInvoice = await prisma.patientInvoice.findFirst({
+    where: { appointmentId: params.id, status: { not: "VOID" } },
+    select: { id: true, invoiceNumber: true },
+  });
+  if (existingInvoice) {
+    return NextResponse.json(
+      { error: `This appointment already has an invoice (${existingInvoice.invoiceNumber}) — void it first if you need to generate a new one.` },
+      { status: 409 }
+    );
   }
 
   const actor = await getSessionStaffActor(request);

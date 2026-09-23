@@ -4540,6 +4540,13 @@ model PatientInvoice {
   paidById   String?
   paidBy     User?     @relation("PatientInvoicesPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
 
+  // Activity 073 — the FinancialEntry this payment produced (Dashboard/
+  // Income was otherwise invisible to every invoice payment, manual or
+  // Stripe-automatic). Unique so a given invoice can never end up double
+  // counted; null until paid.
+  financialEntryId String?          @unique
+  financialEntry   FinancialEntry?  @relation(fields: [financialEntryId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -5629,6 +5636,12 @@ model FinancialEntry {
   // Recurring
   isRecurring  Boolean @default(false)
   recurringDay Int? // Day of month (1-31) for recurring entries
+  // Activity 073 — only meaningful on the "template" row (isRecurring:
+  // true): the cron (app/api/cron/finance-recurring-entries) compares
+  // this against the current month to decide whether it already
+  // generated this month's copy, same lastInvoicedAt pattern already
+  // used by app/api/cron/membership-invoices for subscriptions.
+  lastGeneratedAt DateTime?
 
   // Attachments (receipt/invoice PDF URL)
   attachmentUrl String?
@@ -5638,6 +5651,11 @@ model FinancialEntry {
 
   // Link to dynamic category
   categoryId String?
+
+  // Activity 073 — the PatientInvoice this entry was generated from, when
+  // it came from a paid invoice rather than a manual entry or a Stripe
+  // sync. Back-relation only; PatientInvoice.financialEntryId is the FK.
+  patientInvoice PatientInvoice?
 
   @@index([clinicId])
   @@index([type])

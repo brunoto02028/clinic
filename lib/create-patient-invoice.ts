@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { generateInvoiceNumber } from "@/lib/patient-invoice-number";
+import { createFinancialEntryForInvoice } from "@/lib/create-financial-entry-for-invoice";
 
 export interface PatientInvoiceItemInput {
   description: string;
@@ -20,7 +21,7 @@ export interface CreatePatientInvoiceOptions {
    * Appointment's Payment.status is SUCCEEDED) — the invoice is created
    * already PAID, no manual "mark as paid" needed. Leave undefined for the
    * normal DRAFT-until-approved-and-paid flow. */
-  alreadyPaidViaStripe?: { amount: number; paidAt: Date } | null;
+  alreadyPaidViaStripe?: { amount: number; paidAt: Date; stripePaymentIntentId?: string | null } | null;
 }
 
 /**
@@ -46,7 +47,7 @@ export async function createPatientInvoice(opts: CreatePatientInvoiceOptions) {
   // is never permanently consumed without a matching invoice existing.
   return prisma.$transaction(async (tx) => {
     const invoiceNumber = await generateInvoiceNumber(opts.clinicId, tx);
-    return tx.patientInvoice.create({
+    const invoice = await tx.patientInvoice.create({
       data: {
         invoiceNumber,
         clinicId: opts.clinicId,
@@ -64,7 +65,32 @@ export async function createPatientInvoice(opts: CreatePatientInvoiceOptions) {
         paidMethod: stripe ? "stripe" : null,
         items: { create: items },
       },
-      include: { items: true },
+      include: { items: true, patient: { select: { firstName: true, lastName: true } } },
     });
+
+    // Activity 073 — an invoice born PAID via Stripe used to leave the
+    // Finance Dashboard/Income permanently blind to it (nothing ever wrote
+    // a FinancialEntry for a paid invoice). Same transaction as the
+    // invoice itself, so the two can never disagree about whether this
+    // payment happened.
+    if (stripe) {
+      await createFinancialEntryForInvoice({
+        db: tx,
+        clinicId: opts.clinicId,
+        patientId: opts.patientId,
+        patientName: `${invoice.patient.firstName} ${invoice.patient.lastName}`,
+        invoiceId: invoice.id,
+        invoiceNumber,
+        amount: stripe.amount,
+        currency: invoice.currency,
+        paidAt: stripe.paidAt,
+        paymentMethod: "STRIPE",
+        stripePaymentIntentId: stripe.stripePaymentIntentId,
+        appointmentId: opts.appointmentId,
+        patientSubscriptionId: opts.patientSubscriptionId,
+      });
+    }
+
+    return invoice;
   });
 }

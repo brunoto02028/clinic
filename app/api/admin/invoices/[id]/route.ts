@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 import { regenerateInvoicePdf } from "@/lib/patient-invoice-pdf";
+import { createFinancialEntryForInvoice } from "@/lib/create-financial-entry-for-invoice";
+import type { PaymentMethodType } from "@prisma/client";
+
+const MANUAL_PAYMENT_METHODS: PaymentMethodType[] = ["CASH", "BANK_TRANSFER", "CARD", "CHEQUE", "PIX", "OTHER"];
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
 // PATCH — three distinct shapes, disambiguated by which field is present:
 //   { items, notes?, dueDate? }  — edit line items, DRAFT only
-//   { markPaid: true, paidAmount?, paidMethod? } — manual "mark as paid" (T-5)
+//   { markPaid: true, paidAmount?, paymentMethod? } — manual "mark as paid" (T-5, activity 072); paymentMethod is one of MANUAL_PAYMENT_METHODS, defaults OTHER (activity 073)
 //   { markVoid: true }           — cancel an invoice that was never paid
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const guard = await requireClinic();
@@ -64,16 +68,62 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.paidAmount !== undefined && (typeof body.paidAmount !== "number" || body.paidAmount <= 0)) {
       return NextResponse.json({ error: "paidAmount must be a positive number" }, { status: 400 });
     }
-    const updated = await prisma.patientInvoice.update({
-      where: { id: invoice.id },
-      data: {
-        status: "PAID",
-        paidAt: new Date(),
-        paidAmount: typeof body.paidAmount === "number" ? body.paidAmount : invoice.total,
-        paidMethod: typeof body.paidMethod === "string" && body.paidMethod.trim() ? body.paidMethod.trim() : "manual",
-        paidById: guard.userId,
-      },
+    const paymentMethod: PaymentMethodType = MANUAL_PAYMENT_METHODS.includes(body.paymentMethod)
+      ? body.paymentMethod
+      : "OTHER";
+    const paidAmount = typeof body.paidAmount === "number" ? body.paidAmount : invoice.total;
+    const paidAt = new Date();
+
+    // Marking paid + creating the ledger entry for it happen together
+    // (activity 073) — an invoice can never end up PAID in the database
+    // while the Dashboard/Income still shows no trace of it. Row locked
+    // for the transaction's duration and the status re-checked from
+    // inside it — closes a race two near-simultaneous "Mark as paid"
+    // clicks (double click, retry, two tabs) could otherwise win past the
+    // findFirst guard above and each create their own FinancialEntry,
+    // silently double-counting the income (caught in code review — the
+    // manual paymentMethod path has no stripePaymentIntentId, so the
+    // @unique constraint that would have caught a Stripe duplicate can't
+    // catch this one).
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "PatientInvoice" WHERE id = ${invoice.id} FOR UPDATE`;
+      const fresh = await tx.patientInvoice.findUniqueOrThrow({ where: { id: invoice.id }, select: { status: true, paidMethod: true } });
+      if (fresh.paidMethod === "stripe" || (fresh.status !== "SENT" && fresh.status !== "OVERDUE")) {
+        throw new Error("ALREADY_HANDLED");
+      }
+      const patient = await tx.user.findUniqueOrThrow({ where: { id: invoice.patientId }, select: { firstName: true, lastName: true } });
+      const result = await tx.patientInvoice.update({
+        where: { id: invoice.id },
+        data: {
+          status: "PAID",
+          paidAt,
+          paidAmount,
+          paidMethod: paymentMethod,
+          paidById: guard.userId,
+        },
+      });
+      await createFinancialEntryForInvoice({
+        db: tx,
+        clinicId: guard.clinicId,
+        patientId: invoice.patientId,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        amount: paidAmount,
+        currency: invoice.currency,
+        paidAt,
+        paymentMethod,
+        appointmentId: invoice.appointmentId,
+        patientSubscriptionId: invoice.patientSubscriptionId,
+      });
+      return result;
+    }).catch((err: any) => {
+      if (err?.message === "ALREADY_HANDLED") return null;
+      throw err;
     });
+    if (!updated) {
+      return NextResponse.json({ error: "This invoice was already marked paid (possibly by another request just now)." }, { status: 409 });
+    }
     return NextResponse.json({ success: true, invoice: updated });
   }
 
