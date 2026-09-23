@@ -473,7 +473,8 @@ model Clinic {
   clinicEquipment ClinicEquipment[]
 
   // Automation engine (activity 072)
-  alerts Alert[]
+  alerts          Alert[]
+  automationRules AutomationRule[]
 
   @@index([slug])
   @@index([isActive])
@@ -7225,4 +7226,47 @@ model Alert {
   @@index([patientId])
   @@index([ruleCode])
   @@map("alerts")
+}
+
+/// A rule the automation engine evaluates — the thing that used to be a
+/// constant inside a cron route (activity 072, T-3).
+///
+/// Moving a threshold or a message into a row means changing it needs no
+/// deploy, which is the point: the clinic owns its own limits.
+model AutomationRule {
+  id String @id @default(cuid())
+
+  /// null is the default every clinic inherits. A row with a clinicId
+  /// overrides that default for one clinic only.
+  ///
+  /// Postgres treats NULLs as distinct in a unique index, so this constraint
+  /// does not stop a second global row for the same code. The seed looks
+  /// before it writes; a UI for these rules (T-6) must do the same.
+  clinicId String?
+  clinic   Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  code   String
+  name   String
+  active Boolean @default(true)
+
+  /// SCHEDULE | EVENT | INACTIVITY | THRESHOLD | EPISODE_PHASE
+  trigger    String
+  eventName  String?
+  /// Facts to compare, e.g. { "missingItems": { "gte": 1 } }. See
+  /// lib/automation/rules.ts for the operators.
+  condition  Json
+  /// SEND_MESSAGE | CREATE_TASK | CREATE_ALERT | GENERATE_REPORT | UNLOCK_CONTENT | START_SEQUENCE
+  action     String
+  /// Templates, priority, whatever the action needs.
+  actionData Json
+  /// PUSH | WHATSAPP | EMAIL | INTERNAL
+  channels   String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([code, clinicId])
+  @@index([code])
+  @@index([clinicId])
+  @@map("automation_rules")
 }

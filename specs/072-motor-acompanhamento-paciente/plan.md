@@ -73,9 +73,14 @@ Dos modelos do §4, **16 já existem** com outro formato: `PatientTask`, `Subscr
 Por isso, **critério de aceite obrigatório em toda tarefa que toca o schema**:
 
 ```
-npx prisma migrate diff --from-url "$DATABASE_URL" \
-  --to-schema-datamodel prisma/schema.prisma --script
+git show HEAD:prisma/schema.prisma > /tmp/schema-anterior.prisma
+npx prisma migrate diff   --from-schema-datamodel /tmp/schema-anterior.prisma   --to-schema-datamodel prisma/schema.prisma --script
 ```
+
+⚠️ **Schema contra schema, nunca `--from-url`.** O Postgres local é compartilhado entre os
+worktrees: em 23/09 ele tinha `PatientInvoice`, `PatientInvoiceItem` e `Clinic.nextInvoiceSeq`, de
+uma branch que não é esta nem a `main`. Comparar contra o banco vivo acusou **22 `DROP`** sem
+relação com a mudança. O que importa é o que o **diff desta branch** faz — é isso que o deploy executa.
 
 O script resultante **não pode conter `DROP`** — nem de tabela, nem de coluna. Só `CREATE`.
 

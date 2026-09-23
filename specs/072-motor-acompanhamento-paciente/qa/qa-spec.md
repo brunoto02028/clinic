@@ -8,7 +8,7 @@ Cenários por tarefa. Toda tarefa que toca o schema tem, antes de qualquer outro
 | | |
 |---|---|
 | Tipo | API/infra |
-| Passos | `npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script` |
+| Passos | `git show HEAD:prisma/schema.prisma > /tmp/anterior.prisma`, depois `npx prisma migrate diff --from-schema-datamodel /tmp/anterior.prisma --to-schema-datamodel prisma/schema.prisma --script`. ⚠️ **Nunca `--from-url`**: o Postgres local é compartilhado entre worktrees e acusa `DROP` de tabela de outra branch (23/09: 22 falsos positivos). |
 | Esperado | O script não contém nenhum `DROP`. Só `CREATE TABLE` / `CREATE INDEX` / `ALTER TABLE ... ADD`. |
 | Por quê | O deploy roda `prisma db push --accept-data-loss`. Um `DROP` aqui apaga dado de paciente em produção. |
 
