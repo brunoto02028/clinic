@@ -10,6 +10,7 @@ import { ModuleProfile, type ProfileSection } from "@/components/ModuleProfile";
  * reference material.
  */
 const CLINIC_SECTIONS: ProfileSection[] = [
+  { title: "Messages", icon: "chatbubbles-outline", href: "/(app)/(clinica)/messages" },
   { title: "My records", icon: "document-text-outline", href: "/(app)/(clinica)/clinical-notes" },
   { title: "My documents", icon: "folder-outline", href: "/(app)/(clinica)/documents" },
   { title: "Treatment plan", icon: "heart-outline", href: "/(app)/(clinica)/treatment-protocol" },

@@ -17,6 +17,7 @@ import { useTheme } from "@/theme/useTheme";
 import { fetchAppointments, nextUpcoming } from "@/api/appointments";
 import { fetchPrescriptions } from "@/api/exercises";
 import { fetchProtocols } from "@/api/protocol";
+import { fetchMessages, unreadFromStaff } from "@/api/messages";
 
 function formatSessionDate(iso: string): string {
   const d = new Date(iso);
@@ -44,6 +45,10 @@ export default function Health() {
     queryKey: ["protocols"],
     queryFn: fetchProtocols,
   });
+  const messages = useQuery({
+    queryKey: ["messages"],
+    queryFn: () => fetchMessages(),
+  });
 
   const next = appts.data ? nextUpcoming(appts.data) : null;
   const exerciseCount = exercises.data?.length ?? 0;
@@ -52,6 +57,7 @@ export default function Health() {
   // patient on their third of eight sessions read it as their own chart. There
   // is no day-of-plan figure in the API, so none is shown.
   const planLabel = protocols.data?.[0]?.diagnosis?.summary ?? null;
+  const unreadMessages = unreadFromStaff(messages.data ?? []);
 
   if (appts.isLoading && exercises.isLoading) {
     return (
@@ -222,11 +228,6 @@ export default function Health() {
             }
             onPress={() => router.push("/appointments")}
           />
-          {/* This said "Message the clinic · Send a message to your therapist"
-              and opened /clinical-notes — the therapist's SOAP notes, read
-              only, with no way to send anything. The patient-therapist channel
-              is `questions` on the web and is not in the app yet (T-4); until
-              it is, this points at what it actually opens. */}
           <ListItem
             icon={<Avatar label="📋" pillar="health" size={36} />}
             title="My records"
@@ -239,6 +240,24 @@ export default function Health() {
               />
             }
             onPress={() => router.push("/clinical-notes")}
+          />
+          {/* This link used to say "Message the clinic" and open the
+              therapist's read-only SOAP notes, because the channel did not
+              exist in the app. Now it does, and the badge counts what the
+              clinic has sent and the patient has not read. */}
+          <ListItem
+            icon={<Avatar label="💬" pillar="health" size={36} />}
+            title="Message the clinic"
+            subtitle="Send a message to your therapist"
+            right={
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {unreadMessages > 0 && (
+                  <Pill label={String(unreadMessages)} variant="health" />
+                )}
+                <Ionicons name="chevron-forward" size={16} color={t.colors.textMuted} />
+              </View>
+            }
+            onPress={() => router.push("/messages")}
             last
           />
         </Card>
