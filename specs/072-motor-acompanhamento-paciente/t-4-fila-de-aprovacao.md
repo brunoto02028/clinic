@@ -1,6 +1,6 @@
 # T-4: Fila de aprovação unificada (`OutboundMessage`)
 
-**Status:** pendente
+**Status:** concluído — QA aprovado (`qa/report-t-4.md`)
 **Depende de:** T-3
 
 ## Objetivo
@@ -44,11 +44,14 @@ por automação, em vez de digitada por humano.
 
 ## Critérios de aceite
 
-- [ ] `prisma migrate diff` **não contém `DROP`**
-- [ ] `enqueueMessage()` **nunca** envia — provado por teste que falha se o dispatcher for chamado
-- [ ] A prévia mostra inglês e português, inglês primeiro
-- [ ] Aprovar entrega uma vez; aprovar de novo não entrega segunda vez
-- [ ] Descartar não entrega e fica registrado com ator e horário
-- [ ] Mensagem fora do horário de silêncio do paciente é segurada, não descartada
-- [ ] Clínica A não vê a fila da clínica B
-- [ ] A logo BPR aparece na prévia do canal que a comporta
+- [x] `prisma migrate diff` **não contém `DROP`**
+- [x] `enqueueMessage()` **nunca** envia — provado por teste que falha se o dispatcher for chamado
+- [x] A prévia mostra **as duas línguas, a do paciente primeiro** — decidido pelo Bruno em
+      23/09 depois do QA apontar o conflito. O critério original dizia "inglês primeiro", o que
+      é a regra de **autoria e revisão**, não de entrega: quem lê o e-mail é o paciente, e ele
+      lê na língua dele. Comportamento herdado da ativ. 68, agora deliberado
+- [x] Aprovar entrega uma vez; aprovar de novo não entrega segunda vez
+- [x] Descartar não entrega e fica registrado com ator e horário
+- [x] Mensagem fora do horário de silêncio do paciente é segurada, não descartada
+- [x] Clínica A não vê a fila da clínica B
+- [x] A logo BPR aparece na prévia do canal que a comporta

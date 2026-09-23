@@ -50,7 +50,7 @@ Cenários por tarefa. Toda tarefa que toca o schema tem, antes de qualquer outro
 | # | Tipo | Cenário | Esperado |
 |---|---|---|---|
 | 4.1 | unit | `enqueueMessage()` | Cria com `AWAITING_APPROVAL`; teste falha se o dispatcher for chamado |
-| 4.2 | UI | Abrir a fila | Prévia em inglês e português, inglês primeiro, com logo BPR |
+| 4.2 | UI | Abrir a fila | Prévia nas duas línguas, **a do paciente primeiro** (decisão de 23/09), com logo BPR |
 | 4.3 | UI | Aprovar | Entrega uma vez; `sentAt` e ator gravados |
 | 4.4 | API | Aprovar a mesma mensagem de novo | Não entrega segunda vez |
 | 4.5 | UI | Descartar | Não entrega; fica registrado com ator e horário |

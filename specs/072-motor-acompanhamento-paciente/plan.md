@@ -86,9 +86,12 @@ O script resultante **não pode conter `DROP`** — nem de tabela, nem de coluna
 
 ### 5. Idioma
 
-Inglês é a língua canônica de todo texto que chega ao paciente; português vem pelo
-`preferredLocale`. Os templates nascem com os dois campos. (O §0.6 do documento diz o contrário —
-"português e inglês" — e está errado para este produto.)
+Inglês é a língua canônica **de autoria e revisão**: todo texto nasce em inglês e o português vem
+junto. Isso não é a mesma coisa que a ordem em que o paciente lê.
+
+**Na entrega, a língua do paciente vem primeiro** (decidido em 23/09, depois de o QA da T-4 apontar
+o conflito): um paciente pt-BR abre o e-mail e lê português, com o inglês abaixo. Quem lê é ele.
+Comportamento herdado da ativ. 68, agora deliberado em vez de acidental.
 
 ### 6. "Terapeuta", nunca "fisioterapeuta"
 
@@ -102,7 +105,7 @@ paciente usa **Terapeuta / therapist**.
 | T-1 | Mapa documento × sistema (sem código) | **concluído** |
 | T-2 | `Alert` + central de alertas do terapeuta | **concluído** |
 | T-3 | `AutomationRule`: regras em banco, uma automação migrada | **concluído** |
-| T-4 | Fila de aprovação unificada (`OutboundMessage`) | em QA |
+| T-4 | Fila de aprovação unificada (`OutboundMessage`) | **concluído** |
 | T-5 | `AutomationRun`: idempotência e log unificados | em QA |
 | T-6 | Painel de regras (ligar/desligar, limites, templates EN/PT) | em QA |
 | T-7 | Trocar o `SEND_MESSAGE` do `daily-adherence` por enfileirar | pendente |
