@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "BPR",
-    "slug": "bpr-rehab",
-    "scheme": "bprrehab",
+    "slug": "bpr-clinic",
+    "scheme": "bprclinic",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,13 +15,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bpr.rehab",
+      "bundleIdentifier": "com.bpr.clinic",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.bpr.rehab",
+      "package": "com.bpr.clinic",
       "adaptiveIcon": {
         "backgroundColor": "#20242D",
         "foregroundImage": "./assets/android-icon-foreground.png",

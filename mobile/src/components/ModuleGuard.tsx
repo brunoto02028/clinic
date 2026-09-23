@@ -10,7 +10,7 @@ import { SHOW_LAB } from "@/lib/feature-flags";
  * `/api/mobile/modules` decides which modules a user may reach, but its answer
  * only ever fed the chooser's list — nothing stopped a direct navigation. A
  * patient entitled to the clinic alone could open BA, and a studio student
- * could open the clinic. The published `bprrehab://` scheme makes that a real
+ * could open the clinic. The published `bprclinic://` scheme makes that a real
  * vector, not just a devtools trick.
  *
  * The lab is the one deliberate exception: it is offered by the build rather
