@@ -83,7 +83,15 @@ export async function POST(request: NextRequest) {
         : 'Stage 1 Hypertension';
       const isCrisis = sys >= 180 || dia >= 120;
       const BASE = process.env.NEXTAUTH_URL || 'https://bpr.clinic';
-      notifyPatient({
+      // The patient is written to only in a crisis. This fired from 130/80 —
+      // stage 1, which is common and often unremarkable — so someone measuring
+      // daily at home received a warning e-mail most weeks. Alarm that arrives
+      // that often stops being read, which is the opposite of what an alert is
+      // for, and it also crossed the clinic's own rule that nothing reaches a
+      // patient automatically. At 180/120 the message is "go to A&E now", and
+      // that one is worth sending without waiting for a human to open the
+      // admin. Everything below it reaches the clinic, not the patient.
+      if (isCrisis) notifyPatient({
         patientId: userId,
         emailTemplateSlug: 'BP_HIGH_ALERT',
         emailVars: {
