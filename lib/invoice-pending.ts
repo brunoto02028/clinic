@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getSenderEmail } from "@/lib/utils";
-import { buildInvoiceHtml, InvoiceData } from "@/lib/invoice-html";
+import { InvoiceData } from "@/lib/invoice-html";
+import { buildInvoicePdf } from "@/lib/invoice-pdf";
 
 /** Shared by every invoice-generating route (activity 39/40): never call
  * sendEmail directly for a financial email — always queue it here so the
@@ -12,7 +13,12 @@ export async function queueInvoiceForApproval(opts: {
   clinicId?: string | null;
 }): Promise<{ pendingId: string; invoiceNumber: string }> {
   const { invoice, patientEmail, patientId, clinicId } = opts;
-  const html = buildInvoiceHtml(invoice);
+  // A real PDF, not the HTML file this used to attach — Gmail (and most mail
+  // clients) never render an HTML attachment inline for security reasons, so
+  // every invoice sent this way showed the patient raw markup instead of the
+  // invoice (found 22/09/2026, patient screenshot of the Gmail preview). A
+  // PDF previews natively everywhere.
+  const pdf = buildInvoicePdf(invoice);
   const total = invoice.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
 
   const emailBody = `
@@ -28,8 +34,8 @@ export async function queueInvoiceForApproval(opts: {
   const subject = `Invoice ${invoice.invoiceNumber} — ${invoice.business.tradingName}`;
   const attachmentsJson = JSON.stringify([
     {
-      filename: `Invoice-${invoice.invoiceNumber}.html`,
-      contentBase64: Buffer.from(html, "utf-8").toString("base64"),
+      filename: `Invoice-${invoice.invoiceNumber}.pdf`,
+      contentBase64: pdf.toString("base64"),
     },
   ]);
 

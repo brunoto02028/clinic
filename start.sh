@@ -109,6 +109,17 @@ node /app/scripts/backfill-prescription-protocolid.js || echo "[start.sh] prescr
 echo "[start.sh] Backfilling ProtocolTemplate.clinicId..."
 node /app/scripts/backfill-protocol-template-clinicid.js || echo "[start.sh] protocol template clinicId backfill warning — check logs"
 
+# Activity 71: app/api/admin/email/route.ts never filtered anything by
+# clinicId, so any signed-in staff (any clinic) could list/approve/discard/
+# delete another clinic's financial emails — found via a patient's invoice.
+# The route now scopes every action, but rows created before this fix (the
+# "send"/"sync" actions never set clinicId) would just disappear from their
+# own clinic's inbox instead of being visible again — this backfill runs
+# first so the fix never looks like lost history. Idempotent (only rows
+# still without one); see the script.
+echo "[start.sh] Backfilling EmailMessage.clinicId..."
+node /app/scripts/backfill-email-message-clinicid.js || echo "[start.sh] email clinicId backfill warning — check logs"
+
 # ACL reconstruction post-op protocol template (13/09/2026 request) — idempotent,
 # skips if a template with this name already exists, no-ops until an
 # ADMIN/SUPERADMIN account exists to attribute authorship to (see

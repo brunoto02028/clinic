@@ -1052,6 +1052,25 @@ export default function EmailPage() {
                   let atts: { filename: string; contentBase64: string }[] = [];
                   try { atts = JSON.parse(selectedMsg.attachmentsJson); } catch {}
                   return atts.map((a, i) => {
+                    // Invoices attach a PDF (activity 70 — the old HTML attachment
+                    // never rendered in the patient's own mail client either).
+                    // PDF is binary, so it previews via a data: URI, not decoded as
+                    // text like the (still-possible) HTML attachment below.
+                    const isPdf = a.filename.toLowerCase().endsWith(".pdf");
+                    if (isPdf) {
+                      return (
+                        <div key={i} className="mt-4">
+                          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1.5">
+                            <Paperclip className="h-3 w-3" /> {a.filename}
+                          </div>
+                          <iframe
+                            src={`data:application/pdf;base64,${a.contentBase64}`}
+                            className="w-full min-h-[500px] border rounded-lg bg-white"
+                            title={a.filename}
+                          />
+                        </div>
+                      );
+                    }
                     const bytes = Uint8Array.from(atob(a.contentBase64), (c) => c.charCodeAt(0));
                     const html = new TextDecoder("utf-8").decode(bytes);
                     return (
