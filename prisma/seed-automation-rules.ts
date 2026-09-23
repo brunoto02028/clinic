@@ -14,6 +14,7 @@ import { config } from "dotenv";
 config();
 
 import { PrismaClient } from "@prisma/client";
+import { ADHERENCE_CONFIG } from "../lib/adherence-config";
 
 const prisma = new PrismaClient();
 
@@ -39,21 +40,21 @@ const RULES = [
     active: true,
   },
   {
-    code: "ADHERENCE_DAILY_ALERT",
-    name: "Alert the therapist — three or more activities missed today",
+    code: "ADHERENCE_FALLING_BEHIND",
+    name: "Alert the therapist — the patient has gone quiet",
     trigger: "SCHEDULE",
-    // Higher than the reminder's threshold on purpose. One missed exercise is
-    // a nudge for the patient; three is worth a therapist's attention.
-    condition: { missingItems: { gte: 3 } },
+    // Days since the patient last did anything, counted only while something
+    // was actually liberated for them (activity 071's signal). The threshold
+    // starts at the value that activity shipped, so unifying the two changes
+    // nothing on day one.
+    condition: { daysWithoutActivity: { gte: ADHERENCE_CONFIG.fallingBehindThresholdDays } },
     action: "CREATE_ALERT",
     actionData: {
       priority: "LOW",
-      // `{missingItems}` is filled from the facts, so raising or lowering the
-      // threshold cannot leave the title claiming a number that is not true.
-      // English only: an alert is internal, and English is this product's
-      // canonical language.
-      titleEn: "{missingItems} activities missed today",
-      titlePt: "{missingItems} atividades nao feitas hoje",
+      // `{daysWithoutActivity}` is filled from the facts, so the title cannot
+      // claim a number the rule did not use.
+      titleEn: "No activity for {daysWithoutActivity} days",
+      titlePt: "Sem atividade ha {daysWithoutActivity} dias",
     },
     channels: ["INTERNAL"],
     active: true,

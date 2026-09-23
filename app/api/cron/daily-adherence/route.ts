@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
+import { getClinicDailyAdherence, getClinicPatientsFallingBehind } from "@/lib/clinic-daily-adherence";
+import { getFallingBehindThreshold, FALLING_BEHIND_RULE } from "@/lib/automation/adherence-threshold";
 import { REMINDER_ACTION, buildTodayReminderText } from "@/lib/daily-adherence-email";
 import { getReminderTemplates } from "@/lib/reminder-templates";
 import { enqueueMessage } from "@/lib/automation/outbox";
@@ -28,7 +29,7 @@ export const dynamic = "force-dynamic";
 // were messaged: a clinic with reminders off now appears with
 // remindersSent: 0 and whatever alerts were raised.
 const REMINDER_RULE = "ADHERENCE_DAILY_REMINDER";
-const ALERT_RULE = "ADHERENCE_DAILY_ALERT";
+const ALERT_RULE = FALLING_BEHIND_RULE;
 
 export async function POST(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
@@ -93,49 +94,49 @@ export async function POST(req: NextRequest) {
 
     let remindersQueued = 0;
     let alertsRaised = 0;
+
+    // "Who has gone quiet?" — the signal activity 071 built, which is the
+    // right question: days since the patient last did anything, counted only
+    // while something was actually liberated for them. The old condition here
+    // asked "how many items did they miss today?", which is a single day's
+    // snapshot and flags someone who did four exercises out of five.
+    if (alertOn) {
+      const thresholdDays = await getFallingBehindThreshold(clinic.id);
+      const behind = await getClinicPatientsFallingBehind(clinic.id, now, thresholdDays);
+
+      for (const p of behind) {
+        const facts = { daysWithoutActivity: p.daysWithoutActivity };
+        if (!evaluateCondition(alertRule!.condition, facts)) continue;
+
+        const run = await runOnce(
+          { clinicId: clinic.id, ruleCode: ALERT_RULE, patientId: p.patientId, window: day, facts },
+          async () => {
+            const { created, escalated } = await createAlert({
+              clinicId: clinic.id,
+              patientId: p.patientId,
+              ruleCode: ALERT_RULE,
+              window: day,
+              title: interpolate(actionText(alertRule!, "titleEn") ?? "No activity for {daysWithoutActivity} days", facts),
+              titlePt: actionText(alertRule!, "titlePt")
+                ? interpolate(actionText(alertRule!, "titlePt")!, facts)
+                : null,
+              priority: (actionText(alertRule!, "priority") as AlertPriority | null) ?? AlertPriority.LOW,
+              details: { daysWithoutActivity: p.daysWithoutActivity, thresholdDays },
+            });
+            return {
+              result: created ? "ALERT_RAISED" : escalated ? "ALERT_ESCALATED" : "ALERT_DEDUPED",
+              details: { daysWithoutActivity: p.daysWithoutActivity, thresholdDays },
+            };
+          }
+        );
+        if (run.ran && run.result === "ALERT_RAISED") alertsRaised++;
+      }
+    }
     // Loaded once per clinic rather than per patient.
     const templates = reminderOn ? await getReminderTemplates(clinic.id) : null;
 
     for (const patient of missing) {
       const facts = { missingItems: patient.missingItems.length };
-
-      if (alertOn && evaluateCondition(alertRule!.condition, facts)) {
-        // runOnce keys on the facts as well as the window, so the same
-        // situation twice is one run while a worse one still gets through to
-        // escalate. It also leaves the record of why this patient was flagged.
-        const run = await runOnce(
-          { clinicId: clinic.id, ruleCode: ALERT_RULE, patientId: patient.patientId, window: day, facts },
-          async () => {
-            const { created, escalated } = await createAlert({
-              clinicId: clinic.id,
-              patientId: patient.patientId,
-              ruleCode: ALERT_RULE,
-              window: day,
-              title: interpolate(
-                actionText(alertRule!, "titleEn") ?? "Activities missed today",
-                facts
-              ),
-              titlePt: actionText(alertRule!, "titlePt")
-                ? interpolate(actionText(alertRule!, "titlePt")!, facts)
-                : null,
-              priority:
-                (actionText(alertRule!, "priority") as AlertPriority | null) ?? AlertPriority.LOW,
-              details: {
-                missingItems: facts.missingItems,
-                titles: patient.missingItems.map((i) => i.title),
-              },
-            });
-            return {
-              result: created ? "ALERT_RAISED" : escalated ? "ALERT_ESCALATED" : "ALERT_DEDUPED",
-              details: { missingItems: facts.missingItems, titles: patient.missingItems.map((i) => i.title) },
-            };
-          }
-        );
-        // `ran` matters as much as `result`: a skipped run reports the
-        // *previous* result, and counting that would claim an alert was raised
-        // every time the cron runs.
-        if (run.ran && run.result === "ALERT_RAISED") alertsRaised++;
-      }
 
       if (!reminderOn || !evaluateCondition(reminderRule!.condition, facts)) continue;
 

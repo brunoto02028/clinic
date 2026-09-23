@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
 import { getClinicPatientsFallingBehind } from "@/lib/clinic-daily-adherence";
+import { getFallingBehindThreshold } from "@/lib/automation/adherence-threshold";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,10 @@ export async function GET() {
   const clinicId = await sessionClinicId(session);
   if (!clinicId) return NextResponse.json(NO_CLINIC, { status: 403 });
 
-  const patients = await getClinicPatientsFallingBehind(clinicId, new Date());
-  return NextResponse.json({ patients });
+  // The same threshold the alert rule uses (activity 072). Two answers to
+  // "how many days is behind?" meant the card and the alert could disagree
+  // about the same patient.
+  const thresholdDays = await getFallingBehindThreshold(clinicId);
+  const patients = await getClinicPatientsFallingBehind(clinicId, new Date(), thresholdDays);
+  return NextResponse.json({ patients, thresholdDays });
 }
