@@ -38,7 +38,7 @@ já fez isso para um caso — o toggle do lembrete diário por clínica, no dial
 - [x] Mudar um limite pela tela muda o comportamento da regra **sem deploy**
 - [x] Desligar uma regra numa clínica não afeta as outras
 - [x] Toda alteração aparece no `AuditLog` com valor antes e depois
-- [x] A prévia mostra inglês e português, inglês primeiro
+- [x] A prévia mostra inglês e português, inglês primeiro — a regra passou a ter `titlePt` (decisão do Bruno, 23/09: tudo nas duas línguas, inglês primeiro)
 - [x] Usuário sem permissão administrativa recebe 403 na API e não vê a tela
 - [x] Não é possível salvar uma `condition` inválida (validação com Zod, mensagem clara)
 - [x] Placeholder inexistente em `titleEn` é recusado na tela — os fatos disponíveis são

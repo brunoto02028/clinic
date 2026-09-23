@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
       priority: true,
       status: true,
       title: true,
+      titlePt: true,
       details: true,
       createdAt: true,
       ackAt: true,

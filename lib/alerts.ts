@@ -21,7 +21,10 @@ export interface CreateAlertInput {
    * inside the same window produce one alert, not two.
    */
   window: string;
+  /** English — canonical, and the one the list shows first. */
   title: string;
+  /** Portuguese, shown under it. Both, always. */
+  titlePt?: string | null;
   priority?: AlertPriority;
   details?: Prisma.InputJsonValue;
 }
@@ -79,6 +82,7 @@ export async function createAlert(
         patientId: input.patientId,
         ruleCode: input.ruleCode,
         title: input.title,
+        titlePt: input.titlePt ?? null,
         priority,
         details: input.details,
         dedupeKey,
@@ -89,7 +93,7 @@ export async function createAlert(
 
   const alert = await prisma.alert.findUniqueOrThrow({
     where: { dedupeKey },
-    select: { id: true, priority: true, status: true, title: true },
+    select: { id: true, priority: true, status: true, title: true, titlePt: true },
   });
 
   if (count === 1) return { created: true, alertId: alert.id };
@@ -109,6 +113,7 @@ export async function createAlert(
       data: {
         priority,
         title: input.title,
+        titlePt: input.titlePt ?? null,
         details: input.details,
         status: AlertStatus.OPEN,
         ackById: null,
@@ -124,10 +129,10 @@ export async function createAlert(
   // title, and "1 activity missed today" on a patient who has now missed three
   // is simply false. Refreshed in place, without dragging a resolved alert
   // back open — that is what an escalation is for.
-  if (alert.title !== input.title) {
+  if (alert.title !== input.title || alert.titlePt !== (input.titlePt ?? null)) {
     await prisma.alert.updateMany({
       where: { id: alert.id, clinicId: input.clinicId },
-      data: { title: input.title, details: input.details },
+      data: { title: input.title, titlePt: input.titlePt ?? null, details: input.details },
     });
     return { created: false, refreshed: true, alertId: alert.id };
   }

@@ -115,6 +115,9 @@ export async function POST(req: NextRequest) {
                 actionText(alertRule!, "titleEn") ?? "Activities missed today",
                 facts
               ),
+              titlePt: actionText(alertRule!, "titlePt")
+                ? interpolate(actionText(alertRule!, "titlePt")!, facts)
+                : null,
               priority:
                 (actionText(alertRule!, "priority") as AlertPriority | null) ?? AlertPriority.LOW,
               details: {

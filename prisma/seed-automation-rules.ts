@@ -53,6 +53,7 @@ const RULES = [
       // English only: an alert is internal, and English is this product's
       // canonical language.
       titleEn: "{missingItems} activities missed today",
+      titlePt: "{missingItems} atividades nao feitas hoje",
     },
     channels: ["INTERNAL"],
     active: true,

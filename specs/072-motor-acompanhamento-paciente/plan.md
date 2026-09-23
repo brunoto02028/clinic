@@ -89,9 +89,12 @@ O script resultante **não pode conter `DROP`** — nem de tabela, nem de coluna
 Inglês é a língua canônica **de autoria e revisão**: todo texto nasce em inglês e o português vem
 junto. Isso não é a mesma coisa que a ordem em que o paciente lê.
 
-**Na entrega, a língua do paciente vem primeiro** (decidido em 23/09, depois de o QA da T-4 apontar
-o conflito): um paciente pt-BR abre o e-mail e lê português, com o inglês abaixo. Quem lê é ele.
-Comportamento herdado da ativ. 68, agora deliberado em vez de acidental.
+**Tudo nas duas línguas, e nas telas internas o inglês vem primeiro** (Bruno, 23/09). O alerta tem
+`title` (EN) e `titlePt`, e a central mostra o inglês acima.
+
+**A exceção é a entrega ao paciente:** ali a língua **dele** vem primeiro — um paciente pt-BR abre o
+e-mail e lê português, com o inglês abaixo. Decidido em 23/09 com a prévia à vista, depois de o QA
+da T-4 apontar o conflito. Quem lê o e-mail é ele; quem lê o alerta somos nós.
 
 ### 6. "Terapeuta", nunca "fisioterapeuta"
 

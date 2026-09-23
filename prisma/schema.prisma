@@ -7207,7 +7207,10 @@ model Alert {
   ruleCode String
   priority AlertPriority @default(MEDIUM)
   status   AlertStatus   @default(OPEN)
+  /// English is canonical and always shown first; the Portuguese goes under
+  /// it. Both, always — decided 23/09.
   title    String
+  titlePt  String?
   /// Why it fired: the figures the rule looked at, so the therapist can judge
   /// without going to fetch the data themselves.
   details  Json?

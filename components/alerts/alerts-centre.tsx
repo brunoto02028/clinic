@@ -25,6 +25,7 @@ interface AlertRow {
   priority: Priority;
   status: Status;
   title: string;
+  titlePt: string | null;
   details: Record<string, unknown> | null;
   createdAt: string;
   ackAt: string | null;
@@ -217,7 +218,11 @@ export default function AlertsCentre() {
                       <span className="text-xs text-muted-foreground font-mono">{a.ruleCode}</span>
                       <span className="text-xs text-muted-foreground">{fmt(a.createdAt)}</span>
                     </div>
+                    {/* English first, always; the Portuguese under it. */}
                     <p className="font-medium text-foreground">{a.title}</p>
+                    {a.titlePt && (
+                      <p className="text-sm text-muted-foreground">{a.titlePt}</p>
+                    )}
                     {a.patient && (
                       <Link
                         href={`/admin/patients/${a.patient.id}`}
