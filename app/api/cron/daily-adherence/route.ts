@@ -145,10 +145,19 @@ export async function POST(req: NextRequest) {
         templates?.today
       );
 
+      // The queue's key stops it queueing twice, but it knows nothing about
+      // the "Send now" button, which still sends directly. Without this check
+      // a patient who already had today's reminder by hand gets a second one
+      // sitting in the queue, and nothing on the card tells the approver.
+      const alreadySent = await prisma.auditLog.findFirst({
+        where: { userId: patient.patientId, action: REMINDER_ACTION, createdAt: { gte: dayStart } },
+        select: { id: true },
+      });
+      if (alreadySent) continue;
+
       // And here is the change this task exists for: it queues. Nothing goes
-      // to the patient until somebody reads it and clicks. No AuditLog dedupe
-      // any more either — the queue's own key covers the window, and the audit
-      // line is written on delivery, because queued is not sent.
+      // to the patient until somebody reads it and clicks. The audit line is
+      // written on delivery, because queued is not sent.
       const { queued } = await enqueueMessage({
         clinicId: clinic.id,
         patientId: patient.patientId,

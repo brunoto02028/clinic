@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { OutboundStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { renderPatientEmail } from "@/lib/patient-email";
@@ -210,10 +211,15 @@ export async function renderQueuedMessage(msg: {
     vars.custom ?? null
   );
 
-  // The hash still covers the text, as activity 68 defined it; the layout is
-  // decided by the same stored fields, so it cannot change between the two
-  // calls either.
-  return { ...generic, html: typeof html === "string" ? html : generic.html };
+  // The hash has to cover the layout's own inputs too. Activity 68's hash is
+  // over subject and body — fine when the body *is* the message, but here the
+  // HTML comes from templateVars, and QA changed the exercises a patient would
+  // read after approval without the guard noticing.
+  const hash = createHash("sha256")
+    .update(JSON.stringify({ base: generic.hash, templateCode: msg.templateCode, vars: msg.templateVars }))
+    .digest("hex");
+
+  return { ...generic, hash, html: typeof html === "string" ? html : generic.html };
 }
 
 /**

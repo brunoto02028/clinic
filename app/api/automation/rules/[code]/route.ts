@@ -28,10 +28,25 @@ const operators = z
   .strict()
   .refine((o) => Object.keys(o).length > 0, "an empty operator set matches nothing");
 
-const conditionSchema = z.record(
-  z.string().min(1),
-  z.union([z.string(), z.number(), z.boolean(), operators])
-);
+/**
+ * Keys that vanish when the object is serialised. `__proto__` survives the
+ * schema and then is not there any more, leaving `condition: {}` — which the
+ * engine documents as *always true*. QA turned "fires at three missed
+ * activities" into "fires for everyone" with one PATCH that answered 200, and
+ * the panel then showed no threshold at all.
+ */
+const FORBIDDEN_KEYS = ["__proto__", "constructor", "prototype"];
+
+const conditionSchema = z
+  .record(z.string().min(1), z.union([z.string(), z.number(), z.boolean(), operators]))
+  .refine((c) => !Object.keys(c).some((k) => FORBIDDEN_KEYS.includes(k)), {
+    message: `A condition cannot use ${FORBIDDEN_KEYS.join(", ")} as a key`,
+  })
+  .refine((c) => Object.keys(c).length > 0, {
+    // An empty condition means "always" to the engine. Seeded rules may say
+    // that on purpose; nobody should arrive at it by saving a form.
+    message: "A condition with no rules in it would fire for every patient",
+  });
 
 /**
  * `actionData` is free-form JSON in the schema, but not free-form here.
@@ -124,10 +139,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { code: 
     where: { code: params.code, clinicId: targetClinicId },
   });
 
+  // Merged, not replaced: a PATCH carrying only `auditAction` used to erase
+  // `titleEn` and `priority` without saying so. The panel sends the whole
+  // object, so this only ever matters to a caller that does not.
+  const baseAction = ((before ?? globalRule).actionData ?? {}) as Record<string, unknown>;
   const data: Prisma.AutomationRuleUpdateInput = {
     ...(active !== undefined ? { active } : {}),
     ...(condition ? { condition: condition as Prisma.InputJsonValue } : {}),
-    ...(actionData ? { actionData: actionData as Prisma.InputJsonValue } : {}),
+    ...(actionData ? { actionData: { ...baseAction, ...actionData } as Prisma.InputJsonValue } : {}),
   };
 
   const after = before
@@ -143,7 +162,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { code: 
           eventName: globalRule.eventName,
           condition: (condition ?? globalRule.condition) as Prisma.InputJsonValue,
           action: globalRule.action,
-          actionData: (actionData ?? globalRule.actionData) as Prisma.InputJsonValue,
+          actionData: {
+            ...((globalRule.actionData ?? {}) as Record<string, unknown>),
+            ...(actionData ?? {}),
+          } as Prisma.InputJsonValue,
           channels: globalRule.channels,
           active: active ?? globalRule.active,
         },
