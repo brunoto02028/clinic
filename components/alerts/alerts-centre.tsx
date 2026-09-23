@@ -166,6 +166,7 @@ export default function AlertsCentre() {
             key={f}
             variant={filter === f ? "default" : "outline"}
             size="sm"
+            className={filter === f ? "" : "text-foreground"}
             onClick={() => setFilter(f)}
           >
             {f === "OPEN" ? ui.open : f === "ACKNOWLEDGED" ? ui.acknowledged : f === "RESOLVED" ? ui.resolved : ui.all}
@@ -219,7 +220,7 @@ export default function AlertsCentre() {
                     <p className="font-medium text-foreground">{a.title}</p>
                     {a.patient && (
                       <Link
-                        href={`/dashboard/patients/${a.patient.id}`}
+                        href={`/admin/patients/${a.patient.id}`}
                         className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
                       >
                         {a.patient.firstName} {a.patient.lastName}
@@ -233,6 +234,7 @@ export default function AlertsCentre() {
                       <Button
                         size="sm"
                         variant="outline"
+                        className="text-foreground"
                         disabled={busyId === a.id}
                         onClick={() => act(a.id, "acknowledge")}
                       >

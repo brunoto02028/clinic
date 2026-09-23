@@ -17,10 +17,13 @@ describe("runKey", () => {
     expect(runKey({ ...base, window: "2026-09-24" })).not.toBe(k);
   });
 
-  it("a patientless rule keeps a place in the key", () => {
-    // Otherwise `clinic:RULE::window` and `clinic:RULE:window` could collide
-    // with a differently shaped key.
-    expect(runKey({ ...base, patientId: null })).toContain(":-:");
+  it("a clinic-wide rule cannot collide with a patient's", () => {
+    // The patient part is `p:<id>` or `all`, never the bare id: a patient
+    // whose id were the sentinel itself would otherwise share the key.
+    const sweep = runKey({ ...base, patientId: null });
+    expect(sweep).toContain(":all:");
+    expect(runKey({ ...base, patientId: "all" })).not.toBe(sweep);
+    expect(runKey({ ...base, patientId: "-" })).not.toBe(sweep);
   });
 
   describe("the facts", () => {

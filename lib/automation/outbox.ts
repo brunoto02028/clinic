@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { renderPatientEmail } from "@/lib/patient-email";
 import { sendEmail } from "@/lib/email";
 import { getZonedMinutesOfDay } from "@/lib/clinic-timezone";
+import { logAudit } from "@/lib/system-logger";
 
 /**
  * The queue every automated message waits in (activity 072, T-4).
@@ -34,6 +35,11 @@ export interface EnqueueInput {
   subjectPt: string;
   bodyEn: string;
   bodyPt: string;
+  /** AuditLog action to write on delivery — see OutboundMessage.auditAction. */
+  auditAction?: string | null;
+  /** Builder for this message's layout, when the generic one is wrong. */
+  templateCode?: string | null;
+  templateVars?: Record<string, unknown> | null;
 }
 
 export function outboxIdempotencyKey(
@@ -73,6 +79,9 @@ export async function enqueueMessage(
         subjectPt: input.subjectPt,
         bodyEn: input.bodyEn,
         bodyPt: input.bodyPt,
+        auditAction: input.auditAction ?? null,
+        templateCode: input.templateCode ?? null,
+        templateVars: (input.templateVars ?? undefined) as never,
         idempotencyKey,
       },
     ],
@@ -86,7 +95,12 @@ export async function enqueueMessage(
   return { queued: count === 1, messageId: row.id };
 }
 
-export type HoldReason = "NO_CONSENT" | "QUIET_HOURS" | "DAILY_CAP" | "NO_EMAIL";
+export type HoldReason =
+  | "NO_CONSENT"
+  | "QUIET_HOURS"
+  | "DAILY_CAP"
+  | "NO_EMAIL"
+  | "CHANNEL_NOT_SUPPORTED";
 
 /** "21:00" → 1260. */
 function minutesOf(hhmm: string): number {
@@ -126,12 +140,19 @@ export async function holdReasonFor(
     select: {
       patientId: true,
       clinicId: true,
-      patient: { select: { email: true, consentAcceptedAt: true } },
+      patient: { select: { email: true, consentAcceptedAt: true, communicationPreference: true } },
       clinic: { select: { timezone: true } },
     },
   });
 
   if (!msg.patient.email) return "NO_EMAIL";
+  // This queue delivers by e-mail. A patient who asked for WhatsApp is held
+  // with a reason rather than quietly downgraded to a channel they did not
+  // choose — the direct send honoured their preference, and losing that
+  // silently would be worse than not sending. WhatsApp needs Meta-approved
+  // templates first (spec §11).
+  const pref = msg.patient.communicationPreference;
+  if (pref && pref !== "EMAIL") return "CHANNEL_NOT_SUPPORTED";
   // The patient's acceptance of the clinic's terms. Per-channel consent
   // (push, WhatsApp) arrives with WhatsApp — spec §11, plan assumption 4.
   if (!msg.patient.consentAcceptedAt) return "NO_CONSENT";
@@ -146,6 +167,53 @@ export async function holdReasonFor(
   if (sentToday >= DEFAULT_DAILY_CAP) return "DAILY_CAP";
 
   return null;
+}
+
+/**
+ * What this message actually looks like.
+ *
+ * One function for the preview and for the send, so they cannot drift: the
+ * whole point of the hash guard is that the approver saw what goes out.
+ *
+ * A `templateCode` picks a purpose-built layout. The daily reminder has one —
+ * a greeting by name and a button into the app — and moving that message into
+ * this queue must not quietly cost the patient either of them.
+ */
+export async function renderQueuedMessage(msg: {
+  subjectEn: string;
+  subjectPt: string;
+  bodyEn: string;
+  bodyPt: string;
+  templateCode: string | null;
+  templateVars: unknown;
+  patientId: string;
+  clinicId: string;
+  patient: { preferredLocale: string | null; clinicId: string | null };
+}): Promise<{ subject: string; html: string; bodyText: string; locale: string; bothLanguages: boolean; hash: string }> {
+  const generic = await renderPatientEmail(msg.patient, {
+    subjectEn: msg.subjectEn,
+    subjectPt: msg.subjectPt,
+    bodyEn: msg.bodyEn,
+    bodyPt: msg.bodyPt,
+    language: "both",
+  });
+
+  if (msg.templateCode !== "TODAY_REMINDER") return generic;
+
+  const vars = (msg.templateVars ?? {}) as { firstName?: string; titles?: string[]; custom?: string };
+  const { buildPatientReminderEmail } = await import("@/lib/daily-adherence-email");
+  const html = await buildPatientReminderEmail(
+    vars.firstName ?? "",
+    vars.titles ?? [],
+    msg.patient.preferredLocale || "en-GB",
+    msg.clinicId,
+    vars.custom ?? null
+  );
+
+  // The hash still covers the text, as activity 68 defined it; the layout is
+  // decided by the same stored fields, so it cannot change between the two
+  // calls either.
+  return { ...generic, html: typeof html === "string" ? html : generic.html };
 }
 
 /**
@@ -177,13 +245,7 @@ export async function deliverMessage(
     return { sent: false, held: hold };
   }
 
-  const rendered = await renderPatientEmail(msg.patient, {
-    subjectEn: msg.subjectEn,
-    subjectPt: msg.subjectPt,
-    bodyEn: msg.bodyEn,
-    bodyPt: msg.bodyPt,
-    language: "both",
-  });
+  const rendered = await renderQueuedMessage(msg);
 
   if (msg.approvedHash && msg.approvedHash !== rendered.hash) {
     const error = "The message changed since it was approved";
@@ -229,6 +291,20 @@ export async function deliverMessage(
       },
     }),
   ]);
+
+  // "Queued" is not "sent". The screens that ask whether today's reminder went
+  // out read this, and they only become true here.
+  if (ok && msg.auditAction) {
+    await logAudit({
+      userId: msg.patientId,
+      userEmail: "",
+      userRole: "PATIENT",
+      action: msg.auditAction,
+      entity: "User",
+      entityId: msg.patientId,
+      description: `${msg.ruleCode} delivered after approval`,
+    });
+  }
 
   return ok ? { sent: true } : { sent: false, error: "send failed" };
 }

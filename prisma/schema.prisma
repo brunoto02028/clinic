@@ -7325,6 +7325,19 @@ model OutboundMessage {
   /// guard activity 68 uses, so nothing can change between preview and send.
   approvedHash  String?
 
+  /// Which builder renders this, when the generic patient-email layout is not
+  /// the right one. A reminder has its own layout — a greeting and a button
+  /// into the app — and migrating a message into this queue must not quietly
+  /// cost the patient either. Null means the generic layout.
+  templateCode String?
+  /// What that builder needs beyond the body text (the missed items, say).
+  templateVars Json?
+
+  /// The AuditLog action to write when this is actually delivered, if the
+  /// rule asked for one. "Queued" is not "sent", and the screens that ask
+  /// "was the reminder sent today?" must keep telling the truth.
+  auditAction String?
+
   /// clinic:rule:patient:window — one message per rule per window.
   idempotencyKey String @unique
 

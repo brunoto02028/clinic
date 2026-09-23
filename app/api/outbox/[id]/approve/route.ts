@@ -8,8 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { OutboundStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getSessionStaffActor } from "@/lib/tenant-access";
-import { renderPatientEmail } from "@/lib/patient-email";
-import { deliverMessage } from "@/lib/automation/outbox";
+import { deliverMessage, renderQueuedMessage } from "@/lib/automation/outbox";
 
 export const dynamic = "force-dynamic";
 
@@ -34,10 +33,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     );
   }
 
-  const rendered = await renderPatientEmail(msg.patient, {
-    subjectEn: msg.subjectEn, subjectPt: msg.subjectPt,
-    bodyEn: msg.bodyEn, bodyPt: msg.bodyPt, language: "both",
-  });
+  const rendered = await renderQueuedMessage(msg);
   if (rendered.hash !== hash) {
     return NextResponse.json(
       { error: "The message changed since you previewed it. Read it again." },

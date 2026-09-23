@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
-import { REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT, REMINDER_ACTION } from "@/lib/daily-adherence-email";
-import { notifyPatient } from "@/lib/notify-patient";
-import { logAudit } from "@/lib/system-logger";
+import { REMINDER_ACTION, buildTodayReminderText } from "@/lib/daily-adherence-email";
+import { getReminderTemplates } from "@/lib/reminder-templates";
+import { enqueueMessage } from "@/lib/automation/outbox";
 import { loadRules, evaluateCondition, actionText, interpolate } from "@/lib/automation/rules";
 import { createAlert } from "@/lib/alerts";
 import { runOnce } from "@/lib/automation/run";
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     clinicId: string;
     completed: number;
     missing: number;
-    remindersSent: number;
+    remindersQueued: number;
     alertsRaised: number;
   }[] = [];
 
@@ -72,7 +72,10 @@ export async function POST(req: NextRequest) {
     String(dayStart.getDate()).padStart(2, "0"),
   ].join("-");
 
+  const failures: { clinicId: string; error: string }[] = [];
+
   for (const clinic of clinics) {
+    try {
     const { completed, missing } = await getClinicDailyAdherence(clinic.id, now);
     if (completed.length === 0 && missing.length === 0) continue; // nothing scheduled anywhere today
 
@@ -88,8 +91,10 @@ export async function POST(req: NextRequest) {
       clinic.dailyRemindersEnabled && !!reminderRule?.active && reminderRule.action === "SEND_MESSAGE";
     const alertOn = !!alertRule?.active && alertRule.action === "CREATE_ALERT";
 
-    let remindersSent = 0;
+    let remindersQueued = 0;
     let alertsRaised = 0;
+    // Loaded once per clinic rather than per patient.
+    const templates = reminderOn ? await getReminderTemplates(clinic.id) : null;
 
     for (const patient of missing) {
       const facts = { missingItems: patient.missingItems.length };
@@ -131,44 +136,57 @@ export async function POST(req: NextRequest) {
 
       if (!reminderOn || !evaluateCondition(reminderRule!.condition, facts)) continue;
 
-      const already = await prisma.auditLog.findFirst({
-        where: { userId: patient.patientId, action: REMINDER_ACTION, createdAt: { gte: dayStart } },
-        select: { id: true },
-      });
-      if (already) continue;
+      // The rule decides *whether* and *for whom*; the clinic's own reminder
+      // templates (activity 62, editable at /admin/reminder-templates) decide
+      // *what it says* — the same builders the direct send used, so the patient
+      // reads exactly the text they read today.
+      const text = buildTodayReminderText(
+        patient.missingItems.map((i) => i.title),
+        templates?.today
+      );
 
-      // The wording is not the rule's to give: `useReminderTemplate` makes
-      // notifyPatient build the message from the clinic's own reminder
-      // templates (activity 62, editable at /admin/reminder-templates), and it
-      // ignores anything passed as plainMessage. The rule owns *whether* and
-      // *for whom*; the templates own *what it says*.
-      await notifyPatient({
+      // And here is the change this task exists for: it queues. Nothing goes
+      // to the patient until somebody reads it and clicks. No AuditLog dedupe
+      // any more either — the queue's own key covers the window, and the audit
+      // line is written on delivery, because queued is not sent.
+      const { queued } = await enqueueMessage({
+        clinicId: clinic.id,
         patientId: patient.patientId,
-        plainMessage: REMINDER_MESSAGE_EN,
-        plainMessagePt: REMINDER_MESSAGE_PT,
-        useReminderTemplate: true,
-        todayMissingTitles: patient.missingItems.map((i) => i.title),
+        ruleCode: REMINDER_RULE,
+        window: day,
+        subjectEn: "Your plan today",
+        subjectPt: "Seu plano de hoje",
+        bodyEn: text.en,
+        bodyPt: text.pt,
+        auditAction: REMINDER_ACTION,
+        // Same layout the direct send used — the greeting and the button into
+        // the app survive the move into the queue.
+        templateCode: "TODAY_REMINDER",
+        templateVars: {
+          firstName: patient.name?.split(" ")[0] ?? "",
+          titles: patient.missingItems.map((i) => i.title),
+          custom: templates?.today ?? null,
+        },
       });
-      await logAudit({
-        userId: patient.patientId,
-        userEmail: "",
-        userRole: "PATIENT",
-        action: REMINDER_ACTION,
-        entity: "User",
-        entityId: patient.patientId,
-        description: `Daily adherence reminder sent to ${patient.name}`,
-      });
-      remindersSent++;
+      if (queued) remindersQueued++;
     }
 
     results.push({
       clinicId: clinic.id,
       completed: completed.length,
       missing: missing.length,
-      remindersSent,
+      remindersQueued,
       alertsRaised,
     });
+    } catch (error) {
+      // One clinic's bad rule must not stop the engine for every other clinic.
+      // QA took the whole run down with a single mistyped priority, and which
+      // clinics got skipped depended on the order rows came back in.
+      const message = String((error as Error)?.message ?? error);
+      console.error(`[daily-adherence] clinic ${clinic.id} failed:`, message);
+      failures.push({ clinicId: clinic.id, error: message });
+    }
   }
 
-  return NextResponse.json({ results });
+  return NextResponse.json({ results, ...(failures.length ? { failures } : {}) });
 }

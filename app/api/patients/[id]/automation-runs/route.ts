@@ -18,7 +18,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   // The patient has to be in the actor's clinic — otherwise an id from another
   // tenant would read that tenant's history.
   const patient = await prisma.user.findFirst({
-    where: { id: params.id, clinicId: actor.clinicId },
+    // role too: a staff member's own id answered 200 with an empty list, which
+    // is not a leak but is an answer to a question nobody asked.
+    where: { id: params.id, clinicId: actor.clinicId, role: "PATIENT" },
     select: { id: true },
   });
   if (!patient) return NextResponse.json({ error: "Patient not found" }, { status: 404 });

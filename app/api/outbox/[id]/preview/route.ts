@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionStaffActor } from "@/lib/tenant-access";
-import { renderPatientEmail } from "@/lib/patient-email";
+import { renderQueuedMessage } from "@/lib/automation/outbox";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   });
   if (!msg) return NextResponse.json({ error: "Message not found" }, { status: 404 });
 
-  const rendered = await renderPatientEmail(msg.patient, {
-    subjectEn: msg.subjectEn, subjectPt: msg.subjectPt,
-    bodyEn: msg.bodyEn, bodyPt: msg.bodyPt, language: "both",
-  });
+  const rendered = await renderQueuedMessage(msg);
 
   return NextResponse.json({
     subject: rendered.subject, html: rendered.html, locale: rendered.locale, hash: rendered.hash,

@@ -45,6 +45,7 @@ const UI = {
       DAILY_CAP: "the patient already had the day's messages — it goes out tomorrow",
       NO_CONSENT: "this patient has not accepted the terms",
       NO_EMAIL: "this patient has no e-mail address on file",
+      CHANNEL_NOT_SUPPORTED: "this patient asked to be contacted another way, which this queue cannot do yet",
     } as Record<string, string>,
     rule: "Rule", to: "To", whatGoesOut: "What goes out",
   },
@@ -65,6 +66,7 @@ const UI = {
       DAILY_CAP: "o paciente já recebeu as mensagens do dia — sai amanhã",
       NO_CONSENT: "este paciente não aceitou os termos",
       NO_EMAIL: "este paciente não tem e-mail cadastrado",
+      CHANNEL_NOT_SUPPORTED: "este paciente pediu para ser contatado por outro canal, que esta fila ainda não faz",
     } as Record<string, string>,
     rule: "Regra", to: "Para", whatGoesOut: "O que vai sair",
   },
@@ -156,7 +158,7 @@ export default function OutboxQueue() {
 
       <div className="flex gap-2 flex-wrap">
         {(["AWAITING_APPROVAL", "APPROVED", "SENT", "DISCARDED", "ALL"] as const).map((f) => (
-          <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" onClick={() => setFilter(f)}>
+          <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className={filter === f ? "" : "text-foreground"} onClick={() => setFilter(f)}>
             {f === "AWAITING_APPROVAL" ? ui.waiting : f === "APPROVED" ? ui.approved
               : f === "SENT" ? ui.sent : f === "DISCARDED" ? ui.discarded : ui.all}
           </Button>
@@ -222,10 +224,10 @@ export default function OutboxQueue() {
 
                   {m.status === "AWAITING_APPROVAL" && (
                     <div className="flex gap-2 shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => openPreview(m.id)}>
+                      <Button size="sm" variant="outline" className="text-foreground" onClick={() => openPreview(m.id)}>
                         <Eye className="h-3.5 w-3.5 mr-1" />{ui.preview}
                       </Button>
-                      <Button size="sm" variant="outline" disabled={busy} onClick={() => act(m.id, "discard")}>
+                      <Button size="sm" variant="outline" className="text-foreground" disabled={busy} onClick={() => act(m.id, "discard")}>
                         <Trash2 className="h-3.5 w-3.5 mr-1" />{ui.discard}
                       </Button>
                     </div>

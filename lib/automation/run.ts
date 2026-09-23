@@ -31,7 +31,11 @@ export interface RunKeyParts {
  * situation that changed is a different one.
  */
 export function runKey(parts: RunKeyParts): string {
-  const base = [parts.clinicId, parts.ruleCode, parts.patientId ?? "-", parts.window].join(":");
+  // `p:<id>` when there is a patient, `all` when the rule sweeps the clinic.
+  // A bare id would let a patient literally called "-" collide with the
+  // clinic-wide key.
+  const who = parts.patientId ? `p:${parts.patientId}` : "all";
+  const base = [parts.clinicId, parts.ruleCode, who, parts.window].join(":");
   if (!parts.facts || Object.keys(parts.facts).length === 0) return base;
   // Sorted, so key order in the caller cannot change the key.
   const stable = JSON.stringify(
@@ -47,6 +51,15 @@ export interface RunOutcome {
 }
 
 /**
+ * How long a claim may sit in RUNNING before another worker may take it.
+ *
+ * Without this, a process killed mid-run leaves the row RUNNING for ever and
+ * the rule never fires again for that key — silent, and invisible until
+ * someone asks why a patient stopped being flagged.
+ */
+export const STALE_RUN_MS = 15 * 60 * 1000;
+
+/**
  * Runs `fn` once for this key, ever.
  *
  * The claim is an insert, not a read-then-write: two workers evaluating the
@@ -54,7 +67,9 @@ export interface RunOutcome {
  * act. Here the database decides who owns the run, and the loser does nothing.
  *
  * A run that **failed** may be claimed again — a transient error must not
- * silence a rule until someone notices. A run still `RUNNING` is left alone.
+ * silence a rule until someone notices. One still `RUNNING` is left alone,
+ * unless it has been sitting there past `STALE_RUN_MS`, which means whoever
+ * held it is gone.
  */
 export async function runOnce(
   parts: RunKeyParts,
@@ -82,17 +97,25 @@ export async function runOnce(
   if (!owned) {
     const existing = await prisma.automationRun.findUniqueOrThrow({
       where: { idempotencyKey },
-      select: { status: true, result: true },
+      select: { status: true, result: true, updatedAt: true },
     });
     if (existing.status === RunStatus.DONE) {
       return { ran: false, result: existing.result ?? undefined, reason: "already-done" };
     }
-    if (existing.status === RunStatus.RUNNING) {
+    const stale =
+      existing.status === RunStatus.RUNNING &&
+      Date.now() - existing.updatedAt.getTime() > STALE_RUN_MS;
+    if (existing.status === RunStatus.RUNNING && !stale) {
       return { ran: false, reason: "in-progress" };
     }
-    // FAILED: claim it back, in one statement so only one retrier wins.
+    // FAILED, or RUNNING long enough that whoever held it is gone. Claimed in
+    // one statement so only one retrier wins.
     const claimed = await prisma.automationRun.updateMany({
-      where: { idempotencyKey, status: RunStatus.FAILED },
+      where: {
+        idempotencyKey,
+        status: stale ? RunStatus.RUNNING : RunStatus.FAILED,
+        ...(stale ? { updatedAt: existing.updatedAt } : {}),
+      },
       data: { status: RunStatus.RUNNING, attempts: { increment: 1 }, error: null },
     });
     if (claimed.count !== 1) return { ran: false, reason: "in-progress" };
@@ -111,10 +134,14 @@ export async function runOnce(
     });
     return { ran: true, result: outcome.result };
   } catch (error) {
-    await prisma.automationRun.update({
-      where: { idempotencyKey },
-      data: { status: RunStatus.FAILED, error: String((error as Error)?.message ?? error) },
-    });
+    // If the database is what failed, this write fails too — and the original
+    // cause must still be the one that reaches the caller.
+    await prisma.automationRun
+      .update({
+        where: { idempotencyKey },
+        data: { status: RunStatus.FAILED, error: String((error as Error)?.message ?? error) },
+      })
+      .catch(() => {});
     throw error;
   }
 }

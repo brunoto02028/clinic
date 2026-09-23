@@ -67,7 +67,7 @@ export function alertDedupeKey(
  */
 export async function createAlert(
   input: CreateAlertInput
-): Promise<{ created: boolean; escalated?: boolean; alertId: string }> {
+): Promise<{ created: boolean; escalated?: boolean; refreshed?: boolean; alertId: string }> {
   const dedupeKey = alertDedupeKey(input.clinicId, input.ruleCode, input.patientId, input.window);
 
   const priority = input.priority ?? AlertPriority.MEDIUM;
@@ -89,7 +89,7 @@ export async function createAlert(
 
   const alert = await prisma.alert.findUniqueOrThrow({
     where: { dedupeKey },
-    select: { id: true, priority: true, status: true },
+    select: { id: true, priority: true, status: true, title: true },
   });
 
   if (count === 1) return { created: true, alertId: alert.id };
@@ -118,6 +118,18 @@ export async function createAlert(
       },
     });
     if (escalated.count === 1) return { created: false, escalated: true, alertId: alert.id };
+  }
+
+  // Not worse enough to reopen, but the figures moved: the therapist reads the
+  // title, and "1 activity missed today" on a patient who has now missed three
+  // is simply false. Refreshed in place, without dragging a resolved alert
+  // back open — that is what an escalation is for.
+  if (alert.title !== input.title) {
+    await prisma.alert.updateMany({
+      where: { id: alert.id, clinicId: input.clinicId },
+      data: { title: input.title, details: input.details },
+    });
+    return { created: false, refreshed: true, alertId: alert.id };
   }
 
   return { created: false, alertId: alert.id };

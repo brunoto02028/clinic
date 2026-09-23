@@ -33,11 +33,28 @@ const conditionSchema = z.record(
   z.union([z.string(), z.number(), z.boolean(), operators])
 );
 
+/**
+ * `actionData` is free-form JSON in the schema, but not free-form here.
+ *
+ * QA got a 200 for `priority: "SUPER_URGENTE"` and the next cron run answered
+ * 500: the value goes straight to an AlertPriority column. A screen that can
+ * take the engine down is not a screen a clinic should be trusted with — the
+ * validation belongs at the door, not in the reader.
+ */
+const actionDataSchema = z
+  .object({
+    priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).optional(),
+    titleEn: z.string().max(200).optional(),
+    titlePt: z.string().max(200).optional(),
+    auditAction: z.string().max(100).optional(),
+  })
+  .strict();
+
 const bodySchema = z
   .object({
     active: z.boolean().optional(),
     condition: conditionSchema.optional(),
-    actionData: z.record(z.string(), z.unknown()).optional(),
+    actionData: actionDataSchema.optional(),
     scope: z.enum(["clinic", "global"]).optional(),
   })
   .strict();
@@ -132,9 +149,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { code: 
         },
       });
 
+  // The e-mail, not an empty string: userId recovers the "who", but any screen
+  // or export that reads userEmail was showing a blank.
+  const me = await prisma.user.findUnique({ where: { id: actor.userId }, select: { email: true } });
   await logAudit({
     userId: actor.userId,
-    userEmail: "",
+    userEmail: me?.email ?? "",
     userRole: actor.role,
     action: "AUTOMATION_RULE_CHANGED",
     entity: "AutomationRule",
@@ -168,9 +188,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { code:
   if (!before) return NextResponse.json({ error: "This clinic has no override" }, { status: 404 });
 
   await prisma.automationRule.delete({ where: { id: before.id } });
+  const me = await prisma.user.findUnique({ where: { id: actor.userId }, select: { email: true } });
   await logAudit({
     userId: actor.userId,
-    userEmail: "",
+    userEmail: me?.email ?? "",
     userRole: actor.role,
     action: "AUTOMATION_RULE_CHANGED",
     entity: "AutomationRule",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, CloudOff, SlidersHorizontal, RotateCcw, Save } from "lucide-react";
 import { useLocale } from "@/hooks/use-locale";
 import { Button } from "@/components/ui/button";
@@ -36,9 +36,10 @@ const UI = {
     fromGlobal: "Default", fromClinic: "This clinic",
     on: "On", off: "Off",
     conditionTitle: "Fires when", textTitle: "Text",
-    preview: "On a patient with 3 missing activities",
+    previewWith: (n: number) => `On a patient with ${n} missing activities`,
     readOnly: "Only an administrator can change these.",
     saved: "Saved. It applies on the next run.",
+    nothingChanged: "Nothing changed, so nothing was saved.",
   },
   "pt-BR": {
     title: "Regras da automação",
@@ -50,11 +51,42 @@ const UI = {
     fromGlobal: "Padrão", fromClinic: "Esta clínica",
     on: "Ligada", off: "Desligada",
     conditionTitle: "Dispara quando", textTitle: "Texto",
-    preview: "Num paciente com 3 atividades não feitas",
+    previewWith: (n: number) => `Num paciente com ${n} atividades não feitas`,
     readOnly: "Só um administrador pode mudar estas regras.",
     saved: "Salvo. Vale na próxima execução.",
+    nothingChanged: "Nada mudou, então nada foi salvo.",
   },
 } as const;
+
+/**
+ * Which `actionData` keys a person edits, and how.
+ *
+ * Not "every string in the object". `auditAction` and `useReminderTemplate`
+ * are mechanics — a field that looks like a lever and breaks something when
+ * pulled. QA caught that shape three times in this activity; here it is an
+ * explicit list instead.
+ */
+const EDITABLE: Record<string, "text" | "priority"> = {
+  titleEn: "text",
+  titlePt: "text",
+  priority: "priority",
+};
+
+const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
+
+/** The threshold this rule actually uses, for an honest preview. */
+function thresholdOf(condition: Condition): number {
+  for (const expr of Object.values(condition)) {
+    if (typeof expr === "object" && expr !== null && !Array.isArray(expr)) {
+      for (const [op, bound] of Object.entries(expr as Operators)) {
+        if (["gte", "gt", "lte", "lt", "eq"].includes(op) && typeof bound === "number") {
+          return op === "gt" ? bound + 1 : bound;
+        }
+      }
+    }
+  }
+  return 1;
+}
 
 /** Fills `{fact}` the way lib/automation/rules.ts does, for the preview. */
 function interpolate(text: string, facts: Record<string, number>) {
@@ -74,6 +106,9 @@ export default function RulesPanel() {
   const [draft, setDraft] = useState<Record<string, Rule>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // What the server last said, so an edit in progress can be told apart from a
+  // stale copy. Without it, saving rule B wiped an unsaved edit on rule A.
+  const server = useRef<Record<string, Rule>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,9 +117,22 @@ export default function RulesPanel() {
       const res = await fetch("/api/automation/rules");
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
-      setRules(data.rules ?? []);
+      const fresh: Rule[] = data.rules ?? [];
+      setRules(fresh);
       setCanEdit(!!data.canEdit);
-      setDraft(Object.fromEntries((data.rules ?? []).map((r: Rule) => [r.code, r])));
+      setDraft((current) => {
+        const next: Record<string, Rule> = {};
+        for (const r of fresh) {
+          const was = server.current[r.code];
+          const mine = current[r.code];
+          // Keep what the person is typing; replace only what they have not
+          // touched since the last time the server spoke.
+          const untouched = !mine || !was || JSON.stringify(mine) === JSON.stringify(was);
+          next[r.code] = untouched ? r : mine;
+        }
+        return next;
+      });
+      server.current = Object.fromEntries(fresh.map((r) => [r.code, r]));
     } catch {
       setFailed(true);
       setRules(null);
@@ -97,17 +145,28 @@ export default function RulesPanel() {
 
   const save = async (code: string) => {
     const rule = draft[code];
+    const was = server.current[code];
     setBusy(code);
     setMessage(null);
+
+    // Only what changed. Sending everything made a save with nothing edited
+    // create an override, quietly cutting that clinic off from the default
+    // for good — a click with no visible effect and a permanent consequence.
+    const body: Record<string, unknown> = {};
+    if (!was || rule.active !== was.active) body.active = rule.active;
+    if (!was || JSON.stringify(rule.condition) !== JSON.stringify(was.condition)) body.condition = rule.condition;
+    if (!was || JSON.stringify(rule.actionData) !== JSON.stringify(was.actionData)) body.actionData = rule.actionData;
+    if (Object.keys(body).length === 0) {
+      setMessage(ui.nothingChanged);
+      setBusy(null);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/automation/rules/${code}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          active: rule.active,
-          condition: rule.condition,
-          actionData: rule.actionData,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       // The server's own words when it refuses — a mistyped placeholder or an
@@ -176,7 +235,12 @@ export default function RulesPanel() {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-xs text-muted-foreground">{r.code}</span>
-                      <Badge variant={r.source === "clinic" ? "default" : "secondary"}>
+                      {/* Brand green reads at 3.04:1 as text on the dark shell;
+                          as a background with white on it, 5.32:1. */}
+                      <Badge
+                        variant="secondary"
+                        className={r.source === "clinic" ? "bg-primary text-primary-foreground" : ""}
+                      >
                         {r.source === "clinic" ? ui.fromClinic : ui.fromGlobal}
                       </Badge>
                       <Badge variant="outline">{r.trigger}</Badge>
@@ -239,28 +303,52 @@ export default function RulesPanel() {
                   </div>
                 </div>
 
-                {Object.entries(d.actionData).some(([, v]) => typeof v === "string") && (
+                {Object.keys(d.actionData).some((k) => k in EDITABLE) && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">{ui.textTitle}</p>
                     {Object.entries(d.actionData)
-                      .filter(([, v]) => typeof v === "string")
+                      .filter(([k]) => k in EDITABLE)
                       .map(([key, value]) => (
                         <div key={key} className="space-y-1">
                           <Label className="text-sm">{key}</Label>
-                          <Input
-                            value={String(value)}
-                            disabled={!canEdit || busy === r.code}
-                            onChange={(e) =>
-                              setDraft((s) => ({
-                                ...s,
-                                [r.code]: { ...d, actionData: { ...d.actionData, [key]: e.target.value } },
-                              }))
-                            }
-                          />
-                          {/* What it will actually read once the facts are in. */}
-                          <p className="text-xs text-muted-foreground">
-                            {ui.preview}: “{interpolate(String(value), { missingItems: 3 })}”
-                          </p>
+                          {EDITABLE[key] === "priority" ? (
+                            // A free-text priority took the whole cron down in
+                            // QA. The column is an enum; so is this.
+                            <select
+                              className="w-40 h-9 rounded-md border bg-background px-3 text-sm"
+                              value={String(value)}
+                              disabled={!canEdit || busy === r.code}
+                              onChange={(e) =>
+                                setDraft((s) => ({
+                                  ...s,
+                                  [r.code]: { ...d, actionData: { ...d.actionData, [key]: e.target.value } },
+                                }))
+                              }
+                            >
+                              {PRIORITIES.map((p) => (
+                                <option key={p} value={p}>{p}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <Input
+                              value={String(value)}
+                              disabled={!canEdit || busy === r.code}
+                              onChange={(e) =>
+                                setDraft((s) => ({
+                                  ...s,
+                                  [r.code]: { ...d, actionData: { ...d.actionData, [key]: e.target.value } },
+                                }))
+                              }
+                            />
+                          )}
+                          {/* Only where there is something to fill, and with the
+                              rule's own threshold rather than a made-up 3. */}
+                          {typeof value === "string" && value.includes("{") && (
+                            <p className="text-xs text-muted-foreground">
+                              {ui.previewWith(thresholdOf(d.condition))}: “
+                              {interpolate(String(value), { missingItems: thresholdOf(d.condition) })}”
+                            </p>
+                          )}
                         </div>
                       ))}
                   </div>
@@ -273,7 +361,7 @@ export default function RulesPanel() {
                       {busy === r.code ? ui.saving : ui.save}
                     </Button>
                     {r.source === "clinic" && (
-                      <Button size="sm" variant="outline" disabled={busy === r.code} onClick={() => reset(r.code)}>
+                      <Button size="sm" variant="outline" className="text-foreground" disabled={busy === r.code} onClick={() => reset(r.code)}>
                         <RotateCcw className="h-3.5 w-3.5 mr-1" />{ui.reset}
                       </Button>
                     )}

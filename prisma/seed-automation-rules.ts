@@ -30,7 +30,12 @@ const RULES = [
     // notifyPatient builds the message from those. A copy here would be a
     // field that looks like a lever and is wired to nothing, which is exactly
     // what QA caught in messageEn; `useReminderTemplate` was the last of them.
-    actionData: {},
+    actionData: {
+      // Written to the AuditLog when the message is actually delivered — the
+      // two screens that ask "was today's reminder sent?" read this action,
+      // and queued is not sent.
+      auditAction: "DAILY_ADHERENCE_REMINDER_SENT",
+    },
     channels: ["EMAIL"],
     active: true,
   },
