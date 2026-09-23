@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/db";
 import { sessionClinicId, NO_CLINIC } from "@/lib/session-clinic";
+import { regenerateInvoicePdf } from "@/lib/patient-invoice-pdf";
 
 export const dynamic = "force-dynamic";
 
@@ -101,9 +102,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     const total = items.reduce((sum: number, it: any) => sum + it.total, 0);
 
+    // Item replace + PDF regeneration + discarding the now-stale pending
+    // e-mail all happen inside one transaction (row locked for its
+    // duration) — a crash mid-request can never leave `total` updated in
+    // the database while the stored PDF or a still-approvable pending
+    // e-mail keeps showing the old amount (the exact bug this whole
+    // mechanism exists to prevent). Code review, activity 072 follow-up.
     const updated = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "PatientInvoice" WHERE id = ${invoice.id} FOR UPDATE`;
       await tx.patientInvoiceItem.deleteMany({ where: { invoiceId: invoice.id } });
-      return tx.patientInvoice.update({
+      const result = await tx.patientInvoice.update({
         where: { id: invoice.id },
         data: {
           subtotal: total,
@@ -114,6 +122,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         },
         include: { items: true },
       });
+      await regenerateInvoicePdf(invoice.id, tx);
+      // Any PENDING_APPROVAL e-mail already queued for this invoice now
+      // carries a stale attachment (frozen at queue time, on purpose — see
+      // queueInvoiceForApproval) that no longer matches these items.
+      // Discard it (audit trail preserved, same as the manual "discard"
+      // action) so approving it can never send the wrong total — staff
+      // re-queues via POST .../queue once they're done editing.
+      await tx.emailMessage.updateMany({
+        where: { patientInvoiceId: invoice.id, folder: "PENDING_APPROVAL" },
+        data: { folder: "TRASH" },
+      });
+      return result;
     });
     return NextResponse.json({ success: true, invoice: updated });
   }

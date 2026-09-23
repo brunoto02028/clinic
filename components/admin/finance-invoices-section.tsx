@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search, Download, Loader2, CheckCircle2, XCircle, Trash2, Plus, X, FileText,
+  Search, Download, Loader2, CheckCircle2, XCircle, Trash2, Plus, X, FileText, Send,
 } from "lucide-react";
 
 type InvoiceStatus = "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "VOID" | "PARTIALLY_PAID";
@@ -278,6 +278,50 @@ function InvoiceDetailDialog({ id, onClose, onChanged }: { id: string; onClose: 
     } finally { setSaving(false); }
   };
 
+  // Activity 072 follow-up — the pending e-mail (if any) is just another
+  // entry in invoice.emails; no separate fetch needed.
+  const pendingEmail = invoice?.emails.find((e) => e.folder === "PENDING_APPROVAL") || null;
+
+  const queueForApproval = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/invoices/${id}/queue`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) { toast({ title: "Queued for approval" }); await load(); onChanged(); }
+      else toast({ title: "Error", description: data.error, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  const approveAndSend = async () => {
+    if (!pendingEmail) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approveSend", id: pendingEmail.id }),
+      });
+      const data = await res.json();
+      if (res.ok) { toast({ title: "Sent" }); await load(); onChanged(); }
+      else toast({ title: "Error", description: data.error, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  const discardPending = async () => {
+    if (!pendingEmail) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "discard", id: pendingEmail.id }),
+      });
+      const data = await res.json();
+      if (res.ok) { toast({ title: "Discarded" }); await load(); onChanged(); }
+      else toast({ title: "Error", description: data.error, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
@@ -371,11 +415,32 @@ function InvoiceDetailDialog({ id, onClose, onChanged }: { id: string; onClose: 
               </p>
             )}
 
+            {/* Pending approval — preview + approve/discard right here, no
+                trip to the Email tab needed (activity 072 follow-up). Every
+                financial e-mail still goes through this same queue — this
+                is a shortcut to it, not a bypass of it. */}
+            {pendingEmail && (
+              <div className="space-y-2 pt-3 border-t">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending approval — {pendingEmail.toAddress}</p>
+                <iframe
+                  src={`/api/admin/invoices/${invoice.id}/pdf`}
+                  title="Invoice PDF preview"
+                  className="w-full h-64 rounded-md border bg-white"
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" className="gap-1.5" onClick={approveAndSend} disabled={saving}>
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />} Approve &amp; send
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={discardPending} disabled={saving}>Discard</Button>
+                </div>
+              </div>
+            )}
+
             {invoice.emails.length > 0 && (
               <div className="text-xs text-muted-foreground space-y-1">
                 <p className="font-medium">Delivery history</p>
                 {invoice.emails.map((e) => (
-                  <p key={e.id}>{e.folder === "SENT" ? "Sent" : e.folder === "PENDING_APPROVAL" ? "Pending approval" : e.folder} to {e.toAddress}{e.sentAt ? ` — ${fmtDate(e.sentAt)}` : ""}</p>
+                  <p key={e.id}>{e.folder === "SENT" ? "Sent" : e.folder === "PENDING_APPROVAL" ? "Pending approval" : e.folder === "TRASH" ? "Discarded" : e.folder} to {e.toAddress}{e.sentAt ? ` — ${fmtDate(e.sentAt)}` : ""}</p>
                 ))}
               </div>
             )}
@@ -395,6 +460,11 @@ function InvoiceDetailDialog({ id, onClose, onChanged }: { id: string; onClose: 
                       <Trash2 className="h-3.5 w-3.5" /> Delete
                     </Button>
                   </>
+                )}
+                {!pendingEmail && invoice.status !== "VOID" && invoice.status !== "PAID" && (
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={queueForApproval} disabled={saving}>
+                    <Send className="h-3.5 w-3.5" /> {invoice.status === "DRAFT" ? "Send for approval" : "Resend"}
+                  </Button>
                 )}
                 {(invoice.status === "SENT" || invoice.status === "OVERDUE") && invoice.paidMethod !== "stripe" && (
                   <Button size="sm" className="gap-1.5" onClick={markPaid} disabled={saving}>
