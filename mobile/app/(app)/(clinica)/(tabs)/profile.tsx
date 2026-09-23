@@ -19,6 +19,10 @@ const CLINIC_SECTIONS: ProfileSection[] = [
   { title: { en: "My progress", pt: "Meu progresso" }, icon: "trending-up-outline", href: "/(app)/(clinica)/assessment-progress" },
   { title: { en: "Outcome measures", pt: "Medidas de evolução" }, icon: "stats-chart-outline", href: "/(app)/(clinica)/outcome-measures" },
   { title: { en: "Daily check-in", pt: "Check-in diário" }, icon: "calendar-number-outline", href: "/(app)/(clinica)/daily-checkin" },
+  // The server, the web and a reminder cron all handled blood pressure; the
+  // app had no screen for it, so a patient who uses the phone could not record
+  // the one number the clinic wants a daily series of.
+  { title: { en: "Blood pressure", pt: "Pressão arterial" }, icon: "pulse-outline", href: "/(app)/(clinica)/blood-pressure" },
   { title: { en: "Education", pt: "Conteúdo" }, icon: "school-outline", href: "/(app)/(clinica)/education" },
   // Wearables held its place back because /api/wearables was not on the
   // middleware's mobile prefix list, so every request was redirected to the web
