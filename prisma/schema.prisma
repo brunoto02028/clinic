@@ -472,6 +472,9 @@ model Clinic {
   // Equipment Knowledge Base
   clinicEquipment ClinicEquipment[]
 
+  // Automation engine (activity 072)
+  alerts Alert[]
+
   @@index([slug])
   @@index([isActive])
 }
@@ -785,22 +788,22 @@ model User {
   studyProjects StudyProject[] @relation("StudyProjectOwner")
 
   // Clinical Rehabilitation Agent
-  rehabPlansAsPatient          RehabPlan[]          @relation("PatientRehabPlans")
-  rehabPlansCreated            RehabPlan[]          @relation("StaffRehabPlans")
-  atlasChatMessages            AtlasChatMessage[]   @relation("AtlasChatMessages")
-  atlasTreatmentPlansAsPatient AtlasTreatmentPlan[] @relation("PatientAtlasTreatmentPlans")
-  atlasTreatmentPlansCreated   AtlasTreatmentPlan[] @relation("StaffAtlasTreatmentPlans")
+  rehabPlansAsPatient          RehabPlan[]              @relation("PatientRehabPlans")
+  rehabPlansCreated            RehabPlan[]              @relation("StaffRehabPlans")
+  atlasChatMessages            AtlasChatMessage[]       @relation("AtlasChatMessages")
+  atlasTreatmentPlansAsPatient AtlasTreatmentPlan[]     @relation("PatientAtlasTreatmentPlans")
+  atlasTreatmentPlansCreated   AtlasTreatmentPlan[]     @relation("StaffAtlasTreatmentPlans")
   limbMeasurementsAsPatient    PatientLimbMeasurement[] @relation("PatientLimbMeasurements")
   limbMeasurementsRecorded     PatientLimbMeasurement[] @relation("StaffLimbMeasurements")
-  patientQuestionsReceived     PatientQuestion[]    @relation("PatientQuestions")
-  patientQuestionsCreated      PatientQuestion[]    @relation("QuestionCreator")
+  patientQuestionsReceived     PatientQuestion[]        @relation("PatientQuestions")
+  patientQuestionsCreated      PatientQuestion[]        @relation("QuestionCreator")
 
   // Clinic <-> Patient direct messaging
-  clinicMessagesReceived ClinicMessage[]   @relation("PatientClinicMessages")
-  clinicMessagesSent     ClinicMessage[]   @relation("SentClinicMessages")
+  clinicMessagesReceived  ClinicMessage[]        @relation("PatientClinicMessages")
+  clinicMessagesSent      ClinicMessage[]        @relation("SentClinicMessages")
   outboundEmailsAsPatient PatientOutboundEmail[] @relation("PatientOutboundEmails")
   outboundEmailsSent      PatientOutboundEmail[] @relation("StaffOutboundEmails")
-  broadcastsSent         ClinicBroadcast[] @relation("SentBroadcasts")
+  broadcastsSent          ClinicBroadcast[]      @relation("SentBroadcasts")
 
   // Protocol templates
   protocolTemplatesCreated ProtocolTemplate[] @relation("ProtocolTemplatesCreated")
@@ -824,6 +827,11 @@ model User {
 
   // BA One — Entitlements
   entitlements Entitlement[] @relation("UserEntitlements")
+
+  // Automation engine (activity 072)
+  alerts             Alert[] @relation("PatientAlerts")
+  alertsAcknowledged Alert[] @relation("AlertsAcknowledged")
+  alertsResolved     Alert[] @relation("AlertsResolved")
 
   @@index([clinicId])
   @@index([email])
@@ -6590,12 +6598,12 @@ model AtlasTreatmentPlan {
 // and no protocol relation on purpose: the record must survive a protocol being
 // replaced or deleted (same shape as AtlasTreatmentPlan).
 model PatientLimbMeasurement {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   clinicId     String
   patientId    String
-  patient      User     @relation("PatientLimbMeasurements", fields: [patientId], references: [id], onDelete: Cascade)
+  patient      User    @relation("PatientLimbMeasurements", fields: [patientId], references: [id], onDelete: Cascade)
   recordedById String?
-  recordedBy   User?    @relation("StaffLimbMeasurements", fields: [recordedById], references: [id], onDelete: SetNull)
+  recordedBy   User?   @relation("StaffLimbMeasurements", fields: [recordedById], references: [id], onDelete: SetNull)
 
   measuredAt   DateTime @default(now())
   operatedSide String // LEFT | RIGHT (snapshot at the time of the measurement)
@@ -6646,21 +6654,21 @@ model AtlasChatMessage {
 // composer (activity 68). Only ever created by an explicit staff click, after
 // the exact e-mail was previewed; the row keeps what was actually sent.
 model PatientOutboundEmail {
-  id          String   @id @default(cuid())
-  clinicId    String
-  patientId   String
-  patient     User     @relation("PatientOutboundEmails", fields: [patientId], references: [id], onDelete: Cascade)
-  sentById    String?
-  sentBy      User?    @relation("StaffOutboundEmails", fields: [sentById], references: [id], onDelete: SetNull)
+  id            String  @id @default(cuid())
+  clinicId      String
+  patientId     String
+  patient       User    @relation("PatientOutboundEmails", fields: [patientId], references: [id], onDelete: Cascade)
+  sentById      String?
+  sentBy        User?   @relation("StaffOutboundEmails", fields: [sentById], references: [id], onDelete: SetNull)
   appointmentId String? // set when written from an appointment's "send confirmation" shortcut
 
-  locale      String // pt-BR | en-GB — language the e-mail was rendered in (first one when "both")
+  locale        String // pt-BR | en-GB — language the e-mail was rendered in (first one when "both")
   bothLanguages Boolean @default(false)
-  subject     String
-  bodyText    String   @db.Text
-  html        String   @db.Text
-  contentHash String
-  status      String // sent | failed
+  subject       String
+  bodyText      String  @db.Text
+  html          String  @db.Text
+  contentHash   String
+  status        String // sent | failed
   providerError String? @db.Text
 
   createdAt DateTime @default(now())
@@ -7156,4 +7164,65 @@ model Entitlement {
   @@index([featureKey])
   @@index([isActive])
   @@map("entitlements")
+}
+
+// ---------------------------------------------------------------------------
+// Automation engine (activity 072)
+// ---------------------------------------------------------------------------
+
+enum AlertPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+/// What the automation engine raises for the therapist to look at.
+///
+/// An alert is internal: it is not a message to the patient, so a rule may
+/// create one on its own. Everything that would reach the patient goes to the
+/// approval queue instead (activity 072, decision 3).
+model Alert {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  /// The patient the alert is about (User with role PATIENT).
+  patientId String
+  patient   User   @relation("PatientAlerts", fields: [patientId], references: [id], onDelete: Cascade)
+
+  ruleCode String
+  priority AlertPriority @default(MEDIUM)
+  status   AlertStatus   @default(OPEN)
+  title    String
+  /// Why it fired: the figures the rule looked at, so the therapist can judge
+  /// without going to fetch the data themselves.
+  details  Json?
+
+  /// One alert per rule, patient and window. A rule that runs every five
+  /// minutes must not pile up the same alert until someone reads it.
+  dedupeKey String @unique
+
+  ackById String?
+  ackBy   User?     @relation("AlertsAcknowledged", fields: [ackById], references: [id])
+  ackAt   DateTime?
+
+  resolvedById String?
+  resolvedBy   User?     @relation("AlertsResolved", fields: [resolvedById], references: [id])
+  resolvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, status, priority])
+  @@index([patientId])
+  @@index([ruleCode])
+  @@map("alerts")
 }
