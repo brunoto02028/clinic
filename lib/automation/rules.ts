@@ -66,6 +66,11 @@ export function evaluateCondition(condition: unknown, facts: Facts): boolean {
     const fact = facts[key];
 
     if (isOperatorObject(expected)) {
+      // A fact the engine never computed cannot satisfy anything — not even a
+      // `ne`. Without this, `{ locale: { ne: "pt-BR" } }` fires for a rule
+      // whose fact was never provided, because `undefined !== "pt-BR"`.
+      if (fact === undefined) return false;
+
       for (const [op, bound] of Object.entries(expected)) {
         const ok =
           op === "eq"
@@ -100,37 +105,56 @@ export function evaluateCondition(condition: unknown, facts: Facts): boolean {
 }
 
 /**
- * The rule in force for a clinic: its own row if it has one, otherwise the
- * global default.
+ * The rules in force for a clinic: its own row for a code if it has one,
+ * otherwise the global default.
  *
- * Returns `null` when neither exists, and the caller must treat that as "do
- * nothing" — a rule that was never seeded is not a rule that fires on defaults
- * nobody chose.
+ * A code with no row at all is absent from the map, and the caller must treat
+ * that as "do nothing" — a rule that was never seeded is not a rule that fires
+ * on defaults nobody chose.
+ *
+ * The ordering is not decoration. Postgres treats NULLs as distinct in a
+ * unique index, so `@@unique([code, clinicId])` does not stop a second global
+ * row for the same code; with no `orderBy`, which of the two wins follows the
+ * physical order of the heap, and an UPDATE that changes only the name moves a
+ * row to the end and silently swaps the rule in force. Sorting by `clinicId`
+ * (a clinic's own row before the global one) and then by `createdAt` makes the
+ * tie resolve the same way every time, in one place both callers share.
  */
-export async function loadRule(code: string, clinicId: string): Promise<AutomationRule | null> {
-  const rules = await prisma.automationRule.findMany({
-    where: { code, OR: [{ clinicId }, { clinicId: null }] },
-  });
-  return rules.find((r) => r.clinicId === clinicId) ?? rules.find((r) => r.clinicId === null) ?? null;
-}
-
-/** Same, for several codes at once — one query per clinic instead of per rule. */
 export async function loadRules(
   codes: string[],
   clinicId: string
 ): Promise<Map<string, AutomationRule>> {
   const rules = await prisma.automationRule.findMany({
     where: { code: { in: codes }, OR: [{ clinicId }, { clinicId: null }] },
+    // `nulls: "last"` is the whole point: Postgres defaults DESC to NULLS
+    // FIRST, which would put the global rule ahead of the clinic's own and
+    // invert the override. The oldest row wins among equals.
+    orderBy: [{ clinicId: { sort: "desc", nulls: "last" } }, { createdAt: "asc" }],
   });
+
   const byCode = new Map<string, AutomationRule>();
   for (const rule of rules) {
-    const current = byCode.get(rule.code);
-    // The clinic's own row wins over the global one, whatever the order.
-    if (!current || (current.clinicId === null && rule.clinicId !== null)) {
-      byCode.set(rule.code, rule);
-    }
+    if (!byCode.has(rule.code)) byCode.set(rule.code, rule);
   }
   return byCode;
+}
+
+/**
+ * One rule. Deliberately built on `loadRules` rather than its own query: two
+ * queries with different where clauses got different plans, different orders
+ * and — with a duplicate global row — disagreed about which rule was in force
+ * at the very same moment.
+ */
+export async function loadRule(code: string, clinicId: string): Promise<AutomationRule | null> {
+  return (await loadRules([code], clinicId)).get(code) ?? null;
+}
+
+/** Fills `{fact}` placeholders, so a title cannot contradict the threshold. */
+export function interpolate(text: string, facts: Facts): string {
+  return text.replace(/\{(\w+)\}/g, (whole, key) => {
+    const value = facts[key];
+    return value === undefined || value === null ? whole : String(value);
+  });
 }
 
 /** `actionData` is free-form JSON; this reads one string out of it safely. */

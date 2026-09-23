@@ -14,10 +14,6 @@ import { config } from "dotenv";
 config();
 
 import { PrismaClient } from "@prisma/client";
-import {
-  REMINDER_MESSAGE_EN,
-  REMINDER_MESSAGE_PT,
-} from "../lib/daily-adherence-email";
 
 const prisma = new PrismaClient();
 
@@ -29,11 +25,11 @@ const RULES = [
     // What the route already did: remind anyone with anything left today.
     condition: { missingItems: { gte: 1 } },
     action: "SEND_MESSAGE",
-    actionData: {
-      messageEn: REMINDER_MESSAGE_EN,
-      messagePt: REMINDER_MESSAGE_PT,
-      useReminderTemplate: true,
-    },
+    // No wording here. The reminder's text already has a home the clinic can
+    // edit — the templates of activity 62, at /admin/reminder-templates — and
+    // notifyPatient builds the message from those. Seeding a copy into the
+    // rule made a field that looked editable and changed nothing.
+    actionData: { useReminderTemplate: true },
     channels: ["EMAIL"],
     active: true,
   },
@@ -47,8 +43,11 @@ const RULES = [
     action: "CREATE_ALERT",
     actionData: {
       priority: "LOW",
-      titleEn: "Three or more activities missed today",
-      titlePt: "Tres ou mais atividades nao feitas hoje",
+      // `{missingItems}` is filled from the facts, so raising or lowering the
+      // threshold cannot leave the title claiming a number that is not true.
+      // English only: an alert is internal, and English is this product's
+      // canonical language.
+      titleEn: "{missingItems} activities missed today",
     },
     channels: ["INTERNAL"],
     active: true,

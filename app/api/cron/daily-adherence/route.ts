@@ -4,7 +4,7 @@ import { getClinicDailyAdherence } from "@/lib/clinic-daily-adherence";
 import { REMINDER_MESSAGE_EN, REMINDER_MESSAGE_PT, REMINDER_ACTION } from "@/lib/daily-adherence-email";
 import { notifyPatient } from "@/lib/notify-patient";
 import { logAudit } from "@/lib/system-logger";
-import { loadRules, evaluateCondition, actionText } from "@/lib/automation/rules";
+import { loadRules, evaluateCondition, actionText, interpolate } from "@/lib/automation/rules";
 import { createAlert } from "@/lib/alerts";
 import { AlertPriority } from "@prisma/client";
 
@@ -18,9 +18,14 @@ export const dynamic = "force-dynamic";
 // manually via the per-patient "Send now" button, never by a cron.
 // Call via cron/manual: curl -X POST https://bpr.clinic/api/cron/daily-adherence?key=SECRET
 //
-// Activity 072 T-3: the threshold and the wording now come from
-// AutomationRule rows rather than from constants here, so a clinic can change
-// them without a deploy. Seed them with prisma/seed-automation-rules.ts.
+// Activity 072 T-3: the thresholds now come from AutomationRule rows rather
+// than from constants here, so a clinic can change them without a deploy. Seed
+// them with prisma/seed-automation-rules.ts. The wording stays with the
+// reminder templates of activity 62 — one home each, no copies.
+//
+// The response lists every clinic with activity today, not only those that
+// were messaged: a clinic with reminders off now appears with
+// remindersSent: 0 and whatever alerts were raised.
 const REMINDER_RULE = "ADHERENCE_DAILY_REMINDER";
 const ALERT_RULE = "ADHERENCE_DAILY_ALERT";
 
@@ -57,7 +62,14 @@ export async function POST(req: NextRequest) {
 
   const dayStart = new Date(now);
   dayStart.setHours(0, 0, 0, 0);
-  const day = dayStart.toISOString().slice(0, 10);
+  // Built from the local parts, not `toISOString()`: midnight local in BST is
+  // 23:00Z the day before, so slicing the ISO string labelled every alert with
+  // yesterday's date for seven months of the year.
+  const day = [
+    dayStart.getFullYear(),
+    String(dayStart.getMonth() + 1).padStart(2, "0"),
+    String(dayStart.getDate()).padStart(2, "0"),
+  ].join("-");
 
   for (const clinic of clinics) {
     const { completed, missing } = await getClinicDailyAdherence(clinic.id, now);
@@ -87,7 +99,10 @@ export async function POST(req: NextRequest) {
           patientId: patient.patientId,
           ruleCode: ALERT_RULE,
           window: day,
-          title: actionText(alertRule!, "titleEn") ?? "Activities missed today",
+          title: interpolate(
+            actionText(alertRule!, "titleEn") ?? "Activities missed today",
+            facts
+          ),
           priority:
             (actionText(alertRule!, "priority") as AlertPriority | null) ?? AlertPriority.LOW,
           details: {
@@ -106,10 +121,15 @@ export async function POST(req: NextRequest) {
       });
       if (already) continue;
 
+      // The wording is not the rule's to give: `useReminderTemplate` makes
+      // notifyPatient build the message from the clinic's own reminder
+      // templates (activity 62, editable at /admin/reminder-templates), and it
+      // ignores anything passed as plainMessage. The rule owns *whether* and
+      // *for whom*; the templates own *what it says*.
       await notifyPatient({
         patientId: patient.patientId,
-        plainMessage: actionText(reminderRule!, "messageEn") ?? REMINDER_MESSAGE_EN,
-        plainMessagePt: actionText(reminderRule!, "messagePt") ?? REMINDER_MESSAGE_PT,
+        plainMessage: REMINDER_MESSAGE_EN,
+        plainMessagePt: REMINDER_MESSAGE_PT,
         useReminderTemplate: true,
         todayMissingTitles: patient.missingItems.map((i) => i.title),
       });

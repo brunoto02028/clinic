@@ -34,7 +34,8 @@ todas de uma vez é a forma mais rápida de quebrar o que está no ar.
 ## Arquivos afetados
 
 - `prisma/schema.prisma` (só adição)
-- `lib/automation/rules.ts`, `lib/automation/rules.test.ts` (novos)
+- `lib/automation/rules.ts` (novo)
+- `__tests__/automation/rules.test.ts` (novo — o `testMatch` do jest é `**/__tests__/**`, um teste ao lado do fonte nunca rodaria)
 - `app/api/cron/daily-adherence/route.ts` (passa a ler da tabela)
 - `prisma/seed-automation-rules.ts` (novo)
 
