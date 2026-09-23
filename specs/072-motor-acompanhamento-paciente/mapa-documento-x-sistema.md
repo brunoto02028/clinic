@@ -16,15 +16,23 @@ arquivo ou um modelo.**
 |---|---|---|
 | Registro diário | **Existe** | `DailyCheckIn`: `painLevel`, `moodLevel`, `exercisesDone`, `notes`, `checkinDate` |
 | Tela do paciente | **Existe** | app `(clinica)/daily-checkin`, web `/dashboard/biohacking` |
-| Aderência por exercício | **Existe** | `ExerciseCompletionLog` (por `ProtocolItem` e por `ExercisePrescription`), com `completedCount` e `lastCompletedAt` |
+| Aderência por exercício | **Existe** | `ExerciseCompletionLog.completedDate` (por `ProtocolItem` e por `ExercisePrescription`) dá a série diária. `completedCount`/`lastCompletedAt` ficam em `ProtocolItem` (3024) e `ExercisePrescription` (3973) — são contadores acumulados, **sem histórico** |
 | Lembrete diário | **Existe, desligado** | `app/api/cron/daily-adherence`, gate por clínica (ativ. 061); task do Coolify desativada em 17/09 |
 | Escala 0–10 | **Existe** | `painLevel` |
-| Mapa corporal (regiões) | **Falta** | — |
-| Palavras de alerta na nota | **Falta no diário** | existe na triagem: `MedicalScreening` + gate da ativ. 065 |
-| Streak e gráfico de 7 dias | **Falta** | `PatientProgress` guarda progresso, mas não streak de check-in |
+| Mapa corporal (regiões) | **Falta no diário** | vocabulário a reusar: `enum ExerciseBodyRegion` (schema:2870, 15 valores), `bodyRegion` em `ProtocolItem` (3946) e `Exercise` (2908), `EducationContent.bodyParts`. Componente a avaliar: `components/body-assessment/body-map.tsx` (`view: front|back`, `onPointClick`) — mas é orientado a *motor points* com coordenadas, não a seletor de região; decidir se serve. ⚠️ O `BodyRegion` do documento tem lateralidade (`SHOULDER_L/R`), o enum existente não |
+| Palavras de alerta na nota | **Falta, e é trabalho novo** | o que existe é red flag **estruturado** (`assessRedFlags`, `lib/clinical-analysis.ts:170`, sobre campos booleanos da triagem) + o gate da ativ. 065. **Lista de palavras em texto livre não existe** em lugar nenhum; nasce do zero, PT e EN, com revisão do terapeuta |
+| Streak | **Existe** | `PatientProgress.streakDays`/`longestStreak`, mantidos pelo próprio POST em `app/api/patient/daily-checkin/route.ts:113-141`. Marco de 3 dias, bilíngue e com dedupe, em `app/api/notifications/trigger/route.ts:45`. ⚠️ O incremento está dentro de `if (exercisesDone)` (linha 113, incrementos em 119/121): é streak de **aderência**, não de diário — o `STREAK_MILESTONE` do §5.3 é do diário |
+| Gráfico de tendência (paciente) | **Existe** | `app/dashboard/follow-up/page.tsx:311-380`. ⚠️ A linha de dor ali vem de `PatientOutcomeMeasure.vasScore`, **não** do `DailyCheckIn` |
+| Gráfico de 7 dias do diário (§5.2) | **Existe** | `app/api/biohacking/patients/route.ts:68-75` — "Build 7-day trend arrays" a partir de `DailyCheckIn`: dor, energia, sono, estresse, HRV. Renderizado em `app/admin/biohacking/page.tsx:140-150` |
+| Painel do terapeuta (§5.2) | **Existe parcial** | `/admin/biohacking`, escopado por `clinicId` + papel de staff. Já calcula três condições **em memória** (linhas 78-90), sem virar `Alert` — ver seção 2 |
 
-**Veredito:** o diário existe e é usado. Falta mapa corporal, detecção de red flag no texto livre e
-streak. **Não criar `PainEntry`** — estender `DailyCheckIn`.
+**Veredito:** o diário existe, é usado, e já tem streak, gráfico de 7 dias e um painel de terapeuta
+que calcula três das condições do §5.3. Falta a tela de mapa corporal e a detecção de red flag no
+texto livre.
+
+**Não criar `PainEntry`**, nem um segundo contador de streak, nem um segundo gráfico: estender
+`DailyCheckIn` e `PatientProgress`, e **mover para regra + alerta** as condições que hoje são
+strings recalculadas a cada request em `/admin/biohacking`.
 
 ### Componente 2 — Questionários validados (§6)
 
@@ -67,7 +75,7 @@ código MediaPipe que já existe" — e existe mesmo. `VideoCheckin` pode ser um
 | Relatório gerado por IA | **Existe** | `ClinicalEvidenceReport`: `narrativeEn`/`narrativePt`, `aiModel`, `attempts` |
 | Fila de aprovação humana | **Existe** | `status: DRAFT` → `reviewedById` → `approvedAt` |
 | Ciclo mensal | **Falta** | o relatório dispara pela triagem, não por período |
-| PDF | **Falta** | — |
+| PDF | **Falta o do relatório** | há três geradores a reusar: `app/api/body-assessments/[id]/report-pdf/route.ts`, `lib/invoice-pdf.ts`, `lib/foot-scans/pdf-generator.ts` |
 
 **Veredito:** o §8.2 do documento descreve um fluxo que **já está implementado** para outro
 gatilho. `MonthlyReport` não precisa ser modelo novo — é o mesmo pipeline com janela de 30 dias.
@@ -78,7 +86,7 @@ gatilho. `MonthlyReport` não precisa ser modelo novo — é o mesmo pipeline co
 |---|---|---|
 | Planos | **Existe** | `MembershipPlan` (`price`, `interval`, `stripePriceId`, `modulePermissions`) |
 | Assinatura do paciente | **Existe** | `PatientSubscription` (`stripeSubscriptionId`, `currentPeriodEnd`, `cancelAtPeriodEnd`) |
-| Webhooks Stripe | **Existe** | `ProcessedStripeEvent`, `BillingSubscription` |
+| Webhooks Stripe | **Existe** | `app/api/webhooks/stripe/route.ts` (`patientSubscription.upsert`, linha 53). ⚠️ **Não** confundir com `ProcessedStripeEvent`/`BillingSubscription`: são do Stripe Connect do **personal**, produto que por regra não se mistura com a clínica |
 | Faturas recorrentes | **Existe** | `app/api/cron/membership-invoices` |
 | Cancelamento com política | **Existe** | `CancellationRequest` (`hoursBeforeAppt`, `isWithin48h`, `refundAmount`) |
 | Sequência de alta (dias 0/1/7/14/30) | **Falta** | — |
@@ -95,13 +103,14 @@ motor da Fase 0 entrega.
 |---|---|---|
 | `PAIN_DAILY_REMINDER` | **Existe** | `cron/daily-adherence` + gate por clínica (061) |
 | `PAIN_MISSED_2D` | **Existe o padrão** | `cron/onboarding-reminder` já faz janela de 48h com dedupe |
-| `PAIN_MISSED_5D` | Falta | precisa de `Alert` (T-2) |
-| `PAIN_NO_IMPROVEMENT_14D` | Falta | precisa de série histórica de `DailyCheckIn` |
-| `PAIN_SPIKE` | Falta | precisa de `Alert` |
-| `PAIN_RED_FLAG` | **Existe parcial** | gate de red flag da ativ. 065 roda na triagem, não no diário |
-| `ADHERENCE_LOW_7D` | **Existe parcial** | `daily-adherence` calcula aderência; não cria alerta |
-| `STREAK_MILESTONE` | Falta | não há streak |
-| `QUEST_DUE` / `QUEST_REMINDER` / `QUEST_EXPIRED` | Falta | `PatientTask` existe e serve de tarefa |
+| `PAIN_MISSED_5D` | **Condição já existe** | `biohacking/patients:89-90` já produz "No check-ins in 7 days" e "No recent check-in" — como string em memória. Falta virar `Alert` (T-2) e ajustar a janela para 5 dias |
+| `PAIN_NO_IMPROVEMENT_14D` | Falta | ⚠️ **não** por falta de série: ela já é montada em `biohacking/patients:68-75`. Falta a janela de 14 dias e a comparação de médias |
+| `PAIN_SPIKE` | **Condição já existe** | `biohacking/patients:82-83`: `painTrend > 2` sobre os últimos 3 dias → "Pain increasing". Falta virar `Alert` e trocar o critério para o do documento (≥ média de 7 dias + 3) |
+| `PAIN_RED_FLAG` | **Existe parcial** | o gate da ativ. 065 roda na triagem, sobre campos booleanos. Detectar palavra em texto livre é novo (ver Componente 1) |
+| `ADHERENCE_LOW_7D` | **Existe parcial** | `app/api/patient/adherence/route.ts` já dá o percentual semanal por paciente — é o primitivo exato da regra. Atenção: `cron/daily-adherence` calcula **outra coisa** (`{completed, missing}` de hoje, por clínica, sem percentual nem janela). Falta o alerta |
+| `STREAK_MILESTONE` | **Existe parcial** | marco de 3 dias em `notifications/trigger:45` — mas a rota só roda por chamada externa (`streak_check`), e se está agendada no Coolify não dá para saber pelo repo. Faltam 7/14/30/60. **Estender, não criar** — um segundo contador divergiria do que já roda |
+| `QUEST_DUE` / `QUEST_REMINDER` | **Existe parcial** | ativ. 063 T-2 entregou `app/api/patient/outcome-measures/due/route.ts` (janela de 7 dias) e `components/dashboard/weekly-checkin-card.tsx` — convite passivo, sem envio automático, já no formato da decisão 3 |
+| `QUEST_EXPIRED` | Falta | `PatientTask` existe e serve de tarefa |
 | `QUEST_WORSENED` / `QUEST_IMPROVED` | Falta | precisa de MCID |
 | `VIDEO_DUE` / `VIDEO_REMINDER` | Falta | — |
 | `ROM_DROP` / `ROM_MILESTONE` | Falta | os ângulos existem (`jointAngles`) |
@@ -122,7 +131,7 @@ motor da Fase 0 entrega.
 | `Consent` | **Não criar** | `ConsentLog` existe. Estender com `channel` quando o WhatsApp entrar |
 | `Episode` | Criar — **fora da Fase 0** | agregador; só faz sentido com o diário (Fase 1) |
 | `PainEntry` | **Não criar** | estender `DailyCheckIn` |
-| `AdherenceLog` | **Não criar** | `ExerciseCompletionLog` + `completedCount` já dão a série |
+| `AdherenceLog` | **Não criar** | `app/api/patient/adherence/route.ts` já entrega a série **agregada por semana ISO**, com `percent`, derivada de `DailyCheckIn.exercisesDone`; `ExerciseCompletionLog.completedDate` dá o diário |
 | `QuestionnaireResponse` | Criar — fora da Fase 0 | ao lado de `PatientOutcomeMeasure`, sem remover |
 | `VideoCheckin` | Decidir na ativ. do componente 3 | `BodyAssessment` já guarda vídeo, landmarks e ângulos |
 | `PatientTask` | **Não criar** | ⚠️ **colisão de nome** — ver seção 4 |
@@ -132,7 +141,7 @@ motor da Fase 0 entrega.
 | `ScheduledJob` | **Criar (T-4/T-5)** | hoje cada job tem o próprio claim |
 | `AutomationRun` | **Criar (T-5)** | não existe unificado |
 | `MessageLog` | **Criar como `OutboundMessage` (T-4)** | nome próprio, com fila de aprovação |
-| `Alert` | **Criar (T-2)** | não existe de nenhuma forma |
+| `Alert` | **Criado na T-2** | `prisma/schema.prisma`, `model Alert` com `dedupeKey @unique`, `ackById`/`ackAt`, `resolvedById`/`resolvedAt` |
 | `MonthlyReport` | **Não criar** | reusar `ClinicalEvidenceReport` com janela mensal |
 | `Subscription` | **Não criar** | ⚠️ **colisão de nome** — ver seção 4 |
 | `AuditLog` | **Não criar** | ⚠️ **colisão de nome** — ver seção 4 |
@@ -141,16 +150,21 @@ motor da Fase 0 entrega.
 
 ## 4. Colisões de nome — o risco de perder dado
 
-O deploy roda `npx prisma db push --accept-data-loss` (`start.sh:41`). Declarar um modelo com nome
-igual a um existente, porém com campos diferentes, faz o `db push` **derrubar as colunas que
-sumiram, com o dado dentro**, em produção, sem perguntar.
+O §4 também declara 6 enums (`EpisodePhase`, `Channel`, `AlertPriority`, `AlertStatus`,
+`TaskStatus`, `BodyRegion`). **Nenhum colide** com enum existente. `BodyRegion` é o mapa corporal do Componente 1, onde a
+decisão de lateralidade está registrada.
+
+O deploy roda `npx prisma@6.7.0 db push --skip-generate --accept-data-loss` (`start.sh:41`) — o pin de versão faz parte da defesa. Declarar um **segundo** modelo com nome igual
+não chega ao banco: o Prisma recusa o schema. O perigo é outro, e mais silencioso — **editar o
+modelo existente** para caber no formato do documento, tirando colunas. Essas colunas caem **com o
+dado dentro**, em produção, sem perguntar.
 
 | Nome | O que existe hoje | O que o documento define | Decisão |
 |---|---|---|---|
-| `PatientTask` | `clinicId`, `createdById`, `type`, `title`, `titlePt`, `description`, `descriptionPt`, `priority`, `status` (`pending`/`completed`), `dueDate`, `actionUrl`, `metadata`, `emailSent`, `viewedAt` | `episodeId`, `type`, `refCode`, `dueAt`, `status` (`PENDING`/`DONE`/`EXPIRED`) | **Manter o existente.** Se o episódio chegar, acrescentar `episodeId` opcional |
+| `PatientTask` | `clinicId`, `createdById`, `type`, `title`, `titlePt`, `description`, `descriptionPt`, `priority`, `status` (`pending`/`in_progress`/`completed`/`cancelled`), `dueDate`, `actionUrl`, `metadata`, `emailSent`, `viewedAt`, `@@map("patient_tasks")` | `episodeId`, `type`, `refCode`, `dueAt`, `status` (`PENDING`/`DONE`/`EXPIRED`) | **Manter o existente.** Se o episódio chegar, acrescentar `episodeId` opcional |
 | `Subscription` | modelo de SaaS, por clínica | assinatura de manutenção do paciente | **Usar `PatientSubscription`**, que já existe e é exatamente isso |
 | `AuditLog` | já existe e é usado | `actorId`, `action`, `entity`, `entityId`, `meta` | **Manter o existente** |
-| `Consent` | `ConsentLog` (`action`, `termsVersion`, `ipAddress`) | por canal, com `granted`/`revokedAt` | **Estender `ConsentLog`** |
+| `Consent` ⚠️ **não é colisão** | `model Consent` é nome livre; existe `ConsentLog` (`action`, `termsVersion`, `ipAddress`, `userAgent`, `metadata`) | por canal, com `granted`/`revokedAt` | **Estender `ConsentLog`** — está nesta tabela por vizinhança de assunto, não por risco de `DROP` |
 
 **Regra permanente desta atividade:** antes de todo commit que toca o schema,
 

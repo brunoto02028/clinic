@@ -94,8 +94,8 @@ paciente usa **Terapeuta / therapist**.
 
 | Tarefa | Nome | Status |
 |---|---|---|
-| T-1 | Mapa documento × sistema (sem código) | pendente |
-| T-2 | `Alert` + central de alertas do terapeuta | pendente |
+| T-1 | Mapa documento × sistema (sem código) | **concluído** |
+| T-2 | `Alert` + central de alertas do terapeuta | em andamento (QA rodando) |
 | T-3 | `AutomationRule`: regras em banco, uma automação migrada | pendente |
 | T-4 | Fila de aprovação unificada (`OutboundMessage`) | pendente |
 | T-5 | `AutomationRun`: idempotência e log unificados | pendente |

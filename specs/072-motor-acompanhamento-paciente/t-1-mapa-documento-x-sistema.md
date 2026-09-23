@@ -1,6 +1,6 @@
 # T-1: Mapa documento × sistema
 
-**Status:** pendente
+**Status:** concluído — QA aprovado em 3 rodadas (`qa/report-t-1.md`, `qa/report-t-1-recheck.md`)
 **Depende de:** nenhuma
 
 ## Objetivo
@@ -35,8 +35,8 @@ descer ao nível de cada regra (§5.3, §6.3, §7.3) e de cada tela do painel (�
 
 ## Critérios de aceite
 
-- [ ] Todo modelo do §4 aparece no mapa com uma decisão explícita
-- [ ] Toda regra nomeada nas seções 5.3, 6.3 e 7.3 aparece com situação e local
-- [ ] Nenhum item fica como "a verificar"
-- [ ] Os conflitos de nome estão listados com a decisão de cada um
-- [ ] O mapa aponta, para cada componente, qual atividade futura o implementa
+- [x] Todo modelo do §4 aparece no mapa com uma decisão explícita
+- [x] Toda regra nomeada nas seções 5.3, 6.3 e 7.3 aparece com situação e local
+- [x] Nenhum item fica como "a verificar"
+- [x] Os conflitos de nome estão listados com a decisão de cada um
+- [x] O mapa aponta, para cada componente, qual atividade futura o implementa
