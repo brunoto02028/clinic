@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
 import { fetchCheckIns, submitCheckIn } from "@/api/daily-checkin";
 
 const MOODS = [
@@ -74,6 +75,7 @@ function HistoryDots({ history }: { history: Array<{ checkinDate: string; exerci
 }
 
 export default function DailyCheckIn() {
+  const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["daily-checkin"], queryFn: fetchCheckIns });
@@ -123,7 +125,7 @@ export default function DailyCheckIn() {
 
   return (
     <Screen scroll testID="daily-checkin-screen">
-      <Stack.Screen options={{ headerShown: true, title: "Check-in Diário", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Daily check-in", pt: "Check-in Diário" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       {isLoading ? (
         <Spinner center />
       ) : (
@@ -150,7 +152,7 @@ export default function DailyCheckIn() {
             </Card>
           )}
 
-          <Text variant="title">Como você está hoje?</Text>
+          <Text variant="title">{tr(lang, { en: "How are you today?", pt: "Como você está hoje?" })}</Text>
 
           <SliderRow label="Dor" value={pain} onChange={setPain} color={t.colors.bad} />
           <SliderRow label="Energia" value={energy} onChange={setEnergy} color={t.colors.warn} />
@@ -158,7 +160,7 @@ export default function DailyCheckIn() {
           <SliderRow label="Estresse" value={stress} onChange={setStress} color={t.colors.community} />
 
           <View style={{ gap: 4 }}>
-            <Text variant="label">Humor</Text>
+            <Text variant="label">{tr(lang, { en: "Mood", pt: "Humor" })}</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {MOODS.map((m) => (
                 <Pressable key={m.v} onPress={() => setMood(m.v)}
@@ -174,12 +176,12 @@ export default function DailyCheckIn() {
             <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: exercises ? t.colors.health : "transparent", borderWidth: exercises ? 0 : 1.5, borderColor: t.colors.border, alignItems: "center", justifyContent: "center" }}>
               {exercises && <Text style={{ color: t.colors.primaryFg, fontSize: 14 }}>{"✓"}</Text>}
             </View>
-            <Text variant="label">Exercícios do dia realizados</Text>
+            <Text variant="label">{tr(lang, { en: "Today's exercises done", pt: "Exercícios do dia realizados" })}</Text>
           </Pressable>
 
           <View style={{ gap: 4 }}>
-            <Text variant="label">Notas (opcional)</Text>
-            <TextInput value={notes} onChangeText={setNotes} placeholder="Como você se sente hoje?" placeholderTextColor={t.colors.textMuted} multiline numberOfLines={3}
+            <Text variant="label">{tr(lang, { en: "Notes (optional)", pt: "Notas (opcional)" })}</Text>
+            <TextInput value={notes} onChangeText={setNotes} placeholder={tr(lang, { en: "How are you feeling today?", pt: "Como você se sente hoje?" })} placeholderTextColor={t.colors.textMuted} multiline numberOfLines={3}
               style={{ padding: 12, borderRadius: t.radius.lg, backgroundColor: t.colors.surface, borderWidth: 1, borderColor: t.colors.border, color: t.colors.text, fontSize: 14, textAlignVertical: "top", minHeight: 80 }} />
           </View>
 
@@ -193,16 +195,16 @@ export default function DailyCheckIn() {
           {/* History */}
           {data?.history && data.history.length > 0 && (
             <Card>
-              <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>Últimos 7 dias</Text>
+              <Text variant="label" style={{ fontWeight: "600", marginBottom: 12 }}>{tr(lang, { en: "Last 7 days", pt: "Últimos 7 dias" })}</Text>
               <HistoryDots history={data.history} />
               <View style={{ flexDirection: "row", gap: 16, marginTop: 12, justifyContent: "center" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: t.colors.ok }} />
-                  <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>Check-in + exercício</Text>
+                  <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{tr(lang, { en: "Check-in + exercise", pt: "Check-in + exercício" })}</Text>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: t.colors.warn }} />
-                  <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>Só check-in</Text>
+                  <Text variant="caption" color={t.colors.textMuted} style={{ fontSize: 10 }}>{tr(lang, { en: "Check-in only", pt: "Só check-in" })}</Text>
                 </View>
               </View>
             </Card>

@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { bookAppointment, fetchAvailability, fetchSchedule } from "@/api/booking";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
 import { useAuth } from "@/store/auth";
 import { zonedTimeToUtc } from "@/lib/clinic-timezone";
 
@@ -13,15 +15,19 @@ const TYPES = [
   "Biomechanical Assessment", "Foot Scan", "Review",
 ];
 
-function generateDates(closedDays: number[]): { label: string; value: string; day: string; date: number }[] {
+function generateDates(closedDays: number[], lang: Lang): { label: string; value: string; day: string; date: number }[] {
   const dates = [];
-  const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  // Weekday initials in the patient's language, not a hardcoded Portuguese
+  // list — the app is read in English by most of these patients.
+  const dayNames = lang === "pt"
+    ? ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   for (let i = 1; i <= 14; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     if (closedDays.includes(d.getDay())) continue;
     dates.push({
-      label: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+      label: d.toLocaleDateString(lang === "pt" ? "pt-BR" : "en-GB", { day: "2-digit", month: "short" }),
       value: d.toISOString().split("T")[0],
       day: dayNames[d.getDay()],
       date: d.getDate(),
@@ -30,7 +36,8 @@ function generateDates(closedDays: number[]): { label: string; value: string; da
   return dates;
 }
 
-export default function BookAppointment() {
+function BookAppointmentScreen() {
+  const lang = useLang();
   const clinicName = useAuth((s) => s.user?.clinicName ?? null);
   const t = useTheme();
   const qc = useQueryClient();
@@ -41,7 +48,7 @@ export default function BookAppointment() {
 
   const schedule = useQuery({ queryKey: ["schedule"], queryFn: fetchSchedule });
   const closedDays = (schedule.data ?? []).filter(d => d.closed).map(d => d.dayOfWeek);
-  const dates = generateDates(closedDays);
+  const dates = generateDates(closedDays, lang);
 
   const availability = useQuery({
     queryKey: ["availability", selectedDate],
@@ -84,7 +91,7 @@ export default function BookAppointment() {
         },
       });
     },
-    onError: (e) => Alert.alert("Erro", (e as Error).message || "Não foi possível agendar."),
+    onError: (e) => Alert.alert("Erro", (e as Error).message || tr(lang, { en: "We could not book that.", pt: "Não foi possível agendar." })),
   });
 
   return (
@@ -93,11 +100,11 @@ export default function BookAppointment() {
         options={{ headerShown: true, title: "Agendar", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
       />
       <View style={{ gap: 20 }}>
-        <Text variant="title">Agendar Consulta</Text>
+        <Text variant="title">{tr(lang, { en: "Book an appointment", pt: "Agendar Consulta" })}</Text>
 
         {/* Type */}
         <Card>
-          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>Tipo de consulta</Text>
+          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Appointment type", pt: "Tipo de consulta" })}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {TYPES.map(t2 => (
               <Pressable key={t2} onPress={() => setType(t2)}
@@ -110,7 +117,7 @@ export default function BookAppointment() {
 
         {/* Date */}
         <Card>
-          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>Data</Text>
+          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Date", pt: "Data" })}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {dates.map(d => (
               <Pressable key={d.value} onPress={() => { setSelectedDate(d.value); setSelectedTime(null); }}
@@ -124,13 +131,13 @@ export default function BookAppointment() {
 
         {/* Time */}
         <Card>
-          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>Horário</Text>
+          <Text variant="label" style={{ fontWeight: "600", marginBottom: 10 }}>{tr(lang, { en: "Time", pt: "Horário" })}</Text>
           {!selectedDate ? (
-            <Text variant="caption" color={t.colors.textMuted}>Selecione uma data primeiro.</Text>
+            <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Pick a date first.", pt: "Selecione uma data primeiro." })}</Text>
           ) : availability.isLoading ? (
             <Spinner />
           ) : slots.length === 0 ? (
-            <Text variant="caption" color={t.colors.textMuted}>Sem horários disponíveis nesta data.</Text>
+            <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "No times available on this date.", pt: "Sem horários disponíveis nesta data." })}</Text>
           ) : (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {slots.map(time => (
@@ -145,8 +152,8 @@ export default function BookAppointment() {
 
         {/* Notes */}
         <View style={{ gap: 4 }}>
-          <Text variant="label">Observações (opcional)</Text>
-          <TextInput value={notes} onChangeText={setNotes} placeholder="Alguma informação adicional..." placeholderTextColor={t.colors.textMuted} multiline style={{ padding: 12, borderRadius: 12, backgroundColor: t.colors.surfaceMuted, borderWidth: 1, borderColor: t.colors.borderSubtle, color: t.colors.text, fontSize: 14, minHeight: 60, textAlignVertical: "top" }} />
+          <Text variant="label">{tr(lang, { en: "Notes (optional)", pt: "Observações (opcional)" })}</Text>
+          <TextInput value={notes} onChangeText={setNotes} placeholder={tr(lang, { en: "Anything else we should know…", pt: "Alguma informação adicional..." })} placeholderTextColor={t.colors.textMuted} multiline style={{ padding: 12, borderRadius: 12, backgroundColor: t.colors.surfaceMuted, borderWidth: 1, borderColor: t.colors.borderSubtle, color: t.colors.text, fontSize: 14, minHeight: 60, textAlignVertical: "top" }} />
         </View>
 
         {/* Submit */}
@@ -160,5 +167,17 @@ export default function BookAppointment() {
         />
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_appointments` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function BookAppointment() {
+  return (
+    <PlanGate module="mod_appointments">
+      <BookAppointmentScreen />
+    </PlanGate>
   );
 }

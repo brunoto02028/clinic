@@ -5,8 +5,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchTasks, completeTask } from "@/api/tasks";
 import { useTheme } from "@/theme/useTheme";
+import { PlanGate } from "@/components/PlanGate";
+import { useLang, pick, t as tr } from "@/lib/i18n";
 
-export default function Tasks() {
+function TasksScreen() {
+  const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ["tasks"], queryFn: fetchTasks });
@@ -35,13 +38,13 @@ export default function Tasks() {
 
   return (
     <Screen testID="tasks-screen">
-      <Stack.Screen options={{ headerShown: true, title: "Tarefas", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Tasks", pt: "Tarefas" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 16, flex: 1 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text variant="title">Tarefas</Text>
+          <Text variant="title">{tr(lang, { en: "Tasks", pt: "Tarefas" })}</Text>
           {pending.length > 0 && (
             <View style={{ backgroundColor: t.colors.warnSoft, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-              <Text variant="caption" color={t.colors.warn} style={{ fontWeight: "700" }}>{pending.length} pendente{pending.length !== 1 ? "s" : ""}</Text>
+              <Text variant="caption" color={t.colors.warn} style={{ fontWeight: "700" }}>{pending.length} {tr(lang, { en: pending.length === 1 ? "pending" : "pending", pt: pending.length === 1 ? "pendente" : "pendentes" })}</Text>
             </View>
           )}
         </View>
@@ -50,8 +53,8 @@ export default function Tasks() {
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="checkbox-outline" size={48} color={t.colors.textMuted} />
-              <Text variant="subtitle" color={t.colors.textSecondary}>Nenhuma tarefa</Text>
-              <Text variant="caption" color={t.colors.textMuted}>Tarefas atribuidas pela clinica aparecerao aqui.</Text>
+              <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No tasks", pt: "Nenhuma tarefa" })}</Text>
+              <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Tasks your clinic assigns will appear here.", pt: "Tarefas atribuidas pela clinica aparecerao aqui." })}</Text>
             </View>
           </Card>
         ) : (
@@ -77,11 +80,11 @@ export default function Tasks() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text variant="label" style={{ fontWeight: "600", textDecorationLine: isDone ? "line-through" : "none", color: isDone ? t.colors.textMuted : t.colors.text }}>
-                          {item.titlePt || item.title}
+                          {pick(lang, item.title, item.titlePt)}
                         </Text>
-                        {(item.descriptionPt || item.description) ? (
+                        {pick(lang, item.description, item.descriptionPt) ? (
                           <Text variant="caption" color={t.colors.textSecondary} numberOfLines={1} style={{ marginTop: 2 }}>
-                            {item.descriptionPt || item.description}
+                            {pick(lang, item.description, item.descriptionPt)}
                           </Text>
                         ) : null}
                       </View>
@@ -99,5 +102,17 @@ export default function Tasks() {
         )}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_tasks` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function Tasks() {
+  return (
+    <PlanGate module="mod_tasks">
+      <TasksScreen />
+    </PlanGate>
   );
 }

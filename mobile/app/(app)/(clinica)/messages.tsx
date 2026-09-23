@@ -7,6 +7,7 @@ import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
 import { fetchMessages, sendMessage, markMessagesRead, type ClinicMessage } from "@/api/messages";
 import { fetchProfile } from "@/api/profile";
 import { useTheme } from "@/theme/useTheme";
+import { LoadFailure } from "@/components/LoadFailure";
 
 /** Screen copy, English canonical. */
 const UI = {
@@ -57,7 +58,7 @@ export default function Messages() {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<ScrollView>(null);
 
-  const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
+  const { data: profile, error } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
   const lang: "en" | "pt" = profile?.preferredLocale?.startsWith("pt") ? "pt" : "en";
   const ui = UI[lang];
 
@@ -113,16 +114,7 @@ export default function Messages() {
           ) : isError ? (
             /* An empty thread and a failed request must not look alike — the
                mistake this app made everywhere else. */
-            <Card>
-              <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
-                <Ionicons name="cloud-offline-outline" size={32} color={t.colors.textMuted} />
-                <Text variant="body" style={{ textAlign: "center" }}>{ui.failed}</Text>
-                <Text variant="caption" color={t.colors.textSecondary} style={{ textAlign: "center" }}>
-                  {ui.failedHint}
-                </Text>
-                <Button title={ui.retry} variant="health" size="sm" onPress={() => refetch()} />
-              </View>
-            </Card>
+            <LoadFailure error={error} onRetry={() => refetch()} />
           ) : (
             <ScrollView
               ref={scrollRef}

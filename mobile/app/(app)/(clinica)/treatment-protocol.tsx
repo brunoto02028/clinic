@@ -5,19 +5,29 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchProtocols, updateProtocolItem } from "@/api/protocol";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
+import { LoadFailure } from "@/components/LoadFailure";
 
 // Same wording the web uses (app/dashboard/treatment/page.tsx). The screen
 // printed the enum key straight through, so the patient read "Fase SHORT_TERM".
-const PHASE_LABEL: Record<string, string> = {
-  SHORT_TERM: "Curto Prazo (Agudo)",
-  MEDIUM_TERM: "Médio Prazo (Reabilitação)",
-  LONG_TERM: "Longo Prazo (Manutenção)",
+const PHASE_LABEL: Record<string, { en: string; pt: string }> = {
+  SHORT_TERM: { en: "Short term (acute)", pt: "Curto Prazo (Agudo)" },
+  MEDIUM_TERM: { en: "Medium term (rehabilitation)", pt: "Médio Prazo (Reabilitação)" },
+  LONG_TERM: { en: "Long term (maintenance)", pt: "Longo Prazo (Manutenção)" },
 };
 
-export default function TreatmentProtocol() {
+/** The phase in the patient's language — a module constant cannot read a hook. */
+function phaseLabel(lang: Lang, key: string): string {
+  const pair = PHASE_LABEL[key];
+  return pair ? tr(lang, pair) : key;
+}
+
+function TreatmentProtocolScreen() {
+  const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["protocols"], queryFn: fetchProtocols });
+  const { data, isLoading, isError, refetch, error } = useQuery({ queryKey: ["protocols"], queryFn: fetchProtocols });
 
   const completeMut = useMutation({
     mutationFn: (itemId: string) => updateProtocolItem(itemId, { completed: true }),
@@ -29,31 +39,22 @@ export default function TreatmentProtocol() {
 
   return (
     <Screen testID="protocol-screen">
-      <Stack.Screen options={{ headerShown: true, title: "Protocolo", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
+      <Stack.Screen options={{ headerShown: true, title: tr(lang, { en: "Treatment plan", pt: "Protocolo" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }} />
       <View style={{ gap: 16, flex: 1 }}>
         <View>
-          <Text variant="title">Plano de Tratamento</Text>
-          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>Protocolo prescrito pelo terapeuta</Text>
+          <Text variant="title">{tr(lang, { en: "Treatment plan", pt: "Plano de Tratamento" })}</Text>
+          <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 4 }}>{tr(lang, { en: "Prescribed by your therapist", pt: "Protocolo prescrito pelo terapeuta" })}</Text>
         </View>
 
         {isLoading ? <Spinner center /> : isError ? (
-          /* "Nenhum protocolo · seu terapeuta criará um plano" was shown to
+          /* tr(lang, { en: "No plan yet — your therapist will create one", pt: "Nenhum protocolo · seu terapeuta criará um plano" }) was shown to
              patients who already had one, whenever the request failed. */
-          <Card>
-            <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
-              <Ionicons name="cloud-offline-outline" size={40} color={t.colors.textMuted} />
-              <Text variant="subtitle" color={t.colors.textSecondary}>Não foi possível carregar</Text>
-              <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
-                Isto não quer dizer que você não tenha um plano — a consulta falhou.
-              </Text>
-              <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
-            </View>
-          </Card>
+          <LoadFailure error={error} onRetry={() => refetch()} />
         ) : protocols.length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="list-outline" size={48} color={t.colors.textMuted} />
-              <Text variant="subtitle" color={t.colors.textSecondary}>Nenhum protocolo</Text>
+              <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No treatment plan", pt: "Nenhum protocolo" })}</Text>
               <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
                 Seu terapeuta criara um plano de tratamento{"\n"}personalizado apos a avaliacao.
               </Text>
@@ -101,7 +102,7 @@ export default function TreatmentProtocol() {
                             </Text>
                           )}
                         </View>
-                        <Text variant="caption" color={t.colors.textMuted}>{PHASE_LABEL[item.phase] ?? "Fase"}</Text>
+                        <Text variant="caption" color={t.colors.textMuted}>{phaseLabel(lang, item.phase)}</Text>
                       </View>
                     </Card>
                   </Pressable>
@@ -112,5 +113,17 @@ export default function TreatmentProtocol() {
         )}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_treatment` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function TreatmentProtocol() {
+  return (
+    <PlanGate module="mod_treatment">
+      <TreatmentProtocolScreen />
+    </PlanGate>
   );
 }

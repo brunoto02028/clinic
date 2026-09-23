@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchAssessmentProgress } from "@/api/assessment-progress";
 import { useTheme } from "@/theme/useTheme";
+import { LoadFailure } from "@/components/LoadFailure";
+import { useLang, pick } from "@/lib/i18n";
 
 const STEP_ICONS: Record<string, string> = {
   screening: "clipboard-outline",
@@ -19,8 +21,9 @@ const STEP_PATHS: Record<string, string> = {
 };
 
 export default function AssessmentProgressScreen() {
+  const lang = useLang();
   const t = useTheme();
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["assessment-progress"], queryFn: fetchAssessmentProgress });
+  const { data, isLoading, isError, refetch, error } = useQuery({ queryKey: ["assessment-progress"], queryFn: fetchAssessmentProgress });
 
   const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
     completed: { bg: t.colors.okSoft, text: t.colors.ok, label: "Concluido" },
@@ -43,13 +46,7 @@ export default function AssessmentProgressScreen() {
           /* The client stopped swallowing failures, but this branch never
              looked at isError — so a failed request still fell into the
              "no progress yet" state below. */
-          <Card>
-            <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
-              <Ionicons name="cloud-offline-outline" size={32} color={t.colors.textMuted} />
-              <Text variant="body" style={{ textAlign: "center" }}>Não foi possível carregar seu progresso.</Text>
-              <Button title="Tentar de novo" variant="health" size="sm" onPress={() => refetch()} />
-            </View>
-          </Card>
+          <LoadFailure error={error} onRetry={() => refetch()} />
         ) : !data ? (
           <Card><Text muted>Nao foi possivel carregar.</Text></Card>
         ) : (
@@ -91,7 +88,7 @@ export default function AssessmentProgressScreen() {
                         )}
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text variant="label" style={{ fontWeight: "600" }}>{step.labelPt || step.label}</Text>
+                        <Text variant="label" style={{ fontWeight: "600" }}>{pick(lang, step.label, step.labelPt)}</Text>
                         {isNext && <Text variant="caption" color={t.colors.ok} style={{ marginTop: 2 }}>Proximo passo</Text>}
                       </View>
                       <View style={{ backgroundColor: status.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>

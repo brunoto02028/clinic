@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner, Button } from "@/components/ui";
 import { fetchPrescriptions, completeExercise } from "@/api/exercises";
 import { useTheme } from "@/theme/useTheme";
+import { PlanGate } from "@/components/PlanGate";
+import { useLang, pick, t as tr } from "@/lib/i18n";
 
 const REGION_MAP: Record<string, { label: string; icon: string }> = {
   LOWER_BODY: { label: "Membros Inferiores", icon: "footsteps-outline" },
@@ -13,7 +15,8 @@ const REGION_MAP: Record<string, { label: string; icon: string }> = {
   FULL_BODY: { label: "Corpo Inteiro", icon: "accessibility-outline" },
 };
 
-export default function ExerciseDetail() {
+function ExerciseDetailScreen() {
+  const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -57,16 +60,16 @@ export default function ExerciseDetail() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-            <Text color={t.colors.danger}>Nao foi possivel carregar.</Text>
+            <Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Nao foi possivel carregar." })}</Text>
           </View>
         </Card>
       ) : !rx ? (
-        <Text muted>Exercicio nao encontrado.</Text>
+        <Text muted>{tr(lang, { en: "Exercise not found.", pt: "Exercicio nao encontrado." })}</Text>
       ) : (
         <View style={{ gap: 16 }}>
           {/* Header */}
           <View style={{ gap: 8 }}>
-            <Text variant="title">{rx.exercise.name}</Text>
+            <Text variant="title">{pick(lang, rx.exercise.name, rx.exercise.namePt)}</Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {(() => {
                 const region = REGION_MAP[rx.exercise.bodyRegion];
@@ -114,7 +117,7 @@ export default function ExerciseDetail() {
                 borderColor: t.colors.borderSubtle,
               }}>
                 <Text variant="title" color={t.colors.secondary} style={{ fontSize: 24 }}>{rx.sets}</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Series</Text>
+                <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Sets", pt: "Series" })}</Text>
               </View>
             ) : null}
             {rx.reps ? (
@@ -128,7 +131,7 @@ export default function ExerciseDetail() {
                 borderColor: t.colors.borderSubtle,
               }}>
                 <Text variant="title" color={t.colors.secondary} style={{ fontSize: 24 }}>{rx.reps}</Text>
-                <Text variant="caption" color={t.colors.textMuted}>Repeticoes</Text>
+                <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Reps", pt: "Repeticoes" })}</Text>
               </View>
             ) : null}
             {rx.holdSeconds ? (
@@ -187,7 +190,7 @@ export default function ExerciseDetail() {
                 <Ionicons name="play" size={24} color={t.colors.bad} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text variant="label" style={{ fontWeight: "600" }}>Assistir video</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Watch the video", pt: "Assistir video" })}</Text>
                 <Text variant="caption" color={t.colors.textMuted}>Ver demonstracao do exercicio</Text>
               </View>
               <Ionicons name="open-outline" size={18} color={t.colors.textMuted} />
@@ -199,7 +202,7 @@ export default function ExerciseDetail() {
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Ionicons name="information-circle-outline" size={18} color={t.colors.secondary} />
-                <Text variant="label" style={{ fontWeight: "600" }}>Descricao</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Description", pt: "Descricao" })}</Text>
               </View>
               <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
                 {rx.exercise.description}
@@ -208,14 +211,14 @@ export default function ExerciseDetail() {
           ) : null}
 
           {/* Instructions */}
-          {rx.exercise.instructions ? (
+          {pick(lang, rx.exercise.instructions, rx.exercise.instructionsPt) ? (
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Ionicons name="list-outline" size={18} color={t.colors.secondary} />
-                <Text variant="label" style={{ fontWeight: "600" }}>Instrucoes</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Instructions", pt: "Instrucoes" })}</Text>
               </View>
               <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22 }}>
-                {rx.exercise.instructions}
+                {pick(lang, rx.exercise.instructions, rx.exercise.instructionsPt)}
               </Text>
             </Card>
           ) : null}
@@ -233,7 +236,7 @@ export default function ExerciseDetail() {
             <Card variant="highlight">
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Ionicons name="chatbubble-outline" size={16} color={t.colors.secondary} />
-                <Text variant="label" style={{ fontWeight: "600" }}>Nota do terapeuta</Text>
+                <Text variant="label" style={{ fontWeight: "600" }}>{tr(lang, { en: "Note from your therapist", pt: "Nota do terapeuta" })}</Text>
               </View>
               <Text variant="body" color={t.colors.textSecondary} style={{ lineHeight: 22, fontStyle: "italic" }}>
                 "{rx.notes}"
@@ -248,5 +251,17 @@ export default function ExerciseDetail() {
         </View>
       )}
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_exercises` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function ExerciseDetail() {
+  return (
+    <PlanGate module="mod_exercises">
+      <ExerciseDetailScreen />
+    </PlanGate>
   );
 }

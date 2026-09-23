@@ -3,8 +3,9 @@ import { Stack, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Button } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
+import { PlanGate } from "@/components/PlanGate";
 
-export default function Guide() {
+function GuideScreen() {
   const t = useTheme();
 
   const STEPS = [
@@ -154,5 +155,17 @@ export default function Guide() {
         </View>
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_guide` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function Guide() {
+  return (
+    <PlanGate module="mod_guide">
+      <GuideScreen />
+    </PlanGate>
   );
 }

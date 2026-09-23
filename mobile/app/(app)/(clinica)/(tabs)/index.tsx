@@ -14,6 +14,8 @@ import {
   Spinner,
 } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
+import { isPlanError } from "@/lib/plan";
 import { fetchAppointments, nextUpcoming } from "@/api/appointments";
 import { fetchPrescriptions } from "@/api/exercises";
 import { fetchProtocols } from "@/api/protocol";
@@ -31,6 +33,7 @@ function formatSessionDate(iso: string): string {
 }
 
 export default function Health() {
+  const lang = useLang();
   const t = useTheme();
 
   const appts = useQuery({
@@ -51,7 +54,12 @@ export default function Health() {
   });
 
   const next = appts.data ? nextUpcoming(appts.data) : null;
-  const exerciseCount = exercises.data?.length ?? 0;
+  // `?? 0` turned a failed request — and a 403 from the plan gate — into the
+  // sentence "0 exercises today", which is not an error message and not a
+  // paywall: it is a false statement about the patient's own plan. The count
+  // is only a count when there is data.
+  const exerciseCount = exercises.data?.length ?? null;
+  const exercisesUnavailable = exerciseCount === null;
   // The patient's own diagnosis, or nothing. This card used to read
   // "YOUR PLAN · Shoulder" and "Day 12 of 42" as literals in the JSX — a knee
   // patient on their third of eight sessions read it as their own chart. There
@@ -188,7 +196,12 @@ export default function Health() {
           {/* The "~N min" beside this was exerciseCount × 5 — a number with no
               source, shown as if the therapist had set it. */}
           <Text variant="heading">
-            {exerciseCount} exercise{exerciseCount !== 1 ? "s" : ""} today
+            {exercisesUnavailable
+              ? tr(lang, {
+                  en: isPlanError(exercises.error) ? "Not included in your plan" : "We could not load today's exercises",
+                  pt: isPlanError(exercises.error) ? "Nao incluido no seu plano" : "Nao foi possivel carregar os exercicios de hoje",
+                })
+              : `${exerciseCount} ${exerciseCount === 1 ? tr(lang, { en: "exercise", pt: "exercicio" }) : tr(lang, { en: "exercises", pt: "exercicios" })} ${tr(lang, { en: "today", pt: "hoje" })}`}
           </Text>
 
           <TriBar work health />

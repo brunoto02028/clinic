@@ -8,6 +8,8 @@ import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchDocuments } from "@/api/documents";
 import { formatDate } from "@/lib/format";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
 import { API_URL } from "@/api/config";
 import { tokenStorage } from "@/lib/secure-storage";
 
@@ -28,7 +30,8 @@ async function uploadDocument(uri: string, fileName: string, mimeType: string) {
   return res.json();
 }
 
-export default function Documents() {
+function DocumentsScreen() {
+  const lang = useLang();
   const t = useTheme();
   const qc = useQueryClient();
   const { data, isLoading, isError } = useQuery({ queryKey: ["documents"], queryFn: fetchDocuments });
@@ -38,11 +41,11 @@ export default function Documents() {
 // card was printing the enum key with underscores swapped for spaces, so a
 // Portuguese screen read "MEDICAL REFERRAL".
 const DOC_TYPE_LABEL: Record<string, string> = {
-  MEDICAL_REFERRAL: "Encaminhamento Médico",
-  MEDICAL_REPORT: "Laudo Médico",
+  MEDICAL_REFERRAL: tr(lang, { en: "Medical referral", pt: "Encaminhamento Médico" }),
+  MEDICAL_REPORT: tr(lang, { en: "Medical report", pt: "Laudo Médico" }),
   // Present in the DocumentType enum; without it a signed consent form read "Outro".
   CONSENT_FORM: "Termo de Consentimento",
-  PRESCRIPTION: "Prescrição",
+  PRESCRIPTION: tr(lang, { en: "Prescription", pt: "Prescrição" }),
   IMAGING: "Exames de Imagem",
   INSURANCE: "Seguro",
   PREVIOUS_TREATMENT: "Tratamento Anterior",
@@ -95,13 +98,13 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
   return (
     <Screen testID="documents-screen">
       <Stack.Screen
-        options={{ headerShown: true, title: "Documentos", headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
+        options={{ headerShown: true, title: tr(lang, { en: "Documents", pt: "Documentos" }), headerStyle: { backgroundColor: t.colors.background }, headerTintColor: t.colors.text, headerShadowVisible: false }}
       />
       <View style={{ gap: 16, flex: 1 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <View>
-            <Text variant="title">Documentos</Text>
-            <Text variant="caption" color={t.colors.textSecondary}>Laudos, exames e receitas</Text>
+            <Text variant="title">{tr(lang, { en: "Documents", pt: "Documentos" })}</Text>
+            <Text variant="caption" color={t.colors.textSecondary}>{tr(lang, { en: "Reports, tests and prescriptions", pt: "Laudos, exames e receitas" })}</Text>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
@@ -109,7 +112,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
               style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: t.colors.border }}
             >
               <Ionicons name="camera-outline" size={18} color={t.colors.accent} />
-              <Text variant="caption" color={t.colors.accent} style={{ fontWeight: "600" }}>Foto</Text>
+              <Text variant="caption" color={t.colors.accent} style={{ fontWeight: "600" }}>{tr(lang, { en: "Photo", pt: "Foto" })}</Text>
             </Pressable>
             <Pressable
               onPress={() => pickImage("gallery")}
@@ -125,7 +128,7 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
           <Card variant="highlight">
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Spinner size="small" />
-              <Text variant="caption" color={t.colors.textSecondary}>Enviando documento...</Text>
+              <Text variant="caption" color={t.colors.textSecondary}>{tr(lang, { en: "Uploading…", pt: "Enviando documento..." })}</Text>
             </View>
           </Card>
         )}
@@ -133,12 +136,12 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
         {isLoading ? (
           <Spinner center />
         ) : isError ? (
-          <Card><Text color={t.colors.danger}>Nao foi possivel carregar.</Text></Card>
+          <Card><Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Nao foi possivel carregar." })}</Text></Card>
         ) : (data ?? []).length === 0 ? (
           <Card>
             <View style={{ alignItems: "center", gap: 12, paddingVertical: 24 }}>
               <Ionicons name="folder-open-outline" size={48} color={t.colors.textMuted} />
-              <Text variant="subtitle" color={t.colors.textSecondary}>Nenhum documento</Text>
+              <Text variant="subtitle" color={t.colors.textSecondary}>{tr(lang, { en: "No documents", pt: "Nenhum documento" })}</Text>
               <Text variant="caption" color={t.colors.textMuted} style={{ textAlign: "center" }}>
                 Faca upload de documentos ou tire fotos{"\n"}de receitas e laudos.
               </Text>
@@ -175,5 +178,17 @@ const TYPE_ICONS: Record<string, { icon: string; color: string; bg: string }> = 
         )}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_documents` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function Documents() {
+  return (
+    <PlanGate module="mod_documents">
+      <DocumentsScreen />
+    </PlanGate>
   );
 }

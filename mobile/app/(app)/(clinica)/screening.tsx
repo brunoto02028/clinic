@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Input, Button, Spinner } from "@/components/ui";
 import { useTheme } from "@/theme/useTheme";
+import { PlanGate } from "@/components/PlanGate";
 import { fetchScreening, saveScreening, type ScreeningData } from "@/api/screening";
 import { fetchScreeningConfig } from "@/api/screening-config";
 
@@ -82,7 +83,7 @@ function ChipSelect({ options, selected, onSelect }: {
   );
 }
 
-export default function Screening() {
+function ScreeningScreen() {
   const t = useTheme();
   const qc = useQueryClient();
   const [step, setStep] = useState(0);
@@ -404,5 +405,17 @@ export default function Screening() {
         )}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_screening` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function Screening() {
+  return (
+    <PlanGate module="mod_screening">
+      <ScreeningScreen />
+    </PlanGate>
   );
 }

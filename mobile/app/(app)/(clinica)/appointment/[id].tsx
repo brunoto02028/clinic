@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Screen, Text, Card, Spinner } from "@/components/ui";
 import { fetchAppointment } from "@/api/appointments";
 import { useTheme } from "@/theme/useTheme";
+import { useLang, t as tr, type Lang } from "@/lib/i18n";
+import { PlanGate } from "@/components/PlanGate";
 import { statusStyle } from "@/lib/appointment-status";
 
 function formatDate(iso: string) {
@@ -14,12 +16,14 @@ function formatDate(iso: string) {
   return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-function formatTime(iso: string) {
+/** The clock in the patient's language — a module helper cannot read a hook. */
+function formatTime(iso: string, lang: Lang) {
   const d = new Date(iso);
-  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(lang === "pt" ? "pt-BR" : "en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function AppointmentDetail() {
+function AppointmentDetailScreen() {
+  const lang = useLang();
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -47,7 +51,7 @@ export default function AppointmentDetail() {
         <Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="alert-circle" size={20} color={t.colors.danger} />
-            <Text color={t.colors.danger}>Não foi possível carregar.</Text>
+            <Text color={t.colors.danger}>{tr(lang, { en: "We could not load this.", pt: "Não foi possível carregar." })}</Text>
           </View>
         </Card>
       ) : (
@@ -124,7 +128,7 @@ export default function AppointmentDetail() {
                   <Ionicons name="calendar-outline" size={20} color={t.colors.ok} />
                 </View>
                 <View>
-                  <Text variant="caption" color={t.colors.textMuted}>Data</Text>
+                  <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Date", pt: "Data" })}</Text>
                   <Text variant="label" style={{ fontWeight: "600" }}>{formatDate(data.dateTime)}</Text>
                 </View>
               </View>
@@ -143,8 +147,8 @@ export default function AppointmentDetail() {
                   <Ionicons name="time-outline" size={20} color={t.colors.work} />
                 </View>
                 <View>
-                  <Text variant="caption" color={t.colors.textMuted}>Horário</Text>
-                  <Text variant="label" style={{ fontWeight: "600" }}>{formatTime(data.dateTime)}</Text>
+                  <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Time", pt: "Horário" })}</Text>
+                  <Text variant="label" style={{ fontWeight: "600" }}>{formatTime(data.dateTime, lang)}</Text>
                 </View>
               </View>
 
@@ -162,7 +166,7 @@ export default function AppointmentDetail() {
                   <Ionicons name="hourglass-outline" size={20} color={t.colors.warn} />
                 </View>
                 <View>
-                  <Text variant="caption" color={t.colors.textMuted}>Duração</Text>
+                  <Text variant="caption" color={t.colors.textMuted}>{tr(lang, { en: "Duration", pt: "Duração" })}</Text>
                   <Text variant="label" style={{ fontWeight: "600" }}>{data.duration} minutos</Text>
                 </View>
               </View>
@@ -171,5 +175,17 @@ export default function AppointmentDetail() {
         </View>
       )}
     </Screen>
+  );
+}
+
+/**
+ * Gated on `mod_appointments` — the same module the web checks before it renders the
+ * matching page. Without this the app showed what the web had just refused.
+ */
+export default function AppointmentDetail() {
+  return (
+    <PlanGate module="mod_appointments">
+      <AppointmentDetailScreen />
+    </PlanGate>
   );
 }

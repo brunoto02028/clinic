@@ -69,7 +69,10 @@ export interface Quiz {
 }
 
 /** The quiz title in the patient's language, falling back across the pair. */
-export function quizTitle(q: Quiz, locale = "pt"): string {
+/** English is the default because English is canonical; the screen passes
+ *  the patient's own language. The default used to be "pt", which handed
+ *  Portuguese to every caller that forgot to say. */
+export function quizTitle(q: Quiz, locale = "en"): string {
   const pt = q.titlePt?.trim();
   const en = q.titleEn?.trim();
   return (locale.startsWith("pt") ? pt || en : en || pt) || "Quiz";
