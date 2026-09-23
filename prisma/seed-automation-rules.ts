@@ -25,11 +25,12 @@ const RULES = [
     // What the route already did: remind anyone with anything left today.
     condition: { missingItems: { gte: 1 } },
     action: "SEND_MESSAGE",
-    // No wording here. The reminder's text already has a home the clinic can
+    // Empty on purpose. The reminder's text already has a home the clinic can
     // edit — the templates of activity 62, at /admin/reminder-templates — and
-    // notifyPatient builds the message from those. Seeding a copy into the
-    // rule made a field that looked editable and changed nothing.
-    actionData: { useReminderTemplate: true },
+    // notifyPatient builds the message from those. A copy here would be a
+    // field that looks like a lever and is wired to nothing, which is exactly
+    // what QA caught in messageEn; `useReminderTemplate` was the last of them.
+    actionData: {},
     channels: ["EMAIL"],
     active: true,
   },

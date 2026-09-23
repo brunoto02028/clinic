@@ -101,8 +101,8 @@ paciente usa **Terapeuta / therapist**.
 |---|---|---|
 | T-1 | Mapa documento × sistema (sem código) | **concluído** |
 | T-2 | `Alert` + central de alertas do terapeuta | **concluído** |
-| T-3 | `AutomationRule`: regras em banco, uma automação migrada | pendente |
-| T-4 | Fila de aprovação unificada (`OutboundMessage`) | pendente |
+| T-3 | `AutomationRule`: regras em banco, uma automação migrada | **concluído** |
+| T-4 | Fila de aprovação unificada (`OutboundMessage`) | em andamento |
 | T-5 | `AutomationRun`: idempotência e log unificados | pendente |
 | T-6 | Painel de regras (ligar/desligar, limites, templates EN/PT) | pendente |
 

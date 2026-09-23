@@ -1,6 +1,6 @@
 # T-3: `AutomationRule` — regras em banco, uma automação migrada
 
-**Status:** pendente
+**Status:** concluído — QA aprovado (`qa/report-t-3.md`, `qa/report-t-3-recheck.md`)
 **Depende de:** T-1
 
 ## Objetivo
@@ -41,10 +41,10 @@ todas de uma vez é a forma mais rápida de quebrar o que está no ar.
 
 ## Critérios de aceite
 
-- [ ] `prisma migrate diff` **não contém `DROP`**
-- [ ] Com a regra seedada, o `daily-adherence` produz **exatamente** o mesmo resultado de hoje
+- [x] `prisma migrate diff` **não contém `DROP`**
+- [x] Com a regra seedada, o `daily-adherence` produz **exatamente** o mesmo resultado de hoje
       (comparar saída antes e depois, com os mesmos dados)
-- [ ] Mudar o limite na tabela muda o comportamento **sem deploy**
-- [ ] `active: false` desliga a regra para aquela clínica e não afeta as outras
-- [ ] `evaluateCondition` tem teste para cada operador suportado
-- [ ] As outras 12 rotas de cron não foram tocadas (diff limpo fora do `daily-adherence`)
+- [x] Mudar o limite na tabela muda o comportamento **sem deploy**
+- [x] `active: false` desliga a regra para aquela clínica e não afeta as outras
+- [x] `evaluateCondition` tem teste para cada operador suportado
+- [x] As outras 12 rotas de cron não foram tocadas (diff limpo fora do `daily-adherence`)

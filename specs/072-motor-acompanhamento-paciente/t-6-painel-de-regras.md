@@ -41,3 +41,5 @@ já fez isso para um caso — o toggle do lembrete diário por clínica, no dial
 - [ ] A prévia mostra inglês e português, inglês primeiro
 - [ ] Usuário sem permissão administrativa recebe 403 na API e não vê a tela
 - [ ] Não é possível salvar uma `condition` inválida (validação com Zod, mensagem clara)
+- [ ] Placeholder inexistente em `titleEn` é recusado na tela — os fatos disponíveis são
+      conhecidos, e `{naoExiste}` hoje chega cru ao título que o terapeuta lê (QA da T-3, R3)

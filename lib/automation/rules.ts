@@ -69,7 +69,11 @@ export function evaluateCondition(condition: unknown, facts: Facts): boolean {
       // A fact the engine never computed cannot satisfy anything — not even a
       // `ne`. Without this, `{ locale: { ne: "pt-BR" } }` fires for a rule
       // whose fact was never provided, because `undefined !== "pt-BR"`.
-      if (fact === undefined) return false;
+      //
+      // `hasOwn` rather than `=== undefined`: `facts["toString"]` inherits
+      // from Object.prototype and is not undefined, so a rule keyed on
+      // `toString` or `valueOf` would slip through the simpler check.
+      if (!Object.hasOwn(facts, key)) return false;
 
       for (const [op, bound] of Object.entries(expected)) {
         const ok =
