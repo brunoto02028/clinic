@@ -15,6 +15,7 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Bell,
   UserCheck,
   Stethoscope,
   Dumbbell,
@@ -38,6 +39,7 @@ import { t as i18nT } from "@/lib/i18n";
 import StudioLinksCard from "@/components/admin/studio-links-card";
 import StudioGettingStarted from "@/components/admin/studio-getting-started";
 import DailyAdherenceCard from "@/components/admin/daily-adherence-card";
+import AdherenceFallingBehindCard from "@/components/admin/adherence-falling-behind-card";
 
 interface AdminStats {
   totalUsers: number;
@@ -131,6 +133,15 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function AdminDashboard() {
   const { locale } = useLocale();
+  // Open alerts from the automation engine (activity 072). Its own request, so
+  // a failure here leaves the rest of the dashboard standing.
+  const [openAlerts, setOpenAlerts] = useState(0);
+  useEffect(() => {
+    fetch("/api/alerts?status=OPEN")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setOpenAlerts(d?.openCount ?? 0))
+      .catch(() => {});
+  }, []);
   const { relabel, isPersonal } = useVocab();
   const { data: dashSession } = useSession();
   const dashRole = (dashSession?.user as any)?.role;
@@ -212,6 +223,31 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* What the automation noticed. Only shows when there is something — a
+          permanent "0 alerts" tile teaches people to stop looking. */}
+      {openAlerts > 0 && (
+        <Link href="/admin/alerts">
+          <Card className="border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 transition-colors">
+            <CardContent className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
+                  <Bell className="h-5 w-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">
+                    {openAlerts} {openAlerts === 1 ? "open alert" : "open alerts"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Raised by the automation. Nothing was sent to the patient.
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
       {/* Shareable studio links — personal-trainer tenants only (renders null otherwise) */}
       <StudioLinksCard />
 
@@ -227,8 +263,9 @@ export default function AdminDashboard() {
             {new Date().toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </Badge>
         </div>
-        <div className="mb-4">
+        <div className="mb-4 grid gap-4 md:grid-cols-2">
           <DailyAdherenceCard />
+          <AdherenceFallingBehindCard />
         </div>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <StatCard

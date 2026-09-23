@@ -10,6 +10,7 @@ import {
   Wand2, Loader2, ExternalLink, SearchCheck, MessageCircle, Send, Bot, Link2, X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import FinanceRevenueChart, { type MonthlyTrendPoint } from "@/components/admin/finance-revenue-chart";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/use-locale";
 import { useVocab } from "@/hooks/use-vocab";
 import { t as i18nT } from "@/lib/i18n";
+import FinanceInvoicesSection from "@/components/admin/finance-invoices-section";
 
 // ─── Types ───
 interface FinancialEntry {
@@ -58,7 +60,7 @@ interface CategoryBreakdown {
   amount: number;
 }
 
-type Tab = "dashboard" | "stripe" | "income" | "expenses" | "categories" | "apikeys" | "company";
+type Tab = "dashboard" | "stripe" | "invoices" | "income" | "expenses" | "categories" | "apikeys" | "company";
 
 interface FinancialCategory {
   id: string;
@@ -130,6 +132,7 @@ export default function FinancePage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [incomeByCategory, setIncomeByCategory] = useState<CategoryBreakdown[]>([]);
   const [expenseByCategory, setExpenseByCategory] = useState<CategoryBreakdown[]>([]);
+  const [monthlyTrend, setMonthlyTrend] = useState<MonthlyTrendPoint[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -254,6 +257,7 @@ export default function FinancePage() {
     setSummary(data.summary || null);
     setIncomeByCategory(data.incomeByCategory || []);
     setExpenseByCategory(data.expenseByCategory || []);
+    setMonthlyTrend(data.monthlyTrend || []);
     setTotal(data.total || 0);
     setLoading(false);
   }, [period, search]);
@@ -639,6 +643,7 @@ export default function FinancePage() {
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: "dashboard", label: T("finance.dashboard"), icon: BarChart3 },
     { key: "stripe", label: T("finance.stripe"), icon: CreditCard },
+    { key: "invoices", label: "Invoices", icon: Receipt },
     { key: "income", label: T("finance.income"), icon: ArrowUpRight },
     { key: "expenses", label: T("finance.expenses"), icon: ArrowDownRight },
     { key: "categories", label: T("finance.categories"), icon: Tag },
@@ -702,8 +707,9 @@ export default function FinancePage() {
       </div>
 
       {/* Tab Content */}
-      {tab === "dashboard" && <DashboardTab summary={summary} incomeByCategory={incomeByCategory} expenseByCategory={expenseByCategory} entries={entries} loading={loading} formatCurrency={formatCurrency} formatDate={formatDate} T={T} />}
+      {tab === "dashboard" && <DashboardTab summary={summary} incomeByCategory={incomeByCategory} expenseByCategory={expenseByCategory} monthlyTrend={monthlyTrend} entries={entries} loading={loading} formatCurrency={formatCurrency} formatDate={formatDate} T={T} locale={locale} />}
       {tab === "stripe" && <StripeTab stripeData={stripeData} stripeLoading={stripeLoading} stripeSyncing={stripeSyncing} syncStripe={syncStripe} formatCurrency={formatCurrency} T={T} />}
+      {tab === "invoices" && <FinanceInvoicesSection />}
       {(tab === "income" || tab === "expenses") && (
         <EntriesTab
           entries={entries} loading={loading} total={total}
@@ -724,6 +730,11 @@ export default function FinancePage() {
               <Plus className="h-4 w-4" />{T("finance.addCategory")}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground -mt-2">
+            {locale === "pt-BR"
+              ? "A categoria \"desativada\" (ícone de olho) some das novas entradas, mas seu histórico contábil continua intacto — não existe exclusão permanente."
+              : "A \"deactivated\" category (the eye icon) is hidden from new entries, but your accounting history stays intact — there's no permanent delete."}
+          </p>
           {catLoading ? <LoadingState /> : (
             <>
               {["INCOME", "EXPENSE"].map((catType) => {
@@ -753,7 +764,13 @@ export default function FinancePage() {
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditCat(cat)}><Edit className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="sm" className={`h-7 w-7 p-0 ${cat.isActive ? "text-amber-500" : "text-emerald-500"}`} onClick={() => toggleCategory(cat)}>
+                            <Button
+                              variant="ghost" size="sm" className={`h-7 w-7 p-0 ${cat.isActive ? "text-amber-500" : "text-emerald-500"}`}
+                              onClick={() => toggleCategory(cat)}
+                              title={cat.isActive
+                                ? (locale === "pt-BR" ? "Desativar — some das novas entradas, mas o histórico contábil fica intacto. Não há como apagar de vez." : "Deactivate — hides it from new entries, but keeps your accounting history intact. There's no permanent delete.")
+                                : (locale === "pt-BR" ? "Reativar" : "Reactivate")}
+                            >
                               {cat.isActive ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                             </Button>
                           </div>
@@ -1548,11 +1565,12 @@ export default function FinancePage() {
 }
 
 // ─── Dashboard Tab ───
-function DashboardTab({ summary, incomeByCategory, expenseByCategory, entries, loading, formatCurrency, formatDate, T }: any) {
+function DashboardTab({ summary, incomeByCategory, expenseByCategory, monthlyTrend, entries, loading, formatCurrency, formatDate, T, locale }: any) {
   if (loading) return <LoadingState />;
   if (!summary) return null;
 
   const recentEntries = entries.slice(0, 8);
+  const isPt = locale === "pt-BR";
 
   return (
     <div className="space-y-6">
@@ -1563,6 +1581,26 @@ function DashboardTab({ summary, incomeByCategory, expenseByCategory, entries, l
         <SummaryCard icon={PiggyBank} label={T("finance.netProfit")} value={formatCurrency(summary.netProfit)} color={summary.netProfit >= 0 ? "text-emerald-600" : "text-red-600"} bgColor={summary.netProfit >= 0 ? "bg-emerald-50" : "bg-red-50"} />
         <SummaryCard icon={Clock} label={T("finance.pendingIncome")} value={formatCurrency(summary.pendingIncome)} color="text-amber-600" bgColor="bg-amber-50" sub={summary.overdueExpenses > 0 ? `${T("finance.overdueExpenses")}: ${formatCurrency(summary.overdueExpenses)}` : undefined} />
       </div>
+
+      {/* 12-month trend (activity 073) — always the last 12 months,
+          independent of the period filter above (This Month/Last Month/
+          etc. only affects the cards and the category breakdown below). */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">{isPt ? "Receita x despesa — últimos 12 meses" : "Income vs. expenses — last 12 months"}</CardTitle>
+          {/* The cards above use the entry's created date; this chart uses
+              its paid date instead (code review, activity 073) — for a
+              Stripe-synced charge paid months before the sync ran, those
+              can land in different months, so this is spelled out rather
+              than left for the numbers to silently disagree. */}
+          <p className="text-[11px] text-muted-foreground">
+            {isPt ? "Baseado na data de pagamento, não na data de criação do lançamento." : "Based on the payment date, not when the entry was created."}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <FinanceRevenueChart data={(monthlyTrend || []) as MonthlyTrendPoint[]} isPt={isPt} />
+        </CardContent>
+      </Card>
 
       {/* Charts area */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

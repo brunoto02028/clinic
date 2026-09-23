@@ -112,6 +112,32 @@ export async function GET(req: NextRequest) {
   const totalIncome = incomeAgg._sum.amount || 0;
   const totalExpenses = expenseAgg._sum.amount || 0;
 
+  // Activity 073 — last 12 months of PAID income/expense, by paidDate
+  // (not the `period` filter above, which stays on createdAt for the
+  // cards/list) — the Dashboard chart is always a 12-month trend
+  // regardless of which period the rest of the page is showing.
+  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  const trendEntries = await prisma.financialEntry.findMany({
+    where: { clinicId: user.clinicId, status: "PAID", paidDate: { gte: twelveMonthsAgo } },
+    select: { type: true, amount: true, paidDate: true },
+  });
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const monthlyTrendMap = new Map<string, { month: string; income: number; expense: number }>();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+    const key = monthKey(d);
+    monthlyTrendMap.set(key, { month: key, income: 0, expense: 0 });
+  }
+  for (const e of trendEntries) {
+    if (!e.paidDate) continue;
+    const key = monthKey(e.paidDate);
+    const bucket = monthlyTrendMap.get(key);
+    if (!bucket) continue; // outside the 12-month window (paidDate can differ from the gte filter's month boundary edge case)
+    if (e.type === "INCOME") bucket.income += e.amount;
+    else bucket.expense += e.amount;
+  }
+  const monthlyTrend = Array.from(monthlyTrendMap.values());
+
   return NextResponse.json({
     entries,
     total,
@@ -133,6 +159,7 @@ export async function GET(req: NextRequest) {
       category: c.expenseCategory,
       amount: c._sum.amount || 0,
     })),
+    monthlyTrend,
   });
 }
 

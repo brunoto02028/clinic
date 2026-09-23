@@ -1,9 +1,31 @@
+import { randomUUID } from 'crypto';
 import { Resend } from 'resend';
 import { getConfigValue } from '@/lib/system-config';
 import { outboundAllowed, logSunk, sinkMessageId } from '@/lib/outbound-guard';
 
 const FROM_ADDRESS = 'BPR Physical Rehabilitation <noreply@bpr.clinic>';
 const REPLY_TO     = 'admin@bpr.clinic';
+
+// 2026-09-22: a real invoice send sat retrying by hand for ~25 minutes
+// (staff clicking "Approve & send" into repeated 502s) before one attempt
+// finally got through — Resend's own delivery log showed every attempt that
+// reached them was accepted, and their status page showed no incident, so
+// the failures were a transient blip between the VPS and Resend, not a bad
+// key or a code bug. Only server-side/rate-limit errors and network-level
+// failures (never reached Resend at all) are worth retrying — a validation
+// error (bad address, bad attachment, bad API key) will just fail the same
+// way three times, so retrying it only adds latency.
+const RETRYABLE_ERROR_NAMES = new Set([
+  'rate_limit_exceeded',
+  'internal_server_error',
+  'application_error',
+]);
+const MAX_SEND_ATTEMPTS = 3;
+const RETRY_DELAY_MS = [500, 1500]; // between attempts 1→2 and 2→3
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function getResend(): Promise<Resend> {
     // DB-backed (Admin -> AI Settings) first, falls back to .env — same
@@ -52,7 +74,7 @@ export async function sendEmail({
         // look like a success: a wrong key sat in Admin → AI Settings for six
         // days while the logs kept printing "Sent via Resend" and patients
         // waited for verification codes that were never accepted for delivery.
-        const { data, error } = await resend.emails.send({
+        const payload = {
             from:     from    || FROM_ADDRESS,
             replyTo:  replyTo || REPLY_TO,
             to:       Array.isArray(to) ? to : [to],
@@ -60,13 +82,43 @@ export async function sendEmail({
             html,
             ...(keptBcc.length ? { bcc: keptBcc } : {}),
             ...(attachments ? { attachments } : {}),
-        });
-        if (error) {
-            console.error('[EMAIL] Resend REJECTED send to', to, '—', error.name, ':', error.message);
-            return { success: false, error: `${error.name}: ${error.message}` };
+        };
+        // Same key on every retry of this one logical send: if an earlier
+        // attempt actually reached Resend and only the response was lost
+        // (the transient case this was added for), a retry with the same
+        // key returns that original result instead of sending a second copy.
+        const idempotencyKey = randomUUID();
+
+        for (let attempt = 1; attempt <= MAX_SEND_ATTEMPTS; attempt++) {
+            let data, error;
+            try {
+                ({ data, error } = await resend.emails.send(payload, { idempotencyKey }));
+            } catch (err) {
+                // Never reached Resend at all (network blip, timeout) — always
+                // worth another attempt.
+                if (attempt === MAX_SEND_ATTEMPTS) {
+                    console.error('[EMAIL] Resend send failed after', attempt, 'attempts:', err);
+                    return { success: false, error: String(err) };
+                }
+                console.warn(`[EMAIL] Send attempt ${attempt}/${MAX_SEND_ATTEMPTS} to ${to} threw, retrying:`, err);
+                await sleep(RETRY_DELAY_MS[attempt - 1]);
+                continue;
+            }
+            if (error) {
+                const retryable = RETRYABLE_ERROR_NAMES.has(error.name);
+                if (retryable && attempt < MAX_SEND_ATTEMPTS) {
+                    console.warn(`[EMAIL] Send attempt ${attempt}/${MAX_SEND_ATTEMPTS} to ${to} got ${error.name}, retrying`);
+                    await sleep(RETRY_DELAY_MS[attempt - 1]);
+                    continue;
+                }
+                console.error('[EMAIL] Resend REJECTED send to', to, '—', error.name, ':', error.message);
+                return { success: false, error: `${error.name}: ${error.message}` };
+            }
+            console.log('[EMAIL] Sent via Resend to', to, '— id', data?.id, attempt > 1 ? `(attempt ${attempt})` : '');
+            return { success: true, data };
         }
-        console.log('[EMAIL] Sent via Resend to', to, '— id', data?.id);
-        return { success: true, data };
+        // Unreachable — the loop always returns on its final attempt.
+        return { success: false, error: 'Send failed after retries' };
     } catch (err) {
         console.error('[EMAIL] Resend send failed:', err);
         return { success: false, error: String(err) };

@@ -20,6 +20,7 @@ import { LimbMeasurementsTab, LimbMeasurementsShortcut } from "@/components/admi
 import { BloodPressureTab } from "@/components/admin/blood-pressure-tab";
 import { PatientEmailPanel } from "@/components/admin/patient-email-panel";
 import { PatientActivityTab } from "@/components/admin/patient-activity-tab";
+import AutomationRuns from "@/components/patients/automation-runs";
 import PatientAdherencePanel from "@/components/admin/patient-adherence-panel";
 import WorkoutBuilder from "@/components/workouts/workout-builder";
 import WorkoutProgress from "@/components/workouts/workout-progress";
@@ -1060,6 +1061,15 @@ export default function PatientProfilePage() {
                 <TabsTrigger value="atividade" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                   <Activity className="h-3 w-3" />Activity
                 </TabsTrigger>
+                {/* What the automation did for this patient (activity 072, T-5).
+                    It belongs here, not on the /dashboard record: the middleware
+                    sends every staff role from /dashboard/* to /admin/*, so a tab
+                    over there is a tab nobody on staff can open. */}
+                {!isPersonal && (
+                  <TabsTrigger value="automacao" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
+                    <Activity className="h-3 w-3" />Automation
+                  </TabsTrigger>
+                )}
                 {isPersonal && (
                   <TabsTrigger value="workouts" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary flex items-center gap-1">
                     <Dumbbell className="h-3 w-3" />Workouts
@@ -2225,6 +2235,10 @@ export default function PatientProfilePage() {
         </TabsContent>
 
         {/* ── Tab: Atividade ── */}
+        <TabsContent value="automacao" className="mt-4">
+          <AutomationRuns patientId={patientId} />
+        </TabsContent>
+
         <TabsContent value="atividade" className="mt-4">
           <PatientActivityTab patientId={patientId} />
         </TabsContent>

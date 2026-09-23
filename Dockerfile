@@ -93,6 +93,8 @@ COPY --from=builder /app/scripts/backfill-appointment-clinicid.js ./scripts/back
 COPY --from=builder /app/scripts/seed-acl-protocol.js ./scripts/seed-acl-protocol.js
 COPY --from=builder /app/scripts/backfill-protocol-template-clinicid.js ./scripts/backfill-protocol-template-clinicid.js
 COPY --from=builder /app/scripts/backfill-prescription-protocolid.js ./scripts/backfill-prescription-protocolid.js
+COPY --from=builder /app/scripts/backfill-email-message-clinicid.js ./scripts/backfill-email-message-clinicid.js
+COPY --from=builder /app/scripts/backfill-patient-invoices.js ./scripts/backfill-patient-invoices.js
 COPY --from=builder /app/book ./book
 COPY --from=builder /app/recovered-content ./recovered-content
 

@@ -14,11 +14,19 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, AlertCircle, Loader2, Send, Eye } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Send, Eye, Clock, MessageSquare } from "lucide-react";
 import { useVocab } from "@/hooks/use-vocab";
 
 type MissingItem = { id: string; title: string };
-type DayStatus = { hasPlan: boolean; allDone: boolean; missing: MissingItem[]; reminderSentAt: string | null };
+type DayStatus = {
+  hasPlan: boolean;
+  allDone: boolean;
+  missing: MissingItem[];
+  reminderSentAt: string | null;
+  /** An automation already wrote this reminder and it is waiting for approval
+      (activity 072, T-7). Not "sent", and not "nothing happened" either. */
+  reminderQueuedAt?: string | null;
+};
 type AdherenceToday = DayStatus & { yesterday: DayStatus };
 
 function formatSentAt(iso: string) {
@@ -72,6 +80,8 @@ function AdherenceSection({
   const [sending, setSending] = useState(false);
   const [sentAt, setSentAt] = useState(status.reminderSentAt);
   const [locale, setLocale] = useState<"en" | "pt" | null>(null);
+  // Why the last click did nothing. Swallowing it made the button look broken.
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   useEffect(() => setSentAt(status.reminderSentAt), [status.reminderSentAt]);
 
@@ -83,13 +93,22 @@ function AdherenceSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...(sendBody || { patientId }), ...(locale ? { locale } : {}) }),
       });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (data.sent !== false) {
-          const now = new Date().toISOString();
-          setSentAt(now);
-          onSent?.(now);
-        }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.sent !== false) {
+        const now = new Date().toISOString();
+        setSentAt(now);
+        onSent?.(now);
+      } else {
+        // The server refusing is information, not silence. QA watched a
+        // therapist click three times on a button that answered
+        // `already_queued_today` and changed nothing on screen.
+        setRefusal(
+          data.reason === "already_queued_today"
+            ? "A reminder for today is already waiting for approval."
+            : data.reason === "already_sent_today"
+              ? "Today's reminder has already gone out."
+              : "That did not go through."
+        );
       }
     } finally {
       setSending(false);
@@ -98,6 +117,7 @@ function AdherenceSection({
 
   if (!status.hasPlan) return null;
   const sent = !!sentAt;
+  const queued = !sent && !!status.reminderQueuedAt;
 
   return (
     <div className="space-y-2 pt-3 first:pt-0 border-t first:border-t-0">
@@ -116,10 +136,21 @@ function AdherenceSection({
             <Button size="sm" variant="outline" onClick={() => setPreviewOpen(true)}>
               <Eye className="h-3.5 w-3.5 mr-1.5" /> Preview
             </Button>
-            <Button size="sm" disabled={sending || sent} onClick={send}>
-              {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : sent ? <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-              {sent && sentAt ? `Sent ${formatSentAt(sentAt)}` : "Send now"}
-            </Button>
+            {/* Waiting for approval is its own state. Offering "Send now" here
+                is how a patient ends up with two reminders — and how a
+                therapist ends up not knowing the message is waiting on them. */}
+            {queued ? (
+              <Link href="/admin/outbox">
+                <Button size="sm" variant="outline" className="text-foreground">
+                  <Clock className="h-3.5 w-3.5 mr-1.5" /> Waiting for your approval
+                </Button>
+              </Link>
+            ) : (
+              <Button size="sm" disabled={sending || sent} onClick={send}>
+                {sending ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : sent ? <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                {sent && sentAt ? `Sent ${formatSentAt(sentAt)}` : "Send now"}
+              </Button>
+            )}
             {showLocaleToggle && !sent && (
               <div className="flex items-center gap-0.5 rounded-md border border-border px-1 py-0.5">
                 {(["en", "pt"] as const).map((l) => (
@@ -136,6 +167,7 @@ function AdherenceSection({
               </div>
             )}
           </div>
+          {refusal && <p className="text-xs text-amber-400">{refusal}</p>}
         </>
       )}
 
@@ -168,6 +200,39 @@ function AdherenceSection({
 }
 
 type WeeklyClosingStatus = { en: { sentAt: string | null }; pt: { sentAt: string | null } };
+type ProtocolNote = { id: string; title: string; patientNotes: string; updatedAt: string; protocolTitle?: string; protocolStatus?: string };
+
+// Activity 071 — surfaces what the patient wrote via the note box added to
+// app/dashboard/treatment/page.tsx (that field existed on the model long
+// before any screen let a patient fill it in). Includes notes from archived
+// protocols on purpose — a plan being superseded is normal clinical
+// progress and must never make the patient's feedback disappear (Bruno,
+// 23/09/2026).
+function PatientNotesSection({ notes }: { notes: ProtocolNote[] }) {
+  if (notes.length === 0) return null;
+  return (
+    <div className="space-y-2 pt-3 first:pt-0 border-t first:border-t-0">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+        <MessageSquare className="h-3.5 w-3.5" /> Patient notes
+      </p>
+      <ul className="space-y-2">
+        {notes.map((n) => (
+          <li key={n.id} className="text-sm bg-muted/50 rounded p-2">
+            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 flex-wrap">
+              {n.title}
+              {n.protocolStatus === "ARCHIVED" && (
+                <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/60">
+                  Archived plan{n.protocolTitle ? ` — ${n.protocolTitle}` : ""}
+                </span>
+              )}
+            </p>
+            <p className="whitespace-pre-wrap">{n.patientNotes}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 type OnboardingPending = {
   profileIncomplete: boolean;
@@ -178,12 +243,12 @@ type OnboardingPending = {
 };
 
 function onboardingStatus(p: OnboardingPending | null): DayStatus {
-  if (!p) return { hasPlan: false, allDone: true, missing: [], reminderSentAt: null };
+  if (!p) return { hasPlan: false, allDone: true, missing: [], reminderSentAt: null, reminderQueuedAt: null };
   const missing: MissingItem[] = [];
   if (p.profileIncomplete) missing.push({ id: "profile", title: "Complete profile" });
   if (p.screeningMissing) missing.push({ id: "screening", title: "Submit medical screening" });
   if (p.consentMissing) missing.push({ id: "consent", title: "Accept consent terms" });
-  return { hasPlan: true, allDone: !p.anyPending, missing, reminderSentAt: p.reminderSentAt };
+  return { hasPlan: true, allDone: !p.anyPending, missing, reminderSentAt: p.reminderSentAt, reminderQueuedAt: null };
 }
 
 export default function PatientAdherencePanel({ patientId }: { patientId: string }) {
@@ -191,6 +256,7 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
   const [onboarding, setOnboarding] = useState<OnboardingPending | null>(null);
   const { isPersonal } = useVocab();
   const [weeklyClosing, setWeeklyClosing] = useState<WeeklyClosingStatus | null>(null);
+  const [notes, setNotes] = useState<ProtocolNote[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -198,17 +264,19 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
       fetch(`/api/admin/patients/${patientId}/adherence-today`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/admin/patients/${patientId}/onboarding-pending`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/admin/patients/${patientId}/weekly-closing`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/admin/patients/${patientId}/protocol-notes`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([adherence, onboardingData, weeklyClosingData]) => {
+      .then(([adherence, onboardingData, weeklyClosingData, notesData]) => {
         setData(adherence);
         setOnboarding(onboardingData);
         setWeeklyClosing(weeklyClosingData);
+        setNotes(notesData?.notes ?? []);
       })
       .finally(() => setLoading(false));
   }, [patientId]);
 
   const onboardingReady = onboarding !== null;
-  if (loading || !data || (!data.hasPlan && !data.yesterday.hasPlan && !onboarding?.anyPending)) return null;
+  if (loading || !data || (!data.hasPlan && !data.yesterday.hasPlan && !onboarding?.anyPending && notes.length === 0)) return null;
 
   return (
     <Card>
@@ -219,11 +287,12 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
         </Link>
       </CardHeader>
       <CardContent className="space-y-1">
+        <PatientNotesSection notes={notes} />
         <AdherenceSection
           title="Today"
           doneLabel="Completed everything today."
           missingLabel={(n) => `Missing ${n} ${n === 1 ? "activity" : "activities"} today`}
-          status={{ hasPlan: data.hasPlan, allDone: data.allDone, missing: data.missing, reminderSentAt: data.reminderSentAt }}
+          status={{ hasPlan: data.hasPlan, allDone: data.allDone, missing: data.missing, reminderSentAt: data.reminderSentAt, reminderQueuedAt: data.reminderQueuedAt }}
           previewUrl={`/api/admin/adherence/preview-patient-email?patientId=${patientId}`}
           sendUrl="/api/admin/adherence/send-reminder"
           patientId={patientId}

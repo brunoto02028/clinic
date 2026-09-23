@@ -335,6 +335,15 @@ model Clinic {
   currency String  @default("GBP")
   isActive Boolean @default(true)
 
+  // Atomic counter for PatientInvoice.invoiceNumber (activity 072) — every
+  // generateInvoiceNumber() call is a single `UPDATE ... SET nextInvoiceSeq
+  // = nextInvoiceSeq + 1`, which Postgres executes as one atomic statement
+  // even without an explicit transaction, so two invoices created at the
+  // same instant (manual + Stripe-automatic, or two staff at once) never
+  // collide and never skip a number. See lib/patient-invoice-number.ts —
+  // that file is the ONLY place allowed to read/increment this field.
+  nextInvoiceSeq Int @default(1)
+
   // Gates the "Import from Instagram" scraper (act.36) — it downloads and
   // permanently re-hosts video from ANY post/profile, not just the tenant's
   // own, which is a copyright-exposure risk for the platform. Opt-in only;
@@ -449,6 +458,7 @@ model Clinic {
   commandMemories     CommandMemory[]
   financialEntries    FinancialEntry[]
   financialCategories FinancialCategory[]
+  patientInvoices     PatientInvoice[]
   apiKeys             ApiKey[]
   companyProfile      CompanyProfile?
   musicTracks         MusicTrack[]
@@ -471,6 +481,12 @@ model Clinic {
 
   // Equipment Knowledge Base
   clinicEquipment ClinicEquipment[]
+
+  // Automation engine (activity 072)
+  alerts           Alert[]
+  automationRules  AutomationRule[]
+  outboundMessages OutboundMessage[]
+  automationRuns   AutomationRun[]
 
   @@index([slug])
   @@index([isActive])
@@ -715,6 +731,9 @@ model User {
   packagesAsPatient              TreatmentPackage[]        @relation("PatientPackages")
   voiceTranscriptions            VoiceTranscription[]      @relation("PatientTranscriptions")
   emailMessages                  EmailMessage[]            @relation("PatientEmails")
+  patientInvoices                PatientInvoice[]          @relation("PatientInvoices")
+  patientInvoicesCreated         PatientInvoice[]          @relation("PatientInvoicesCreated")
+  patientInvoicesPaidBy          PatientInvoice[]          @relation("PatientInvoicesPaidBy")
   bloodPressureReadings          BloodPressureReading[]    @relation("PatientBPReadings")
   bloodPressureReadingsRecorded  BloodPressureReading[]    @relation("StaffBPReadings")
   bpReminderEnabled              Boolean                   @default(false)
@@ -785,22 +804,22 @@ model User {
   studyProjects StudyProject[] @relation("StudyProjectOwner")
 
   // Clinical Rehabilitation Agent
-  rehabPlansAsPatient          RehabPlan[]          @relation("PatientRehabPlans")
-  rehabPlansCreated            RehabPlan[]          @relation("StaffRehabPlans")
-  atlasChatMessages            AtlasChatMessage[]   @relation("AtlasChatMessages")
-  atlasTreatmentPlansAsPatient AtlasTreatmentPlan[] @relation("PatientAtlasTreatmentPlans")
-  atlasTreatmentPlansCreated   AtlasTreatmentPlan[] @relation("StaffAtlasTreatmentPlans")
+  rehabPlansAsPatient          RehabPlan[]              @relation("PatientRehabPlans")
+  rehabPlansCreated            RehabPlan[]              @relation("StaffRehabPlans")
+  atlasChatMessages            AtlasChatMessage[]       @relation("AtlasChatMessages")
+  atlasTreatmentPlansAsPatient AtlasTreatmentPlan[]     @relation("PatientAtlasTreatmentPlans")
+  atlasTreatmentPlansCreated   AtlasTreatmentPlan[]     @relation("StaffAtlasTreatmentPlans")
   limbMeasurementsAsPatient    PatientLimbMeasurement[] @relation("PatientLimbMeasurements")
   limbMeasurementsRecorded     PatientLimbMeasurement[] @relation("StaffLimbMeasurements")
-  patientQuestionsReceived     PatientQuestion[]    @relation("PatientQuestions")
-  patientQuestionsCreated      PatientQuestion[]    @relation("QuestionCreator")
+  patientQuestionsReceived     PatientQuestion[]        @relation("PatientQuestions")
+  patientQuestionsCreated      PatientQuestion[]        @relation("QuestionCreator")
 
   // Clinic <-> Patient direct messaging
-  clinicMessagesReceived ClinicMessage[]   @relation("PatientClinicMessages")
-  clinicMessagesSent     ClinicMessage[]   @relation("SentClinicMessages")
+  clinicMessagesReceived  ClinicMessage[]        @relation("PatientClinicMessages")
+  clinicMessagesSent      ClinicMessage[]        @relation("SentClinicMessages")
   outboundEmailsAsPatient PatientOutboundEmail[] @relation("PatientOutboundEmails")
   outboundEmailsSent      PatientOutboundEmail[] @relation("StaffOutboundEmails")
-  broadcastsSent         ClinicBroadcast[] @relation("SentBroadcasts")
+  broadcastsSent          ClinicBroadcast[]      @relation("SentBroadcasts")
 
   // Protocol templates
   protocolTemplatesCreated ProtocolTemplate[] @relation("ProtocolTemplatesCreated")
@@ -824,6 +843,14 @@ model User {
 
   // BA One — Entitlements
   entitlements Entitlement[] @relation("UserEntitlements")
+
+  // Automation engine (activity 072)
+  alerts                 Alert[]           @relation("PatientAlerts")
+  alertsAcknowledged     Alert[]           @relation("AlertsAcknowledged")
+  alertsResolved         Alert[]           @relation("AlertsResolved")
+  queuedMessages         OutboundMessage[] @relation("PatientQueuedMessages")
+  approvedQueuedMessages OutboundMessage[] @relation("ApprovedQueuedMessages")
+  automationRuns         AutomationRun[]   @relation("PatientAutomationRuns")
 
   @@index([clinicId])
   @@index([email])
@@ -4310,6 +4337,12 @@ model EmailMessage {
   patientId       String?
   patient         User?          @relation("PatientEmails", fields: [patientId], references: [id], onDelete: SetNull)
   clinicId        String?
+  // Activity 072 — links a delivery e-mail back to the structured invoice
+  // it carries. Nullable: most EmailMessage rows aren't an invoice at all,
+  // and even an invoice email predating this activity has it backfilled
+  // separately (scripts/backfill-patient-invoices.js), never assumed.
+  patientInvoiceId String?
+  patientInvoice    PatientInvoice? @relation(fields: [patientInvoiceId], references: [id], onDelete: SetNull)
   sentAt          DateTime?
   receivedAt      DateTime?
   createdAt       DateTime       @default(now())
@@ -4322,6 +4355,7 @@ model EmailMessage {
   @@index([isRead])
   @@index([isSpam])
   @@index([createdAt])
+  @@index([patientInvoiceId])
 }
 
 // ============================================
@@ -4447,6 +4481,112 @@ model ServicePrice {
   @@unique([clinicId, serviceType])
   @@index([clinicId])
   @@index([serviceType])
+}
+
+// ============================================
+// PATIENT INVOICE (activity 072)
+// ============================================
+// Distinct from `Invoice`/`InvoiceItem` below (BA ONE — WORK MODULE) on
+// purpose: that pair belongs to a self-employed trainer billing their OWN
+// clients via the mobile app (scoped by BusinessProfile.userId), not the
+// clinic billing a patient. Before this model, a patient invoice was just a
+// PDF attached (base64) to a generic EmailMessage — no persisted number, no
+// payment status, no way to list "this patient's invoices" without opening
+// emails one by one. See specs/072-fatura-estruturada-e-organizacao/.
+
+enum PatientInvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+  PARTIALLY_PAID
+}
+
+model PatientInvoice {
+  id            String @id @default(cuid())
+  // Unique per clinic, NOT globally (see @@unique below) — the counter
+  // behind this (Clinic.nextInvoiceSeq) starts at 1 for every clinic, so
+  // "BPR-2026-000001" from two different clinics is expected and fine;
+  // every read of it is already scoped by clinicId, nothing ever compares
+  // numbers across clinics. A bare `@unique` here made the second clinic
+  // to ever issue an invoice fail with a Postgres unique-constraint error
+  // on its very first one — caught in QA. Generated by
+  // lib/patient-invoice-number.ts ONLY — never format one elsewhere.
+  invoiceNumber String
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   User   @relation("PatientInvoices", fields: [patientId], references: [id], onDelete: Cascade)
+
+  status   PatientInvoiceStatus @default(DRAFT)
+  currency String               @default("GBP")
+  subtotal Float
+  total    Float
+  notes    String?              @db.Text
+
+  issueDate DateTime  @default(now())
+  dueDate   DateTime?
+
+  // The PDF lives here, not only inside an EmailMessage's attachment — so
+  // it stays downloadable even if the delivering EmailMessage is later
+  // purged (see PatientInvoice.emails below).
+  pdfBase64 String? @db.Text
+
+  // Origin — at most one of these two is set; neither set means a
+  // standalone/ad-hoc invoice.
+  appointmentId          String?
+  patientSubscriptionId  String?
+
+  // Who generated it — null when a cron created it unattended.
+  createdById String?
+  createdBy   User?   @relation("PatientInvoicesCreated", fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Payment — "stripe" means this was marked PAID automatically at
+  // creation time because the underlying Payment/subscription had already
+  // been settled via Stripe; anything else came from the manual
+  // "Mark as paid" action (T-5), so paidById is set and paidMethod isn't
+  // "stripe".
+  paidAt     DateTime?
+  paidAmount Float?
+  paidMethod String? // "stripe" | "manual" | ...
+  paidById   String?
+  paidBy     User?     @relation("PatientInvoicesPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+
+  // Activity 073 — the FinancialEntry this payment produced (Dashboard/
+  // Income was otherwise invisible to every invoice payment, manual or
+  // Stripe-automatic). Unique so a given invoice can never end up double
+  // counted; null until paid.
+  financialEntryId String?          @unique
+  financialEntry   FinancialEntry?  @relation(fields: [financialEntryId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items  PatientInvoiceItem[]
+  emails EmailMessage[]
+
+  @@unique([clinicId, invoiceNumber])
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([status])
+  @@index([issueDate])
+}
+
+model PatientInvoiceItem {
+  id        String         @id @default(cuid())
+  invoiceId String
+  invoice   PatientInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Free text on purpose (activity 072 decision) — no ServicePrice catalog
+  // link, so staff keeps full freedom to add/edit/remove a line item.
+  description String
+  quantity    Float  @default(1)
+  unitPrice   Float
+  total       Float
+
+  @@index([invoiceId])
 }
 
 model ServiceAccess {
@@ -5510,6 +5650,12 @@ model FinancialEntry {
   // Recurring
   isRecurring  Boolean @default(false)
   recurringDay Int? // Day of month (1-31) for recurring entries
+  // Activity 073 — only meaningful on the "template" row (isRecurring:
+  // true): the cron (app/api/cron/finance-recurring-entries) compares
+  // this against the current month to decide whether it already
+  // generated this month's copy, same lastInvoicedAt pattern already
+  // used by app/api/cron/membership-invoices for subscriptions.
+  lastGeneratedAt DateTime?
 
   // Attachments (receipt/invoice PDF URL)
   attachmentUrl String?
@@ -5519,6 +5665,11 @@ model FinancialEntry {
 
   // Link to dynamic category
   categoryId String?
+
+  // Activity 073 — the PatientInvoice this entry was generated from, when
+  // it came from a paid invoice rather than a manual entry or a Stripe
+  // sync. Back-relation only; PatientInvoice.financialEntryId is the FK.
+  patientInvoice PatientInvoice?
 
   @@index([clinicId])
   @@index([type])
@@ -6599,12 +6750,12 @@ model AtlasTreatmentPlan {
 // and no protocol relation on purpose: the record must survive a protocol being
 // replaced or deleted (same shape as AtlasTreatmentPlan).
 model PatientLimbMeasurement {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   clinicId     String
   patientId    String
-  patient      User     @relation("PatientLimbMeasurements", fields: [patientId], references: [id], onDelete: Cascade)
+  patient      User    @relation("PatientLimbMeasurements", fields: [patientId], references: [id], onDelete: Cascade)
   recordedById String?
-  recordedBy   User?    @relation("StaffLimbMeasurements", fields: [recordedById], references: [id], onDelete: SetNull)
+  recordedBy   User?   @relation("StaffLimbMeasurements", fields: [recordedById], references: [id], onDelete: SetNull)
 
   measuredAt   DateTime @default(now())
   operatedSide String // LEFT | RIGHT (snapshot at the time of the measurement)
@@ -6655,21 +6806,21 @@ model AtlasChatMessage {
 // composer (activity 68). Only ever created by an explicit staff click, after
 // the exact e-mail was previewed; the row keeps what was actually sent.
 model PatientOutboundEmail {
-  id          String   @id @default(cuid())
-  clinicId    String
-  patientId   String
-  patient     User     @relation("PatientOutboundEmails", fields: [patientId], references: [id], onDelete: Cascade)
-  sentById    String?
-  sentBy      User?    @relation("StaffOutboundEmails", fields: [sentById], references: [id], onDelete: SetNull)
+  id            String  @id @default(cuid())
+  clinicId      String
+  patientId     String
+  patient       User    @relation("PatientOutboundEmails", fields: [patientId], references: [id], onDelete: Cascade)
+  sentById      String?
+  sentBy        User?   @relation("StaffOutboundEmails", fields: [sentById], references: [id], onDelete: SetNull)
   appointmentId String? // set when written from an appointment's "send confirmation" shortcut
 
-  locale      String // pt-BR | en-GB — language the e-mail was rendered in (first one when "both")
+  locale        String // pt-BR | en-GB — language the e-mail was rendered in (first one when "both")
   bothLanguages Boolean @default(false)
-  subject     String
-  bodyText    String   @db.Text
-  html        String   @db.Text
-  contentHash String
-  status      String // sent | failed
+  subject       String
+  bodyText      String  @db.Text
+  html          String  @db.Text
+  contentHash   String
+  status        String // sent | failed
   providerError String? @db.Text
 
   createdAt DateTime @default(now())
@@ -7165,4 +7316,231 @@ model Entitlement {
   @@index([featureKey])
   @@index([isActive])
   @@map("entitlements")
+}
+
+// ---------------------------------------------------------------------------
+// Automation engine (activity 072)
+// ---------------------------------------------------------------------------
+
+enum AlertPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+/// What the automation engine raises for the therapist to look at.
+///
+/// An alert is internal: it is not a message to the patient, so a rule may
+/// create one on its own. Everything that would reach the patient goes to the
+/// approval queue instead (activity 072, decision 3).
+model Alert {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  /// The patient the alert is about (User with role PATIENT).
+  patientId String
+  patient   User   @relation("PatientAlerts", fields: [patientId], references: [id], onDelete: Cascade)
+
+  ruleCode String
+  priority AlertPriority @default(MEDIUM)
+  status   AlertStatus   @default(OPEN)
+  /// English is canonical and always shown first; the Portuguese goes under
+  /// it. Both, always — decided 23/09.
+  title    String
+  titlePt  String?
+  /// Why it fired: the figures the rule looked at, so the therapist can judge
+  /// without going to fetch the data themselves.
+  details  Json?
+
+  /// One alert per rule, patient and window. A rule that runs every five
+  /// minutes must not pile up the same alert until someone reads it.
+  dedupeKey String @unique
+
+  ackById String?
+  ackBy   User?     @relation("AlertsAcknowledged", fields: [ackById], references: [id])
+  ackAt   DateTime?
+
+  resolvedById String?
+  resolvedBy   User?     @relation("AlertsResolved", fields: [resolvedById], references: [id])
+  resolvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, status, priority])
+  @@index([patientId])
+  @@index([ruleCode])
+  @@map("alerts")
+}
+
+/// A rule the automation engine evaluates — the thing that used to be a
+/// constant inside a cron route (activity 072, T-3).
+///
+/// Moving a threshold or a message into a row means changing it needs no
+/// deploy, which is the point: the clinic owns its own limits.
+model AutomationRule {
+  id String @id @default(cuid())
+
+  /// null is the default every clinic inherits. A row with a clinicId
+  /// overrides that default for one clinic only.
+  ///
+  /// Postgres treats NULLs as distinct in a unique index, so this constraint
+  /// does not stop a second global row for the same code. The seed looks
+  /// before it writes; a UI for these rules (T-6) must do the same.
+  clinicId String?
+  clinic   Clinic? @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  code   String
+  name   String
+  active Boolean @default(true)
+
+  /// SCHEDULE | EVENT | INACTIVITY | THRESHOLD | EPISODE_PHASE
+  trigger    String
+  eventName  String?
+  /// Facts to compare, e.g. { "missingItems": { "gte": 1 } }. See
+  /// lib/automation/rules.ts for the operators.
+  condition  Json
+  /// SEND_MESSAGE | CREATE_TASK | CREATE_ALERT | GENERATE_REPORT | UNLOCK_CONTENT | START_SEQUENCE
+  action     String
+  /// Templates, priority, whatever the action needs.
+  actionData Json
+  /// PUSH | WHATSAPP | EMAIL | INTERNAL
+  channels   String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([code, clinicId])
+  @@index([code])
+  @@index([clinicId])
+  @@map("automation_rules")
+}
+
+enum OutboundStatus {
+  AWAITING_APPROVAL
+  APPROVED
+  SENT
+  FAILED
+  DISCARDED
+}
+
+/// A message an automation wants to send, waiting for a human (activity 072, T-4).
+///
+/// The engine never sends. It writes the message here and stops; approving is
+/// the only path to delivery. When the clinic decides to let a rule send by
+/// itself, that becomes a flag on the rule — the queue and the guards stay.
+model OutboundMessage {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  patientId String
+  patient   User   @relation("PatientQueuedMessages", fields: [patientId], references: [id], onDelete: Cascade)
+
+  /// Which rule asked for it, so the queue can say why this exists.
+  ruleCode String
+  /// EMAIL | PUSH. WhatsApp waits for Meta-approved templates (spec §11).
+  channel  String
+
+  /// Both languages, always. English is canonical; the renderer picks the
+  /// order from the patient's own preferredLocale.
+  subjectEn String
+  subjectPt String
+  bodyEn    String @db.Text
+  bodyPt    String @db.Text
+
+  status     OutboundStatus @default(AWAITING_APPROVAL)
+  /// Why an approved message has not gone out yet: quiet hours, daily cap,
+  /// no consent. Held, never silently dropped.
+  holdReason String?
+
+  approvedById String?
+  approvedBy   User?     @relation("ApprovedQueuedMessages", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+
+  sentAt        DateTime?
+  providerError String?   @db.Text
+  /// Hash of what the approver was shown, from renderPatientEmail — the same
+  /// guard activity 68 uses, so nothing can change between preview and send.
+  approvedHash  String?
+
+  /// Which builder renders this, when the generic patient-email layout is not
+  /// the right one. A reminder has its own layout — a greeting and a button
+  /// into the app — and migrating a message into this queue must not quietly
+  /// cost the patient either. Null means the generic layout.
+  templateCode String?
+  /// What that builder needs beyond the body text (the missed items, say).
+  templateVars Json?
+
+  /// The AuditLog action to write when this is actually delivered, if the
+  /// rule asked for one. "Queued" is not "sent", and the screens that ask
+  /// "was the reminder sent today?" must keep telling the truth.
+  auditAction String?
+
+  /// clinic:rule:patient:window — one message per rule per window.
+  idempotencyKey String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, status])
+  @@index([patientId])
+  @@map("outbound_messages")
+}
+
+enum RunStatus {
+  RUNNING
+  DONE
+  FAILED
+}
+
+/// One record of a rule having run for a patient (activity 072, T-5).
+///
+/// Two jobs in one row. It stops the same evaluation happening twice, and it
+/// answers the question nobody could answer before: *why did this patient get
+/// this?* — which rule, when, on what figures.
+model AutomationRun {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  /// Null for a rule that is not about one patient (a clinic-wide sweep).
+  patientId String?
+  patient   User?   @relation("PatientAutomationRuns", fields: [patientId], references: [id], onDelete: Cascade)
+
+  ruleCode String
+  /// The window this run belongs to, as the rule counts time.
+  window   String
+
+  /// clinic:rule:patient:window:facts — the facts are in it on purpose. The
+  /// same situation twice is one run; a situation that got worse is a
+  /// different key, so an escalation is not mistaken for a repeat.
+  idempotencyKey String @unique
+
+  status   RunStatus @default(RUNNING)
+  /// What it did, in one word: ALERT_RAISED, MESSAGE_QUEUED, NOTHING…
+  result   String?
+  /// The figures the rule looked at, and what came of them.
+  details  Json?
+  error    String?   @db.Text
+  attempts Int       @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, createdAt])
+  @@index([patientId, createdAt])
+  @@index([ruleCode])
+  @@map("automation_runs")
 }

@@ -6,6 +6,7 @@ import { buildInvoiceHtml, InvoiceData } from "@/lib/invoice-html";
 import { getInvoiceBusinessInfo } from "@/lib/invoice-business-info";
 import { queueInvoiceForApproval } from "@/lib/invoice-pending";
 import { getSessionStaffActor } from "@/lib/tenant-access";
+import { createPatientInvoice } from "@/lib/create-patient-invoice";
 
 // The invoice carries the patient's details and the clinic's bank details, so
 // it is only reachable from the appointment's own tenant (activity 52, T-6).
@@ -25,46 +26,59 @@ interface ExtraItem {
   quantity?: number;
 }
 
+// Item list + who it's for — shared by the GET preview (cosmetic only,
+// nothing persisted) and the POST that actually creates the structured
+// PatientInvoice (activity 072). Also surfaces the appointment's own Payment
+// so POST can tell whether this was already settled via Stripe.
 async function buildInvoiceForAppointment(
   appointmentId: string,
   overrideAmount?: number,
   extraItems?: ExtraItem[]
-): Promise<{ invoice: InvoiceData; patientEmail: string | null; patientId: string | null; clinicId: string | null } | null> {
+) {
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
     include: {
       patient: { select: { id: true, firstName: true, lastName: true, email: true } },
+      payment: { select: { status: true, amount: true, updatedAt: true, stripePaymentId: true } },
     },
   });
   if (!appointment) return null;
 
   const business = await getInvoiceBusinessInfo(appointment.clinicId);
   const amount = overrideAmount ?? appointment.price;
-  const invoiceNumber = `BPR-${appointment.dateTime.toISOString().slice(0, 10).replace(/-/g, "")}-${appointment.id.slice(-6).toUpperCase()}`;
 
-  const invoice: InvoiceData = {
-    invoiceNumber,
-    issueDate: new Date(),
+  const items = [
+    {
+      description: `${appointment.treatmentType} — ${appointment.dateTime.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`,
+      quantity: 1,
+      unitPrice: amount,
+    },
+    ...(extraItems || []).map((it) => ({
+      description: it.description,
+      quantity: it.quantity || 1,
+      unitPrice: it.unitPrice,
+    })),
+  ];
+
+  return {
+    items,
     business,
     clientName: `${appointment.patient.firstName} ${appointment.patient.lastName}`,
-    clientEmail: appointment.patient.email,
-    items: [
-      {
-        description: `${appointment.treatmentType} — ${appointment.dateTime.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`,
-        quantity: 1,
-        unitPrice: amount,
-      },
-      ...(extraItems || []).map((it) => ({
-        description: it.description,
-        quantity: it.quantity || 1,
-        unitPrice: it.unitPrice,
-      })),
-    ],
-    acceptsCash: true,
-    acceptsBankTransfer: true,
+    patientEmail: appointment.patient.email,
+    patientId: appointment.patient.id,
+    clinicId: appointment.clinicId,
+    // Only offered as "already paid via Stripe" when there's no override/
+    // extra items AND the amount being invoiced still matches what Stripe
+    // actually settled — Appointment.price can be edited at any time
+    // (app/api/appointments/[id]/route.ts), even after a successful
+    // payment, so without this check an admin correcting the price after
+    // the fact could produce an invoice marked "paid" for more (or less)
+    // than what was really charged. Caught in code review.
+    stripePayment:
+      !overrideAmount && !extraItems?.length && appointment.payment?.status === "SUCCEEDED" && appointment.payment.amount === amount
+        ? { amount: appointment.payment.amount, paidAt: appointment.payment.updatedAt, stripePaymentIntentId: appointment.payment.stripePaymentId }
+        : null,
   };
-
-  return { invoice, patientEmail: appointment.patient.email, patientId: appointment.patient.id, clinicId: appointment.clinicId };
 }
 
 // GET — admin preview of the invoice (opens/prints in browser)
@@ -82,11 +96,24 @@ export async function GET(
     return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
   }
 
-  const html = buildInvoiceHtml(result.invoice);
+  // Preview only — nothing persisted, so no real invoiceNumber exists yet.
+  // Activity 072: the actual number is assigned by createPatientInvoice()
+  // when POST is called, and will differ from this placeholder.
+  const invoice: InvoiceData = {
+    invoiceNumber: "PREVIEW",
+    issueDate: new Date(),
+    business: result.business,
+    clientName: result.clientName,
+    clientEmail: result.patientEmail,
+    items: result.items,
+    acceptsCash: true,
+    acceptsBankTransfer: true,
+  };
+  const html = buildInvoiceHtml(invoice);
   return new NextResponse(html, {
     headers: {
       "Content-Type": "text/html",
-      "Content-Disposition": `inline; filename="Invoice-${result.invoice.invoiceNumber}.html"`,
+      "Content-Disposition": `inline; filename="Invoice-preview.html"`,
     },
   });
 }
@@ -116,12 +143,52 @@ export async function POST(
     return NextResponse.json({ error: "Patient has no email on file" }, { status: 400 });
   }
 
+  // A second invoice for the same appointment used to just create a
+  // duplicate (pre-existing, harmless-looking) — now that a Stripe-paid
+  // one also writes a FinancialEntry keyed by the Payment's
+  // stripePaymentIntentId (@unique), the second attempt collided on that
+  // constraint and surfaced as a raw 500 instead of an explanation. Guard
+  // explicitly instead (code review, activity 073).
+  const existingInvoice = await prisma.patientInvoice.findFirst({
+    where: { appointmentId: params.id, status: { not: "VOID" } },
+    select: { id: true, invoiceNumber: true },
+  });
+  if (existingInvoice) {
+    return NextResponse.json(
+      { error: `This appointment already has an invoice (${existingInvoice.invoiceNumber}) — void it first if you need to generate a new one.` },
+      { status: 409 }
+    );
+  }
+
+  const actor = await getSessionStaffActor(request);
+
+  const patientInvoice = await createPatientInvoice({
+    clinicId: result.clinicId,
+    patientId: result.patientId,
+    items: result.items,
+    appointmentId: params.id,
+    createdById: actor?.userId || null,
+    alreadyPaidViaStripe: result.stripePayment,
+  });
+
+  const invoice: InvoiceData = {
+    invoiceNumber: patientInvoice.invoiceNumber,
+    issueDate: patientInvoice.issueDate,
+    business: result.business,
+    clientName: result.clientName,
+    clientEmail: result.patientEmail,
+    items: result.items,
+    acceptsCash: true,
+    acceptsBankTransfer: true,
+  };
+
   const queued = await queueInvoiceForApproval({
-    invoice: result.invoice,
+    invoice,
     patientEmail: result.patientEmail,
     patientId: result.patientId,
     clinicId: result.clinicId,
+    patientInvoiceId: patientInvoice.id,
   });
 
-  return NextResponse.json({ success: true, ...queued });
+  return NextResponse.json({ success: true, ...queued, patientInvoiceId: patientInvoice.id, autoPaidViaStripe: !!result.stripePayment });
 }
