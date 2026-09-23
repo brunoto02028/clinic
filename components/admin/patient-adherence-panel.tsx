@@ -14,7 +14,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, AlertCircle, Loader2, Send, Eye } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Send, Eye, MessageSquare } from "lucide-react";
 import { useVocab } from "@/hooks/use-vocab";
 
 type MissingItem = { id: string; title: string };
@@ -168,6 +168,39 @@ function AdherenceSection({
 }
 
 type WeeklyClosingStatus = { en: { sentAt: string | null }; pt: { sentAt: string | null } };
+type ProtocolNote = { id: string; title: string; patientNotes: string; updatedAt: string; protocolTitle?: string; protocolStatus?: string };
+
+// Activity 071 — surfaces what the patient wrote via the note box added to
+// app/dashboard/treatment/page.tsx (that field existed on the model long
+// before any screen let a patient fill it in). Includes notes from archived
+// protocols on purpose — a plan being superseded is normal clinical
+// progress and must never make the patient's feedback disappear (Bruno,
+// 23/09/2026).
+function PatientNotesSection({ notes }: { notes: ProtocolNote[] }) {
+  if (notes.length === 0) return null;
+  return (
+    <div className="space-y-2 pt-3 first:pt-0 border-t first:border-t-0">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+        <MessageSquare className="h-3.5 w-3.5" /> Patient notes
+      </p>
+      <ul className="space-y-2">
+        {notes.map((n) => (
+          <li key={n.id} className="text-sm bg-muted/50 rounded p-2">
+            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 flex-wrap">
+              {n.title}
+              {n.protocolStatus === "ARCHIVED" && (
+                <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/60">
+                  Archived plan{n.protocolTitle ? ` — ${n.protocolTitle}` : ""}
+                </span>
+              )}
+            </p>
+            <p className="whitespace-pre-wrap">{n.patientNotes}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 type OnboardingPending = {
   profileIncomplete: boolean;
@@ -191,6 +224,7 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
   const [onboarding, setOnboarding] = useState<OnboardingPending | null>(null);
   const { isPersonal } = useVocab();
   const [weeklyClosing, setWeeklyClosing] = useState<WeeklyClosingStatus | null>(null);
+  const [notes, setNotes] = useState<ProtocolNote[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -198,17 +232,19 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
       fetch(`/api/admin/patients/${patientId}/adherence-today`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/admin/patients/${patientId}/onboarding-pending`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/admin/patients/${patientId}/weekly-closing`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/admin/patients/${patientId}/protocol-notes`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([adherence, onboardingData, weeklyClosingData]) => {
+      .then(([adherence, onboardingData, weeklyClosingData, notesData]) => {
         setData(adherence);
         setOnboarding(onboardingData);
         setWeeklyClosing(weeklyClosingData);
+        setNotes(notesData?.notes ?? []);
       })
       .finally(() => setLoading(false));
   }, [patientId]);
 
   const onboardingReady = onboarding !== null;
-  if (loading || !data || (!data.hasPlan && !data.yesterday.hasPlan && !onboarding?.anyPending)) return null;
+  if (loading || !data || (!data.hasPlan && !data.yesterday.hasPlan && !onboarding?.anyPending && notes.length === 0)) return null;
 
   return (
     <Card>
@@ -219,6 +255,7 @@ export default function PatientAdherencePanel({ patientId }: { patientId: string
         </Link>
       </CardHeader>
       <CardContent className="space-y-1">
+        <PatientNotesSection notes={notes} />
         <AdherenceSection
           title="Today"
           doneLabel="Completed everything today."

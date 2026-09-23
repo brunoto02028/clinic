@@ -261,6 +261,19 @@ export default function PatientTreatmentPage() {
     }
   };
 
+  // Activity 071 — patientNotes already existed on ProtocolItem and this
+  // PATCH route already accepted `notes`, but no screen ever called it: the
+  // note box simply didn't exist anywhere for the patient to use.
+  const handleSaveNote = async (itemId: string, notes: string) => {
+    const res = await fetch("/api/patient/protocol", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId, notes }),
+    });
+    if (!res.ok) throw new Error("Failed to save note");
+    fetchProtocols();
+  };
+
   const handlePayment = async (packageId: string) => {
     setPaying(packageId);
     try {
@@ -654,6 +667,7 @@ export default function PatientTreatmentPage() {
                     weekCompleted={weekCompleted}
                     onToggle={handleToggleItem}
                     onToggleLog={handleToggleLog}
+                    onSaveNote={handleSaveNote}
                     onPlayVideo={handlePlayVideo}
                     protocolStartDate={effectiveStartDate}
                   />
@@ -881,7 +895,7 @@ function DayStrip({ days, marked, onToggleDate, isPt }: {
   );
 }
 
-function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, weekCompleted, onToggle, onToggleLog, onPlayVideo, protocolStartDate }: {
+function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, weekCompleted, onToggle, onToggleLog, onSaveNote, onPlayVideo, protocolStartDate }: {
   startWeek: number;
   endWeek: number | null;
   isCurrentWeek: boolean;
@@ -890,6 +904,7 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
   weekCompleted: number;
   onToggle: (id: string, completed: boolean) => void;
   onToggleLog: (itemId: string, dateStr: string) => void;
+  onSaveNote: (itemId: string, notes: string) => Promise<void>;
   onPlayVideo: (url: string, muted: boolean, poster?: string | null, exerciseId?: string | null) => void;
   protocolStartDate: string;
 }) {
@@ -989,6 +1004,18 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
                       </div>
                     )}
 
+                    {/* Patient note (activity 071) — field already existed on the
+                        model and the save route already accepted it; only the
+                        screen to actually write one was missing. */}
+                    {item.itemType !== "IN_CLINIC" && item.itemType !== "ASSESSMENT" && (
+                      <NoteField
+                        key={item.id}
+                        initialValue={item.patientNotes || ""}
+                        onSave={(notes) => onSaveNote(item.id, notes)}
+                        isPt={isPt}
+                      />
+                    )}
+
                     {/* References */}
                     {item.references?.length > 0 && (
                       <div className="mt-1.5">
@@ -1006,6 +1033,52 @@ function WeekSection({ startWeek, endWeek, isCurrentWeek, currentWeek, items, we
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// Activity 071 — uncontrolled by design (local state seeded once, not a
+// controlled `value` synced from props): re-fetches triggered by other items
+// (marking a day, toggling a different exercise) swap in a new `items` array
+// from the parent, but this component stays mounted (keyed by item.id, which
+// doesn't change), so an in-progress edit here never gets clobbered by an
+// unrelated refetch.
+function NoteField({ initialValue, onSave, isPt }: {
+  initialValue: string;
+  onSave: (notes: string) => Promise<void>;
+  isPt: boolean;
+}) {
+  const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [value, setValue] = useState(initialValue);
+
+  const save = async () => {
+    if (value === initialValue) return; // nothing changed — skip the request
+    setStatus("saving");
+    try {
+      await onSave(value);
+      setStatus("saved");
+      setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 2000);
+    } catch {
+      setStatus("idle");
+    }
+  };
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] text-muted-foreground">
+          {isPt ? "Deixar uma observação (opcional)" : "Add a note (optional)"}
+        </label>
+        {status === "saving" && <span className="text-[10px] text-muted-foreground">{isPt ? "Salvando…" : "Saving…"}</span>}
+        {status === "saved" && <span className="text-[10px] text-ba1-ok">{isPt ? "Salvo" : "Saved"}</span>}
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        placeholder={isPt ? "Ex.: doeu mais hoje, precisei parar antes do fim…" : "E.g. it hurt more today, had to stop early…"}
+        className="text-xs mt-1 min-h-[52px]"
+      />
     </div>
   );
 }
